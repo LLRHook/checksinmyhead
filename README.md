@@ -5,17 +5,17 @@
 repo-root/
 │
 ├── backend/
-│   ├── main.py                # FastAPI entrypoint
-│   ├── models/                # MongoDB schemas
-│   ├── routes/                # FastAPI routers
-│   ├── utils/                 # Helper functions (OCR, parsing, etc.)
-│   ├── .env.example           # Template env file
-│   └── pyproject.toml         # Ruff config
+│ ├── main.py # FastAPI entrypoint
+│ ├── models/ # MongoDB schemas
+│ ├── routes/ # FastAPI routers
+│ ├── utils/ # Helper functions (OCR, parsing, etc.)
+│ ├── .env.example # Template env file
+│ └── pyproject.toml # Ruff config
 │
-├── frontend/                  # Flutter code goes here
-├── docs/                      # Any diagrams, architecture notes
-├── sample-data/receipts/     # Real/test receipts
-├── tests/                    # Pytest or unit tests
+├── frontend/ # Flutter code goes here
+├── docs/ # Any diagrams, architecture notes
+├── sample-data/receipts/ # Real/test receipts
+├── tests/ # Pytest or unit tests
 ├── .pre-commit-config.yaml
 └── README.md
 ```
@@ -23,32 +23,47 @@ repo-root/
 ## Setup Instructions
 
 ### 1. Install uv
-```powershell
-pip install uv
+```bash
+# Install uv directly (not through pip)
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
 ### 2. Set up Environment Variables
 Copy the example env file and fill in your values:
-```powershell
-Copy-Item backend\.env.example backend\.env
+```bash
+# On Windows
+cp backend\.env.example backend\.env
+
+# On Unix/Linux/macOS
+cp backend/.env.example backend/.env
 ```
 
-### 3. Install Dependencies
-```powershell
-uv pip install fastapi uvicorn python-dotenv pre-commit black
+### 3. Set up Virtual Environment and Install Dependencies
+```bash
+# Create a virtual environment
+uv venv
+
+# Activate the virtual environment
+# On Windows
+.venv\Scripts\activate
+# On Unix/Linux/macOS
+source .venv/bin/activate
+
+# Install dependencies
+uv pip install -r requirements.txt
 ```
 
 ### 4. Set up Pre-commit
-```powershell
+```bash
 pre-commit install
 ```
 
 ### 5. Run the Server
-```powershell
+```bash
 cd backend
 uvicorn main:app --reload
 ```
 
 Test the API:
 - Open your browser and visit: http://localhost:8000/ping
-- You should see: `{"message": "pong"}` 
+- You should see: `{"message": "pong"}`
