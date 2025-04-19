@@ -60,8 +60,7 @@ pre-commit install
 
 ### 5. Run the Server
 ```bash
-cd backend
-uvicorn main:app --reload
+uvicorn backend.main:app --reload
 ```
 
 Test the API:
