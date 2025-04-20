@@ -4,8 +4,8 @@ class AppTheme {
   // Updated modern color palette
   static const Color _primaryColor = Color(0xFF627D98); // Slate blue-gray
   static const Color _secondaryColor = Color(0xFFD9B38C); // Muted warm tan
-  static const Color _accentColor = Color(0xFF4C5B6B);   // Deep steel blue
-  static const Color _errorColor = Color(0xFFDC4C4C);    // Softer modern red
+  static const Color _accentColor = Color(0xFF4C5B6B); // Deep steel blue
+  static const Color _errorColor = Color(0xFFDC4C4C); // Softer modern red
 
   // Light theme
   static final ThemeData lightTheme = ThemeData(
@@ -16,16 +16,14 @@ class AppTheme {
       onPrimaryContainer: _primaryColor,
       secondary: _secondaryColor,
       secondaryContainer: Color(0xFFFFF5ED),
-      onSecondaryContainer: _secondaryColor.withOpacity(0.85),
+      onSecondaryContainer: _secondaryColor.withValues(alpha: 0.85),
       tertiary: _accentColor,
       tertiaryContainer: Color(0xFFE6EAF1),
-      onTertiaryContainer: _accentColor.withOpacity(0.85),
+      onTertiaryContainer: _accentColor.withValues(alpha: 0.85),
       error: _errorColor,
-      background: Colors.white,
-      onBackground: Color(0xFF2C2C2C),
       surface: Colors.white,
       onSurface: Color(0xFF2C2C2C),
-      surfaceVariant: Color(0xFFF1F3F5),
+      surfaceContainerHighest: Color(0xFFF1F3F5),
       onSurfaceVariant: Color(0xFF6B6B6B),
     ),
 
@@ -40,10 +38,7 @@ class AppTheme {
         fontWeight: FontWeight.bold,
         letterSpacing: -0.25,
       ),
-      displaySmall: TextStyle(
-        fontSize: 24,
-        fontWeight: FontWeight.bold,
-      ),
+      displaySmall: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
       headlineMedium: TextStyle(
         fontSize: 20,
         fontWeight: FontWeight.w600,
@@ -54,16 +49,8 @@ class AppTheme {
         fontWeight: FontWeight.w600,
         letterSpacing: 0.15,
       ),
-      bodyLarge: TextStyle(
-        fontSize: 16,
-        letterSpacing: 0.15,
-        height: 1.5,
-      ),
-      bodyMedium: TextStyle(
-        fontSize: 14,
-        letterSpacing: 0.25,
-        height: 1.5,
-      ),
+      bodyLarge: TextStyle(fontSize: 16, letterSpacing: 0.15, height: 1.5),
+      bodyMedium: TextStyle(fontSize: 14, letterSpacing: 0.25, height: 1.5),
       labelLarge: TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w500,
@@ -73,10 +60,8 @@ class AppTheme {
 
     cardTheme: CardTheme(
       elevation: 2,
-      shadowColor: _primaryColor.withOpacity(0.15),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shadowColor: _primaryColor.withValues(alpha: 0.15),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       clipBehavior: Clip.antiAlias,
     ),
 
@@ -111,9 +96,7 @@ class AppTheme {
       style: ElevatedButton.styleFrom(
         backgroundColor: _primaryColor,
         foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
         elevation: 0,
         textStyle: const TextStyle(
@@ -128,9 +111,7 @@ class AppTheme {
       style: OutlinedButton.styleFrom(
         foregroundColor: _primaryColor,
         side: BorderSide(color: _primaryColor),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
         textStyle: const TextStyle(
           fontSize: 16,
@@ -143,9 +124,7 @@ class AppTheme {
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: _primaryColor,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         textStyle: const TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w600,
@@ -169,11 +148,9 @@ class AppTheme {
       tertiaryContainer: Color(0xFF3B4B59),
       onTertiaryContainer: Colors.white,
       error: _errorColor,
-      background: Color(0xFF121212),
-      onBackground: Colors.white,
       surface: Color(0xFF1C1C1C),
       onSurface: Colors.white,
-      surfaceVariant: Color(0xFF2A2A2A),
+      surfaceContainerHighest: Color(0xFF2A2A2A),
       onSurfaceVariant: Color(0xFFB0B0B0),
     ),
 

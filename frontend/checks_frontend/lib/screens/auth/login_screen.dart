@@ -7,7 +7,8 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -24,7 +25,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-    
+
     // Form fade in animation
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
@@ -32,18 +33,18 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         curve: const Interval(0.2, 1.0, curve: Curves.easeOut),
       ),
     );
-    
+
     // Slide animation for the logo to final position
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, -0.7), // Start from off-screen (match splash exit)
-      end: const Offset(0, 0),      // End at final position
+      end: const Offset(0, 0), // End at final position
     ).animate(
       CurvedAnimation(
         parent: _animationController,
         curve: const Interval(0.0, 0.7, curve: Curves.easeOutCubic),
       ),
     );
-    
+
     _animationController.forward();
   }
 
@@ -60,7 +61,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       setState(() {
         _isLoading = true;
       });
-      
+
       // Simulate API call
       Future.delayed(const Duration(seconds: 2), () {
         setState(() {
@@ -76,7 +77,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final size = MediaQuery.of(context).size;
-    
+
     return Scaffold(
       // Match splash screen background
       backgroundColor: colorScheme.primary,
@@ -92,22 +93,22 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 child: Column(
                   children: [
                     SizedBox(height: size.height * 0.08),
-                    
+
                     // Logo with smooth slide animation
                     SlideTransition(
                       position: _slideAnimation,
                       child: Hero(
                         tag: 'app_logo',
                         child: Icon(
-                          Icons.receipt_long,
+                          Icons.receipt_long_rounded,
                           size: 60, // Smaller size in login screen
                           color: Colors.white,
                         ),
                       ),
                     ),
-                    
+
                     const SizedBox(height: 12),
-                    
+
                     // App name
                     SlideTransition(
                       position: _slideAnimation,
@@ -122,9 +123,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         ),
                       ),
                     ),
-                    
+
                     SizedBox(height: size.height * 0.05),
-                    
+
                     // Login form
                     Expanded(
                       child: FadeTransition(
@@ -136,7 +137,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
+                                color: Colors.black.withValues(alpha: 0.05),
                                 blurRadius: 15,
                                 offset: const Offset(0, 5),
                               ),
@@ -157,9 +158,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                     fontFamily: '.SF Pro Display',
                                   ),
                                 ),
-                                
+
                                 const SizedBox(height: 24),
-                                
+
                                 // Email Field - simplified styling
                                 TextFormField(
                                   controller: _emailController,
@@ -187,9 +188,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                     return null;
                                   },
                                 ),
-                                
+
                                 const SizedBox(height: 16),
-                                
+
                                 // Password Field - simplified styling
                                 TextFormField(
                                   controller: _passwordController,
@@ -208,7 +209,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                     ),
                                     suffixIcon: IconButton(
                                       icon: Icon(
-                                        _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                        _obscurePassword
+                                            ? Icons.visibility_outlined
+                                            : Icons.visibility_off_outlined,
                                         color: colorScheme.onSurfaceVariant,
                                         size: 20,
                                       ),
@@ -229,9 +232,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                     return null;
                                   },
                                 ),
-                                
+
                                 const SizedBox(height: 8),
-                                
+
                                 // Forgot Password
                                 Align(
                                   alignment: Alignment.centerRight,
@@ -245,7 +248,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                         horizontal: 8,
                                         vertical: 4,
                                       ),
-                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
                                     ),
                                     child: Text(
                                       'Forgot Password?',
@@ -257,42 +261,51 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                     ),
                                   ),
                                 ),
-                                
+
                                 const SizedBox(height: 24),
-                                
+
                                 // Sign In Button
                                 ElevatedButton(
                                   onPressed: _isLoading ? null : _submitForm,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: colorScheme.primary,
                                     foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
-                                    minimumSize: const Size(double.infinity, 54),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
+                                    minimumSize: const Size(
+                                      double.infinity,
+                                      54,
+                                    ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     elevation: 0,
                                   ),
-                                  child: _isLoading
-                                      ? SizedBox(
-                                          height: 24,
-                                          width: 24,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2.5,
-                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  child:
+                                      _isLoading
+                                          ? SizedBox(
+                                            height: 24,
+                                            width: 24,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2.5,
+                                              valueColor:
+                                                  AlwaysStoppedAnimation<Color>(
+                                                    Colors.white,
+                                                  ),
+                                            ),
+                                          )
+                                          : const Text(
+                                            'Sign In',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
                                           ),
-                                        )
-                                      : const Text(
-                                          'Sign In',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
                                 ),
-                                
+
                                 const SizedBox(height: 24),
-                                
+
                                 // Social login options
                                 Row(
                                   children: [
@@ -317,9 +330,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                     ),
                                   ],
                                 ),
-                                
+
                                 const SizedBox(height: 30),
-                                
+
                                 // Register link
                                 Center(
                                   child: Row(
@@ -342,7 +355,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                             horizontal: 8,
                                             vertical: 4,
                                           ),
-                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                          tapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
                                         ),
                                         child: Text(
                                           'Sign Up',
@@ -372,7 +386,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       ),
     );
   }
-  
+
   Widget _socialButton({
     required IconData icon,
     required Color color,
@@ -389,13 +403,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             color: Colors.grey.shade50,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Center(
-            child: Icon(
-              icon,
-              size: 28,
-              color: color,
-            ),
-          ),
+          child: Center(child: Icon(icon, size: 28, color: color)),
         ),
       ),
     );
