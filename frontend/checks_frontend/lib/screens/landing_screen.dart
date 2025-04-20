@@ -1,0 +1,220 @@
+import 'package:flutter/material.dart';
+import 'quick_split/quick_split_sheet.dart'; // Import the quick split sheet
+
+class LandingScreen extends StatefulWidget {
+  const LandingScreen({super.key});
+
+  @override
+  State<LandingScreen> createState() => _LandingScreenState();
+}
+
+class _LandingScreenState extends State<LandingScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _fadeInAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Create animation controller
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 700),
+      vsync: this,
+    );
+
+    // Fade in animation for content
+    _fadeInAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    );
+
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  // Show quick split sheet when quick split button is pressed
+  void _showQuickSplitSheet() {
+    // Use the imported function to show the sheet
+    showQuickSplitSheet(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final size = MediaQuery.of(context).size;
+
+    return Scaffold(
+      backgroundColor: colorScheme.primary,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            children: [
+              // Empty space at top
+              SizedBox(height: size.height * 0.15),
+
+              // Action buttons take center stage
+              Expanded(
+                child: FadeTransition(
+                  opacity: _fadeInAnimation,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // New Bill Button (with camera)
+                        ElevatedButton(
+                          onPressed: () {
+                            // Navigate to new bill screen
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: colorScheme.primary,
+                            padding: const EdgeInsets.symmetric(vertical: 20),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.add_a_photo_outlined, size: 22),
+                              const SizedBox(width: 10),
+                              const Text(
+                                'New Bill (WIP)',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // Quick Split Button
+                        ElevatedButton(
+                          onPressed: _showQuickSplitSheet,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white.withOpacity(0.15),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 20),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.calculate, size: 22),
+                              const SizedBox(width: 10),
+                              const Text(
+                                'Quick Split',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Recent Bills Button
+                        TextButton(
+                          onPressed: () {
+                            // Navigate to bill history
+                          },
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.history, size: 18),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Recent Bills',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // App logo and name at the bottom - NO HERO ANIMATION
+              AnimatedBuilder(
+                animation: _animationController,
+                builder: (context, child) {
+                  return Padding(
+                    padding: EdgeInsets.only(bottom: size.height * 0.05),
+                    child: Opacity(
+                      opacity: _fadeInAnimation.value,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Column(
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.receipt_long_rounded,
+                                    size: 20,
+                                    color: Colors.white.withAlpha(180),
+                                  ),
+
+                                  const SizedBox(width: 8),
+
+                                  // App name
+                                  Text(
+                                    'Checkmate',
+                                    style: TextStyle(
+                                      color: Colors.white.withAlpha(180),
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                      letterSpacing: 0.37,
+                                      fontFamily: '.SF Pro Display',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Text(
+                                '© 2025 Bloop Co.',
+                                style: TextStyle(
+                                  color: Colors.white.withAlpha(140),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
