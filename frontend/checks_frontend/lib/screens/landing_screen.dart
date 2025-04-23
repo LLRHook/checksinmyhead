@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'quick_split/quick_split_sheet.dart'; // Import the quick split sheet
+import 'quick_split/add_people/who_splitting_screen.dart'; // Import the quick split sheet
 
 class LandingScreen extends StatefulWidget {
   const LandingScreen({super.key});
@@ -196,7 +196,7 @@ class _LandingScreenState extends State<LandingScreen>
                                 ],
                               ),
                               Text(
-                                '© 2025 Bloop Co.',
+                                '© 2025 Kruski Ko.',
                                 style: TextStyle(
                                   color: Colors.white.withAlpha(140),
                                   fontSize: 12,

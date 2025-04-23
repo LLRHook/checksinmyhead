@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '/models/person.dart';
-import '/screens/quick_split/bill_entry_screen.dart';
+import '../bill_entry/bill_entry_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
