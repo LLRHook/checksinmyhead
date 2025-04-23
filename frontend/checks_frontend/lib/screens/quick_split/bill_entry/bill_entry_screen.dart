@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '/models/person.dart';
 import '/models/bill_item.dart';
-import 'item_assignment_screen.dart';
+import '../item_assignment/item_assignment_screen.dart';
 
 class BillEntryScreen extends StatefulWidget {
   final List<Person> participants;
