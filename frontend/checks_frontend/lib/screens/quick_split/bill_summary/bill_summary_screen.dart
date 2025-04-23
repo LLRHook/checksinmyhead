@@ -117,8 +117,12 @@ class BillSummaryScreen extends StatelessWidget {
                 ...participants.map((person) {
                   final amount = personShares[person] ?? 0;
                   final isBirthdayPerson = birthdayPerson == person;
+
                   final personSubtotal = _getPersonSubtotal(person);
-                  final personTaxAndTip = amount - personSubtotal;
+                  final pShare = personSubtotal / subtotal;
+
+                  final pTax = pShare * tax;
+                  final pTip = pShare * tipAmount;
 
                   return Card(
                     margin: const EdgeInsets.only(bottom: 12),
@@ -250,8 +254,8 @@ class BillSummaryScreen extends StatelessWidget {
                                 Tooltip(
                                   message:
                                       'Your share: '
-                                      '\$${(personTaxAndTip * (tax / (tax + tipAmount))).toStringAsFixed(2)} tax + '
-                                      '\$${(personTaxAndTip * (tipAmount / (tax + tipAmount))).toStringAsFixed(2)} tip',
+                                      '\$${(pTax).toStringAsFixed(2)} tax + '
+                                      '\$${(pTip).toStringAsFixed(2)} tip',
                                   triggerMode: TooltipTriggerMode.tap,
                                   showDuration: Duration(seconds: 3),
                                   decoration: BoxDecoration(
@@ -276,7 +280,7 @@ class BillSummaryScreen extends StatelessWidget {
                                 ),
                                 const Spacer(),
                                 Text(
-                                  '\$${personTaxAndTip.toStringAsFixed(2)}',
+                                  '\$${(pTip + pTax).toStringAsFixed(2)}',
                                   style: TextStyle(color: Colors.grey.shade700),
                                 ),
                               ],
