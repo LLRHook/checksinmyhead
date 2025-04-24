@@ -1,0 +1,38 @@
+issues to fix:
+
+first page:
+colors? shit doesn't feel random.
+
+second page:
+need ability to remove items that have been added
+ensure totals add up to the actual amount (can put 1000 item if the bill was only like 100)
+bug: app will die if malicious tip is inserted. fix. could also just remove the typing ability for %
+
+lots of extra space under the avatars, scoot it up
+
+assignment page:
+consider the real estate. need pills for assigned items, that have the delete/split with/and custom split functionality.
+remove pro tip, or put it somewhere else.
+is it worth putting like "each person pays" if there's no items here? their total will be on the next page, and we want them to make it through the workflow
+
+big cards are repetitive? says fully assigned, then assigned 100%, and then a checkmark and fully assigned again.
+maybe make the buttons smaller
+
+if they have something selected, but then they toggle bday, they need to be removed from that
+
+assign to X is back, so when X is assigned to item, they can be assigned to it again. rather than the disabled button.
+split with X feature, when X is assigned and Y is selected to choose items is gone. 
+
+"Split Evenly" doesn't seem to work properly. it's not being added into their subtotal or something. we can see that the tax doesn't match up.
+
+summary:
+calcs work i think
+
+share functionality:
+when share is hit, it puts names and their total into a nice text msg format.
+could say the items they got, their share of tip and tax, and then the total.
+provide a way to add a payment method or something. link their zelle or venmo
+who knows
+
+done:
+store the last 10 in the shared pref or something
