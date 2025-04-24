@@ -239,27 +239,6 @@ class EmptyItemsView extends StatelessWidget {
             ),
             child: const Icon(Icons.cake, color: Colors.pink, size: 24),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Birthday Celebration!',
-                  style: TextStyle(
-                    color: Colors.pink.shade700,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '${birthdayPerson!.name}\'s share has been evenly split among the other participants.',
-                  style: const TextStyle(fontSize: 15),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
