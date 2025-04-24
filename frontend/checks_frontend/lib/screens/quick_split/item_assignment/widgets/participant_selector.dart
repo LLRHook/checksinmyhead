@@ -238,7 +238,7 @@ class ParticipantSelector extends StatelessWidget {
           const SizedBox(width: 4),
           Expanded(
             child: Text(
-              'Their share will be split amongst the others!',
+              'Their share will be evenly split amongst the others!',
               style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
               overflow: TextOverflow.ellipsis,
             ),

@@ -1,0 +1,2611 @@
+import 'package:checks_frontend/screens/quick_split/bill_summary/bill_summary_screen.dart';
+import 'package:checks_frontend/screens/quick_split/tutorial/tutorial_overlay.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '/models/person.dart';
+import '/models/bill_item.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class ItemAssignmentScreen extends StatefulWidget {
+  final List<Person> participants;
+  final List<BillItem> items;
+  final double subtotal;
+  final double tax;
+  final double tipAmount;
+  final double total;
+  final double tipPercentage;
+  final double alcoholTipPercentage;
+  final bool useDifferentAlcoholTip;
+
+  const ItemAssignmentScreen({
+    super.key,
+    required this.participants,
+    required this.items,
+    required this.subtotal,
+    required this.tax,
+    required this.tipAmount,
+    required this.total,
+    required this.tipPercentage,
+    required this.alcoholTipPercentage,
+    required this.useDifferentAlcoholTip,
+  });
+
+  @override
+  State<ItemAssignmentScreen> createState() => _ItemAssignmentScreenState();
+}
+
+class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
+    with SingleTickerProviderStateMixin {
+  // Maps each person to their total assigned amount (before tax and tip)
+  Map<Person, double> _personTotals = {};
+  // Maps each person to their final share (including tax and tip)
+  Map<Person, double> _personFinalShares = {};
+  // Unassigned portion of the bill subtotal
+  double _unassignedAmount = 0.0;
+  // Currently selected person for quick assignment
+  Person? _selectedPerson;
+  // Special case: birthday person who doesn't pay
+  Person? _birthdayPerson;
+  // Animation controller for UI elements
+  late AnimationController _animationController;
+  // Universal food/drink icon
+  final IconData _universalItemIcon = Icons.restaurant_menu;
+
+  bool _hasSeenTutorial =
+      false; // You could store this in preferences for persistence
+  final List<TutorialStep> _tutorialSteps = [
+    const TutorialStep(
+      title: 'Select a Person',
+      description:
+          'Tap an avatar to select someone. A checkmark appears when selected.',
+      icon: Icons.person_outline,
+    ),
+    const TutorialStep(
+      title: 'Assign Items',
+      description:
+          'With someone selected, tap "Assign to [Name]" on any item. Items take on that person\'s color.',
+      icon: Icons.assignment_ind,
+    ),
+    const TutorialStep(
+      title: 'Split Items',
+      description:
+          'Use "Split Evenly" for equal shares or "Custom Split" for precise control.',
+      icon: Icons.splitscreen,
+    ),
+    const TutorialStep(
+      title: 'Birthday Person',
+      description:
+          'Long-press any avatar to mark as birthday person. Their share gets split among others.',
+      icon: Icons.cake,
+    ),
+    const TutorialStep(
+      title: 'Review & Finish',
+      description:
+          'After assigning all items, tap Continue to see the final breakdown.',
+      icon: Icons.check_circle_outline,
+    ),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _calculateInitialAssignments();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _animationController.forward();
+
+    // Load tutorial state from shared preferences
+    _loadTutorialState();
+  }
+
+  // Load tutorial state from SharedPreferences
+  Future<void> _loadTutorialState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasSeenTutorial =
+        prefs.getBool('has_seen_item_assignment_tutorial') ?? false;
+
+    setState(() {
+      _hasSeenTutorial = hasSeenTutorial;
+    });
+
+    // Show tutorial on first launch with slight delay
+    // to let the screen render completely
+    if (!_hasSeenTutorial) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) _showTutorial();
+      });
+    }
+  }
+
+  // Show tutorial and save state
+  void _showTutorial() {
+    // Save that user has seen the tutorial
+    _saveTutorialState();
+
+    showTutorialOverlay(context, steps: _tutorialSteps);
+  }
+
+  // Save tutorial state to SharedPreferences
+  Future<void> _saveTutorialState() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_seen_item_assignment_tutorial', true);
+
+    setState(() {
+      _hasSeenTutorial = true;
+    });
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  // Get background color based on assignments
+  Color _getAssignmentColor(BillItem item, Color defaultColor) {
+    // If fully assigned to one person, use their color
+    if (item.assignments.length == 1 &&
+        item.assignments.values.first == 100.0) {
+      return item.assignments.keys.first.color.withOpacity(0.2);
+    }
+    // If partially assigned, use a neutral color
+    return defaultColor;
+  }
+
+  // Check if a person is already assigned to an item
+  bool _isPersonAssignedToItem(BillItem item, Person person) {
+    return item.assignments.containsKey(person) &&
+        item.assignments[person]! > 0;
+  }
+
+  // Get all assigned people for an item
+  List<Person> _getAssignedPeopleForItem(BillItem item) {
+    return item.assignments.entries
+        .where((entry) => entry.value > 0)
+        .map((entry) => entry.key)
+        .toList();
+  }
+
+  // Balance an item between current assignees
+  void _balanceItemBetweenAssignees(
+    BillItem item,
+    List<Person> assignedPeople,
+  ) {
+    if (assignedPeople.isEmpty) return;
+
+    Map<Person, double> newAssignments = {};
+    double percentage = 100.0 / assignedPeople.length;
+
+    for (var person in assignedPeople) {
+      newAssignments[person] = percentage;
+    }
+
+    _assignItem(item, newAssignments);
+  }
+
+  // Specialized split dialog that pre-selects certain people
+  void _showCustomSplitDialogWithPreselected(
+    BillItem item,
+    List<Person> preselectedPeople,
+  ) {
+    // Create a working assignments map with the preselected people
+    Map<Person, double> workingAssignments = {};
+
+    // Initialize all participants with 0%
+    for (var person in widget.participants) {
+      workingAssignments[person] = 0.0;
+    }
+
+    // Distribute 100% evenly among preselected people
+    if (preselectedPeople.isNotEmpty) {
+      double evenShare = 100.0 / preselectedPeople.length;
+      for (var person in preselectedPeople) {
+        workingAssignments[person] = evenShare;
+      }
+    }
+
+    // Calculate total percentage (should be 100% already)
+    double totalPercentage = workingAssignments.values.fold(
+      0,
+      (sum, value) => sum + value,
+    );
+
+    // Now show the dialog with the pre-populated values
+    showDialog(
+      context: context,
+      builder:
+          (context) => StatefulBuilder(
+            builder: (context, setStateDialog) {
+              return Dialog(
+                insetPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 24,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                elevation: 0,
+                backgroundColor: Colors.transparent,
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 20,
+                        spreadRadius: 5,
+                      ),
+                    ],
+                  ),
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.8,
+                    maxWidth: MediaQuery.of(context).size.width * 0.9,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header
+                      Row(
+                        children: [
+                          Icon(
+                            _universalItemIcon,
+                            color: Theme.of(context).colorScheme.primary,
+                            size: 28,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Split "${item.name}"',
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  '\$${item.price.toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.grey[700],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Total percentage indicator
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 16,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              totalPercentage == 100.0
+                                  ? Colors.green.shade50
+                                  : totalPercentage > 100.0
+                                  ? Colors.red.shade50
+                                  : Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color:
+                                totalPercentage == 100.0
+                                    ? Colors.green.shade200
+                                    : totalPercentage > 100.0
+                                    ? Colors.red.shade200
+                                    : Colors.orange.shade200,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              totalPercentage == 100.0
+                                  ? Icons.check_circle
+                                  : totalPercentage > 100.0
+                                  ? Icons.error
+                                  : Icons.info,
+                              color:
+                                  totalPercentage == 100.0
+                                      ? Colors.green.shade700
+                                      : totalPercentage > 100.0
+                                      ? Colors.red.shade700
+                                      : Colors.orange.shade700,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Total: ${totalPercentage.toStringAsFixed(0)}%',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color:
+                                          totalPercentage == 100.0
+                                              ? Colors.green.shade800
+                                              : totalPercentage > 100.0
+                                              ? Colors.red.shade800
+                                              : Colors.orange.shade800,
+                                    ),
+                                  ),
+                                  if (totalPercentage != 100.0)
+                                    Text(
+                                      totalPercentage > 100.0
+                                          ? 'Remove ${(totalPercentage - 100.0).toStringAsFixed(0)}% to balance'
+                                          : 'Add ${(100.0 - totalPercentage).toStringAsFixed(0)}% to complete',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color:
+                                            totalPercentage > 100.0
+                                                ? Colors.red.shade800
+                                                : Colors.orange.shade800,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            if (totalPercentage > 0 && totalPercentage != 100.0)
+                              TextButton(
+                                onPressed: () {
+                                  setStateDialog(() {
+                                    // Adjust values to make exactly 100%
+                                    double currentTotal = workingAssignments
+                                        .values
+                                        .fold(0.0, (sum, value) => sum + value);
+
+                                    if (currentTotal > 0) {
+                                      double factor = 100.0 / currentTotal;
+
+                                      for (var person
+                                          in workingAssignments.keys.toList()) {
+                                        double newValue =
+                                            workingAssignments[person]! *
+                                            factor;
+                                        // Round to nearest 5%
+                                        workingAssignments[person] =
+                                            (newValue / 5).round() * 5;
+                                      }
+
+                                      // Adjust rounding errors
+                                      var entries =
+                                          workingAssignments.entries.toList()
+                                            ..sort(
+                                              (a, b) =>
+                                                  b.value.compareTo(a.value),
+                                            );
+
+                                      if (entries.isNotEmpty &&
+                                          entries[0].value > 0) {
+                                        double adjustedTotal =
+                                            workingAssignments.values.fold(
+                                              0.0,
+                                              (sum, value) => sum + value,
+                                            );
+
+                                        double diff = 100.0 - adjustedTotal;
+                                        workingAssignments[entries[0].key] =
+                                            workingAssignments[entries[0]
+                                                .key]! +
+                                            diff;
+                                      }
+
+                                      totalPercentage = 100.0;
+                                    }
+                                  });
+                                },
+                                child: Text(
+                                  'Balance',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color:
+                                        totalPercentage > 100.0
+                                            ? Colors.red.shade700
+                                            : Colors.orange.shade700,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Person sliders
+                      Flexible(
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: widget.participants.length,
+                          itemBuilder: (context, index) {
+                            final person = widget.participants[index];
+                            final percentage =
+                                workingAssignments[person] ?? 0.0;
+
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      CircleAvatar(
+                                        backgroundColor: person.color,
+                                        radius: 16,
+                                        child: Text(
+                                          person.name[0].toUpperCase(),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              person.name,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                            if (percentage > 0)
+                                              Text(
+                                                '\$${(item.price * percentage / 100).toStringAsFixed(2)}',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: person.color,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color:
+                                              percentage > 0
+                                                  ? person.color.withOpacity(
+                                                    0.1,
+                                                  )
+                                                  : Colors.grey.shade100,
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '${percentage.toStringAsFixed(0)}%',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color:
+                                                percentage > 0
+                                                    ? person.color
+                                                    : Colors.grey[600],
+                                          ),
+                                        ),
+                                      ),
+                                      // Quick presets
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.add_circle_outline,
+                                          size: 20,
+                                        ),
+                                        onPressed: () {
+                                          setStateDialog(() {
+                                            double newValue =
+                                                (workingAssignments[person] ??
+                                                    0) +
+                                                25;
+                                            workingAssignments[person] =
+                                                newValue.clamp(0, 100);
+                                            totalPercentage = workingAssignments
+                                                .values
+                                                .fold(
+                                                  0,
+                                                  (sum, val) => sum + val,
+                                                );
+                                          });
+                                          HapticFeedback.selectionClick();
+                                        },
+                                      ),
+                                    ],
+                                  ),
+
+                                  // Percentage slider
+                                  Slider(
+                                    value: percentage,
+                                    min: 0,
+                                    max: 100,
+                                    divisions: 20,
+                                    activeColor: person.color,
+                                    inactiveColor: person.color.withOpacity(
+                                      0.2,
+                                    ),
+                                    label: percentage.toStringAsFixed(0),
+                                    onChanged: (value) {
+                                      setStateDialog(() {
+                                        workingAssignments[person] = value;
+                                        totalPercentage = workingAssignments
+                                            .values
+                                            .fold(0, (sum, val) => sum + val);
+                                      });
+                                    },
+                                  ),
+
+                                  // Percentage quick buttons
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children:
+                                        [0, 25, 50, 75, 100].map((preset) {
+                                          return ElevatedButton(
+                                            onPressed: () {
+                                              setStateDialog(() {
+                                                workingAssignments[person] =
+                                                    preset.toDouble();
+                                                totalPercentage =
+                                                    workingAssignments.values
+                                                        .fold(
+                                                          0,
+                                                          (sum, val) =>
+                                                              sum + val,
+                                                        );
+                                              });
+                                              HapticFeedback.selectionClick();
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 4,
+                                                  ),
+                                              elevation: 0,
+                                              backgroundColor:
+                                                  percentage == preset
+                                                      ? person.color
+                                                      : person.color
+                                                          .withOpacity(0.1),
+                                              foregroundColor:
+                                                  percentage == preset
+                                                      ? Colors.white
+                                                      : person.color,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              minimumSize: Size.zero,
+                                              tapTargetSize:
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap,
+                                            ),
+                                            child: Text(
+                                              '$preset%',
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          );
+                                        }).toList(),
+                                  ),
+
+                                  if (index < widget.participants.length - 1)
+                                    const Divider(height: 32),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Action buttons
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          OutlinedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: OutlinedButton.styleFrom(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                            ),
+                            child: const Text('Cancel'),
+                          ),
+                          const SizedBox(width: 12),
+                          ElevatedButton(
+                            onPressed: () {
+                              // Quick fix for minor rounding issues
+                              if ((totalPercentage > 99.0 &&
+                                      totalPercentage < 100.0) ||
+                                  (totalPercentage > 100.0 &&
+                                      totalPercentage < 101.0)) {
+                                // Adjust values to make exactly 100%
+                                var entries =
+                                    workingAssignments.entries.toList();
+                                entries.sort(
+                                  (a, b) => b.value.compareTo(a.value),
+                                );
+
+                                if (entries.isNotEmpty &&
+                                    entries[0].value > 0) {
+                                  double diff = 100.0 - totalPercentage;
+                                  workingAssignments[entries[0].key] =
+                                      workingAssignments[entries[0].key]! +
+                                      diff;
+                                  totalPercentage = 100.0;
+                                }
+                              }
+
+                              if (totalPercentage == 100.0) {
+                                Navigator.pop(context);
+                                _assignItem(item, workingAssignments);
+                              } else {
+                                // Show error message
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.error_outline,
+                                          color: Colors.white,
+                                        ),
+                                        SizedBox(width: 10),
+                                        Text('Total percentage must be 100%'),
+                                      ],
+                                    ),
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    backgroundColor: Colors.red.shade700,
+                                  ),
+                                );
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  Theme.of(context).colorScheme.primary,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 12,
+                              ),
+                              elevation: 0,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  totalPercentage == 100.0
+                                      ? Icons.check
+                                      : Icons.warning,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  totalPercentage == 100.0
+                                      ? 'Save'
+                                      : 'Fix & Save',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+    );
+  }
+
+  // Initialize with even distribution if no items are added
+  // or items are added but not yet assigned
+  void _calculateInitialAssignments() {
+    setState(() {
+      if (widget.items.isEmpty) {
+        // If no items were entered, split subtotal evenly
+        double evenShare = widget.subtotal / widget.participants.length;
+
+        for (var person in widget.participants) {
+          _personTotals[person] = evenShare;
+        }
+
+        _unassignedAmount = 0.0;
+      } else {
+        // If items were entered but not assigned, all amount is unassigned
+        _unassignedAmount = widget.subtotal;
+
+        for (var person in widget.participants) {
+          _personTotals[person] = 0.0;
+        }
+      }
+
+      _calculateFinalShares();
+    });
+  }
+
+  // Calculate each person's share of tax and tip based on their subtotal portion
+  void _calculateFinalShares() {
+    Map<Person, double> newShares = {};
+
+    // Calculate total assigned amount
+    double totalAssigned = _personTotals.values.fold(
+      0,
+      (sum, amount) => sum + amount,
+    );
+
+    // Calculate percentage of bill for each person (if anything is assigned)
+    if (totalAssigned > 0) {
+      for (var person in widget.participants) {
+        if (_birthdayPerson == person) {
+          // Birthday person pays nothing
+          newShares[person] = 0.0;
+          continue;
+        }
+
+        double personSubtotal = _personTotals[person] ?? 0.0;
+        double personPercentage = personSubtotal / totalAssigned;
+
+        // Calculate person's share of tax and tip
+        double personTax = widget.tax * personPercentage;
+        double personTip = widget.tipAmount * personPercentage;
+
+        // Add to final share
+        newShares[person] = personSubtotal + personTax + personTip;
+      }
+    } else {
+      // If nothing assigned yet, split everything evenly except for birthday person
+      int payingPeople = widget.participants.length;
+      if (_birthdayPerson != null) payingPeople--;
+
+      if (payingPeople > 0) {
+        double evenShare = widget.total / payingPeople;
+
+        for (var person in widget.participants) {
+          if (_birthdayPerson == person) {
+            newShares[person] = 0.0;
+          } else {
+            newShares[person] = evenShare;
+          }
+        }
+      }
+    }
+
+    setState(() {
+      _personFinalShares = newShares;
+    });
+  }
+
+  // Calculate person's percentage of the total bill
+  double _getPersonBillPercentage(Person person) {
+    final total = widget.total > 0 ? widget.total : 1.0;
+    final share = _personFinalShares[person] ?? 0.0;
+    return (share / total).clamp(0.0, 1.0);
+  }
+
+  // Handle assigning an item to participants
+  void _assignItem(BillItem item, Map<Person, double> newAssignments) {
+    HapticFeedback.mediumImpact(); // Provide haptic feedback
+
+    setState(() {
+      // Update item assignments
+      item.assignments = newAssignments;
+
+      // Recalculate person totals
+      Map<Person, double> newPersonTotals = {};
+      for (var person in widget.participants) {
+        double personTotal = 0.0;
+
+        // Sum all item assignments for this person
+        for (var billItem in widget.items) {
+          personTotal += billItem.amountForPerson(person);
+        }
+
+        newPersonTotals[person] = personTotal;
+      }
+
+      // Calculate unassigned amount
+      double assignedTotal = newPersonTotals.values.fold(
+        0,
+        (sum, amount) => sum + amount,
+      );
+      _unassignedAmount = widget.subtotal - assignedTotal;
+
+      _personTotals = newPersonTotals;
+      _calculateFinalShares();
+
+      // Play a success animation or sound here if assigned amount is close to 100%
+      if (_unassignedAmount < 0.01) {
+        // Could add sound effect here
+      }
+    });
+  }
+
+  // Evenly split an item among selected participants
+  void _splitItemEvenly(BillItem item, List<Person> people) {
+    if (people.isEmpty) return;
+
+    Map<Person, double> newAssignments = {};
+    double percentage = 100.0 / people.length;
+
+    for (var person in people) {
+      newAssignments[person] = percentage;
+    }
+
+    _assignItem(item, newAssignments);
+  }
+
+  // Toggle birthday person status
+  void _toggleBirthdayPerson(Person person) {
+    setState(() {
+      if (_birthdayPerson == person) {
+        _birthdayPerson = null;
+      } else {
+        _birthdayPerson = person;
+        // If the selected person is now the birthday person, deselect them
+        if (_selectedPerson == person) {
+          _selectedPerson = null;
+        }
+        // Add haptic feedback and animation for birthday selection
+        HapticFeedback.mediumImpact();
+
+        // Could add a celebratory animation for the birthday person here
+        // For example, you might want to show confetti or a quick scale animation
+      }
+      _calculateFinalShares();
+    });
+  }
+
+  // Continue to the summary screen
+  void _continueToSummary() {
+    // Check if everything is assigned
+    if (_unassignedAmount > 0.01) {
+      // Show dialog about unassigned amount
+      showDialog(
+        context: context,
+        builder:
+            (context) => AlertDialog(
+              title: const Text('Unassigned Amount'),
+              content: Text(
+                'There\'s still \$${_unassignedAmount.toStringAsFixed(2)} unassigned. '
+                'Would you like to split it evenly?',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _splitUnassignedAmountEvenly();
+                  },
+                  child: const Text('Split Evenly'),
+                ),
+              ],
+            ),
+      );
+      return;
+    }
+
+    // Navigate to summary screen with animation
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder:
+            (context, animation, secondaryAnimation) => BillSummaryScreen(
+              participants: widget.participants,
+              personShares: _personFinalShares,
+              items: widget.items,
+              subtotal: widget.subtotal,
+              tax: widget.tax,
+              tipAmount: widget.tipAmount,
+              total: widget.total,
+              birthdayPerson: _birthdayPerson,
+            ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(1.0, 0.0);
+          const end = Offset.zero;
+          const curve = Curves.easeInOutCubic;
+          var tween = Tween(
+            begin: begin,
+            end: end,
+          ).chain(CurveTween(curve: curve));
+          return SlideTransition(
+            position: animation.drive(tween),
+            child: child,
+          );
+        },
+      ),
+    );
+  }
+
+  // Split any unassigned amount evenly among participants
+  void _splitUnassignedAmountEvenly() {
+    if (_unassignedAmount <= 0) return;
+
+    setState(() {
+      // Count paying participants (exclude birthday person)
+      int payingPeople = widget.participants.length;
+      if (_birthdayPerson != null) payingPeople--;
+
+      if (payingPeople <= 0) return;
+
+      // Calculate even share of unassigned amount
+      double evenShare = _unassignedAmount / payingPeople;
+
+      // Add to each person's total
+      Map<Person, double> newPersonTotals = Map.from(_personTotals);
+      for (var person in widget.participants) {
+        if (person != _birthdayPerson) {
+          newPersonTotals[person] =
+              (newPersonTotals[person] ?? 0.0) + evenShare;
+        }
+      }
+
+      _personTotals = newPersonTotals;
+      _unassignedAmount = 0.0;
+      _calculateFinalShares();
+
+      // Add a success sound or animation here
+      HapticFeedback.mediumImpact();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Assign Items',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: colorScheme.surface,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          TutorialButton(
+            onPressed: _showTutorial,
+            badge:
+                !_hasSeenTutorial
+                    ? Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                    )
+                    : null,
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Participant selector at top
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceVariant.withOpacity(0.3),
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(24),
+                bottomRight: Radius.circular(24),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Who\'s paying for what?',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 12),
+                // Participant avatars with progress indicators
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 110),
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: widget.participants.length,
+                    itemBuilder: (context, index) {
+                      final person = widget.participants[index];
+                      final isSelected = _selectedPerson == person;
+                      final isBirthdayPerson = _birthdayPerson == person;
+                      final billPercentage = _getPersonBillPercentage(person);
+
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 16),
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              if (isSelected) {
+                                _selectedPerson = null;
+                              } else {
+                                _selectedPerson = person;
+                                HapticFeedback.selectionClick();
+                              }
+                            });
+                          },
+                          onLongPress: () => _toggleBirthdayPerson(person),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Avatar with progress indicator
+                              Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  // Progress ring
+                                  SizedBox(
+                                    width: 65,
+                                    height: 65,
+                                    child: CircularProgressIndicator(
+                                      value: billPercentage,
+                                      strokeWidth: 3,
+                                      backgroundColor: Colors.grey.withOpacity(
+                                        0.2,
+                                      ),
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        isBirthdayPerson
+                                            ? Colors.pink
+                                            : person.color.withOpacity(0.8),
+                                      ),
+                                    ),
+                                  ),
+
+                                  // Person avatar
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 300),
+                                    width: isSelected ? 55 : 50,
+                                    height: isSelected ? 55 : 50,
+                                    decoration: BoxDecoration(
+                                      color:
+                                          isBirthdayPerson
+                                              ? Colors.pink
+                                              : person.color,
+                                      shape: BoxShape.circle,
+                                      boxShadow:
+                                          isSelected || isBirthdayPerson
+                                              ? [
+                                                BoxShadow(
+                                                  color:
+                                                      isBirthdayPerson
+                                                          ? Colors.pink
+                                                              .withOpacity(0.4)
+                                                          : person.color
+                                                              .withOpacity(0.4),
+                                                  blurRadius: 8,
+                                                  spreadRadius: 2,
+                                                ),
+                                              ]
+                                              : null,
+                                    ),
+                                    child: Center(
+                                      child:
+                                          isBirthdayPerson
+                                              ? const Icon(
+                                                Icons.cake,
+                                                color: Colors.white,
+                                                size: 24,
+                                              )
+                                              : Text(
+                                                person.name[0].toUpperCase(),
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize:
+                                                      isSelected ? 24 : 20,
+                                                ),
+                                              ),
+                                    ),
+                                  ),
+
+                                  // Selected indicator
+                                  if (isSelected)
+                                    Positioned(
+                                      right: 0,
+                                      bottom: 0,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: colorScheme.primary,
+                                            width: 2,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(
+                                                0.1,
+                                              ),
+                                              blurRadius: 2,
+                                            ),
+                                          ],
+                                        ),
+                                        child: Icon(
+                                          Icons.check_circle,
+                                          color: colorScheme.primary,
+                                          size: 16,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+
+                              const SizedBox(height: 6),
+
+                              // Person name
+                              Text(
+                                person.name,
+                                style: TextStyle(
+                                  fontWeight:
+                                      isSelected || isBirthdayPerson
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+
+                              // Person's share
+                              AnimatedDefaultTextStyle(
+                                duration: const Duration(milliseconds: 300),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color:
+                                      isBirthdayPerson
+                                          ? Colors.green
+                                          : billPercentage > 0
+                                          ? person.color
+                                          : Colors.grey[600],
+                                  fontWeight:
+                                      billPercentage > 0
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                ),
+                                child: Text(
+                                  '\$${(_personFinalShares[person] ?? 0).toStringAsFixed(2)}',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+                // Birthday message
+                if (_birthdayPerson != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.cake, size: 16, color: Colors.pink),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            '${_birthdayPerson!.name}\'s share will be split amongst the others\!',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontStyle: FontStyle.italic,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // Unassigned amount indicator
+          if (_unassignedAmount > 0.01)
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.amber.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.amber.withOpacity(0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.warning_rounded,
+                        color: Colors.amber,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Unassigned: \$${_unassignedAmount.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.amber,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: _splitUnassignedAmountEvenly,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber.withOpacity(0.2),
+                      foregroundColor: Colors.amber[700],
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.auto_awesome,
+                          size: 16,
+                          color: Colors.amber[700],
+                        ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            'Split Remaining Items Evenly',
+                            style: TextStyle(
+                              color: Colors.amber[700],
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // Items list
+          Expanded(
+            child:
+                widget.items.isEmpty
+                    ? _buildEvenSplitView()
+                    : _buildItemsListView(),
+          ),
+
+          // Bottom control bar with continue button
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, -3),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                // Bill total info
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Total Bill',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    Text(
+                      '\$${widget.total.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const Spacer(),
+
+                // Continue button
+                ElevatedButton(
+                  onPressed: _continueToSummary,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colorScheme.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    elevation: 2,
+                    shadowColor: colorScheme.primary.withOpacity(0.4),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Continue',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.arrow_forward_rounded, size: 18),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Build the item list view when items have been added
+  Widget _buildItemsListView() {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      itemCount: widget.items.length,
+      itemBuilder: (context, index) {
+        final item = widget.items[index];
+
+        // Calculate percentage of item assigned
+        final assignedPercentage = item.assignments.values.fold(
+          0.0,
+          (sum, value) => sum + value,
+        );
+
+        return _buildItemCard(item, assignedPercentage);
+      },
+    );
+  }
+
+  // Build individual item card
+  Widget _buildItemCard(BillItem item, double assignedPercentage) {
+    Color borderColor = Colors.grey.shade300;
+    Color backgroundColor = Colors.white;
+
+    // Set color based on assignments
+    if (assignedPercentage >= 100) {
+      borderColor = Colors.green.withOpacity(0.5);
+      backgroundColor = Colors.green.withOpacity(0.05);
+    } else if (item.assignments.isNotEmpty) {
+      // Use first person's color for partially assigned items
+      var firstPerson = item.assignments.entries.first.key;
+      borderColor = firstPerson.color.withOpacity(0.5);
+      backgroundColor = firstPerson.color.withOpacity(0.05);
+    }
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 0,
+      color: backgroundColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: _getAssignmentColor(
+            item,
+            Theme.of(context).colorScheme.primary.withOpacity(0.1),
+          ),
+          width: assignedPercentage >= 100 ? 2 : 1,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Item header with icon, name and price
+            Row(
+              children: [
+                // Item icon
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: _getAssignmentColor(
+                    item,
+                    Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  ),
+                  child: Icon(
+                    _universalItemIcon,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Item name and details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        assignedPercentage < 100
+                            ? 'Who’s this for? Select above.'
+                            : '',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color:
+                              assignedPercentage >= 100
+                                  ? Colors.green
+                                  : Colors.grey[600],
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Price
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '\$${item.price.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            // Assignment progress indicator
+            if (assignedPercentage > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'Assigned: ${assignedPercentage.toStringAsFixed(0)}%',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color:
+                                assignedPercentage >= 100
+                                    ? Colors.green[700]
+                                    : Colors.grey[700],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const Spacer(),
+                        if (assignedPercentage >= 100)
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.check_circle,
+                                color: Colors.green[700],
+                                size: 16,
+                              ),
+                              const SizedBox(width: 4),
+                            ],
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    // Progress bar
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: assignedPercentage / 100,
+                        backgroundColor: Colors.grey.shade200,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          assignedPercentage >= 100
+                              ? Colors.green
+                              : Theme.of(context).colorScheme.primary,
+                        ),
+                        minHeight: 6,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            const SizedBox(height: 16),
+
+            // Quick assign buttons
+            _buildAssignButtonsRow(item, assignedPercentage),
+
+            // Assignment indicators
+            if (item.assignments.isNotEmpty) ...[
+              const Divider(height: 24),
+
+              Text(
+                'Currently assigned to:',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children:
+                    item.assignments.entries.map((entry) {
+                      final person = entry.key;
+                      final percentage = entry.value;
+
+                      return InputChip(
+                        label: Text(
+                          '${person.name} (${percentage.toStringAsFixed(0)}%)',
+                        ),
+                        backgroundColor: person.color.withOpacity(0.2),
+                        side: BorderSide(color: person.color.withOpacity(0.3)),
+                        labelStyle: TextStyle(
+                          color: person.color,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        avatar: CircleAvatar(
+                          backgroundColor: person.color,
+                          child: Text(
+                            person.name[0].toUpperCase(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        deleteIcon: const Icon(Icons.close, size: 16),
+                        onDeleted: () {
+                          // Create a new assignments map without this person
+                          final newAssignments = Map<Person, double>.from(
+                            item.assignments,
+                          );
+                          newAssignments.remove(person);
+
+                          // If there are still people assigned, rebalance to 100%
+                          if (newAssignments.isNotEmpty) {
+                            double remainingPercentage = newAssignments.values
+                                .fold(0.0, (sum, value) => sum + value);
+
+                            if (remainingPercentage > 0) {
+                              double factor = 100.0 / remainingPercentage;
+                              newAssignments.forEach((key, value) {
+                                newAssignments[key] = value * factor;
+                              });
+                            }
+                          }
+
+                          _assignItem(item, newAssignments);
+                        },
+                      );
+                    }).toList(),
+              ),
+            ],
+
+            // Custom split option
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () {
+                _showCustomSplitDialog(item);
+              },
+              icon: const Icon(Icons.pie_chart, size: 18),
+              label: const Text('Custom Split'),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: Colors.grey.shade300),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Build smarter assign buttons row
+  Widget _buildAssignButtonsRow(BillItem item, double assignedPercentage) {
+    final bool isFullyAssigned = assignedPercentage >= 100;
+    final List<Person> assignedPeople = _getAssignedPeopleForItem(item);
+    final bool selectedPersonIsAssigned =
+        _selectedPerson != null &&
+        _isPersonAssignedToItem(item, _selectedPerson!);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            // Assign to selected person (if any)
+            if (_selectedPerson != null)
+              Expanded(
+                child: Builder(
+                  builder: (context) {
+                    // If selected person is already fully assigned to this item
+                    if (selectedPersonIsAssigned &&
+                        item.assignments[_selectedPerson!] == 100.0) {
+                      return ElevatedButton.icon(
+                        onPressed: null, // Disabled button
+                        icon: const Icon(Icons.check_circle, size: 18),
+                        label: Text('${_selectedPerson!.name} assigned'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey.shade200,
+                          foregroundColor: Colors.grey.shade700,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      );
+                    }
+                    // If item is already assigned to someone else and we need to split
+                    else if (assignedPeople.isNotEmpty &&
+                        !selectedPersonIsAssigned) {
+                      return ElevatedButton.icon(
+                        onPressed: () {
+                          // Create custom split dialog with current assignees and selected person
+                          List<Person> peopleToInclude = [
+                            ...assignedPeople,
+                            _selectedPerson!,
+                          ];
+                          _showCustomSplitDialogWithPreselected(
+                            item,
+                            peopleToInclude,
+                          );
+                        },
+                        icon: const Icon(Icons.call_split, size: 18),
+                        label: Text('Split with ${_selectedPerson!.name}'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _selectedPerson!.color.withOpacity(
+                            0.2,
+                          ),
+                          foregroundColor: _selectedPerson!.color,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      );
+                    }
+                    // Regular assign button for new assignment
+                    else {
+                      return ElevatedButton.icon(
+                        onPressed:
+                            isFullyAssigned
+                                ? null
+                                : () {
+                                  _assignItem(item, {_selectedPerson!: 100.0});
+                                },
+                        icon: const Icon(Icons.person, size: 18),
+                        label: Text('Assign to ${_selectedPerson!.name}'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _selectedPerson!.color.withOpacity(
+                            0.2,
+                          ),
+                          foregroundColor: _selectedPerson!.color,
+                          disabledBackgroundColor: Colors.grey.shade200,
+                          disabledForegroundColor: Colors.grey.shade700,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ),
+
+            // Split evenly button
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: _selectedPerson != null ? 8.0 : 0.0,
+                ),
+                child: ElevatedButton.icon(
+                  onPressed:
+                      isFullyAssigned
+                          ? null
+                          : () {
+                            _splitItemEvenly(item, widget.participants);
+                          },
+                  icon: const Icon(Icons.groups, size: 18),
+                  label: const Text('Split Evenly'),
+                  style: ElevatedButton.styleFrom(
+                    elevation: 0,
+                    disabledBackgroundColor: Colors.grey.shade200,
+                    disabledForegroundColor: Colors.grey.shade700,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        // If item is partially assigned but not fully assigned,
+        // show a button to split between current assignees
+        if (assignedPeople.length > 1 && assignedPercentage < 100)
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: ElevatedButton.icon(
+              onPressed: () {
+                _balanceItemBetweenAssignees(item, assignedPeople);
+              },
+              icon: const Icon(Icons.balance, size: 18),
+              label: const Text('Balance Between Current People'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber.withOpacity(0.2),
+                foregroundColor: Colors.amber.shade800,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  // Build the even split view when no items have been added
+  Widget _buildEvenSplitView() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Card(
+            elevation: 1,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.splitscreen,
+                        color: Theme.of(context).colorScheme.primary,
+                        size: 28,
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'Splitting bill evenly',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'Since no items were added, the bill will be split evenly among ${_birthdayPerson != null ? 'all participants except ${_birthdayPerson!.name}' : 'all participants'}.',
+                      style: const TextStyle(fontSize: 15),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Each person pays:',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                  ),
+                  const SizedBox(height: 16),
+                  // Show each person's share
+                  ...widget.participants.map((person) {
+                    final shareAmount = _personFinalShares[person] ?? 0.0;
+                    final sharePercentage =
+                        _getPersonBillPercentage(person) * 100;
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: person.color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: person.color.withOpacity(0.2),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: person.color,
+                            radius: 20,
+                            child: Text(
+                              person.name[0].toUpperCase(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  person.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${sharePercentage.toStringAsFixed(1)}% of total bill',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: person.color,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: person.color.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '\$${shareAmount.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                                color:
+                                    _birthdayPerson == person
+                                        ? Colors.green
+                                        : person.color,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Pro tip about item entry
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.blue.shade100),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade100,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.lightbulb_outline,
+                        color: Colors.blue.shade700,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Pro Tip',
+                            style: TextStyle(
+                              color: Colors.blue.shade700,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Next time, try adding individual items to assign them to specific people for more precise splitting.',
+                            style: TextStyle(fontSize: 15),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                if (_unassignedAmount > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: OutlinedButton.icon(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.edit),
+                      label: const Text('Add Items Now'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.blue.shade700,
+                        side: BorderSide(color: Colors.blue.shade300),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Birthday person explanation
+          if (_birthdayPerson != null)
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.pink.shade50,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.pink.shade100),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.pink.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.cake, color: Colors.pink, size: 24),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Birthday Celebration!',
+                          style: TextStyle(
+                            color: Colors.pink.shade700,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${_birthdayPerson!.name}\'s share has been evenly split among the other participants.',
+                          style: const TextStyle(fontSize: 15),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Show dialog for custom item splitting with pie chart visualization
+  void _showCustomSplitDialog(BillItem item) {
+    // Create a copy of current assignments to work with
+    Map<Person, double> workingAssignments = Map.from(item.assignments);
+
+    // Fill in missing participants with 0%
+    for (var person in widget.participants) {
+      workingAssignments.putIfAbsent(person, () => 0.0);
+    }
+
+    // Calculate total percentage assigned
+    double totalPercentage = workingAssignments.values.fold(
+      0,
+      (sum, value) => sum + value,
+    );
+
+    showDialog(
+      context: context,
+      builder:
+          (context) => StatefulBuilder(
+            builder: (context, setStateDialog) {
+              return Dialog(
+                insetPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 24,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                elevation: 0,
+                backgroundColor: Colors.transparent,
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 20,
+                        spreadRadius: 5,
+                      ),
+                    ],
+                  ),
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.8,
+                    maxWidth: MediaQuery.of(context).size.width * 0.9,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header
+                      Row(
+                        children: [
+                          Icon(
+                            _universalItemIcon,
+                            color: Theme.of(context).colorScheme.primary,
+                            size: 28,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Split "${item.name}"',
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  '\$${item.price.toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.grey[700],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Total percentage indicator
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 16,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              totalPercentage == 100.0
+                                  ? Colors.green.shade50
+                                  : totalPercentage > 100.0
+                                  ? Colors.red.shade50
+                                  : Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color:
+                                totalPercentage == 100.0
+                                    ? Colors.green.shade200
+                                    : totalPercentage > 100.0
+                                    ? Colors.red.shade200
+                                    : Colors.orange.shade200,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              totalPercentage == 100.0
+                                  ? Icons.check_circle
+                                  : totalPercentage > 100.0
+                                  ? Icons.error
+                                  : Icons.info,
+                              color:
+                                  totalPercentage == 100.0
+                                      ? Colors.green.shade700
+                                      : totalPercentage > 100.0
+                                      ? Colors.red.shade700
+                                      : Colors.orange.shade700,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Total: ${totalPercentage.toStringAsFixed(0)}%',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color:
+                                          totalPercentage == 100.0
+                                              ? Colors.green.shade800
+                                              : totalPercentage > 100.0
+                                              ? Colors.red.shade800
+                                              : Colors.orange.shade800,
+                                    ),
+                                  ),
+                                  if (totalPercentage != 100.0)
+                                    Text(
+                                      totalPercentage > 100.0
+                                          ? 'Remove ${(totalPercentage - 100.0).toStringAsFixed(0)}% to balance'
+                                          : 'Add ${(100.0 - totalPercentage).toStringAsFixed(0)}% to complete',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color:
+                                            totalPercentage > 100.0
+                                                ? Colors.red.shade800
+                                                : Colors.orange.shade800,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            if (totalPercentage > 0 && totalPercentage != 100.0)
+                              TextButton(
+                                onPressed: () {
+                                  setStateDialog(() {
+                                    // Adjust values to make exactly 100%
+                                    double currentTotal = workingAssignments
+                                        .values
+                                        .fold(0.0, (sum, value) => sum + value);
+
+                                    if (currentTotal > 0) {
+                                      double factor = 100.0 / currentTotal;
+
+                                      for (var person
+                                          in workingAssignments.keys.toList()) {
+                                        double newValue =
+                                            workingAssignments[person]! *
+                                            factor;
+                                        // Round to nearest 5%
+                                        workingAssignments[person] =
+                                            (newValue / 5).round() * 5;
+                                      }
+
+                                      // Adjust rounding errors
+                                      var entries =
+                                          workingAssignments.entries.toList()
+                                            ..sort(
+                                              (a, b) =>
+                                                  b.value.compareTo(a.value),
+                                            );
+
+                                      if (entries.isNotEmpty &&
+                                          entries[0].value > 0) {
+                                        double adjustedTotal =
+                                            workingAssignments.values.fold(
+                                              0.0,
+                                              (sum, value) => sum + value,
+                                            );
+
+                                        double diff = 100.0 - adjustedTotal;
+                                        workingAssignments[entries[0].key] =
+                                            workingAssignments[entries[0]
+                                                .key]! +
+                                            diff;
+                                      }
+
+                                      totalPercentage = 100.0;
+                                    }
+                                  });
+                                },
+                                child: Text(
+                                  'Balance',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color:
+                                        totalPercentage > 100.0
+                                            ? Colors.red.shade700
+                                            : Colors.orange.shade700,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Person sliders
+                      Flexible(
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: widget.participants.length,
+                          itemBuilder: (context, index) {
+                            final person = widget.participants[index];
+                            final percentage =
+                                workingAssignments[person] ?? 0.0;
+
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      CircleAvatar(
+                                        backgroundColor: person.color,
+                                        radius: 16,
+                                        child: Text(
+                                          person.name[0].toUpperCase(),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              person.name,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                            if (percentage > 0)
+                                              Text(
+                                                '\$${(item.price * percentage / 100).toStringAsFixed(2)}',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: person.color,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color:
+                                              percentage > 0
+                                                  ? person.color.withOpacity(
+                                                    0.1,
+                                                  )
+                                                  : Colors.grey.shade100,
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '${percentage.toStringAsFixed(0)}%',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color:
+                                                percentage > 0
+                                                    ? person.color
+                                                    : Colors.grey[600],
+                                          ),
+                                        ),
+                                      ),
+                                      // Quick presets
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.add_circle_outline,
+                                          size: 20,
+                                        ),
+                                        onPressed: () {
+                                          setStateDialog(() {
+                                            double newValue =
+                                                (workingAssignments[person] ??
+                                                    0) +
+                                                25;
+                                            workingAssignments[person] =
+                                                newValue.clamp(0, 100);
+                                            totalPercentage = workingAssignments
+                                                .values
+                                                .fold(
+                                                  0,
+                                                  (sum, val) => sum + val,
+                                                );
+                                          });
+                                          HapticFeedback.selectionClick();
+                                        },
+                                      ),
+                                    ],
+                                  ),
+
+                                  // Percentage slider
+                                  Slider(
+                                    value: percentage,
+                                    min: 0,
+                                    max: 100,
+                                    divisions: 20,
+                                    activeColor: person.color,
+                                    inactiveColor: person.color.withOpacity(
+                                      0.2,
+                                    ),
+                                    label: percentage.toStringAsFixed(0),
+                                    onChanged: (value) {
+                                      setStateDialog(() {
+                                        workingAssignments[person] = value;
+                                        totalPercentage = workingAssignments
+                                            .values
+                                            .fold(0, (sum, val) => sum + val);
+                                      });
+                                    },
+                                  ),
+
+                                  // Percentage quick buttons
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children:
+                                        [0, 25, 50, 75, 100].map((preset) {
+                                          return ElevatedButton(
+                                            onPressed: () {
+                                              setStateDialog(() {
+                                                workingAssignments[person] =
+                                                    preset.toDouble();
+                                                totalPercentage =
+                                                    workingAssignments.values
+                                                        .fold(
+                                                          0,
+                                                          (sum, val) =>
+                                                              sum + val,
+                                                        );
+                                              });
+                                              HapticFeedback.selectionClick();
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 4,
+                                                  ),
+                                              elevation: 0,
+                                              backgroundColor:
+                                                  percentage == preset
+                                                      ? person.color
+                                                      : person.color
+                                                          .withOpacity(0.1),
+                                              foregroundColor:
+                                                  percentage == preset
+                                                      ? Colors.white
+                                                      : person.color,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              minimumSize: Size.zero,
+                                              tapTargetSize:
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap,
+                                            ),
+                                            child: Text(
+                                              '$preset%',
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          );
+                                        }).toList(),
+                                  ),
+
+                                  if (index < widget.participants.length - 1)
+                                    const Divider(height: 32),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Action buttons
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          OutlinedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: OutlinedButton.styleFrom(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                            ),
+                            child: const Text('Cancel'),
+                          ),
+                          const SizedBox(width: 12),
+                          ElevatedButton(
+                            onPressed: () {
+                              // Quick fix for minor rounding issues
+                              if ((totalPercentage > 99.0 &&
+                                      totalPercentage < 100.0) ||
+                                  (totalPercentage > 100.0 &&
+                                      totalPercentage < 101.0)) {
+                                // Adjust values to make exactly 100%
+                                var entries =
+                                    workingAssignments.entries.toList();
+                                entries.sort(
+                                  (a, b) => b.value.compareTo(a.value),
+                                );
+
+                                if (entries.isNotEmpty &&
+                                    entries[0].value > 0) {
+                                  double diff = 100.0 - totalPercentage;
+                                  workingAssignments[entries[0].key] =
+                                      workingAssignments[entries[0].key]! +
+                                      diff;
+                                  totalPercentage = 100.0;
+                                }
+                              }
+
+                              if (totalPercentage == 100.0) {
+                                Navigator.pop(context);
+                                _assignItem(item, workingAssignments);
+                              } else {
+                                // Show error message
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.error_outline,
+                                          color: Colors.white,
+                                        ),
+                                        SizedBox(width: 10),
+                                        Text('Total percentage must be 100%'),
+                                      ],
+                                    ),
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    backgroundColor: Colors.red.shade700,
+                                  ),
+                                );
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  Theme.of(context).colorScheme.primary,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 12,
+                              ),
+                              elevation: 0,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  totalPercentage == 100.0
+                                      ? Icons.check
+                                      : Icons.warning,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  totalPercentage == 100.0
+                                      ? 'Save'
+                                      : 'Fix & Save',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+    );
+  }
+}
