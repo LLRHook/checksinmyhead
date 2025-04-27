@@ -230,7 +230,7 @@ class _QuickSplitSheetState extends State<QuickSplitSheet> {
                                       });
                                     }
                                   },
-                                  selectedColor: person.color.withOpacity(0.2),
+                                  selectedColor: person.color.withValues(alpha: 0.2),
                                   checkmarkColor: person.color,
                                   side: BorderSide(
                                     color:
