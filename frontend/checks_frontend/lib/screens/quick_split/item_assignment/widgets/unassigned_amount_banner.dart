@@ -5,70 +5,78 @@ class UnassignedAmountBanner extends StatelessWidget {
   final VoidCallback onSplitEvenly;
 
   const UnassignedAmountBanner({
-    Key? key,
+    super.key,
     required this.unassignedAmount,
     required this.onSplitEvenly,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       decoration: BoxDecoration(
-        color: Colors.amber.withOpacity(0.15),
+        color: Colors.orange.shade50,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.amber.withOpacity(0.3)),
+        border: Border.all(
+          color: Colors.orange.shade200,
+          width: 1,
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.warning_rounded, color: Colors.amber, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'Unassigned: \$${unassignedAmount.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: Colors.amber,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ElevatedButton(
-            onPressed: onSplitEvenly,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.amber.withOpacity(0.2),
-              foregroundColor: Colors.amber[700],
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onSplitEvenly,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
             ),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.auto_awesome, size: 16, color: Colors.amber[700]),
-                const SizedBox(width: 4),
-                Flexible(
-                  child: Text(
-                    'Split Remaining Items Evenly',
-                    style: TextStyle(
-                      color: Colors.amber[700],
-                      fontWeight: FontWeight.bold,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+                // Warning icon
+                Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.orange.shade700,
+                  size: 24,
+                ),
+                
+                const SizedBox(width: 12),
+                
+                // Warning text - Fixed dollar sign format
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "\$" + unassignedAmount.toStringAsFixed(2) + " not assigned",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange.shade900,
+                          fontSize: 15,
+                        ),
+                      ),
+                      Text(
+                        'Tap to split evenly among participants',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.orange.shade800,
+                        ),
+                      ),
+                    ],
                   ),
+                ),
+                
+                // Action button
+                Icon(
+                  Icons.touch_app,
+                  color: Colors.orange.shade700,
+                  size: 20,
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
