@@ -1,4 +1,3 @@
-import 'package:checks_frontend/screens/quick_split/bill_summary/bill_summary_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '/models/person.dart';
@@ -10,6 +9,7 @@ import 'widgets/empty_items_view.dart';
 import 'widgets/unassigned_amount_banner.dart';
 import 'dialogs/unassigned_warning_dialog.dart';
 import 'dialogs/custom_split_dialog.dart';
+import 'package:checks_frontend/screens/quick_split/bill_summary/bill_summary_screen.dart';
 
 class ItemAssignmentScreen extends StatefulWidget {
   final List<Person> participants;
@@ -84,8 +84,6 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
       _tutorialManager.initializeWithDelay(context, mounted);
     }
   }
-
-  // In _ItemAssignmentScreenState class
 
   @override
   void dispose() {
@@ -250,11 +248,6 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
 
       _personTotals = newPersonTotals;
       _calculateFinalShares();
-
-      // Play a success animation or sound here if assigned amount is close to 100%
-      if (_unassignedAmount < 0.01) {
-        // Could add sound effect here
-      }
     });
   }
 
@@ -397,9 +390,13 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
         ),
         actions: [
           if (_tutorialManagerInitialized)
-            _tutorialManager.buildTutorialButton(() {
-              _tutorialManager.showTutorial(context);
-            }),
+            IconButton(
+              icon: const Icon(Icons.help_outline),
+              onPressed: () {
+                _tutorialManager.showTutorial(context);
+              },
+              tooltip: 'Show Tutorial',
+            ),
         ],
       ),
       body: Column(
@@ -433,16 +430,15 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
 
           // Items list
           Expanded(
-            child:
-                widget.items.isEmpty
-                    ? EmptyItemsView(
-                      participants: widget.participants,
-                      personFinalShares: _personFinalShares,
-                      birthdayPerson: _birthdayPerson,
-                      unassignedAmount: _unassignedAmount,
-                      getPersonBillPercentage: _getPersonBillPercentage,
-                    )
-                    : _buildItemsListView(),
+            child: widget.items.isEmpty
+                ? EmptyItemsView(
+                    participants: widget.participants,
+                    personFinalShares: _personFinalShares,
+                    birthdayPerson: _birthdayPerson,
+                    unassignedAmount: _unassignedAmount,
+                    getPersonBillPercentage: _getPersonBillPercentage,
+                  )
+                : _buildItemsListView(),
           ),
 
           // Bottom control bar with continue button

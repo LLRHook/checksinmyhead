@@ -13,7 +13,8 @@ class BillEntryScreen extends StatefulWidget {
   State<BillEntryScreen> createState() => _BillEntryScreenState();
 }
 
-class _BillEntryScreenState extends State<BillEntryScreen> {
+class _BillEntryScreenState extends State<BillEntryScreen>
+    with SingleTickerProviderStateMixin {
   final _subtotalController = TextEditingController();
   final _taxController = TextEditingController();
   final _customTipController = TextEditingController();
@@ -24,6 +25,10 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
   double _alcoholTipPercentage = 20.0;
   double _alcoholAmount = 0.0;
   final _alcoholController = TextEditingController();
+
+  // Animation controller for progress bar
+  late AnimationController _progressAnimationController;
+  late Animation<double> _progressAnimation;
 
   // Tip mode (percentage or custom amount)
   bool _useCustomTipAmount = false;
@@ -39,6 +44,10 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
   final _itemNameController = TextEditingController();
   final _itemPriceController = TextEditingController();
 
+  // Total of all items
+  double _itemsTotal = 0.0;
+  double _animatedItemsTotal = 0.0;
+
   // Custom formatter for currency input
   final _currencyFormatter = FilteringTextInputFormatter.allow(
     RegExp(r'^\d+\.?\d{0,2}'),
@@ -51,6 +60,25 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
     _taxController.addListener(_calculateBill);
     _alcoholController.addListener(_calculateBill);
     _customTipController.addListener(_calculateBill);
+    
+    // Initialize animation controller
+    _progressAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    
+    _progressAnimation = Tween<double>(begin: 0, end: 0).animate(
+      CurvedAnimation(
+        parent: _progressAnimationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+    
+    _progressAnimation.addListener(() {
+      setState(() {
+        _animatedItemsTotal = _progressAnimation.value;
+      });
+    });
   }
 
   @override
@@ -61,18 +89,38 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
     _itemNameController.dispose();
     _itemPriceController.dispose();
     _customTipController.dispose();
+    _progressAnimationController.dispose();
     super.dispose();
   }
 
   void _calculateBill() {
     setState(() {
-      _subtotal = double.tryParse(_subtotalController.text) ?? 0.0;
-      _tax = double.tryParse(_taxController.text) ?? 0.0;
-      _alcoholAmount = double.tryParse(_alcoholController.text) ?? 0.0;
+      // Safely parse input values with validation
+      try {
+        _subtotal = double.tryParse(_subtotalController.text) ?? 0.0;
+      } catch (_) {
+        _subtotal = 0.0;
+      }
+      
+      try {
+        _tax = double.tryParse(_taxController.text) ?? 0.0;
+      } catch (_) {
+        _tax = 0.0;
+      }
+      
+      try {
+        _alcoholAmount = double.tryParse(_alcoholController.text) ?? 0.0;
+      } catch (_) {
+        _alcoholAmount = 0.0;
+      }
 
       if (_useCustomTipAmount) {
-        // Use the custom tip amount directly
-        _tipAmount = double.tryParse(_customTipController.text) ?? 0.0;
+        // Use the custom tip amount directly with validation
+        try {
+          _tipAmount = double.tryParse(_customTipController.text) ?? 0.0;
+        } catch (_) {
+          _tipAmount = 0.0;
+        }
       } else {
         // Calculate food amount (subtotal minus alcohol)
         final foodAmount = _subtotal - _alcoholAmount;
@@ -91,7 +139,38 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
       }
 
       _total = _subtotal + _tax + _tipAmount;
+      
+      // Calculate items total
+      _calculateItemsTotal();
     });
+  }
+  
+  // Calculate the total of all items
+  void _calculateItemsTotal() {
+    double total = 0.0;
+    for (var item in _items) {
+      total += item.price;
+    }
+    
+    // Only animate if there's a significant change
+    if ((total - _itemsTotal).abs() > 0.01) {
+      // Update the animation with new values
+      _progressAnimation = Tween<double>(
+        begin: _itemsTotal,
+        end: total,
+      ).animate(
+        CurvedAnimation(
+          parent: _progressAnimationController,
+          curve: Curves.easeInOut,
+        ),
+      );
+      
+      // Reset and start the animation
+      _progressAnimationController.reset();
+      _progressAnimationController.forward();
+      
+      _itemsTotal = total;
+    }
   }
 
   void _addItem() {
@@ -99,38 +178,84 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
     final priceText = _itemPriceController.text.trim();
 
     if (name.isNotEmpty && priceText.isNotEmpty) {
-      final price = double.tryParse(priceText) ?? 0.0;
+      double price = 0.0;
+      try {
+        price = double.parse(priceText);
+      } catch (_) {
+        // Show error for invalid number
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please enter a valid price'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+      
       if (price > 0) {
+        // Check if adding this item would exceed the subtotal
+        final newTotalItems = _itemsTotal + price;
+        if (newTotalItems > _subtotal) {
+          // Show error message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Item total (\$${newTotalItems.toStringAsFixed(2)}) would exceed the subtotal (\$${_subtotal.toStringAsFixed(2)})'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          return;
+        }
+        
         setState(() {
           _items.add(BillItem(name: name, price: price, assignments: {}));
           _itemNameController.clear();
           _itemPriceController.clear();
+          _calculateItemsTotal();
         });
       }
     }
   }
 
+  void _removeItem(int index) {
+    setState(() {
+      _items.removeAt(index);
+      _calculateItemsTotal();
+    });
+  }
+
   void _continueToItemAssignment() {
     if (_subtotal > 0) {
-      // Navigate to item assignment screen
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder:
-              (context) => ItemAssignmentScreen(
-                participants: widget.participants,
-                items: _items,
-                subtotal: _subtotal,
-                tax: _tax,
-                tipAmount: _tipAmount,
-                total: _total,
-                tipPercentage: _tipPercentage,
-                alcoholTipPercentage: _alcoholTipPercentage,
-                useDifferentAlcoholTip: _useDifferentTipForAlcohol,
+      // Check if items have been added and if they match the subtotal
+      if (_items.isNotEmpty && _itemsTotal < _subtotal) {
+        // Show warning dialog that items don't match subtotal
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Items Don\'t Match Subtotal'),
+            content: Text(
+              'Your added items total \$${_itemsTotal.toStringAsFixed(2)}, but your subtotal is \$${_subtotal.toStringAsFixed(2)}. Do you want to continue anyway, or add more items?'
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Add More Items'),
               ),
-        ),
-      );
+              FilledButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _navigateToItemAssignment();
+                },
+                child: const Text('Continue Anyway'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        // All good, navigate to the next screen
+        _navigateToItemAssignment();
+      }
     } else {
-      // Show error
+      // Show error for missing subtotal
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please enter a subtotal amount'),
@@ -138,6 +263,24 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
         ),
       );
     }
+  }
+  
+  void _navigateToItemAssignment() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ItemAssignmentScreen(
+          participants: widget.participants,
+          items: _items,
+          subtotal: _subtotal,
+          tax: _tax,
+          tipAmount: _tipAmount,
+          total: _total,
+          tipPercentage: _tipPercentage,
+          alcoholTipPercentage: _alcoholTipPercentage,
+          useDifferentAlcoholTip: _useDifferentTipForAlcohol,
+        ),
+      ),
+    );
   }
 
   @override
@@ -150,7 +293,7 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       body: GestureDetector(
@@ -160,7 +303,7 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
           children: [
             // Participant avatars at the top - fixed to prevent overflow
             SizedBox(
-              height: 80,
+              height: 60, // Reduced height
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 itemCount: widget.participants.length,
@@ -173,7 +316,7 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
                       children: [
                         CircleAvatar(
                           backgroundColor: person.color,
-                          radius: 22,
+                          radius: 18, // Smaller avatars
                           child: Text(
                             person.name[0].toUpperCase(),
                             style: const TextStyle(
@@ -186,7 +329,7 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
                         Flexible(
                           child: Text(
                             person.name,
-                            style: Theme.of(context).textTheme.labelMedium,
+                            style: Theme.of(context).textTheme.labelSmall, // Smaller text
                             overflow: TextOverflow.ellipsis,
                             textAlign: TextAlign.center,
                             maxLines: 1,
@@ -199,7 +342,7 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 16), // Reduced spacing
 
             // Bill totals section
             Card(
@@ -261,7 +404,7 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 16), // Reduced spacing
 
             // Tip section
             Card(
@@ -401,28 +544,20 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
                               },
                             ),
                           ),
-                          SizedBox(
-                            width: 55,
-                            child: TextField(
-                              decoration: const InputDecoration(
-                                suffixText: '%',
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                ),
-                              ),
-                              keyboardType: TextInputType.number,
-                              textAlign: TextAlign.center,
-                              onChanged: (value) {
-                                final parsedValue = double.tryParse(value);
-                                if (parsedValue != null) {
-                                  setState(() {
-                                    _tipPercentage = parsedValue.clamp(0, 100);
-                                    _calculateBill();
-                                  });
-                                }
-                              },
-                              controller: TextEditingController(
-                                text: '${_tipPercentage.toInt()}',
+                          // Removed direct typing option for percentage
+                          Container(
+                            width: 40,
+                            height: 32,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: colorScheme.surfaceVariant,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '${_tipPercentage.toInt()}%',
+                              style: TextStyle(
+                                color: colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
@@ -517,31 +652,20 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
                                 },
                               ),
                             ),
-                            SizedBox(
-                              width: 55,
-                              child: TextField(
-                                decoration: const InputDecoration(
-                                  suffixText: '%',
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                  ),
-                                ),
-                                keyboardType: TextInputType.number,
-                                textAlign: TextAlign.center,
-                                onChanged: (value) {
-                                  final parsedValue = double.tryParse(value);
-                                  if (parsedValue != null) {
-                                    setState(() {
-                                      _alcoholTipPercentage = parsedValue.clamp(
-                                        0,
-                                        100,
-                                      );
-                                      _calculateBill();
-                                    });
-                                  }
-                                },
-                                controller: TextEditingController(
-                                  text: '${_alcoholTipPercentage.toInt()}',
+                            // Removed direct typing option for percentage
+                            Container(
+                              width: 40,
+                              height: 32,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: colorScheme.surfaceVariant,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '${_alcoholTipPercentage.toInt()}%',
+                                style: TextStyle(
+                                  color: colorScheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
@@ -554,7 +678,7 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 16), // Reduced spacing
 
             // Item entry section
             Card(
@@ -629,6 +753,36 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
 
                     const SizedBox(height: 16),
 
+                    // Progress indicator showing items total vs subtotal
+                    if (_items.isNotEmpty && _subtotal > 0) ...[
+                      Row(
+                        children: [
+                          Text('Items: \$${_animatedItemsTotal.toStringAsFixed(2)}'),
+                          const SizedBox(width: 4),
+                          Text('of'),
+                          const SizedBox(width: 4),
+                          Text('\$${_subtotal.toStringAsFixed(2)}'),
+                          const Spacer(),
+                          Text('${(_animatedItemsTotal / _subtotal * 100).toStringAsFixed(0)}%'),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      // Smoothly animated progress indicator
+                      LinearProgressIndicator(
+                        value: _subtotal > 0 ? (_animatedItemsTotal / _subtotal).clamp(0.0, 1.0) : 0,
+                        backgroundColor: Colors.grey.withOpacity(0.2),
+                        color: _animatedItemsTotal > _subtotal 
+                            ? colorScheme.error 
+                            : _animatedItemsTotal == _subtotal 
+                                ? colorScheme.primaryContainer
+                                : colorScheme.primary,
+                        borderRadius: BorderRadius.circular(4),
+                        minHeight: 8,
+                      ),
+                      // Only show a small gap if there are items
+                      const SizedBox(height: 12),
+                    ],
+
                     // List of added items
                     if (_items.isNotEmpty) ...[
                       Text(
@@ -636,23 +790,48 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
                         style: Theme.of(context).textTheme.titleSmall,
                       ),
                       const SizedBox(height: 8),
-                      for (final item in _items)
-                        ListTile(
-                          title: Text(item.name),
-                          trailing: Text(
-                            '\$${item.price.toStringAsFixed(2)}',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          contentPadding: EdgeInsets.zero,
-                          dense: true,
-                        ),
+                      ListView.builder(
+                        physics: const NeverScrollableScrollPhysics(),
+                        shrinkWrap: true,
+                        itemCount: _items.length,
+                        itemBuilder: (context, index) {
+                          final item = _items[index];
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            elevation: 0,
+                            color: colorScheme.surfaceVariant.withOpacity(0.2),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: ListTile(
+                              title: Text(item.name),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    '\$${item.price.toStringAsFixed(2)}',
+                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.remove_circle_outline),
+                                    onPressed: () => _removeItem(index),
+                                    color: colorScheme.error,
+                                  ),
+                                ],
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                              dense: true,
+                            ),
+                          );
+                        },
+                      ),
                     ],
                   ],
                 ),
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 16), // Reduced spacing
 
             // Bill summary
             Card(
@@ -720,7 +899,7 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 16), // Reduced spacing
 
             // Continue button
             ElevatedButton(

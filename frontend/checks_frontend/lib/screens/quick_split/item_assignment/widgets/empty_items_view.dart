@@ -6,112 +6,156 @@ class EmptyItemsView extends StatelessWidget {
   final Map<Person, double> personFinalShares;
   final Person? birthdayPerson;
   final double unassignedAmount;
-  final Function(Person) getPersonBillPercentage;
+  final double Function(Person) getPersonBillPercentage;
 
   const EmptyItemsView({
-    Key? key,
+    super.key,
     required this.participants,
     required this.personFinalShares,
     required this.birthdayPerson,
     required this.unassignedAmount,
     required this.getPersonBillPercentage,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildEvenSplitCard(context),
-          const SizedBox(height: 24),
-          _buildProTipCard(context),
-          const SizedBox(height: 16),
-          if (birthdayPerson != null) _buildBirthdayCard(context),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEvenSplitCard(BuildContext context) {
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.splitscreen,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: 28,
-                ),
-                const SizedBox(width: 10),
-                const Text(
-                  'Splitting bill evenly',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
+            // Empty state illustration
             Container(
-              padding: const EdgeInsets.all(12),
+              width: 100, // Reduced from 120
+              height: 100, // Reduced from 120
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(12),
+                color: colorScheme.primary.withOpacity(0.1),
+                shape: BoxShape.circle,
               ),
-              child: Text(
-                'Since no items were added, the bill will be split evenly among ${birthdayPerson != null ? 'all participants except ${birthdayPerson!.name}' : 'all participants'}.',
-                style: const TextStyle(fontSize: 15),
+              child: Icon(
+                Icons.receipt_long,
+                size: 48, // Reduced from 60
+                color: colorScheme.primary,
               ),
             ),
-            const SizedBox(height: 24),
-            const Text(
-              'Each person pays:',
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+            const SizedBox(height: 16), // Reduced from 24
+            
+            // Title
+            Text(
+              'No Items Added',
+              style: TextStyle(
+                fontSize: 18, // Reduced from 20
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
             ),
-            const SizedBox(height: 16),
-            // Show each person's share
-            ...participants.map(
-              (person) => _buildPersonShareItem(context, person),
+            const SizedBox(height: 8), // Reduced from 12
+            
+            // Description
+            Text(
+              'Bill total will be split evenly',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14, // Reduced from 16
+                color: Colors.grey.shade600,
+              ),
             ),
+            
+            const SizedBox(height: 20), // Reduced from 40
+            
+            // Current split info
+            _buildCurrentSplitInfo(context),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildPersonShareItem(BuildContext context, Person person) {
-    final shareAmount = personFinalShares[person] ?? 0.0;
-    final sharePercentage = getPersonBillPercentage(person) * 100;
-
+  Widget _buildCurrentSplitInfo(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: person.color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: person.color.withOpacity(0.2)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Current Split',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+          
+          const SizedBox(height: 12),
+          
+          // Participant shares - limit to showing max 4 participants
+          ...participants.take(4).map((person) => _buildPersonShare(person, context)),
+          
+          // Show "View All" button if more than 4 participants
+          if (participants.length > 4)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Center(
+                child: TextButton.icon(
+                  onPressed: () {
+                    // Could show a modal with all participants
+                  },
+                  icon: const Icon(Icons.people, size: 16),
+                  label: Text(
+                    '+ ${participants.length - 4} more participants',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPersonShare(Person person, BuildContext context) {
+    final share = personFinalShares[person] ?? 0.0;
+    final percentage = getPersonBillPercentage(person) * 100;
+    final isBirthdayPerson = birthdayPerson == person;
+    
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10), // Reduced from 12
       child: Row(
         children: [
+          // Person avatar
           CircleAvatar(
             backgroundColor: person.color,
-            radius: 20,
+            radius: 14, // Reduced from 16
             child: Text(
               person.name[0].toUpperCase(),
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 14,
                 fontWeight: FontWeight.bold,
+                fontSize: 10, // Reduced from 12
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          
+          const SizedBox(width: 10), // Reduced from 12
+          
+          // Person name and special status
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -119,125 +163,71 @@ class EmptyItemsView extends StatelessWidget {
                 Text(
                   person.name,
                   style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14, // Reduced from 15
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '${sharePercentage.toStringAsFixed(1)}% of total bill',
-                  style: TextStyle(fontSize: 12, color: person.color),
-                ),
+                if (isBirthdayPerson)
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.cake,
+                        color: Colors.pink[300],
+                        size: 12, // Reduced from 14
+                      ),
+                      const SizedBox(width: 2), // Reduced from 4
+                      Text(
+                        'Birthday (pays \$0.00)',
+                        style: TextStyle(
+                          fontSize: 10, // Reduced from 12
+                          color: Colors.pink[300],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: person.color.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              '\$${shareAmount.toStringAsFixed(2)}',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-                color: birthdayPerson == person ? Colors.green : person.color,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProTipCard(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.blue.shade100),
-      ),
-      child: Column(
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          
+          // Share amount and percentage
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade100,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.lightbulb_outline,
-                  color: Colors.blue.shade700,
-                  size: 24,
+              Text(
+                '\$${share.toStringAsFixed(2)}',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14, // Reduced from 16
+                  color: isBirthdayPerson ? Colors.grey : Colors.black87,
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Pro Tip',
-                      style: TextStyle(
-                        color: Colors.blue.shade700,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Next time, try adding individual items to assign them to specific people for more precise splitting.',
-                      style: TextStyle(fontSize: 15),
-                    ),
-                  ],
+              Text(
+                '${percentage.toStringAsFixed(0)}%',
+                style: TextStyle(
+                  fontSize: 10, // Reduced from 12
+                  color: person.color,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
           ),
-          if (unassignedAmount > 0)
-            Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: OutlinedButton.icon(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.edit),
-                label: const Text('Add Items Now'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.blue.shade700,
-                  side: BorderSide(color: Colors.blue.shade300),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
+          
+          const SizedBox(width: 6), // Reduced from 8
+          
+          // Progress bar indicator
+          SizedBox(
+            height: 30, // Reduced from 36
+            width: 4, // Reduced from 6
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: LinearProgressIndicator(
+                value: percentage / 100,
+                backgroundColor: Colors.grey.shade200,
+                color: person.color,
+                minHeight: 30,
               ),
             ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBirthdayCard(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.pink.shade50,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.pink.shade100),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.pink.shade100,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.cake, color: Colors.pink, size: 24),
           ),
         ],
       ),
