@@ -20,7 +20,7 @@ class EmptyItemsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
@@ -42,7 +42,6 @@ class EmptyItemsView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16), // Reduced from 24
-            
             // Title
             Text(
               'No Items Added',
@@ -53,7 +52,6 @@ class EmptyItemsView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8), // Reduced from 12
-            
             // Description
             Text(
               'Bill total will be split evenly',
@@ -63,9 +61,8 @@ class EmptyItemsView extends StatelessWidget {
                 color: Colors.grey.shade600,
               ),
             ),
-            
+
             const SizedBox(height: 20), // Reduced from 40
-            
             // Current split info
             _buildCurrentSplitInfo(context),
           ],
@@ -94,17 +91,16 @@ class EmptyItemsView extends StatelessWidget {
         children: [
           const Text(
             'Current Split',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
-          
+
           const SizedBox(height: 12),
-          
+
           // Participant shares - limit to showing max 4 participants
-          ...participants.take(4).map((person) => _buildPersonShare(person, context)),
-          
+          ...participants
+              .take(4)
+              .map((person) => _buildPersonShare(person, context)),
+
           // Show "View All" button if more than 4 participants
           if (participants.length > 4)
             Padding(
@@ -134,7 +130,7 @@ class EmptyItemsView extends StatelessWidget {
     final share = personFinalShares[person] ?? 0.0;
     final percentage = getPersonBillPercentage(person) * 100;
     final isBirthdayPerson = birthdayPerson == person;
-    
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 10), // Reduced from 12
       child: Row(
@@ -152,9 +148,8 @@ class EmptyItemsView extends StatelessWidget {
               ),
             ),
           ),
-          
+
           const SizedBox(width: 10), // Reduced from 12
-          
           // Person name and special status
           Expanded(
             child: Column(
@@ -189,7 +184,7 @@ class EmptyItemsView extends StatelessWidget {
               ],
             ),
           ),
-          
+
           // Share amount and percentage
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -212,9 +207,8 @@ class EmptyItemsView extends StatelessWidget {
               ),
             ],
           ),
-          
+
           const SizedBox(width: 6), // Reduced from 8
-          
           // Progress bar indicator
           SizedBox(
             height: 30, // Reduced from 36

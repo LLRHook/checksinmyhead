@@ -45,25 +45,18 @@ class ParticipantSelector extends StatelessWidget {
             padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8),
             child: Row(
               children: [
-                Icon(
-                  Icons.info_outline,
-                  size: 14,
-                  color: Colors.grey.shade600,
-                ),
+                Icon(Icons.info_outline, size: 14, color: Colors.grey.shade600),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
                     'Tap: quick assign • Long press: birthday',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey.shade600,
-                    ),
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                   ),
                 ),
               ],
             ),
           ),
-          
+
           // Participant avatars
           SizedBox(
             height: 60,
@@ -87,15 +80,51 @@ class ParticipantSelector extends StatelessWidget {
     );
   }
 
+  // Helper method to build the shaking cake icon for birthday person
+  Widget _buildShakingCakeIcon(Color backgroundColor) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: -0.12, end: 0.12),
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.elasticInOut,
+      onEnd: () {
+        // Rebuild the animation when it completes to make it continuous
+        Future.microtask(
+          () => Future.delayed(const Duration(milliseconds: 500), () {}),
+        );
+      },
+      builder: (context, value, child) {
+        return TweenAnimationBuilder<double>(
+          tween: Tween<double>(begin: 0.9, end: 1.1),
+          duration: const Duration(milliseconds: 800),
+          curve: Curves.easeInOutSine,
+          builder: (context, scaleValue, child) {
+            return Transform.scale(
+              scale: scaleValue,
+              child: Transform.rotate(
+                angle: value,
+                child: CircleAvatar(
+                  radius: 16,
+                  backgroundColor: backgroundColor,
+                  child: const Icon(Icons.cake, color: Colors.white, size: 16),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildParticipantChip({
     required Person person,
     required bool isSelected,
     required bool isBirthdayPerson,
     required double share,
   }) {
-    // Animation controller for confetti
-    final birthdayColor = Colors.pink.shade300;
-    
+    // Birthday color - changed to a more distinctive purple shade
+    // that's less likely to clash with person colors
+    final birthdayColor = const Color(0xFF8E24AA); // Purple 600
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: GestureDetector(
@@ -107,33 +136,37 @@ class ParticipantSelector extends StatelessWidget {
           height: 56,
           constraints: const BoxConstraints(maxWidth: 110),
           decoration: BoxDecoration(
-            color: isBirthdayPerson 
-                ? birthdayColor.withOpacity(0.15)
-                : isSelected 
-                    ? person.color.withOpacity(0.15) 
+            color:
+                isBirthdayPerson
+                    ? birthdayColor.withOpacity(0.15)
+                    : isSelected
+                    ? person.color.withOpacity(0.15)
                     : Colors.grey.shade50,
             borderRadius: BorderRadius.circular(isSelected ? 14 : 12),
             border: Border.all(
-              color: isBirthdayPerson
-                  ? birthdayColor
-                  : isSelected 
-                      ? person.color 
+              color:
+                  isBirthdayPerson
+                      ? birthdayColor
+                      : isSelected
+                      ? person.color
                       : Colors.grey.shade300,
               width: (isBirthdayPerson || isSelected) ? 2 : 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: isBirthdayPerson
-                    ? birthdayColor.withOpacity(0.35)
-                    : isSelected 
+                color:
+                    isBirthdayPerson
+                        ? birthdayColor.withOpacity(0.35)
+                        : isSelected
                         ? person.color.withOpacity(0.35)
                         : Colors.black.withOpacity(0.02),
                 blurRadius: (isBirthdayPerson || isSelected) ? 10 : 4,
                 spreadRadius: (isBirthdayPerson || isSelected) ? 1 : 0,
-                offset: (isBirthdayPerson || isSelected) 
-                    ? const Offset(0, 3)
-                    : const Offset(0, 1),
-              )
+                offset:
+                    (isBirthdayPerson || isSelected)
+                        ? const Offset(0, 3)
+                        : const Offset(0, 1),
+              ),
             ],
           ),
           child: Padding(
@@ -141,70 +174,43 @@ class ParticipantSelector extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Avatar with animations
-                AnimatedScale(
-                  scale: (isBirthdayPerson || isSelected) ? 1.1 : 1.0,
-                  duration: const Duration(milliseconds: 350),
-                  curve: Curves.elasticOut,
-                  child: AnimatedRotation(
-                    turns: (isBirthdayPerson || isSelected) ? 0.05 : 0,
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeOutBack,
-                    child: Stack(
-                      children: [
-                        // Birthday confetti animation
-                        if (isBirthdayPerson)
-                          TweenAnimationBuilder<double>(
-                            tween: Tween<double>(begin: 0.0, end: 1.0),
-                            duration: const Duration(milliseconds: 2000),
-                            curve: Curves.easeOut,
-                            builder: (context, value, child) {
-                              return RepaintBoundary(
-                                child: CustomPaint(
-                                  size: const Size(36, 36),
-                                  painter: ConfettiPainter(
-                                    progress: value,
-                                    baseColor: birthdayColor,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                          
-                        // Selection pulse animation
-                        if (isSelected && !isBirthdayPerson)
-                          TweenAnimationBuilder<double>(
-                            tween: Tween<double>(begin: 0.0, end: 1.0),
-                            duration: const Duration(milliseconds: 1200),
-                            curve: Curves.easeInOut,
-                            builder: (context, value, child) {
-                              return RepaintBoundary(
-                                child: CustomPaint(
-                                  size: const Size(36, 36),
-                                  painter: PulsePainter(
-                                    color: person.color.withOpacity(0.2),
-                                    progress: value,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                          
-                        // Avatar or cake icon for birthday
-                        CircleAvatar(
-                          radius: 16,
-                          backgroundColor: isBirthdayPerson 
-                              ? birthdayColor
-                              : isSelected
-                                  ? person.color
-                                  : person.color.withOpacity(0.9),
-                          child: isBirthdayPerson
-                              ? const Icon(
-                                  Icons.cake,
-                                  color: Colors.white,
-                                  size: 16,
-                                )
-                              : AnimatedDefaultTextStyle(
+                // Avatar with animations (removed confetti)
+                Stack(
+                  children: [
+                    // Selection pulse animation
+                    if (isSelected && !isBirthdayPerson)
+                      TweenAnimationBuilder<double>(
+                        tween: Tween<double>(begin: 0.0, end: 1.0),
+                        duration: const Duration(milliseconds: 1200),
+                        curve: Curves.easeInOut,
+                        builder: (context, value, child) {
+                          return RepaintBoundary(
+                            child: CustomPaint(
+                              size: const Size(36, 36),
+                              painter: PulsePainter(
+                                color: person.color.withOpacity(0.2),
+                                progress: value,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+
+                    // Avatar with scale animation
+                    AnimatedScale(
+                      scale: (isBirthdayPerson || isSelected) ? 1.1 : 1.0,
+                      duration: const Duration(milliseconds: 350),
+                      curve: Curves.elasticOut,
+                      child:
+                          isBirthdayPerson
+                              ? _buildShakingCakeIcon(birthdayColor)
+                              : CircleAvatar(
+                                radius: 16,
+                                backgroundColor:
+                                    isSelected
+                                        ? person.color
+                                        : person.color.withOpacity(0.9),
+                                child: AnimatedDefaultTextStyle(
                                   duration: const Duration(milliseconds: 250),
                                   style: TextStyle(
                                     color: Colors.white,
@@ -213,14 +219,13 @@ class ParticipantSelector extends StatelessWidget {
                                   ),
                                   child: Text(person.name[0].toUpperCase()),
                                 ),
-                        ),
-                      ],
+                              ),
                     ),
-                  ),
+                  ],
                 ),
-                
+
                 const SizedBox(width: 6),
-                
+
                 // Name and amount with animations
                 Flexible(
                   child: Column(
@@ -232,11 +237,15 @@ class ParticipantSelector extends StatelessWidget {
                         duration: const Duration(milliseconds: 250),
                         style: TextStyle(
                           fontSize: (isBirthdayPerson || isSelected) ? 13 : 12,
-                          fontWeight: (isBirthdayPerson || isSelected) ? FontWeight.w600 : FontWeight.w500,
-                          color: isBirthdayPerson 
-                              ? birthdayColor
-                              : isSelected 
-                                  ? person.color 
+                          fontWeight:
+                              (isBirthdayPerson || isSelected)
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
+                          color:
+                              isBirthdayPerson
+                                  ? _getDarkenedColor(birthdayColor, 0.3)
+                                  : isSelected
+                                  ? _getDarkenedColor(person.color, 0.3)
                                   : Colors.grey.shade800,
                         ),
                         child: Text(
@@ -245,43 +254,41 @@ class ParticipantSelector extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      
+
                       // Share amount or birthday text
                       AnimatedDefaultTextStyle(
                         duration: const Duration(milliseconds: 250),
                         style: TextStyle(
                           fontSize: 10,
-                          fontWeight: (isBirthdayPerson || isSelected) ? FontWeight.w500 : FontWeight.w400,
-                          color: isBirthdayPerson 
-                              ? birthdayColor
-                              : isSelected
-                                  ? person.color.withOpacity(0.8)
+                          fontWeight:
+                              (isBirthdayPerson || isSelected)
+                                  ? FontWeight.w500
+                                  : FontWeight.w400,
+                          color:
+                              isBirthdayPerson
+                                  ? _getDarkenedColor(birthdayColor, 0.3)
+                                  : isSelected
+                                  ? _getDarkenedColor(person.color, 0.3)
                                   : Colors.grey.shade600,
                         ),
-                        child: isBirthdayPerson
-                            ? Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: const [
-                                  Flexible(
-                                    child: Text(
-                                      'Birthday!',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                        child:
+                            isBirthdayPerson
+                                ? Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: const [
+                                    SizedBox(width: 2),
+                                    Icon(
+                                      Icons.celebration,
+                                      size: 10,
+                                      color: Colors.amber,
                                     ),
-                                  ),
-                                  SizedBox(width: 2),
-                                  Icon(
-                                    Icons.celebration,
-                                    size: 10,
-                                    color: Colors.amber,
-                                  ),
-                                ],
-                              )
-                            : Text(
-                                "\$" + share.toStringAsFixed(2),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                                  ],
+                                )
+                                : Text(
+                                  "\$" + share.toStringAsFixed(2),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                       ),
                     ],
                   ),
@@ -299,106 +306,45 @@ class ParticipantSelector extends StatelessWidget {
 class PulsePainter extends CustomPainter {
   final Color color;
   final double progress;
-  
+
   PulsePainter({required this.color, required this.progress});
-  
+
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    
+
     // Create multiple pulse waves
     for (int i = 0; i < 3; i++) {
       final pulseProgress = (progress + (i * 0.2)) % 1.0;
-      
+
       if (pulseProgress < 0.01) continue;
-      
+
       final maxRadius = 22.0;
       final radius = maxRadius * pulseProgress;
       final opacity = (1.0 - pulseProgress) * 0.6;
-      
-      final paint = Paint()
-        ..color = color.withOpacity(opacity)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5;
-      
+
+      final paint =
+          Paint()
+            ..color = color.withOpacity(opacity)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.5;
+
       canvas.drawCircle(center, radius, paint);
     }
   }
-  
+
   @override
   bool shouldRepaint(PulsePainter oldDelegate) {
     return oldDelegate.progress != progress || oldDelegate.color != color;
   }
 }
 
-// Custom painter for confetti effect
-class ConfettiPainter extends CustomPainter {
-  final double progress;
-  final Color baseColor;
-  
-  ConfettiPainter({required this.progress, required this.baseColor});
-  
-  @override
-  void paint(Canvas canvas, Size size) {
-    final random = DateTime.now().millisecondsSinceEpoch;
-    final center = Offset(size.width / 2, size.height / 2);
-    
-    // Draw 20 confetti pieces
-    for (int i = 0; i < 20; i++) {
-      // Pseudo-random angle and distance
-      final angle = (i * 18 + random % 10) * 0.0174533; // Convert to radians
-      final distance = 15.0 + (i % 3) * 5 + (random % 5);
-      
-      // Calculate position based on progress (flying outward)
-      final offsetDistance = distance * progress;
-      final gravity = 10.0 * progress * progress; // Parabolic path
-      
-      final x = center.dx + offsetDistance * cos(angle);
-      final y = center.dy + offsetDistance * sin(angle) + gravity;
-      
-      // Skip if out of bounds
-      if (y > size.height || x < 0 || x > size.width) continue;
-      
-      // Randomly alternate colors
-      final confettiColor = i % 3 == 0 
-          ? Colors.yellow 
-          : i % 3 == 1 
-              ? Colors.pink 
-              : Colors.blue;
-      
-      // Vary size and opacity based on progress
-      final confettiSize = 2.0 + (i % 3) * 1.5;
-      final opacity = 1.0 - progress;
-      
-      final paint = Paint()
-        ..color = confettiColor.withOpacity(opacity)
-        ..style = PaintingStyle.fill;
-      
-      // Draw confetti piece
-      canvas.drawCircle(Offset(x, y), confettiSize, paint);
-      
-      // Some pieces are rectangular
-      if (i % 5 == 0) {
-        final rect = Rect.fromCenter(
-          center: Offset(x, y),
-          width: confettiSize * 3,
-          height: confettiSize,
-        );
-        
-        // Rotate the canvas for the rectangle
-        canvas.save();
-        canvas.translate(x, y);
-        canvas.rotate(angle * 5 * progress);
-        canvas.translate(-x, -y);
-        
-        canvas.drawRect(rect, paint);
-        canvas.restore();
-      }
-    }
-  }
-  
-  @override
-  bool shouldRepaint(ConfettiPainter oldDelegate) {
-    return oldDelegate.progress != progress;
-  }
+// Helper to get a darkened version of a color
+Color _getDarkenedColor(Color color, double factor) {
+  return Color.fromARGB(
+    color.alpha,
+    (color.red * (1 - factor)).round(),
+    (color.green * (1 - factor)).round(),
+    (color.blue * (1 - factor)).round(),
+  );
 }

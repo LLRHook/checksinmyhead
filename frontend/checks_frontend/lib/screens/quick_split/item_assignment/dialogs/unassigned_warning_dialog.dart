@@ -13,9 +13,7 @@ class UnassignedWarningDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       elevation: 0,
       backgroundColor: Colors.transparent,
       child: Container(
@@ -48,32 +46,28 @@ class UnassignedWarningDialog extends StatelessWidget {
                 size: 40,
               ),
             ),
-            
+
             const SizedBox(height: 20),
-            
+
             // Title
             const Text(
               'Unassigned Amount',
-              style: TextStyle(
-                fontSize: 20, 
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
-            
+
             const SizedBox(height: 12),
-            
+
             // Content - Fixed dollar sign format
             Text(
-              "There's still \$" + unassignedAmount.toStringAsFixed(2) + " unassigned. Would you like to split it evenly among all participants?",
+              "There's still \$" +
+                  unassignedAmount.toStringAsFixed(2) +
+                  " unassigned. Would you like to split it evenly among all participants?",
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16, 
-                color: Colors.grey.shade700,
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             // Action buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -87,9 +81,7 @@ class UnassignedWarningDialog extends StatelessWidget {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      side: BorderSide(
-                        color: Colors.grey.shade300,
-                      ),
+                      side: BorderSide(color: Colors.grey.shade300),
                     ),
                     child: Text(
                       'Continue Anyway',
@@ -100,9 +92,9 @@ class UnassignedWarningDialog extends StatelessWidget {
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(width: 12),
-                
+
                 // Split evenly button
                 Expanded(
                   child: ElevatedButton(
@@ -121,9 +113,7 @@ class UnassignedWarningDialog extends StatelessWidget {
                     ),
                     child: const Text(
                       'Split Evenly',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
@@ -144,9 +134,10 @@ void showUnassignedWarningDialog({
 }) {
   showDialog(
     context: context,
-    builder: (context) => UnassignedWarningDialog(
-      unassignedAmount: unassignedAmount,
-      onSplitEvenly: onSplitEvenly,
-    ),
+    builder:
+        (context) => UnassignedWarningDialog(
+          unassignedAmount: unassignedAmount,
+          onSplitEvenly: onSplitEvenly,
+        ),
   );
 }

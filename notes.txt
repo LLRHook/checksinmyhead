@@ -9,6 +9,7 @@ split with X feature, when X is assigned and Y is selected to choose items is go
 
 summary:
 calcs work i think
+ask for faang/duolingo caliber redesign
 
 share functionality:
 when share is hit, it puts names and their total into a nice text msg format.

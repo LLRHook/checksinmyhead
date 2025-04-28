@@ -39,7 +39,7 @@ class ItemCard extends StatefulWidget {
 
 class _ItemCardState extends State<ItemCard> {
   bool _isExpanded = false;
-  
+
   // Modern slate gray text color
   static const Color slateGray = Color(0xFF64748B);
   static const Color lightSlateGray = Color(0xFF94A3B8);
@@ -49,7 +49,7 @@ class _ItemCardState extends State<ItemCard> {
     final colorScheme = Theme.of(context).colorScheme;
     final assignedPeople = widget.getAssignedPeopleForItem(widget.item);
     final defaultColor = Colors.grey.shade100;
-    
+
     // Use dominant person color for card background if there's only one assigned person
     Color backgroundColor;
     if (assignedPeople.length == 1) {
@@ -58,7 +58,7 @@ class _ItemCardState extends State<ItemCard> {
     } else {
       backgroundColor = widget.getAssignmentColor(widget.item, defaultColor);
     }
-    
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
@@ -67,9 +67,10 @@ class _ItemCardState extends State<ItemCard> {
         color: backgroundColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: assignedPeople.length == 1 
-              ? _getDarkenedColor(assignedPeople.first.color, 0.2)
-              : Colors.grey.shade200,
+          color:
+              assignedPeople.length == 1
+                  ? _getDarkenedColor(assignedPeople.first.color, 0.2)
+                  : Colors.grey.shade200,
           width: 1,
         ),
         boxShadow: [
@@ -87,7 +88,8 @@ class _ItemCardState extends State<ItemCard> {
         child: InkWell(
           onTap: () {
             // If a person is selected and card is tapped, assign the item directly
-            if (widget.selectedPerson != null && widget.assignedPercentage < 100.0) {
+            if (widget.selectedPerson != null &&
+                widget.assignedPercentage < 100.0) {
               _assignToSelectedPerson();
               HapticFeedback.selectionClick();
             } else {
@@ -101,7 +103,10 @@ class _ItemCardState extends State<ItemCard> {
           child: AnimatedCrossFade(
             firstChild: _buildCollapsedCard(colorScheme, assignedPeople),
             secondChild: _buildExpandedCard(colorScheme, assignedPeople),
-            crossFadeState: _isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            crossFadeState:
+                _isExpanded
+                    ? CrossFadeState.showSecond
+                    : CrossFadeState.showFirst,
             duration: const Duration(milliseconds: 300),
             reverseDuration: const Duration(milliseconds: 200),
             sizeCurve: Curves.easeInOutCubic,
@@ -112,7 +117,7 @@ class _ItemCardState extends State<ItemCard> {
       ),
     );
   }
-  
+
   // Helper to get a lightened version of a color (more white)
   Color _getLightenedColor(Color color, double factor) {
     return Color.fromARGB(
@@ -122,7 +127,7 @@ class _ItemCardState extends State<ItemCard> {
       (color.blue + (255 - color.blue) * factor).round(),
     );
   }
-  
+
   // Helper to get a darkened version of a color
   Color _getDarkenedColor(Color color, double factor) {
     return Color.fromARGB(
@@ -132,12 +137,14 @@ class _ItemCardState extends State<ItemCard> {
       (color.blue * (1 - factor)).round(),
     );
   }
-  
+
   // Helper to determine if a color is too light for white text
   bool _isColorTooLight(Color color) {
-    return (0.299 * color.red + 0.587 * color.green + 0.114 * color.blue) / 255 > 0.7;
+    return (0.299 * color.red + 0.587 * color.green + 0.114 * color.blue) /
+            255 >
+        0.7;
   }
-  
+
   // Helper to get a contrastive text color (black or white) based on background
   Color _getContrastiveTextColor(Color backgroundColor) {
     return _isColorTooLight(backgroundColor) ? Colors.black : Colors.white;
@@ -145,7 +152,7 @@ class _ItemCardState extends State<ItemCard> {
 
   void _assignToSelectedPerson() {
     if (widget.selectedPerson == null) return;
-    
+
     // Assign 100% to selected person
     Map<Person, double> newAssignments = {};
     for (var person in widget.participants) {
@@ -153,29 +160,32 @@ class _ItemCardState extends State<ItemCard> {
     }
     widget.onAssign(widget.item, newAssignments);
   }
-  
+
   void _removePersonAssignment(Person person) {
     // Create new assignments map with the selected person removed
     Map<Person, double> newAssignments = {};
-    
+
     // Copy current assignments
     for (var p in widget.participants) {
       final currentValue = widget.item.assignments[p] ?? 0.0;
       newAssignments[p] = p == person ? 0.0 : currentValue;
     }
-    
+
     // Apply the updated assignments
     widget.onAssign(widget.item, newAssignments);
-    
+
     // Provide haptic feedback for the removal action
     HapticFeedback.mediumImpact();
   }
 
-  Widget _buildCollapsedCard(ColorScheme colorScheme, List<Person> assignedPeople) {
+  Widget _buildCollapsedCard(
+    ColorScheme colorScheme,
+    List<Person> assignedPeople,
+  ) {
     // Show assign indicator if a person is selected and item is not fully assigned
-    final bool showAssignIndicator = widget.selectedPerson != null && 
-                                   widget.assignedPercentage < 100.0;
-    
+    final bool showAssignIndicator =
+        widget.selectedPerson != null && widget.assignedPercentage < 100.0;
+
     return Stack(
       children: [
         Padding(
@@ -189,7 +199,7 @@ class _ItemCardState extends State<ItemCard> {
                 size: 20,
               ),
               const SizedBox(width: 12),
-              
+
               // Item name and price
               Expanded(
                 child: Column(
@@ -213,7 +223,7 @@ class _ItemCardState extends State<ItemCard> {
                   ],
                 ),
               ),
-              
+
               // Assignment status
               if (assignedPeople.isEmpty)
                 _buildAssignmentTag(
@@ -237,13 +247,13 @@ class _ItemCardState extends State<ItemCard> {
                   Colors.blue.shade700,
                   Colors.blue.shade50,
                 ),
-                
+
               // Assigned people avatars
               if (assignedPeople.isNotEmpty) ...[
                 const SizedBox(width: 8),
                 _buildAssigneeAvatars(assignedPeople),
               ],
-              
+
               // Chevron/dropdown indicator
               const SizedBox(width: 8),
               Icon(
@@ -254,7 +264,7 @@ class _ItemCardState extends State<ItemCard> {
             ],
           ),
         ),
-        
+
         // Show simple plus indicator when item can be assigned to selected person
         if (showAssignIndicator)
           Positioned(
@@ -278,15 +288,18 @@ class _ItemCardState extends State<ItemCard> {
 
   Widget _buildAssigneeAvatars(List<Person> assignedPeople) {
     // Limit to showing max 3 avatars
-    final displayPeople = assignedPeople.length > 3 
-        ? assignedPeople.sublist(0, 3) 
-        : assignedPeople;
-    
+    final displayPeople =
+        assignedPeople.length > 3
+            ? assignedPeople.sublist(0, 3)
+            : assignedPeople;
+
     // Calculate width based on number of avatars
     // Each avatar is 24px wide with 16px overlap
-    final double width = displayPeople.isEmpty ? 0.0 : 24.0 + (displayPeople.length - 1) * 16.0;
-    final double extraWidth = assignedPeople.length > 3 ? 24.0 : 0.0; // For the +N avatar
-    
+    final double width =
+        displayPeople.isEmpty ? 0.0 : 24.0 + (displayPeople.length - 1) * 16.0;
+    final double extraWidth =
+        assignedPeople.length > 3 ? 24.0 : 0.0; // For the +N avatar
+
     return SizedBox(
       height: 24,
       width: width + extraWidth,
@@ -318,7 +331,7 @@ class _ItemCardState extends State<ItemCard> {
                 child: const Text(
                   '+',
                   style: TextStyle(
-                    color: Colors.white, 
+                    color: Colors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
                   ),
@@ -330,7 +343,11 @@ class _ItemCardState extends State<ItemCard> {
     );
   }
 
-  Widget _buildAssignmentTag(String text, Color textColor, Color backgroundColor) {
+  Widget _buildAssignmentTag(
+    String text,
+    Color textColor,
+    Color backgroundColor,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -348,22 +365,27 @@ class _ItemCardState extends State<ItemCard> {
     );
   }
 
-  Widget _buildExpandedCard(ColorScheme colorScheme, List<Person> assignedPeople) {
+  Widget _buildExpandedCard(
+    ColorScheme colorScheme,
+    List<Person> assignedPeople,
+  ) {
     // Determine primary color for buttons and indicators
-    Color primaryActionColor = assignedPeople.isNotEmpty
-        ? assignedPeople.first.color
-        : colorScheme.primary;
-        
+    Color primaryActionColor =
+        assignedPeople.isNotEmpty
+            ? assignedPeople.first.color
+            : colorScheme.primary;
+
     // Ensure primary action color isn't too light
     if (_isColorTooLight(primaryActionColor)) {
       primaryActionColor = _getDarkenedColor(primaryActionColor, 0.2);
     }
-    
+
     // Get divider color - a lighter tone of the primary color
-    final dividerColor = assignedPeople.isNotEmpty
-        ? _getLightenedColor(assignedPeople.first.color, 0.7)
-        : Colors.grey.shade200;
-    
+    final dividerColor =
+        assignedPeople.isNotEmpty
+            ? _getLightenedColor(assignedPeople.first.color, 0.7)
+            : Colors.grey.shade200;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -378,7 +400,7 @@ class _ItemCardState extends State<ItemCard> {
                 size: 20,
               ),
               const SizedBox(width: 12),
-              
+
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -401,7 +423,7 @@ class _ItemCardState extends State<ItemCard> {
                   ],
                 ),
               ),
-              
+
               if (assignedPeople.isEmpty)
                 _buildAssignmentTag(
                   'Unassigned',
@@ -424,9 +446,9 @@ class _ItemCardState extends State<ItemCard> {
                   Colors.blue.shade700,
                   Colors.blue.shade50,
                 ),
-              
+
               const SizedBox(width: 8),
-              
+
               IconButton(
                 icon: const Icon(Icons.expand_less, size: 20),
                 onPressed: () {
@@ -449,9 +471,12 @@ class _ItemCardState extends State<ItemCard> {
           child: LinearProgressIndicator(
             value: widget.assignedPercentage / 100,
             backgroundColor: Colors.grey.shade200,
-            color: widget.assignedPercentage == 100.0
-                ? (assignedPeople.length == 1 ? primaryActionColor : Colors.green)
-                : primaryActionColor,
+            color:
+                widget.assignedPercentage == 100.0
+                    ? (assignedPeople.length == 1
+                        ? primaryActionColor
+                        : Colors.green)
+                    : primaryActionColor,
             minHeight: 4,
             borderRadius: BorderRadius.circular(2),
           ),
@@ -482,8 +507,14 @@ class _ItemCardState extends State<ItemCard> {
               ),
               style: ElevatedButton.styleFrom(
                 // Use a very light shade of the person's color for the background
-                backgroundColor: _getLightenedColor(widget.selectedPerson!.color, 0.85),
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                backgroundColor: _getLightenedColor(
+                  widget.selectedPerson!.color,
+                  0.85,
+                ),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: 12,
+                ),
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -503,10 +534,7 @@ class _ItemCardState extends State<ItemCard> {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () {
-                    widget.onSplitEvenly(
-                      widget.item,
-                      widget.participants,
-                    );
+                    widget.onSplitEvenly(widget.item, widget.participants);
                     setState(() {
                       _isExpanded = false;
                     });
@@ -535,7 +563,7 @@ class _ItemCardState extends State<ItemCard> {
                     );
                   },
                   icon: Icon(
-                    Icons.tune, 
+                    Icons.tune,
                     size: 16,
                     color: _getContrastiveTextColor(primaryActionColor),
                   ),
@@ -547,7 +575,9 @@ class _ItemCardState extends State<ItemCard> {
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryActionColor,
-                    foregroundColor: _getContrastiveTextColor(primaryActionColor),
+                    foregroundColor: _getContrastiveTextColor(
+                      primaryActionColor,
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -559,7 +589,7 @@ class _ItemCardState extends State<ItemCard> {
             ],
           ),
         ),
-        
+
         // Assigned people section
         if (assignedPeople.isNotEmpty) ...[
           // Person's color-tinted divider
@@ -581,15 +611,17 @@ class _ItemCardState extends State<ItemCard> {
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: assignedPeople.map((person) {
-                    final percentage = widget.item.assignments[person] ?? 0.0;
-                    final amount = widget.item.price * percentage / 100;
-                    return _buildInteractivePersonChip(
-                      person: person,
-                      percentage: percentage,
-                      amount: amount,
-                    );
-                  }).toList(),
+                  children:
+                      assignedPeople.map((person) {
+                        final percentage =
+                            widget.item.assignments[person] ?? 0.0;
+                        final amount = widget.item.price * percentage / 100;
+                        return _buildInteractivePersonChip(
+                          person: person,
+                          percentage: percentage,
+                          amount: amount,
+                        );
+                      }).toList(),
                 ),
                 const SizedBox(height: 8),
                 if (widget.assignedPercentage < 100.0)
@@ -608,9 +640,7 @@ class _ItemCardState extends State<ItemCard> {
                       ),
                       label: Text(
                         'Balance Split',
-                        style: TextStyle(
-                          color: primaryActionColor,
-                        ),
+                        style: TextStyle(color: primaryActionColor),
                       ),
                       style: TextButton.styleFrom(
                         foregroundColor: primaryActionColor,
@@ -637,7 +667,7 @@ class _ItemCardState extends State<ItemCard> {
     // Get a lighter background and ensure text contrast
     final chipBackground = _getLightenedColor(person.color, 0.85);
     final textColor = _getDarkenedColor(person.color, 0.3);
-    
+
     return GestureDetector(
       onTap: () {
         // Show a sleek confirmation before removal
@@ -649,7 +679,9 @@ class _ItemCardState extends State<ItemCard> {
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.1),
@@ -726,7 +758,9 @@ class _ItemCardState extends State<ItemCard> {
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: person.color,
-                            foregroundColor: _getContrastiveTextColor(person.color),
+                            foregroundColor: _getContrastiveTextColor(
+                              person.color,
+                            ),
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             elevation: 0,
                             shape: RoundedRectangleBorder(
@@ -782,10 +816,7 @@ class _ItemCardState extends State<ItemCard> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: person.color,
-                        width: 1,
-                      ),
+                      border: Border.all(color: person.color, width: 1),
                     ),
                   ),
                 ),
@@ -803,10 +834,7 @@ class _ItemCardState extends State<ItemCard> {
             const SizedBox(width: 4),
             Text(
               '${percentage.toStringAsFixed(0)}% • \$${amount.toStringAsFixed(2)}',
-              style: TextStyle(
-                color: textColor.withOpacity(0.8),
-                fontSize: 11,
-              ),
+              style: TextStyle(color: textColor.withOpacity(0.8), fontSize: 11),
             ),
           ],
         ),
