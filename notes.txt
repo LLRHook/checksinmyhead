@@ -1,11 +1,7 @@
 issues to fix:
 
-if they have something selected, but then they toggle bday, they need to be removed from that
-
-assign to X is back, so when X is assigned to item, they can be assigned to it again. rather than the disabled button.
-split with X feature, when X is assigned and Y is selected to choose items is gone. 
-
-"Split Evenly" doesn't seem to work properly. it's not being added into their subtotal or something. we can see that the tax doesn't match up.
+first page:
+alcohol tax, if considering alc tip as separate. think of how to make that eloquent
 
 summary:
 calcs work i think
