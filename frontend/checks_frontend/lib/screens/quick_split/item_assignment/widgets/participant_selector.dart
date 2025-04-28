@@ -40,17 +40,21 @@ class ParticipantSelector extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Instruction text
+          // Instruction text with improved visibility
           Padding(
             padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8),
             child: Row(
+              mainAxisAlignment:
+                  MainAxisAlignment.center, // Center the row contents
               children: [
                 Icon(Icons.info_outline, size: 14, color: Colors.grey.shade600),
                 const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    'Tap: quick assign • Long press: birthday',
-                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                Text(
+                  'Tap to assign • Long-press to set birthday person',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -80,36 +84,80 @@ class ParticipantSelector extends StatelessWidget {
     );
   }
 
-  // Helper method to build the shaking cake icon for birthday person
+  // Replace the _buildShakingCakeIcon method in ParticipantSelector with this enhanced version:
+
   Widget _buildShakingCakeIcon(Color backgroundColor) {
     return TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: -0.12, end: 0.12),
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.elasticInOut,
+      // Use a continuous animation value from 0 to 1
+      tween: Tween<double>(begin: 0.0, end: 1.0),
+      // Longer duration for more fluid motion
+      duration: const Duration(milliseconds: 2000),
+      // Use a continuous curve for smoother animation
+      curve: Curves.linear,
       onEnd: () {
-        // Rebuild the animation when it completes to make it continuous
-        Future.microtask(
-          () => Future.delayed(const Duration(milliseconds: 500), () {}),
-        );
+        // Immediately restart the animation when it completes to make it seamless
+        Future.microtask(() {});
       },
       builder: (context, value, child) {
-        return TweenAnimationBuilder<double>(
-          tween: Tween<double>(begin: 0.9, end: 1.1),
-          duration: const Duration(milliseconds: 800),
-          curve: Curves.easeInOutSine,
-          builder: (context, scaleValue, child) {
-            return Transform.scale(
-              scale: scaleValue,
+        // Calculate rotation using a sin wave for more natural motion
+        // The sin function creates a smooth wave pattern that looks more organic
+        final rotation = sin(value * pi * 2) * 0.08;
+
+        // Calculate scale using a different frequency for variety
+        final scale = 1.0 + sin(value * pi * 4 + 0.3) * 0.1;
+
+        // Calculate glow intensity to add subtle pulsing
+        final glowIntensity = 0.3 + sin(value * pi * 3) * 0.1;
+
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            // Enhanced glowing background effect with pulsing
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    backgroundColor,
+                    backgroundColor.withOpacity(0.5 * glowIntensity),
+                    backgroundColor.withOpacity(0.0),
+                  ],
+                  stops: const [0.3, 0.6, 1.0],
+                ),
+              ),
+            ),
+
+            // Rotating and scaling cake icon with more fluid animation
+            Transform.scale(
+              scale: scale,
               child: Transform.rotate(
-                angle: value,
+                angle: rotation,
                 child: CircleAvatar(
                   radius: 16,
                   backgroundColor: backgroundColor,
                   child: const Icon(Icons.cake, color: Colors.white, size: 16),
                 ),
               ),
-            );
-          },
+            ),
+
+            // Add a subtle sparkle effect
+            Positioned(
+              top: 4 + sin(value * pi * 5) * 4,
+              right: 4 + cos(value * pi * 5) * 4,
+              child: Transform.rotate(
+                angle: value * pi * 4,
+                child: Icon(
+                  Icons.star,
+                  color: Colors.white.withOpacity(
+                    0.7 + sin(value * pi * 6) * 0.3,
+                  ),
+                  size: 6,
+                ),
+              ),
+            ),
+          ],
         );
       },
     );
@@ -174,7 +222,7 @@ class ParticipantSelector extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Avatar with animations (removed confetti)
+                // Avatar with animations
                 Stack(
                   children: [
                     // Selection pulse animation
@@ -256,38 +304,67 @@ class ParticipantSelector extends StatelessWidget {
                       ),
 
                       // Share amount or birthday text
-                      AnimatedDefaultTextStyle(
-                        duration: const Duration(milliseconds: 250),
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight:
-                              (isBirthdayPerson || isSelected)
-                                  ? FontWeight.w500
-                                  : FontWeight.w400,
-                          color:
-                              isBirthdayPerson
-                                  ? _getDarkenedColor(birthdayColor, 0.3)
-                                  : isSelected
-                                  ? _getDarkenedColor(person.color, 0.3)
-                                  : Colors.grey.shade600,
-                        ),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        transitionBuilder: (
+                          Widget child,
+                          Animation<double> animation,
+                        ) {
+                          return FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(
+                              position: Tween<Offset>(
+                                begin: const Offset(0, -0.5),
+                                end: Offset.zero,
+                              ).animate(animation),
+                              child: child,
+                            ),
+                          );
+                        },
                         child:
                             isBirthdayPerson
                                 ? Row(
+                                  key: const ValueKey('birthday'),
                                   mainAxisSize: MainAxisSize.min,
-                                  children: const [
-                                    SizedBox(width: 2),
-                                    Icon(
-                                      Icons.celebration,
+                                  children: [
+                                    const Icon(
+                                      Icons.cake,
                                       size: 10,
-                                      color: Colors.amber,
+                                      color: Colors.pink,
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      '\$0.00',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w500,
+                                        color: _getDarkenedColor(
+                                          birthdayColor,
+                                          0.3,
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 )
                                 : Text(
-                                  "\$" + share.toStringAsFixed(2),
+                                  '\$${share.toStringAsFixed(2)}',
+                                  key: ValueKey('share-${person.name}'),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight:
+                                        isSelected
+                                            ? FontWeight.w500
+                                            : FontWeight.w400,
+                                    color:
+                                        isSelected
+                                            ? _getDarkenedColor(
+                                              person.color,
+                                              0.3,
+                                            )
+                                            : Colors.grey.shade600,
+                                  ),
                                 ),
                       ),
                     ],

@@ -11,36 +11,36 @@ class TutorialManager {
   static const String _tutorialPreferenceKey =
       'has_seen_item_assignment_tutorial';
 
-  // Tutorial steps for item assignment screen
+  // Tutorial steps for item assignment screen with enhanced descriptions
   final List<TutorialStep> tutorialSteps = [
     const TutorialStep(
       title: 'Select a Person',
       description:
-          'Tap an avatar to select someone. A checkmark appears when selected.',
+          'Tap any person\'s avatar to select them for item assignment. Their card will highlight to show they\'re active.',
       icon: Icons.person_outline,
     ),
     const TutorialStep(
       title: 'Assign Items',
       description:
-          'With someone selected, tap "Assign to [Name]" on any item. Items take on that person\'s color.',
+          'With someone selected, tap an item card to assign it to them. The item will take on their color for easy tracking.',
       icon: Icons.assignment_ind,
     ),
     const TutorialStep(
-      title: 'Split Items',
+      title: 'Split Options',
       description:
-          'Use "Split Evenly" for equal shares or "Custom Split" for precise control.',
+          'Use "Split Evenly" for equal shares or "Custom Split" when you want precise control over percentages.',
       icon: Icons.splitscreen,
     ),
     const TutorialStep(
       title: 'Birthday Person',
       description:
-          'Long-press any avatar to mark as birthday person. Their share gets split among others.',
+          'Long-press any avatar to mark as birthday person who pays \$0. Their portion gets distributed among others automatically.',
       icon: Icons.cake,
     ),
     const TutorialStep(
-      title: 'Review & Finish',
+      title: 'Review & Continue',
       description:
-          'After assigning all items, tap Continue to see the final breakdown.',
+          'After assigning all items, tap Continue to see the final breakdown with tax and tip calculated for each person.',
       icon: Icons.check_circle_outline,
     ),
   ];

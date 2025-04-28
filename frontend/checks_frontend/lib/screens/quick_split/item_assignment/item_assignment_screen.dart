@@ -139,10 +139,19 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
     setState(() {
       if (widget.items.isEmpty) {
         // If no items were entered, split subtotal evenly
-        double evenShare = widget.subtotal / widget.participants.length;
+        // BUT we need to consider birthday person here
+        int payingPeople = widget.participants.length;
+        if (_birthdayPerson != null) payingPeople--;
+
+        double evenShare =
+            payingPeople > 0 ? widget.subtotal / payingPeople : 0.0;
 
         for (var person in widget.participants) {
-          _personTotals[person] = evenShare;
+          if (_birthdayPerson == person) {
+            _personTotals[person] = 0.0; // Birthday person pays nothing
+          } else {
+            _personTotals[person] = evenShare; // Everyone else pays more
+          }
         }
 
         _unassignedAmount = 0.0;
@@ -156,58 +165,6 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
       }
 
       _calculateFinalShares();
-    });
-  }
-
-  // Calculate each person's share of tax and tip based on their subtotal portion
-  void _calculateFinalShares() {
-    Map<Person, double> newShares = {};
-
-    // Calculate total assigned amount
-    double totalAssigned = _personTotals.values.fold(
-      0,
-      (sum, amount) => sum + amount,
-    );
-
-    // Calculate percentage of bill for each person (if anything is assigned)
-    if (totalAssigned > 0) {
-      for (var person in widget.participants) {
-        if (_birthdayPerson == person) {
-          // Birthday person pays nothing
-          newShares[person] = 0.0;
-          continue;
-        }
-
-        double personSubtotal = _personTotals[person] ?? 0.0;
-        double personPercentage = personSubtotal / totalAssigned;
-
-        // Calculate person's share of tax and tip
-        double personTax = widget.tax * personPercentage;
-        double personTip = widget.tipAmount * personPercentage;
-
-        // Add to final share
-        newShares[person] = personSubtotal + personTax + personTip;
-      }
-    } else {
-      // If nothing assigned yet, split everything evenly except for birthday person
-      int payingPeople = widget.participants.length;
-      if (_birthdayPerson != null) payingPeople--;
-
-      if (payingPeople > 0) {
-        double evenShare = widget.total / payingPeople;
-
-        for (var person in widget.participants) {
-          if (_birthdayPerson == person) {
-            newShares[person] = 0.0;
-          } else {
-            newShares[person] = evenShare;
-          }
-        }
-      }
-    }
-
-    setState(() {
-      _personFinalShares = newShares;
     });
   }
 
@@ -265,21 +222,155 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
     _assignItem(item, newAssignments);
   }
 
-  // Toggle birthday person status
+  // Replace the existing _toggleBirthdayPerson method with this one:
+
   void _toggleBirthdayPerson(Person person) {
     setState(() {
       if (_birthdayPerson == person) {
         _birthdayPerson = null;
+        HapticFeedback.mediumImpact();
       } else {
         _birthdayPerson = person;
         // If the selected person is now the birthday person, deselect them
         if (_selectedPerson == person) {
           _selectedPerson = null;
         }
-        // Add haptic feedback for birthday selection
+
+        // Important: Unassign all items from the birthday person
+        _unassignItemsFromBirthdayPerson(person);
+
         HapticFeedback.mediumImpact();
       }
-      _calculateFinalShares();
+
+      // Important: If no items, recalculate initial assignments to handle birthday person
+      if (widget.items.isEmpty) {
+        _calculateInitialAssignments();
+      } else {
+        _calculateFinalShares();
+      }
+    });
+  }
+
+  // Also update the unassign method to ensure it's working properly
+
+  // New helper method to unassign items from birthday person
+  void _unassignItemsFromBirthdayPerson(Person birthdayPerson) {
+    // Keep track of changes to avoid unnecessary updates
+    bool changesDetected = false;
+
+    // Go through each item and remove the birthday person's assignments
+    for (var item in widget.items) {
+      if (item.assignments.containsKey(birthdayPerson)) {
+        // Get the percentage that was assigned to birthday person
+        double birthdayPersonPercentage =
+            item.assignments[birthdayPerson] ?? 0.0;
+
+        if (birthdayPersonPercentage > 0) {
+          changesDetected = true;
+
+          // Remove the birthday person from assignments
+          Map<Person, double> newAssignments = Map.from(item.assignments);
+          newAssignments.remove(birthdayPerson);
+
+          // If there are other people assigned to this item, redistribute
+          if (newAssignments.isNotEmpty) {
+            // Redistribute the percentage proportionally among remaining assignees
+            double totalRemaining = newAssignments.values.fold(
+              0.0,
+              (sum, value) => sum + value,
+            );
+
+            if (totalRemaining > 0) {
+              // Scale factor to redistribute
+              double scaleFactor = 100.0 / totalRemaining;
+
+              // Rescale everyone else's percentages
+              newAssignments.forEach((key, value) {
+                newAssignments[key] = value * scaleFactor;
+              });
+            }
+          }
+
+          // Update item assignments
+          item.assignments = newAssignments;
+        }
+      }
+    }
+
+    if (changesDetected) {
+      // Recalculate person totals if changes were made
+      Map<Person, double> newPersonTotals = {};
+      for (var person in widget.participants) {
+        double personTotal = 0.0;
+
+        // Sum all item assignments for this person
+        for (var billItem in widget.items) {
+          personTotal += billItem.amountForPerson(person);
+        }
+
+        newPersonTotals[person] = personTotal;
+      }
+
+      // Calculate unassigned amount
+      double assignedTotal = newPersonTotals.values.fold(
+        0,
+        (sum, amount) => sum + amount,
+      );
+      _unassignedAmount = widget.subtotal - assignedTotal;
+
+      _personTotals = newPersonTotals;
+    }
+  }
+
+  void _calculateFinalShares() {
+    Map<Person, double> newShares = {};
+
+    // Calculate total assigned amount
+    double totalAssigned = _personTotals.values.fold(
+      0,
+      (sum, amount) => sum + amount,
+    );
+
+    // Calculate percentage of bill for each person (if anything is assigned)
+    if (totalAssigned > 0) {
+      for (var person in widget.participants) {
+        if (_birthdayPerson == person) {
+          // Birthday person pays nothing
+          newShares[person] = 0.0;
+          continue;
+        }
+
+        double personSubtotal = _personTotals[person] ?? 0.0;
+        // Adjust the percentage calculation to exclude the birthday person from the total
+        double personPercentage = personSubtotal / totalAssigned;
+
+        // Calculate person's share of tax and tip
+        double personTax = widget.tax * personPercentage;
+        double personTip = widget.tipAmount * personPercentage;
+
+        // Add to final share
+        newShares[person] = personSubtotal + personTax + personTip;
+      }
+    } else {
+      // If nothing assigned yet, split everything evenly except for birthday person
+      int payingPeople = widget.participants.length;
+      if (_birthdayPerson != null) payingPeople--;
+
+      if (payingPeople > 0) {
+        double evenShare = widget.total / payingPeople;
+
+        for (var person in widget.participants) {
+          if (_birthdayPerson == person) {
+            newShares[person] = 0.0;
+          } else {
+            newShares[person] = evenShare;
+          }
+        }
+      }
+    }
+
+    setState(() {
+      _personFinalShares = newShares;
     });
   }
 
@@ -328,6 +419,8 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
   }
 
   // Split any unassigned amount evenly among participants
+  // Replace your current _splitUnassignedAmountEvenly method with this one:
+
   void _splitUnassignedAmountEvenly() {
     if (_unassignedAmount <= 0) return;
 
@@ -350,7 +443,74 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
         }
       }
 
-      _personTotals = newPersonTotals;
+      // KEY FIX: Create a fake item to represent the unassigned amount and assign it properly
+      if (widget.items.isEmpty) {
+        // If no items, create dummy assignments in personTotals
+        _personTotals = newPersonTotals;
+      } else {
+        // If there are items but some amount is unassigned,
+        // we need to assign that amount evenly to all existing items
+
+        // Calculate what percentage of each item is currently unassigned
+        double totalUnassignedPercentage = 0;
+        for (var item in widget.items) {
+          double assignedPercentage = item.assignments.values.fold(
+            0.0,
+            (sum, value) => sum + value,
+          );
+          totalUnassignedPercentage += (100.0 - assignedPercentage);
+        }
+
+        // For each item, assign its unassigned portion evenly
+        for (var item in widget.items) {
+          // Get current assigned percentage
+          double currentAssignedPercentage = item.assignments.values.fold(
+            0.0,
+            (sum, value) => sum + value,
+          );
+
+          // Skip if item is already fully assigned
+          if (currentAssignedPercentage >= 100.0) continue;
+
+          // Calculate unassigned percentage for this item
+          double itemUnassignedPercentage = 100.0 - currentAssignedPercentage;
+
+          // Create a copy of current assignments
+          Map<Person, double> newAssignments = Map.from(item.assignments);
+
+          // For each paying person, add their share of the unassigned percentage
+          for (var person in widget.participants) {
+            if (person != _birthdayPerson) {
+              // Calculate this person's share of the unassigned percentage
+              double personShareOfUnassigned =
+                  itemUnassignedPercentage / payingPeople;
+
+              // Add to their current assignment (or set if not already assigned)
+              newAssignments[person] =
+                  (newAssignments[person] ?? 0.0) + personShareOfUnassigned;
+            }
+          }
+
+          // Update the item's assignments
+          item.assignments = newAssignments;
+        }
+
+        // Recalculate person totals based on the updated item assignments
+        newPersonTotals = {};
+        for (var person in widget.participants) {
+          double personTotal = 0.0;
+
+          // Sum all item assignments for this person
+          for (var billItem in widget.items) {
+            personTotal += billItem.amountForPerson(person);
+          }
+
+          newPersonTotals[person] = personTotal;
+        }
+
+        _personTotals = newPersonTotals;
+      }
+
       _unassignedAmount = 0.0;
       _calculateFinalShares();
 
@@ -425,7 +585,9 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
           if (_unassignedAmount > 0.01)
             UnassignedAmountBanner(
               unassignedAmount: _unassignedAmount,
-              onSplitEvenly: _splitUnassignedAmountEvenly,
+              onSplitEvenly: () {
+                _splitUnassignedAmountEvenly();
+              },
             ),
 
           // Items list
