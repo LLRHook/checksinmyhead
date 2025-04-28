@@ -430,15 +430,16 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
 
           // Items list
           Expanded(
-            child: widget.items.isEmpty
-                ? EmptyItemsView(
-                    participants: widget.participants,
-                    personFinalShares: _personFinalShares,
-                    birthdayPerson: _birthdayPerson,
-                    unassignedAmount: _unassignedAmount,
-                    getPersonBillPercentage: _getPersonBillPercentage,
-                  )
-                : _buildItemsListView(),
+            child:
+                widget.items.isEmpty
+                    ? EmptyItemsView(
+                      participants: widget.participants,
+                      personFinalShares: _personFinalShares,
+                      birthdayPerson: _birthdayPerson,
+                      unassignedAmount: _unassignedAmount,
+                      getPersonBillPercentage: _getPersonBillPercentage,
+                    )
+                    : _buildItemsListView(),
           ),
 
           // Bottom control bar with continue button
