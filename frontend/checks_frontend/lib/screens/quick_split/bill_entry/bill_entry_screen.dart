@@ -60,20 +60,20 @@ class _BillEntryScreenState extends State<BillEntryScreen>
     _taxController.addListener(_calculateBill);
     _alcoholController.addListener(_calculateBill);
     _customTipController.addListener(_calculateBill);
-    
+
     // Initialize animation controller
     _progressAnimationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
     );
-    
+
     _progressAnimation = Tween<double>(begin: 0, end: 0).animate(
       CurvedAnimation(
         parent: _progressAnimationController,
         curve: Curves.easeInOut,
       ),
     );
-    
+
     _progressAnimation.addListener(() {
       setState(() {
         _animatedItemsTotal = _progressAnimation.value;
@@ -101,13 +101,13 @@ class _BillEntryScreenState extends State<BillEntryScreen>
       } catch (_) {
         _subtotal = 0.0;
       }
-      
+
       try {
         _tax = double.tryParse(_taxController.text) ?? 0.0;
       } catch (_) {
         _tax = 0.0;
       }
-      
+
       try {
         _alcoholAmount = double.tryParse(_alcoholController.text) ?? 0.0;
       } catch (_) {
@@ -139,19 +139,19 @@ class _BillEntryScreenState extends State<BillEntryScreen>
       }
 
       _total = _subtotal + _tax + _tipAmount;
-      
+
       // Calculate items total
       _calculateItemsTotal();
     });
   }
-  
+
   // Calculate the total of all items
   void _calculateItemsTotal() {
     double total = 0.0;
     for (var item in _items) {
       total += item.price;
     }
-    
+
     // Only animate if there's a significant change
     if ((total - _itemsTotal).abs() > 0.01) {
       // Update the animation with new values
@@ -164,11 +164,11 @@ class _BillEntryScreenState extends State<BillEntryScreen>
           curve: Curves.easeInOut,
         ),
       );
-      
+
       // Reset and start the animation
       _progressAnimationController.reset();
       _progressAnimationController.forward();
-      
+
       _itemsTotal = total;
     }
   }
@@ -183,29 +183,24 @@ class _BillEntryScreenState extends State<BillEntryScreen>
         price = double.parse(priceText);
       } catch (_) {
         // Show error for invalid number
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please enter a valid price'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        _showSnackBar('Please enter a valid price');
         return;
       }
-      
+
       if (price > 0) {
         // Check if adding this item would exceed the subtotal
         final newTotalItems = _itemsTotal + price;
         if (newTotalItems > _subtotal) {
           // Show error message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Item total (\$${newTotalItems.toStringAsFixed(2)}) would exceed the subtotal (\$${_subtotal.toStringAsFixed(2)})'),
-              behavior: SnackBarBehavior.floating,
-            ),
+          _showSnackBar(
+            'Item total (\$${newTotalItems.toStringAsFixed(2)}) would exceed the subtotal (\$${_subtotal.toStringAsFixed(2)})',
           );
           return;
         }
-        
+
+        // Add item with haptic feedback
+        HapticFeedback.mediumImpact();
+
         setState(() {
           _items.add(BillItem(name: name, price: price, assignments: {}));
           _itemNameController.clear();
@@ -217,6 +212,9 @@ class _BillEntryScreenState extends State<BillEntryScreen>
   }
 
   void _removeItem(int index) {
+    // Provide haptic feedback for item removal
+    HapticFeedback.mediumImpact();
+
     setState(() {
       _items.removeAt(index);
       _calculateItemsTotal();
@@ -230,67 +228,112 @@ class _BillEntryScreenState extends State<BillEntryScreen>
         // Show warning dialog that items don't match subtotal
         showDialog(
           context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Items Don\'t Match Subtotal'),
-            content: Text(
-              'Your added items total \$${_itemsTotal.toStringAsFixed(2)}, but your subtotal is \$${_subtotal.toStringAsFixed(2)}. Do you want to continue anyway, or add more items?'
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Add More Items'),
+          builder:
+              (context) => AlertDialog(
+                title: const Text('Items Don\'t Match Subtotal'),
+                content: Text(
+                  'Your added items total \$${_itemsTotal.toStringAsFixed(2)}, but your subtotal is \$${_subtotal.toStringAsFixed(2)}. Do you want to continue anyway, or add more items?',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      // Provide feedback
+                      HapticFeedback.selectionClick();
+                    },
+                    child: const Text('Add More Items'),
+                  ),
+                  FilledButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      // Provide feedback
+                      HapticFeedback.mediumImpact();
+                      _navigateToItemAssignment();
+                    },
+                    child: const Text('Continue Anyway'),
+                  ),
+                ],
               ),
-              FilledButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _navigateToItemAssignment();
-                },
-                child: const Text('Continue Anyway'),
-              ),
-            ],
-          ),
         );
       } else {
+        // Provide haptic feedback for continuing
+        HapticFeedback.mediumImpact();
+
         // All good, navigate to the next screen
         _navigateToItemAssignment();
       }
     } else {
       // Show error for missing subtotal
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a subtotal amount'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      _showSnackBar('Please enter a subtotal amount');
     }
   }
-  
+
   void _navigateToItemAssignment() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => ItemAssignmentScreen(
-          participants: widget.participants,
-          items: _items,
-          subtotal: _subtotal,
-          tax: _tax,
-          tipAmount: _tipAmount,
-          total: _total,
-          tipPercentage: _tipPercentage,
-          alcoholTipPercentage: _alcoholTipPercentage,
-          useDifferentAlcoholTip: _useDifferentTipForAlcohol,
-        ),
+        builder:
+            (context) => ItemAssignmentScreen(
+              participants: widget.participants,
+              items: _items,
+              subtotal: _subtotal,
+              tax: _tax,
+              tipAmount: _tipAmount,
+              total: _total,
+              tipPercentage: _tipPercentage,
+              alcoholTipPercentage: _alcoholTipPercentage,
+              useDifferentAlcoholTip: _useDifferentTipForAlcohol,
+            ),
       ),
     );
+  }
+
+  // Show a premium styled snackbar with haptic feedback
+  void _showSnackBar(String message) {
+    // Provide haptic feedback for error
+    HapticFeedback.vibrate();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.info_outline, color: Colors.white, size: 18),
+            const SizedBox(width: 10),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        behavior: SnackBarBehavior.floating,
+        width: MediaQuery.of(context).size.width * 0.9,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  // Get color for progress indicator
+  Color _getProgressColor(BuildContext context, double value) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    // The 0.99 threshold accounts for floating point rounding errors
+    if ((value / _subtotal) > 1.0) {
+      return colorScheme.error;
+    } else if ((value / _subtotal) >= 0.99) {
+      return const Color(0xFF4CAF50); // Material Green
+    } else {
+      return colorScheme.primary;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Enter Bill Details'),
         centerTitle: true,
+        elevation: 0,
+        scrolledUnderElevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new),
           onPressed: () => Navigator.of(context).pop(),
@@ -299,37 +342,55 @@ class _BillEntryScreenState extends State<BillEntryScreen>
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
         child: ListView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           children: [
-            // Participant avatars at the top - fixed to prevent overflow
-            SizedBox(
-              height: 60, // Reduced height
+            // Participant avatars with premium styling
+            Container(
+              height: 80,
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceVariant.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 itemCount: widget.participants.length,
                 itemBuilder: (context, index) {
                   final person = widget.participants[index];
-                  return Container(
-                    width: 55,
-                    padding: const EdgeInsets.only(right: 8),
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        CircleAvatar(
-                          backgroundColor: person.color,
-                          radius: 18, // Smaller avatars
-                          child: Text(
-                            person.name[0].toUpperCase(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: person.color.withOpacity(0.3),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: CircleAvatar(
+                            backgroundColor: person.color,
+                            radius: 18,
+                            child: Text(
+                              person.name[0].toUpperCase(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Flexible(
+                        SizedBox(
+                          width: 45,
                           child: Text(
                             person.name,
-                            style: Theme.of(context).textTheme.labelSmall, // Smaller text
+                            style: textTheme.labelSmall,
                             overflow: TextOverflow.ellipsis,
                             textAlign: TextAlign.center,
                             maxLines: 1,
@@ -342,584 +403,1031 @@ class _BillEntryScreenState extends State<BillEntryScreen>
               ),
             ),
 
-            const SizedBox(height: 16), // Reduced spacing
+            const SizedBox(height: 20),
 
             // Bill totals section
-            Card(
-              elevation: 0,
-              color: colorScheme.surfaceVariant.withOpacity(0.3),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            _buildSectionCard(
+              context,
+              title: 'Bill Total',
+              icon: Icons.receipt_long,
+              children: [
+                // Subtotal field with premium styling
+                TextFormField(
+                  controller: _subtotalController,
+                  decoration: _buildInputDecoration(
+                    labelText: 'Subtotal',
+                    prefixText: '\$',
+                    hintText: '0.00',
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  inputFormatters: [_currencyFormatter],
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Tax field with premium styling
+                TextFormField(
+                  controller: _taxController,
+                  decoration: _buildInputDecoration(
+                    labelText: 'Tax',
+                    prefixText: '\$',
+                    hintText: '0.00',
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  inputFormatters: [_currencyFormatter],
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
+            // Tip section
+            _buildSectionCard(
+              context,
+              title: 'Tip Options',
+              icon: Icons.volunteer_activism,
+              children: [
+                // Title and tip toggle
+                Row(
                   children: [
-                    Text(
-                      'Bill Totals',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Subtotal field
-                    TextField(
-                      controller: _subtotalController,
-                      decoration: InputDecoration(
-                        labelText: 'Subtotal',
-                        prefixText: '\$',
-                        filled: true,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
+                    const Spacer(),
+                    // Modern toggle between percentage and custom amount
+                    Container(
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceVariant.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _useCustomTipAmount = false;
+                                _calculateBill();
+                              });
+                              // Provide feedback
+                              HapticFeedback.selectionClick();
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              curve: Curves.easeInOut,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color:
+                                    !_useCustomTipAmount
+                                        ? colorScheme.primary
+                                        : Colors.transparent,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                'Percentage',
+                                style: TextStyle(
+                                  color:
+                                      !_useCustomTipAmount
+                                          ? Colors.white
+                                          : colorScheme.onSurfaceVariant,
+                                  fontWeight:
+                                      !_useCustomTipAmount
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _useCustomTipAmount = true;
+                                _calculateBill();
+                              });
+                              // Provide feedback
+                              HapticFeedback.selectionClick();
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              curve: Curves.easeInOut,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color:
+                                    _useCustomTipAmount
+                                        ? colorScheme.primary
+                                        : Colors.transparent,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                'Custom',
+                                style: TextStyle(
+                                  color:
+                                      _useCustomTipAmount
+                                          ? Colors.white
+                                          : colorScheme.onSurfaceVariant,
+                                  fontWeight:
+                                      _useCustomTipAmount
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      inputFormatters: [_currencyFormatter],
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // Tax field
-                    TextField(
-                      controller: _taxController,
-                      decoration: InputDecoration(
-                        labelText: 'Tax',
-                        prefixText: '\$',
-                        filled: true,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      inputFormatters: [_currencyFormatter],
                     ),
                   ],
                 ),
-              ),
-            ),
 
-            const SizedBox(height: 16), // Reduced spacing
+                const SizedBox(height: 16),
 
-            // Tip section
-            Card(
-              elevation: 0,
-              color: colorScheme.surfaceVariant.withOpacity(0.3),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title and tip toggle
-                    Row(
+                // Custom tip amount field (visible when custom amount is selected)
+                if (_useCustomTipAmount)
+                  TextFormField(
+                    controller: _customTipController,
+                    decoration: _buildInputDecoration(
+                      labelText: 'Tip Amount',
+                      prefixText: '\$',
+                      hintText: '0.00',
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: [_currencyFormatter],
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+
+                // Percentage tip options (visible when percentage is selected)
+                if (!_useCustomTipAmount) ...[
+                  // Tip percentage display with premium styling
+                  Container(
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
                       children: [
                         Text(
-                          'Tip Options',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const Spacer(),
-                        // Simple toggle between percentage and custom amount
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            GestureDetector(
-                              onTap:
-                                  () => setState(() {
-                                    _useCustomTipAmount = false;
-                                    _calculateBill();
-                                  }),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color:
-                                      !_useCustomTipAmount
-                                          ? colorScheme.primary
-                                          : Colors.transparent,
-                                  borderRadius: const BorderRadius.horizontal(
-                                    left: Radius.circular(16),
-                                  ),
-                                  border: Border.all(
-                                    color: colorScheme.primary,
-                                  ),
-                                ),
-                                child: Text(
-                                  '%',
-                                  style: TextStyle(
-                                    color:
-                                        !_useCustomTipAmount
-                                            ? Colors.white
-                                            : colorScheme.primary,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap:
-                                  () => setState(() {
-                                    _useCustomTipAmount = true;
-                                    _calculateBill();
-                                  }),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color:
-                                      _useCustomTipAmount
-                                          ? colorScheme.primary
-                                          : Colors.transparent,
-                                  borderRadius: const BorderRadius.horizontal(
-                                    right: Radius.circular(16),
-                                  ),
-                                  border: Border.all(
-                                    color: colorScheme.primary,
-                                  ),
-                                ),
-                                child: Text(
-                                  '\$',
-                                  style: TextStyle(
-                                    color:
-                                        _useCustomTipAmount
-                                            ? Colors.white
-                                            : colorScheme.primary,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Custom tip amount field (visible when custom amount is selected)
-                    if (_useCustomTipAmount)
-                      TextField(
-                        controller: _customTipController,
-                        decoration: InputDecoration(
-                          labelText: 'Tip Amount',
-                          prefixText: '\$',
-                          filled: true,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
+                          '${_tipPercentage.toInt()}%',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.primary,
                           ),
                         ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        inputFormatters: [_currencyFormatter],
-                      ),
-
-                    // Percentage tip options (visible when percentage is selected)
-                    if (!_useCustomTipAmount) ...[
-                      // Tip slider
-                      Row(
-                        children: [
-                          Text('${_tipPercentage.toInt()}%'),
-                          Expanded(
+                        Expanded(
+                          child: SliderTheme(
+                            data: SliderTheme.of(context).copyWith(
+                              activeTrackColor: colorScheme.primary,
+                              inactiveTrackColor: colorScheme.primary
+                                  .withOpacity(0.2),
+                              thumbColor: colorScheme.primary,
+                              overlayColor: colorScheme.primary.withOpacity(
+                                0.2,
+                              ),
+                              trackHeight: 4,
+                              thumbShape: const RoundSliderThumbShape(
+                                enabledThumbRadius: 8,
+                                elevation: 2,
+                              ),
+                              overlayShape: const RoundSliderOverlayShape(
+                                overlayRadius: 16,
+                              ),
+                            ),
                             child: Slider(
                               value: _tipPercentage,
                               min: 0,
                               max: 50,
                               divisions: 50, // 1% increments
-                              label: '${_tipPercentage.toInt()}%',
                               onChanged: (value) {
                                 setState(() {
                                   _tipPercentage = value;
                                   _calculateBill();
                                 });
+                                // Light feedback on drag
+                                if (value.toInt() % 5 == 0) {
+                                  HapticFeedback.selectionClick();
+                                }
                               },
                             ),
                           ),
-                          // Removed direct typing option for percentage
-                          Container(
-                            width: 40,
-                            height: 32,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: colorScheme.surfaceVariant,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              '${_tipPercentage.toInt()}%',
-                              style: TextStyle(
-                                color: colorScheme.onSurfaceVariant,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
+                    ),
+                  ),
 
-                      // Quick tip percentage buttons
-                      Wrap(
-                        spacing: 8,
-                        children:
-                            [15, 18, 20, 25, 30].map((percentage) {
-                              return ActionChip(
-                                label: Text('$percentage%'),
-                                onPressed: () {
-                                  setState(() {
-                                    _tipPercentage = percentage.toDouble();
-                                    _calculateBill();
-                                  });
-                                },
-                                backgroundColor:
+                  const SizedBox(height: 16),
+
+                  // Quick tip percentage buttons with premium styling
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children:
+                        [15, 18, 20, 25, 30].map((percentage) {
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _tipPercentage = percentage.toDouble();
+                                _calculateBill();
+                              });
+                              // Provide feedback
+                              HapticFeedback.selectionClick();
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color:
                                     _tipPercentage == percentage
-                                        ? colorScheme.primary.withOpacity(0.2)
-                                        : null,
-                                side: BorderSide(
+                                        ? colorScheme.primary
+                                        : colorScheme.surface,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
                                   color:
                                       _tipPercentage == percentage
                                           ? colorScheme.primary
-                                          : Colors.grey.shade300,
+                                          : colorScheme.outline.withOpacity(
+                                            0.5,
+                                          ),
+                                  width: 1.5,
                                 ),
-                              );
-                            }).toList(),
+                                boxShadow:
+                                    _tipPercentage == percentage
+                                        ? [
+                                          BoxShadow(
+                                            color: colorScheme.primary
+                                                .withOpacity(0.2),
+                                            blurRadius: 4,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ]
+                                        : null,
+                              ),
+                              child: Text(
+                                '$percentage%',
+                                style: TextStyle(
+                                  color:
+                                      _tipPercentage == percentage
+                                          ? Colors.white
+                                          : colorScheme.onSurface,
+                                  fontWeight:
+                                      _tipPercentage == percentage
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Separate alcohol tip toggle
+                  Container(
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceVariant.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: SwitchListTile(
+                      title: const Text('Different tip for alcohol?'),
+                      subtitle: const Text('Useful for higher tips on drinks'),
+                      value: _useDifferentTipForAlcohol,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
                       ),
+                      onChanged: (value) {
+                        setState(() {
+                          _useDifferentTipForAlcohol = value;
+                          _calculateBill();
+                        });
+                        // Provide feedback
+                        HapticFeedback.selectionClick();
+                      },
+                      activeColor: colorScheme.primary,
+                      inactiveTrackColor: colorScheme.surfaceVariant,
+                    ),
+                  ),
 
-                      const SizedBox(height: 16),
+                  // Show alcohol fields if separate tip is enabled
+                  if (_useDifferentTipForAlcohol) ...[
+                    const SizedBox(height: 16),
 
-                      // Separate alcohol tip toggle
-                      SwitchListTile(
-                        title: const Text('Different tip for alcohol?'),
-                        subtitle: const Text(
-                          'Useful for higher tips on drinks',
-                        ),
-                        value: _useDifferentTipForAlcohol,
-                        contentPadding: EdgeInsets.zero,
-                        onChanged: (value) {
-                          setState(() {
-                            _useDifferentTipForAlcohol = value;
-                            _calculateBill();
-                          });
-                        },
+                    // Alcohol amount field
+                    TextFormField(
+                      controller: _alcoholController,
+                      decoration: _buildInputDecoration(
+                        labelText: 'Alcohol portion of bill',
+                        prefixText: '\$',
+                        hintText: '0.00',
                       ),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      inputFormatters: [_currencyFormatter],
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
 
-                      // Show alcohol fields if separate tip is enabled
-                      if (_useDifferentTipForAlcohol) ...[
-                        const SizedBox(height: 12),
+                    const SizedBox(height: 16),
 
-                        // Alcohol amount field
-                        TextField(
-                          controller: _alcoholController,
-                          decoration: InputDecoration(
-                            labelText: 'Alcohol portion of bill',
-                            prefixText: '\$',
-                            filled: true,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
+                    // Alcohol tip percentage display with premium styling
+                    Container(
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: colorScheme.tertiary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        children: [
+                          Text(
+                            '${_alcoholTipPercentage.toInt()}%',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.tertiary,
                             ),
                           ),
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          inputFormatters: [_currencyFormatter],
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        // Alcohol tip slider
-                        Row(
-                          children: [
-                            Text('${_alcoholTipPercentage.toInt()}%'),
-                            Expanded(
+                          Expanded(
+                            child: SliderTheme(
+                              data: SliderTheme.of(context).copyWith(
+                                activeTrackColor: colorScheme.tertiary,
+                                inactiveTrackColor: colorScheme.tertiary
+                                    .withOpacity(0.2),
+                                thumbColor: colorScheme.tertiary,
+                                overlayColor: colorScheme.tertiary.withOpacity(
+                                  0.2,
+                                ),
+                                trackHeight: 4,
+                                thumbShape: const RoundSliderThumbShape(
+                                  enabledThumbRadius: 8,
+                                  elevation: 2,
+                                ),
+                                overlayShape: const RoundSliderOverlayShape(
+                                  overlayRadius: 16,
+                                ),
+                              ),
                               child: Slider(
                                 value: _alcoholTipPercentage,
                                 min: 0,
                                 max: 50,
                                 divisions: 50, // 1% increments
-                                label: '${_alcoholTipPercentage.toInt()}%',
                                 onChanged: (value) {
                                   setState(() {
                                     _alcoholTipPercentage = value;
                                     _calculateBill();
                                   });
+                                  // Light feedback on drag
+                                  if (value.toInt() % 5 == 0) {
+                                    HapticFeedback.selectionClick();
+                                  }
                                 },
                               ),
                             ),
-                            // Removed direct typing option for percentage
-                            Container(
-                              width: 40,
-                              height: 32,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: colorScheme.surfaceVariant,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                '${_alcoholTipPercentage.toInt()}%',
-                                style: TextStyle(
-                                  color: colorScheme.onSurfaceVariant,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ],
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 16), // Reduced spacing
-
-            // Item entry section
-            Card(
-              elevation: 0,
-              color: colorScheme.surfaceVariant.withOpacity(0.3),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Add Items (Optional)',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Adding items helps assign specific dishes to people',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Item name field
-                    TextField(
-                      controller: _itemNameController,
-                      decoration: InputDecoration(
-                        labelText: 'Item name',
-                        filled: true,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // Item price field with add button
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _itemPriceController,
-                            decoration: InputDecoration(
-                              labelText: 'Item price',
-                              prefixText: '\$',
-                              filled: true,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide.none,
-                              ),
-                            ),
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            inputFormatters: [_currencyFormatter],
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        IconButton.filled(
-                          onPressed: _addItem,
-                          icon: const Icon(Icons.add),
-                          style: IconButton.styleFrom(
-                            backgroundColor: colorScheme.primary,
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Progress indicator showing items total vs subtotal
-                    if (_items.isNotEmpty && _subtotal > 0) ...[
-                      Row(
-                        children: [
-                          Text('Items: \$${_animatedItemsTotal.toStringAsFixed(2)}'),
-                          const SizedBox(width: 4),
-                          Text('of'),
-                          const SizedBox(width: 4),
-                          Text('\$${_subtotal.toStringAsFixed(2)}'),
-                          const Spacer(),
-                          Text('${(_animatedItemsTotal / _subtotal * 100).toStringAsFixed(0)}%'),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      // Smoothly animated progress indicator
-                      LinearProgressIndicator(
-                        value: _subtotal > 0 ? (_animatedItemsTotal / _subtotal).clamp(0.0, 1.0) : 0,
-                        backgroundColor: Colors.grey.withOpacity(0.2),
-                        color: _animatedItemsTotal > _subtotal 
-                            ? colorScheme.error 
-                            : _animatedItemsTotal == _subtotal 
-                                ? colorScheme.primaryContainer
-                                : colorScheme.primary,
-                        borderRadius: BorderRadius.circular(4),
-                        minHeight: 8,
-                      ),
-                      // Only show a small gap if there are items
-                      const SizedBox(height: 12),
-                    ],
+                    ),
+                  ],
+                ],
+              ],
+            ),
 
-                    // List of added items
-                    if (_items.isNotEmpty) ...[
-                      Text(
-                        'Added Items',
-                        style: Theme.of(context).textTheme.titleSmall,
+            const SizedBox(height: 20),
+
+            // Item entry section
+            _buildSectionCard(
+              context,
+              title: 'Add Items (Optional)',
+              subTitle: 'Adding items helps assign specific dishes to people',
+              icon: Icons.restaurant_menu,
+              children: [
+                // Item name field with premium styling
+                TextFormField(
+                  controller: _itemNameController,
+                  decoration: _buildInputDecoration(
+                    labelText: 'Item name',
+                    hintText: 'e.g., Pizza, Pasta, Salad',
+                    prefixIcon: Icons.fastfood,
+                  ),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textCapitalization: TextCapitalization.sentences,
+                ),
+
+                const SizedBox(height: 16),
+
+                // Item price field with add button - premium styling
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _itemPriceController,
+                        decoration: _buildInputDecoration(
+                          labelText: 'Item price',
+                          prefixText: '\$',
+                          hintText: '0.00',
+                        ),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        inputFormatters: [_currencyFormatter],
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                      const SizedBox(height: 8),
-                      ListView.builder(
-                        physics: const NeverScrollableScrollPhysics(),
-                        shrinkWrap: true,
-                        itemCount: _items.length,
-                        itemBuilder: (context, index) {
-                          final item = _items[index];
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            elevation: 0,
-                            color: colorScheme.surfaceVariant.withOpacity(0.2),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                    ),
+                    const SizedBox(width: 12),
+                    SizedBox(
+                      height: 56, // Match height with TextField
+                      child: ElevatedButton(
+                        onPressed: _addItem,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 2,
+                          padding: const EdgeInsets.all(16),
+                        ),
+                        child: const Icon(Icons.add),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 20),
+
+                // Progress indicator showing items total vs subtotal - premium styling
+                if (_items.isNotEmpty && _subtotal > 0) ...[
+                  Row(
+                    children: [
+                      ShaderMask(
+                        blendMode: BlendMode.srcIn,
+                        shaderCallback:
+                            (Rect bounds) => LinearGradient(
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                              colors: [
+                                _getProgressColor(context, _animatedItemsTotal),
+                                _getProgressColor(
+                                  context,
+                                  _animatedItemsTotal,
+                                ).withOpacity(0.8),
+                              ],
+                            ).createShader(bounds),
+                        child: Text(
+                          'Items: \$${_animatedItemsTotal.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text('of'),
+                      const SizedBox(width: 4),
+                      Text(
+                        '\$${_subtotal.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.onSurface.withOpacity(0.8),
+                        ),
+                      ),
+                      const Spacer(),
+                      // Animated percentage with premium styling
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _getProgressColor(
+                            context,
+                            _animatedItemsTotal,
+                          ).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '${(_animatedItemsTotal / _subtotal * 100).toStringAsFixed(0)}%',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            color: _getProgressColor(
+                              context,
+                              _animatedItemsTotal,
                             ),
-                            child: ListTile(
-                              title: Text(item.name),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    '\$${item.price.toStringAsFixed(2)}',
-                                    style: const TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.remove_circle_outline),
-                                    onPressed: () => _removeItem(index),
-                                    color: colorScheme.error,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Premium animated progress indicator with gradient and rounded caps
+                  Container(
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return Stack(
+                          children: [
+                            Container(
+                              width:
+                                  constraints.maxWidth *
+                                  (_subtotal > 0
+                                      ? (_animatedItemsTotal / _subtotal).clamp(
+                                        0.0,
+                                        1.0,
+                                      )
+                                      : 0),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(4),
+                                gradient: LinearGradient(
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                  colors: [
+                                    _getProgressColor(
+                                      context,
+                                      _animatedItemsTotal,
+                                    ),
+                                    _getProgressColor(
+                                      context,
+                                      _animatedItemsTotal,
+                                    ).withOpacity(0.8),
+                                  ],
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: _getProgressColor(
+                                      context,
+                                      _animatedItemsTotal,
+                                    ).withOpacity(0.3),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 1),
                                   ),
                                 ],
                               ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                              dense: true,
                             ),
-                          );
-                        },
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+
+                  // Only show items list if there are items
+                  if (_items.isNotEmpty) ...[
+                    const SizedBox(height: 20),
+
+                    // Premium styled items list
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.format_list_bulleted,
+                          size: 16,
+                          color: colorScheme.primary,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Added Items',
+                          style: textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    ...List.generate(_items.length, (index) {
+                      final item = _items[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 6,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            title: Text(
+                              item.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Make the price container adaptable
+                                Flexible(
+                                  // Add this Flexible wrapper
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.primary.withOpacity(
+                                        0.1,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      '\$${item.price.toStringAsFixed(2)}',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: colorScheme.primary,
+                                      ),
+                                      overflow:
+                                          TextOverflow.ellipsis, // Add this
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                // Delete button with premium styling
+                                Material(
+                                  color: Colors.transparent,
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(20),
+                                    onTap: () => _removeItem(index),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(6),
+                                      child: Icon(
+                                        Icons.delete_outline,
+                                        color: colorScheme.error,
+                                        size: 22,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                ],
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
+            // Bill summary with premium styling
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    colorScheme.primaryContainer,
+                    colorScheme.primaryContainer.withOpacity(0.8),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: colorScheme.primaryContainer.withOpacity(0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  // Premium title with icon
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.summarize,
+                        color: colorScheme.onPrimaryContainer,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Bill Summary',
+                        style: textTheme.titleMedium?.copyWith(
+                          color: colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Premium summary rows
+                  _buildSummaryRow(
+                    label: 'Subtotal',
+                    value: _subtotal,
+                    colorScheme: colorScheme,
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  _buildSummaryRow(
+                    label: 'Tax',
+                    value: _tax,
+                    colorScheme: colorScheme,
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  _buildSummaryRow(
+                    label:
+                        _useCustomTipAmount
+                            ? 'Tip (Custom)'
+                            : _useDifferentTipForAlcohol
+                            ? 'Tip (Food/Alcohol)'
+                            : 'Tip (${_tipPercentage.toInt()}%)',
+                    value: _tipAmount,
+                    colorScheme: colorScheme,
+                  ),
+
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Divider(height: 1, thickness: 1),
+                  ),
+
+                  // Premium total row
+                  // Replace the premium total row with this:
+                  Row(
+                    children: [
+                      // Left side - the TOTAL label
+                      const Text(
+                        'TOTAL',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      // Spacer to push the price to the right
+                      const Spacer(),
+                      // Right side - the price in container with fixed width
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colorScheme.onPrimaryContainer.withOpacity(
+                            0.1,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '\$${_total.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                            color: colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
 
-            const SizedBox(height: 16), // Reduced spacing
+            const SizedBox(height: 24),
 
-            // Bill summary
-            Card(
-              elevation: 0,
-              color: colorScheme.primaryContainer.withOpacity(0.7),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
+            // Premium continue button
+            SizedBox(
+              height: 56,
+              child: ElevatedButton(
+                onPressed: _continueToItemAssignment,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colorScheme.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 4,
+                  shadowColor: colorScheme.primary.withOpacity(0.4),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      'Bill Summary',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: colorScheme.onPrimaryContainer,
+                    const Text(
+                      "Continue to Item Assignment",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Subtotal:'),
-                        Text('\$${_subtotal.toStringAsFixed(2)}'),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Tax:'),
-                        Text('\$${_tax.toStringAsFixed(2)}'),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          _useCustomTipAmount
-                              ? 'Tip (Custom):'
-                              : _useDifferentTipForAlcohol
-                              ? 'Tip (Food/Alcohol):'
-                              : 'Tip (${_tipPercentage.toInt()}%):',
-                        ),
-                        Text('\$${_tipAmount.toStringAsFixed(2)}'),
-                      ],
-                    ),
-                    const Divider(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'TOTAL',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        Text(
-                          '\$${_total.toStringAsFixed(2)}',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ],
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.arrow_forward, size: 18),
                     ),
                   ],
                 ),
               ),
             ),
 
-            const SizedBox(height: 16), // Reduced spacing
-
-            // Continue button
-            ElevatedButton(
-              onPressed: _continueToItemAssignment,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colorScheme.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: const Text(
-                "Continue to Item Assignment",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-            ),
+            const SizedBox(height: 24),
           ],
         ),
       ),
+    );
+  }
+
+  // Helper method to build consistent section cards
+  Widget _buildSectionCard(
+    BuildContext context, {
+    required String title,
+    String? subTitle,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Premium section header
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: colorScheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: colorScheme.primary, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                title,
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+
+          // Optional subtitle
+          if (subTitle != null) ...[
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.only(left: 38),
+              child: Text(
+                subTitle,
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 20),
+
+          // Section content
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  // Helper method to build consistent summary rows
+  Widget _buildSummaryRow({
+    required String label,
+    required double value,
+    required ColorScheme colorScheme,
+  }) {
+    return Row(
+      children: [
+        // Use Expanded instead of Flexible to force the label to take available space
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: colorScheme.onPrimaryContainer.withOpacity(0.8),
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        // Use a fixed width SizedBox for the value to ensure consistency
+        SizedBox(
+          width:
+              80, // Fixed width for the price that should be enough for any reasonable value
+          child: Text(
+            '\$${value.toStringAsFixed(2)}',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: colorScheme.onPrimaryContainer,
+            ),
+            textAlign:
+                TextAlign.right, // Right align text within the fixed width
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Helper method to build consistent input decorations
+  InputDecoration _buildInputDecoration({
+    required String labelText,
+    String? prefixText,
+    String? hintText,
+    IconData? prefixIcon,
+  }) {
+    return InputDecoration(
+      labelText: labelText,
+      labelStyle: TextStyle(
+        color: Colors.grey.shade600,
+        fontWeight: FontWeight.w500,
+      ),
+      prefixText: prefixText,
+      prefixIcon:
+          prefixIcon != null
+              ? Icon(prefixIcon, size: 18, color: Colors.grey.shade600)
+              : null,
+      hintText: hintText,
+      filled: true,
+      fillColor: Colors.grey.shade50,
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.grey.shade200, width: 1.5),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(
+          color: Theme.of(context).colorScheme.primary,
+          width: 1.5,
+        ),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     );
   }
 }
