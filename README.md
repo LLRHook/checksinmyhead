@@ -1,68 +1,44 @@
 # ChecksInMyHead Setup
 
-## Project Structure
+## Project Overview
+
+ChecksInMyHead is a Flutter-based application designed for smart receipt splitting. The project focuses on providing a seamless user experience for managing expenses and splitting bills among participants.
+
+### Development Architecture
+
+The project is structured as follows:
+
 ```
 repo-root/
 │
-├── backend/
-│ ├── main.py # FastAPI entrypoint
-│ ├── models/ # MongoDB schemas
-│ ├── routes/ # FastAPI routers
-│ ├── utils/ # Helper functions (OCR, parsing, etc.)
-│ ├── .env.example # Template env file
-│ └── pyproject.toml # Ruff config
+├── frontend/ # Flutter application
+│ ├── lib/ # Main application code
+│ ├── ios/ # iOS-specific code
+│ ├── android/ # Android-specific code
+│ ├── pubspec.yaml # Flutter dependencies
+│ └── README.md # Frontend setup instructions
 │
-├── frontend/ # Flutter code goes here
-├── docs/ # Any diagrams, architecture notes
-├── sample-data/receipts/ # Real/test receipts
-├── tests/ # Pytest or unit tests
-├── .pre-commit-config.yaml
-└── README.md
+├── docs/ # Diagrams and architecture notes
+├── sample-data/receipts/ # Example receipts for testing
+├── tests/ # Unit tests for the application
+├── .pre-commit-config.yaml # Pre-commit hooks configuration
+└── README.md # This file
 ```
+
+### Design Decisions
+
+1. **Frontend-Only Architecture**:  
+   The project is now entirely frontend-focused, leveraging Flutter for cross-platform development. Backend functionality (e.g., OCR, parsing) can be integrated via APIs or third-party services in the future.
+
+2. **Cross-Platform Support**:  
+   The Flutter framework ensures compatibility with both iOS and Android devices, providing a consistent user experience across platforms.
+
+3. **Modular Codebase**:  
+   The `lib/` directory in the frontend contains modularized code for screens, widgets, and utilities, making it easier to maintain and extend.
+
+4. **Pre-commit Hooks**:  
+   Pre-commit hooks are configured to enforce code quality and consistency across the project.
 
 ## Setup Instructions
 
-### 1. Install uv
-```bash
-# Install uv directly (not through pip)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-### 2. Set up Environment Variables
-Copy the example env file and fill in your values:
-```bash
-# On Windows
-cp backend\.env.example backend\.env
-
-# On Unix/Linux/macOS
-cp backend/.env.example backend/.env
-```
-
-### 3. Set up Virtual Environment and Install Dependencies
-```bash
-# Create a virtual environment
-uv venv
-
-# Activate the virtual environment
-# On Windows
-.venv\Scripts\activate
-# On Unix/Linux/macOS
-source .venv/bin/activate
-
-# Install dependencies
-uv pip install -r requirements.txt
-```
-
-### 4. Set up Pre-commit
-```bash
-pre-commit install
-```
-
-### 5. Run the Server
-```bash
-uvicorn backend.main:app --reload
-```
-
-Test the API:
-- Open your browser and visit: http://localhost:8000/ping
-- You should see: `{"message": "pong"}`
+To set up the project, follow the instructions in the [frontend/README.md](frontend/README.md).
