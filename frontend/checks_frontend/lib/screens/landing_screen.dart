@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'quick_split/add_people/who_splitting_screen.dart'; // Import the quick split sheet
+import 'quick_split/add_people/participant_selection_sheet.dart'; // Import the participant selection sheet
 
 class LandingScreen extends StatefulWidget {
   const LandingScreen({super.key});
@@ -37,10 +37,10 @@ class _LandingScreenState extends State<LandingScreen>
     super.dispose();
   }
 
-  // Show quick split sheet when quick split button is pressed
+  // Show participant selection sheet when quick split button is pressed
   void _showQuickSplitSheet() {
-    // Use the imported function to show the sheet
-    showQuickSplitSheet(context);
+    // Use the imported function with the updated name
+    showParticipantSelectionSheet(context);
   }
 
   @override
