@@ -20,3 +20,5 @@ then you can press the unassigned items and it doesn't do what we expect.
 - on iphone 15 pro, the custom split button is overflowing.
 
 - the modal for when you don't fully assign, the UNASSIGNED AMOUNT dialog has a kinda ugly UI. the button is messed up too, it doesn't work nor looks good.
+
+- address deprecated methods
