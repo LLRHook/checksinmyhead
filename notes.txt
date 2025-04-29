@@ -3,15 +3,20 @@ issues to fix:
 first page:
 alcohol tax, if considering alc tip as separate. think of how to make that eloquent
 
-summary:
-calcs work i think
-ask for faang/duolingo caliber redesign
-
 share functionality:
-when share is hit, it puts names and their total into a nice text msg format.
-could say the items they got, their share of tip and tax, and then the total.
 provide a way to add a payment method or something. link their zelle or venmo
-who knows
 
 done:
-store the last 10 in the shared pref or something
+store the last 3 bills in local database
+migrate local database out of shared preferences, store the app data in there
+also, share state of toggles, like showing items in text blast.
+
+- if you don't have enough items in the thing, say you have a bill of 100 and 1 item in there,
+then you can press the unassigned items and it doesn't do what we expect.
+- SOLUTIONS? could just enforce the fact that the total must be met or something
+
+- dark mode? causes a plethora of issues throughout the app
+
+- on iphone 15 pro, the custom split button is overflowing.
+
+- the modal for when you don't fully assign, the UNASSIGNED AMOUNT dialog has a kinda ugly UI. the button is messed up too, it doesn't work nor looks good.
