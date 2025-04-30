@@ -1,8 +1,8 @@
 issues to fix:
 
 first page:
-alcohol tax, if considering alc tip as separate. think of how to make that eloquent. also, need to mark items as liquor or something?
-otherwise, it'll just get split among everyone...
+need the alc tax to show in the billSummary, and then move through the rest of the app.
+maybe it should attach to the alcohol item as part of the price/share or whatever.
 
 ---
 share functionality:
@@ -37,7 +37,7 @@ Can still add them to splits manually without Venmo links
 
 - build the functionality of the recent bills view more:
 - share bill, maybe clean up delete modal, and then also the bill details/pill expansion.
-- cheeky lil redesign
+- cheeky lil redesign?
 
 - if you don't have enough items in the thing, say you have a bill of 100 and 1 item in there,
 then you can press the unassigned items and it doesn't do what we expect.

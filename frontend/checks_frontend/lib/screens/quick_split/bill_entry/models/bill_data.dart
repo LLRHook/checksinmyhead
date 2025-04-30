@@ -13,18 +13,25 @@ class BillData extends ChangeNotifier {
   // New controller for alcohol tax
   final TextEditingController alcoholTaxController = TextEditingController();
 
+  // New controller for custom alcohol tip
+  final TextEditingController customAlcoholTipController =
+      TextEditingController();
+
   // Tip settings
   double tipPercentage = 18.0;
   bool useDifferentTipForAlcohol = false;
   double alcoholTipPercentage = 20.0;
   double alcoholAmount = 0.0;
   bool useCustomTipAmount = false;
+  bool useCustomAlcoholTipAmount = false;
 
   // Bill calculation values
   double subtotal = 0.0;
   double tax = 0.0;
   double alcoholTax = 0.0; // New property
   double tipAmount = 0.0;
+  double alcoholTipAmount =
+      0.0; // New property to track alcohol tip for display
   double total = 0.0;
 
   // List of items to split
@@ -43,6 +50,9 @@ class BillData extends ChangeNotifier {
     alcoholTaxController.addListener(
       calculateBill,
     ); // Add listener for alcohol tax
+    customAlcoholTipController.addListener(
+      calculateBill,
+    ); // Add listener for custom alcohol tip
   }
 
   @override
@@ -55,6 +65,8 @@ class BillData extends ChangeNotifier {
     itemPriceController.dispose();
     customTipController.dispose();
     alcoholTaxController.dispose(); // Dispose new controller
+    customAlcoholTipController
+        .dispose(); // Dispose custom alcohol tip controller
     super.dispose();
   }
 
@@ -88,6 +100,8 @@ class BillData extends ChangeNotifier {
       } catch (_) {
         tipAmount = 0.0;
       }
+      alcoholTipAmount =
+          0.0; // Reset alcohol tip amount when using overall custom tip
     } else {
       // Calculate food amount (subtotal minus alcohol)
       final foodAmount = subtotal - alcoholAmount;
@@ -97,11 +111,25 @@ class BillData extends ChangeNotifier {
       double alcoholTip = 0.0;
 
       if (useDifferentTipForAlcohol) {
+        if (useCustomAlcoholTipAmount) {
+          // Use custom alcohol tip amount
+          try {
+            alcoholTip =
+                double.tryParse(customAlcoholTipController.text) ?? 0.0;
+          } catch (_) {
+            alcoholTip = 0.0;
+          }
+        } else {
+          // Use percentage-based alcohol tip
+          alcoholTip = alcoholAmount * (alcoholTipPercentage / 100);
+        }
+
         foodTip = foodAmount * (tipPercentage / 100);
-        alcoholTip = alcoholAmount * (alcoholTipPercentage / 100);
         tipAmount = foodTip + alcoholTip;
+        alcoholTipAmount = alcoholTip; // Store for display
       } else {
         tipAmount = subtotal * (tipPercentage / 100);
+        alcoholTipAmount = 0.0;
       }
     }
 
@@ -201,6 +229,12 @@ class BillData extends ChangeNotifier {
   // Set alcohol tip percentage
   void setAlcoholTipPercentage(double value) {
     alcoholTipPercentage = value;
+    calculateBill();
+  }
+
+  // Toggle custom alcohol tip amount
+  void toggleCustomAlcoholTipAmount(bool value) {
+    useCustomAlcoholTipAmount = value;
     calculateBill();
   }
 }

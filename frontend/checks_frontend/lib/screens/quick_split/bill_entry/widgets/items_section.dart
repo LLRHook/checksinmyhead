@@ -358,30 +358,56 @@ class _ItemsSectionState extends State<ItemsSection>
                 ),
                 Spacer(),
                 if (billData.items.isNotEmpty)
-                  TextButton.icon(
-                    onPressed: () => _showAlcoholManagementModal(billData),
-                    icon: Icon(
-                      Icons.wine_bar_outlined,
-                      size: 16,
-                      color: colorScheme.tertiary,
-                    ),
-                    label: Text(
-                      'Any Alcohol?',
-                      style: TextStyle(
-                        color: colorScheme.tertiary,
-                        fontWeight: FontWeight.w500,
-                        fontSize: 12,
-                      ),
-                    ),
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        side: BorderSide(
-                          color: colorScheme.tertiary.withOpacity(0.5),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOutCubic,
+                    child: TextButton(
+                      onPressed: () {
+                        HapticFeedback.mediumImpact();
+                        _showAlcoholManagementModal(billData);
+                      },
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
                         ),
+                        backgroundColor: colorScheme.tertiary.withOpacity(0.08),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0.5,
+                        shadowColor: colorScheme.tertiary.withOpacity(0.03),
                       ),
-                      backgroundColor: colorScheme.tertiary.withOpacity(0.1),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: colorScheme.tertiary.withOpacity(0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: Icon(
+                                Icons.wine_bar_rounded,
+                                size: 16,
+                                color: colorScheme.tertiary,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Any Alcohol?',
+                            style: TextStyle(
+                              color: colorScheme.tertiary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              letterSpacing: 0.1,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
               ],
