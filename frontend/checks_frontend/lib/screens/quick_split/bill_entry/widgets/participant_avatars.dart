@@ -4,7 +4,8 @@ import '/models/person.dart';
 class ParticipantAvatars extends StatelessWidget {
   final List<Person> participants;
 
-  const ParticipantAvatars({Key? key, required this.participants}) : super(key: key);
+  const ParticipantAvatars({Key? key, required this.participants})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {

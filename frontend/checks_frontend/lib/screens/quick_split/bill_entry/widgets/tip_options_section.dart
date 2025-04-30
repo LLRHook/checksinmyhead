@@ -66,14 +66,9 @@ class TipOptionsSection extends StatelessWidget {
               prefixText: '\$',
               hintText: '0.00',
             ),
-            keyboardType: const TextInputType.numberWithOptions(
-              decimal: true,
-            ),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [CurrencyFormatter.currencyFormatter],
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
 
         // Percentage tip options (visible when percentage is selected)
@@ -130,10 +125,7 @@ class TipOptionsSection extends StatelessWidget {
                 decimal: true,
               ),
               inputFormatters: [CurrencyFormatter.currencyFormatter],
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
             ),
 
             const SizedBox(height: 16),
@@ -178,10 +170,7 @@ class _ToggleOption extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeInOut,
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 8,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected ? colorScheme.primary : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
@@ -242,9 +231,7 @@ class _TipPercentageSlider extends StatelessWidget {
                   enabledThumbRadius: 8,
                   elevation: 2,
                 ),
-                overlayShape: const RoundSliderOverlayShape(
-                  overlayRadius: 16,
-                ),
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
               ),
               child: Slider(
                 value: tipPercentage,
@@ -278,50 +265,56 @@ class _QuickTipPercentageButtons extends StatelessWidget {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: [15, 18, 20, 25, 30].map((percentage) {
-        return GestureDetector(
-          onTap: () => onPercentageSelected(percentage.toDouble()),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 8,
-            ),
-            decoration: BoxDecoration(
-              color: tipPercentage == percentage
-                  ? colorScheme.primary
-                  : colorScheme.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: tipPercentage == percentage
-                    ? colorScheme.primary
-                    : colorScheme.outline.withOpacity(0.5),
-                width: 1.5,
+      children:
+          [15, 18, 20, 25, 30].map((percentage) {
+            return GestureDetector(
+              onTap: () => onPercentageSelected(percentage.toDouble()),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color:
+                      tipPercentage == percentage
+                          ? colorScheme.primary
+                          : colorScheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color:
+                        tipPercentage == percentage
+                            ? colorScheme.primary
+                            : colorScheme.outline.withOpacity(0.5),
+                    width: 1.5,
+                  ),
+                  boxShadow:
+                      tipPercentage == percentage
+                          ? [
+                            BoxShadow(
+                              color: colorScheme.primary.withOpacity(0.2),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                          : null,
+                ),
+                child: Text(
+                  '$percentage%',
+                  style: TextStyle(
+                    color:
+                        tipPercentage == percentage
+                            ? Colors.white
+                            : colorScheme.onSurface,
+                    fontWeight:
+                        tipPercentage == percentage
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                  ),
+                ),
               ),
-              boxShadow: tipPercentage == percentage
-                  ? [
-                      BoxShadow(
-                        color: colorScheme.primary.withOpacity(0.2),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Text(
-              '$percentage%',
-              style: TextStyle(
-                color: tipPercentage == percentage
-                    ? Colors.white
-                    : colorScheme.onSurface,
-                fontWeight: tipPercentage == percentage
-                    ? FontWeight.bold
-                    : FontWeight.normal,
-              ),
-            ),
-          ),
-        );
-      }).toList(),
+            );
+          }).toList(),
     );
   }
 }
@@ -349,10 +342,7 @@ class _AlcoholTipToggle extends StatelessWidget {
         title: const Text('Different tip for alcohol?'),
         subtitle: const Text('Useful for higher tips on drinks'),
         value: useDifferentTipForAlcohol,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 4,
-        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         onChanged: onChanged,
         activeColor: colorScheme.primary,
         inactiveTrackColor: colorScheme.surfaceVariant,

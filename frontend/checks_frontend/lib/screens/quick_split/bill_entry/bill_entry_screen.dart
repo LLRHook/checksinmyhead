@@ -42,35 +42,37 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
   void _continueToItemAssignment() {
     if (_billData.subtotal > 0) {
       // Check if items have been added and if they match the subtotal
-      if (_billData.items.isNotEmpty && _billData.itemsTotal < _billData.subtotal) {
+      if (_billData.items.isNotEmpty &&
+          _billData.itemsTotal < _billData.subtotal) {
         // Show warning dialog that items don't match subtotal
         showDialog(
           context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Items Don\'t Match Subtotal'),
-            content: Text(
-              'Your added items total \$${_billData.itemsTotal.toStringAsFixed(2)}, but your subtotal is \$${_billData.subtotal.toStringAsFixed(2)}. Do you want to continue anyway, or add more items?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  // Provide feedback
-                  HapticFeedback.selectionClick();
-                },
-                child: const Text('Add More Items'),
+          builder:
+              (context) => AlertDialog(
+                title: const Text('Items Don\'t Match Subtotal'),
+                content: Text(
+                  'Your added items total \$${_billData.itemsTotal.toStringAsFixed(2)}, but your subtotal is \$${_billData.subtotal.toStringAsFixed(2)}. Do you want to continue anyway, or add more items?',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      // Provide feedback
+                      HapticFeedback.selectionClick();
+                    },
+                    child: const Text('Add More Items'),
+                  ),
+                  FilledButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      // Provide feedback
+                      HapticFeedback.mediumImpact();
+                      _navigateToItemAssignment();
+                    },
+                    child: const Text('Continue Anyway'),
+                  ),
+                ],
               ),
-              FilledButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  // Provide feedback
-                  HapticFeedback.mediumImpact();
-                  _navigateToItemAssignment();
-                },
-                child: const Text('Continue Anyway'),
-              ),
-            ],
-          ),
         );
       } else {
         // Provide haptic feedback for continuing
@@ -88,18 +90,19 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
   void _navigateToItemAssignment() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => ItemAssignmentScreen(
-          participants: widget.participants,
-          items: _billData.items,
-          subtotal: _billData.subtotal,
-          tax: _billData.tax,
-          tipAmount: _billData.tipAmount,
-          total: _billData.total,
-          tipPercentage: _billData.tipPercentage,
-          alcoholTipPercentage: _billData.alcoholTipPercentage,
-          useDifferentAlcoholTip: _billData.useDifferentTipForAlcohol,
-          isCustomTipAmount: _billData.useCustomTipAmount,
-        ),
+        builder:
+            (context) => ItemAssignmentScreen(
+              participants: widget.participants,
+              items: _billData.items,
+              subtotal: _billData.subtotal,
+              tax: _billData.tax,
+              tipAmount: _billData.tipAmount,
+              total: _billData.total,
+              tipPercentage: _billData.tipPercentage,
+              alcoholTipPercentage: _billData.alcoholTipPercentage,
+              useDifferentAlcoholTip: _billData.useDifferentTipForAlcohol,
+              isCustomTipAmount: _billData.useCustomTipAmount,
+            ),
       ),
     );
   }

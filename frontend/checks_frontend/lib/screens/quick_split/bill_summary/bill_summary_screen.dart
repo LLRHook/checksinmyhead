@@ -1,3 +1,4 @@
+import 'package:checks_frontend/utils/settings_manager.dart';
 import 'package:flutter/material.dart';
 import '/models/person.dart';
 import '/models/bill_item.dart';
@@ -44,6 +45,7 @@ class BillSummaryScreen extends StatefulWidget {
 class _BillSummaryScreenState extends State<BillSummaryScreen> {
   // Share options
   late ShareOptions _shareOptions;
+  bool _isLoading = true;
 
   // Bill summary data
   late BillSummaryData _summaryData;
@@ -52,7 +54,7 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
   void initState() {
     super.initState();
 
-    // Initialize share options
+    // Initialize with default share options until loaded
     _shareOptions = ShareOptions();
 
     // Initialize bill summary data
@@ -68,6 +70,17 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
       tipPercentage: widget.tipPercentage,
       isCustomTipAmount: widget.isCustomTipAmount,
     );
+    
+    // Load share options from database
+    _loadShareOptions();
+  }
+
+  Future<void> _loadShareOptions() async {
+    final options = await SettingsManager.getShareOptions();
+    setState(() {
+      _shareOptions = options;
+      _isLoading = false;
+    });
   }
 
   void _shareBillSummary() {
@@ -100,6 +113,8 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
         setState(() {
           _shareOptions = updatedOptions;
         });
+        // Save updated options to database
+        SettingsManager.saveShareOptions(updatedOptions);
       },
       onShareTap: _shareBillSummary,
     );
@@ -108,6 +123,14 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
   @override
   Widget build(BuildContext context) {
     final sortedParticipants = _summaryData.sortedParticipants;
+
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,

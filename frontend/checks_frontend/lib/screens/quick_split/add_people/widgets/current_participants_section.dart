@@ -14,10 +14,12 @@ class CurrentParticipantsSection extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<CurrentParticipantsSection> createState() => _CurrentParticipantsSectionState();
+  State<CurrentParticipantsSection> createState() =>
+      _CurrentParticipantsSectionState();
 }
 
-class _CurrentParticipantsSectionState extends State<CurrentParticipantsSection> {
+class _CurrentParticipantsSectionState
+    extends State<CurrentParticipantsSection> {
   void _confirmClearAll(BuildContext context, ParticipantsProvider provider) {
     // Vibrate for feedback
     HapticFeedback.mediumImpact();
@@ -25,46 +27,48 @@ class _CurrentParticipantsSectionState extends State<CurrentParticipantsSection>
     // Clear all participants with confirmation
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Clear all participants?"),
-        content: const Text(
-          "This will remove all people from your current list.",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              "Cancel",
-              style: TextStyle(
-                color: Colors.grey.shade700,
+      builder:
+          (context) => AlertDialog(
+            title: const Text("Clear all participants?"),
+            content: const Text(
+              "This will remove all people from your current list.",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  "Cancel",
+                  style: TextStyle(color: Colors.grey.shade700),
+                ),
               ),
-            ),
+              ElevatedButton(
+                onPressed: () {
+                  provider.clearAll();
+                  Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.shade600,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text("Clear All"),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              provider.clearAll();
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade600,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text("Clear All"),
-          ),
-        ],
-      ),
     );
   }
 
   void _removePerson(int index, BuildContext context, Person person) {
     final provider = Provider.of<ParticipantsProvider>(context, listen: false);
-    
+
     // Create a sliding animation for this specific person
     final slideAnimation = Tween<Offset>(
       begin: Offset.zero,
       end: const Offset(1.5, 0), // Slide right and off-screen
     ).animate(
-      CurvedAnimation(parent: widget.animationController, curve: Curves.easeOutCubic),
+      CurvedAnimation(
+        parent: widget.animationController,
+        curve: Curves.easeOutCubic,
+      ),
     );
 
     // Create the opacity animation
@@ -94,7 +98,7 @@ class _CurrentParticipantsSectionState extends State<CurrentParticipantsSection>
     final textTheme = Theme.of(context).textTheme;
     final participantsProvider = Provider.of<ParticipantsProvider>(context);
     final participants = participantsProvider.participants;
-    
+
     if (participants.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -104,11 +108,7 @@ class _CurrentParticipantsSectionState extends State<CurrentParticipantsSection>
       children: [
         Row(
           children: [
-            Icon(
-              Icons.people,
-              size: 18,
-              color: Colors.grey.shade700,
-            ),
+            Icon(Icons.people, size: 18, color: Colors.grey.shade700),
             const SizedBox(width: 8),
             Text(
               "Current Participants",
@@ -120,7 +120,8 @@ class _CurrentParticipantsSectionState extends State<CurrentParticipantsSection>
             const Spacer(),
             if (participants.length > 1)
               TextButton.icon(
-                onPressed: () => _confirmClearAll(context, participantsProvider),
+                onPressed:
+                    () => _confirmClearAll(context, participantsProvider),
                 icon: Icon(
                   Icons.clear_all,
                   size: 18,
@@ -128,10 +129,7 @@ class _CurrentParticipantsSectionState extends State<CurrentParticipantsSection>
                 ),
                 label: Text(
                   "Clear All",
-                  style: TextStyle(
-                    color: Colors.grey.shade700,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
                 ),
                 style: TextButton.styleFrom(
                   padding: const EdgeInsets.symmetric(
@@ -160,21 +158,24 @@ class _CurrentParticipantsSectionState extends State<CurrentParticipantsSection>
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: SlideTransition(
-                position: animation != null
-                    ? Tween<Offset>(
-                        begin: Offset.zero,
-                        end: const Offset(1.5, 0), // Slide right off screen
-                      ).animate(
-                        CurvedAnimation(
-                          parent: widget.animationController,
-                          curve: Curves.easeOutCubic,
-                        ),
-                      )
-                    : const AlwaysStoppedAnimation<Offset>(Offset.zero),
+                position:
+                    animation != null
+                        ? Tween<Offset>(
+                          begin: Offset.zero,
+                          end: const Offset(1.5, 0), // Slide right off screen
+                        ).animate(
+                          CurvedAnimation(
+                            parent: widget.animationController,
+                            curve: Curves.easeOutCubic,
+                          ),
+                        )
+                        : const AlwaysStoppedAnimation<Offset>(Offset.zero),
                 child: FadeTransition(
-                  opacity: animation ?? const AlwaysStoppedAnimation<double>(1.0),
+                  opacity:
+                      animation ?? const AlwaysStoppedAnimation<double>(1.0),
                   child: SizeTransition(
-                    sizeFactor: animation ?? const AlwaysStoppedAnimation<double>(1.0),
+                    sizeFactor:
+                        animation ?? const AlwaysStoppedAnimation<double>(1.0),
                     axisAlignment: 0.0,
                     child: _ParticipantListItem(
                       person: person,
@@ -210,10 +211,7 @@ class _ParticipantListItem extends StatelessWidget {
       decoration: BoxDecoration(
         color: person.color.withOpacity(0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: person.color.withOpacity(0.2),
-          width: 1,
-        ),
+        border: Border.all(color: person.color.withOpacity(0.2), width: 1),
       ),
       child: ListTile(
         leading: CircleAvatar(
@@ -228,23 +226,14 @@ class _ParticipantListItem extends StatelessWidget {
         ),
         title: Text(
           person.name,
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            color: textColor,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w600, color: textColor),
         ),
         trailing: IconButton(
-          icon: Icon(
-            Icons.delete_outline,
-            color: Colors.red.shade400,
-          ),
+          icon: Icon(Icons.delete_outline, color: Colors.red.shade400),
           onPressed: onRemove,
           tooltip: "Remove ${person.name}",
         ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 8,
-        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       ),
     );
   }

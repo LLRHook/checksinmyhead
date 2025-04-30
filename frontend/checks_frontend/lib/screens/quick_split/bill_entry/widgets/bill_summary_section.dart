@@ -88,10 +88,7 @@ class BillSummarySection extends StatelessWidget {
               // Left side - the TOTAL label
               const Text(
                 'TOTAL',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
               // Spacer to push the price to the right
               const Spacer(),
@@ -141,14 +138,16 @@ class BillSummarySection extends StatelessWidget {
         ),
         // Use a fixed width SizedBox for the value to ensure consistency
         SizedBox(
-          width: 80, // Fixed width for the price that should be enough for any reasonable value
+          width:
+              80, // Fixed width for the price that should be enough for any reasonable value
           child: Text(
             '\$${value.toStringAsFixed(2)}',
             style: TextStyle(
               fontWeight: FontWeight.w600,
               color: colorScheme.onPrimaryContainer,
             ),
-            textAlign: TextAlign.right, // Right align text within the fixed width
+            textAlign:
+                TextAlign.right, // Right align text within the fixed width
           ),
         ),
       ],

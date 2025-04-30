@@ -64,8 +64,7 @@ class AssignmentUtils {
       int payingPeople = data.participants.length;
       if (data.birthdayPerson != null) payingPeople--;
 
-      double evenShare =
-          payingPeople > 0 ? data.subtotal / payingPeople : 0.0;
+      double evenShare = payingPeople > 0 ? data.subtotal / payingPeople : 0.0;
 
       for (var person in data.participants) {
         if (data.birthdayPerson == person) {
@@ -315,8 +314,7 @@ class AssignmentUtils {
     Map<Person, double> newPersonTotals = Map.from(data.personTotals);
     for (var person in data.participants) {
       if (person != data.birthdayPerson) {
-        newPersonTotals[person] =
-            (newPersonTotals[person] ?? 0.0) + evenShare;
+        newPersonTotals[person] = (newPersonTotals[person] ?? 0.0) + evenShare;
       }
     }
 
@@ -324,10 +322,7 @@ class AssignmentUtils {
     if (data.items.isEmpty) {
       // Calculate final shares based on updated person totals
       final personFinalShares = calculateFinalShares(
-        data.copyWith(
-          personTotals: newPersonTotals,
-          unassignedAmount: 0.0,
-        ),
+        data.copyWith(personTotals: newPersonTotals, unassignedAmount: 0.0),
       );
 
       // Return updated assignment data
@@ -399,10 +394,7 @@ class AssignmentUtils {
 
       // Calculate final shares based on updated person totals
       final personFinalShares = calculateFinalShares(
-        data.copyWith(
-          personTotals: newPersonTotals,
-          unassignedAmount: 0.0,
-        ),
+        data.copyWith(personTotals: newPersonTotals, unassignedAmount: 0.0),
       );
 
       // Return updated assignment data

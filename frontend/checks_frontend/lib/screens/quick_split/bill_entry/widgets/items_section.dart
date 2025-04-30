@@ -8,24 +8,22 @@ import '../utils/currency_formatter.dart';
 
 class ItemsSection extends StatefulWidget {
   final Function(String) showSnackBar;
-  
-  const ItemsSection({
-    Key? key,
-    required this.showSnackBar,
-  }) : super(key: key);
+
+  const ItemsSection({Key? key, required this.showSnackBar}) : super(key: key);
 
   @override
   State<ItemsSection> createState() => _ItemsSectionState();
 }
 
-class _ItemsSectionState extends State<ItemsSection> with SingleTickerProviderStateMixin {
+class _ItemsSectionState extends State<ItemsSection>
+    with SingleTickerProviderStateMixin {
   late AnimationController _progressAnimationController;
   late Animation<double> _progressAnimation;
 
   @override
   void initState() {
     super.initState();
-    
+
     // Initialize animation controller
     _progressAnimationController = AnimationController(
       vsync: this,
@@ -148,10 +146,7 @@ class _ItemsSectionState extends State<ItemsSection> with SingleTickerProviderSt
             hintText: 'e.g., Pizza, Pasta, Salad',
             prefixIcon: Icons.fastfood,
           ),
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           textCapitalization: TextCapitalization.sentences,
         ),
 
@@ -208,14 +203,23 @@ class _ItemsSectionState extends State<ItemsSection> with SingleTickerProviderSt
             children: [
               ShaderMask(
                 blendMode: BlendMode.srcIn,
-                shaderCallback: (Rect bounds) => LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: [
-                    _getProgressColor(context, billData.animatedItemsTotal, billData.subtotal),
-                    _getProgressColor(context, billData.animatedItemsTotal, billData.subtotal).withOpacity(0.8),
-                  ],
-                ).createShader(bounds),
+                shaderCallback:
+                    (Rect bounds) => LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: [
+                        _getProgressColor(
+                          context,
+                          billData.animatedItemsTotal,
+                          billData.subtotal,
+                        ),
+                        _getProgressColor(
+                          context,
+                          billData.animatedItemsTotal,
+                          billData.subtotal,
+                        ).withOpacity(0.8),
+                      ],
+                    ).createShader(bounds),
                 child: Text(
                   'Items: \$${billData.animatedItemsTotal.toStringAsFixed(2)}',
                   style: const TextStyle(
@@ -237,12 +241,13 @@ class _ItemsSectionState extends State<ItemsSection> with SingleTickerProviderSt
               const Spacer(),
               // Animated percentage with premium styling
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 3,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: _getProgressColor(context, billData.animatedItemsTotal, billData.subtotal).withOpacity(0.1),
+                  color: _getProgressColor(
+                    context,
+                    billData.animatedItemsTotal,
+                    billData.subtotal,
+                  ).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -250,7 +255,11 @@ class _ItemsSectionState extends State<ItemsSection> with SingleTickerProviderSt
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
-                    color: _getProgressColor(context, billData.animatedItemsTotal, billData.subtotal),
+                    color: _getProgressColor(
+                      context,
+                      billData.animatedItemsTotal,
+                      billData.subtotal,
+                    ),
                   ),
                 ),
               ),
@@ -270,9 +279,12 @@ class _ItemsSectionState extends State<ItemsSection> with SingleTickerProviderSt
                 return Stack(
                   children: [
                     Container(
-                      width: constraints.maxWidth *
+                      width:
+                          constraints.maxWidth *
                           (billData.subtotal > 0
-                              ? (billData.animatedItemsTotal / billData.subtotal).clamp(0.0, 1.0)
+                              ? (billData.animatedItemsTotal /
+                                      billData.subtotal)
+                                  .clamp(0.0, 1.0)
                               : 0),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(4),
@@ -280,13 +292,25 @@ class _ItemsSectionState extends State<ItemsSection> with SingleTickerProviderSt
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
                           colors: [
-                            _getProgressColor(context, billData.animatedItemsTotal, billData.subtotal),
-                            _getProgressColor(context, billData.animatedItemsTotal, billData.subtotal).withOpacity(0.8),
+                            _getProgressColor(
+                              context,
+                              billData.animatedItemsTotal,
+                              billData.subtotal,
+                            ),
+                            _getProgressColor(
+                              context,
+                              billData.animatedItemsTotal,
+                              billData.subtotal,
+                            ).withOpacity(0.8),
                           ],
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: _getProgressColor(context, billData.animatedItemsTotal, billData.subtotal).withOpacity(0.3),
+                            color: _getProgressColor(
+                              context,
+                              billData.animatedItemsTotal,
+                              billData.subtotal,
+                            ).withOpacity(0.3),
                             blurRadius: 4,
                             offset: const Offset(0, 1),
                           ),
@@ -348,9 +372,7 @@ class _ItemsSectionState extends State<ItemsSection> with SingleTickerProviderSt
                     ),
                     title: Text(
                       item.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,

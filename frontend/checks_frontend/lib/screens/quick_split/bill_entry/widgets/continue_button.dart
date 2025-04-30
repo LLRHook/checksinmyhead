@@ -2,16 +2,13 @@ import 'package:flutter/material.dart';
 
 class ContinueButton extends StatelessWidget {
   final VoidCallback onPressed;
-  
-  const ContinueButton({
-    Key? key,
-    required this.onPressed,
-  }) : super(key: key);
+
+  const ContinueButton({Key? key, required this.onPressed}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return SizedBox(
       height: 56,
       child: ElevatedButton(
@@ -30,10 +27,7 @@ class ContinueButton extends StatelessWidget {
           children: [
             const Text(
               "Continue to Item Assignment",
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             const SizedBox(width: 8),
             Container(
