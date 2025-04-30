@@ -1,3 +1,4 @@
+import 'package:checks_frontend/screens/quick_split/bill_entry/components/alcohol_management/alcohol_management_modal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -47,6 +48,19 @@ class _ItemsSectionState extends State<ItemsSection>
   void dispose() {
     _progressAnimationController.dispose();
     super.dispose();
+  }
+
+  void _showAlcoholManagementModal(BillData billData) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder:
+          (context) => ChangeNotifierProvider.value(
+            value: billData, // Pass the existing billData instance
+            child: AlcoholManagementModal(),
+          ),
+    );
   }
 
   void _updateAnimation(BillData billData) {
@@ -342,6 +356,34 @@ class _ItemsSectionState extends State<ItemsSection>
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+                Spacer(),
+                if (billData.items.isNotEmpty)
+                  TextButton.icon(
+                    onPressed: () => _showAlcoholManagementModal(billData),
+                    icon: Icon(
+                      Icons.wine_bar_outlined,
+                      size: 16,
+                      color: colorScheme.tertiary,
+                    ),
+                    label: Text(
+                      'Any Alcohol?',
+                      style: TextStyle(
+                        color: colorScheme.tertiary,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 12,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        side: BorderSide(
+                          color: colorScheme.tertiary.withOpacity(0.5),
+                        ),
+                      ),
+                      backgroundColor: colorScheme.tertiary.withOpacity(0.1),
+                    ),
+                  ),
               ],
             ),
             const SizedBox(height: 12),
@@ -370,6 +412,21 @@ class _ItemsSectionState extends State<ItemsSection>
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
+                    leading:
+                        item.isAlcohol
+                            ? Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: colorScheme.tertiary.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.wine_bar_outlined,
+                                color: colorScheme.tertiary,
+                                size: 20,
+                              ),
+                            )
+                            : null,
                     title: Text(
                       item.name,
                       style: const TextStyle(fontWeight: FontWeight.w600),
