@@ -58,9 +58,9 @@ class AppTheme {
       ),
     ),
 
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       elevation: 2,
-      shadowColor: _primaryColor.withValues(alpha: 0.15),
+      shadowColor: const Color(0x26000000), // Using a standard shadow color
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       clipBehavior: Clip.antiAlias,
     ),

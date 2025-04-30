@@ -47,7 +47,7 @@ This guide will help you set up Flutter for iOS development on macOS and get our
 4. **Install Flutter SDK:**
    - Create the development directory:
      ```bash
-     mkdir -p ~/development
+     mkdir ~/development
      cd ~/development
      ```
    - Download and install Flutter:
