@@ -1,5 +1,5 @@
-import 'package:checks_frontend/screens/quick_split/bill_entry/models/bill_data.dart';
 import 'package:flutter/material.dart';
+import '../../models/bill_data.dart';
 
 class AlcoholSummaryCard extends StatelessWidget {
   final BillData billData;
@@ -14,7 +14,6 @@ class AlcoholSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-
     if (billData.items.isEmpty) {
       return SizedBox.shrink();
     }
@@ -103,6 +102,71 @@ class AlcoholSummaryCard extends StatelessWidget {
                 },
               ),
             ],
+          ),
+
+          // Add alcohol tax row
+          SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Alcohol Tax:',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
+              Text(
+                '\$${billData.alcoholTax.toStringAsFixed(2)}',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+
+          // Show tip information if different tip for alcohol is enabled
+          if (billData.useDifferentTipForAlcohol) ...[
+            SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  billData.useCustomAlcoholTipAmount
+                      ? 'Alcohol Tip (Custom):'
+                      : 'Alcohol Tip (${billData.alcoholTipPercentage.toInt()}%):',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+                Text(
+                  '\$${billData.alcoholTipAmount.toStringAsFixed(2)}',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ],
+
+          // Add total alcohol section (subtotal + tax + tip)
+          SizedBox(height: 12),
+          Container(
+            padding: EdgeInsets.symmetric(vertical: 8, horizontal: 14),
+            decoration: BoxDecoration(
+              color: colorScheme.tertiary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Alcohol Total:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.tertiary,
+                  ),
+                ),
+                Text(
+                  '\$${(billData.alcoholAmount + billData.alcoholTax + billData.alcoholTipAmount).toStringAsFixed(2)}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.tertiary,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

@@ -98,51 +98,6 @@ class TipOptionsSection extends StatelessWidget {
           ),
 
           const SizedBox(height: 20),
-
-          // Separate alcohol tip toggle
-          _AlcoholTipToggle(
-            useDifferentTipForAlcohol: billData.useDifferentTipForAlcohol,
-            onChanged: (value) {
-              billData.toggleDifferentTipForAlcohol(value);
-              HapticFeedback.selectionClick();
-            },
-          ),
-
-          // Show alcohol fields if separate tip is enabled
-          if (billData.useDifferentTipForAlcohol) ...[
-            const SizedBox(height: 16),
-
-            // Alcohol amount field
-            TextFormField(
-              controller: billData.alcoholController,
-              decoration: AppInputDecoration.buildInputDecoration(
-                context: context,
-                labelText: 'Alcohol portion of bill',
-                prefixText: '\$',
-                hintText: '0.00',
-              ),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              inputFormatters: [CurrencyFormatter.currencyFormatter],
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Alcohol tip percentage slider
-            _TipPercentageSlider(
-              tipPercentage: billData.alcoholTipPercentage,
-              color: colorScheme.tertiary,
-              onChanged: (value) {
-                billData.setAlcoholTipPercentage(value);
-                // Light feedback on drag
-                if (value.toInt() % 5 == 0) {
-                  HapticFeedback.selectionClick();
-                }
-              },
-            ),
-          ],
         ],
       ],
     );
@@ -315,38 +270,6 @@ class _QuickTipPercentageButtons extends StatelessWidget {
               ),
             );
           }).toList(),
-    );
-  }
-}
-
-class _AlcoholTipToggle extends StatelessWidget {
-  final bool useDifferentTipForAlcohol;
-  final ValueChanged<bool> onChanged;
-
-  const _AlcoholTipToggle({
-    Key? key,
-    required this.useDifferentTipForAlcohol,
-    required this.onChanged,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceVariant.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: SwitchListTile(
-        title: const Text('Different tip for alcohol?'),
-        subtitle: const Text('Useful for higher tips on drinks'),
-        value: useDifferentTipForAlcohol,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        onChanged: onChanged,
-        activeColor: colorScheme.primary,
-        inactiveTrackColor: colorScheme.surfaceVariant,
-      ),
     );
   }
 }

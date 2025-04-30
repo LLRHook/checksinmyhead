@@ -35,6 +35,8 @@ class _AlcoholManagementModalState extends State<AlcoholManagementModal>
   String _originalAlcoholTax = '';
   bool _originalUseDifferentTip = false;
   double _originalAlcoholTipPercentage = 0.0;
+  bool _originalUseCustomAlcoholTipAmount = false;
+  String _originalCustomAlcoholTipAmount = '';
 
   // Error message state
   String? _validationErrorMessage;
@@ -77,6 +79,9 @@ class _AlcoholManagementModalState extends State<AlcoholManagementModal>
       _originalAlcoholTax = billData.alcoholTaxController.text;
       _originalUseDifferentTip = billData.useDifferentTipForAlcohol;
       _originalAlcoholTipPercentage = billData.alcoholTipPercentage;
+      _originalUseCustomAlcoholTipAmount = billData.useCustomAlcoholTipAmount;
+      _originalCustomAlcoholTipAmount =
+          billData.customAlcoholTipController.text;
     });
   }
 
@@ -103,6 +108,28 @@ class _AlcoholManagementModalState extends State<AlcoholManagementModal>
     });
   }
 
+  // Helper method to scroll to items section
+  void _scrollToItemsSection() {
+    Future.delayed(Duration(milliseconds: 100), () {
+      _scrollController.animateTo(
+        300, // Approximate position to alcohol items list
+        duration: Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+
+  // Helper method to scroll to tip section
+  void _scrollToTipSection() {
+    Future.delayed(Duration(milliseconds: 100), () {
+      _scrollController.animateTo(
+        150, // Approximate position to tip controls
+        duration: Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+
   // Function to restore original settings when canceling
   void _restoreOriginalSettings() {
     final billData = Provider.of<BillData>(context, listen: false);
@@ -119,6 +146,10 @@ class _AlcoholManagementModalState extends State<AlcoholManagementModal>
     billData.alcoholTaxController.text = _originalAlcoholTax;
     billData.toggleDifferentTipForAlcohol(_originalUseDifferentTip);
     billData.setAlcoholTipPercentage(_originalAlcoholTipPercentage);
+
+    // Restore custom alcohol tip settings
+    billData.toggleCustomAlcoholTipAmount(_originalUseCustomAlcoholTipAmount);
+    billData.customAlcoholTipController.text = _originalCustomAlcoholTipAmount;
 
     // Recalculate bill with original settings
     billData.calculateBill();
@@ -145,45 +176,51 @@ class _AlcoholManagementModalState extends State<AlcoholManagementModal>
     bool hasAlcoholItems = billData.items.any((item) => item.isAlcohol);
     bool hasTaxAmount =
         billData.alcoholTaxController.text.isNotEmpty &&
-        double.tryParse(
-              billData.alcoholTaxController.text.replaceAll(
-                RegExp(r'[^\d\.]'),
-                '',
-              ),
-            ) !=
-            null &&
-        double.parse(
-              billData.alcoholTaxController.text.replaceAll(
-                RegExp(r'[^\d\.]'),
-                '',
-              ),
-            ) >
-            0;
+        double.tryParse(billData.alcoholTaxController.text) != null &&
+        double.tryParse(billData.alcoholTaxController.text)! > 0;
 
+    // Run the validation checks
     if (hasAlcoholItems && !hasTaxAmount) {
       // Has alcoholic items but no tax amount
       setState(() {
-        _validationErrorMessage = 'Please enter the alcohol tax amount';
+        _validationErrorMessage = 'Please enter the alcohol tax amount.';
       });
       _scrollToTaxField();
       return false;
-    } else if (!hasAlcoholItems && hasTaxAmount) {
+    }
+
+    if (!hasAlcoholItems && hasTaxAmount) {
       // Has tax amount but no alcoholic items
       setState(() {
-        _validationErrorMessage = 'Please mark at least one item as alcoholic';
+        _validationErrorMessage = 'Please mark at least one item as alcoholic.';
       });
-      // Scroll to items section
-      Future.delayed(Duration(milliseconds: 100), () {
-        _scrollController.animateTo(
-          300, // Approximate position to alcohol items list
-          duration: Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        );
-      });
+      _scrollToItemsSection();
       return false;
     }
 
-    // If both conditions are met or neither is (both valid cases), return true
+    if (billData.useDifferentTipForAlcohol && !hasAlcoholItems) {
+      // Has different tip enabled but no alcoholic items
+      setState(() {
+        _validationErrorMessage = 'Please mark at least one alcoholic item.';
+      });
+      _scrollToItemsSection();
+      return false;
+    }
+
+    if (billData.useDifferentTipForAlcohol &&
+        billData.useCustomAlcoholTipAmount &&
+        (billData.customAlcoholTipController.text.isEmpty ||
+            double.tryParse(billData.customAlcoholTipController.text) == null ||
+            double.tryParse(billData.customAlcoholTipController.text)! <= 0)) {
+      // Custom alcohol tip is enabled but amount not entered
+      setState(() {
+        _validationErrorMessage = 'Please enter a custom alcohol tip amount.';
+      });
+      _scrollToTipSection();
+      return false;
+    }
+
+    // If all conditions are met, return true
     return true;
   }
 
@@ -192,9 +229,6 @@ class _AlcoholManagementModalState extends State<AlcoholManagementModal>
     final billData = Provider.of<BillData>(context);
     final colorScheme = Theme.of(context).colorScheme;
     final screenHeight = MediaQuery.of(context).size.height;
-
-    // Check if any items are marked as alcoholic
-    bool hasAlcoholItems = billData.items.any((item) => item.isAlcohol);
 
     return SlideTransition(
       position: _slideAnimation,
