@@ -1,5 +1,6 @@
+import 'package:checks_frontend/screens/recent_bills/recent_bills_screen.dart';
 import 'package:flutter/material.dart';
-import 'quick_split/add_people/participant_selection_sheet.dart'; // Import the participant selection sheet
+import 'quick_split/add_people/participant_selection_sheet.dart';
 
 class LandingScreen extends StatefulWidget {
   const LandingScreen({super.key});
@@ -41,6 +42,14 @@ class _LandingScreenState extends State<LandingScreen>
   void _showQuickSplitSheet() {
     // Use the imported function with the updated name
     showParticipantSelectionSheet(context);
+  }
+
+  // Navigate to Recent Bills screen
+  void _navigateToRecentBills() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const RecentBillsScreen()),
+    );
   }
 
   @override
@@ -131,9 +140,7 @@ class _LandingScreenState extends State<LandingScreen>
 
                         // Recent Bills Button
                         TextButton(
-                          onPressed: () {
-                            // Navigate to bill history
-                          },
+                          onPressed: _navigateToRecentBills,
                           style: TextButton.styleFrom(
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 8),

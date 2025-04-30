@@ -1,17 +1,39 @@
+// lib/widgets/bottom_bar.dart
+import 'package:checks_frontend/models/bill_item.dart';
+import 'package:checks_frontend/models/person.dart';
+import 'package:checks_frontend/screens/quick_split/bill_summary/models/recent_bill_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class BottomBar extends StatelessWidget {
   final VoidCallback onShareTap;
-  final VoidCallback onDoneTap;
+  final Function onDoneTap;
+  final List<Person> participants;
+  final Map<Person, double> personShares;
+  final List<BillItem> items;
+  final double subtotal;
+  final double tax;
+  final double tipAmount;
+  final double total;
+  final Person? birthdayPerson;
 
-  const BottomBar({Key? key, required this.onShareTap, required this.onDoneTap})
-    : super(key: key);
+  const BottomBar({
+    Key? key,
+    required this.onShareTap,
+    required this.onDoneTap,
+    required this.participants,
+    required this.personShares,
+    required this.items,
+    required this.subtotal,
+    required this.tax,
+    required this.tipAmount,
+    required this.total,
+    this.birthdayPerson,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       decoration: BoxDecoration(
@@ -43,7 +65,10 @@ class BottomBar extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: FilledButton.icon(
-                onPressed: onDoneTap,
+                onPressed: () {
+                  // Save bill and handle done
+                  onDoneTap();
+                },
                 icon: const Icon(Icons.check_circle_outline, size: 18),
                 label: const Text('Done'),
                 style: FilledButton.styleFrom(
@@ -62,10 +87,32 @@ class BottomBar extends StatelessWidget {
   }
 }
 
-/// Helper class to handle the done button functionality
+// Helper class for external use (if needed)
 class DoneButtonHandler {
-  static void handleDone(BuildContext context) {
-    // Show success message and navigate
+  static Future<void> handleDone(
+    BuildContext context, {
+    required List<Person> participants,
+    required Map<Person, double> personShares,
+    required List<BillItem> items,
+    required double subtotal,
+    required double tax,
+    required double tipAmount,
+    required double total,
+    Person? birthdayPerson,
+  }) async {
+    // Save the bill to the database
+    await RecentBillsManager.saveBill(
+      participants: participants,
+      personShares: personShares,
+      items: items,
+      subtotal: subtotal,
+      tax: tax,
+      tipAmount: tipAmount,
+      total: total,
+      birthdayPerson: birthdayPerson,
+    );
+
+    // Show success message
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Bill saved successfully'),
