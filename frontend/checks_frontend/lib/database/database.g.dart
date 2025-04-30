@@ -1033,6 +1033,663 @@ class UserPreferencesCompanion extends UpdateCompanion<UserPreference> {
   }
 }
 
+class $RecentBillsTable extends RecentBills
+    with TableInfo<$RecentBillsTable, RecentBill> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RecentBillsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _participantsMeta = const VerificationMeta(
+    'participants',
+  );
+  @override
+  late final GeneratedColumn<String> participants = GeneratedColumn<String>(
+    'participants',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _participantCountMeta = const VerificationMeta(
+    'participantCount',
+  );
+  @override
+  late final GeneratedColumn<int> participantCount = GeneratedColumn<int>(
+    'participant_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _totalMeta = const VerificationMeta('total');
+  @override
+  late final GeneratedColumn<double> total = GeneratedColumn<double>(
+    'total',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<String> date = GeneratedColumn<String>(
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _subtotalMeta = const VerificationMeta(
+    'subtotal',
+  );
+  @override
+  late final GeneratedColumn<double> subtotal = GeneratedColumn<double>(
+    'subtotal',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _taxMeta = const VerificationMeta('tax');
+  @override
+  late final GeneratedColumn<double> tax = GeneratedColumn<double>(
+    'tax',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _tipAmountMeta = const VerificationMeta(
+    'tipAmount',
+  );
+  @override
+  late final GeneratedColumn<double> tipAmount = GeneratedColumn<double>(
+    'tip_amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _itemsMeta = const VerificationMeta('items');
+  @override
+  late final GeneratedColumn<String> items = GeneratedColumn<String>(
+    'items',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _colorValueMeta = const VerificationMeta(
+    'colorValue',
+  );
+  @override
+  late final GeneratedColumn<int> colorValue = GeneratedColumn<int>(
+    'color_value',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0xFF2196F3),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: Constant(DateTime.now()),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    participants,
+    participantCount,
+    total,
+    date,
+    subtotal,
+    tax,
+    tipAmount,
+    items,
+    colorValue,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'recent_bills';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RecentBill> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('participants')) {
+      context.handle(
+        _participantsMeta,
+        participants.isAcceptableOrUnknown(
+          data['participants']!,
+          _participantsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_participantsMeta);
+    }
+    if (data.containsKey('participant_count')) {
+      context.handle(
+        _participantCountMeta,
+        participantCount.isAcceptableOrUnknown(
+          data['participant_count']!,
+          _participantCountMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_participantCountMeta);
+    }
+    if (data.containsKey('total')) {
+      context.handle(
+        _totalMeta,
+        total.isAcceptableOrUnknown(data['total']!, _totalMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_totalMeta);
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+        _dateMeta,
+        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('subtotal')) {
+      context.handle(
+        _subtotalMeta,
+        subtotal.isAcceptableOrUnknown(data['subtotal']!, _subtotalMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_subtotalMeta);
+    }
+    if (data.containsKey('tax')) {
+      context.handle(
+        _taxMeta,
+        tax.isAcceptableOrUnknown(data['tax']!, _taxMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_taxMeta);
+    }
+    if (data.containsKey('tip_amount')) {
+      context.handle(
+        _tipAmountMeta,
+        tipAmount.isAcceptableOrUnknown(data['tip_amount']!, _tipAmountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_tipAmountMeta);
+    }
+    if (data.containsKey('items')) {
+      context.handle(
+        _itemsMeta,
+        items.isAcceptableOrUnknown(data['items']!, _itemsMeta),
+      );
+    }
+    if (data.containsKey('color_value')) {
+      context.handle(
+        _colorValueMeta,
+        colorValue.isAcceptableOrUnknown(data['color_value']!, _colorValueMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RecentBill map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RecentBill(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}id'],
+          )!,
+      participants:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}participants'],
+          )!,
+      participantCount:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}participant_count'],
+          )!,
+      total:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.double,
+            data['${effectivePrefix}total'],
+          )!,
+      date:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}date'],
+          )!,
+      subtotal:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.double,
+            data['${effectivePrefix}subtotal'],
+          )!,
+      tax:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.double,
+            data['${effectivePrefix}tax'],
+          )!,
+      tipAmount:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.double,
+            data['${effectivePrefix}tip_amount'],
+          )!,
+      items: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}items'],
+      ),
+      colorValue:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}color_value'],
+          )!,
+      createdAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}created_at'],
+          )!,
+    );
+  }
+
+  @override
+  $RecentBillsTable createAlias(String alias) {
+    return $RecentBillsTable(attachedDatabase, alias);
+  }
+}
+
+class RecentBill extends DataClass implements Insertable<RecentBill> {
+  final int id;
+  final String participants;
+  final int participantCount;
+  final double total;
+  final String date;
+  final double subtotal;
+  final double tax;
+  final double tipAmount;
+  final String? items;
+  final int colorValue;
+  final DateTime createdAt;
+  const RecentBill({
+    required this.id,
+    required this.participants,
+    required this.participantCount,
+    required this.total,
+    required this.date,
+    required this.subtotal,
+    required this.tax,
+    required this.tipAmount,
+    this.items,
+    required this.colorValue,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['participants'] = Variable<String>(participants);
+    map['participant_count'] = Variable<int>(participantCount);
+    map['total'] = Variable<double>(total);
+    map['date'] = Variable<String>(date);
+    map['subtotal'] = Variable<double>(subtotal);
+    map['tax'] = Variable<double>(tax);
+    map['tip_amount'] = Variable<double>(tipAmount);
+    if (!nullToAbsent || items != null) {
+      map['items'] = Variable<String>(items);
+    }
+    map['color_value'] = Variable<int>(colorValue);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  RecentBillsCompanion toCompanion(bool nullToAbsent) {
+    return RecentBillsCompanion(
+      id: Value(id),
+      participants: Value(participants),
+      participantCount: Value(participantCount),
+      total: Value(total),
+      date: Value(date),
+      subtotal: Value(subtotal),
+      tax: Value(tax),
+      tipAmount: Value(tipAmount),
+      items:
+          items == null && nullToAbsent ? const Value.absent() : Value(items),
+      colorValue: Value(colorValue),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory RecentBill.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RecentBill(
+      id: serializer.fromJson<int>(json['id']),
+      participants: serializer.fromJson<String>(json['participants']),
+      participantCount: serializer.fromJson<int>(json['participantCount']),
+      total: serializer.fromJson<double>(json['total']),
+      date: serializer.fromJson<String>(json['date']),
+      subtotal: serializer.fromJson<double>(json['subtotal']),
+      tax: serializer.fromJson<double>(json['tax']),
+      tipAmount: serializer.fromJson<double>(json['tipAmount']),
+      items: serializer.fromJson<String?>(json['items']),
+      colorValue: serializer.fromJson<int>(json['colorValue']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'participants': serializer.toJson<String>(participants),
+      'participantCount': serializer.toJson<int>(participantCount),
+      'total': serializer.toJson<double>(total),
+      'date': serializer.toJson<String>(date),
+      'subtotal': serializer.toJson<double>(subtotal),
+      'tax': serializer.toJson<double>(tax),
+      'tipAmount': serializer.toJson<double>(tipAmount),
+      'items': serializer.toJson<String?>(items),
+      'colorValue': serializer.toJson<int>(colorValue),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  RecentBill copyWith({
+    int? id,
+    String? participants,
+    int? participantCount,
+    double? total,
+    String? date,
+    double? subtotal,
+    double? tax,
+    double? tipAmount,
+    Value<String?> items = const Value.absent(),
+    int? colorValue,
+    DateTime? createdAt,
+  }) => RecentBill(
+    id: id ?? this.id,
+    participants: participants ?? this.participants,
+    participantCount: participantCount ?? this.participantCount,
+    total: total ?? this.total,
+    date: date ?? this.date,
+    subtotal: subtotal ?? this.subtotal,
+    tax: tax ?? this.tax,
+    tipAmount: tipAmount ?? this.tipAmount,
+    items: items.present ? items.value : this.items,
+    colorValue: colorValue ?? this.colorValue,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  RecentBill copyWithCompanion(RecentBillsCompanion data) {
+    return RecentBill(
+      id: data.id.present ? data.id.value : this.id,
+      participants:
+          data.participants.present
+              ? data.participants.value
+              : this.participants,
+      participantCount:
+          data.participantCount.present
+              ? data.participantCount.value
+              : this.participantCount,
+      total: data.total.present ? data.total.value : this.total,
+      date: data.date.present ? data.date.value : this.date,
+      subtotal: data.subtotal.present ? data.subtotal.value : this.subtotal,
+      tax: data.tax.present ? data.tax.value : this.tax,
+      tipAmount: data.tipAmount.present ? data.tipAmount.value : this.tipAmount,
+      items: data.items.present ? data.items.value : this.items,
+      colorValue:
+          data.colorValue.present ? data.colorValue.value : this.colorValue,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RecentBill(')
+          ..write('id: $id, ')
+          ..write('participants: $participants, ')
+          ..write('participantCount: $participantCount, ')
+          ..write('total: $total, ')
+          ..write('date: $date, ')
+          ..write('subtotal: $subtotal, ')
+          ..write('tax: $tax, ')
+          ..write('tipAmount: $tipAmount, ')
+          ..write('items: $items, ')
+          ..write('colorValue: $colorValue, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    participants,
+    participantCount,
+    total,
+    date,
+    subtotal,
+    tax,
+    tipAmount,
+    items,
+    colorValue,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RecentBill &&
+          other.id == this.id &&
+          other.participants == this.participants &&
+          other.participantCount == this.participantCount &&
+          other.total == this.total &&
+          other.date == this.date &&
+          other.subtotal == this.subtotal &&
+          other.tax == this.tax &&
+          other.tipAmount == this.tipAmount &&
+          other.items == this.items &&
+          other.colorValue == this.colorValue &&
+          other.createdAt == this.createdAt);
+}
+
+class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
+  final Value<int> id;
+  final Value<String> participants;
+  final Value<int> participantCount;
+  final Value<double> total;
+  final Value<String> date;
+  final Value<double> subtotal;
+  final Value<double> tax;
+  final Value<double> tipAmount;
+  final Value<String?> items;
+  final Value<int> colorValue;
+  final Value<DateTime> createdAt;
+  const RecentBillsCompanion({
+    this.id = const Value.absent(),
+    this.participants = const Value.absent(),
+    this.participantCount = const Value.absent(),
+    this.total = const Value.absent(),
+    this.date = const Value.absent(),
+    this.subtotal = const Value.absent(),
+    this.tax = const Value.absent(),
+    this.tipAmount = const Value.absent(),
+    this.items = const Value.absent(),
+    this.colorValue = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  RecentBillsCompanion.insert({
+    this.id = const Value.absent(),
+    required String participants,
+    required int participantCount,
+    required double total,
+    required String date,
+    required double subtotal,
+    required double tax,
+    required double tipAmount,
+    this.items = const Value.absent(),
+    this.colorValue = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : participants = Value(participants),
+       participantCount = Value(participantCount),
+       total = Value(total),
+       date = Value(date),
+       subtotal = Value(subtotal),
+       tax = Value(tax),
+       tipAmount = Value(tipAmount);
+  static Insertable<RecentBill> custom({
+    Expression<int>? id,
+    Expression<String>? participants,
+    Expression<int>? participantCount,
+    Expression<double>? total,
+    Expression<String>? date,
+    Expression<double>? subtotal,
+    Expression<double>? tax,
+    Expression<double>? tipAmount,
+    Expression<String>? items,
+    Expression<int>? colorValue,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (participants != null) 'participants': participants,
+      if (participantCount != null) 'participant_count': participantCount,
+      if (total != null) 'total': total,
+      if (date != null) 'date': date,
+      if (subtotal != null) 'subtotal': subtotal,
+      if (tax != null) 'tax': tax,
+      if (tipAmount != null) 'tip_amount': tipAmount,
+      if (items != null) 'items': items,
+      if (colorValue != null) 'color_value': colorValue,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  RecentBillsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? participants,
+    Value<int>? participantCount,
+    Value<double>? total,
+    Value<String>? date,
+    Value<double>? subtotal,
+    Value<double>? tax,
+    Value<double>? tipAmount,
+    Value<String?>? items,
+    Value<int>? colorValue,
+    Value<DateTime>? createdAt,
+  }) {
+    return RecentBillsCompanion(
+      id: id ?? this.id,
+      participants: participants ?? this.participants,
+      participantCount: participantCount ?? this.participantCount,
+      total: total ?? this.total,
+      date: date ?? this.date,
+      subtotal: subtotal ?? this.subtotal,
+      tax: tax ?? this.tax,
+      tipAmount: tipAmount ?? this.tipAmount,
+      items: items ?? this.items,
+      colorValue: colorValue ?? this.colorValue,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (participants.present) {
+      map['participants'] = Variable<String>(participants.value);
+    }
+    if (participantCount.present) {
+      map['participant_count'] = Variable<int>(participantCount.value);
+    }
+    if (total.present) {
+      map['total'] = Variable<double>(total.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<String>(date.value);
+    }
+    if (subtotal.present) {
+      map['subtotal'] = Variable<double>(subtotal.value);
+    }
+    if (tax.present) {
+      map['tax'] = Variable<double>(tax.value);
+    }
+    if (tipAmount.present) {
+      map['tip_amount'] = Variable<double>(tipAmount.value);
+    }
+    if (items.present) {
+      map['items'] = Variable<String>(items.value);
+    }
+    if (colorValue.present) {
+      map['color_value'] = Variable<int>(colorValue.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RecentBillsCompanion(')
+          ..write('id: $id, ')
+          ..write('participants: $participants, ')
+          ..write('participantCount: $participantCount, ')
+          ..write('total: $total, ')
+          ..write('date: $date, ')
+          ..write('subtotal: $subtotal, ')
+          ..write('tax: $tax, ')
+          ..write('tipAmount: $tipAmount, ')
+          ..write('items: $items, ')
+          ..write('colorValue: $colorValue, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1041,6 +1698,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $UserPreferencesTable userPreferences = $UserPreferencesTable(
     this,
   );
+  late final $RecentBillsTable recentBills = $RecentBillsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1049,6 +1707,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     people,
     tutorialStates,
     userPreferences,
+    recentBills,
   ];
 }
 
@@ -1644,6 +2303,328 @@ typedef $$UserPreferencesTableProcessedTableManager =
       UserPreference,
       PrefetchHooks Function()
     >;
+typedef $$RecentBillsTableCreateCompanionBuilder =
+    RecentBillsCompanion Function({
+      Value<int> id,
+      required String participants,
+      required int participantCount,
+      required double total,
+      required String date,
+      required double subtotal,
+      required double tax,
+      required double tipAmount,
+      Value<String?> items,
+      Value<int> colorValue,
+      Value<DateTime> createdAt,
+    });
+typedef $$RecentBillsTableUpdateCompanionBuilder =
+    RecentBillsCompanion Function({
+      Value<int> id,
+      Value<String> participants,
+      Value<int> participantCount,
+      Value<double> total,
+      Value<String> date,
+      Value<double> subtotal,
+      Value<double> tax,
+      Value<double> tipAmount,
+      Value<String?> items,
+      Value<int> colorValue,
+      Value<DateTime> createdAt,
+    });
+
+class $$RecentBillsTableFilterComposer
+    extends Composer<_$AppDatabase, $RecentBillsTable> {
+  $$RecentBillsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get participants => $composableBuilder(
+    column: $table.participants,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get participantCount => $composableBuilder(
+    column: $table.participantCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get total => $composableBuilder(
+    column: $table.total,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get subtotal => $composableBuilder(
+    column: $table.subtotal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get tax => $composableBuilder(
+    column: $table.tax,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get tipAmount => $composableBuilder(
+    column: $table.tipAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get items => $composableBuilder(
+    column: $table.items,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get colorValue => $composableBuilder(
+    column: $table.colorValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RecentBillsTableOrderingComposer
+    extends Composer<_$AppDatabase, $RecentBillsTable> {
+  $$RecentBillsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get participants => $composableBuilder(
+    column: $table.participants,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get participantCount => $composableBuilder(
+    column: $table.participantCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get total => $composableBuilder(
+    column: $table.total,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get subtotal => $composableBuilder(
+    column: $table.subtotal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get tax => $composableBuilder(
+    column: $table.tax,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get tipAmount => $composableBuilder(
+    column: $table.tipAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get items => $composableBuilder(
+    column: $table.items,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get colorValue => $composableBuilder(
+    column: $table.colorValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RecentBillsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RecentBillsTable> {
+  $$RecentBillsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get participants => $composableBuilder(
+    column: $table.participants,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get participantCount => $composableBuilder(
+    column: $table.participantCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get total =>
+      $composableBuilder(column: $table.total, builder: (column) => column);
+
+  GeneratedColumn<String> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<double> get subtotal =>
+      $composableBuilder(column: $table.subtotal, builder: (column) => column);
+
+  GeneratedColumn<double> get tax =>
+      $composableBuilder(column: $table.tax, builder: (column) => column);
+
+  GeneratedColumn<double> get tipAmount =>
+      $composableBuilder(column: $table.tipAmount, builder: (column) => column);
+
+  GeneratedColumn<String> get items =>
+      $composableBuilder(column: $table.items, builder: (column) => column);
+
+  GeneratedColumn<int> get colorValue => $composableBuilder(
+    column: $table.colorValue,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$RecentBillsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RecentBillsTable,
+          RecentBill,
+          $$RecentBillsTableFilterComposer,
+          $$RecentBillsTableOrderingComposer,
+          $$RecentBillsTableAnnotationComposer,
+          $$RecentBillsTableCreateCompanionBuilder,
+          $$RecentBillsTableUpdateCompanionBuilder,
+          (
+            RecentBill,
+            BaseReferences<_$AppDatabase, $RecentBillsTable, RecentBill>,
+          ),
+          RecentBill,
+          PrefetchHooks Function()
+        > {
+  $$RecentBillsTableTableManager(_$AppDatabase db, $RecentBillsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$RecentBillsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () => $$RecentBillsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer:
+              () =>
+                  $$RecentBillsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> participants = const Value.absent(),
+                Value<int> participantCount = const Value.absent(),
+                Value<double> total = const Value.absent(),
+                Value<String> date = const Value.absent(),
+                Value<double> subtotal = const Value.absent(),
+                Value<double> tax = const Value.absent(),
+                Value<double> tipAmount = const Value.absent(),
+                Value<String?> items = const Value.absent(),
+                Value<int> colorValue = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => RecentBillsCompanion(
+                id: id,
+                participants: participants,
+                participantCount: participantCount,
+                total: total,
+                date: date,
+                subtotal: subtotal,
+                tax: tax,
+                tipAmount: tipAmount,
+                items: items,
+                colorValue: colorValue,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String participants,
+                required int participantCount,
+                required double total,
+                required String date,
+                required double subtotal,
+                required double tax,
+                required double tipAmount,
+                Value<String?> items = const Value.absent(),
+                Value<int> colorValue = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => RecentBillsCompanion.insert(
+                id: id,
+                participants: participants,
+                participantCount: participantCount,
+                total: total,
+                date: date,
+                subtotal: subtotal,
+                tax: tax,
+                tipAmount: tipAmount,
+                items: items,
+                colorValue: colorValue,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RecentBillsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RecentBillsTable,
+      RecentBill,
+      $$RecentBillsTableFilterComposer,
+      $$RecentBillsTableOrderingComposer,
+      $$RecentBillsTableAnnotationComposer,
+      $$RecentBillsTableCreateCompanionBuilder,
+      $$RecentBillsTableUpdateCompanionBuilder,
+      (
+        RecentBill,
+        BaseReferences<_$AppDatabase, $RecentBillsTable, RecentBill>,
+      ),
+      RecentBill,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -1654,4 +2635,6 @@ class $AppDatabaseManager {
       $$TutorialStatesTableTableManager(_db, _db.tutorialStates);
   $$UserPreferencesTableTableManager get userPreferences =>
       $$UserPreferencesTableTableManager(_db, _db.userPreferences);
+  $$RecentBillsTableTableManager get recentBills =>
+      $$RecentBillsTableTableManager(_db, _db.recentBills);
 }

@@ -70,7 +70,7 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
       tipPercentage: widget.tipPercentage,
       isCustomTipAmount: widget.isCustomTipAmount,
     );
-    
+
     // Load share options from database
     _loadShareOptions();
   }
@@ -125,11 +125,7 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
     final sortedParticipants = _summaryData.sortedParticipants;
 
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
@@ -196,7 +192,26 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
             bottom: 0,
             child: BottomBar(
               onShareTap: _promptShareOptions,
-              onDoneTap: () => DoneButtonHandler.handleDone(context),
+              onDoneTap:
+                  () => DoneButtonHandler.handleDone(
+                    context,
+                    participants: widget.participants,
+                    personShares: widget.personShares,
+                    items: widget.items,
+                    subtotal: widget.subtotal,
+                    tax: widget.tax,
+                    tipAmount: widget.tipAmount,
+                    total: widget.total,
+                    birthdayPerson: widget.birthdayPerson,
+                  ),
+              participants: widget.participants,
+              personShares: widget.personShares,
+              items: widget.items,
+              subtotal: widget.subtotal,
+              tax: widget.tax,
+              tipAmount: widget.tipAmount,
+              total: widget.total,
+              birthdayPerson: widget.birthdayPerson,
             ),
           ),
         ],

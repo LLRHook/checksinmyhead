@@ -1,13 +1,43 @@
 issues to fix:
 
 first page:
-alcohol tax, if considering alc tip as separate. think of how to make that eloquent
+alcohol tax, if considering alc tip as separate. think of how to make that eloquent. also, need to mark items as liquor or something?
+otherwise, it'll just get split among everyone...
 
+---
 share functionality:
-provide a way to add a payment method or something. link their zelle or venmo
+provide a way to add a payment method or something. link their zelle or venmo.
+opt for airbnb style, login with number + 2FA which will build their "account"
+add venmo/zelle (can i get their current phone # from sim?)
+Profile Creation
 
-done:
-store the last 3 bills in local database
+After verification, prompt for:
+
+Name (for display in the app)
+Venmo username (stored securely on backend)
+
+
+Minimal information, focused just on enabling the core functionality
+
+
+Contact Integration
+
+Request contacts permission
+Match contact phone numbers with registered users in your system
+Show which contacts have accounts (and thus Venmo links available)
+
+
+For Non-App Users
+
+Option to send SMS invites to contacts
+Include deep link to app with referral code
+Can still add them to splits manually without Venmo links
+
+---
+
+- build the functionality of the recent bills view more:
+- share bill, maybe clean up delete modal, and then also the bill details/pill expansion.
+- cheeky lil redesign
 
 - if you don't have enough items in the thing, say you have a bill of 100 and 1 item in there,
 then you can press the unassigned items and it doesn't do what we expect.
