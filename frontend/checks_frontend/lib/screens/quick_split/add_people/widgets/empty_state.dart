@@ -19,10 +19,7 @@ class EmptyState extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  Colors.grey.shade50,
-                  Colors.grey.shade100,
-                ],
+                colors: [Colors.grey.shade50, Colors.grey.shade100],
               ),
               shape: BoxShape.circle,
               boxShadow: [
@@ -44,23 +41,21 @@ class EmptyState extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Colors.grey.shade50,
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.grey.shade200,
-                        width: 2,
-                      ),
+                      border: Border.all(color: Colors.grey.shade200, width: 2),
                     ),
                   ),
                   // People icon with gradient
                   ShaderMask(
                     blendMode: BlendMode.srcIn,
-                    shaderCallback: (Rect bounds) => LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        colorScheme.primary.withOpacity(0.6),
-                        colorScheme.primary.withOpacity(0.3),
-                      ],
-                    ).createShader(bounds),
+                    shaderCallback:
+                        (Rect bounds) => LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            colorScheme.primary.withOpacity(0.6),
+                            colorScheme.primary.withOpacity(0.3),
+                          ],
+                        ).createShader(bounds),
                     child: Icon(
                       Icons.group_outlined,
                       size: 64,
@@ -100,20 +95,18 @@ class EmptyState extends StatelessWidget {
           // Premium text with gradient - Checkmate pun
           ShaderMask(
             blendMode: BlendMode.srcIn,
-            shaderCallback: (Rect bounds) => LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [
-                colorScheme.primary.withOpacity(0.9),
-                colorScheme.primary.withOpacity(0.7),
-              ],
-            ).createShader(bounds),
+            shaderCallback:
+                (Rect bounds) => LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    colorScheme.primary.withOpacity(0.9),
+                    colorScheme.primary.withOpacity(0.7),
+                  ],
+                ).createShader(bounds),
             child: const Text(
               "Your Move",
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
             ),
           ),
           const SizedBox(height: 8),

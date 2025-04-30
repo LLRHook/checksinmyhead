@@ -25,14 +25,9 @@ class BillTotalSection extends StatelessWidget {
             prefixText: '\$',
             hintText: '0.00',
           ),
-          keyboardType: const TextInputType.numberWithOptions(
-            decimal: true,
-          ),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
           inputFormatters: [CurrencyFormatter.currencyFormatter],
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
         ),
 
         const SizedBox(height: 16),
@@ -46,14 +41,9 @@ class BillTotalSection extends StatelessWidget {
             prefixText: '\$',
             hintText: '0.00',
           ),
-          keyboardType: const TextInputType.numberWithOptions(
-            decimal: true,
-          ),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
           inputFormatters: [CurrencyFormatter.currencyFormatter],
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
         ),
       ],
     );

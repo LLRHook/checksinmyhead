@@ -68,13 +68,16 @@ class AssignmentData {
       total: total ?? this.total,
       tipPercentage: tipPercentage ?? this.tipPercentage,
       alcoholTipPercentage: alcoholTipPercentage ?? this.alcoholTipPercentage,
-      useDifferentAlcoholTip: useDifferentAlcoholTip ?? this.useDifferentAlcoholTip,
+      useDifferentAlcoholTip:
+          useDifferentAlcoholTip ?? this.useDifferentAlcoholTip,
       isCustomTipAmount: isCustomTipAmount ?? this.isCustomTipAmount,
       personTotals: personTotals ?? this.personTotals,
       personFinalShares: personFinalShares ?? this.personFinalShares,
       unassignedAmount: unassignedAmount ?? this.unassignedAmount,
-      selectedPerson: clearSelectedPerson ? null : (selectedPerson ?? this.selectedPerson),
-      birthdayPerson: clearBirthdayPerson ? null : (birthdayPerson ?? this.birthdayPerson),
+      selectedPerson:
+          clearSelectedPerson ? null : (selectedPerson ?? this.selectedPerson),
+      birthdayPerson:
+          clearBirthdayPerson ? null : (birthdayPerson ?? this.birthdayPerson),
     );
   }
 

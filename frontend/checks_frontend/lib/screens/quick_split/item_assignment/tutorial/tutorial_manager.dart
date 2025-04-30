@@ -1,5 +1,5 @@
+import 'package:checks_frontend/database/database_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'tutorial_overlay.dart';
 
 /// Manages the tutorial state and functionality for item assignment screen
@@ -58,26 +58,34 @@ class TutorialManager {
   /// Get whether the user has seen the tutorial
   bool get hasSeenTutorial => _hasSeenTutorial;
 
-  /// Load tutorial state from SharedPreferences
+  /// Load tutorial state from database
   Future<void> _loadTutorialState() async {
-    final prefs = await SharedPreferences.getInstance();
-    _hasSeenTutorial = prefs.getBool(_tutorialPreferenceKey) ?? false;
+    try {
+      _hasSeenTutorial = await DatabaseProvider.db.hasTutorialBeenSeen(
+        _tutorialPreferenceKey,
+      );
+    } catch (e) {
+      print('Error loading tutorial state: $e');
+      _hasSeenTutorial = false;
+    }
   }
 
-  /// Save tutorial state to SharedPreferences
+  /// Save tutorial state to database
   Future<bool> saveTutorialState() async {
-    final prefs = await SharedPreferences.getInstance();
-    final result = await prefs.setBool(_tutorialPreferenceKey, true);
-    if (result) {
+    try {
+      await DatabaseProvider.db.markTutorialAsSeen(_tutorialPreferenceKey);
       _hasSeenTutorial = true;
+      return true;
+    } catch (e) {
+      print('Error saving tutorial state: $e');
+      return false;
     }
-    return result;
   }
 
   /// Show the tutorial overlay and save state
   Future<void> showTutorial(BuildContext context) async {
     // Save state first and wait for it to complete
-    final saved = await saveTutorialState();
+    await saveTutorialState();
 
     // Only show tutorial if context is still valid
     if (context.mounted) {
@@ -110,5 +118,15 @@ class TutorialManager {
               )
               : null,
     );
+  }
+
+  /// Reset the tutorial state (useful for testing)
+  Future<void> resetTutorial() async {
+    try {
+      await DatabaseProvider.db.resetTutorial(_tutorialPreferenceKey);
+      _hasSeenTutorial = false;
+    } catch (e) {
+      print('Error resetting tutorial: $e');
+    }
   }
 }

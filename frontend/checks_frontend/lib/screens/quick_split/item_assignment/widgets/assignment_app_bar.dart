@@ -4,7 +4,7 @@ class AssignmentAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback onBackPressed;
   final VoidCallback? onHelpPressed;
   final bool showHelpButton;
-  
+
   const AssignmentAppBar({
     Key? key,
     required this.onBackPressed,
@@ -15,7 +15,7 @@ class AssignmentAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return AppBar(
       title: const Text(
         'Assign Items',
