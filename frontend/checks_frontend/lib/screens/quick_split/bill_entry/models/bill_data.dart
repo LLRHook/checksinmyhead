@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import '/models/bill_item.dart';
 
 class BillData extends ChangeNotifier {
-  // Controllers
+  // Existing controllers
   final TextEditingController subtotalController = TextEditingController();
   final TextEditingController taxController = TextEditingController();
   final TextEditingController customTipController = TextEditingController();
   final TextEditingController alcoholController = TextEditingController();
   final TextEditingController itemNameController = TextEditingController();
   final TextEditingController itemPriceController = TextEditingController();
+
+  // New controller for alcohol tax
+  final TextEditingController alcoholTaxController = TextEditingController();
 
   // Tip settings
   double tipPercentage = 18.0;
@@ -20,6 +23,7 @@ class BillData extends ChangeNotifier {
   // Bill calculation values
   double subtotal = 0.0;
   double tax = 0.0;
+  double alcoholTax = 0.0; // New property
   double tipAmount = 0.0;
   double total = 0.0;
 
@@ -36,6 +40,9 @@ class BillData extends ChangeNotifier {
     taxController.addListener(calculateBill);
     alcoholController.addListener(calculateBill);
     customTipController.addListener(calculateBill);
+    alcoholTaxController.addListener(
+      calculateBill,
+    ); // Add listener for alcohol tax
   }
 
   @override
@@ -47,6 +54,7 @@ class BillData extends ChangeNotifier {
     itemNameController.dispose();
     itemPriceController.dispose();
     customTipController.dispose();
+    alcoholTaxController.dispose(); // Dispose new controller
     super.dispose();
   }
 
@@ -65,10 +73,13 @@ class BillData extends ChangeNotifier {
     }
 
     try {
-      alcoholAmount = double.tryParse(alcoholController.text) ?? 0.0;
+      alcoholTax = double.tryParse(alcoholTaxController.text) ?? 0.0;
     } catch (_) {
-      alcoholAmount = 0.0;
+      alcoholTax = 0.0;
     }
+
+    // Calculate alcohol amount based on marked items
+    calculateAlcoholAmount();
 
     if (useCustomTipAmount) {
       // Use the custom tip amount directly with validation
@@ -94,7 +105,8 @@ class BillData extends ChangeNotifier {
       }
     }
 
-    total = subtotal + tax + tipAmount;
+    // Update total to include alcohol tax
+    total = subtotal + tax + tipAmount + alcoholTax;
 
     notifyListeners();
   }
@@ -109,6 +121,27 @@ class BillData extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Calculate alcohol amount based on marked items
+  void calculateAlcoholAmount() {
+    double amount = 0.0;
+    for (var item in items) {
+      if (item.isAlcohol) {
+        amount += item.price;
+      }
+    }
+
+    // Only update controller if value has changed significantly
+    if ((amount - alcoholAmount).abs() > 0.01) {
+      // Update the alcohol amount
+      alcoholAmount = amount;
+
+      // Update the controller text if it's not focused (to avoid cursor jumping)
+      if (alcoholController.text != amount.toStringAsFixed(2)) {
+        alcoholController.text = amount.toStringAsFixed(2);
+      }
+    }
+  }
+
   // Add an item to the list
   void addItem(String name, double price) {
     items.add(BillItem(name: name, price: price, assignments: {}));
@@ -120,7 +153,25 @@ class BillData extends ChangeNotifier {
   void removeItem(int index) {
     items.removeAt(index);
     calculateItemsTotal();
+    calculateAlcoholAmount(); // Recalculate alcohol amount
     notifyListeners();
+  }
+
+  // Toggle alcohol status for an item
+  void toggleItemAlcohol(int index, bool isAlcohol) {
+    if (index >= 0 && index < items.length) {
+      final item = items[index];
+      items[index] = BillItem(
+        name: item.name,
+        price: item.price,
+        assignments: item.assignments,
+        isAlcohol: isAlcohol,
+      );
+
+      calculateAlcoholAmount();
+      calculateBill();
+      notifyListeners();
+    }
   }
 
   // Update animated items total
