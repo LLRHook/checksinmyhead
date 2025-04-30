@@ -21,13 +21,15 @@ class ParticipantSelectionSheet extends StatefulWidget {
   const ParticipantSelectionSheet({super.key});
 
   @override
-  State<ParticipantSelectionSheet> createState() => _ParticipantSelectionSheetState();
+  State<ParticipantSelectionSheet> createState() =>
+      _ParticipantSelectionSheetState();
 }
 
-class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet> with SingleTickerProviderStateMixin {
+class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
+    with SingleTickerProviderStateMixin {
   List<Person> _recentPeople = [];
   late AnimationController _animationController;
-  
+
   @override
   void initState() {
     super.initState();
@@ -95,10 +97,17 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet> w
       child: Builder(
         builder: (context) {
           return Container(
-            padding: const EdgeInsets.only(top: 20, left: 20, right: 20, bottom: 10),
+            padding: const EdgeInsets.only(
+              top: 20,
+              left: 20,
+              right: 20,
+              bottom: 10,
+            ),
             decoration: BoxDecoration(
               color: Theme.of(context).scaffoldBackgroundColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.15),
@@ -165,11 +174,14 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet> w
 
                         // Current participants section
                         Consumer<ParticipantsProvider>(
-                          builder: (context, provider, _) => provider.hasParticipants
-                            ? CurrentParticipantsSection(
-                                animationController: _animationController,
-                              )
-                            : const EmptyState(),
+                          builder:
+                              (context, provider, _) =>
+                                  provider.hasParticipants
+                                      ? CurrentParticipantsSection(
+                                        animationController:
+                                            _animationController,
+                                      )
+                                      : const EmptyState(),
                         ),
 
                         const SizedBox(height: 32),
@@ -180,12 +192,14 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet> w
 
                 // Continue button
                 Consumer<ParticipantsProvider>(
-                  builder: (context, provider, _) => ContinueButton(
-                    onContinue: () => _continueToBillEntry(
-                      context, 
-                      provider.participants,
-                    ),
-                  ),
+                  builder:
+                      (context, provider, _) => ContinueButton(
+                        onContinue:
+                            () => _continueToBillEntry(
+                              context,
+                              provider.participants,
+                            ),
+                      ),
                 ),
               ],
             ),
@@ -203,10 +217,11 @@ Future<void> showParticipantSelectionSheet(BuildContext context) async {
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: Colors.transparent,
-    builder: (context) => const FractionallySizedBox(
-      heightFactor: 0.9,
-      child: ParticipantSelectionSheet(),
-    ),
+    builder:
+        (context) => const FractionallySizedBox(
+          heightFactor: 0.9,
+          child: ParticipantSelectionSheet(),
+        ),
   );
 
   if (participants != null && participants.isNotEmpty && context.mounted) {

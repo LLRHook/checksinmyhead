@@ -22,7 +22,10 @@ class _AddPersonFieldState extends State<AddPersonField> {
 
   void _addPerson(BuildContext context) {
     if (_formKey.currentState!.validate()) {
-      final participantsProvider = Provider.of<ParticipantsProvider>(context, listen: false);
+      final participantsProvider = Provider.of<ParticipantsProvider>(
+        context,
+        listen: false,
+      );
       participantsProvider.addPerson(_nameController.text);
       _nameController.clear();
       setState(() {
@@ -38,94 +41,95 @@ class _AddPersonFieldState extends State<AddPersonField> {
     return AnimatedSize(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
-      child: _isAdding
-          ? Form(
-              key: _formKey,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _nameController,
-                      autofocus: true,
-                      decoration: InputDecoration(
-                        hintText: "Enter name",
-                        filled: true,
-                        fillColor: Colors.grey.shade100,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: colorScheme.primary,
-                            width: 2,
+      child:
+          _isAdding
+              ? Form(
+                key: _formKey,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _nameController,
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          hintText: "Enter name",
+                          filled: true,
+                          fillColor: Colors.grey.shade100,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: colorScheme.primary,
+                              width: 2,
+                            ),
                           ),
                         ),
+                        onFieldSubmitted: (_) {
+                          _addPerson(context);
+                        },
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter a name';
+                          }
+                          return null;
+                        },
                       ),
-                      onFieldSubmitted: (_) {
-                        _addPerson(context);
-                      },
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter a name';
-                        }
-                        return null;
-                      },
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      ElevatedButton(
-                        onPressed: () => _addPerson(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: colorScheme.primary,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.all(14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                    const SizedBox(width: 10),
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () => _addPerson(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: colorScheme.primary,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.all(14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                           ),
+                          child: const Text('Add'),
                         ),
-                        child: const Text('Add'),
-                      ),
-                    ],
+                      ],
+                    ),
+                  ],
+                ),
+              )
+              : ElevatedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _isAdding = true;
+                  });
+                },
+                icon: const Icon(Icons.add),
+                label: const Text("Add Person"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colorScheme.surface,
+                  foregroundColor: colorScheme.primary,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 14,
+                    horizontal: 16,
                   ),
-                ],
-              ),
-            )
-          : ElevatedButton.icon(
-              onPressed: () {
-                setState(() {
-                  _isAdding = true;
-                });
-              },
-              icon: const Icon(Icons.add),
-              label: const Text("Add Person"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colorScheme.surface,
-                foregroundColor: colorScheme.primary,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 14,
-                  horizontal: 16,
-                ),
-                side: BorderSide(
-                  color: colorScheme.primary.withOpacity(0.5),
-                  width: 1,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(
+                    color: colorScheme.primary.withOpacity(0.5),
+                    width: 1,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
-            ),
     );
   }
 }

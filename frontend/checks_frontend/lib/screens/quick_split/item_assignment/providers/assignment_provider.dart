@@ -7,7 +7,7 @@ import '/models/bill_item.dart';
 
 class AssignmentProvider extends ChangeNotifier {
   AssignmentData _data;
-  
+
   // Universal food/drink icon
   final IconData universalItemIcon = Icons.restaurant_menu;
 
@@ -23,17 +23,17 @@ class AssignmentProvider extends ChangeNotifier {
     required bool useDifferentAlcoholTip,
     required bool isCustomTipAmount,
   }) : _data = AssignmentData.initial(
-          participants: participants,
-          items: items,
-          subtotal: subtotal,
-          tax: tax,
-          tipAmount: tipAmount,
-          total: total,
-          tipPercentage: tipPercentage,
-          alcoholTipPercentage: alcoholTipPercentage,
-          useDifferentAlcoholTip: useDifferentAlcoholTip,
-          isCustomTipAmount: isCustomTipAmount,
-        ) {
+         participants: participants,
+         items: items,
+         subtotal: subtotal,
+         tax: tax,
+         tipAmount: tipAmount,
+         total: total,
+         tipPercentage: tipPercentage,
+         alcoholTipPercentage: alcoholTipPercentage,
+         useDifferentAlcoholTip: useDifferentAlcoholTip,
+         isCustomTipAmount: isCustomTipAmount,
+       ) {
     // Initialize data with calculated values
     _calculateInitialAssignments();
   }
@@ -78,7 +78,7 @@ class AssignmentProvider extends ChangeNotifier {
       HapticFeedback.mediumImpact();
     } else {
       _data = _data.copyWith(birthdayPerson: person);
-      
+
       // If the selected person is now the birthday person, deselect them
       if (_data.selectedPerson == person) {
         _data = _data.copyWith(clearSelectedPerson: true);
@@ -94,7 +94,7 @@ class AssignmentProvider extends ChangeNotifier {
     if (_data.items.isEmpty) {
       _data = AssignmentUtils.calculateInitialAssignments(_data);
     }
-    
+
     notifyListeners();
   }
 
@@ -108,18 +108,19 @@ class AssignmentProvider extends ChangeNotifier {
   // Evenly split an item among selected participants
   void splitItemEvenly(BillItem item, List<Person> people) {
     if (people.isEmpty) return;
-    
-    Map<Person, double> newAssignments = AssignmentUtils.splitItemEvenly(people);
+
+    Map<Person, double> newAssignments = AssignmentUtils.splitItemEvenly(
+      people,
+    );
     assignItem(item, newAssignments);
   }
 
   // Balance an item between current assignees
   void balanceItemBetweenAssignees(BillItem item, List<Person> assignedPeople) {
     if (assignedPeople.isEmpty) return;
-    
-    Map<Person, double> newAssignments = AssignmentUtils.balanceItemBetweenAssignees(
-      item, assignedPeople
-    );
+
+    Map<Person, double> newAssignments =
+        AssignmentUtils.balanceItemBetweenAssignees(item, assignedPeople);
     assignItem(item, newAssignments);
   }
 
@@ -128,7 +129,7 @@ class AssignmentProvider extends ChangeNotifier {
     if (_data.unassignedAmount <= 0) return;
 
     _data = AssignmentUtils.splitUnassignedAmountEvenly(_data);
-    
+
     // Add a success sound or animation here
     HapticFeedback.mediumImpact();
     notifyListeners();

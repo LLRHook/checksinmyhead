@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class AssignmentBottomBar extends StatelessWidget {
   final double totalBill;
   final VoidCallback onContinueTap;
-  
+
   const AssignmentBottomBar({
     Key? key,
     required this.totalBill,
@@ -13,7 +13,7 @@ class AssignmentBottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -27,7 +27,8 @@ class AssignmentBottomBar extends StatelessWidget {
         ],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween, // Space between elements
+        mainAxisAlignment:
+            MainAxisAlignment.spaceBetween, // Space between elements
         children: [
           // Bill total info - Keep fixed width
           Column(
@@ -54,10 +55,7 @@ class AssignmentBottomBar extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: colorScheme.primary,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 12,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               elevation: 2,
               shadowColor: colorScheme.primary.withOpacity(0.4),
               shape: RoundedRectangleBorder(
@@ -69,10 +67,7 @@ class AssignmentBottomBar extends StatelessWidget {
               children: const [
                 Text(
                   'Continue',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
                 SizedBox(width: 4),
                 Icon(Icons.arrow_forward_rounded, size: 18),

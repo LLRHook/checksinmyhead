@@ -8,8 +8,6 @@ provide a way to add a payment method or something. link their zelle or venmo
 
 done:
 store the last 3 bills in local database
-migrate local database out of shared preferences, store the app data in there
-also, share state of toggles, like showing items in text blast.
 
 - if you don't have enough items in the thing, say you have a bill of 100 and 1 item in there,
 then you can press the unassigned items and it doesn't do what we expect.
@@ -24,3 +22,7 @@ then you can press the unassigned items and it doesn't do what we expect.
 - address deprecated methods, and remove comments
 
 - test application thoroughly, potentially just buying the apple license and releasing the app in beta
+
+- allow access to contacts, derive names from there. deeplink the venmo to the phone number
+
+- the split distribution be messing up if the % is small. doesn't show all the pieces

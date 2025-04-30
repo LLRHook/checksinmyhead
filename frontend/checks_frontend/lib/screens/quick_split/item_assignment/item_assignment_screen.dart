@@ -57,7 +57,7 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
     with SingleTickerProviderStateMixin {
   // Animation controller for UI elements
   late AnimationController _animationController;
-  
+
   // Tutorial manager
   late TutorialManager _tutorialManager;
   bool _tutorialManagerInitialized = false;
@@ -141,9 +141,9 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
 
   // Show custom split dialog for an item
   void _showCustomSplitDialog(
-    BillItem item, 
-    List<Person> preselectedPeople, 
-    AssignmentProvider provider
+    BillItem item,
+    List<Person> preselectedPeople,
+    AssignmentProvider provider,
   ) {
     showCustomSplitDialog(
       context: context,
@@ -158,25 +158,28 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => AssignmentProvider(
-        participants: widget.participants,
-        items: widget.items,
-        subtotal: widget.subtotal,
-        tax: widget.tax,
-        tipAmount: widget.tipAmount,
-        total: widget.total,
-        tipPercentage: widget.tipPercentage,
-        alcoholTipPercentage: widget.alcoholTipPercentage,
-        useDifferentAlcoholTip: widget.useDifferentAlcoholTip,
-        isCustomTipAmount: widget.isCustomTipAmount,
-      ),
+      create:
+          (_) => AssignmentProvider(
+            participants: widget.participants,
+            items: widget.items,
+            subtotal: widget.subtotal,
+            tax: widget.tax,
+            tipAmount: widget.tipAmount,
+            total: widget.total,
+            tipPercentage: widget.tipPercentage,
+            alcoholTipPercentage: widget.alcoholTipPercentage,
+            useDifferentAlcoholTip: widget.useDifferentAlcoholTip,
+            isCustomTipAmount: widget.isCustomTipAmount,
+          ),
       child: Consumer<AssignmentProvider>(
         builder: (context, provider, _) {
           return Scaffold(
             appBar: AssignmentAppBar(
               onBackPressed: () => Navigator.pop(context),
-              onHelpPressed: _tutorialManagerInitialized ? 
-                () => _tutorialManager.showTutorial(context) : null,
+              onHelpPressed:
+                  _tutorialManagerInitialized
+                      ? () => _tutorialManager.showTutorial(context)
+                      : null,
               showHelpButton: _tutorialManagerInitialized,
             ),
             body: Column(
@@ -201,15 +204,17 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
 
                 // Items list
                 Expanded(
-                  child: widget.items.isEmpty
-                      ? EmptyItemsView(
-                          participants: widget.participants,
-                          personFinalShares: provider.personFinalShares,
-                          birthdayPerson: provider.birthdayPerson,
-                          unassignedAmount: provider.unassignedAmount,
-                          getPersonBillPercentage: provider.getPersonBillPercentage,
-                        )
-                      : _buildItemsListView(provider),
+                  child:
+                      widget.items.isEmpty
+                          ? EmptyItemsView(
+                            participants: widget.participants,
+                            personFinalShares: provider.personFinalShares,
+                            birthdayPerson: provider.birthdayPerson,
+                            unassignedAmount: provider.unassignedAmount,
+                            getPersonBillPercentage:
+                                provider.getPersonBillPercentage,
+                          )
+                          : _buildItemsListView(provider),
                 ),
 
                 // Bottom control bar with continue button
@@ -247,8 +252,9 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
           universalItemIcon: provider.universalItemIcon,
           onAssign: provider.assignItem,
           onSplitEvenly: provider.splitItemEvenly,
-          onShowCustomSplitDialog: (item, preselectedPeople) => 
-              _showCustomSplitDialog(item, preselectedPeople, provider),
+          onShowCustomSplitDialog:
+              (item, preselectedPeople) =>
+                  _showCustomSplitDialog(item, preselectedPeople, provider),
           getAssignmentColor: AssignmentUtils.getAssignmentColor,
           isPersonAssignedToItem: AssignmentUtils.isPersonAssignedToItem,
           getAssignedPeopleForItem: AssignmentUtils.getAssignedPeopleForItem,

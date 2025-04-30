@@ -7,10 +7,8 @@ import '../providers/participants_provider.dart';
 class RecentPeopleSection extends StatelessWidget {
   final List<Person> recentPeople;
 
-  const RecentPeopleSection({
-    Key? key,
-    required this.recentPeople,
-  }) : super(key: key);
+  const RecentPeopleSection({Key? key, required this.recentPeople})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -26,11 +24,7 @@ class RecentPeopleSection extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(
-              Icons.history,
-              size: 18,
-              color: Colors.grey.shade700,
-            ),
+            Icon(Icons.history, size: 18, color: Colors.grey.shade700),
             const SizedBox(width: 8),
             Text(
               "Recent People",
@@ -45,13 +39,14 @@ class RecentPeopleSection extends StatelessWidget {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: recentPeople.map((person) {
-            return _RecentPersonChip(
-              person: person,
-              isSelected: participantsProvider.isPersonSelected(person),
-              onTap: () => participantsProvider.toggleRecentPerson(person),
-            );
-          }).toList(),
+          children:
+              recentPeople.map((person) {
+                return _RecentPersonChip(
+                  person: person,
+                  isSelected: participantsProvider.isPersonSelected(person),
+                  onTap: () => participantsProvider.toggleRecentPerson(person),
+                );
+              }).toList(),
         ),
       ],
     );
@@ -84,19 +79,15 @@ class _RecentPersonChip extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 8,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected 
-                ? person.color.withOpacity(0.12)
-                : Colors.grey.shade50,
+            color:
+                isSelected
+                    ? person.color.withOpacity(0.12)
+                    : Colors.grey.shade50,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: isSelected 
-                  ? person.color
-                  : Colors.grey.shade300,
+              color: isSelected ? person.color : Colors.grey.shade300,
               width: isSelected ? 1.5 : 1,
             ),
           ),
@@ -119,12 +110,8 @@ class _RecentPersonChip extends StatelessWidget {
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeOutCubic,
                 style: TextStyle(
-                  color: isSelected 
-                      ? darkColor
-                      : Colors.grey.shade700,
-                  fontWeight: isSelected 
-                      ? FontWeight.w600
-                      : FontWeight.normal,
+                  color: isSelected ? darkColor : Colors.grey.shade700,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                   fontSize: 13,
                 ),
                 child: Text(person.name),
