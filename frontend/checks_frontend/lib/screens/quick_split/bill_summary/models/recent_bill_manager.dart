@@ -13,7 +13,6 @@ class RecentBillsManager {
       final recentBillsData = await DatabaseProvider.db.getRecentBills();
       return recentBillsData.map(RecentBillModel.fromData).toList();
     } catch (e) {
-      print('Error loading recent bills: $e');
       return [];
     }
   }

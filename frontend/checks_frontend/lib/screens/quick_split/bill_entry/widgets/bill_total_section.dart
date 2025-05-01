@@ -11,6 +11,7 @@ class BillTotalSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final billData = Provider.of<BillData>(context);
+    final showAlcoholTax = billData.useDifferentTipForAlcohol;
 
     return SectionCard(
       title: 'Bill Total',
@@ -45,6 +46,24 @@ class BillTotalSection extends StatelessWidget {
           inputFormatters: [CurrencyFormatter.currencyFormatter],
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
         ),
+
+        if (showAlcoholTax) ...[
+          const SizedBox(height: 16),
+
+          TextFormField(
+            controller: billData.alcoholTaxController,
+            decoration: AppInputDecoration.buildInputDecoration(
+              context: context,
+              labelText: 'Alcohol Tax',
+              prefixText: '\$',
+              hintText: '0.00',
+              prefixIcon: Icons.local_bar,
+            ),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [CurrencyFormatter.currencyFormatter],
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          ),
+        ],
       ],
     );
   }

@@ -9,8 +9,6 @@ class RecentPeopleManager {
     try {
       return await DatabaseProvider.db.getRecentPeople(limit: _maxRecentPeople);
     } catch (e) {
-      // Handle any errors
-      print('Error loading recent people: $e');
       return [];
     }
   }
@@ -23,8 +21,6 @@ class RecentPeopleManager {
     try {
       // Add current participants first (most recent)
       await DatabaseProvider.db.addPeopleToRecent(currentParticipants);
-    } catch (e) {
-      print('Error saving recent people: $e');
-    }
+    } catch (e) {}
   }
 }
