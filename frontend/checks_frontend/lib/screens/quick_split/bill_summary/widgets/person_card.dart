@@ -14,8 +14,16 @@ class PersonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final isBirthdayPerson = data.birthdayPerson == person;
-    final share = data.personShares[person] ?? 0;
+
+    // Get items assigned to this person
+    final personItems =
+        data.items
+            .where((item) => (item.assignments[person] ?? 0) > 0)
+            .toList();
+
+    // Calculate person's base amounts from CalculationUtils
     final personAmounts = CalculationUtils.calculatePersonAmounts(
       person: person,
       participants: data.participants,
@@ -27,11 +35,13 @@ class PersonCard extends StatelessWidget {
       birthdayPerson: data.birthdayPerson,
     );
 
-    // Get items assigned to this person
-    final personItems =
-        data.items
-            .where((item) => (item.assignments[person] ?? 0) > 0)
-            .toList();
+    // Calculate alcohol specific amounts
+    final alcoholTaxTotal = _calculatePersonAlcoholTax();
+    final alcoholTipTotal = _calculatePersonAlcoholTip();
+
+    // Calculate correct total share including alcohol costs
+    final double totalShare =
+        (personAmounts['total'] ?? 0.0) + alcoholTaxTotal + alcoholTipTotal;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -50,7 +60,7 @@ class PersonCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Person header with total
-          _buildPersonHeader(isBirthdayPerson, share),
+          _buildPersonHeader(context, isBirthdayPerson, totalShare),
 
           // Items list (if any)
           if (personItems.isNotEmpty) ...[
@@ -62,7 +72,7 @@ class PersonCard extends StatelessWidget {
               ),
             ),
 
-            ...personItems.map((item) => _buildItemRow(item, person)),
+            ...personItems.map((item) => _buildItemRow(context, item, person)),
 
             if (!isBirthdayPerson) // Only add divider if not birthday person
               const Divider(height: 16, indent: 16, endIndent: 16),
@@ -74,26 +84,20 @@ class PersonCard extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
               child: Column(
                 children: [
-                  // Only show subtotal if we have items
-                  if (personItems.isNotEmpty)
+                  if ((personAmounts['tax'] ?? 0) > 0)
                     _buildAmountRow(
-                      'Subtotal',
-                      personAmounts['subtotal'] ?? 0,
+                      'Tax',
+                      (personAmounts['tax'] ?? 0),
                       isTotal: false,
                     ),
 
-                  // Show tax and tip separately
-                  _buildAmountRow(
-                    'Tax',
-                    personAmounts['tax'] ?? 0,
-                    isTotal: false,
-                  ),
-
-                  _buildAmountRow(
-                    'Tip',
-                    personAmounts['tip'] ?? 0,
-                    isTotal: false,
-                  ),
+                  // Only show tip if amount > 0
+                  if ((personAmounts['tip'] ?? 0) > 0)
+                    _buildAmountRow(
+                      'Tip',
+                      (personAmounts['tip'] ?? 0),
+                      isTotal: false,
+                    ),
                 ],
               ),
             ),
@@ -102,7 +106,11 @@ class PersonCard extends StatelessWidget {
     );
   }
 
-  Widget _buildPersonHeader(bool isBirthdayPerson, double share) {
+  Widget _buildPersonHeader(
+    BuildContext context,
+    bool isBirthdayPerson,
+    double totalShare,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -164,7 +172,7 @@ class PersonCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              '\$${share.toStringAsFixed(2)}',
+              '\$${totalShare.toStringAsFixed(2)}',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color:
@@ -179,26 +187,99 @@ class PersonCard extends StatelessWidget {
     );
   }
 
-  Widget _buildItemRow(BillItem item, Person person) {
+  Widget _buildItemRow(BuildContext context, BillItem item, Person person) {
+    final colorScheme = Theme.of(context).colorScheme;
     final percentage = item.assignments[person] ?? 0;
-    final amount = item.price * (percentage / 100);
+
+    // Calculate base amount from the item price
+    final baseAmount = item.price * (percentage / 100);
+
+    // Calculate alcohol-related additional costs if applicable
+    final alcoholTaxAmount =
+        (item.isAlcohol && item.alcoholTaxPortion != null)
+            ? item.alcoholTaxPortion! * (percentage / 100)
+            : 0.0;
+
+    final alcoholTipAmount =
+        (item.isAlcohol && item.alcoholTipPortion != null)
+            ? item.alcoholTipPortion! * (percentage / 100)
+            : 0.0;
+
+    // Calculate total amount including alcohol costs
+    final totalAmount = baseAmount + alcoholTaxAmount + alcoholTipAmount;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Row(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Text(item.name, style: const TextStyle(fontSize: 14)),
+          // Main item row with total
+          Row(
+            children: [
+              if (item.isAlcohol)
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: Icon(
+                    Icons.wine_bar,
+                    size: 14,
+                    color: colorScheme.tertiary,
+                  ),
+                ),
+              Expanded(
+                child: Text(
+                  item.name,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight:
+                        item.isAlcohol ? FontWeight.w500 : FontWeight.normal,
+                  ),
+                ),
+              ),
+              if (percentage < 100)
+                Text(
+                  '${percentage.toStringAsFixed(0)}% × ',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+              Text(
+                '\$${totalAmount.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
-          if (percentage < 100)
-            Text(
-              '${percentage.toStringAsFixed(0)}% × ',
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+
+          // Only show breakdown if this is an alcoholic item with tax/tip
+          if (item.isAlcohol && (alcoholTaxAmount > 0 || alcoholTipAmount > 0))
+            Padding(
+              padding: const EdgeInsets.only(top: 2, left: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Subtotal: \$${baseAmount.toStringAsFixed(2)}',
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                  ),
+                  if (alcoholTaxAmount > 0)
+                    Text(
+                      'Alcohol Tax: \$${alcoholTaxAmount.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: colorScheme.tertiary.withOpacity(0.8),
+                      ),
+                    ),
+                  if (alcoholTipAmount > 0)
+                    Text(
+                      'Alcohol Tip: \$${alcoholTipAmount.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: colorScheme.tertiary.withOpacity(0.8),
+                      ),
+                    ),
+                ],
+              ),
             ),
-          Text(
-            '\$${amount.toStringAsFixed(2)}',
-            style: const TextStyle(fontWeight: FontWeight.w500),
-          ),
         ],
       ),
     );
@@ -220,7 +301,7 @@ class PersonCard extends StatelessWidget {
             style: TextStyle(
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
               fontSize: isTotal ? 15 : 14,
-              color: isTotal && color != null ? color : null,
+              color: color,
             ),
           ),
           Text(
@@ -228,11 +309,35 @@ class PersonCard extends StatelessWidget {
             style: TextStyle(
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
               fontSize: isTotal ? 15 : 14,
-              color: isTotal && color != null ? color : null,
+              color: color,
             ),
           ),
         ],
       ),
     );
+  }
+
+  // Calculate the total alcohol tax for this person
+  double _calculatePersonAlcoholTax() {
+    double total = 0.0;
+    for (var item in data.items) {
+      if (item.isAlcohol && item.alcoholTaxPortion != null) {
+        final percentage = item.assignments[person] ?? 0;
+        total += item.alcoholTaxPortion! * (percentage / 100);
+      }
+    }
+    return total;
+  }
+
+  // Calculate the total alcohol tip for this person
+  double _calculatePersonAlcoholTip() {
+    double total = 0.0;
+    for (var item in data.items) {
+      if (item.isAlcohol && item.alcoholTipPortion != null) {
+        final percentage = item.assignments[person] ?? 0;
+        total += item.alcoholTipPortion! * (percentage / 100);
+      }
+    }
+    return total;
   }
 }
