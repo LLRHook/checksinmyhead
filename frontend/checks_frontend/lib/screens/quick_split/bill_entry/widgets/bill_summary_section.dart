@@ -9,146 +9,138 @@ class BillSummarySection extends StatelessWidget {
   Widget build(BuildContext context) {
     final billData = Provider.of<BillData>(context);
     final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            colorScheme.primaryContainer,
-            colorScheme.primaryContainer.withOpacity(0.8),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: colorScheme.primaryContainer.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+    // Calculate total alcohol tax and tip
+    double totalAlcoholTax = 0.0;
+    double totalAlcoholTip = 0.0;
+    for (var item in billData.items) {
+      if (item.isAlcohol) {
+        if (item.alcoholTaxPortion != null)
+          totalAlcoholTax += item.alcoholTaxPortion!;
+        if (item.alcoholTipPortion != null)
+          totalAlcoholTip += item.alcoholTipPortion!;
+      }
+    }
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.shade200, width: 1),
       ),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          // Premium title with icon
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.summarize,
-                color: colorScheme.onPrimaryContainer,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Bill Summary',
-                style: textTheme.titleMedium?.copyWith(
-                  color: colorScheme.onPrimaryContainer,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Premium summary rows
-          _buildSummaryRow(
-            label: 'Subtotal',
-            value: billData.subtotal,
-            colorScheme: colorScheme,
-          ),
-
-          const SizedBox(height: 10),
-
-          _buildSummaryRow(
-            label: 'Tax',
-            value: billData.tax,
-            colorScheme: colorScheme,
-          ),
-
-          const SizedBox(height: 10),
-
-          _buildSummaryRow(
-            label: _getTipLabel(billData),
-            value: billData.tipAmount,
-            colorScheme: colorScheme,
-          ),
-
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Divider(height: 1, thickness: 1),
-          ),
-
-          // Premium total row
-          Row(
-            children: [
-              // Left side - the TOTAL label
-              const Text(
-                'TOTAL',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              // Spacer to push the price to the right
-              const Spacer(),
-              // Right side - the price in container with fixed width
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: colorScheme.onPrimaryContainer.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '\$${billData.total.toStringAsFixed(2)}',
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            // Title with icon
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.summarize, color: colorScheme.primary, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'BILL SUMMARY',
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: colorScheme.onPrimaryContainer,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.primary,
+                    letterSpacing: 1,
                   ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Premium summary rows
+            _buildBreakdownRow('Subtotal', billData.subtotal),
+
+            const SizedBox(height: 8),
+
+            _buildBreakdownRow('Tax', billData.tax),
+
+            // Add alcohol tax if present
+            if (totalAlcoholTax > 0) ...[
+              const SizedBox(height: 8),
+              _buildBreakdownRow(
+                'Alcohol Tax',
+                totalAlcoholTax,
+                textColor: colorScheme.tertiary,
               ),
             ],
-          ),
-        ],
+
+            if (billData.tipAmount > 0) ...[
+              const SizedBox(height: 8),
+              _buildBreakdownRow(
+                _getTipLabel(billData),
+                billData.tipAmount,
+                showPercentage: !billData.useCustomTipAmount,
+                tipPercentage: billData.tipPercentage,
+              ),
+            ],
+
+            // Add alcohol tip if present
+            if (totalAlcoholTip > 0) ...[
+              const SizedBox(height: 8),
+              _buildBreakdownRow(
+                'Alcohol Tip',
+                totalAlcoholTip,
+                textColor: colorScheme.tertiary,
+              ),
+            ],
+
+            // Total row with divider
+            const SizedBox(height: 12),
+            const Divider(height: 1),
+            const SizedBox(height: 12),
+
+            _buildBreakdownRow(
+              'Total',
+              billData.total,
+              isBold: true,
+              fontSize: 16,
+              textColor: colorScheme.primary,
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  // Helper method to build consistent summary rows
-  Widget _buildSummaryRow({
-    required String label,
-    required double value,
-    required ColorScheme colorScheme,
+  // Helper method to build consistent breakdown rows
+  Widget _buildBreakdownRow(
+    String label,
+    double value, {
+    bool isBold = false,
+    double? fontSize,
+    Color? textColor,
+    bool showPercentage = false,
+    double? tipPercentage,
   }) {
     return Row(
       children: [
-        // Use Expanded instead of Flexible to force the label to take available space
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: colorScheme.onPrimaryContainer.withOpacity(0.8),
-            ),
-            overflow: TextOverflow.ellipsis,
+        // Left side - the label
+        Text(
+          label,
+          style: TextStyle(
+            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            fontSize: fontSize,
+            color: textColor,
           ),
         ),
-        // Use a fixed width SizedBox for the value to ensure consistency
-        SizedBox(
-          width:
-              80, // Fixed width for the price that should be enough for any reasonable value
-          child: Text(
-            '\$${value.toStringAsFixed(2)}',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: colorScheme.onPrimaryContainer,
-            ),
-            textAlign:
-                TextAlign.right, // Right align text within the fixed width
+        // Spacer to push the price to the right
+        const Spacer(),
+        // Right side - the value
+        Text(
+          '\$${value.toStringAsFixed(2)}' +
+              (showPercentage && tipPercentage != null
+                  ? ' (${tipPercentage.toInt()}%)'
+                  : ''),
+          style: TextStyle(
+            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            fontSize: fontSize,
+            color: textColor,
           ),
+          textAlign: TextAlign.right,
         ),
       ],
     );
@@ -159,9 +151,9 @@ class BillSummarySection extends StatelessWidget {
     if (billData.useCustomTipAmount) {
       return 'Tip (Custom)';
     } else if (billData.useDifferentTipForAlcohol) {
-      return 'Tip (Food/Alcohol)';
+      return 'Tip (Food)';
     } else {
-      return 'Tip (${billData.tipPercentage.toInt()}%)';
+      return 'Tip';
     }
   }
 }

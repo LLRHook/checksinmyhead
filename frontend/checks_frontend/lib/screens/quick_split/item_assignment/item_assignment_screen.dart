@@ -249,7 +249,10 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
           assignedPercentage: assignedPercentage,
           selectedPerson: provider.selectedPerson,
           participants: widget.participants,
-          universalItemIcon: provider.universalItemIcon,
+          universalItemIcon:
+              item.isAlcohol
+                  ? provider.alcoholItemIcon
+                  : provider.universalItemIcon,
           onAssign: provider.assignItem,
           onSplitEvenly: provider.splitItemEvenly,
           onShowCustomSplitDialog:

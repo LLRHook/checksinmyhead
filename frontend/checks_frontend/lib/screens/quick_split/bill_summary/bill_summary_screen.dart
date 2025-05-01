@@ -6,7 +6,6 @@ import '/models/bill_item.dart';
 // Import refactored components
 import 'models/bill_summary_data.dart';
 import 'widgets/bill_total_card.dart';
-import 'widgets/split_overview.dart';
 import 'widgets/person_card.dart';
 import 'widgets/bottom_bar.dart';
 import 'widgets/share_options_sheet.dart';
@@ -84,10 +83,47 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
   }
 
   void _shareBillSummary() {
-    // Generate formatted bill summary text
+    // Create a copy of person shares to avoid modifying the original
+    final Map<Person, double> updatedShares = Map.from(widget.personShares);
+
+    // Calculate alcohol charges for each person and update their shares
+    for (var person in widget.participants) {
+      if (person == widget.birthdayPerson) continue; // Skip birthday person
+
+      double personAlcoholTax = 0.0;
+      double personAlcoholTip = 0.0;
+
+      // Calculate alcohol tax and tip for this person
+      for (var item in widget.items) {
+        if (item.isAlcohol && item.assignments.containsKey(person)) {
+          double percentage = item.assignments[person]! / 100.0;
+
+          // Add alcohol tax if present
+          if (item.alcoholTaxPortion != null && item.alcoholTaxPortion! > 0) {
+            personAlcoholTax += item.alcoholTaxPortion! * percentage;
+          }
+
+          // Add alcohol tip if present
+          if (item.alcoholTipPortion != null && item.alcoholTipPortion! > 0) {
+            personAlcoholTip += item.alcoholTipPortion! * percentage;
+          }
+        }
+      }
+
+      // Update the person's share with their alcohol charges
+      if (personAlcoholTax > 0 || personAlcoholTip > 0) {
+        updatedShares[person] =
+            (updatedShares[person] ?? 0.0) +
+            personAlcoholTax +
+            personAlcoholTip;
+      }
+    }
+
+    // Generate formatted bill summary text with updated shares
     final String summary = ShareUtils.generateShareText(
       participants: widget.participants,
-      personShares: widget.personShares,
+      personShares:
+          updatedShares, // Use updated shares that include alcohol charges
       items: widget.items,
       subtotal: widget.subtotal,
       tax: widget.tax,
@@ -156,12 +192,7 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
                       // Bill overview card with integrated items
                       BillTotalCard(data: _summaryData),
 
-                      const SizedBox(height: 24),
-
-                      // Split overview
-                      SplitOverview(data: _summaryData),
-
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 16),
 
                       // Individual shares
                       Text(

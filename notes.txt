@@ -1,8 +1,30 @@
 issues to fix:
 
-first page:
-need the alc tax to show in the billSummary, and then move through the rest of the app.
-maybe it should attach to the alcohol item as part of the price/share or whatever.
+- build the functionality of the recent bills view more:
+- share bill, maybe clean up delete modal, and then also the bill details/pill expansion.
+- cheeky lil redesign?
+
+- if you don't have enough items in the thing, say you have a bill of 100 and 1 item in there,
+then you can press the unassigned items and it doesn't do what we expect.
+- SOLUTIONS? could just enforce the fact that the total must be met or something
+
+- dark mode? causes a plethora of issues throughout the app
+
+- on iphone 15 pro, the custom split button is overflowing.
+
+- the modal for when you don't fully assign, the UNASSIGNED AMOUNT dialog has a kinda ugly UI. the button is messed up too, it doesn't work nor looks good.
+
+- address deprecated methods, and remove comments
+
+- test application thoroughly, potentially just buying the apple license and releasing the app in beta
+
+- collapsable bill total components
+- redesign the assignment page, remove the people at the top. 
+for item assignment i think it should be click item and have the names pop up instead of names at the top and assign 
+
+---
+
+MORE:
 
 ---
 share functionality:
@@ -35,24 +57,23 @@ Can still add them to splits manually without Venmo links
 
 ---
 
-- build the functionality of the recent bills view more:
-- share bill, maybe clean up delete modal, and then also the bill details/pill expansion.
-- cheeky lil redesign?
+or, flip the script. the summary message at the end could be a link for each 
+person that needs to pay, to pay the bill-splitter. rather than sending requests.
 
-- if you don't have enough items in the thing, say you have a bill of 100 and 1 item in there,
-then you can press the unassigned items and it doesn't do what we expect.
-- SOLUTIONS? could just enforce the fact that the total must be met or something
+this could be where the "join bill" feature could shine. having users join the tab, and then they can see everything & jus pay the splitter
+or web/app link...text won't work
 
-- dark mode? causes a plethora of issues throughout the app
+ask 4 payment info @ start
 
-- on iphone 15 pro, the custom split button is overflowing.
+--
 
-- the modal for when you don't fully assign, the UNASSIGNED AMOUNT dialog has a kinda ugly UI. the button is messed up too, it doesn't work nor looks good.
 
-- address deprecated methods, and remove comments
 
-- test application thoroughly, potentially just buying the apple license and releasing the app in beta
+--
+arguable value:
+- could bring a link feature, like you clck the link and it has a unique id.
+- tab with deep links shows on frontend webpage...like the text
+- Frontend (Vercel) → API (Render: Flask App) → MongoDB Atlas
+View & Pay: checkmate.app/r/abc123
 
-- allow access to contacts, derive names from there. deeplink the venmo to the phone number
-
-- the split distribution be messing up if the % is small. doesn't show all the pieces
+---

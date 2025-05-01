@@ -11,6 +11,19 @@ class BillTotalCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
+    // Calculate total alcohol tax and tip
+    double totalAlcoholTax = 0.0;
+    double totalAlcoholTip = 0.0;
+
+    for (var item in data.items) {
+      if (item.isAlcohol) {
+        if (item.alcoholTaxPortion != null)
+          totalAlcoholTax += item.alcoholTaxPortion!;
+        if (item.alcoholTipPortion != null)
+          totalAlcoholTip += item.alcoholTipPortion!;
+      }
+    }
+
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -69,6 +82,7 @@ class BillTotalCard extends StatelessWidget {
               // Show all items without limitation
               for (int i = 0; i < data.items.length; i++)
                 _buildItemRow(
+                  context,
                   data.items[i],
                   isLast: i == data.items.length - 1,
                 ),
@@ -80,16 +94,49 @@ class BillTotalCard extends StatelessWidget {
 
             _buildBreakdownRow('Subtotal', data.subtotal),
             const SizedBox(height: 8),
-            _buildBreakdownRow('Tax', data.tax),
+
+            if (data.tax > 0) ...[_buildBreakdownRow('Tax', data.tax)],
+
+            // Add alcohol tax if present
+            if (totalAlcoholTax > 0) ...[
+              const SizedBox(height: 8),
+              _buildBreakdownRow(
+                'Alcohol Tax',
+                totalAlcoholTax,
+                textColor: colorScheme.tertiary,
+              ),
+            ],
+
             const SizedBox(height: 8),
-            _buildBreakdownRow('Tip', data.tipAmount, showPercentage: true),
+            if (data.tipAmount > 0) ...[
+              _buildBreakdownRow('Tip', data.tipAmount, showPercentage: true),
+            ],
+
+            // Add alcohol tip if present
+            if (totalAlcoholTip > 0) ...[
+              const SizedBox(height: 8),
+              _buildBreakdownRow(
+                'Alcohol Tip',
+                totalAlcoholTip,
+                textColor: colorScheme.tertiary,
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildItemRow(BillItem item, {bool isLast = false}) {
+  Widget _buildItemRow(
+    BuildContext context,
+    BillItem item, {
+    bool isLast = false,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    // Calculate total including alcohol costs
+    final totalItemCost = item.totalCost;
+
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8),
       decoration:
@@ -100,16 +147,93 @@ class BillTotalCard extends StatelessWidget {
                   bottom: BorderSide(color: Colors.grey.shade100, width: 1),
                 ),
               ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
         children: [
-          Expanded(
-            child: Text(item.name, style: const TextStyle(fontSize: 14)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    if (item.isAlcohol)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: Icon(
+                          Icons.wine_bar,
+                          size: 14,
+                          color: colorScheme.tertiary,
+                        ),
+                      ),
+                    Expanded(
+                      child: Text(
+                        item.name,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight:
+                              item.isAlcohol
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                '\$${totalItemCost.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
-          Text(
-            '\$${item.price.toStringAsFixed(2)}',
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-          ),
+
+          // Show breakdown for alcoholic items if they have tax/tip
+          if (item.isAlcohol &&
+              ((item.alcoholTaxPortion != null &&
+                      item.alcoholTaxPortion! > 0) ||
+                  (item.alcoholTipPortion != null &&
+                      item.alcoholTipPortion! > 0)))
+            Padding(
+              padding: const EdgeInsets.only(top: 2, left: 20),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Subtotal: \$${item.price.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        if (item.alcoholTaxPortion != null &&
+                            item.alcoholTaxPortion! > 0)
+                          Text(
+                            'Alcohol Tax: \$${item.alcoholTaxPortion!.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: colorScheme.tertiary.withOpacity(0.8),
+                            ),
+                          ),
+                        if (item.alcoholTipPortion != null &&
+                            item.alcoholTipPortion! > 0)
+                          Text(
+                            'Alcohol Tip: \$${item.alcoholTipPortion!.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: colorScheme.tertiary.withOpacity(0.8),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
@@ -119,6 +243,9 @@ class BillTotalCard extends StatelessWidget {
     String label,
     double amount, {
     bool showPercentage = false,
+    bool isBold = false,
+    double fontSize = 14,
+    Color? textColor,
   }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -127,11 +254,19 @@ class BillTotalCard extends StatelessWidget {
           showPercentage && label == 'Tip' && !data.isCustomTipAmount
               ? 'Tip (${data.tipPercentage.toStringAsFixed(0)}%)'
               : label,
-          style: TextStyle(fontSize: 14, color: Colors.grey.shade800),
+          style: TextStyle(
+            fontSize: fontSize,
+            color: textColor ?? Colors.grey.shade800,
+            fontWeight: isBold ? FontWeight.w600 : FontWeight.normal,
+          ),
         ),
         Text(
           '\$${amount.toStringAsFixed(2)}',
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: isBold ? FontWeight.w600 : FontWeight.w500,
+            color: textColor,
+          ),
         ),
       ],
     );

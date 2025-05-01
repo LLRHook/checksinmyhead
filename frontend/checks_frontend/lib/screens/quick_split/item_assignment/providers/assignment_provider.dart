@@ -10,6 +10,7 @@ class AssignmentProvider extends ChangeNotifier {
 
   // Universal food/drink icon
   final IconData universalItemIcon = Icons.restaurant_menu;
+  final IconData alcoholItemIcon = Icons.local_bar;
 
   AssignmentProvider({
     required List<Person> participants,

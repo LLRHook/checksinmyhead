@@ -121,7 +121,8 @@ class AlcoholSummaryCard extends StatelessWidget {
           ),
 
           // Show tip information if different tip for alcohol is enabled
-          if (billData.useDifferentTipForAlcohol) ...[
+          if (billData.useDifferentTipForAlcohol &&
+              billData.alcoholTipAmount > 0) ...[
             SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,

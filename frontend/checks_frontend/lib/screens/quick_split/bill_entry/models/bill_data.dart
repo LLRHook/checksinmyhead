@@ -1,3 +1,4 @@
+import 'package:checks_frontend/models/person.dart';
 import 'package:flutter/material.dart';
 import '/models/bill_item.dart';
 
@@ -55,6 +56,44 @@ class BillData extends ChangeNotifier {
     ); // Add listener for custom alcohol tip
   }
 
+  // Add this method to your BillData class
+  void updateSharesWithAlcoholCharges(
+    Map<Person, double> personShares,
+    List<Person> participants,
+    Person? birthdayPerson,
+  ) {
+    // Calculate alcohol charges per person based on item assignments
+    for (var person in participants) {
+      if (person == birthdayPerson) continue; // Skip birthday person
+
+      double personAlcoholTax = 0.0;
+      double personAlcoholTip = 0.0;
+
+      // Loop through each item to find alcohol charges for this person
+      for (var item in items) {
+        if (item.isAlcohol && item.assignments.containsKey(person)) {
+          double percentage = item.assignments[person]! / 100.0;
+
+          // Add alcohol tax
+          if (item.alcoholTaxPortion != null && item.alcoholTaxPortion! > 0) {
+            personAlcoholTax += item.alcoholTaxPortion! * percentage;
+          }
+
+          // Add alcohol tip
+          if (item.alcoholTipPortion != null && item.alcoholTipPortion! > 0) {
+            personAlcoholTip += item.alcoholTipPortion! * percentage;
+          }
+        }
+      }
+
+      // Update the person's share with their alcohol charges
+      if (personAlcoholTax > 0 || personAlcoholTip > 0) {
+        personShares[person] =
+            (personShares[person] ?? 0.0) + personAlcoholTax + personAlcoholTip;
+      }
+    }
+  }
+
   @override
   void dispose() {
     // Dispose controllers
@@ -100,8 +139,23 @@ class BillData extends ChangeNotifier {
       } catch (_) {
         tipAmount = 0.0;
       }
-      alcoholTipAmount =
-          0.0; // Reset alcohol tip amount when using overall custom tip
+
+      // Only reset alcoholTipAmount if not using different tip for alcohol
+      if (!useDifferentTipForAlcohol) {
+        alcoholTipAmount = 0.0;
+      } else {
+        // If using different tip for alcohol, keep calculating it
+        if (useCustomAlcoholTipAmount) {
+          try {
+            alcoholTipAmount =
+                double.tryParse(customAlcoholTipController.text) ?? 0.0;
+          } catch (_) {
+            alcoholTipAmount = 0.0;
+          }
+        } else {
+          alcoholTipAmount = alcoholAmount * (alcoholTipPercentage / 100);
+        }
+      }
     } else {
       // Calculate food amount (subtotal minus alcohol)
       final foodAmount = subtotal - alcoholAmount;
@@ -112,7 +166,7 @@ class BillData extends ChangeNotifier {
 
       if (useDifferentTipForAlcohol) {
         if (useCustomAlcoholTipAmount) {
-          // Use custom alcohol tip amount
+          // Use custom alcohol tip amounts
           try {
             alcoholTip =
                 double.tryParse(customAlcoholTipController.text) ?? 0.0;
@@ -125,7 +179,7 @@ class BillData extends ChangeNotifier {
         }
 
         foodTip = foodAmount * (tipPercentage / 100);
-        tipAmount = foodTip + alcoholTip;
+        tipAmount = foodTip;
         alcoholTipAmount = alcoholTip; // Store for display
       } else {
         tipAmount = subtotal * (tipPercentage / 100);
@@ -134,9 +188,48 @@ class BillData extends ChangeNotifier {
     }
 
     // Update total to include alcohol tax
-    total = subtotal + tax + tipAmount + alcoholTax;
+    total = subtotal + tax + tipAmount + alcoholTax + alcoholTipAmount;
+
+    // Distribute alcohol tax and tip to individual items
+    distributeAlcoholCosts();
 
     notifyListeners();
+  }
+
+  // New method to distribute alcohol costs to individual items
+  void distributeAlcoholCosts() {
+    // Reset all alcohol costs first
+    for (int i = 0; i < items.length; i++) {
+      if (!items[i].isAlcohol) {
+        items[i] = items[i].copyWith(
+          alcoholTaxPortion: 0.0,
+          alcoholTipPortion: 0.0,
+        );
+      }
+    }
+
+    // Only distribute if we have alcoholic items and costs
+    if (alcoholAmount <= 0 || (alcoholTax <= 0 && alcoholTipAmount <= 0)) {
+      return;
+    }
+
+    // Distribute proportionally to alcoholic items
+    for (int i = 0; i < items.length; i++) {
+      if (items[i].isAlcohol) {
+        // Calculate this item's proportion of the total alcohol amount
+        double proportion = items[i].price / alcoholAmount;
+
+        // Calculate this item's share of alcohol tax and tip
+        double itemAlcoholTax = alcoholTax * proportion;
+        double itemAlcoholTip = alcoholTipAmount * proportion;
+
+        // Update the item with its alcohol costs
+        items[i] = items[i].copyWith(
+          alcoholTaxPortion: itemAlcoholTax,
+          alcoholTipPortion: itemAlcoholTip,
+        );
+      }
+    }
   }
 
   // Calculate the total of all items
@@ -186,18 +279,19 @@ class BillData extends ChangeNotifier {
   }
 
   // Toggle alcohol status for an item
+  // Toggle alcohol status for an item
   void toggleItemAlcohol(int index, bool isAlcohol) {
     if (index >= 0 && index < items.length) {
       final item = items[index];
-      items[index] = BillItem(
-        name: item.name,
-        price: item.price,
-        assignments: item.assignments,
+      items[index] = item.copyWith(
         isAlcohol: isAlcohol,
+        // Clear alcohol costs if item is no longer alcoholic
+        alcoholTaxPortion: isAlcohol ? item.alcoholTaxPortion : 0.0,
+        alcoholTipPortion: isAlcohol ? item.alcoholTipPortion : 0.0,
       );
 
       calculateAlcoholAmount();
-      calculateBill();
+      calculateBill(); // This will redistribute alcohol costs
       notifyListeners();
     }
   }
@@ -235,6 +329,11 @@ class BillData extends ChangeNotifier {
   // Toggle custom alcohol tip amount
   void toggleCustomAlcoholTipAmount(bool value) {
     useCustomAlcoholTipAmount = value;
+
+    if (value) {
+      customAlcoholTipController.text = "";
+    }
+
     calculateBill();
   }
 }
