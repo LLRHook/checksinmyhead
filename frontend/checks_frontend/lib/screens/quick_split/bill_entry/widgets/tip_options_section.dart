@@ -191,8 +191,8 @@ class _TipPercentageSlider extends StatelessWidget {
               child: Slider(
                 value: tipPercentage,
                 min: 0,
-                max: 50,
-                divisions: 50, // 1% increments
+                max: 99,
+                divisions: 99, // 1% increments
                 onChanged: onChanged,
               ),
             ),

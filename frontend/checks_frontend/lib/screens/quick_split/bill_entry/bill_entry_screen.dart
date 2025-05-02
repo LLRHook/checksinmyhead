@@ -40,51 +40,107 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
   }
 
   void _continueToItemAssignment() {
-    if (_billData.subtotal > 0) {
-      // Check if items have been added and if they match the subtotal
-      if (_billData.items.isNotEmpty &&
-          _billData.itemsTotal < _billData.subtotal) {
-        // Show warning dialog that items don't match subtotal
-        showDialog(
-          context: context,
-          builder:
-              (context) => AlertDialog(
-                title: const Text('Items Don\'t Match Subtotal'),
-                content: Text(
-                  'Your added items total \$${_billData.itemsTotal.toStringAsFixed(2)}, but your subtotal is \$${_billData.subtotal.toStringAsFixed(2)}. Do you want to continue anyway, or add more items?',
+    if (_billData.subtotal <= 0) {
+      _showSnackBar('Please enter a subtotal amount');
+      return;
+    }
+    
+    // Check if items have been added
+    if (_billData.items.isEmpty) {
+      _showValidationError('Please add at least one item');
+      return;
+    }
+    
+    // Check if items total matches the subtotal (allowing for a small rounding error)
+    final difference = (_billData.subtotal - _billData.itemsTotal).abs();
+    if (difference > 0.01) {
+      _showValidationError('Missing some items? Your totals don\'t match yet.');
+      return;
+    }
+    
+    // Provide haptic feedback for continuing
+    HapticFeedback.mediumImpact();
+    
+    // All good, navigate to the next screen
+    _navigateToItemAssignment();
+  }
+
+  void _showValidationError(String message) {
+    // Provide haptic feedback for error
+    HapticFeedback.vibrate();
+    
+    // Show modern validation error banner
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      isDismissible: true,
+      builder: (context) {
+        final colorScheme = Theme.of(context).colorScheme;
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colorScheme.error.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      // Provide feedback
-                      HapticFeedback.selectionClick();
-                    },
-                    child: const Text('Add More Items'),
-                  ),
-                  FilledButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      // Provide feedback
-                      HapticFeedback.mediumImpact();
-                      _navigateToItemAssignment();
-                    },
-                    child: const Text('Continue Anyway'),
+                child: Icon(
+                  Icons.error_outline,
+                  color: colorScheme.error,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                ' Items Don\'t Add Up',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        HapticFeedback.mediumImpact();
+                      },
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Text(
+                        'OK, GOT IT',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
                   ),
                 ],
               ),
+            ],
+          ),
         );
-      } else {
-        // Provide haptic feedback for continuing
-        HapticFeedback.mediumImpact();
-
-        // All good, navigate to the next screen
-        _navigateToItemAssignment();
-      }
-    } else {
-      // Show error for missing subtotal
-      _showSnackBar('Please enter a subtotal amount');
-    }
+      },
+    );
   }
 
   void _navigateToItemAssignment() {
