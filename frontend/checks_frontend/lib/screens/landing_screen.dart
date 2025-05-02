@@ -102,38 +102,6 @@ class _LandingScreenState extends State<LandingScreen>
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // New Bill Button (with camera)
-                        ElevatedButton(
-                          onPressed: () {
-                            // Navigate to new bill screen
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: colorScheme.primary,
-                            padding: const EdgeInsets.symmetric(vertical: 20),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.add_a_photo_outlined, size: 22),
-                              const SizedBox(width: 10),
-                              const Text(
-                                'New Bill (WIP)',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 20),
-
                         // Quick Split Button
                         ElevatedButton(
                           onPressed: _showQuickSplitSheet,
