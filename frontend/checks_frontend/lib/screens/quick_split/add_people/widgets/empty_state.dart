@@ -6,6 +6,36 @@ class EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    // Theme-aware colors
+    final containerGradientColors =
+        brightness == Brightness.dark
+            ? [
+              colorScheme.surface.withOpacity(0.5),
+              colorScheme.surfaceContainerHighest,
+            ]
+            : [Colors.grey.shade50, Colors.grey.shade100];
+
+    final innerCircleColor =
+        brightness == Brightness.dark
+            ? colorScheme.surfaceContainerHighest
+            : Colors.grey.shade50;
+
+    final innerCircleBorderColor =
+        brightness == Brightness.dark
+            ? colorScheme.onSurface.withOpacity(0.1)
+            : Colors.grey.shade200;
+
+    final shadowColor =
+        brightness == Brightness.dark
+            ? Colors.black.withOpacity(0.3)
+            : Colors.grey.shade200;
+
+    final labelColor =
+        brightness == Brightness.dark
+            ? colorScheme.onSurface.withOpacity(0.7)
+            : Colors.grey.shade600;
 
     return Center(
       child: Column(
@@ -19,15 +49,11 @@ class EmptyState extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Colors.grey.shade50, Colors.grey.shade100],
+                colors: containerGradientColors,
               ),
               shape: BoxShape.circle,
               boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.shade200,
-                  blurRadius: 15,
-                  spreadRadius: 5,
-                ),
+                BoxShadow(color: shadowColor, blurRadius: 15, spreadRadius: 5),
               ],
             ),
             child: Center(
@@ -39,9 +65,12 @@ class EmptyState extends StatelessWidget {
                     width: 110,
                     height: 110,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
+                      color: innerCircleColor,
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.grey.shade200, width: 2),
+                      border: Border.all(
+                        color: innerCircleBorderColor,
+                        width: 2,
+                      ),
                     ),
                   ),
                   // People icon with gradient
@@ -80,10 +109,10 @@ class EmptyState extends StatelessWidget {
                           ),
                         ],
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.add,
                         size: 20,
-                        color: Colors.white,
+                        color: colorScheme.onPrimary,
                       ),
                     ),
                   ),
@@ -114,7 +143,7 @@ class EmptyState extends StatelessWidget {
             "Add someone to split the bill",
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey.shade600,
+              color: labelColor,
               fontWeight: FontWeight.w400,
             ),
           ),

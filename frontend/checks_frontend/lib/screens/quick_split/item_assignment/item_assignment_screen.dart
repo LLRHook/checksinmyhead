@@ -7,14 +7,10 @@ import '/models/bill_item.dart';
 import 'tutorial/tutorial_manager.dart';
 
 // Widgets
-
 import 'widgets/unassigned_amount_banner.dart';
 import 'widgets/assignment_app_bar.dart';
 import 'widgets/assignment_bottom_bar.dart';
 import 'widgets/item_card.dart'; // Import the enhanced version
-
-// Dialogs
-import 'dialogs/unassigned_warning_dialog.dart';
 
 // Bill summary screen
 import 'package:checks_frontend/screens/quick_split/bill_summary/bill_summary_screen.dart';
@@ -93,15 +89,98 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
     super.dispose();
   }
 
-  // Continue to the summary screen
-  void _continueToSummary(AssignmentProvider provider) {
+  void _checkAssignmentComplete(
+    BuildContext context,
+    AssignmentProvider provider,
+  ) {
+    // Get theme info
+    final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    // Theme-aware colors for dialog
+    final dialogBgColor =
+        brightness == Brightness.dark ? colorScheme.surface : Colors.white;
+
+    final errorIconBgColor = colorScheme.error.withOpacity(
+      brightness == Brightness.dark ? 0.2 : 0.1,
+    );
+
     // Check if everything is assigned
     if (provider.unassignedAmount > 0.01) {
-      // Show dialog about unassigned amount
-      showUnassignedWarningDialog(
+      // Provide haptic feedback for error
+      HapticFeedback.vibrate();
+
+      // Show modern validation error banner
+      showModalBottomSheet(
         context: context,
-        unassignedAmount: provider.unassignedAmount,
-        onSplitEvenly: provider.splitUnassignedAmountEvenly,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        isDismissible: true,
+        backgroundColor: dialogBgColor,
+        builder: (context) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: errorIconBgColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.error_outline,
+                    color: colorScheme.error,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Items Not Fully Assigned',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "There's still \$${provider.unassignedAmount.toStringAsFixed(2)} unassigned. Please assign all items before continuing.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          HapticFeedback.mediumImpact();
+                        },
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: const Text(
+                          'OK, GOT IT',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
       );
       return;
     }
@@ -139,6 +218,10 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
     );
   }
 
+  void _continueToSummary(AssignmentProvider provider) {
+    _checkAssignmentComplete(context, provider);
+  }
+
   // Show custom split dialog for an item
   void _showCustomSplitDialog(
     BillItem item,
@@ -151,6 +234,7 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
       participants: widget.participants,
       onAssign: provider.assignItem,
       preselectedPeople: preselectedPeople,
+      birthdayPerson: provider.birthdayPerson,
     );
   }
 
@@ -212,19 +296,51 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
   // Bill information panel showing assignment progress
   Widget _buildBillInfoPanel(AssignmentProvider provider) {
     final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
     final assignedAmount = widget.subtotal - provider.unassignedAmount;
     final assignedPercentage =
         widget.subtotal > 0
             ? (assignedAmount / widget.subtotal * 100).clamp(0.0, 100.0)
             : 0.0;
 
+    // Theme-aware colors
+    final panelBgColor =
+        brightness == Brightness.dark
+            ? colorScheme.surfaceContainerHighest
+            : Colors.white;
+
+    final shadowColor =
+        brightness == Brightness.dark
+            ? Colors.black.withOpacity(0.15)
+            : Colors.black.withOpacity(0.05);
+
+    final labelColor =
+        brightness == Brightness.dark
+            ? colorScheme.onSurface.withOpacity(0.7)
+            : Colors.grey.shade600;
+
+    final valueColor = colorScheme.onSurface;
+
+    final successColor =
+        brightness == Brightness.dark
+            ? Colors
+                .green
+                .shade400 // Lighter green for dark mode
+            : Colors.green.shade700;
+
+    final trackBgColor =
+        brightness == Brightness.dark
+            ? Colors.grey.shade800
+            : Colors.grey.shade200;
+
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: panelBgColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: shadowColor,
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -246,15 +362,16 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
-                      color: Colors.grey.shade600,
+                      color: labelColor,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '\$${widget.subtotal.toStringAsFixed(2)}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
+                      color: valueColor,
                     ),
                   ),
                 ],
@@ -269,7 +386,7 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
-                      color: Colors.grey.shade600,
+                      color: labelColor,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -280,7 +397,7 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
                       fontWeight: FontWeight.w600,
                       color:
                           assignedPercentage >= 100
-                              ? Colors.green.shade700
+                              ? successColor
                               : colorScheme.primary,
                     ),
                   ),
@@ -298,7 +415,7 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
               Container(
                 height: 6,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
+                  color: trackBgColor,
                   borderRadius: BorderRadius.circular(3),
                 ),
               ),
@@ -316,7 +433,7 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
                 decoration: BoxDecoration(
                   color:
                       assignedPercentage >= 100
-                          ? Colors.green.shade500
+                          ? successColor
                           : colorScheme.primary,
                   borderRadius: BorderRadius.circular(3),
                 ),
@@ -336,7 +453,7 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
                   fontWeight: FontWeight.w500,
                   color:
                       assignedPercentage >= 100
-                          ? Colors.green.shade700
+                          ? successColor
                           : colorScheme.primary,
                 ),
               ),

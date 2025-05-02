@@ -84,6 +84,29 @@ class _TutorialOverlayState extends State<TutorialOverlay>
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    // Theme-aware colors
+    final dialogBgColor =
+        brightness == Brightness.dark ? colorScheme.surface : Colors.white;
+
+    final progressTextColor =
+        brightness == Brightness.dark
+            ? colorScheme.onSurface.withOpacity(0.7)
+            : Colors.grey[600];
+
+    final closeButtonColor =
+        brightness == Brightness.dark ? Colors.grey[500] : Colors.grey[400];
+
+    final progressTrackColor =
+        brightness == Brightness.dark
+            ? colorScheme.surfaceVariant
+            : Colors.grey.shade200;
+
+    final shadowColor =
+        brightness == Brightness.dark
+            ? Colors.black.withOpacity(0.3)
+            : Colors.black.withOpacity(0.2);
 
     return Material(
       type: MaterialType.transparency,
@@ -103,11 +126,11 @@ class _TutorialOverlayState extends State<TutorialOverlay>
               margin: const EdgeInsets.symmetric(horizontal: 32),
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: dialogBgColor,
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                    color: shadowColor,
                     blurRadius: 20,
                     spreadRadius: 5,
                     offset: const Offset(0, 10),
@@ -126,7 +149,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
                         'Step ${_currentStep + 1} of ${widget.steps.length}',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey[600],
+                          color: progressTextColor,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -156,7 +179,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
                               padding: const EdgeInsets.all(4.0),
                               child: Icon(
                                 Icons.close,
-                                color: Colors.grey[400],
+                                color: closeButtonColor,
                                 size: 20,
                               ),
                             ),
@@ -183,7 +206,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
                             borderRadius: BorderRadius.circular(4),
                             child: LinearProgressIndicator(
                               value: value,
-                              backgroundColor: Colors.grey.shade200,
+                              backgroundColor: progressTrackColor,
                               valueColor: AlwaysStoppedAnimation<Color>(
                                 colorScheme.primary,
                               ),
@@ -209,7 +232,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
                       },
                       itemBuilder: (context, index) {
                         final step = widget.steps[index];
-                        return _buildStepContent(step, colorScheme);
+                        return _buildStepContent(step, colorScheme, brightness);
                       },
                     ),
                   ),
@@ -239,7 +262,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
-                            children: [
+                            children: const [
                               Icon(Icons.arrow_back_ios_new, size: 16),
                               SizedBox(width: 8),
                               Text('Back'),
@@ -254,7 +277,12 @@ class _TutorialOverlayState extends State<TutorialOverlay>
                         onPressed: _nextStep,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: colorScheme.primary,
-                          foregroundColor: Colors.white,
+                          foregroundColor:
+                              brightness == Brightness.dark
+                                  ? Colors.black.withOpacity(
+                                    0.9,
+                                  ) // Better contrast in dark mode
+                                  : Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -271,12 +299,12 @@ class _TutorialOverlayState extends State<TutorialOverlay>
                               _currentStep < widget.steps.length - 1
                                   ? 'Next'
                                   : 'Got It!',
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 16,
                               ),
                             ),
-                            SizedBox(width: 8),
+                            const SizedBox(width: 8),
                             Icon(
                               _currentStep < widget.steps.length - 1
                                   ? Icons.arrow_forward_ios
@@ -297,7 +325,25 @@ class _TutorialOverlayState extends State<TutorialOverlay>
     );
   }
 
-  Widget _buildStepContent(TutorialStep step, ColorScheme colorScheme) {
+  Widget _buildStepContent(
+    TutorialStep step,
+    ColorScheme colorScheme,
+    Brightness brightness,
+  ) {
+    // Theme-aware colors
+    final titleColor = colorScheme.onSurface;
+    final descriptionColor =
+        brightness == Brightness.dark
+            ? colorScheme.onSurface.withOpacity(0.9)
+            : colorScheme.onSurface;
+
+    final iconBgColor = colorScheme.primary.withOpacity(
+      brightness == Brightness.dark ? 0.2 : 0.1,
+    );
+    final iconShadowColor = colorScheme.primary.withOpacity(
+      brightness == Brightness.dark ? 0.2 : 0.1,
+    );
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -308,11 +354,11 @@ class _TutorialOverlayState extends State<TutorialOverlay>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: colorScheme.primary.withOpacity(0.1),
+                  color: iconBgColor,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: colorScheme.primary.withOpacity(0.1),
+                      color: iconShadowColor,
                       blurRadius: 10,
                       spreadRadius: 2,
                     ),
@@ -324,10 +370,11 @@ class _TutorialOverlayState extends State<TutorialOverlay>
               Expanded(
                 child: Text(
                   step.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                     letterSpacing: -0.5,
+                    color: titleColor,
                   ),
                 ),
               ),
@@ -339,10 +386,11 @@ class _TutorialOverlayState extends State<TutorialOverlay>
           // Step content with modern typography
           Text(
             step.description,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               height: 1.5,
               letterSpacing: 0.1,
+              color: descriptionColor,
             ),
           ),
 
@@ -384,6 +432,17 @@ class TutorialButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    // Theme-aware badge color
+    final badgeColor =
+        brightness == Brightness.dark
+            ? Colors
+                .red
+                .shade300 // Lighter red for dark mode
+            : Colors.red;
+
     return Stack(
       children: [
         Material(
@@ -394,11 +453,23 @@ class TutorialButton extends StatelessWidget {
             icon: const Icon(Icons.help_outline),
             onPressed: onPressed,
             tooltip: 'How to use',
-            color: Theme.of(context).colorScheme.primary,
+            color: colorScheme.primary,
             splashRadius: 24,
           ),
         ),
-        if (badge != null) Positioned(right: 0, top: 0, child: badge!),
+        if (badge != null)
+          Positioned(
+            right: 0,
+            top: 0,
+            child: Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: badgeColor,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
       ],
     );
   }

@@ -41,12 +41,56 @@ void showCustomSplitDialog({
               relevantParticipants,
             );
 
+            // Get theme info
+            final colorScheme = Theme.of(context).colorScheme;
+            final brightness = Theme.of(context).brightness;
+
+            // Theme-aware colors
+            final dialogBgColor =
+                brightness == Brightness.dark
+                    ? colorScheme.surface
+                    : Colors.white;
+
+            final headerBgColor =
+                brightness == Brightness.dark
+                    ? ColorUtils.getDarkenedColor(
+                      dominantColor,
+                      0.7,
+                    ).withOpacity(0.15)
+                    : dominantColor.withOpacity(0.08);
+
+            final textColor = colorScheme.onSurface;
+            final subtitleColor =
+                brightness == Brightness.dark
+                    ? colorScheme.onSurface.withOpacity(0.7)
+                    : Colors.grey.shade700;
+
+            final bottomBarColor =
+                brightness == Brightness.dark
+                    ? colorScheme.surfaceContainerHighest
+                    : Colors.white;
+
+            final bottomBarShadowColor =
+                brightness == Brightness.dark
+                    ? Colors.black.withOpacity(0.2)
+                    : Colors.grey.shade200;
+
+            final cancelButtonColor =
+                brightness == Brightness.dark
+                    ? colorScheme.outline.withOpacity(0.7)
+                    : Colors.grey.shade300;
+
+            final cancelTextColor =
+                brightness == Brightness.dark
+                    ? colorScheme.onSurface
+                    : Colors.grey.shade700;
+
             return Dialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
               elevation: 8,
-              backgroundColor: Colors.white,
+              backgroundColor: dialogBgColor,
               insetPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 24,
@@ -63,7 +107,7 @@ void showCustomSplitDialog({
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: dominantColor.withOpacity(0.08),
+                        color: headerBgColor,
                         borderRadius: const BorderRadius.vertical(
                           top: Radius.circular(20),
                         ),
@@ -86,9 +130,10 @@ void showCustomSplitDialog({
                                   children: [
                                     Text(
                                       item.name,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
+                                        color: textColor,
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -98,7 +143,7 @@ void showCustomSplitDialog({
                                       style: TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w500,
-                                        color: Colors.grey.shade700,
+                                        color: subtitleColor,
                                       ),
                                     ),
                                   ],
@@ -121,6 +166,7 @@ void showCustomSplitDialog({
                                 decoration: BoxDecoration(
                                   color: _getStatusColor(
                                     totalPercentage,
+                                    brightness,
                                   ).withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -132,13 +178,19 @@ void showCustomSplitDialog({
                                           ? Icons.check_circle
                                           : Icons.pie_chart,
                                       size: 16,
-                                      color: _getStatusColor(totalPercentage),
+                                      color: _getStatusColor(
+                                        totalPercentage,
+                                        brightness,
+                                      ),
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
                                       'Total: ${totalPercentage.toStringAsFixed(0)}%',
                                       style: TextStyle(
-                                        color: _getStatusColor(totalPercentage),
+                                        color: _getStatusColor(
+                                          totalPercentage,
+                                          brightness,
+                                        ),
                                         fontWeight: FontWeight.bold,
                                         fontSize: 14,
                                       ),
@@ -240,9 +292,12 @@ void showCustomSplitDialog({
                               borderRadius: BorderRadius.circular(4),
                               child: LinearProgressIndicator(
                                 value: totalPercentage / 100,
-                                backgroundColor: Colors.grey.shade200,
+                                backgroundColor:
+                                    brightness == Brightness.dark
+                                        ? Colors.grey.shade800
+                                        : Colors.grey.shade200,
                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                  _getStatusColor(totalPercentage),
+                                  _getStatusColor(totalPercentage, brightness),
                                 ),
                                 minHeight: 5,
                               ),
@@ -273,6 +328,7 @@ void showCustomSplitDialog({
                             price: item.price,
                             personColor: personColor,
                             isBirthdayPerson: isBirthdayPerson,
+                            brightness: brightness,
                             onChanged: (value) {
                               setStateDialog(() {
                                 workingAssignments[person] = value;
@@ -290,10 +346,10 @@ void showCustomSplitDialog({
                     Container(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: bottomBarColor,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.grey.shade200,
+                            color: bottomBarShadowColor,
                             blurRadius: 4,
                             offset: const Offset(0, -2),
                           ),
@@ -306,8 +362,8 @@ void showCustomSplitDialog({
                           OutlinedButton(
                             onPressed: () => Navigator.pop(context),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.grey.shade700,
-                              side: BorderSide(color: Colors.grey.shade300),
+                              foregroundColor: cancelTextColor,
+                              side: BorderSide(color: cancelButtonColor),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),
                               ),
@@ -321,7 +377,7 @@ void showCustomSplitDialog({
 
                           const SizedBox(width: 12),
 
-                          // Apply button
+                          // Apply button - using a more theme-aware green
                           Expanded(
                             child: ElevatedButton(
                               onPressed:
@@ -330,7 +386,16 @@ void showCustomSplitDialog({
                                         Navigator.pop(context);
                                         onAssign(item, workingAssignments);
 
-                                        // Show confirmation
+                                        // Show confirmation with theme-aware colors
+                                        final successColor =
+                                            brightness == Brightness.dark
+                                                ? const Color(
+                                                  0xFF34D399,
+                                                ) // Lighter green for dark mode
+                                                : const Color(
+                                                  0xFF10B981,
+                                                ); // Original green for light mode
+
                                         ScaffoldMessenger.of(
                                           context,
                                         ).showSnackBar(
@@ -338,9 +403,7 @@ void showCustomSplitDialog({
                                             content: const Text(
                                               'Split successfully applied',
                                             ),
-                                            backgroundColor: const Color(
-                                              0xFF10B981,
-                                            ),
+                                            backgroundColor: successColor,
                                             behavior: SnackBarBehavior.floating,
                                             shape: RoundedRectangleBorder(
                                               borderRadius:
@@ -351,10 +414,28 @@ void showCustomSplitDialog({
                                       }
                                       : null,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF10B981),
-                                foregroundColor: Colors.white,
-                                disabledBackgroundColor: Colors.grey.shade300,
-                                disabledForegroundColor: Colors.grey.shade600,
+                                backgroundColor:
+                                    brightness == Brightness.dark
+                                        ? const Color(
+                                          0xFF34D399,
+                                        ) // Lighter green for dark mode
+                                        : const Color(
+                                          0xFF10B981,
+                                        ), // Original green for light mode
+                                foregroundColor:
+                                    brightness == Brightness.dark
+                                        ? Colors.black.withOpacity(
+                                          0.9,
+                                        ) // Better contrast in dark mode
+                                        : Colors.white,
+                                disabledBackgroundColor:
+                                    brightness == Brightness.dark
+                                        ? Colors.grey.shade800
+                                        : Colors.grey.shade300,
+                                disabledForegroundColor:
+                                    brightness == Brightness.dark
+                                        ? Colors.grey.shade400
+                                        : Colors.grey.shade600,
                                 elevation: totalPercentage == 100.0 ? 2 : 0,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14),
@@ -391,19 +472,69 @@ Widget _buildPersonSlider({
   required double price,
   required Color personColor,
   required bool isBirthdayPerson,
+  required Brightness brightness,
   required ValueChanged<double> onChanged,
 }) {
   final isActive = percentage > 0;
   final individualAmount = (price * percentage / 100);
 
+  // Theme-aware colors
+  final containerBgColor =
+      brightness == Brightness.dark
+          ? Color(0xFF1E1E1E) // Dark background for dark mode
+          : Colors.white;
+
+  final inactiveBorderColor =
+      brightness == Brightness.dark
+          ? Colors.grey.shade700
+          : Colors.grey.shade200;
+
+  final percentageColor =
+      brightness == Brightness.dark
+          ? ColorUtils.getLightenedColor(
+            personColor,
+            0.2,
+          ) // Lighter in dark mode
+          : personColor;
+
+  final percentageBgColor =
+      brightness == Brightness.dark
+          ? personColor.withOpacity(0.1)
+          : personColor.withOpacity(0.03);
+
+  final percentageBorderColor =
+      brightness == Brightness.dark
+          ? personColor.withOpacity(0.3)
+          : personColor.withOpacity(0.12);
+
+  final textColor =
+      brightness == Brightness.dark
+          ? Colors
+              .grey
+              .shade300 // Lighter text in dark mode
+          : Colors.grey.shade600;
+
+  final nameColor =
+      brightness == Brightness.dark
+          ? ColorUtils.getLightenedColor(
+            personColor,
+            0.3,
+          ) // Brighter in dark mode
+          : personColor;
+
+  final inactiveButtonColor =
+      brightness == Brightness.dark
+          ? personColor.withOpacity(0.5)
+          : personColor.withOpacity(0.3);
+
   return Container(
     margin: const EdgeInsets.only(bottom: 12),
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
-      color: Colors.white,
+      color: containerBgColor,
       borderRadius: BorderRadius.circular(14),
       border: Border.all(
-        color: isActive ? personColor.withOpacity(0.3) : Colors.grey.shade200,
+        color: isActive ? personColor.withOpacity(0.3) : inactiveBorderColor,
         width: isActive ? 1.5 : 1,
       ),
     ),
@@ -448,14 +579,14 @@ Widget _buildPersonSlider({
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
-                      color: personColor,
+                      color: nameColor,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
                     '\$${individualAmount.toStringAsFixed(2)}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    style: TextStyle(fontSize: 12, color: textColor),
                   ),
                 ],
               ),
@@ -465,19 +596,16 @@ Widget _buildPersonSlider({
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: personColor.withOpacity(0.1),
+                color: percentageBgColor,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: personColor.withOpacity(0.2),
-                  width: 1,
-                ),
+                border: Border.all(color: percentageBorderColor, width: 1),
               ),
               child: Text(
                 '${percentage.toStringAsFixed(0)}%',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
-                  color: personColor,
+                  color: percentageColor,
                 ),
               ),
             ),
@@ -499,19 +627,24 @@ Widget _buildPersonSlider({
                       }
                       : null,
               icon: const Icon(Icons.remove_circle_outline, size: 18),
-              color: personColor,
+              color: percentage > 0 ? personColor : inactiveButtonColor,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
               splashRadius: 20,
             ),
 
-            // Slider
+            // Slider with theme-aware colors
             Expanded(
               child: SliderTheme(
                 data: SliderThemeData(
                   trackHeight: 4,
                   activeTrackColor: personColor,
-                  inactiveTrackColor: personColor.withOpacity(0.1),
+                  inactiveTrackColor:
+                      brightness == Brightness.dark
+                          ? personColor.withOpacity(
+                            0.2,
+                          ) // Brighter in dark mode
+                          : personColor.withOpacity(0.1),
                   thumbColor: personColor,
                   thumbShape: const RoundSliderThumbShape(
                     enabledThumbRadius: 8,
@@ -525,8 +658,13 @@ Widget _buildPersonSlider({
                   showValueIndicator: ShowValueIndicator.always,
                   valueIndicatorShape: const PaddleSliderValueIndicatorShape(),
                   valueIndicatorColor: personColor,
-                  valueIndicatorTextStyle: const TextStyle(
-                    color: Colors.white,
+                  valueIndicatorTextStyle: TextStyle(
+                    color:
+                        brightness == Brightness.dark
+                            ? Colors.black.withOpacity(
+                              0.9,
+                            ) // Better contrast in dark mode
+                            : Colors.white,
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
                   ),
@@ -552,7 +690,7 @@ Widget _buildPersonSlider({
                       }
                       : null,
               icon: const Icon(Icons.add_circle_outline, size: 18),
-              color: personColor,
+              color: percentage < 100 ? personColor : inactiveButtonColor,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
               splashRadius: 20,
@@ -580,7 +718,11 @@ Widget _buildPersonSlider({
                       },
                       style: TextButton.styleFrom(
                         foregroundColor:
-                            isSelected ? Colors.white : personColor,
+                            isSelected
+                                ? (brightness == Brightness.dark
+                                    ? Colors.black.withOpacity(0.9)
+                                    : Colors.white)
+                                : personColor,
                         backgroundColor:
                             isSelected ? personColor : Colors.transparent,
                         padding: const EdgeInsets.symmetric(
@@ -593,7 +735,9 @@ Widget _buildPersonSlider({
                             color:
                                 isSelected
                                     ? Colors.transparent
-                                    : personColor.withOpacity(0.3),
+                                    : personColor.withOpacity(
+                                      brightness == Brightness.dark ? 0.5 : 0.3,
+                                    ),
                             width: 1,
                           ),
                         ),
@@ -617,13 +761,31 @@ Widget _buildPersonSlider({
   );
 }
 
-// Get appropriate color based on percentage total
-Color _getStatusColor(double percentage) {
+// Get appropriate color based on percentage total and theme brightness
+Color _getStatusColor(double percentage, Brightness brightness) {
+  // Success green adjusted for dark mode
+  final successGreen =
+      brightness == Brightness.dark
+          ? const Color(0xFF34D399) // Lighter green for dark mode
+          : const Color(0xFF10B981); // Original green for light mode
+
+  // Primary blue adjusted for dark mode
+  final primaryBlue =
+      brightness == Brightness.dark
+          ? const Color(0xFF60A5FA) // Lighter blue for dark mode
+          : const Color(0xFF3B82F6); // Original blue for light mode
+
+  // Warning orange adjusted for dark mode
+  final warningOrange =
+      brightness == Brightness.dark
+          ? const Color(0xFFFCD34D) // Lighter orange for dark mode
+          : const Color(0xFFF97316); // Original orange for light mode
+
   if (percentage == 100.0) {
-    return const Color(0xFF10B981); // Success green
+    return successGreen; // Success green
   } else if (percentage > 0) {
-    return const Color(0xFF3B82F6); // Primary blue
+    return primaryBlue; // Primary blue
   } else {
-    return const Color(0xFFF97316); // Warning orange
+    return warningOrange; // Warning orange
   }
 }

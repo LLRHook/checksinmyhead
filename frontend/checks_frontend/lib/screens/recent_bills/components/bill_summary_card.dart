@@ -10,13 +10,45 @@ class BillSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    // Theme-aware colors
+    final cardBgColor =
+        brightness == Brightness.dark ? colorScheme.surface : Colors.white;
+
+    final cardBorderColor =
+        brightness == Brightness.dark
+            ? colorScheme.outline.withOpacity(0.3)
+            : Colors.grey.shade200;
+
+    final headerBgColor =
+        brightness == Brightness.dark
+            ? colorScheme.primaryContainer.withOpacity(0.15)
+            : colorScheme.primaryContainer.withOpacity(0.3);
+
+    final headerTextColor = colorScheme.primary;
+
+    final dividerColor =
+        brightness == Brightness.dark
+            ? colorScheme.outline.withOpacity(0.2)
+            : Colors.grey.shade200;
+
+    final tipBadgeBgColor =
+        brightness == Brightness.dark
+            ? colorScheme.primary.withOpacity(0.2)
+            : colorScheme.primary.withOpacity(0.1);
+
+    final textColor = colorScheme.onSurface;
+
+    final totalTextColor = colorScheme.primary;
 
     return Card(
       elevation: 1,
-      surfaceTintColor: Colors.white,
+      surfaceTintColor: cardBgColor,
+      color: cardBgColor,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.shade200, width: 0.5),
+        side: BorderSide(color: cardBorderColor, width: 0.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -25,7 +57,7 @@ class BillSummaryCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: colorScheme.primaryContainer.withOpacity(0.3),
+              color: headerBgColor,
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(16),
                 topRight: Radius.circular(16),
@@ -33,14 +65,14 @@ class BillSummaryCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(Icons.receipt_long, color: colorScheme.primary, size: 20),
+                Icon(Icons.receipt_long, color: headerTextColor, size: 20),
                 const SizedBox(width: 10),
                 Text(
                   'Bill Breakdown',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
-                    color: colorScheme.primary,
+                    color: headerTextColor,
                   ),
                 ),
               ],
@@ -52,22 +84,30 @@ class BillSummaryCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                _buildDetailRow('Subtotal', bill.subtotal),
+                _buildDetailRow(
+                  context,
+                  'Subtotal',
+                  bill.subtotal,
+                  textColor: textColor,
+                ),
                 const SizedBox(height: 12),
 
-                _buildDetailRow('Tax', bill.tax),
+                _buildDetailRow(context, 'Tax', bill.tax, textColor: textColor),
 
                 if (bill.tipAmount > 0) ...[
                   const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Tip'),
+                      Text('Tip', style: TextStyle(color: textColor)),
                       Row(
                         children: [
                           Text(
                             CurrencyFormatter.formatCurrency(bill.tipAmount),
-                            style: const TextStyle(fontWeight: FontWeight.w500),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              color: textColor,
+                            ),
                           ),
                           const SizedBox(width: 6),
                           Container(
@@ -76,7 +116,7 @@ class BillSummaryCard extends StatelessWidget {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: colorScheme.primary.withOpacity(0.1),
+                              color: tipBadgeBgColor,
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -95,14 +135,15 @@ class BillSummaryCard extends StatelessWidget {
                 ],
 
                 const SizedBox(height: 16),
-                Divider(color: Colors.grey.shade200),
+                Divider(color: dividerColor),
                 const SizedBox(height: 12),
 
                 _buildDetailRow(
+                  context,
                   'Total',
                   bill.total,
                   isTotal: true,
-                  textColor: colorScheme.primary,
+                  textColor: totalTextColor,
                 ),
               ],
             ),
@@ -113,6 +154,7 @@ class BillSummaryCard extends StatelessWidget {
   }
 
   Widget _buildDetailRow(
+    BuildContext context,
     String label,
     double value, {
     bool isTotal = false,

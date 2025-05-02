@@ -1,5 +1,5 @@
-import 'dart:math' as math;
-
+import 'package:checks_frontend/screens/quick_split/bill_summary/models/bill_summary_data.dart';
+import 'package:checks_frontend/screens/quick_split/bill_summary/utils/share_utils.dart';
 import 'package:checks_frontend/screens/recent_bills/components/bill_summary_card.dart';
 import 'package:checks_frontend/screens/recent_bills/components/bottom_bar.dart';
 import 'package:checks_frontend/screens/recent_bills/components/participants_card.dart';
@@ -9,11 +9,9 @@ import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.da
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 import 'package:checks_frontend/utils/settings_manager.dart';
 import 'package:checks_frontend/models/person.dart';
-import 'package:checks_frontend/screens/quick_split/bill_summary/models/bill_summary_data.dart';
 
 // Local imports
 import 'utils/bill_calculations.dart';
-import 'utils/share_utils.dart';
 
 class BillDetailsScreen extends StatefulWidget {
   final RecentBillModel bill;
@@ -110,12 +108,31 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    // Theme-aware colors
+    final scaffoldBgColor =
+        brightness == Brightness.dark
+            ? colorScheme.background
+            : Colors.grey[50];
+
+    final loadingIndicatorColor = colorScheme.primary;
+
+    final appBarIconColor = colorScheme.onSurface;
+
+    final titleColor = colorScheme.onSurface;
+
+    // Header shadow color
+    final headerShadowColor =
+        brightness == Brightness.dark
+            ? colorScheme.primary.withOpacity(0.4) // More visible in dark mode
+            : colorScheme.primary.withOpacity(0.2);
 
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: Colors.grey[50],
+        backgroundColor: scaffoldBgColor,
         body: Center(
-          child: CircularProgressIndicator(color: colorScheme.primary),
+          child: CircularProgressIndicator(color: loadingIndicatorColor),
         ),
       );
     }
@@ -124,12 +141,12 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
     final billCalculations = BillCalculations(widget.bill);
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: scaffoldBgColor,
       body: SafeArea(
         child: Column(
           children: [
             // App bar with back and share buttons
-            _buildAppBar(context),
+            _buildAppBar(context, appBarIconColor, titleColor),
 
             // Expanded content with scrollable cards
             Expanded(
@@ -138,7 +155,7 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
                 padding: EdgeInsets.zero,
                 children: [
                   // Premium animated header (non-sticky)
-                  _buildPremiumHeader(context),
+                  _buildPremiumHeader(context, headerShadowColor),
 
                   // Content with padding
                   Padding(
@@ -196,6 +213,7 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
         ),
       ),
       // Bottom Action Bar with slide-up animation
+      // Bottom Action Bar with slide-up animation (inside BillDetailsScreen)
       bottomNavigationBar: TweenAnimationBuilder<double>(
         tween: Tween<double>(begin: 0.0, end: 1.0),
         duration: const Duration(milliseconds: 600),
@@ -207,14 +225,15 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
             child: Opacity(opacity: delayedValue, child: child),
           );
         },
-        child: BottomBar(onShareTap: _promptShareOptions),
+        child: BottomBar(
+          onShareTap: _promptShareOptions,
+          bill: widget.bill, // Pass the bill here
+        ),
       ),
     );
   }
 
-  Widget _buildAppBar(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
+  Widget _buildAppBar(BuildContext context, Color iconColor, Color titleColor) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 8, 8, 0),
       child: Row(
@@ -245,7 +264,11 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
                 },
                 child: Container(
                   padding: const EdgeInsets.all(8),
-                  child: const Icon(Icons.arrow_back_ios_new, size: 20),
+                  child: Icon(
+                    Icons.arrow_back_ios_new,
+                    size: 20,
+                    color: iconColor,
+                  ),
                 ),
               ),
             ),
@@ -272,7 +295,7 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: colorScheme.onSurface,
+                color: titleColor,
               ),
             ),
           ),
@@ -283,8 +306,18 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
     );
   }
 
-  Widget _buildPremiumHeader(BuildContext context) {
+  Widget _buildPremiumHeader(BuildContext context, Color shadowColor) {
     final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    // Adjust gradient for better visibility in dark mode
+    final gradientStartColor = colorScheme.primary;
+    final gradientEndColor =
+        brightness == Brightness.dark
+            ? colorScheme.primary.withOpacity(
+              0.9,
+            ) // Less opacity difference in dark mode
+            : colorScheme.primary.withOpacity(0.85);
 
     // Wrap the header in an animated container
     return TweenAnimationBuilder<double>(
@@ -304,15 +337,12 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              colorScheme.primary,
-              colorScheme.primary.withOpacity(0.85),
-            ],
+            colors: [gradientStartColor, gradientEndColor],
           ),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: colorScheme.primary.withOpacity(0.2),
+              color: shadowColor,
               blurRadius: 10,
               spreadRadius: 1,
               offset: const Offset(0, 2),

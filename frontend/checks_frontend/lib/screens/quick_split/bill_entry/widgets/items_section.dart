@@ -70,6 +70,14 @@ class _ItemsSectionState extends State<ItemsSection>
   }
 
   void _addItem(BillData billData) {
+    // FIRST CHECK: Validate that a subtotal has been entered
+    if (billData.subtotal <= 0) {
+      widget.showSnackBar('Please enter a subtotal before adding items');
+      // Provide haptic feedback for error
+      HapticFeedback.vibrate();
+      return;
+    }
+
     final name = billData.itemNameController.text.trim();
     final priceText = billData.itemPriceController.text.trim();
 
@@ -132,14 +140,21 @@ class _ItemsSectionState extends State<ItemsSection>
   // Get color for progress indicator
   Color _getProgressColor(BuildContext context, double value, double subtotal) {
     final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
 
     // Precision threshold to account for floating point rounding errors
     const precisionThreshold = 0.01;
 
+    // Define success color that works in both themes
+    final successColor =
+        brightness == Brightness.dark
+            ? const Color(0xFF66BB6A) // Darker green for dark mode
+            : const Color(0xFF4CAF50); // Normal green for light mode
+
     if ((value / subtotal) > 1.0 + (precisionThreshold / subtotal)) {
       return colorScheme.error;
     } else if ((subtotal - value).abs() <= precisionThreshold) {
-      return const Color(0xFF4CAF50); // Material Green
+      return successColor;
     } else if ((value / subtotal) > 0.9) {
       return colorScheme.primary;
     } else {
@@ -152,10 +167,40 @@ class _ItemsSectionState extends State<ItemsSection>
     final billData = Provider.of<BillData>(context);
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final brightness = Theme.of(context).brightness;
+
+    // Theme-aware colors
+    final itemBgColor =
+        brightness == Brightness.dark
+            ? colorScheme.surfaceContainerHighest
+            : Colors.white;
+
+    final itemShadowColor =
+        brightness == Brightness.dark
+            ? Colors.black.withOpacity(0.15)
+            : Colors.black.withOpacity(0.05);
+
+    final progressBgColor =
+        brightness == Brightness.dark
+            ? colorScheme.surfaceVariant.withOpacity(0.3)
+            : Colors.grey.withOpacity(0.1);
+
+    final dividerColor =
+        brightness == Brightness.dark
+            ? colorScheme.outline.withOpacity(0.3)
+            : Colors.grey.shade300;
+
+    // Check if the subtotal is set to enable/disable input fields
+    final isSubtotalSet = billData.subtotal > 0;
+
+    // Define field placeholder message based on subtotal status
+    final itemNameHint =
+        isSubtotalSet ? 'e.g., Pizza, Pasta, Salad' : 'Enter subtotal first';
 
     return SectionCard(
       title: 'Add Items',
-      subTitle: 'Add items that total to your subtotal',
+      subTitle: 'Add items that add to your subtotal',
+
       icon: Icons.restaurant_menu,
       children: [
         // Item name field with premium styling
@@ -164,12 +209,17 @@ class _ItemsSectionState extends State<ItemsSection>
           decoration: AppInputDecoration.buildInputDecoration(
             context: context,
             labelText: 'Item name',
-            hintText: 'e.g., Pizza, Pasta, Salad',
+            hintText: itemNameHint,
             prefixIcon: Icons.fastfood,
           ),
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: colorScheme.onSurface,
+          ),
           textCapitalization: TextCapitalization.sentences,
           onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
+          enabled: isSubtotalSet, // Disable if no subtotal
         ),
 
         const SizedBox(height: 16),
@@ -185,31 +235,42 @@ class _ItemsSectionState extends State<ItemsSection>
                   context: context,
                   labelText: 'Item price',
                   prefixText: '\$',
-                  hintText: '0.00',
+                  hintText: isSubtotalSet ? '0.00' : 'Enter subtotal first',
                 ),
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
                 inputFormatters: [CurrencyFormatter.currencyFormatter],
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
+                  color: colorScheme.onSurface,
                 ),
                 onFieldSubmitted: (_) => _addItem(billData),
+                enabled: isSubtotalSet, // Disable if no subtotal
               ),
             ),
             const SizedBox(width: 12),
             SizedBox(
               height: 56, // Match height with TextField
               child: ElevatedButton(
-                onPressed: () => _addItem(billData),
+                onPressed:
+                    isSubtotalSet
+                        ? () => _addItem(billData)
+                        : null, // Disable if no subtotal
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: colorScheme.primary,
-                  foregroundColor: Colors.white,
+                  backgroundColor:
+                      isSubtotalSet
+                          ? colorScheme.primary
+                          : Colors.grey.withOpacity(0.3),
+                  foregroundColor:
+                      brightness == Brightness.dark
+                          ? Colors.black.withOpacity(0.9)
+                          : Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  elevation: 2,
+                  elevation: isSubtotalSet ? 2 : 0,
                   padding: const EdgeInsets.all(16),
                 ),
                 child: const Icon(Icons.add),
@@ -217,6 +278,33 @@ class _ItemsSectionState extends State<ItemsSection>
             ),
           ],
         ),
+
+        // Display a helper message when subtotal is not set
+        if (!isSubtotalSet) ...[
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: colorScheme.primary, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Please enter a subtotal before adding items.',
+                    style: TextStyle(
+                      color: colorScheme.onSurface.withOpacity(0.8),
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
 
         const SizedBox(height: 20),
 
@@ -252,7 +340,7 @@ class _ItemsSectionState extends State<ItemsSection>
                 ),
               ),
               const SizedBox(width: 4),
-              Text('of'),
+              Text('of', style: TextStyle(color: colorScheme.onSurface)),
               const SizedBox(width: 4),
               Text(
                 '\$${billData.subtotal.toStringAsFixed(2)}',
@@ -294,7 +382,7 @@ class _ItemsSectionState extends State<ItemsSection>
           Container(
             height: 8,
             decoration: BoxDecoration(
-              color: Colors.grey.withOpacity(0.1),
+              color: progressBgColor,
               borderRadius: BorderRadius.circular(4),
             ),
             child: LayoutBuilder(
@@ -305,8 +393,6 @@ class _ItemsSectionState extends State<ItemsSection>
                         ? (billData.animatedItemsTotal / billData.subtotal)
                             .clamp(0.0, 1.0)
                         : 0.0;
-
-                // Add a "done" indicator when items total equals subtotal
 
                 return Stack(
                   children: [
@@ -344,8 +430,6 @@ class _ItemsSectionState extends State<ItemsSection>
                         ],
                       ),
                     ),
-
-                    // "Done" checkmark that appears when items total equals subtotal
                   ],
                 );
               },
@@ -369,6 +453,7 @@ class _ItemsSectionState extends State<ItemsSection>
                   'Added Items',
                   style: textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600,
+                    color: colorScheme.onSurface,
                   ),
                 ),
                 const Spacer(),
@@ -381,10 +466,20 @@ class _ItemsSectionState extends State<ItemsSection>
                         context: context,
                         builder:
                             (context) => AlertDialog(
-                              title: const Text('Clear All Items?'),
-                              content: const Text(
-                                'Are you sure you want to remove all items? This action cannot be undone.',
+                              title: Text(
+                                'Clear All Items?',
+                                style: TextStyle(color: colorScheme.onSurface),
                               ),
+                              content: Text(
+                                'Are you sure you want to remove all items? This action cannot be undone.',
+                                style: TextStyle(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              backgroundColor:
+                                  brightness == Brightness.dark
+                                      ? colorScheme.surface
+                                      : Colors.white,
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.pop(context),
@@ -434,11 +529,11 @@ class _ItemsSectionState extends State<ItemsSection>
                 padding: const EdgeInsets.only(bottom: 10),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: itemBgColor,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: itemShadowColor,
                         blurRadius: 10,
                         offset: const Offset(0, 2),
                       ),
@@ -454,14 +549,16 @@ class _ItemsSectionState extends State<ItemsSection>
                     ),
                     title: Text(
                       item.name,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurface,
+                      ),
                     ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         // Make the price container adaptable
                         Flexible(
-                          // Add this Flexible wrapper
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 10,
@@ -477,7 +574,7 @@ class _ItemsSectionState extends State<ItemsSection>
                                 fontWeight: FontWeight.bold,
                                 color: colorScheme.primary,
                               ),
-                              overflow: TextOverflow.ellipsis, // Add this
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ),

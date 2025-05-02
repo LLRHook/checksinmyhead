@@ -38,6 +38,22 @@ class _AddPersonFieldState extends State<AddPersonField> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
+    // Theme-aware colors
+    final textFieldFillColor =
+        colorScheme.brightness == Brightness.dark
+            ? colorScheme.surfaceContainerHighest
+            : Colors.grey.shade100;
+
+    final outlineButtonBgColor =
+        colorScheme.brightness == Brightness.dark
+            ? colorScheme.surface
+            : colorScheme.surface;
+
+    final borderSideColor =
+        colorScheme.brightness == Brightness.dark
+            ? colorScheme.primary.withOpacity(0.7)
+            : colorScheme.primary.withOpacity(0.5);
+
     return AnimatedSize(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
@@ -55,7 +71,7 @@ class _AddPersonFieldState extends State<AddPersonField> {
                         decoration: InputDecoration(
                           hintText: "Enter name",
                           filled: true,
-                          fillColor: Colors.grey.shade100,
+                          fillColor: textFieldFillColor,
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 14,
@@ -71,6 +87,15 @@ class _AddPersonFieldState extends State<AddPersonField> {
                               width: 2,
                             ),
                           ),
+                          // Add style for the hint text
+                          hintStyle: TextStyle(
+                            color: colorScheme.onSurface.withOpacity(0.6),
+                          ),
+                        ),
+                        style: TextStyle(
+                          color:
+                              colorScheme
+                                  .onSurface, // Ensure text color respects theme
                         ),
                         onFieldSubmitted: (_) {
                           _addPerson(context);
@@ -91,7 +116,7 @@ class _AddPersonFieldState extends State<AddPersonField> {
                           onPressed: () => _addPerson(context),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: colorScheme.primary,
-                            foregroundColor: Colors.white,
+                            foregroundColor: colorScheme.onPrimary,
                             elevation: 0,
                             padding: const EdgeInsets.all(14),
                             shape: RoundedRectangleBorder(
@@ -114,17 +139,14 @@ class _AddPersonFieldState extends State<AddPersonField> {
                 icon: const Icon(Icons.add),
                 label: const Text("Add Person"),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: colorScheme.surface,
+                  backgroundColor: outlineButtonBgColor,
                   foregroundColor: colorScheme.primary,
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(
                     vertical: 14,
                     horizontal: 16,
                   ),
-                  side: BorderSide(
-                    color: colorScheme.primary.withOpacity(0.5),
-                    width: 1,
-                  ),
+                  side: BorderSide(color: borderSideColor, width: 1),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),

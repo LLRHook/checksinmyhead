@@ -1,5 +1,5 @@
 import 'package:checks_frontend/database/database_provider.dart';
-import 'package:checks_frontend/screens/quick_split/bill_summary/models/bill_summary_data.dart';
+import 'package:checks_frontend/screens/quick_split/bill_summary/utils/share_utils.dart';
 
 class SettingsManager {
   /// Get the saved share options from database

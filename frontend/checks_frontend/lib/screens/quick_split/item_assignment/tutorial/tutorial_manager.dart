@@ -14,34 +14,33 @@ class TutorialManager {
   // Tutorial steps for item assignment screen with enhanced descriptions
   final List<TutorialStep> tutorialSteps = [
     const TutorialStep(
-      title: 'Select a Person',
+      title: 'Expand Items!',
+      description: 'Tap any dish to see its magical splitting options!',
+      icon: Icons.touch_app,
+    ),
+    const TutorialStep(
+      title: 'One-Tap Magic',
       description:
-          'Tap any person\'s avatar to select them for item assignment. Their card will highlight to show they\'re active.',
+          'Tap a friend\'s avatar to instantly assign the whole item. Color-coding makes tracking a breeze!',
       icon: Icons.person_outline,
     ),
     const TutorialStep(
-      title: 'Assign Items',
+      title: 'Share the Love',
       description:
-          'With someone selected, tap an item card to assign it to them. The item will take on their color for easy tracking.',
-      icon: Icons.assignment_ind,
+          'Hit "Multi-Split" to divide an item among multiple hungry friends. Perfect for those shared nachos!',
+      icon: Icons.groups_outlined,
     ),
     const TutorialStep(
-      title: 'Split Options',
+      title: 'Precision Mode',
       description:
-          'Use "Split Evenly" for equal shares or "Custom Split" when you want precise control over percentages.',
-      icon: Icons.splitscreen,
+          'Drag sliders within multi-split to set exact percentages, allowing more precise splits!',
+      icon: Icons.pie_chart,
     ),
     const TutorialStep(
-      title: 'Birthday Person',
+      title: 'Birthday Surprise',
       description:
-          'Long-press any avatar to mark as birthday person who pays \$0. Their portion gets distributed among others automatically.',
+          'Long-press to mark the birthday star! Their costs vanish and everyone else picks up the tab.',
       icon: Icons.cake,
-    ),
-    const TutorialStep(
-      title: 'Review & Continue',
-      description:
-          'After assigning all items, tap Continue to see the final breakdown with tax and tip calculated for each person.',
-      icon: Icons.check_circle_outline,
     ),
   ];
 

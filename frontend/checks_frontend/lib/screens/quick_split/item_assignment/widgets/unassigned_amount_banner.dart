@@ -13,6 +13,36 @@ class UnassignedAmountBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+
+    // Theme-aware colors
+    final backgroundColor =
+        brightness == Brightness.dark
+            ? Color(0xFF442700).withOpacity(
+              0.4,
+            ) // Dark orange background for dark mode
+            : Colors.orange.shade50;
+
+    final borderColor =
+        brightness == Brightness.dark
+            ? Colors.orange.shade700.withOpacity(0.4)
+            : Colors.orange.shade200;
+
+    final iconColor =
+        brightness == Brightness.dark
+            ? Colors.orange.shade300
+            : Colors.orange.shade700;
+
+    final titleColor =
+        brightness == Brightness.dark
+            ? Colors.orange.shade200
+            : Colors.orange.shade900;
+
+    final subtitleColor =
+        brightness == Brightness.dark
+            ? Colors.orange.shade300.withOpacity(0.7)
+            : Colors.orange.shade800;
+
     // Ensure we're using a proper GestureDetector instead of just InkWell
     return GestureDetector(
       onTap: () {
@@ -22,21 +52,18 @@ class UnassignedAmountBanner extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
         decoration: BoxDecoration(
-          color: Colors.orange.shade50,
+          color: backgroundColor,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.orange.shade200, width: 1),
+          border: Border.all(color: borderColor, width: 1),
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
               // Warning icon
-              Icon(
-                Icons.warning_amber_rounded,
-                color: Colors.orange.shade700,
-                size: 24,
-              ),
+              Icon(Icons.warning_amber_rounded, color: iconColor, size: 24),
               const SizedBox(width: 12),
+
               // Warning text with proper string interpolation
               Expanded(
                 child: Column(
@@ -46,22 +73,20 @@ class UnassignedAmountBanner extends StatelessWidget {
                       "\$${unassignedAmount.toStringAsFixed(2)} not assigned",
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Colors.orange.shade900,
+                        color: titleColor,
                         fontSize: 15,
                       ),
                     ),
                     Text(
                       'Tap to split evenly among participants',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.orange.shade800,
-                      ),
+                      style: TextStyle(fontSize: 12, color: subtitleColor),
                     ),
                   ],
                 ),
               ),
+
               // Action button
-              Icon(Icons.touch_app, color: Colors.orange.shade700, size: 20),
+              Icon(Icons.touch_app, color: iconColor, size: 20),
             ],
           ),
         ),

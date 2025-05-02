@@ -2,7 +2,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:checks_frontend/models/bill_item.dart';
-import 'package:checks_frontend/screens/quick_split/bill_summary/models/bill_summary_data.dart';
+import 'package:checks_frontend/screens/quick_split/bill_summary/utils/share_utils.dart';
 import 'package:drift/drift.dart'
     hide Column; // Avoid Column conflict with Flutter
 import 'package:drift/native.dart';

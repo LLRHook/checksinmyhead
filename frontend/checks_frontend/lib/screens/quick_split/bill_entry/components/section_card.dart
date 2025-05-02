@@ -18,14 +18,29 @@ class SectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final brightness = Theme.of(context).brightness;
+
+    // Theme-aware colors
+    final backgroundColor =
+        brightness == Brightness.dark ? colorScheme.surface : Colors.white;
+
+    final shadowColor =
+        brightness == Brightness.dark
+            ? Colors.black.withOpacity(0.2)
+            : Colors.black.withOpacity(0.05);
+
+    final subtitleColor =
+        brightness == Brightness.dark
+            ? colorScheme.onSurface.withOpacity(0.6)
+            : Colors.grey.shade600;
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -51,11 +66,11 @@ class SectionCard extends StatelessWidget {
                 title,
                 style: textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface, // Add theme-aware text color
                 ),
               ),
             ],
           ),
-
           // Optional subtitle
           if (subTitle != null) ...[
             const SizedBox(height: 8),
@@ -63,13 +78,11 @@ class SectionCard extends StatelessWidget {
               padding: const EdgeInsets.only(left: 38),
               child: Text(
                 subTitle!,
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                style: TextStyle(color: subtitleColor, fontSize: 13),
               ),
             ),
           ],
-
           const SizedBox(height: 20),
-
           // Section content
           ...children,
         ],

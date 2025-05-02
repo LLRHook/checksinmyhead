@@ -11,23 +11,35 @@ class ContinueButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final billData = Provider.of<BillData>(context);
     final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
 
     // Check if items match subtotal (with small tolerance for rounding errors)
     final isItemsMatchingSubtotal =
         billData.subtotal > 0 &&
         (billData.subtotal - billData.itemsTotal).abs() <= 0.01;
 
+    // Theme-aware success color
+    final successColor =
+        brightness == Brightness.dark
+            ? const Color(0xFF66BB6A) // Darker green for dark mode
+            : const Color(0xFF4CAF50); // Normal green for light mode
+
     // Determine button appearance based on validation state
     final buttonColor =
-        isItemsMatchingSubtotal
-            ? const Color(0xFF4CAF50)
-            : // Green when matching
-            colorScheme.primary;
+        isItemsMatchingSubtotal ? successColor : colorScheme.primary;
 
     final buttonIcon =
         isItemsMatchingSubtotal ? Icons.check_circle : Icons.arrow_forward;
 
-    // Create shimmer effect for the button when items match
+    // Button text color
+    final textColor =
+        brightness == Brightness.dark
+            ? Colors.black.withOpacity(
+              0.9,
+            ) // Dark text for better contrast in dark mode
+            : Colors.white;
+
+    // Has items check
     final hasItems = billData.items.isNotEmpty;
 
     return Container(
@@ -37,7 +49,9 @@ class ContinueButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: buttonColor.withOpacity(0.3),
+            color: buttonColor.withOpacity(
+              brightness == Brightness.dark ? 0.2 : 0.3,
+            ),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -47,7 +61,7 @@ class ContinueButton extends StatelessWidget {
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: buttonColor,
-          foregroundColor: Colors.white,
+          foregroundColor: textColor,
           elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
@@ -58,14 +72,15 @@ class ContinueButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (isItemsMatchingSubtotal) ...[
-              const Icon(Icons.check_circle, size: 20),
+              Icon(Icons.check_circle, size: 20, color: textColor),
               const SizedBox(width: 8),
-              const Text(
+              Text(
                 'CONTINUE',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1,
+                  color: textColor,
                 ),
               ),
             ] else if (hasItems) ...[
@@ -75,22 +90,23 @@ class ContinueButton extends StatelessWidget {
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1,
-                  color: Colors.white.withOpacity(0.9),
+                  color: textColor.withOpacity(0.9),
                 ),
               ),
               const SizedBox(width: 8),
               Icon(
                 Icons.arrow_forward,
                 size: 20,
-                color: Colors.white.withOpacity(0.9),
+                color: textColor.withOpacity(0.9),
               ),
             ] else ...[
-              const Text(
+              Text(
                 'ADD ITEMS & CONTINUE',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1,
+                  color: textColor,
                 ),
               ),
             ],

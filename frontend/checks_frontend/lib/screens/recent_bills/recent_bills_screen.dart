@@ -50,19 +50,29 @@ class _RecentBillsScreenState extends State<RecentBillsScreen> {
   void _showErrorSnackBar(String message) {
     HapticFeedback.vibrate();
 
+    final brightness = Theme.of(context).brightness;
+    final snackBarBgColor =
+        brightness == Brightness.dark
+            ? const Color(0xFF3A0D0D) // Darker red for dark mode
+            : Theme.of(context).colorScheme.error;
+
+    final snackBarTextColor = Colors.white;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.error_outline, color: Colors.white),
+            Icon(Icons.error_outline, color: snackBarTextColor),
             const SizedBox(width: 10),
-            Expanded(child: Text(message)),
+            Expanded(
+              child: Text(message, style: TextStyle(color: snackBarTextColor)),
+            ),
           ],
         ),
         behavior: SnackBarBehavior.floating,
         width: MediaQuery.of(context).size.width * 0.9,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        backgroundColor: Theme.of(context).colorScheme.error,
+        backgroundColor: snackBarBgColor,
       ),
     );
   }
@@ -70,17 +80,40 @@ class _RecentBillsScreenState extends State<RecentBillsScreen> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    // Theme-aware colors
+    final scaffoldBgColor =
+        brightness == Brightness.dark
+            ? colorScheme.background
+            : Colors.grey[50];
+
+    final appBarBgColor =
+        brightness == Brightness.dark ? colorScheme.surface : Colors.white;
+
+    final appBarIconColor = colorScheme.onSurface;
+
+    final titleColor = colorScheme.onSurface;
+
+    // Loading screen colors
+    final loadingTextColor = colorScheme.onSurface;
+
+    // Header colors
+    final headerTextColor = Colors.white;
+    final headerSecondaryTextColor = Colors.white.withOpacity(0.9);
+    final headerIconBgColor = Colors.white.withOpacity(0.2);
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: scaffoldBgColor,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Recent Bills',
-          style: TextStyle(fontWeight: FontWeight.w600),
+          style: TextStyle(fontWeight: FontWeight.w600, color: titleColor),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
+        backgroundColor: appBarBgColor,
         elevation: 0,
+        iconTheme: IconThemeData(color: appBarIconColor),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 20),
           onPressed: () {
@@ -105,15 +138,20 @@ class _RecentBillsScreenState extends State<RecentBillsScreen> {
         color: colorScheme.primary,
         child:
             _isLoading
-                ? _buildLoadingState(colorScheme)
+                ? _buildLoadingState(colorScheme, loadingTextColor)
                 : _bills.isEmpty
                 ? const EmptyBillsState()
-                : _buildBillsList(),
+                : _buildBillsList(
+                  headerTextColor,
+                  headerSecondaryTextColor,
+                  headerIconBgColor,
+                  colorScheme,
+                ),
       ),
     );
   }
 
-  Widget _buildLoadingState(ColorScheme colorScheme) {
+  Widget _buildLoadingState(ColorScheme colorScheme, Color textColor) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -129,17 +167,19 @@ class _RecentBillsScreenState extends State<RecentBillsScreen> {
           const SizedBox(height: 16),
           Text(
             'Loading bills...',
-            style: TextStyle(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.w500,
-            ),
+            style: TextStyle(color: textColor, fontWeight: FontWeight.w500),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildBillsList() {
+  Widget _buildBillsList(
+    Color headerTextColor,
+    Color headerSecondaryTextColor,
+    Color headerIconBgColor,
+    ColorScheme colorScheme,
+  ) {
     // Sort bills by date (newest first)
     final sortedBills = List<RecentBillModel>.from(_bills)
       ..sort((a, b) => b.date.compareTo(a.date));
@@ -151,7 +191,12 @@ class _RecentBillsScreenState extends State<RecentBillsScreen> {
       itemBuilder: (context, index) {
         if (index == 0) {
           // Header showing total bill count
-          return _buildListHeader();
+          return _buildListHeader(
+            headerTextColor,
+            headerSecondaryTextColor,
+            headerIconBgColor,
+            colorScheme,
+          );
         }
 
         // Adjust index to account for the header
@@ -164,11 +209,24 @@ class _RecentBillsScreenState extends State<RecentBillsScreen> {
     );
   }
 
-  Widget _buildListHeader() {
-    final colorScheme = Theme.of(context).colorScheme;
-
+  Widget _buildListHeader(
+    Color headerTextColor,
+    Color headerSecondaryTextColor,
+    Color headerIconBgColor,
+    ColorScheme colorScheme,
+  ) {
     // Calculate total amount spent
     final double totalSpent = _bills.fold(0, (sum, bill) => sum + bill.total);
+
+    final brightness = Theme.of(context).brightness;
+
+    // Shadow color should be different for dark mode
+    final shadowColor =
+        brightness == Brightness.dark
+            ? colorScheme.primary.withOpacity(
+              0.5,
+            ) // More prominent in dark mode
+            : colorScheme.primary.withOpacity(0.3);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -178,7 +236,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: colorScheme.primary.withOpacity(0.3),
+            color: shadowColor,
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -190,13 +248,13 @@ class _RecentBillsScreenState extends State<RecentBillsScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: headerIconBgColor,
               shape: BoxShape.circle,
             ),
             child: Text(
               '${_bills.length}',
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: headerTextColor,
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
               ),
@@ -210,10 +268,10 @@ class _RecentBillsScreenState extends State<RecentBillsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Recent Bills',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: headerTextColor,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
@@ -222,7 +280,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen> {
                 Text(
                   'Total split: ${CurrencyFormatter.formatCurrency(totalSpent)}',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
+                    color: headerSecondaryTextColor,
                     fontSize: 14,
                   ),
                 ),
