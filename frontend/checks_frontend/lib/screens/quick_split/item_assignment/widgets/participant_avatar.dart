@@ -1,3 +1,4 @@
+import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:math';
@@ -24,15 +25,31 @@ class ParticipantAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Birthday color
-    final birthdayColor = const Color(0xFF8E24AA); // Purple 600
+    // Theme-aware colors
+    final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    // Birthday color - adjusted for dark mode
+    final birthdayColor =
+        brightness == Brightness.dark
+            ? const Color(
+              0xFFCE93D8,
+            ) // Extra light purple for dark mode (Purple 200)
+            : const Color(0xFF8E24AA); // Purple 600 for light mode
+
+    // Text color for name - adjusted for dark mode
+    final nameColor = _getNameColor(context, birthdayColor);
+
+    // Border colors
+    final checkmarkBorderColor =
+        brightness == Brightness.dark ? colorScheme.surface : Colors.white;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: GestureDetector(
         onTap: onTap,
         onLongPress: onLongPress,
-        child: Container(
+        child: SizedBox(
           width: 70,
           height: 70,
           // Use a more flexible layout with proper constraints
@@ -57,7 +74,7 @@ class ParticipantAvatar extends StatelessWidget {
                         border: Border.all(
                           color:
                               isSelected
-                                  ? _getDarkenedColor(person.color, 0.1)
+                                  ? _getSelectionColor(person.color, brightness)
                                   : isAssigned
                                   ? person.color
                                   : Colors.transparent,
@@ -71,13 +88,16 @@ class ParticipantAvatar extends StatelessWidget {
                       ),
                     ),
 
-                    // Pulse effect for selected state
+                    // Pulse effect for selected state - enhanced for dark mode
                     if (isSelected && !isBirthdayPerson)
                       SizedBox(
                         width: 54,
                         height: 54,
                         child: CustomPaint(
-                          painter: PulsePainter(color: person.color),
+                          painter: PulsePainter(
+                            color: person.color,
+                            brightness: brightness,
+                          ),
                         ),
                       ),
 
@@ -110,8 +130,10 @@ class ParticipantAvatar extends StatelessWidget {
                                 )
                                 : Text(
                                   person.name[0].toUpperCase(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: ColorUtils.getContrastiveTextColor(
+                                      person.color,
+                                    ),
                                     fontWeight: FontWeight.bold,
                                     fontSize: 16,
                                   ),
@@ -120,7 +142,8 @@ class ParticipantAvatar extends StatelessWidget {
                     ),
 
                     // Use the animated cake icon for birthday person
-                    if (isBirthdayPerson) _buildShakingCakeIcon(birthdayColor),
+                    if (isBirthdayPerson)
+                      _buildShakingCakeIcon(birthdayColor, brightness),
 
                     // Standardized colored checkmark for both selection and assignment
                     if (isSelected || isAssigned)
@@ -133,7 +156,10 @@ class ParticipantAvatar extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: person.color,
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
+                            border: Border.all(
+                              color: checkmarkBorderColor,
+                              width: 2,
+                            ),
                           ),
                           child: const Center(
                             child: Icon(
@@ -164,12 +190,7 @@ class ParticipantAvatar extends StatelessWidget {
                         isSelected || isAssigned || isBirthdayPerson
                             ? FontWeight.w600
                             : FontWeight.w500,
-                    color:
-                        isBirthdayPerson
-                            ? birthdayColor
-                            : isSelected || isAssigned
-                            ? person.color
-                            : Colors.grey.shade700,
+                    color: nameColor,
                   ),
                 ),
               ),
@@ -180,8 +201,80 @@ class ParticipantAvatar extends StatelessWidget {
     );
   }
 
+  // Enhanced name color for better visibility in dark mode
+  Color _getNameColor(BuildContext context, Color birthdayColor) {
+    final brightness = Theme.of(context).brightness;
+
+    if (isBirthdayPerson) {
+      // Make birthday color extra bright in dark mode
+      return brightness == Brightness.dark
+          ? ColorUtils.getLightenedColor(
+            birthdayColor,
+            0.3,
+          ) // Significantly lighter
+          : birthdayColor;
+    }
+
+    if (isSelected || isAssigned) {
+      // Detect if the person color is purplish
+      bool isPurplish = ColorUtils.isPurplish(person.color);
+
+      if (brightness == Brightness.dark) {
+        // Apply extra lightening for purplish colors
+        if (isPurplish) {
+          return ColorUtils.getLightenedColor(
+            person.color,
+            0.5,
+          ); // 50% lighter for purple
+        } else {
+          return ColorUtils.getLightenedColor(
+            person.color,
+            0.3,
+          ); // 30% lighter for other colors
+        }
+      }
+      return person.color;
+    }
+
+    return brightness == Brightness.dark
+        ? Theme.of(context).colorScheme.onSurface.withOpacity(
+          0.9,
+        ) // Brighter default text
+        : Colors.grey.shade700;
+  }
+
+  // Enhanced selection ring color for better visibility
+  Color _getSelectionColor(Color color, Brightness brightness) {
+    // Detect if the color is purplish
+    bool isPurplish = ColorUtils.isPurplish(color);
+
+    if (brightness == Brightness.dark) {
+      // Apply extra lightening for purplish colors
+      if (isPurplish) {
+        return ColorUtils.getLightenedColor(
+          color,
+          0.6,
+        ); // 60% lighter for purple
+      } else {
+        return ColorUtils.getLightenedColor(
+          color,
+          0.4,
+        ); // 40% lighter for other colors
+      }
+    }
+    return ColorUtils.getDarkenedColor(color, 0.1);
+  }
+
   // The enhanced cake animation - extracted to a shared component
-  Widget _buildShakingCakeIcon(Color backgroundColor) {
+  Widget _buildShakingCakeIcon(Color backgroundColor, Brightness brightness) {
+    // Adjust cake icon color for dark mode
+    final iconColor =
+        brightness == Brightness.dark
+            ? Colors.black.withOpacity(
+              0.9,
+            ) // Dark icon for better contrast in dark mode
+            : Colors.white;
+
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0.0, end: 1.0),
       duration: const Duration(milliseconds: 2000),
@@ -228,7 +321,7 @@ class ParticipantAvatar extends StatelessWidget {
                 child: CircleAvatar(
                   radius: 16,
                   backgroundColor: backgroundColor,
-                  child: const Icon(Icons.cake, color: Colors.white, size: 16),
+                  child: Icon(Icons.cake, color: iconColor, size: 16),
                 ),
               ),
             ),
@@ -241,9 +334,7 @@ class ParticipantAvatar extends StatelessWidget {
                 angle: value * pi * 4,
                 child: Icon(
                   Icons.star,
-                  color: Colors.white.withOpacity(
-                    0.7 + sin(value * pi * 6) * 0.3,
-                  ),
+                  color: iconColor.withOpacity(0.7 + sin(value * pi * 6) * 0.3),
                   size: 6,
                 ),
               ),
@@ -253,28 +344,28 @@ class ParticipantAvatar extends StatelessWidget {
       },
     );
   }
-
-  // Helper to get a darkened version of a color
-  Color _getDarkenedColor(Color color, double factor) {
-    return Color.fromARGB(
-      color.alpha,
-      (color.red * (1 - factor)).round(),
-      (color.green * (1 - factor)).round(),
-      (color.blue * (1 - factor)).round(),
-    );
-  }
 }
 
-// Extract PulsePainter to a shared utility file
+// Enhanced pulse painter for better visibility in dark mode
 class PulsePainter extends CustomPainter {
   final Color color;
+  final Brightness brightness;
 
-  PulsePainter({required this.color});
+  PulsePainter({required this.color, required this.brightness});
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final maxRadius = size.width / 2;
+
+    // Adjust color for dark mode to be more visible
+    final adjustedColor =
+        brightness == Brightness.dark
+            ? ColorUtils.getLightenedColor(
+              color,
+              ColorUtils.isPurplish(color) ? 0.5 : 0.3,
+            )
+            : color;
 
     // Create multiple pulse waves with different opacities and sizes
     for (int i = 0; i < 3; i++) {
@@ -284,14 +375,18 @@ class PulsePainter extends CustomPainter {
       // Adjust the pulse radius based on the animation phase
       final pulseRadius = maxRadius * animationPhase;
 
-      // Make the pulse fade out as it expands
-      final opacity = (1.0 - animationPhase) * 0.4;
+      // Make the pulse fade out as it expands, but use higher opacity in dark mode
+      final baseOpacity = brightness == Brightness.dark ? 0.6 : 0.4;
+      final opacity = (1.0 - animationPhase) * baseOpacity;
 
       final paint =
           Paint()
-            ..color = color.withOpacity(opacity)
+            ..color = adjustedColor.withOpacity(opacity)
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 2.0;
+            ..strokeWidth =
+                brightness == Brightness.dark
+                    ? 2.5
+                    : 2.0; // Thicker stroke in dark mode
 
       canvas.drawCircle(center, pulseRadius, paint);
     }

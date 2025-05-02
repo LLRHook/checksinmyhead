@@ -26,6 +26,20 @@ class ParticipantSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    // Theme-aware colors
+    final primaryBlueColor =
+        brightness == Brightness.dark
+            ? Color(0xFF60A5FA) // Lighter blue for dark mode
+            : Color(0xFF3B82F6); // Original blue for light mode
+
+    final headerTextColor =
+        brightness == Brightness.dark
+            ? colorScheme.primary.withOpacity(0.9)
+            : primaryBlueColor;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min, // Ensure the column takes minimum space
@@ -38,20 +52,20 @@ class ParticipantSelector extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.touch_app_outlined,
                     size: 16,
-                    color: Color(0xFF3B82F6),
+                    color: primaryBlueColor,
                   ),
                   const SizedBox(width: 8),
                   // Use Flexible to prevent overflow
                   Flexible(
                     child: Text(
                       'Select people to split with',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
-                        color: Color(0xFF3B82F6),
+                        color: headerTextColor,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -61,10 +75,10 @@ class ParticipantSelector extends StatelessWidget {
                     selectedPeople.isEmpty
                         ? ''
                         : selectedPeople.length.toString(),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
-                      color: Color(0xFF3B82F6),
+                      color: headerTextColor,
                     ),
                   ),
                 ],

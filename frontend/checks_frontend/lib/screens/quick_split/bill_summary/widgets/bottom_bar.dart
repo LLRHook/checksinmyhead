@@ -1,4 +1,3 @@
-// lib/widgets/bottom_bar.dart
 import 'package:checks_frontend/models/bill_item.dart';
 import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
@@ -34,15 +33,47 @@ class BottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    // Theme-aware colors
+    final backgroundColor =
+        brightness == Brightness.dark ? colorScheme.surface : Colors.white;
+
+    final shadowColor =
+        brightness == Brightness.dark
+            ? Colors.black.withOpacity(0.2)
+            : Colors.black.withOpacity(0.05);
+
+    final labelColor =
+        brightness == Brightness.dark
+            ? colorScheme.onSurface.withOpacity(0.7)
+            : Colors.grey;
+
+    final valueColor = colorScheme.onSurface;
+
+    // Button text color - for dark mode, use darker text on bright backgrounds for contrast
+    final buttonTextColor =
+        brightness == Brightness.dark
+            ? Colors.black.withOpacity(
+              0.9,
+            ) // Dark text for better contrast in dark mode
+            : Colors.white;
+
+    // Outline button colors
+    final outlineButtonColor =
+        brightness == Brightness.dark
+            ? colorScheme.primary.withOpacity(0.8)
+            : colorScheme.primary;
+
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: backgroundColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, -4),
+            color: shadowColor,
+            blurRadius: 10,
+            offset: const Offset(0, -3),
           ),
         ],
       ),
@@ -55,6 +86,8 @@ class BottomBar extends StatelessWidget {
                 icon: const Icon(Icons.ios_share, size: 18),
                 label: const Text('Share'),
                 style: OutlinedButton.styleFrom(
+                  foregroundColor: outlineButtonColor,
+                  side: BorderSide(color: outlineButtonColor),
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -73,6 +106,7 @@ class BottomBar extends StatelessWidget {
                 label: const Text('Done'),
                 style: FilledButton.styleFrom(
                   backgroundColor: colorScheme.primary,
+                  foregroundColor: buttonTextColor,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -102,6 +136,18 @@ class DoneButtonHandler {
     double tipPercentage = 0, // New parameter
     bool isCustomTipAmount = false, // New parameter
   }) async {
+    // Get theme info for snackbar
+    final brightness = Theme.of(context).brightness;
+    final snackBarBgColor =
+        brightness == Brightness.dark
+            ? const Color(0xFF2D2D2D) // Darker background for dark mode
+            : null; // Use default for light mode
+
+    final snackBarTextColor =
+        brightness == Brightness.dark
+            ? Colors.white
+            : null; // Use default for light mode
+
     // Save the bill to the database
     await RecentBillsManager.saveBill(
       participants: participants,
@@ -117,11 +163,16 @@ class DoneButtonHandler {
           isCustomTipAmount, // Pass whether it's a custom tip amount
     );
 
-    // Show success message
+    // Show success message with theme-aware colors
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Bill saved successfully'),
+      SnackBar(
+        content: Text(
+          'Bill saved successfully',
+          style: TextStyle(color: snackBarTextColor),
+        ),
+        backgroundColor: snackBarBgColor,
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
 

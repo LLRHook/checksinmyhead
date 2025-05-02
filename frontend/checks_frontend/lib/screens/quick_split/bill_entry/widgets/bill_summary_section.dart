@@ -9,12 +9,23 @@ class BillSummarySection extends StatelessWidget {
   Widget build(BuildContext context) {
     final billData = Provider.of<BillData>(context);
     final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    // Theme-aware colors
+    final borderColor =
+        brightness == Brightness.dark
+            ? colorScheme.outline.withOpacity(0.3)
+            : Colors.grey.shade200;
 
     return Card(
       elevation: 0,
+      color:
+          brightness == Brightness.dark
+              ? colorScheme.surfaceContainerHighest
+              : Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.shade200, width: 1),
+        side: BorderSide(color: borderColor, width: 1),
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -40,27 +51,32 @@ class BillSummarySection extends StatelessWidget {
             const SizedBox(height: 16),
 
             // Premium summary rows
-            _buildBreakdownRow('Subtotal', billData.subtotal),
-
+            _buildBreakdownRow(context, 'Subtotal', billData.subtotal),
             const SizedBox(height: 8),
-
-            _buildBreakdownRow('Tax', billData.tax),
+            _buildBreakdownRow(context, 'Tax', billData.tax),
 
             if (billData.tipAmount > 0) ...[
               const SizedBox(height: 8),
               _buildBreakdownRow(
+                context,
                 _getTipLabel(billData),
                 billData.tipAmount,
                 showPercentage: !billData.useCustomTipAmount,
                 tipPercentage: billData.tipPercentage,
               ),
             ],
+
             // Total row with divider
             const SizedBox(height: 12),
-            const Divider(height: 1),
+            Divider(
+              height: 1,
+              color: colorScheme.outline.withOpacity(
+                0.3,
+              ), // Theme-aware divider
+            ),
             const SizedBox(height: 12),
-
             _buildBreakdownRow(
+              context,
               'Total',
               billData.total,
               isBold: true,
@@ -75,6 +91,7 @@ class BillSummarySection extends StatelessWidget {
 
   // Helper method to build consistent breakdown rows
   Widget _buildBreakdownRow(
+    BuildContext context,
     String label,
     double value, {
     bool isBold = false,
@@ -83,6 +100,11 @@ class BillSummarySection extends StatelessWidget {
     bool showPercentage = false,
     double? tipPercentage,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    // Default text color that respects theme
+    final defaultTextColor = colorScheme.onSurface;
+
     return Row(
       children: [
         // Left side - the label
@@ -91,21 +113,20 @@ class BillSummarySection extends StatelessWidget {
           style: TextStyle(
             fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
             fontSize: fontSize,
-            color: textColor,
+            color: textColor ?? defaultTextColor,
           ),
         ),
+
         // Spacer to push the price to the right
         const Spacer(),
+
         // Right side - the value
         Text(
-          '\$${value.toStringAsFixed(2)}' +
-              (showPercentage && tipPercentage != null
-                  ? ' (${tipPercentage.toInt()}%)'
-                  : ''),
+          '\$${value.toStringAsFixed(2)}${showPercentage && tipPercentage != null ? ' (${tipPercentage.toInt()}%)' : ''}',
           style: TextStyle(
             fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
             fontSize: fontSize,
-            color: textColor,
+            color: textColor ?? defaultTextColor,
           ),
           textAlign: TextAlign.right,
         ),

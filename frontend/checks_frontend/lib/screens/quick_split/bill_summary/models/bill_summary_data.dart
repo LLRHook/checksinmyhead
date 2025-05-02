@@ -38,16 +38,3 @@ class BillSummaryData {
     return sorted;
   }
 }
-
-/// A class to hold share options configuration
-class ShareOptions {
-  bool includeItemsInShare;
-  bool includePersonItemsInShare;
-  bool hideBreakdownInShare;
-
-  ShareOptions({
-    this.includeItemsInShare = true,
-    this.includePersonItemsInShare = false,
-    this.hideBreakdownInShare = false,
-  });
-}

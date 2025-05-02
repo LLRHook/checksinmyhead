@@ -13,6 +13,13 @@ class TipOptionsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final billData = Provider.of<BillData>(context);
+    final brightness = Theme.of(context).brightness;
+
+    // Theme-aware toggle container color
+    final toggleBgColor =
+        brightness == Brightness.dark
+            ? colorScheme.surfaceContainerHighest
+            : colorScheme.surfaceVariant.withOpacity(0.5);
 
     return SectionCard(
       title: 'Tip Options',
@@ -26,7 +33,7 @@ class TipOptionsSection extends StatelessWidget {
             Container(
               height: 36,
               decoration: BoxDecoration(
-                color: colorScheme.surfaceVariant.withOpacity(0.5),
+                color: toggleBgColor,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
@@ -68,7 +75,11 @@ class TipOptionsSection extends StatelessWidget {
             ),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [CurrencyFormatter.currencyFormatter],
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: colorScheme.onSurface, // Theme-aware text color
+            ),
           ),
 
         // Percentage tip options (visible when percentage is selected)
@@ -119,6 +130,18 @@ class _ToggleOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    // Theme-aware text colors
+    final selectedTextColor =
+        brightness == Brightness.dark
+            ? Colors.black.withOpacity(0.9)
+            : Colors.white;
+
+    final unselectedTextColor =
+        brightness == Brightness.dark
+            ? colorScheme.onSurface.withOpacity(0.7)
+            : colorScheme.onSurfaceVariant;
 
     return GestureDetector(
       onTap: onTap,
@@ -133,7 +156,7 @@ class _ToggleOption extends StatelessWidget {
         child: Text(
           title,
           style: TextStyle(
-            color: isSelected ? Colors.white : colorScheme.onSurfaceVariant,
+            color: isSelected ? selectedTextColor : unselectedTextColor,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             fontSize: 13,
           ),
@@ -157,10 +180,22 @@ class _TipPercentageSlider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+
+    // Theme-aware background color
+    final containerBgColor =
+        brightness == Brightness.dark
+            ? color.withOpacity(0.15)
+            : color.withOpacity(0.1);
+
+    // Theme-aware text color
+    final percentageTextColor =
+        brightness == Brightness.dark ? color.withOpacity(0.9) : color;
+
     return Container(
       height: 50,
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: containerBgColor,
         borderRadius: BorderRadius.circular(25),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -171,14 +206,16 @@ class _TipPercentageSlider extends StatelessWidget {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: color,
+              color: percentageTextColor,
             ),
           ),
           Expanded(
             child: SliderTheme(
               data: SliderTheme.of(context).copyWith(
                 activeTrackColor: color,
-                inactiveTrackColor: color.withOpacity(0.2),
+                inactiveTrackColor: color.withOpacity(
+                  brightness == Brightness.dark ? 0.3 : 0.2,
+                ),
                 thumbColor: color,
                 overlayColor: color.withOpacity(0.2),
                 trackHeight: 4,
@@ -216,6 +253,28 @@ class _QuickTipPercentageButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    // Theme-aware colors
+    final selectedTextColor =
+        brightness == Brightness.dark
+            ? Colors.black.withOpacity(0.9)
+            : Colors.white;
+
+    final unselectedTextColor =
+        brightness == Brightness.dark
+            ? colorScheme.onSurface
+            : colorScheme.onSurface;
+
+    final unselectedBgColor =
+        brightness == Brightness.dark
+            ? colorScheme.surfaceContainerHighest
+            : colorScheme.surface;
+
+    final borderColor =
+        brightness == Brightness.dark
+            ? colorScheme.outline.withOpacity(0.3)
+            : colorScheme.outline.withOpacity(0.5);
 
     return Wrap(
       spacing: 8,
@@ -234,20 +293,22 @@ class _QuickTipPercentageButtons extends StatelessWidget {
                   color:
                       tipPercentage == percentage
                           ? colorScheme.primary
-                          : colorScheme.surface,
+                          : unselectedBgColor,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color:
                         tipPercentage == percentage
                             ? colorScheme.primary
-                            : colorScheme.outline.withOpacity(0.5),
+                            : borderColor,
                     width: 1.5,
                   ),
                   boxShadow:
                       tipPercentage == percentage
                           ? [
                             BoxShadow(
-                              color: colorScheme.primary.withOpacity(0.2),
+                              color: colorScheme.primary.withOpacity(
+                                brightness == Brightness.dark ? 0.15 : 0.2,
+                              ),
                               blurRadius: 4,
                               offset: const Offset(0, 2),
                             ),
@@ -259,8 +320,8 @@ class _QuickTipPercentageButtons extends StatelessWidget {
                   style: TextStyle(
                     color:
                         tipPercentage == percentage
-                            ? Colors.white
-                            : colorScheme.onSurface,
+                            ? selectedTextColor
+                            : unselectedTextColor,
                     fontWeight:
                         tipPercentage == percentage
                             ? FontWeight.bold

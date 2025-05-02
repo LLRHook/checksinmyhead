@@ -1,4 +1,4 @@
-import 'package:checks_frontend/screens/quick_split/bill_summary/utils/color_utils.dart';
+import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '/models/person.dart';

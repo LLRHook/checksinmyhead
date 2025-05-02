@@ -8,7 +8,6 @@ import 'models/bill_summary_data.dart';
 import 'widgets/bill_total_card.dart';
 import 'widgets/person_card.dart';
 import 'widgets/bottom_bar.dart';
-import 'widgets/share_options_sheet.dart';
 import 'utils/share_utils.dart';
 
 class BillSummaryScreen extends StatefulWidget {
@@ -122,23 +121,44 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
   @override
   Widget build(BuildContext context) {
     final sortedParticipants = _summaryData.sortedParticipants;
+    final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    // Theme-aware colors
+    final backgroundColor =
+        brightness == Brightness.dark ? colorScheme.background : Colors.white;
+
+    final appBarColor =
+        brightness == Brightness.dark ? colorScheme.surface : Colors.white;
+
+    final titleColor = colorScheme.onSurface;
+
+    final sectionTitleColor =
+        brightness == Brightness.dark
+            ? Colors.white
+            : null; // Use default for light mode
 
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        backgroundColor: backgroundColor,
+        body: Center(
+          child: CircularProgressIndicator(color: colorScheme.primary),
+        ),
+      );
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: backgroundColor,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Bill Summary',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, color: titleColor),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
+        backgroundColor: appBarColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new),
+          icon: Icon(Icons.arrow_back_ios_new, color: titleColor),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -160,8 +180,12 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
                       // Individual shares
                       Text(
                         'Individual Shares',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: sectionTitleColor,
+                        ),
                       ),
                       const SizedBox(height: 12),
 
