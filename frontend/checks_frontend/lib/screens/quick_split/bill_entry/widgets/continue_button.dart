@@ -11,23 +11,25 @@ class ContinueButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final billData = Provider.of<BillData>(context);
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     // Check if items match subtotal (with small tolerance for rounding errors)
-    final isItemsMatchingSubtotal = billData.subtotal > 0 && 
+    final isItemsMatchingSubtotal =
+        billData.subtotal > 0 &&
         (billData.subtotal - billData.itemsTotal).abs() <= 0.01;
-    
+
     // Determine button appearance based on validation state
-    final buttonColor = isItemsMatchingSubtotal ? 
-        const Color(0xFF4CAF50) : // Green when matching
-        colorScheme.primary;
-    
-    final buttonIcon = isItemsMatchingSubtotal ? 
-        Icons.check_circle : 
-        Icons.arrow_forward;
-    
+    final buttonColor =
+        isItemsMatchingSubtotal
+            ? const Color(0xFF4CAF50)
+            : // Green when matching
+            colorScheme.primary;
+
+    final buttonIcon =
+        isItemsMatchingSubtotal ? Icons.check_circle : Icons.arrow_forward;
+
     // Create shimmer effect for the button when items match
     final hasItems = billData.items.isNotEmpty;
-    
+
     return Container(
       width: double.infinity,
       height: 56,
