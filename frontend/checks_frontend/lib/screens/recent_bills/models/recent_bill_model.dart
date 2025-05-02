@@ -16,10 +16,6 @@ class RecentBillModel {
   final Color color;
   final Map<String, Map<String, double>>? itemAssignments;
 
-  // Added these fields for alcohol calculations
-  final double? totalAlcoholTax;
-  final double? totalAlcoholTip;
-
   RecentBillModel({
     required this.id,
     required this.participantNames,
@@ -33,8 +29,6 @@ class RecentBillModel {
     this.items,
     required this.color,
     this.itemAssignments,
-    this.totalAlcoholTax = 0.0,
-    this.totalAlcoholTip = 0.0,
   });
 
   factory RecentBillModel.fromData(RecentBill data) {
@@ -50,33 +44,10 @@ class RecentBillModel {
     List<Map<String, dynamic>>? itemsList;
     Map<String, Map<String, double>>? assignmentsMap;
 
-    // Track total alcohol tax and tip
-    double totalAlcoholTax = 0.0;
-    double totalAlcoholTip = 0.0;
-
     if (data.items != null) {
       try {
         final List<dynamic> decodedItems = jsonDecode(data.items!);
         itemsList = decodedItems.cast<Map<String, dynamic>>();
-
-        // Process alcohol-specific data
-        for (var item in itemsList) {
-          final isAlcohol = item['isAlcohol'] as bool? ?? false;
-          if (isAlcohol) {
-            final alcoholTaxPortion =
-                (item['alcoholTaxPortion'] as num?)?.toDouble();
-            final alcoholTipPortion =
-                (item['alcoholTipPortion'] as num?)?.toDouble();
-
-            if (alcoholTaxPortion != null) {
-              totalAlcoholTax += alcoholTaxPortion;
-            }
-
-            if (alcoholTipPortion != null) {
-              totalAlcoholTip += alcoholTipPortion;
-            }
-          }
-        }
 
         // Extract assignments from items
         assignmentsMap = {};
@@ -131,8 +102,6 @@ class RecentBillModel {
       items: itemsList,
       itemAssignments: assignmentsMap,
       color: Color(data.colorValue),
-      totalAlcoholTax: totalAlcoholTax,
-      totalAlcoholTip: totalAlcoholTip,
     );
   }
 
