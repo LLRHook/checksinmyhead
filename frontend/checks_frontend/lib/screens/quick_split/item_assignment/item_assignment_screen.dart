@@ -1,20 +1,20 @@
+import 'package:checks_frontend/screens/quick_split/item_assignment/dialogs/custom_split_dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '/models/person.dart';
 import '/models/bill_item.dart';
 import 'tutorial/tutorial_manager.dart';
 
 // Widgets
-import 'widgets/participant_selector.dart';
-import 'widgets/item_card.dart';
-import 'widgets/empty_items_view.dart';
+
 import 'widgets/unassigned_amount_banner.dart';
 import 'widgets/assignment_app_bar.dart';
 import 'widgets/assignment_bottom_bar.dart';
+import 'widgets/item_card.dart'; // Import the enhanced version
 
 // Dialogs
 import 'dialogs/unassigned_warning_dialog.dart';
-import 'dialogs/custom_split_dialog.dart';
 
 // Bill summary screen
 import 'package:checks_frontend/screens/quick_split/bill_summary/bill_summary_screen.dart';
@@ -150,7 +150,6 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
       item: item,
       participants: widget.participants,
       onAssign: provider.assignItem,
-      universalItemIcon: provider.universalItemIcon,
       preselectedPeople: preselectedPeople,
     );
   }
@@ -184,38 +183,18 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
             ),
             body: Column(
               children: [
-                // Participant selector at top
-                ParticipantSelector(
-                  participants: widget.participants,
-                  selectedPerson: provider.selectedPerson,
-                  birthdayPerson: provider.birthdayPerson,
-                  personFinalShares: provider.personFinalShares,
-                  onPersonSelected: provider.togglePersonSelection,
-                  onBirthdayToggle: provider.toggleBirthdayPerson,
-                  getPersonBillPercentage: provider.getPersonBillPercentage,
-                ),
-
-                // Unassigned amount indicator
+                // Unassigned amount banner at top when needed
                 if (provider.unassignedAmount > 0.01)
                   UnassignedAmountBanner(
                     unassignedAmount: provider.unassignedAmount,
                     onSplitEvenly: provider.splitUnassignedAmountEvenly,
                   ),
 
+                // Bill information panel
+                _buildBillInfoPanel(provider),
+
                 // Items list
-                Expanded(
-                  child:
-                      widget.items.isEmpty
-                          ? EmptyItemsView(
-                            participants: widget.participants,
-                            personFinalShares: provider.personFinalShares,
-                            birthdayPerson: provider.birthdayPerson,
-                            unassignedAmount: provider.unassignedAmount,
-                            getPersonBillPercentage:
-                                provider.getPersonBillPercentage,
-                          )
-                          : _buildItemsListView(provider),
-                ),
+                Expanded(child: _buildItemsListView(provider)),
 
                 // Bottom control bar with continue button
                 AssignmentBottomBar(
@@ -230,7 +209,145 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
     );
   }
 
-  // Build the item list view when items have been added
+  // Bill information panel showing assignment progress
+  Widget _buildBillInfoPanel(AssignmentProvider provider) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final assignedAmount = widget.subtotal - provider.unassignedAmount;
+    final assignedPercentage =
+        widget.subtotal > 0
+            ? (assignedAmount / widget.subtotal * 100).clamp(0.0, 100.0)
+            : 0.0;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top row with bill info
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Bill amount column
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Subtotal',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '\$${widget.subtotal.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+
+              // Assigned amount column
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'Assigned',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '\$${assignedAmount.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color:
+                          assignedPercentage >= 100
+                              ? Colors.green.shade700
+                              : colorScheme.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Progress bar
+          Stack(
+            children: [
+              // Background track
+              Container(
+                height: 6,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+
+              // Progress indicator
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutCubic,
+                height: 6,
+                width:
+                    MediaQuery.of(context).size.width *
+                    (assignedPercentage / 100) *
+                    ((MediaQuery.of(context).size.width - 40) /
+                        MediaQuery.of(context).size.width),
+                decoration: BoxDecoration(
+                  color:
+                      assignedPercentage >= 100
+                          ? Colors.green.shade500
+                          : colorScheme.primary,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+            ],
+          ),
+
+          // Percentage text
+          Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                '${assignedPercentage.toStringAsFixed(0)}%',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color:
+                      assignedPercentage >= 100
+                          ? Colors.green.shade700
+                          : colorScheme.primary,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Build the item list with the improved cards
   Widget _buildItemsListView(AssignmentProvider provider) {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -244,21 +361,24 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
           (sum, value) => sum + value,
         );
 
+        // Get all people assigned to this item
+        final assignedPeople = AssignmentUtils.getAssignedPeopleForItem(item);
+
         return ItemCard(
+          key: ValueKey('item-${item.name}'),
           item: item,
           assignedPercentage: assignedPercentage,
-          selectedPerson: provider.selectedPerson,
           participants: widget.participants,
+          assignedPeople: assignedPeople,
           universalItemIcon: provider.universalItemIcon,
           onAssign: provider.assignItem,
           onSplitEvenly: provider.splitItemEvenly,
-          onShowCustomSplitDialog:
+          onShowCustomSplit:
               (item, preselectedPeople) =>
                   _showCustomSplitDialog(item, preselectedPeople, provider),
-          getAssignmentColor: AssignmentUtils.getAssignmentColor,
-          isPersonAssignedToItem: AssignmentUtils.isPersonAssignedToItem,
-          getAssignedPeopleForItem: AssignmentUtils.getAssignedPeopleForItem,
-          balanceItemBetweenAssignees: provider.balanceItemBetweenAssignees,
+          birthdayPerson: provider.birthdayPerson,
+          onBirthdayToggle: provider.toggleBirthdayPerson,
+          getPersonBillPercentage: provider.getPersonBillPercentage,
         );
       },
     );

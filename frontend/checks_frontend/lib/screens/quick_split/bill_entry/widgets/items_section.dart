@@ -78,7 +78,7 @@ class _ItemsSectionState extends State<ItemsSection>
       widget.showSnackBar('Please enter an item name');
       return;
     }
-    
+
     if (priceText.isEmpty) {
       widget.showSnackBar('Please enter an item price');
       return;
@@ -102,7 +102,8 @@ class _ItemsSectionState extends State<ItemsSection>
     final newTotalItems = billData.itemsTotal + price;
     if (billData.subtotal > 0 && newTotalItems > billData.subtotal) {
       // Show error message with remaining amount
-      final remaining = (billData.subtotal - billData.itemsTotal).toStringAsFixed(2);
+      final remaining = (billData.subtotal - billData.itemsTotal)
+          .toStringAsFixed(2);
       widget.showSnackBar(
         'Item price exceeds remaining amount. You can add up to \$$remaining',
       );
@@ -116,7 +117,7 @@ class _ItemsSectionState extends State<ItemsSection>
     billData.itemNameController.clear();
     billData.itemPriceController.clear();
     _updateAnimation(billData);
-    
+
     // Focus back to the name field for quick entry of multiple items
     FocusScope.of(context).requestFocus(FocusNode());
   }
@@ -131,7 +132,7 @@ class _ItemsSectionState extends State<ItemsSection>
   // Get color for progress indicator
   Color _getProgressColor(BuildContext context, double value, double subtotal) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     // Precision threshold to account for floating point rounding errors
     const precisionThreshold = 0.01;
 
@@ -299,13 +300,14 @@ class _ItemsSectionState extends State<ItemsSection>
             child: LayoutBuilder(
               builder: (context, constraints) {
                 // Calculate progress percentage capped at 100%
-                final progressPercentage = billData.subtotal > 0
-                    ? (billData.animatedItemsTotal / billData.subtotal).clamp(0.0, 1.0)
-                    : 0.0;
-                
+                final progressPercentage =
+                    billData.subtotal > 0
+                        ? (billData.animatedItemsTotal / billData.subtotal)
+                            .clamp(0.0, 1.0)
+                        : 0.0;
+
                 // Add a "done" indicator when items total equals subtotal
-                final isDone = (billData.subtotal - billData.animatedItemsTotal).abs() <= 0.01;
-                
+
                 return Stack(
                   children: [
                     // Progress bar
@@ -342,27 +344,8 @@ class _ItemsSectionState extends State<ItemsSection>
                         ],
                       ),
                     ),
-                    
+
                     // "Done" checkmark that appears when items total equals subtotal
-                    if (isDone)
-                      Positioned(
-                        right: 2,
-                        top: -5,
-                        child: Container(
-                          padding: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 2,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
                   ],
                 );
               },
@@ -396,37 +379,48 @@ class _ItemsSectionState extends State<ItemsSection>
                       // Show confirmation dialog
                       showDialog(
                         context: context,
-                        builder: (context) => AlertDialog(
-                          title: const Text('Clear All Items?'),
-                          content: const Text(
-                            'Are you sure you want to remove all items? This action cannot be undone.',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('CANCEL'),
+                        builder:
+                            (context) => AlertDialog(
+                              title: const Text('Clear All Items?'),
+                              content: const Text(
+                                'Are you sure you want to remove all items? This action cannot be undone.',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('CANCEL'),
+                                ),
+                                FilledButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    // Clear all items
+                                    for (
+                                      int i = billData.items.length - 1;
+                                      i >= 0;
+                                      i--
+                                    ) {
+                                      billData.removeItem(i);
+                                    }
+                                    _updateAnimation(billData);
+                                    HapticFeedback.mediumImpact();
+                                  },
+                                  child: const Text('CLEAR ALL'),
+                                ),
+                              ],
                             ),
-                            FilledButton(
-                              onPressed: () {
-                                Navigator.pop(context);
-                                // Clear all items
-                                for (int i = billData.items.length - 1; i >= 0; i--) {
-                                  billData.removeItem(i);
-                                }
-                                _updateAnimation(billData);
-                                HapticFeedback.mediumImpact();
-                              },
-                              child: const Text('CLEAR ALL'),
-                            ),
-                          ],
-                        ),
                       );
                     },
                     icon: const Icon(Icons.clear_all, size: 16),
-                    label: const Text('CLEAR ALL', style: TextStyle(fontSize: 12)),
+                    label: const Text(
+                      'CLEAR ALL',
+                      style: TextStyle(fontSize: 12),
+                    ),
                     style: TextButton.styleFrom(
                       foregroundColor: colorScheme.error,
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       visualDensity: VisualDensity.compact,
                     ),
                   ),

@@ -44,23 +44,23 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
       _showSnackBar('Please enter a subtotal amount');
       return;
     }
-    
+
     // Check if items have been added
     if (_billData.items.isEmpty) {
       _showValidationError('Please add at least one item');
       return;
     }
-    
+
     // Check if items total matches the subtotal (allowing for a small rounding error)
     final difference = (_billData.subtotal - _billData.itemsTotal).abs();
     if (difference > 0.01) {
       _showValidationError('Missing some items? Your totals don\'t match yet.');
       return;
     }
-    
+
     // Provide haptic feedback for continuing
     HapticFeedback.mediumImpact();
-    
+
     // All good, navigate to the next screen
     _navigateToItemAssignment();
   }
@@ -68,7 +68,7 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
   void _showValidationError(String message) {
     // Provide haptic feedback for error
     HapticFeedback.vibrate();
-    
+
     // Show modern validation error banner
     showModalBottomSheet(
       context: context,

@@ -1,3 +1,4 @@
+import 'package:checks_frontend/models/person.dart';
 import 'package:flutter/material.dart';
 
 class ColorUtils {
