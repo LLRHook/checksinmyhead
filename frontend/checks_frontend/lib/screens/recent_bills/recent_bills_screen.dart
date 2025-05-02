@@ -13,14 +13,34 @@ class RecentBillsScreen extends StatefulWidget {
   State<RecentBillsScreen> createState() => _RecentBillsScreenState();
 }
 
-class _RecentBillsScreenState extends State<RecentBillsScreen> {
+class _RecentBillsScreenState extends State<RecentBillsScreen>
+    with SingleTickerProviderStateMixin {
   bool _isLoading = true;
   List<RecentBillModel> _bills = [];
+
+  // Add animation controller for refresh button
+  late AnimationController _refreshAnimationController;
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize the animation controller
+    _refreshAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(
+        milliseconds: 1000,
+      ), // 1 second for a full rotation
+    );
+
     _loadBills();
+  }
+
+  @override
+  void dispose() {
+    // Dispose the animation controller when widget is disposed
+    _refreshAnimationController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadBills() async {
@@ -122,11 +142,25 @@ class _RecentBillsScreenState extends State<RecentBillsScreen> {
           },
         ),
         actions: [
-          // Refresh button
+          // Refresh button with rotation animation
           IconButton(
-            icon: const Icon(Icons.refresh_outlined),
+            icon: AnimatedBuilder(
+              animation: _refreshAnimationController,
+              builder: (context, child) {
+                return Transform.rotate(
+                  angle:
+                      _refreshAnimationController.value *
+                      2.0 *
+                      3.14159, // Full 360-degree rotation
+                  child: const Icon(Icons.refresh_outlined),
+                );
+              },
+            ),
             onPressed: () {
               HapticFeedback.selectionClick();
+              // Start animation
+              _refreshAnimationController.reset();
+              _refreshAnimationController.forward();
               _loadBills();
             },
             tooltip: 'Refresh bills',
@@ -137,9 +171,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen> {
         onRefresh: _loadBills,
         color: colorScheme.primary,
         child:
-            _isLoading
-                ? _buildLoadingState(colorScheme, loadingTextColor)
-                : _bills.isEmpty
+            _bills.isEmpty && !_isLoading
                 ? const EmptyBillsState()
                 : _buildBillsList(
                   headerTextColor,
@@ -147,29 +179,6 @@ class _RecentBillsScreenState extends State<RecentBillsScreen> {
                   headerIconBgColor,
                   colorScheme,
                 ),
-      ),
-    );
-  }
-
-  Widget _buildLoadingState(ColorScheme colorScheme, Color textColor) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 40,
-            height: 40,
-            child: CircularProgressIndicator(
-              color: colorScheme.primary,
-              strokeWidth: 3,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Loading bills...',
-            style: TextStyle(color: textColor, fontWeight: FontWeight.w500),
-          ),
-        ],
       ),
     );
   }
@@ -283,6 +292,25 @@ class _RecentBillsScreenState extends State<RecentBillsScreen> {
                     color: headerSecondaryTextColor,
                     fontSize: 14,
                   ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: headerSecondaryTextColor,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Checkmate only stores your last 30 bills.',
+                      style: TextStyle(
+                        color: headerSecondaryTextColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w300,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
