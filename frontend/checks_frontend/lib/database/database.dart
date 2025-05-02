@@ -92,7 +92,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   // Get recent people
-  Future<List<Person>> getRecentPeople({int limit = 8}) async {
+  Future<List<Person>> getRecentPeople({int limit = 12}) async {
     final query =
         select(people)
           ..orderBy([(t) => OrderingTerm.desc(t.lastUsed)])

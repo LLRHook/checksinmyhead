@@ -39,7 +39,7 @@ class TutorialManager {
     const TutorialStep(
       title: 'Birthday Surprise',
       description:
-          'Long-press to mark the birthday star! Their costs vanish and everyone else picks up the tab.',
+          'Hold down on an avatar to mark them as the birthday star! Their costs vanish and everyone else picks up the tab.',
       icon: Icons.cake,
     ),
   ];

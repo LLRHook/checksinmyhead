@@ -344,31 +344,46 @@ class _ItemCardState extends State<ItemCard>
             ? const Color(0xFF34D399) // Lighter green for dark mode
             : const Color(0xFF10B981); // Original green
 
+    // First hide any current SnackBar
     scaffold.hideCurrentSnackBar();
+
+    // Get the top padding value to account for status bar height
+    final topPadding = MediaQuery.of(context).padding.top;
 
     scaffold.showSnackBar(
       SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle, color: Colors.white, size: 18),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w500,
+        content: GestureDetector(
+          onTap: () {
+            scaffold.hideCurrentSnackBar();
+          },
+          child: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white, size: 18),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         backgroundColor: successToastColor,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(12),
+        // Position the toast about 1/6 of the way down from the top of the screen
+        margin: EdgeInsets.only(
+          top: topPadding + 60, // Move it down further from the top
+          left: 16,
+          right: 16,
+          bottom: MediaQuery.of(context).size.height - 150 - topPadding,
+        ),
         duration: const Duration(seconds: 2),
       ),
     );

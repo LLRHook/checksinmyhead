@@ -61,7 +61,7 @@ class ParticipantSelector extends StatelessWidget {
                   // Use Flexible to prevent overflow
                   Flexible(
                     child: Text(
-                      'Select people to split with',
+                      'Select people to split with:',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,

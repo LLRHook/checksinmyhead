@@ -20,6 +20,12 @@ class _ItemsSectionState extends State<ItemsSection>
   late AnimationController _progressAnimationController;
   late Animation<double> _progressAnimation;
 
+  // Add a state variable to track collapsed/expanded state
+  bool _isItemsListCollapsed = false;
+
+  // Define the maximum number of visible items when collapsed
+  final int _maxVisibleItemsWhenCollapsed = 3;
+
   @override
   void initState() {
     super.initState();
@@ -126,6 +132,14 @@ class _ItemsSectionState extends State<ItemsSection>
     billData.itemPriceController.clear();
     _updateAnimation(billData);
 
+    // Auto-expand list when adding new items
+    if (_isItemsListCollapsed &&
+        billData.items.length > _maxVisibleItemsWhenCollapsed) {
+      setState(() {
+        _isItemsListCollapsed = false;
+      });
+    }
+
     // Focus back to the name field for quick entry of multiple items
     FocusScope.of(context).requestFocus(FocusNode());
   }
@@ -160,6 +174,16 @@ class _ItemsSectionState extends State<ItemsSection>
     } else {
       return colorScheme.primary.withOpacity(0.8);
     }
+  }
+
+  // Toggle the collapsed/expanded state
+  void _toggleItemsList() {
+    setState(() {
+      _isItemsListCollapsed = !_isItemsListCollapsed;
+
+      // Provide haptic feedback when toggling
+      HapticFeedback.selectionClick();
+    });
   }
 
   @override
@@ -197,10 +221,19 @@ class _ItemsSectionState extends State<ItemsSection>
     final itemNameHint =
         isSubtotalSet ? 'e.g., Pizza, Pasta, Salad' : 'Enter subtotal first';
 
+    // Determine if collapse/expand control should be shown
+    final shouldShowCollapseControl =
+        billData.items.length > _maxVisibleItemsWhenCollapsed;
+
+    // Calculate visible items based on collapsed state
+    final visibleItems =
+        _isItemsListCollapsed && shouldShowCollapseControl
+            ? billData.items.take(_maxVisibleItemsWhenCollapsed).toList()
+            : billData.items;
+
     return SectionCard(
       title: 'Add Items',
       subTitle: 'Add items that add to your subtotal',
-
       icon: Icons.restaurant_menu,
       children: [
         // Item name field with premium styling
@@ -440,7 +473,7 @@ class _ItemsSectionState extends State<ItemsSection>
           if (billData.items.isNotEmpty) ...[
             const SizedBox(height: 20),
 
-            // Premium styled items list
+            // Header row with "Added Items" text and Clear All button
             Row(
               children: [
                 Icon(
@@ -456,7 +489,17 @@ class _ItemsSectionState extends State<ItemsSection>
                     color: colorScheme.onSurface,
                   ),
                 ),
+                if (shouldShowCollapseControl) ...[
+                  const SizedBox(width: 6),
+                  Text(
+                    '(${billData.items.length})',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
                 const Spacer(),
+
                 // Add "clear all" button
                 if (billData.items.length > 1)
                   TextButton.icon(
@@ -521,10 +564,57 @@ class _ItemsSectionState extends State<ItemsSection>
                   ),
               ],
             ),
+
+            // Collapse/expand control in its own row below the header
+            if (shouldShowCollapseControl) ...[
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: _toggleItemsList,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 6,
+                    horizontal: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceVariant.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: colorScheme.outline.withOpacity(0.1),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        _isItemsListCollapsed
+                            ? 'Show All ${billData.items.length} Items'
+                            : 'Collapse List',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        _isItemsListCollapsed
+                            ? Icons.keyboard_arrow_down
+                            : Icons.keyboard_arrow_up,
+                        size: 18,
+                        color: colorScheme.primary,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
 
-            ...List.generate(billData.items.length, (index) {
-              final item = billData.items[index];
+            // Visible items list based on collapsed/expanded state
+            ...List.generate(visibleItems.length, (index) {
+              final item = visibleItems[index];
               return Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: Container(

@@ -449,19 +449,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // Contact us via email
-  Future<void> _contactUs() async {
-    final Uri emailUri = Uri(
-      scheme: 'mailto',
-      path: 'checkmatebillsplitting@gmail.com',
-      query: 'subject=Checkmate%20App%20Feedback',
-    );
-
-    if (!await launchUrl(emailUri)) {
-      throw Exception('Could not launch $emailUri');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -790,30 +777,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     child: Column(
                       children: [
-                        // Contact us
-                        ListTile(
-                          title: const Text(
-                            'Contact Us',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                          subtitle: const Text(
-                            'checkmatebillsplitting@gmail.com',
-                            style: TextStyle(color: Colors.white70),
-                          ),
-                          leading: const Icon(
-                            Icons.email_outlined,
-                            color: Colors.white,
-                          ),
-                          onTap: _contactUs,
-                        ),
-
-                        const Divider(
-                          color: Colors.white24,
-                          height: 1,
-                          indent: 16,
-                          endIndent: 16,
-                        ),
-
                         // Rate app
                         ListTile(
                           title: const Text(
