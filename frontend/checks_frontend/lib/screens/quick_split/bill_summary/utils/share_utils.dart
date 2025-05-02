@@ -1,14 +1,36 @@
-import 'package:checks_frontend/screens/quick_split/bill_summary/models/bill_summary_data.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import '/models/person.dart';
 import '/models/bill_item.dart';
 import 'calculation_utils.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ShareUtils {
+  /// Get payment info from shared preferences
+  static Future<Map<String, dynamic>> getPaymentInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // Get selected payment methods
+    final selectedPayments = prefs.getStringList('selectedPayments') ?? [];
+
+    // Get identifiers for each payment method
+    final Map<String, String> paymentIdentifiers = {};
+    for (final method in selectedPayments) {
+      final identifier = prefs.getString('payment_$method');
+      if (identifier != null && identifier.isNotEmpty) {
+        paymentIdentifiers[method] = identifier;
+      }
+    }
+
+    return {
+      'selectedPayments': selectedPayments,
+      'paymentIdentifiers': paymentIdentifiers,
+    };
+  }
+
   /// Generate text for sharing bill summary
-  static String generateShareText({
+  static Future<String> generateShareText({
     required List<Person> participants,
     required Map<Person, double> personShares,
     required List<BillItem> items,
@@ -22,7 +44,7 @@ class ShareUtils {
     required bool includeItemsInShare,
     required bool includePersonItemsInShare,
     required bool hideBreakdownInShare,
-  }) {
+  }) async {
     // Sort participants by payment amount (highest first)
     final sortedParticipants = List<Person>.from(participants);
     sortedParticipants.sort((a, b) {
@@ -30,6 +52,12 @@ class ShareUtils {
       final bShare = personShares[b] ?? 0;
       return bShare.compareTo(aShare);
     });
+
+    // Get payment information
+    final paymentInfo = await getPaymentInfo();
+    final selectedPayments = paymentInfo['selectedPayments'] as List<String>;
+    final paymentIdentifiers =
+        paymentInfo['paymentIdentifiers'] as Map<String, String>;
 
     // Build the text
     StringBuffer text = StringBuffer();
@@ -124,6 +152,29 @@ class ShareUtils {
 
             // Add a spacer between people
             text.writeln('');
+          }
+        }
+      }
+    }
+
+    // Payment information (add only if payment options are set)
+    if (selectedPayments.isNotEmpty && paymentIdentifiers.isNotEmpty) {
+      text.writeln('───────────────');
+      text.writeln('PAYMENT DETAILS:');
+
+      // Add each payment method and its identifier
+      for (var i = 0; i < selectedPayments.length; i++) {
+        final method = selectedPayments[i];
+        final identifier = paymentIdentifiers[method];
+
+        if (identifier != null && identifier.isNotEmpty) {
+          // If it's the first payment method
+          if (i == 0) {
+            text.writeln('$method: $identifier');
+          }
+          // For additional payment methods
+          else {
+            text.writeln('$method: $identifier');
           }
         }
       }
