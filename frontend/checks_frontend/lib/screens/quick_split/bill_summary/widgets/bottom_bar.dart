@@ -1,7 +1,7 @@
 // lib/widgets/bottom_bar.dart
 import 'package:checks_frontend/models/bill_item.dart';
 import 'package:checks_frontend/models/person.dart';
-import 'package:checks_frontend/screens/quick_split/bill_summary/models/recent_bill_manager.dart';
+import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -99,6 +99,8 @@ class DoneButtonHandler {
     required double tipAmount,
     required double total,
     Person? birthdayPerson,
+    double tipPercentage = 0, // New parameter
+    bool isCustomTipAmount = false, // New parameter
   }) async {
     // Save the bill to the database
     await RecentBillsManager.saveBill(
@@ -110,6 +112,9 @@ class DoneButtonHandler {
       tipAmount: tipAmount,
       total: total,
       birthdayPerson: birthdayPerson,
+      tipPercentage: tipPercentage, // Pass the tip percentage
+      isCustomTipAmount:
+          isCustomTipAmount, // Pass whether it's a custom tip amount
     );
 
     // Show success message

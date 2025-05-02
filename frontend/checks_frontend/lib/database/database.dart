@@ -51,6 +51,8 @@ class RecentBills extends Table {
   RealColumn get subtotal => real()();
   RealColumn get tax => real()();
   RealColumn get tipAmount => real()();
+  RealColumn get tipPercentage =>
+      real().nullable()(); // New column for tip percentage
   TextColumn get items => text().nullable()(); // Stored as JSON
   IntColumn get colorValue =>
       integer().withDefault(const Constant(0xFF2196F3))(); // Default to blue
@@ -231,9 +233,10 @@ class AppDatabase extends _$AppDatabase {
 
   //-- RECENT BILL METHODS --//
   // Maximum number of recent bills to store
-  static const int maxRecentBills = 10;
+  static const int maxRecentBills = 30;
 
   // Save a bill to recent bills
+  // Update this method in your database_provider.dart or database.dart file
   Future<void> saveBill({
     required List<Person> participants,
     required Map<Person, double> personShares,
@@ -243,28 +246,39 @@ class AppDatabase extends _$AppDatabase {
     required double tipAmount,
     required double total,
     Person? birthdayPerson,
+    double tipPercentage = 0, // New parameter
   }) async {
     // Convert participants to a JSON-friendly format
     final participantNames = participants.map((p) => p.name).toList();
     final participantsJson = jsonEncode(participantNames);
 
-    // Convert items to JSON if they're provided
+    // Convert items to JSON with assignments
     String? itemsJson;
     if (items.isNotEmpty) {
       final itemsData =
-          items
-              .map(
-                (item) => {
-                  'name': item.name,
-                  'price': item.price,
-                  // We'll skip assignments as they're complex and likely not needed for the recent bills view
-                },
-              )
-              .toList();
+          items.map((item) {
+            // Create a simplified map of assignments by person name
+            Map<String, double> assignmentsByName = {};
+
+            // Convert Person keys to person names
+            item.assignments.forEach((person, percentage) {
+              assignmentsByName[person.name] = percentage;
+            });
+
+            return {
+              'name': item.name,
+              'price': item.price,
+              'isAlcohol': item.isAlcohol,
+              'assignments':
+                  assignmentsByName, // Store assignments by person name
+              'alcoholTaxPortion': item.alcoholTaxPortion,
+              'alcoholTipPortion': item.alcoholTipPortion,
+            };
+          }).toList();
+
       itemsJson = jsonEncode(itemsData);
     }
 
-    // Create a companion object for the new bill
     final companion = RecentBillsCompanion(
       participants: Value(participantsJson),
       participantCount: Value(participants.length),
@@ -273,6 +287,7 @@ class AppDatabase extends _$AppDatabase {
       subtotal: Value(subtotal),
       tax: Value(tax),
       tipAmount: Value(tipAmount),
+      tipPercentage: Value(tipPercentage),
       items: Value(itemsJson),
       // Use the primary participant's color if available
       colorValue:

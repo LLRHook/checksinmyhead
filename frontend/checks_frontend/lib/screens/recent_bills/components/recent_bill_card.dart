@@ -1,7 +1,9 @@
-// lib/screens/recent_bills/components/recent_bill_card.dart
+import 'package:checks_frontend/screens/recent_bills/billDetails/bill_details_screen.dart';
+import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
+import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.dart';
 import 'package:flutter/material.dart';
-import 'package:checks_frontend/screens/quick_split/bill_summary/models/recent_bill_manager.dart';
-import 'package:checks_frontend/screens/quick_split/bill_summary/models/recent_bill_model.dart';
+import 'package:flutter/services.dart';
+import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 
 class RecentBillCard extends StatelessWidget {
   final RecentBillModel bill;
@@ -10,150 +12,184 @@ class RecentBillCard extends StatelessWidget {
   const RecentBillCard({Key? key, required this.bill, required this.onDeleted})
     : super(key: key);
 
+  // Navigate to bill details screen
+  void _navigateToBillDetails(BuildContext context) {
+    HapticFeedback.selectionClick();
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => BillDetailsScreen(bill: bill)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
+            blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Material(
-        color: Colors.transparent,
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () {
-            // TODO: Implement navigating to bill details or recreating this bill
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text('View bill details coming soon'),
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            );
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(20),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap:
+                () =>
+                    _navigateToBillDetails(context), // Navigate to bill details
+            splashColor: bill.color.withOpacity(0.1),
+            highlightColor: bill.color.withOpacity(0.05),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Date and amount row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
+                // Main content area
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Left - Date and participants
+                      Expanded(
+                        flex: 6,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Date with formatting
+                            Row(
+                              children: [
+                                Icon(Icons.event, size: 16, color: bill.color),
+                                const SizedBox(width: 8),
+                                Text(
+                                  bill.formattedDate,
+                                  style: textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: colorScheme.onSurface,
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 8),
+
+                            // Participants
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.people_outline,
+                                  size: 16,
+                                  color: colorScheme.onSurface.withOpacity(0.6),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    bill.participantSummary,
+                                    style: textTheme.bodyMedium?.copyWith(
+                                      color: colorScheme.onSurface.withOpacity(
+                                        0.7,
+                                      ),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Right - Total amount in highlighted box
+                      Expanded(
+                        flex: 4,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
                             color: bill.color.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Icon(
-                            Icons.receipt_long,
-                            color: bill.color,
-                            size: 20,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Total',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: bill.color.withOpacity(0.8),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  CurrencyFormatter.formatCurrency(bill.total),
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: bill.color,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              bill.formattedDate,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
-                                color: colorScheme.onSurface,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              bill.participantSummary,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: colorScheme.onSurface.withOpacity(0.6),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    Text(
-                      '\$${bill.total.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                        color: bill.color,
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
 
-                const SizedBox(height: 16),
-                const Divider(height: 1),
-
-                // Action row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TextButton.icon(
-                      onPressed: () {
-                        // TODO: Implement share functionality
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Text('Share bill coming soon'),
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        );
-                      },
-                      icon: Icon(
-                        Icons.share_outlined,
-                        size: 18,
-                        color: colorScheme.primary,
-                      ),
-                      label: Text(
-                        'Share',
-                        style: TextStyle(color: colorScheme.primary),
-                      ),
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        visualDensity: VisualDensity.compact,
-                      ),
+                // Bottom action buttons with subtle divider
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border(
+                      top: BorderSide(color: Colors.grey.shade100, width: 1),
                     ),
+                  ),
+                  child: Row(
+                    children: [
+                      // View button
+                      Expanded(
+                        child: _buildActionButton(
+                          context,
+                          icon: Icons.visibility_outlined,
+                          label: 'View',
+                          onTap: () => _navigateToBillDetails(context),
+                          color: colorScheme.primary,
+                        ),
+                      ),
 
-                    TextButton.icon(
-                      onPressed: () => _confirmDelete(context),
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        size: 18,
-                        color: Colors.red,
+                      // Vertical divider
+                      Container(
+                        width: 1,
+                        height: 24,
+                        color: Colors.grey.shade200,
                       ),
-                      label: const Text(
-                        'Delete',
-                        style: TextStyle(color: Colors.red),
+
+                      // Delete button
+                      Expanded(
+                        child: _buildActionButton(
+                          context,
+                          icon: Icons.delete_outline,
+                          label: 'Delete',
+                          onTap: () => _confirmDelete(context),
+                          color: colorScheme.error,
+                        ),
                       ),
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -163,14 +199,57 @@ class RecentBillCard extends StatelessWidget {
     );
   }
 
+  Widget _buildActionButton(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    required Color color,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _confirmDelete(BuildContext context) async {
-    // Confirm deletion with a more modern dialog
+    HapticFeedback.mediumImpact();
+
+    // Confirm deletion with a premium dialog
     final confirmed = await showDialog<bool>(
       context: context,
       builder:
           (context) => AlertDialog(
-            title: const Text('Delete Bill'),
-            content: const Text('Are you sure? This action cannot be undone.'),
+            title: Row(
+              children: [
+                Icon(
+                  Icons.delete_outline,
+                  color: Theme.of(context).colorScheme.error,
+                ),
+                const SizedBox(width: 8),
+                const Text('Delete Bill'),
+              ],
+            ),
+            content: const Text(
+              'This bill will be permanently removed from your history.',
+            ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
@@ -181,7 +260,9 @@ class RecentBillCard extends StatelessWidget {
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
+                ),
                 child: const Text('Delete'),
               ),
             ],
@@ -191,19 +272,11 @@ class RecentBillCard extends StatelessWidget {
     if (confirmed == true) {
       await RecentBillsManager.deleteBill(bill.id);
 
-      // Refresh the list and show confirmation
-      if (context.mounted) {
-        onDeleted();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Bill deleted'),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
-      }
+      // Provide haptic feedback for successful deletion
+      HapticFeedback.mediumImpact();
+
+      // Refresh the list through callback
+      onDeleted();
     }
   }
 }
