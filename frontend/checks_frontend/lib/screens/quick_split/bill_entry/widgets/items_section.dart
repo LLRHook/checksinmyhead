@@ -73,36 +73,52 @@ class _ItemsSectionState extends State<ItemsSection>
     final name = billData.itemNameController.text.trim();
     final priceText = billData.itemPriceController.text.trim();
 
-    if (name.isNotEmpty && priceText.isNotEmpty) {
-      double price = 0.0;
-      try {
-        price = double.parse(priceText);
-      } catch (_) {
-        // Show error for invalid number
-        widget.showSnackBar('Please enter a valid price');
-        return;
-      }
-
-      if (price > 0) {
-        // Check if adding this item would exceed the subtotal
-        final newTotalItems = billData.itemsTotal + price;
-        if (newTotalItems > billData.subtotal) {
-          // Show error message
-          widget.showSnackBar(
-            'Item total (\$${newTotalItems.toStringAsFixed(2)}) would exceed the subtotal (\$${billData.subtotal.toStringAsFixed(2)})',
-          );
-          return;
-        }
-
-        // Add item with haptic feedback
-        HapticFeedback.mediumImpact();
-
-        billData.addItem(name, price);
-        billData.itemNameController.clear();
-        billData.itemPriceController.clear();
-        _updateAnimation(billData);
-      }
+    // Validate inputs
+    if (name.isEmpty) {
+      widget.showSnackBar('Please enter an item name');
+      return;
     }
+    
+    if (priceText.isEmpty) {
+      widget.showSnackBar('Please enter an item price');
+      return;
+    }
+
+    double price = 0.0;
+    try {
+      price = double.parse(priceText);
+    } catch (_) {
+      // Show error for invalid number
+      widget.showSnackBar('Please enter a valid price');
+      return;
+    }
+
+    if (price <= 0) {
+      widget.showSnackBar('Price must be greater than zero');
+      return;
+    }
+
+    // Check if adding this item would exceed the subtotal
+    final newTotalItems = billData.itemsTotal + price;
+    if (billData.subtotal > 0 && newTotalItems > billData.subtotal) {
+      // Show error message with remaining amount
+      final remaining = (billData.subtotal - billData.itemsTotal).toStringAsFixed(2);
+      widget.showSnackBar(
+        'Item price exceeds remaining amount. You can add up to \$$remaining',
+      );
+      return;
+    }
+
+    // Add item with haptic feedback
+    HapticFeedback.mediumImpact();
+
+    billData.addItem(name, price);
+    billData.itemNameController.clear();
+    billData.itemPriceController.clear();
+    _updateAnimation(billData);
+    
+    // Focus back to the name field for quick entry of multiple items
+    FocusScope.of(context).requestFocus(FocusNode());
   }
 
   void _removeItem(BillData billData, int index) {
@@ -115,14 +131,18 @@ class _ItemsSectionState extends State<ItemsSection>
   // Get color for progress indicator
   Color _getProgressColor(BuildContext context, double value, double subtotal) {
     final colorScheme = Theme.of(context).colorScheme;
+    
+    // Precision threshold to account for floating point rounding errors
+    const precisionThreshold = 0.01;
 
-    // The 0.99 threshold accounts for floating point rounding errors
-    if ((value / subtotal) > 1.0) {
+    if ((value / subtotal) > 1.0 + (precisionThreshold / subtotal)) {
       return colorScheme.error;
-    } else if ((value / subtotal) >= 0.99) {
+    } else if ((subtotal - value).abs() <= precisionThreshold) {
       return const Color(0xFF4CAF50); // Material Green
-    } else {
+    } else if ((value / subtotal) > 0.9) {
       return colorScheme.primary;
+    } else {
+      return colorScheme.primary.withOpacity(0.8);
     }
   }
 
@@ -133,8 +153,8 @@ class _ItemsSectionState extends State<ItemsSection>
     final textTheme = Theme.of(context).textTheme;
 
     return SectionCard(
-      title: 'Add Items (Optional)',
-      subTitle: 'Adding items helps assign specific dishes to people',
+      title: 'Add Items',
+      subTitle: 'Add items that total to your subtotal',
       icon: Icons.restaurant_menu,
       children: [
         // Item name field with premium styling
@@ -148,6 +168,7 @@ class _ItemsSectionState extends State<ItemsSection>
           ),
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           textCapitalization: TextCapitalization.sentences,
+          onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
         ),
 
         const SizedBox(height: 16),
@@ -173,6 +194,7 @@ class _ItemsSectionState extends State<ItemsSection>
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
                 ),
+                onFieldSubmitted: (_) => _addItem(billData),
               ),
             ),
             const SizedBox(width: 12),
@@ -276,16 +298,19 @@ class _ItemsSectionState extends State<ItemsSection>
             ),
             child: LayoutBuilder(
               builder: (context, constraints) {
+                // Calculate progress percentage capped at 100%
+                final progressPercentage = billData.subtotal > 0
+                    ? (billData.animatedItemsTotal / billData.subtotal).clamp(0.0, 1.0)
+                    : 0.0;
+                
+                // Add a "done" indicator when items total equals subtotal
+                final isDone = (billData.subtotal - billData.animatedItemsTotal).abs() <= 0.01;
+                
                 return Stack(
                   children: [
+                    // Progress bar
                     Container(
-                      width:
-                          constraints.maxWidth *
-                          (billData.subtotal > 0
-                              ? (billData.animatedItemsTotal /
-                                      billData.subtotal)
-                                  .clamp(0.0, 1.0)
-                              : 0),
+                      width: constraints.maxWidth * progressPercentage,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(4),
                         gradient: LinearGradient(
@@ -317,6 +342,27 @@ class _ItemsSectionState extends State<ItemsSection>
                         ],
                       ),
                     ),
+                    
+                    // "Done" checkmark that appears when items total equals subtotal
+                    if (isDone)
+                      Positioned(
+                        right: 2,
+                        top: -5,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 2,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                   ],
                 );
               },
@@ -342,7 +388,48 @@ class _ItemsSectionState extends State<ItemsSection>
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                Spacer(),
+                const Spacer(),
+                // Add "clear all" button
+                if (billData.items.length > 1)
+                  TextButton.icon(
+                    onPressed: () {
+                      // Show confirmation dialog
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Clear All Items?'),
+                          content: const Text(
+                            'Are you sure you want to remove all items? This action cannot be undone.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('CANCEL'),
+                            ),
+                            FilledButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                // Clear all items
+                                for (int i = billData.items.length - 1; i >= 0; i--) {
+                                  billData.removeItem(i);
+                                }
+                                _updateAnimation(billData);
+                                HapticFeedback.mediumImpact();
+                              },
+                              child: const Text('CLEAR ALL'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.clear_all, size: 16),
+                    label: const Text('CLEAR ALL', style: TextStyle(fontSize: 12)),
+                    style: TextButton.styleFrom(
+                      foregroundColor: colorScheme.error,
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
               ],
             ),
             const SizedBox(height: 12),
