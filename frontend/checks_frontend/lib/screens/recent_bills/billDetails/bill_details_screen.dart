@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:checks_frontend/screens/recent_bills/components/bill_summary_card.dart';
 import 'package:checks_frontend/screens/recent_bills/components/bottom_bar.dart';
 import 'package:checks_frontend/screens/recent_bills/components/participants_card.dart';
@@ -129,36 +131,62 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
             // App bar with back and share buttons
             _buildAppBar(context),
 
-            // Expanded content with header and scrollable cards
+            // Expanded content with scrollable cards
             Expanded(
-              child: CustomScrollView(
-                slivers: [
-                  // Header is now sticky at the top of the scroll
-                  SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _SliverHeaderDelegate(
-                      minHeight: 120,
-                      maxHeight: 140,
-                      child: _buildHeader(context),
-                    ),
-                  ),
+              child: ListView(
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.zero,
+                children: [
+                  // Premium animated header (non-sticky)
+                  _buildPremiumHeader(context),
 
-                  // Content
-                  SliverPadding(
+                  // Content with padding
+                  Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-                    sliver: SliverList(
-                      delegate: SliverChildListDelegate([
-                        // Bill details card
-                        BillSummaryCard(bill: widget.bill),
+                    child: Column(
+                      children: [
+                        // Bill details card with fade-in animation
+                        TweenAnimationBuilder<double>(
+                          tween: Tween<double>(begin: 0.0, end: 1.0),
+                          duration: const Duration(milliseconds: 400),
+                          curve: Curves.easeOutCubic,
+                          builder: (context, value, child) {
+                            return Opacity(
+                              opacity: value,
+                              child: Transform.translate(
+                                offset: Offset(0, 10 * (1 - value)),
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: BillSummaryCard(bill: widget.bill),
+                        ),
 
                         const SizedBox(height: 16),
 
-                        // Enhanced participants card (now includes item details)
-                        ParticipantsCard(
-                          bill: widget.bill,
-                          calculations: billCalculations,
+                        // Participants card with staggered animation
+                        TweenAnimationBuilder<double>(
+                          tween: Tween<double>(begin: 0.0, end: 1.0),
+                          duration: const Duration(milliseconds: 500),
+                          curve: Curves.easeOutCubic,
+                          builder: (context, value, child) {
+                            // Delayed start for staggered effect
+                            final delayedValue =
+                                (value - 0.2).clamp(0.0, 1.0) * 1.25;
+                            return Opacity(
+                              opacity: delayedValue,
+                              child: Transform.translate(
+                                offset: Offset(0, 15 * (1 - delayedValue)),
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: ParticipantsCard(
+                            bill: widget.bill,
+                            calculations: billCalculations,
+                          ),
                         ),
-                      ]),
+                      ],
                     ),
                   ),
                 ],
@@ -167,8 +195,20 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
           ],
         ),
       ),
-      // Bottom Action Bar
-      bottomNavigationBar: BottomBar(onShareTap: _promptShareOptions),
+      // Bottom Action Bar with slide-up animation
+      bottomNavigationBar: TweenAnimationBuilder<double>(
+        tween: Tween<double>(begin: 0.0, end: 1.0),
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeOutCubic,
+        builder: (context, value, child) {
+          final delayedValue = (value - 0.3).clamp(0.0, 1.0) * 1.4;
+          return Transform.translate(
+            offset: Offset(0, 20 * (1 - delayedValue)),
+            child: Opacity(opacity: delayedValue, child: child),
+          );
+        },
+        child: BottomBar(onShareTap: _promptShareOptions),
+      ),
     );
   }
 
@@ -179,132 +219,201 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
       padding: const EdgeInsets.fromLTRB(4, 8, 8, 0),
       child: Row(
         children: [
-          // Back button
-          IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-            onPressed: () {
-              HapticFeedback.selectionClick();
-              Navigator.pop(context);
+          // Back button with micro-interaction
+          TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0.0, end: 1.0),
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+            builder: (context, value, child) {
+              return Transform.scale(
+                scale: 0.8 + (0.2 * value),
+                child: Opacity(opacity: value, child: child),
+              );
             },
-          ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () {
+                  // Add a subtle ripple effect before navigating back
+                  HapticFeedback.selectionClick();
 
-          const Spacer(),
-
-          // Title
-          Text(
-            'Bill Details',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: colorScheme.onSurface,
+                  // Create a small delay for better tactile feedback
+                  Future.delayed(const Duration(milliseconds: 50), () {
+                    Navigator.pop(context);
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  child: const Icon(Icons.arrow_back_ios_new, size: 20),
+                ),
+              ),
             ),
           ),
 
           const Spacer(),
 
-          // Share button
-          IconButton(
-            icon: Icon(Icons.ios_share, color: colorScheme.primary),
-            onPressed: _promptShareOptions,
-            tooltip: 'Share bill',
+          // Title with fade-in animation
+          TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0.0, end: 1.0),
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeOutCubic,
+            builder: (context, value, child) {
+              return Opacity(
+                opacity: value,
+                child: Transform.translate(
+                  offset: Offset(0, 10 * (1 - value)),
+                  child: child,
+                ),
+              );
+            },
+            child: Text(
+              'Bill Details',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurface,
+              ),
+            ),
           ),
+
+          const Spacer(),
         ],
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildPremiumHeader(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [colorScheme.primary, colorScheme.primary.withOpacity(0.85)],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: colorScheme.primary.withOpacity(0.2),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Date row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.calendar_today,
-                color: Colors.white.withOpacity(0.9),
-                size: 16,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                widget.bill.formattedDate,
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.9),
-                  fontWeight: FontWeight.w500,
-                  fontSize: 16,
-                ),
-              ),
+    // Wrap the header in an animated container
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: 0.95 + (0.05 * value),
+          child: Opacity(opacity: value, child: child),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              colorScheme.primary,
+              colorScheme.primary.withOpacity(0.85),
             ],
           ),
-          const SizedBox(height: 12),
-
-          // Total amount
-          Text(
-            CurrencyFormatter.formatCurrency(widget.bill.total),
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 32,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: colorScheme.primary.withOpacity(0.2),
+              blurRadius: 10,
+              spreadRadius: 1,
+              offset: const Offset(0, 2),
             ),
-          ),
-        ],
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Date row with subtle shimmer
+            ShimmerEffect(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.calendar_today,
+                    color: Colors.white.withOpacity(0.9),
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    widget.bill.formattedDate,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontWeight: FontWeight.w500,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Total amount with scale animation
+            TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: 0.8, end: 1.0),
+              duration: const Duration(milliseconds: 800),
+              curve: Curves.elasticOut,
+              builder: (context, value, child) {
+                return Transform.scale(scale: value, child: child);
+              },
+              child: Text(
+                CurrencyFormatter.formatCurrency(widget.bill.total),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 32,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-// Helper class for sticky header
-class _SliverHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final double minHeight;
-  final double maxHeight;
+// A subtle shimmer effect for premium feel
+class ShimmerEffect extends StatefulWidget {
   final Widget child;
 
-  _SliverHeaderDelegate({
-    required this.minHeight,
-    required this.maxHeight,
-    required this.child,
-  });
+  const ShimmerEffect({Key? key, required this.child}) : super(key: key);
 
   @override
-  double get minExtent => minHeight;
+  State<ShimmerEffect> createState() => _ShimmerEffectState();
+}
+
+class _ShimmerEffectState extends State<ShimmerEffect>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
 
   @override
-  double get maxExtent => maxHeight;
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat(reverse: true);
 
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return SizedBox.expand(child: child);
+    _animation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
-  bool shouldRebuild(_SliverHeaderDelegate oldDelegate) {
-    return maxHeight != oldDelegate.maxHeight ||
-        minHeight != oldDelegate.minHeight ||
-        child != oldDelegate.child;
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Opacity(opacity: _animation.value, child: widget.child);
+      },
+    );
   }
 }

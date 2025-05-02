@@ -11,6 +11,10 @@ class BillSummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
+    // Get non-nullable alcohol tax and tip values
+    final totalAlcoholTax = bill.totalAlcoholTax ?? 0.0;
+    final totalAlcoholTip = bill.totalAlcoholTip ?? 0.0;
+
     return Card(
       elevation: 1,
       surfaceTintColor: Colors.white,
@@ -56,42 +60,64 @@ class BillSummaryCard extends StatelessWidget {
                 const SizedBox(height: 12),
 
                 _buildDetailRow('Tax', bill.tax),
-                const SizedBox(height: 12),
 
-                // Show tip with percentage
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Tip'),
-                    Row(
-                      children: [
-                        Text(
-                          CurrencyFormatter.formatCurrency(bill.tipAmount),
-                          style: const TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
+                // Add alcohol tax if present
+                if (totalAlcoholTax > 0) ...[
+                  const SizedBox(height: 12),
+                  _buildDetailRow(
+                    'Alcohol Tax',
+                    totalAlcoholTax,
+                    textColor: colorScheme.tertiary,
+                  ),
+                ],
+
+                if (bill.tipAmount > 0) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Tip'),
+                      Row(
+                        children: [
+                          Text(
+                            CurrencyFormatter.formatCurrency(bill.tipAmount),
+                            style: const TextStyle(fontWeight: FontWeight.w500),
                           ),
-                          decoration: BoxDecoration(
-                            color: colorScheme.primary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            '${bill.tipPercentage.toStringAsFixed(0)}%',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: colorScheme.primary,
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colorScheme.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '${bill.tipPercentage.toStringAsFixed(0)}%',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: colorScheme.primary,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+                // Show tip with percentage
+
+                // Add alcohol tip if present
+                if (totalAlcoholTip > 0) ...[
+                  const SizedBox(height: 12),
+                  _buildDetailRow(
+                    'Alcohol Tip',
+                    totalAlcoholTip,
+                    textColor: colorScheme.tertiary,
+                  ),
+                ],
 
                 const SizedBox(height: 16),
                 Divider(color: Colors.grey.shade200),
@@ -126,6 +152,7 @@ class BillSummaryCard extends StatelessWidget {
           style: TextStyle(
             fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
             fontSize: isTotal ? 16 : 14,
+            color: textColor,
           ),
         ),
 
