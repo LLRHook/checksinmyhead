@@ -1,9 +1,7 @@
-// lib/models/recent_bills_manager.dart
 import 'dart:convert';
 import 'package:checks_frontend/database/database_provider.dart';
 import 'package:checks_frontend/models/bill_item.dart';
 import 'package:checks_frontend/models/person.dart';
-
 import 'recent_bill_model.dart';
 
 class RecentBillsManager {
@@ -27,6 +25,9 @@ class RecentBillsManager {
     required double tipAmount,
     required double total,
     Person? birthdayPerson,
+    double tipPercentage = 0, // Add tipPercentage parameter with default value
+    bool isCustomTipAmount =
+        false, // Add isCustomTipAmount parameter with default value
   }) async {
     try {
       await DatabaseProvider.db.saveBill(
@@ -38,6 +39,7 @@ class RecentBillsManager {
         tipAmount: tipAmount,
         total: total,
         birthdayPerson: birthdayPerson,
+        tipPercentage: tipPercentage, // Pass the tipPercentage to the database
       );
     } catch (e) {
       print('Error saving bill: $e');

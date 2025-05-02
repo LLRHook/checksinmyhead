@@ -1,6 +1,6 @@
 // lib/screens/recent_bills/components/bills_list.dart
 import 'package:flutter/material.dart';
-import 'package:checks_frontend/screens/quick_split/bill_summary/models/recent_bill_model.dart';
+import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.dart';
 import 'recent_bill_card.dart';
 
 class BillsList extends StatelessWidget {
