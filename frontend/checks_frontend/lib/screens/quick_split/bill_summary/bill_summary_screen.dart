@@ -234,6 +234,8 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
                     tipAmount: widget.tipAmount,
                     total: widget.total,
                     birthdayPerson: widget.birthdayPerson,
+                    tipPercentage: widget.tipPercentage,
+                    isCustomTipAmount: widget.isCustomTipAmount,
                   ),
               participants: widget.participants,
               personShares: widget.personShares,

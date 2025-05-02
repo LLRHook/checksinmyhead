@@ -1,8 +1,10 @@
 issues to fix:
 
-- build the functionality of the recent bills view more:
-- share bill, maybe clean up delete modal, and then also the bill details/pill expansion.
-- cheeky lil redesign?
+bill details in recent bills:
+- items won't show? it shows how much i spend, but doesn't list the items properly.
+- overflow error on shrink
+- fluid animation on the header
+- remove the "tax & tip portion" because that's repetitive af
 
 - if you don't have enough items in the thing, say you have a bill of 100 and 1 item in there,
 then you can press the unassigned items and it doesn't do what we expect.

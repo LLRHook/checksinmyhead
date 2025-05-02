@@ -1123,6 +1123,17 @@ class $RecentBillsTable extends RecentBills
     type: DriftSqlType.double,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _tipPercentageMeta = const VerificationMeta(
+    'tipPercentage',
+  );
+  @override
+  late final GeneratedColumn<double> tipPercentage = GeneratedColumn<double>(
+    'tip_percentage',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _itemsMeta = const VerificationMeta('items');
   @override
   late final GeneratedColumn<String> items = GeneratedColumn<String>(
@@ -1166,6 +1177,7 @@ class $RecentBillsTable extends RecentBills
     subtotal,
     tax,
     tipAmount,
+    tipPercentage,
     items,
     colorValue,
     createdAt,
@@ -1247,6 +1259,15 @@ class $RecentBillsTable extends RecentBills
     } else if (isInserting) {
       context.missing(_tipAmountMeta);
     }
+    if (data.containsKey('tip_percentage')) {
+      context.handle(
+        _tipPercentageMeta,
+        tipPercentage.isAcceptableOrUnknown(
+          data['tip_percentage']!,
+          _tipPercentageMeta,
+        ),
+      );
+    }
     if (data.containsKey('items')) {
       context.handle(
         _itemsMeta,
@@ -1314,6 +1335,10 @@ class $RecentBillsTable extends RecentBills
             DriftSqlType.double,
             data['${effectivePrefix}tip_amount'],
           )!,
+      tipPercentage: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}tip_percentage'],
+      ),
       items: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}items'],
@@ -1346,6 +1371,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
   final double subtotal;
   final double tax;
   final double tipAmount;
+  final double? tipPercentage;
   final String? items;
   final int colorValue;
   final DateTime createdAt;
@@ -1358,6 +1384,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
     required this.subtotal,
     required this.tax,
     required this.tipAmount,
+    this.tipPercentage,
     this.items,
     required this.colorValue,
     required this.createdAt,
@@ -1373,6 +1400,9 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
     map['subtotal'] = Variable<double>(subtotal);
     map['tax'] = Variable<double>(tax);
     map['tip_amount'] = Variable<double>(tipAmount);
+    if (!nullToAbsent || tipPercentage != null) {
+      map['tip_percentage'] = Variable<double>(tipPercentage);
+    }
     if (!nullToAbsent || items != null) {
       map['items'] = Variable<String>(items);
     }
@@ -1391,6 +1421,10 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
       subtotal: Value(subtotal),
       tax: Value(tax),
       tipAmount: Value(tipAmount),
+      tipPercentage:
+          tipPercentage == null && nullToAbsent
+              ? const Value.absent()
+              : Value(tipPercentage),
       items:
           items == null && nullToAbsent ? const Value.absent() : Value(items),
       colorValue: Value(colorValue),
@@ -1412,6 +1446,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
       subtotal: serializer.fromJson<double>(json['subtotal']),
       tax: serializer.fromJson<double>(json['tax']),
       tipAmount: serializer.fromJson<double>(json['tipAmount']),
+      tipPercentage: serializer.fromJson<double?>(json['tipPercentage']),
       items: serializer.fromJson<String?>(json['items']),
       colorValue: serializer.fromJson<int>(json['colorValue']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -1429,6 +1464,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
       'subtotal': serializer.toJson<double>(subtotal),
       'tax': serializer.toJson<double>(tax),
       'tipAmount': serializer.toJson<double>(tipAmount),
+      'tipPercentage': serializer.toJson<double?>(tipPercentage),
       'items': serializer.toJson<String?>(items),
       'colorValue': serializer.toJson<int>(colorValue),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -1444,6 +1480,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
     double? subtotal,
     double? tax,
     double? tipAmount,
+    Value<double?> tipPercentage = const Value.absent(),
     Value<String?> items = const Value.absent(),
     int? colorValue,
     DateTime? createdAt,
@@ -1456,6 +1493,8 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
     subtotal: subtotal ?? this.subtotal,
     tax: tax ?? this.tax,
     tipAmount: tipAmount ?? this.tipAmount,
+    tipPercentage:
+        tipPercentage.present ? tipPercentage.value : this.tipPercentage,
     items: items.present ? items.value : this.items,
     colorValue: colorValue ?? this.colorValue,
     createdAt: createdAt ?? this.createdAt,
@@ -1476,6 +1515,10 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
       subtotal: data.subtotal.present ? data.subtotal.value : this.subtotal,
       tax: data.tax.present ? data.tax.value : this.tax,
       tipAmount: data.tipAmount.present ? data.tipAmount.value : this.tipAmount,
+      tipPercentage:
+          data.tipPercentage.present
+              ? data.tipPercentage.value
+              : this.tipPercentage,
       items: data.items.present ? data.items.value : this.items,
       colorValue:
           data.colorValue.present ? data.colorValue.value : this.colorValue,
@@ -1494,6 +1537,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
           ..write('subtotal: $subtotal, ')
           ..write('tax: $tax, ')
           ..write('tipAmount: $tipAmount, ')
+          ..write('tipPercentage: $tipPercentage, ')
           ..write('items: $items, ')
           ..write('colorValue: $colorValue, ')
           ..write('createdAt: $createdAt')
@@ -1511,6 +1555,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
     subtotal,
     tax,
     tipAmount,
+    tipPercentage,
     items,
     colorValue,
     createdAt,
@@ -1527,6 +1572,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
           other.subtotal == this.subtotal &&
           other.tax == this.tax &&
           other.tipAmount == this.tipAmount &&
+          other.tipPercentage == this.tipPercentage &&
           other.items == this.items &&
           other.colorValue == this.colorValue &&
           other.createdAt == this.createdAt);
@@ -1541,6 +1587,7 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
   final Value<double> subtotal;
   final Value<double> tax;
   final Value<double> tipAmount;
+  final Value<double?> tipPercentage;
   final Value<String?> items;
   final Value<int> colorValue;
   final Value<DateTime> createdAt;
@@ -1553,6 +1600,7 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
     this.subtotal = const Value.absent(),
     this.tax = const Value.absent(),
     this.tipAmount = const Value.absent(),
+    this.tipPercentage = const Value.absent(),
     this.items = const Value.absent(),
     this.colorValue = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -1566,6 +1614,7 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
     required double subtotal,
     required double tax,
     required double tipAmount,
+    this.tipPercentage = const Value.absent(),
     this.items = const Value.absent(),
     this.colorValue = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -1585,6 +1634,7 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
     Expression<double>? subtotal,
     Expression<double>? tax,
     Expression<double>? tipAmount,
+    Expression<double>? tipPercentage,
     Expression<String>? items,
     Expression<int>? colorValue,
     Expression<DateTime>? createdAt,
@@ -1598,6 +1648,7 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
       if (subtotal != null) 'subtotal': subtotal,
       if (tax != null) 'tax': tax,
       if (tipAmount != null) 'tip_amount': tipAmount,
+      if (tipPercentage != null) 'tip_percentage': tipPercentage,
       if (items != null) 'items': items,
       if (colorValue != null) 'color_value': colorValue,
       if (createdAt != null) 'created_at': createdAt,
@@ -1613,6 +1664,7 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
     Value<double>? subtotal,
     Value<double>? tax,
     Value<double>? tipAmount,
+    Value<double?>? tipPercentage,
     Value<String?>? items,
     Value<int>? colorValue,
     Value<DateTime>? createdAt,
@@ -1626,6 +1678,7 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
       subtotal: subtotal ?? this.subtotal,
       tax: tax ?? this.tax,
       tipAmount: tipAmount ?? this.tipAmount,
+      tipPercentage: tipPercentage ?? this.tipPercentage,
       items: items ?? this.items,
       colorValue: colorValue ?? this.colorValue,
       createdAt: createdAt ?? this.createdAt,
@@ -1659,6 +1712,9 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
     if (tipAmount.present) {
       map['tip_amount'] = Variable<double>(tipAmount.value);
     }
+    if (tipPercentage.present) {
+      map['tip_percentage'] = Variable<double>(tipPercentage.value);
+    }
     if (items.present) {
       map['items'] = Variable<String>(items.value);
     }
@@ -1682,6 +1738,7 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
           ..write('subtotal: $subtotal, ')
           ..write('tax: $tax, ')
           ..write('tipAmount: $tipAmount, ')
+          ..write('tipPercentage: $tipPercentage, ')
           ..write('items: $items, ')
           ..write('colorValue: $colorValue, ')
           ..write('createdAt: $createdAt')
@@ -2313,6 +2370,7 @@ typedef $$RecentBillsTableCreateCompanionBuilder =
       required double subtotal,
       required double tax,
       required double tipAmount,
+      Value<double?> tipPercentage,
       Value<String?> items,
       Value<int> colorValue,
       Value<DateTime> createdAt,
@@ -2327,6 +2385,7 @@ typedef $$RecentBillsTableUpdateCompanionBuilder =
       Value<double> subtotal,
       Value<double> tax,
       Value<double> tipAmount,
+      Value<double?> tipPercentage,
       Value<String?> items,
       Value<int> colorValue,
       Value<DateTime> createdAt,
@@ -2378,6 +2437,11 @@ class $$RecentBillsTableFilterComposer
 
   ColumnFilters<double> get tipAmount => $composableBuilder(
     column: $table.tipAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get tipPercentage => $composableBuilder(
+    column: $table.tipPercentage,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2446,6 +2510,11 @@ class $$RecentBillsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get tipPercentage => $composableBuilder(
+    column: $table.tipPercentage,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get items => $composableBuilder(
     column: $table.items,
     builder: (column) => ColumnOrderings(column),
@@ -2499,6 +2568,11 @@ class $$RecentBillsTableAnnotationComposer
   GeneratedColumn<double> get tipAmount =>
       $composableBuilder(column: $table.tipAmount, builder: (column) => column);
 
+  GeneratedColumn<double> get tipPercentage => $composableBuilder(
+    column: $table.tipPercentage,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get items =>
       $composableBuilder(column: $table.items, builder: (column) => column);
 
@@ -2551,6 +2625,7 @@ class $$RecentBillsTableTableManager
                 Value<double> subtotal = const Value.absent(),
                 Value<double> tax = const Value.absent(),
                 Value<double> tipAmount = const Value.absent(),
+                Value<double?> tipPercentage = const Value.absent(),
                 Value<String?> items = const Value.absent(),
                 Value<int> colorValue = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -2563,6 +2638,7 @@ class $$RecentBillsTableTableManager
                 subtotal: subtotal,
                 tax: tax,
                 tipAmount: tipAmount,
+                tipPercentage: tipPercentage,
                 items: items,
                 colorValue: colorValue,
                 createdAt: createdAt,
@@ -2577,6 +2653,7 @@ class $$RecentBillsTableTableManager
                 required double subtotal,
                 required double tax,
                 required double tipAmount,
+                Value<double?> tipPercentage = const Value.absent(),
                 Value<String?> items = const Value.absent(),
                 Value<int> colorValue = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -2589,6 +2666,7 @@ class $$RecentBillsTableTableManager
                 subtotal: subtotal,
                 tax: tax,
                 tipAmount: tipAmount,
+                tipPercentage: tipPercentage,
                 items: items,
                 colorValue: colorValue,
                 createdAt: createdAt,
