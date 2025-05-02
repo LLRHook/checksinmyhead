@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 
-class ParticipantsCard extends StatelessWidget {
+class ParticipantsCard extends StatefulWidget {
   final RecentBillModel bill;
   final BillCalculations calculations;
 
@@ -14,17 +14,36 @@ class ParticipantsCard extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<ParticipantsCard> createState() => _ParticipantsCardState();
+}
+
+class _ParticipantsCardState extends State<ParticipantsCard> {
+  // Map to track expansion state for each participant
+  final Map<String, bool> _expansionState = {};
+
+  @override
+  void initState() {
+    super.initState();
+    // Set initial expansion state (first participant expanded)
+    if (widget.bill.participantNames.isNotEmpty) {
+      _expansionState[widget.bill.participantNames[0]] = true;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
     // Get totals for each person
-    final personTotals = calculations.calculatePersonTotals();
-    final itemTotals = calculations.calculatePersonItemTotals();
-    final taxAndTipTotals = calculations.calculatePersonTaxAndTip();
+    final personTotals = widget.calculations.calculatePersonTotals();
+
+    // Get alcohol charges for each person
+    final personAlcoholCharges =
+        widget.calculations.calculatePersonAlcoholCharges();
 
     // Check if we have real assignments
-    final hasRealAssignments = calculations.hasRealAssignments();
-    final equalShare = calculations.calculateEqualShare();
+    final hasRealAssignments = widget.calculations.hasRealAssignments();
+    final equalShare = widget.calculations.calculateEqualShare();
 
     return Card(
       elevation: 1,
@@ -70,7 +89,7 @@ class ParticipantsCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    '${bill.participantCount}',
+                    '${widget.bill.participantCount}',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 12,
@@ -86,21 +105,29 @@ class ParticipantsCard extends StatelessWidget {
           ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: bill.participantNames.length,
+            itemCount: widget.bill.participantNames.length,
             itemBuilder: (context, index) {
-              final name = bill.participantNames[index];
+              final name = widget.bill.participantNames[index];
+              // Check if this participant's tile is expanded
+              final isExpanded = _expansionState[name] ?? false;
 
               // Get amounts for this person
               final totalAmount =
                   hasRealAssignments ? (personTotals[name] ?? 0.0) : equalShare;
-              final taxAndTipAmount = taxAndTipTotals[name] ?? 0.0;
+
+              final taxAndTipAmount =
+                  widget.calculations.calculatePersonTaxAndTip()[name] ?? 0.0;
+
+              // Get alcohol charges for this person
+              final alcoholCharges = personAlcoholCharges[name] ?? 0.0;
 
               // Get items this person is paying for
               List<Map<String, dynamic>> personItems = [];
-              if (bill.items != null) {
-                for (var item in bill.items!) {
+              if (widget.bill.items != null) {
+                for (var item in widget.bill.items!) {
                   final itemName = item['name'] as String? ?? 'Unknown Item';
                   final price = (item['price'] as num?)?.toDouble() ?? 0.0;
+                  final isAlcohol = item['isAlcohol'] as bool? ?? false;
                   final assignments =
                       item['assignments'] as Map<String, dynamic>?;
 
@@ -108,13 +135,14 @@ class ParticipantsCard extends StatelessWidget {
                     final percentage = assignments[name] as num;
                     if (percentage > 0) {
                       final itemAmount = price * percentage / 100;
-                      // Only add to the list if this item was split (percentage < 100)
+                      // Only flag as shared if percentage < 100
                       final isShared = percentage < 100;
                       personItems.add({
                         'name': itemName,
                         'price': itemAmount,
                         'percentage': percentage,
                         'isShared': isShared,
+                        'isAlcohol': isAlcohol,
                       });
                     }
                   }
@@ -127,144 +155,222 @@ class ParticipantsCard extends StatelessWidget {
                     (b['price'] as double).compareTo(a['price'] as double),
               );
 
-              final hasSplitItems = personItems.any(
-                (item) => item['isShared'] as bool,
-              );
-
               // Create a widget for this participant
-              return Theme(
-                data: Theme.of(
-                  context,
-                ).copyWith(dividerColor: Colors.transparent),
-                child: ExpansionTile(
-                  backgroundColor: Colors.white,
-                  collapsedBackgroundColor: Colors.white,
-                  tilePadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  childrenPadding: const EdgeInsets.only(
-                    left: 56,
-                    right: 16,
-                    bottom: 16,
-                  ),
-                  expandedCrossAxisAlignment: CrossAxisAlignment.start,
-                  maintainState: true,
-                  initiallyExpanded:
-                      index == 0, // First one expanded by default
-                  // Leading avatar
-                  leading: CircleAvatar(
-                    backgroundColor: _getPersonColor(index, colorScheme),
-                    radius: 20,
-                    child: Text(
-                      name.isNotEmpty ? name[0].toUpperCase() : '?',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
+              return Column(
+                children: [
+                  // Add a divider before each participant except the first one
+                  if (index > 0)
+                    Divider(
+                      color: Colors.grey.shade200,
+                      height: 1,
+                      thickness: 1,
+                    ),
+
+                  Theme(
+                    data: Theme.of(
+                      context,
+                    ).copyWith(dividerColor: Colors.transparent),
+                    child: ExpansionTile(
+                      backgroundColor: Colors.white,
+                      collapsedBackgroundColor: Colors.white,
+                      tilePadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
                       ),
-                    ),
-                  ),
-
-                  // Title is person's name
-                  title: Text(
-                    name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
-                  ),
-
-                  // Subtitle is a preview of what they're paying for
-                  subtitle:
-                      hasSplitItems && personItems.isNotEmpty
-                          ? Text(
-                            'Paying for ${personItems.length} items',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[600],
-                            ),
-                          )
-                          : null,
-
-                  // Trailing is the amount
-                  trailing: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: colorScheme.primaryContainer.withOpacity(0.7),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                      childrenPadding: const EdgeInsets.only(
+                        left: 56,
+                        right: 16,
+                        bottom: 16,
+                      ),
+                      expandedCrossAxisAlignment: CrossAxisAlignment.start,
+                      maintainState: true,
+                      initiallyExpanded:
+                          index == 0, // First one expanded by default
+                      onExpansionChanged: (expanded) {
+                        // Update the expansion state for this participant
+                        setState(() {
+                          _expansionState[name] = expanded;
+                        });
+                      },
+                      // Leading avatar
+                      leading: CircleAvatar(
+                        backgroundColor: _getPersonColor(index, colorScheme),
+                        radius: 20,
                         child: Text(
-                          CurrencyFormatter.formatCurrency(totalAmount),
+                          name.isNotEmpty ? name[0].toUpperCase() : '?',
                           style: TextStyle(
+                            color: Colors.white,
                             fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            color: colorScheme.primary,
                           ),
                         ),
                       ),
-                      if (personItems.isNotEmpty && hasSplitItems)
-                        const SizedBox(height: 4),
-                      if (personItems.isNotEmpty && hasSplitItems)
-                        Text(
-                          'Tap to view details',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: colorScheme.primary.withOpacity(0.7),
-                          ),
-                        ),
-                    ],
-                  ),
 
-                  // Children are the breakdown of items and tax/tip
-                  children: [
-                    if (personItems.isNotEmpty && hasSplitItems) ...[
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8, bottom: 10),
-                        child: Text(
-                          'Items',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                            color: colorScheme.onSurface.withOpacity(0.7),
-                          ),
+                      // Title is person's name
+                      title: Text(
+                        name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
                         ),
                       ),
-                      ...personItems
-                          .where((item) => item['isShared'] as bool)
-                          .map(
+
+                      // Subtitle is a preview of what they're paying for
+                      subtitle:
+                          personItems.isNotEmpty
+                              ? Text(
+                                '${personItems.length} item(s)',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[600],
+                                ),
+                              )
+                              : null,
+
+                      // Trailing is the amount
+                      trailing: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colorScheme.primaryContainer.withOpacity(
+                                0.7,
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              CurrencyFormatter.formatCurrency(
+                                totalAmount + alcoholCharges,
+                              ),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                          if (personItems.isNotEmpty) const SizedBox(height: 4),
+                          if (personItems.isNotEmpty)
+                            Text(
+                              // Use the tracked expansion state to change the text
+                              isExpanded ? 'Close details' : 'View details',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: colorScheme.primary.withOpacity(0.7),
+                              ),
+                            ),
+                        ],
+                      ),
+
+                      // Children are the breakdown of items and tax/tip
+                      children: [
+                        if (personItems.isNotEmpty) ...[
+                          // Items header
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8, bottom: 10),
+                            child: Text(
+                              'Items',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                                color: colorScheme.onSurface.withOpacity(0.7),
+                              ),
+                            ),
+                          ),
+                          // Item rows
+                          ...personItems.map(
                             (item) => _buildItemRow(
                               context,
                               item['name'] as String,
                               item['price'] as double,
                               item['percentage'] as num,
                               colorScheme,
+                              isAlcohol: item['isAlcohol'] as bool? ?? false,
                             ),
                           ),
-                    ],
+                        ],
 
-                    if (taxAndTipAmount > 0) ...[
-                      Padding(
-                        padding: const EdgeInsets.only(top: 12, bottom: 4),
-                        child: Text(
-                          'Tax & Tip',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                            color: colorScheme.onSurface.withOpacity(0.7),
+                        // Standard Tax & Tip section (if applicable)
+                        if (taxAndTipAmount > 0) ...[
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12, bottom: 8),
+                            child: Row(
+                              children: [
+                                // Tax & Tip label
+                                Text(
+                                  'Tax & Tip',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                    color: colorScheme.onSurface.withOpacity(
+                                      0.7,
+                                    ),
+                                  ),
+                                ),
+
+                                // Spacer to push the amount to the right
+                                const Spacer(),
+
+                                // Amount - now using the same text style as regular text
+                                Text(
+                                  CurrencyFormatter.formatCurrency(
+                                    taxAndTipAmount,
+                                  ),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                    color: colorScheme.onSurface.withOpacity(
+                                      0.7,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ),
-                      _buildTaxTipRow(context, taxAndTipAmount, colorScheme),
-                    ],
-                  ],
-                ),
+                        ],
+
+                        // Alcohol Tax & Tip section (if applicable)
+                        if (alcoholCharges > 0) ...[
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8, bottom: 8),
+                            child: Row(
+                              children: [
+                                // Alcohol Tax & Tip label
+                                Text(
+                                  'Alcohol Tax & Tip',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                    color: colorScheme.tertiary,
+                                  ),
+                                ),
+
+                                // Spacer to push the amount to the right
+                                const Spacer(),
+
+                                // Amount
+                                Text(
+                                  CurrencyFormatter.formatCurrency(
+                                    alcoholCharges,
+                                  ),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                    color: colorScheme.tertiary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
               );
             },
           ),
@@ -278,25 +384,37 @@ class ParticipantsCard extends StatelessWidget {
     String name,
     double amount,
     num percentage,
-    ColorScheme colorScheme,
-  ) {
+    ColorScheme colorScheme, {
+    bool isAlcohol = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          // Bullet point
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(
-              color: colorScheme.primary.withOpacity(0.5),
-              shape: BoxShape.circle,
-            ),
-          ),
+          const SizedBox(width: 14),
+          // Bullet point or alcohol icon
+          isAlcohol
+              ? Icon(Icons.wine_bar, size: 14, color: colorScheme.tertiary)
+              : Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: colorScheme.primary.withOpacity(0.5),
+                  shape: BoxShape.circle,
+                ),
+              ),
           const SizedBox(width: 8),
 
           // Item name
-          Expanded(child: Text(name, style: const TextStyle(fontSize: 14))),
+          Expanded(
+            child: Text(
+              name,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: isAlcohol ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ),
 
           // Amount and percentage
           Row(
@@ -333,28 +451,6 @@ class ParticipantsCard extends StatelessWidget {
                 ),
               ],
             ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTaxTipRow(
-    BuildContext context,
-    double amount,
-    ColorScheme colorScheme,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          // Tax icon
-          Container(
-            padding: const EdgeInsets.all(2),
-            child: Text(
-              CurrencyFormatter.formatCurrency(amount),
-              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
-            ),
           ),
         ],
       ),

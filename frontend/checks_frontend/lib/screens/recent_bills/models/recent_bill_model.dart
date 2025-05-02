@@ -11,10 +11,14 @@ class RecentBillModel {
   final double subtotal;
   final double tax;
   final double tipAmount;
-  final double tipPercentage; // Added field for tip percentage
+  final double tipPercentage;
   final List<Map<String, dynamic>>? items;
   final Color color;
   final Map<String, Map<String, double>>? itemAssignments;
+
+  // Added these fields for alcohol calculations
+  final double? totalAlcoholTax;
+  final double? totalAlcoholTip;
 
   RecentBillModel({
     required this.id,
@@ -25,13 +29,14 @@ class RecentBillModel {
     required this.subtotal,
     required this.tax,
     required this.tipAmount,
-    this.tipPercentage = 0, // Default value
+    this.tipPercentage = 0,
     this.items,
     required this.color,
     this.itemAssignments,
+    this.totalAlcoholTax = 0.0,
+    this.totalAlcoholTip = 0.0,
   });
 
-  // Factory constructor to create a RecentBillModel from RecentBillData
   factory RecentBillModel.fromData(RecentBill data) {
     // Parse participant names from JSON
     List<String> names = [];
@@ -45,26 +50,46 @@ class RecentBillModel {
     List<Map<String, dynamic>>? itemsList;
     Map<String, Map<String, double>>? assignmentsMap;
 
+    // Track total alcohol tax and tip
+    double totalAlcoholTax = 0.0;
+    double totalAlcoholTip = 0.0;
+
     if (data.items != null) {
       try {
         final List<dynamic> decodedItems = jsonDecode(data.items!);
         itemsList = decodedItems.cast<Map<String, dynamic>>();
+
+        // Process alcohol-specific data
+        for (var item in itemsList) {
+          final isAlcohol = item['isAlcohol'] as bool? ?? false;
+          if (isAlcohol) {
+            final alcoholTaxPortion =
+                (item['alcoholTaxPortion'] as num?)?.toDouble();
+            final alcoholTipPortion =
+                (item['alcoholTipPortion'] as num?)?.toDouble();
+
+            if (alcoholTaxPortion != null) {
+              totalAlcoholTax += alcoholTaxPortion;
+            }
+
+            if (alcoholTipPortion != null) {
+              totalAlcoholTip += alcoholTipPortion;
+            }
+          }
+        }
 
         // Extract assignments from items
         assignmentsMap = {};
         for (var item in itemsList) {
           final itemName = item['name'] as String? ?? 'Unknown Item';
           final assignments = item['assignments'] as Map<String, dynamic>?;
-
           if (assignments != null) {
             Map<String, double> personAssignments = {};
-
             assignments.forEach((personName, percentage) {
               if (percentage is num) {
                 personAssignments[personName] = percentage.toDouble();
               }
             });
-
             if (personAssignments.isNotEmpty) {
               assignmentsMap[itemName] = personAssignments;
             }
@@ -74,6 +99,7 @@ class RecentBillModel {
         debugPrint('Error parsing items: $e');
       }
     }
+
     // Parse date
     DateTime billDate;
     try {
@@ -105,6 +131,8 @@ class RecentBillModel {
       items: itemsList,
       itemAssignments: assignmentsMap,
       color: Color(data.colorValue),
+      totalAlcoholTax: totalAlcoholTax,
+      totalAlcoholTip: totalAlcoholTip,
     );
   }
 

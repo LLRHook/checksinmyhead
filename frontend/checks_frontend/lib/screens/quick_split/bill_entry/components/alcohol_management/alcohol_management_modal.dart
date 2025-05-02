@@ -220,6 +220,18 @@ class _AlcoholManagementModalState extends State<AlcoholManagementModal>
       return false;
     }
 
+    // Check if alcohol tax exceeds total tax
+double alcoholTax = double.tryParse(billData.alcoholTaxController.text) ?? 0.0;
+double totalTax = double.tryParse(billData.taxController.text) ?? 0.0;
+
+if (alcoholTax > totalTax) {
+  setState(() {
+    _validationErrorMessage = 'Alcohol tax cannot exceed the total tax amount.';
+  });
+  _scrollToTaxField();
+  return false;
+}
+
     // If all conditions are met, return true
     return true;
   }
