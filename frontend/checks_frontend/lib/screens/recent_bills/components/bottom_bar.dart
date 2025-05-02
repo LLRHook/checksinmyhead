@@ -170,25 +170,6 @@ class BottomBar extends StatelessWidget {
                 ),
               ),
             ),
-
-            const SizedBox(width: 12),
-
-            // Reuse button
-            Expanded(
-              child: FilledButton.icon(
-                onPressed: () => _reuseBill(context),
-                icon: const Icon(Icons.edit, size: 18),
-                label: const Text('Edit Bill'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: colorScheme.primary,
-                  foregroundColor: buttonTextColor,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
           ],
         ),
       ),

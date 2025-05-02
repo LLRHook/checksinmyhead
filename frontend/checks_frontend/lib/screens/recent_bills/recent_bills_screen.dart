@@ -286,32 +286,37 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  'Total split: ${CurrencyFormatter.formatCurrency(totalSpent)}',
-                  style: TextStyle(
-                    color: headerSecondaryTextColor,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      color: headerSecondaryTextColor,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Checkmate only stores your last 30 bills.',
-                      style: TextStyle(
-                        color: headerSecondaryTextColor,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w300,
-                      ),
-                    ),
-                  ],
-                ),
+Row(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Icon(
+        Icons.info_outline,
+        color: headerSecondaryTextColor,
+        size: 16,
+      ),
+    ),
+    const SizedBox(width: 6),
+    Expanded(
+      child: Text.rich(
+        TextSpan(
+          style: TextStyle(
+            color: headerSecondaryTextColor,
+            fontSize: 12,
+            fontWeight: FontWeight.w300,
+            height: 1.3, // Add some line height for better readability
+          ),
+          children: const [
+            TextSpan(text: 'Only your 30 latest bills are kept. '),
+            TextSpan(text: '\n'), // Force line break here
+            TextSpan(text: 'New ones bump the oldest ones out!'),
+          ],
+        ),
+      ),
+    ),
+  ],
+)
               ],
             ),
           ),
