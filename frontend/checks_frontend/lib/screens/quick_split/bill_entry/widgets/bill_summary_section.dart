@@ -10,18 +10,6 @@ class BillSummarySection extends StatelessWidget {
     final billData = Provider.of<BillData>(context);
     final colorScheme = Theme.of(context).colorScheme;
 
-    // Calculate total alcohol tax and tip
-    double totalAlcoholTax = 0.0;
-    double totalAlcoholTip = 0.0;
-    for (var item in billData.items) {
-      if (item.isAlcohol) {
-        if (item.alcoholTaxPortion != null)
-          totalAlcoholTax += item.alcoholTaxPortion!;
-        if (item.alcoholTipPortion != null)
-          totalAlcoholTip += item.alcoholTipPortion!;
-      }
-    }
-
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -58,16 +46,6 @@ class BillSummarySection extends StatelessWidget {
 
             _buildBreakdownRow('Tax', billData.tax),
 
-            // Add alcohol tax if present
-            if (totalAlcoholTax > 0) ...[
-              const SizedBox(height: 8),
-              _buildBreakdownRow(
-                'Alcohol Tax',
-                totalAlcoholTax,
-                textColor: colorScheme.tertiary,
-              ),
-            ],
-
             if (billData.tipAmount > 0) ...[
               const SizedBox(height: 8),
               _buildBreakdownRow(
@@ -77,17 +55,6 @@ class BillSummarySection extends StatelessWidget {
                 tipPercentage: billData.tipPercentage,
               ),
             ],
-
-            // Add alcohol tip if present
-            if (totalAlcoholTip > 0) ...[
-              const SizedBox(height: 8),
-              _buildBreakdownRow(
-                'Alcohol Tip',
-                totalAlcoholTip,
-                textColor: colorScheme.tertiary,
-              ),
-            ],
-
             // Total row with divider
             const SizedBox(height: 12),
             const Divider(height: 1),

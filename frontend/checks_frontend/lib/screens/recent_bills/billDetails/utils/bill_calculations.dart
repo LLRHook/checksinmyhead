@@ -9,7 +9,6 @@ class BillCalculations {
   /// Cache for calculation results
   Map<String, double>? _personItemTotals;
   Map<String, double>? _personTaxAndTip;
-  Map<String, double>? _personAlcoholCharges;
   Map<String, double>? _personTotals;
 
   BillCalculations(this.bill);
@@ -35,18 +34,7 @@ class BillCalculations {
     return bill.items!.map((itemData) {
       final name = itemData['name'] as String? ?? 'Unknown Item';
       final price = (itemData['price'] as num?)?.toDouble() ?? 0.0;
-      final isAlcohol = itemData['isAlcohol'] as bool? ?? false;
       final assignments = itemData['assignments'] as Map<String, dynamic>?;
-
-      // Get alcohol tax and tip from saved data
-      final alcoholTaxPortion =
-          isAlcohol
-              ? (itemData['alcoholTaxPortion'] as num?)?.toDouble()
-              : null;
-      final alcoholTipPortion =
-          isAlcohol
-              ? (itemData['alcoholTipPortion'] as num?)?.toDouble()
-              : null;
 
       // Convert string-based assignments to Person-based assignments
       Map<Person, double> personAssignments = {};
@@ -59,66 +47,8 @@ class BillCalculations {
         });
       }
 
-      return BillItem(
-        name: name,
-        price: price,
-        isAlcohol: isAlcohol,
-        assignments: personAssignments,
-        alcoholTaxPortion: alcoholTaxPortion,
-        alcoholTipPortion: alcoholTipPortion,
-      );
+      return BillItem(name: name, price: price, assignments: personAssignments);
     }).toList();
-  }
-
-  /// Calculate alcohol charges for each person
-  Map<String, double> calculatePersonAlcoholCharges() {
-    // Return cached result if available
-    if (_personAlcoholCharges != null) {
-      return _personAlcoholCharges!;
-    }
-
-    Map<String, double> alcoholCharges = {};
-
-    // Initialize with zero for all participants
-    for (final name in bill.participantNames) {
-      alcoholCharges[name] = 0.0;
-    }
-
-    // If no items or no alcohol items, return zeros
-    if (bill.items == null || bill.items!.isEmpty) {
-      _personAlcoholCharges = alcoholCharges;
-      return alcoholCharges;
-    }
-
-    // Calculate alcohol charges for each person
-    for (final item in bill.items!) {
-      final isAlcohol = item['isAlcohol'] as bool? ?? false;
-
-      if (isAlcohol) {
-        final assignments = item['assignments'] as Map<String, dynamic>?;
-        final alcoholTaxPortion =
-            (item['alcoholTaxPortion'] as num?)?.toDouble() ?? 0.0;
-        final alcoholTipPortion =
-            (item['alcoholTipPortion'] as num?)?.toDouble() ?? 0.0;
-
-        if (assignments != null &&
-            (alcoholTaxPortion > 0 || alcoholTipPortion > 0)) {
-          assignments.forEach((personName, percentage) {
-            if (percentage is num && alcoholCharges.containsKey(personName)) {
-              // Calculate this person's share of alcohol charges
-              final share = percentage / 100.0;
-              alcoholCharges[personName] =
-                  (alcoholCharges[personName] ?? 0.0) +
-                  (alcoholTaxPortion * share) +
-                  (alcoholTipPortion * share);
-            }
-          });
-        }
-      }
-    }
-
-    _personAlcoholCharges = alcoholCharges;
-    return alcoholCharges;
   }
 
   /// Calculate how much each person is assigned for items
@@ -161,7 +91,7 @@ class BillCalculations {
     return personTotals;
   }
 
-  /// Calculate regular tax and tip portions for each person
+  /// Calculate tax and tip portions for each person
   Map<String, double> calculatePersonTaxAndTip() {
     // Return cached result if available
     if (_personTaxAndTip != null) {
@@ -171,10 +101,7 @@ class BillCalculations {
     Map<String, double> results = {};
     final personItemTotals = calculatePersonItemTotals();
 
-    // Calculate the regular tax and tip (excluding alcohol-specific charges)
-    final double regularTax = bill.tax - (bill.totalAlcoholTax ?? 0.0);
-    final double regularTip = bill.tipAmount - (bill.totalAlcoholTip ?? 0.0);
-    final double totalRegularTaxAndTip = regularTax + regularTip;
+    final double totalTaxAndTip = bill.tax + bill.tipAmount;
 
     // Calculate the total item sum that was assigned
     final double assignedItemsTotal = personItemTotals.values.fold(
@@ -184,7 +111,7 @@ class BillCalculations {
 
     // If no items were assigned, distribute tax and tip equally
     if (assignedItemsTotal <= 0 || personItemTotals.isEmpty) {
-      final equalShare = totalRegularTaxAndTip / bill.participantNames.length;
+      final equalShare = totalTaxAndTip / bill.participantNames.length;
 
       for (final name in bill.participantNames) {
         results[name] = equalShare;
@@ -198,7 +125,7 @@ class BillCalculations {
                 : 1.0 / bill.participantNames.length;
 
         // Assign tax and tip proportionally
-        results[entry.key] = proportion * totalRegularTaxAndTip;
+        results[entry.key] = proportion * totalTaxAndTip;
       }
     }
 
@@ -216,16 +143,14 @@ class BillCalculations {
     Map<String, double> totals = {};
     final itemTotals = calculatePersonItemTotals();
     final taxAndTipTotals = calculatePersonTaxAndTip();
-    final alcoholCharges = calculatePersonAlcoholCharges();
 
     // Combine all components for each person
     for (final name in bill.participantNames) {
       final itemAmount = itemTotals[name] ?? 0.0;
       final taxTipAmount = taxAndTipTotals[name] ?? 0.0;
-      final alcoholAmount = alcoholCharges[name] ?? 0.0;
 
-      // Make sure we're adding all three components
-      totals[name] = itemAmount + taxTipAmount + alcoholAmount;
+      // Make sure we're adding both components
+      totals[name] = itemAmount + taxTipAmount;
     }
 
     _personTotals = totals;

@@ -1,4 +1,3 @@
-import 'package:checks_frontend/screens/quick_split/bill_entry/components/alcohol_management/alcohol_management_modal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -48,19 +47,6 @@ class _ItemsSectionState extends State<ItemsSection>
   void dispose() {
     _progressAnimationController.dispose();
     super.dispose();
-  }
-
-  void _showAlcoholManagementModal(BillData billData) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder:
-          (context) => ChangeNotifierProvider.value(
-            value: billData, // Pass the existing billData instance
-            child: AlcoholManagementModal(),
-          ),
-    );
   }
 
   void _updateAnimation(BillData billData) {
@@ -357,59 +343,6 @@ class _ItemsSectionState extends State<ItemsSection>
                   ),
                 ),
                 Spacer(),
-                if (billData.items.isNotEmpty)
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeOutCubic,
-                    child: TextButton(
-                      onPressed: () {
-                        HapticFeedback.mediumImpact();
-                        _showAlcoholManagementModal(billData);
-                      },
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        backgroundColor: colorScheme.tertiary.withOpacity(0.08),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0.5,
-                        shadowColor: colorScheme.tertiary.withOpacity(0.03),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 28,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              color: colorScheme.tertiary.withOpacity(0.15),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Center(
-                              child: Icon(
-                                Icons.wine_bar_rounded,
-                                size: 16,
-                                color: colorScheme.tertiary,
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 8),
-                          Text(
-                            'Any Alcohol?',
-                            style: TextStyle(
-                              color: colorScheme.tertiary,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                              letterSpacing: 0.1,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
               ],
             ),
             const SizedBox(height: 12),
@@ -438,21 +371,6 @@ class _ItemsSectionState extends State<ItemsSection>
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    leading:
-                        item.isAlcohol
-                            ? Container(
-                              padding: EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: colorScheme.tertiary.withOpacity(0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.wine_bar_outlined,
-                                color: colorScheme.tertiary,
-                                size: 20,
-                              ),
-                            )
-                            : null,
                     title: Text(
                       item.name,
                       style: const TextStyle(fontWeight: FontWeight.w600),

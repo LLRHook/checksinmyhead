@@ -35,13 +35,8 @@ class PersonCard extends StatelessWidget {
       birthdayPerson: data.birthdayPerson,
     );
 
-    // Calculate alcohol specific amounts
-    final alcoholTaxTotal = _calculatePersonAlcoholTax();
-    final alcoholTipTotal = _calculatePersonAlcoholTip();
-
-    // Calculate correct total share including alcohol costs
-    final double totalShare =
-        (personAmounts['total'] ?? 0.0) + alcoholTaxTotal + alcoholTipTotal;
+    // Calculate total share
+    final double totalShare = personAmounts['total'] ?? 0.0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -188,98 +183,30 @@ class PersonCard extends StatelessWidget {
   }
 
   Widget _buildItemRow(BuildContext context, BillItem item, Person person) {
-    final colorScheme = Theme.of(context).colorScheme;
     final percentage = item.assignments[person] ?? 0;
 
-    // Calculate base amount from the item price
-    final baseAmount = item.price * (percentage / 100);
-
-    // Calculate alcohol-related additional costs if applicable
-    final alcoholTaxAmount =
-        (item.isAlcohol && item.alcoholTaxPortion != null)
-            ? item.alcoholTaxPortion! * (percentage / 100)
-            : 0.0;
-
-    final alcoholTipAmount =
-        (item.isAlcohol && item.alcoholTipPortion != null)
-            ? item.alcoholTipPortion! * (percentage / 100)
-            : 0.0;
-
-    // Calculate total amount including alcohol costs
-    final totalAmount = baseAmount + alcoholTaxAmount + alcoholTipAmount;
+    // Calculate amount from the item price
+    final amount = item.price * (percentage / 100);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          // Main item row with total
-          Row(
-            children: [
-              if (item.isAlcohol)
-                Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: Icon(
-                    Icons.wine_bar,
-                    size: 14,
-                    color: colorScheme.tertiary,
-                  ),
-                ),
-              Expanded(
-                child: Text(
-                  item.name,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight:
-                        item.isAlcohol ? FontWeight.w500 : FontWeight.normal,
-                  ),
-                ),
-              ),
-              if (percentage < 100)
-                Text(
-                  '${percentage.toStringAsFixed(0)}% × ',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                ),
-              Text(
-                '\$${totalAmount.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-
-          // Only show breakdown if this is an alcoholic item with tax/tip
-          if (item.isAlcohol && (alcoholTaxAmount > 0 || alcoholTipAmount > 0))
-            Padding(
-              padding: const EdgeInsets.only(top: 2, left: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Subtotal: \$${baseAmount.toStringAsFixed(2)}',
-                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                  ),
-                  if (alcoholTaxAmount > 0)
-                    Text(
-                      'Alcohol Tax: \$${alcoholTaxAmount.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: colorScheme.tertiary.withOpacity(0.8),
-                      ),
-                    ),
-                  if (alcoholTipAmount > 0)
-                    Text(
-                      'Alcohol Tip: \$${alcoholTipAmount.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: colorScheme.tertiary.withOpacity(0.8),
-                      ),
-                    ),
-                ],
-              ),
+          Expanded(
+            child: Text(
+              item.name,
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal),
             ),
+          ),
+          if (percentage < 100)
+            Text(
+              '${percentage.toStringAsFixed(0)}% × ',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
+          Text(
+            '\$${amount.toStringAsFixed(2)}',
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          ),
         ],
       ),
     );
@@ -315,29 +242,5 @@ class PersonCard extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  // Calculate the total alcohol tax for this person
-  double _calculatePersonAlcoholTax() {
-    double total = 0.0;
-    for (var item in data.items) {
-      if (item.isAlcohol && item.alcoholTaxPortion != null) {
-        final percentage = item.assignments[person] ?? 0;
-        total += item.alcoholTaxPortion! * (percentage / 100);
-      }
-    }
-    return total;
-  }
-
-  // Calculate the total alcohol tip for this person
-  double _calculatePersonAlcoholTip() {
-    double total = 0.0;
-    for (var item in data.items) {
-      if (item.isAlcohol && item.alcoholTipPortion != null) {
-        final percentage = item.assignments[person] ?? 0;
-        total += item.alcoholTipPortion! * (percentage / 100);
-      }
-    }
-    return total;
   }
 }

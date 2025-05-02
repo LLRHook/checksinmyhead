@@ -11,10 +11,6 @@ class BillSummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    // Get non-nullable alcohol tax and tip values
-    final totalAlcoholTax = bill.totalAlcoholTax ?? 0.0;
-    final totalAlcoholTip = bill.totalAlcoholTip ?? 0.0;
-
     return Card(
       elevation: 1,
       surfaceTintColor: Colors.white,
@@ -61,16 +57,6 @@ class BillSummaryCard extends StatelessWidget {
 
                 _buildDetailRow('Tax', bill.tax),
 
-                // Add alcohol tax if present
-                if (totalAlcoholTax > 0) ...[
-                  const SizedBox(height: 12),
-                  _buildDetailRow(
-                    'Alcohol Tax',
-                    totalAlcoholTax,
-                    textColor: colorScheme.tertiary,
-                  ),
-                ],
-
                 if (bill.tipAmount > 0) ...[
                   const SizedBox(height: 12),
                   Row(
@@ -105,17 +91,6 @@ class BillSummaryCard extends StatelessWidget {
                         ],
                       ),
                     ],
-                  ),
-                ],
-                // Show tip with percentage
-
-                // Add alcohol tip if present
-                if (totalAlcoholTip > 0) ...[
-                  const SizedBox(height: 12),
-                  _buildDetailRow(
-                    'Alcohol Tip',
-                    totalAlcoholTip,
-                    textColor: colorScheme.tertiary,
                   ),
                 ],
 

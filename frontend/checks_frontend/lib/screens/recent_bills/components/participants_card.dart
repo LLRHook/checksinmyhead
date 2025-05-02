@@ -37,10 +37,6 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
     // Get totals for each person
     final personTotals = widget.calculations.calculatePersonTotals();
 
-    // Get alcohol charges for each person
-    final personAlcoholCharges =
-        widget.calculations.calculatePersonAlcoholCharges();
-
     // Check if we have real assignments
     final hasRealAssignments = widget.calculations.hasRealAssignments();
     final equalShare = widget.calculations.calculateEqualShare();
@@ -118,16 +114,12 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
               final taxAndTipAmount =
                   widget.calculations.calculatePersonTaxAndTip()[name] ?? 0.0;
 
-              // Get alcohol charges for this person
-              final alcoholCharges = personAlcoholCharges[name] ?? 0.0;
-
               // Get items this person is paying for
               List<Map<String, dynamic>> personItems = [];
               if (widget.bill.items != null) {
                 for (var item in widget.bill.items!) {
                   final itemName = item['name'] as String? ?? 'Unknown Item';
                   final price = (item['price'] as num?)?.toDouble() ?? 0.0;
-                  final isAlcohol = item['isAlcohol'] as bool? ?? false;
                   final assignments =
                       item['assignments'] as Map<String, dynamic>?;
 
@@ -142,7 +134,6 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                         'price': itemAmount,
                         'percentage': percentage,
                         'isShared': isShared,
-                        'isAlcohol': isAlcohol,
                       });
                     }
                   }
@@ -243,9 +234,7 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              CurrencyFormatter.formatCurrency(
-                                totalAmount + alcoholCharges,
-                              ),
+                              CurrencyFormatter.formatCurrency(totalAmount),
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
@@ -289,7 +278,6 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                               item['price'] as double,
                               item['percentage'] as num,
                               colorScheme,
-                              isAlcohol: item['isAlcohol'] as bool? ?? false,
                             ),
                           ),
                         ],
@@ -332,41 +320,6 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                             ),
                           ),
                         ],
-
-                        // Alcohol Tax & Tip section (if applicable)
-                        if (alcoholCharges > 0) ...[
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8, bottom: 8),
-                            child: Row(
-                              children: [
-                                // Alcohol Tax & Tip label
-                                Text(
-                                  'Alcohol Tax & Tip',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
-                                    color: colorScheme.tertiary,
-                                  ),
-                                ),
-
-                                // Spacer to push the amount to the right
-                                const Spacer(),
-
-                                // Amount
-                                Text(
-                                  CurrencyFormatter.formatCurrency(
-                                    alcoholCharges,
-                                  ),
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
-                                    color: colorScheme.tertiary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                   ),
@@ -384,35 +337,29 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
     String name,
     double amount,
     num percentage,
-    ColorScheme colorScheme, {
-    bool isAlcohol = false,
-  }) {
+    ColorScheme colorScheme,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
           const SizedBox(width: 14),
-          // Bullet point or alcohol icon
-          isAlcohol
-              ? Icon(Icons.wine_bar, size: 14, color: colorScheme.tertiary)
-              : Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: colorScheme.primary.withOpacity(0.5),
-                  shape: BoxShape.circle,
-                ),
-              ),
+          // Bullet point
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withOpacity(0.5),
+              shape: BoxShape.circle,
+            ),
+          ),
           const SizedBox(width: 8),
 
           // Item name
           Expanded(
             child: Text(
               name,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: isAlcohol ? FontWeight.w600 : FontWeight.normal,
-              ),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal),
             ),
           ),
 
