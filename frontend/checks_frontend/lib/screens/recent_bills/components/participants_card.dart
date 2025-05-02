@@ -33,6 +33,7 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
 
     // Get totals for each person
     final personTotals = widget.calculations.calculatePersonTotals();
@@ -41,13 +42,64 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
     final hasRealAssignments = widget.calculations.hasRealAssignments();
     final equalShare = widget.calculations.calculateEqualShare();
 
+    // Theme-aware colors
+    final cardBgColor =
+        brightness == Brightness.dark ? colorScheme.surface : Colors.white;
+
+    final cardBorderColor =
+        brightness == Brightness.dark
+            ? colorScheme.outline.withOpacity(0.3)
+            : Colors.grey.shade200;
+
+    final headerBgColor =
+        brightness == Brightness.dark
+            ? colorScheme.primaryContainer.withOpacity(0.15)
+            : colorScheme.primaryContainer.withOpacity(0.3);
+
+    final dividerColor =
+        brightness == Brightness.dark
+            ? colorScheme.outline.withOpacity(0.2)
+            : Colors.grey.shade200;
+
+    final tileBgColor =
+        brightness == Brightness.dark ? colorScheme.surface : Colors.white;
+
+    final subtitleColor =
+        brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600];
+
+    final amountBgColor =
+        brightness == Brightness.dark
+            ? colorScheme.primary.withOpacity(0.2)
+            : colorScheme.primaryContainer.withOpacity(0.7);
+
+    final viewDetailsColor =
+        brightness == Brightness.dark
+            ? colorScheme.primary.withOpacity(0.8)
+            : colorScheme.primary.withOpacity(0.7);
+
+    final sectionHeaderColor =
+        brightness == Brightness.dark
+            ? colorScheme.onSurface.withOpacity(0.8)
+            : colorScheme.onSurface.withOpacity(0.7);
+
+    final bulletColor =
+        brightness == Brightness.dark
+            ? colorScheme.primary.withOpacity(0.7)
+            : colorScheme.primary.withOpacity(0.5);
+
+    final percentageBgColor =
+        brightness == Brightness.dark
+            ? colorScheme.surfaceVariant.withOpacity(0.6)
+            : colorScheme.surfaceVariant;
+
     return Card(
       elevation: 1,
-      surfaceTintColor: Colors.white,
+      surfaceTintColor: cardBgColor,
       margin: EdgeInsets.zero,
+      color: cardBgColor,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.shade200, width: 0.5),
+        side: BorderSide(color: cardBorderColor, width: 0.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -56,7 +108,7 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: colorScheme.primaryContainer.withOpacity(0.3),
+              color: headerBgColor,
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(16),
                 topRight: Radius.circular(16),
@@ -151,19 +203,15 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                 children: [
                   // Add a divider before each participant except the first one
                   if (index > 0)
-                    Divider(
-                      color: Colors.grey.shade200,
-                      height: 1,
-                      thickness: 1,
-                    ),
+                    Divider(color: dividerColor, height: 1, thickness: 1),
 
                   Theme(
                     data: Theme.of(
                       context,
                     ).copyWith(dividerColor: Colors.transparent),
                     child: ExpansionTile(
-                      backgroundColor: Colors.white,
-                      collapsedBackgroundColor: Colors.white,
+                      backgroundColor: tileBgColor,
+                      collapsedBackgroundColor: tileBgColor,
                       tilePadding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 8,
@@ -185,7 +233,11 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                       },
                       // Leading avatar
                       leading: CircleAvatar(
-                        backgroundColor: _getPersonColor(index, colorScheme),
+                        backgroundColor: _getPersonColor(
+                          index,
+                          colorScheme,
+                          brightness,
+                        ),
                         radius: 20,
                         child: Text(
                           name.isNotEmpty ? name[0].toUpperCase() : '?',
@@ -199,9 +251,10 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                       // Title is person's name
                       title: Text(
                         name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 16,
+                          color: colorScheme.onSurface,
                         ),
                       ),
 
@@ -212,7 +265,7 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                                 '${personItems.length} item(s)',
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: Colors.grey[600],
+                                  color: subtitleColor,
                                 ),
                               )
                               : null,
@@ -228,9 +281,7 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: colorScheme.primaryContainer.withOpacity(
-                                0.7,
-                              ),
+                              color: amountBgColor,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -249,7 +300,7 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                               isExpanded ? 'Close details' : 'View details',
                               style: TextStyle(
                                 fontSize: 11,
-                                color: colorScheme.primary.withOpacity(0.7),
+                                color: viewDetailsColor,
                               ),
                             ),
                         ],
@@ -266,7 +317,7 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 13,
-                                color: colorScheme.onSurface.withOpacity(0.7),
+                                color: sectionHeaderColor,
                               ),
                             ),
                           ),
@@ -278,6 +329,8 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                               item['price'] as double,
                               item['percentage'] as num,
                               colorScheme,
+                              bulletColor,
+                              percentageBgColor,
                             ),
                           ),
                         ],
@@ -294,9 +347,7 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                                   style: TextStyle(
                                     fontWeight: FontWeight.w600,
                                     fontSize: 13,
-                                    color: colorScheme.onSurface.withOpacity(
-                                      0.7,
-                                    ),
+                                    color: sectionHeaderColor,
                                   ),
                                 ),
 
@@ -311,9 +362,7 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                                   style: TextStyle(
                                     fontWeight: FontWeight.w600,
                                     fontSize: 13,
-                                    color: colorScheme.onSurface.withOpacity(
-                                      0.7,
-                                    ),
+                                    color: sectionHeaderColor,
                                   ),
                                 ),
                               ],
@@ -338,6 +387,8 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
     double amount,
     num percentage,
     ColorScheme colorScheme,
+    Color bulletColor,
+    Color percentageBgColor,
   ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -349,7 +400,7 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
             width: 6,
             height: 6,
             decoration: BoxDecoration(
-              color: colorScheme.primary.withOpacity(0.5),
+              color: bulletColor,
               shape: BoxShape.circle,
             ),
           ),
@@ -359,7 +410,11 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
           Expanded(
             child: Text(
               name,
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.normal,
+                color: colorScheme.onSurface,
+              ),
             ),
           ),
 
@@ -369,9 +424,10 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
               // Amount
               Text(
                 CurrencyFormatter.formatCurrency(amount),
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.w500,
                   fontSize: 14,
+                  color: colorScheme.onSurface,
                 ),
               ),
 
@@ -384,7 +440,7 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: colorScheme.surfaceVariant,
+                    color: percentageBgColor,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
@@ -404,8 +460,12 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
     );
   }
 
-  // Get a color for the person's avatar based on their index
-  Color _getPersonColor(int index, ColorScheme colorScheme) {
+  // Get a color for the person's avatar based on their index - with brightness adjustment
+  Color _getPersonColor(
+    int index,
+    ColorScheme colorScheme,
+    Brightness brightness,
+  ) {
     final colors = [
       colorScheme.primary,
       colorScheme.tertiary,
@@ -417,6 +477,33 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
       Colors.brown,
     ];
 
-    return colors[index % colors.length];
+    final baseColor = colors[index % colors.length];
+
+    // For dark mode, lighten dark colors to ensure good visibility
+    if (brightness == Brightness.dark) {
+      // Calculate luminance (simple formula)
+      final luminance =
+          (0.299 * baseColor.red +
+              0.587 * baseColor.green +
+              0.114 * baseColor.blue) /
+          255;
+
+      // If color is too dark, lighten it
+      if (luminance < 0.5) {
+        return _lightenColor(baseColor, 0.2);
+      }
+    }
+
+    return baseColor;
+  }
+
+  // Helper method to lighten colors for dark mode
+  Color _lightenColor(Color color, double amount) {
+    return Color.fromARGB(
+      color.alpha,
+      (color.red + (255 - color.red) * amount).round(),
+      (color.green + (255 - color.green) * amount).round(),
+      (color.blue + (255 - color.blue) * amount).round(),
+    );
   }
 }

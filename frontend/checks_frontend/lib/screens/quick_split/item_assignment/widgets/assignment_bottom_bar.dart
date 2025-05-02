@@ -13,37 +13,56 @@ class AssignmentBottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    // Theme-aware colors
+    final backgroundColor =
+        brightness == Brightness.dark
+            ? colorScheme.surfaceContainerHighest
+            : Theme.of(context).scaffoldBackgroundColor;
+
+    final shadowColor =
+        brightness == Brightness.dark
+            ? Colors.black.withOpacity(0.2)
+            : Colors.black.withOpacity(0.05);
+
+    final labelColor =
+        brightness == Brightness.dark
+            ? colorScheme.onSurface.withOpacity(0.7)
+            : Colors.grey;
+
+    final valueColor = colorScheme.onSurface;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
+        color: backgroundColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: shadowColor,
             blurRadius: 10,
             offset: const Offset(0, -3),
           ),
         ],
       ),
       child: Row(
-        mainAxisAlignment:
-            MainAxisAlignment.spaceBetween, // Space between elements
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Bill total info - Keep fixed width
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'Total Bill',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
+                style: TextStyle(fontSize: 12, color: labelColor),
               ),
               Text(
                 '\$${totalBill.toStringAsFixed(2)}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
+                  color: valueColor, // Theme-aware price color
                 ),
               ),
             ],
@@ -54,7 +73,12 @@ class AssignmentBottomBar extends StatelessWidget {
             onPressed: onContinueTap,
             style: ElevatedButton.styleFrom(
               backgroundColor: colorScheme.primary,
-              foregroundColor: Colors.white,
+              foregroundColor:
+                  brightness == Brightness.dark
+                      ? Colors.black.withOpacity(
+                        0.9,
+                      ) // Better contrast in dark mode
+                      : Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               elevation: 2,
               shadowColor: colorScheme.primary.withOpacity(0.4),

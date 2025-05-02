@@ -14,15 +14,26 @@ class ContinueButton extends StatelessWidget {
     final hasParticipants = participantsProvider.hasParticipants;
     final participantsCount = participantsProvider.participants.length;
 
+    // Use theme-aware colors
+    final disabledBgColor =
+        colorScheme.brightness == Brightness.dark
+            ? colorScheme.surface.withOpacity(0.2)
+            : Colors.grey.shade200;
+
+    final disabledTextColor =
+        colorScheme.brightness == Brightness.dark
+            ? colorScheme.onSurface.withOpacity(0.4)
+            : Colors.grey.shade500;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: ElevatedButton(
         onPressed: hasParticipants ? onContinue : null,
         style: ElevatedButton.styleFrom(
           backgroundColor:
-              hasParticipants ? colorScheme.primary : Colors.grey.shade200,
+              hasParticipants ? colorScheme.primary : disabledBgColor,
           foregroundColor:
-              hasParticipants ? Colors.white : Colors.grey.shade500,
+              hasParticipants ? colorScheme.onPrimary : disabledTextColor,
           elevation: hasParticipants ? 2 : 0,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
@@ -38,7 +49,8 @@ class ContinueButton extends StatelessWidget {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: hasParticipants ? Colors.white : Colors.grey.shade600,
+                color:
+                    hasParticipants ? colorScheme.onPrimary : disabledTextColor,
               ),
             ),
             if (hasParticipants) ...[
@@ -46,15 +58,16 @@ class ContinueButton extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  // Use semi-transparent onPrimary instead of hardcoded white
+                  color: colorScheme.onPrimary.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   "$participantsCount ${participantsCount == 1 ? 'person' : 'people'}",
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: colorScheme.onPrimary,
                   ),
                 ),
               ),

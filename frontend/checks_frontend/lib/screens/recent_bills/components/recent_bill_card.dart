@@ -26,15 +26,47 @@ class RecentBillCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final brightness = Theme.of(context).brightness;
+
+    // Theme-aware colors
+    final cardBgColor =
+        brightness == Brightness.dark ? colorScheme.surface : Colors.white;
+
+    final cardShadowColor =
+        brightness == Brightness.dark
+            ? Colors.black.withOpacity(0.2)
+            : Colors.black.withOpacity(0.04);
+
+    final dividerColor =
+        brightness == Brightness.dark
+            ? colorScheme.outline.withOpacity(0.2)
+            : Colors.grey.shade100;
+
+    final dateColor = colorScheme.onSurface;
+
+    final participantsTextColor =
+        brightness == Brightness.dark
+            ? colorScheme.onSurface.withOpacity(0.7)
+            : colorScheme.onSurface.withOpacity(0.6);
+
+    // Adjust bill color for better visibility in dark mode if needed
+    final adjustedBillColor =
+        brightness == Brightness.dark
+            ? _adjustColorForDarkMode(bill.color)
+            : bill.color;
+
+    // Dialog colors
+    final dialogBgColor =
+        brightness == Brightness.dark ? colorScheme.surface : Colors.white;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBgColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: cardShadowColor,
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -48,8 +80,8 @@ class RecentBillCard extends StatelessWidget {
             onTap:
                 () =>
                     _navigateToBillDetails(context), // Navigate to bill details
-            splashColor: bill.color.withOpacity(0.1),
-            highlightColor: bill.color.withOpacity(0.05),
+            splashColor: adjustedBillColor.withOpacity(0.1),
+            highlightColor: adjustedBillColor.withOpacity(0.05),
             child: Column(
               children: [
                 // Main content area
@@ -67,13 +99,17 @@ class RecentBillCard extends StatelessWidget {
                             // Date with formatting
                             Row(
                               children: [
-                                Icon(Icons.event, size: 16, color: bill.color),
+                                Icon(
+                                  Icons.event,
+                                  size: 16,
+                                  color: adjustedBillColor,
+                                ),
                                 const SizedBox(width: 8),
                                 Text(
                                   bill.formattedDate,
                                   style: textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.w600,
-                                    color: colorScheme.onSurface,
+                                    color: dateColor,
                                   ),
                                 ),
                               ],
@@ -87,16 +123,14 @@ class RecentBillCard extends StatelessWidget {
                                 Icon(
                                   Icons.people_outline,
                                   size: 16,
-                                  color: colorScheme.onSurface.withOpacity(0.6),
+                                  color: participantsTextColor,
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
                                     bill.participantSummary,
                                     style: textTheme.bodyMedium?.copyWith(
-                                      color: colorScheme.onSurface.withOpacity(
-                                        0.7,
-                                      ),
+                                      color: participantsTextColor,
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -117,7 +151,12 @@ class RecentBillCard extends StatelessWidget {
                             vertical: 8,
                           ),
                           decoration: BoxDecoration(
-                            color: bill.color.withOpacity(0.1),
+                            color:
+                                brightness == Brightness.dark
+                                    ? adjustedBillColor.withOpacity(
+                                      0.15,
+                                    ) // Slightly higher opacity in dark mode
+                                    : adjustedBillColor.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Column(
@@ -127,7 +166,9 @@ class RecentBillCard extends StatelessWidget {
                                 'Total',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: bill.color.withOpacity(0.8),
+                                  color: adjustedBillColor.withOpacity(
+                                    brightness == Brightness.dark ? 0.9 : 0.8,
+                                  ), // Brighter in dark mode
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -139,7 +180,7 @@ class RecentBillCard extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
-                                    color: bill.color,
+                                    color: adjustedBillColor,
                                   ),
                                 ),
                               ),
@@ -155,7 +196,7 @@ class RecentBillCard extends StatelessWidget {
                 Container(
                   decoration: BoxDecoration(
                     border: Border(
-                      top: BorderSide(color: Colors.grey.shade100, width: 1),
+                      top: BorderSide(color: dividerColor, width: 1),
                     ),
                   ),
                   child: Row(
@@ -172,11 +213,7 @@ class RecentBillCard extends StatelessWidget {
                       ),
 
                       // Vertical divider
-                      Container(
-                        width: 1,
-                        height: 24,
-                        color: Colors.grey.shade200,
-                      ),
+                      Container(width: 1, height: 24, color: dividerColor),
 
                       // Delete button
                       Expanded(
@@ -184,7 +221,12 @@ class RecentBillCard extends StatelessWidget {
                           context,
                           icon: Icons.delete_outline,
                           label: 'Delete',
-                          onTap: () => _confirmDelete(context),
+                          onTap:
+                              () => _confirmDelete(
+                                context,
+                                colorScheme,
+                                dialogBgColor,
+                              ),
                           color: colorScheme.error,
                         ),
                       ),
@@ -229,7 +271,11 @@ class RecentBillCard extends StatelessWidget {
     );
   }
 
-  Future<void> _confirmDelete(BuildContext context) async {
+  Future<void> _confirmDelete(
+    BuildContext context,
+    ColorScheme colorScheme,
+    Color dialogBgColor,
+  ) async {
     HapticFeedback.mediumImpact();
 
     // Confirm deletion with a premium dialog
@@ -237,12 +283,10 @@ class RecentBillCard extends StatelessWidget {
       context: context,
       builder:
           (context) => AlertDialog(
+            backgroundColor: dialogBgColor,
             title: Row(
               children: [
-                Icon(
-                  Icons.delete_outline,
-                  color: Theme.of(context).colorScheme.error,
-                ),
+                Icon(Icons.delete_outline, color: colorScheme.error),
                 const SizedBox(width: 8),
                 const Text('Delete Bill'),
               ],
@@ -260,9 +304,7 @@ class RecentBillCard extends StatelessWidget {
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
-                style: TextButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.error,
-                ),
+                style: TextButton.styleFrom(foregroundColor: colorScheme.error),
                 child: const Text('Delete'),
               ),
             ],
@@ -278,5 +320,24 @@ class RecentBillCard extends StatelessWidget {
       // Refresh the list through callback
       onDeleted();
     }
+  }
+
+  // Helper method to adjust colors for better visibility in dark mode
+  Color _adjustColorForDarkMode(Color color) {
+    // If the color is too dark, brighten it for dark mode
+    if (_luminance(color) < 0.4) {
+      // Increase the brightness while maintaining hue
+      final HSLColor hslColor = HSLColor.fromColor(color);
+      return hslColor
+          .withLightness((hslColor.lightness + 0.2).clamp(0.0, 1.0))
+          .toColor();
+    }
+    return color;
+  }
+
+  // Calculate relative luminance of a color
+  double _luminance(Color color) {
+    // Formula for relative luminance
+    return (0.299 * color.red + 0.587 * color.green + 0.114 * color.blue) / 255;
   }
 }

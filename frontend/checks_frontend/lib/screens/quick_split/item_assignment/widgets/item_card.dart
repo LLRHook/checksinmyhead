@@ -55,7 +55,7 @@ class _ItemCardState extends State<ItemCard>
   // For card highlight animation
   bool _showHighlight = false;
 
-  // Color constants
+  // Color constants - will be overridden with theme-aware colors
   static const Color slateGray = Color(0xFF64748B);
   static const Color lightSlateGray = Color(0xFF94A3B8);
   static const Color primaryBlue = Color(0xFF3B82F6);
@@ -268,30 +268,44 @@ class _ItemCardState extends State<ItemCard>
   // Show custom split dialog with selected people
   void _showCustomSplitWithSelectedPeople() {
     if (_selectedPeople.isEmpty) {
-      // Show a toast message if no people are selected
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.info_outline, color: Colors.white),
-              SizedBox(width: 8),
-              Text('Select at least one person first'),
-            ],
+      // Only check mounted status for showing the error SnackBar
+      if (mounted) {
+        final colorScheme = Theme.of(context).colorScheme;
+        final brightness = Theme.of(context).brightness;
+
+        final snackBarBgColor =
+            brightness == Brightness.dark
+                ? Colors.grey.shade800
+                : Colors.grey.shade700;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.info_outline, color: Colors.white),
+                const SizedBox(width: 8),
+                const Text('Select at least one person first'),
+              ],
+            ),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: snackBarBgColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: const EdgeInsets.all(12),
+            duration: const Duration(seconds: 2),
           ),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.grey.shade700,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          margin: EdgeInsets.all(12),
-          duration: Duration(seconds: 2),
-        ),
-      );
+        );
+      }
       return;
     }
 
     // Convert selected people to a list
     final selectedPeopleList = _selectedPeople.toList();
+
+    // Store these variables locally before changing state
+    final item = widget.item;
+    final onShowCustomSplit = widget.onShowCustomSplit;
 
     // Close the expanded view and exit multi-select mode
     setState(() {
@@ -302,7 +316,8 @@ class _ItemCardState extends State<ItemCard>
     });
 
     // Call the callback to show the custom split dialog
-    widget.onShowCustomSplit(widget.item, selectedPeopleList);
+    // Using the stored variables to ensure they're not accessed after state change
+    onShowCustomSplit(item, selectedPeopleList);
 
     // Clear saved assignments since we've applied them
     _savedAssignmentsBeforeMultiSelect = null;
@@ -317,7 +332,18 @@ class _ItemCardState extends State<ItemCard>
 
   // Show success toast
   void _showSuccessToast(String message) {
+    // Check if the widget is still mounted before showing the toast
+    if (!mounted) return;
+
     final scaffold = ScaffoldMessenger.of(context);
+    final brightness = Theme.of(context).brightness;
+
+    // Theme-aware success color
+    final successToastColor =
+        brightness == Brightness.dark
+            ? const Color(0xFF34D399) // Lighter green for dark mode
+            : const Color(0xFF10B981); // Original green
+
     scaffold.hideCurrentSnackBar();
 
     scaffold.showSnackBar(
@@ -339,7 +365,7 @@ class _ItemCardState extends State<ItemCard>
             ),
           ],
         ),
-        backgroundColor: successGreen,
+        backgroundColor: successToastColor,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(12),
@@ -348,43 +374,184 @@ class _ItemCardState extends State<ItemCard>
     );
   }
 
+  // Get dominant color with enhanced handling for dark mode
+  Color getDominantColorForTheme(
+    List<Person> assignedPeople,
+    Brightness brightness,
+  ) {
+    Color baseColor = ColorUtils.getDominantColor(assignedPeople);
+
+    // If we're in dark mode, significantly lighten the color (especially for purple)
+    if (brightness == Brightness.dark) {
+      // Special handling for purple hues which are particularly hard to see
+      // Check if it's a purple or blue-purple color
+      bool isPurplish = ColorUtils.isPurplish(baseColor);
+
+      // Apply extra lightening for purplish colors in dark mode
+      if (isPurplish) {
+        return ColorUtils.getLightenedColor(
+          baseColor,
+          0.5,
+        ); // 50% lighter for purple
+      } else {
+        return ColorUtils.getLightenedColor(
+          baseColor,
+          0.3,
+        ); // 30% lighter for other colors
+      }
+    }
+
+    return baseColor; // For light mode, use original color
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Get the dominant color for the card
-    Color dominantColor = ColorUtils.getDominantColor(widget.assignedPeople);
+    // Get theme info
+    final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    // Theme-aware color variables
+    final Color themeSlateGray =
+        brightness == Brightness.dark
+            ? Color(0xFFA1A1AA) // Lighter slate for dark mode
+            : slateGray;
+
+    final Color themeLightSlateGray =
+        brightness == Brightness.dark
+            ? Color(0xFFD4D4D8) // Lighter gray for dark mode
+            : lightSlateGray;
+
+    final Color themePrimaryBlue =
+        brightness == Brightness.dark
+            ? Color(0xFF60A5FA) // Lighter blue for dark mode
+            : primaryBlue;
+
+    final Color themeSuccessGreen =
+        brightness == Brightness.dark
+            ? Color(0xFF34D399) // Lighter green for dark mode
+            : successGreen;
+
+    final Color themeWarningOrange =
+        brightness == Brightness.dark
+            ? Color(0xFFFCD34D) // Lighter orange for dark mode
+            : warningOrange;
+
+    // Get the dominant color for the card with enhanced dark mode handling
+    Color dominantColor = getDominantColorForTheme(
+      widget.assignedPeople,
+      brightness,
+    );
     bool isAssigned = widget.assignedPercentage > 0;
     bool isFullyAssigned = widget.assignedPercentage >= 99.5;
+
+    // Background color for card - enhanced for dark mode
+    final containerBgColor =
+        brightness == Brightness.dark
+            ? (isAssigned
+                ? ColorUtils.getDarkenedColor(dominantColor, 0.5).withOpacity(
+                  0.4,
+                ) // Less darkening, more opacity
+                : colorScheme.surfaceContainerHighest)
+            : (isAssigned
+                ? ColorUtils.getLightenedColor(dominantColor, 0.92)
+                : Colors.white);
+
+    // Border color for card - more visible in dark mode
+    final containerBorderColor =
+        brightness == Brightness.dark
+            ? (isAssigned
+                ? dominantColor.withOpacity(
+                  0.6,
+                ) // Increase opacity for better visibility
+                : colorScheme.outline.withOpacity(0.3))
+            : (isAssigned
+                ? ColorUtils.getLightenedColor(dominantColor, 0.7)
+                : Colors.grey.shade200);
+
+    // Shadow color
+    final shadowColor =
+        brightness == Brightness.dark
+            ? (isAssigned
+                ? dominantColor.withOpacity(0.2)
+                : Colors.black.withOpacity(0.1))
+            : (isAssigned
+                ? dominantColor.withOpacity(0.1)
+                : Colors.black.withOpacity(0.03));
+
+    // Highlight shadow color - enhanced for dark mode
+    final highlightShadowColor =
+        brightness == Brightness.dark
+            ? dominantColor.withOpacity(0.7) // Stronger highlight in dark mode
+            : dominantColor.withOpacity(0.3);
+
+    // Icon background color - brighter in dark mode
+    final iconBgColor =
+        brightness == Brightness.dark
+            ? (isAssigned
+                ? ColorUtils.getLightenedColor(dominantColor, 0.2).withOpacity(
+                  0.4,
+                ) // Much brighter
+                : colorScheme.surfaceContainerHighest)
+            : (isAssigned
+                ? ColorUtils.getLightenedColor(dominantColor, 0.85)
+                : Colors.grey.shade100);
+
+    // Title and price text colors - enhanced for readability
+    final titleColor =
+        brightness == Brightness.dark
+            ? (isAssigned
+                ? ColorUtils.getLightenedColor(
+                  dominantColor,
+                  0.4,
+                ) // Much brighter text
+                : colorScheme.onSurface)
+            : (isAssigned ? dominantColor : themeSlateGray);
+
+    final priceColor =
+        brightness == Brightness.dark
+            ? (isAssigned
+                ? ColorUtils.getLightenedColor(
+                  dominantColor,
+                  0.2,
+                ).withOpacity(0.9)
+                : colorScheme.onSurface.withOpacity(0.7))
+            : (isAssigned
+                ? dominantColor.withOpacity(0.8)
+                : themeLightSlateGray);
+
+    // Divider color
+    final dividerColor =
+        brightness == Brightness.dark
+            ? (isAssigned
+                ? dominantColor.withOpacity(
+                  0.3,
+                ) // Brighter divider in dark mode
+                : colorScheme.outline.withOpacity(0.2))
+            : (isAssigned
+                ? ColorUtils.getLightenedColor(dominantColor, 0.85)
+                : Colors.grey.shade200);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color:
-            isAssigned
-                ? ColorUtils.getLightenedColor(dominantColor, 0.92)
-                : Colors.white,
+        color: containerBgColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color:
-              isAssigned
-                  ? ColorUtils.getLightenedColor(dominantColor, 0.7)
-                  : Colors.grey.shade200,
+          color: containerBorderColor,
           width: isAssigned ? 1.5 : 1,
         ),
         boxShadow: [
           BoxShadow(
-            color:
-                isAssigned
-                    ? dominantColor.withOpacity(0.1)
-                    : Colors.black.withOpacity(0.03),
+            color: shadowColor,
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
           // Extra glow effect when item is newly assigned
           if (_showHighlight)
             BoxShadow(
-              color: dominantColor.withOpacity(0.3),
+              color: highlightShadowColor,
               blurRadius: 12,
               spreadRadius: 2,
               offset: const Offset(0, 0),
@@ -412,13 +579,7 @@ class _ItemCardState extends State<ItemCard>
                         duration: const Duration(milliseconds: 300),
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color:
-                              isAssigned
-                                  ? ColorUtils.getLightenedColor(
-                                    dominantColor,
-                                    0.85,
-                                  )
-                                  : Colors.grey.shade100,
+                          color: iconBgColor,
                           borderRadius: BorderRadius.circular(12),
                           boxShadow:
                               _showHighlight
@@ -433,7 +594,7 @@ class _ItemCardState extends State<ItemCard>
                         ),
                         child: Icon(
                           widget.universalItemIcon,
-                          color: isAssigned ? dominantColor : slateGray,
+                          color: isAssigned ? dominantColor : themeSlateGray,
                           size: 22,
                         ),
                       ),
@@ -447,9 +608,15 @@ class _ItemCardState extends State<ItemCard>
                             width: 12,
                             height: 12,
                             decoration: BoxDecoration(
-                              color: successGreen,
+                              color: themeSuccessGreen,
                               shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
+                              border: Border.all(
+                                color:
+                                    brightness == Brightness.dark
+                                        ? colorScheme.surface
+                                        : Colors.white,
+                                width: 2,
+                              ),
                             ),
                           ),
                         ),
@@ -468,19 +635,13 @@ class _ItemCardState extends State<ItemCard>
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 16,
-                            color: isAssigned ? dominantColor : slateGray,
+                            color: titleColor,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           '\$${widget.item.price.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color:
-                                isAssigned
-                                    ? dominantColor.withOpacity(0.8)
-                                    : lightSlateGray,
-                          ),
+                          style: TextStyle(fontSize: 14, color: priceColor),
                         ),
                       ],
                     ),
@@ -495,6 +656,10 @@ class _ItemCardState extends State<ItemCard>
                         isAssigned,
                         isFullyAssigned,
                         dominantColor,
+                        themePrimaryBlue,
+                        themeSuccessGreen,
+                        themeWarningOrange,
+                        brightness,
                       ),
 
                       const SizedBox(height: 4),
@@ -507,7 +672,10 @@ class _ItemCardState extends State<ItemCard>
                           turns: _rotateAnimation,
                           child: Icon(
                             Icons.keyboard_arrow_down,
-                            color: isAssigned ? dominantColor : lightSlateGray,
+                            color:
+                                isAssigned
+                                    ? dominantColor
+                                    : themeLightSlateGray,
                             size: 24,
                           ),
                         ),
@@ -526,14 +694,7 @@ class _ItemCardState extends State<ItemCard>
               child: Column(
                 children: [
                   // Divider
-                  Divider(
-                    height: 1,
-                    thickness: 1,
-                    color:
-                        isAssigned
-                            ? ColorUtils.getLightenedColor(dominantColor, 0.85)
-                            : Colors.grey.shade200,
-                  ),
+                  Divider(height: 1, thickness: 1, color: dividerColor),
 
                   // Participant selector with action buttons
                   Padding(
@@ -555,7 +716,7 @@ class _ItemCardState extends State<ItemCard>
                         const SizedBox(height: 16),
 
                         // Action buttons
-                        _buildActionButtons(dominantColor),
+                        _buildActionButtons(dominantColor, brightness),
                       ],
                     ),
                   ),
@@ -573,20 +734,40 @@ class _ItemCardState extends State<ItemCard>
     bool isAssigned,
     bool isFullyAssigned,
     Color dominantColor,
+    Color themePrimaryBlue,
+    Color themeSuccessGreen,
+    Color themeWarningOrange,
+    Brightness brightness,
   ) {
+    // Theme-aware colors for status tags
+    final unassignedBgColor =
+        brightness == Brightness.dark
+            ? themeWarningOrange.withOpacity(0.2)
+            : themeWarningOrange.withOpacity(0.15);
+
+    final fullyAssignedBgColor =
+        brightness == Brightness.dark
+            ? themeSuccessGreen.withOpacity(0.2)
+            : themeSuccessGreen.withOpacity(0.15);
+
+    final partiallyAssignedBgColor =
+        brightness == Brightness.dark
+            ? themePrimaryBlue.withOpacity(0.2)
+            : themePrimaryBlue.withOpacity(0.15);
+
     if (!isAssigned) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: warningOrange.withOpacity(0.15),
+          color: unassignedBgColor,
           borderRadius: BorderRadius.circular(8),
         ),
-        child: const Text(
+        child: Text(
           'Unassigned',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: warningOrange,
+            color: themeWarningOrange,
           ),
         ),
       );
@@ -594,15 +775,15 @@ class _ItemCardState extends State<ItemCard>
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: successGreen.withOpacity(0.15),
+          color: fullyAssignedBgColor,
           borderRadius: BorderRadius.circular(8),
         ),
-        child: const Text(
+        child: Text(
           'Assigned',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: successGreen,
+            color: themeSuccessGreen,
           ),
         ),
       );
@@ -610,15 +791,15 @@ class _ItemCardState extends State<ItemCard>
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: primaryBlue.withOpacity(0.15),
+          color: partiallyAssignedBgColor,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
           '${widget.assignedPercentage.toStringAsFixed(0)}%',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: primaryBlue,
+            color: themePrimaryBlue,
           ),
         ),
       );
@@ -642,6 +823,23 @@ class _ItemCardState extends State<ItemCard>
                 10.0 // 4 avatars at 12px spacing plus some buffer
             : displayPeople.length * 12.0 + 10.0;
 
+    // Theme-aware colors
+    final brightness = Theme.of(context).brightness;
+    final borderColor =
+        brightness == Brightness.dark
+            ? Theme.of(context).colorScheme.surface
+            : Colors.white;
+
+    final shadowColor =
+        brightness == Brightness.dark
+            ? Colors.black.withOpacity(0.2)
+            : Colors.black.withOpacity(0.1);
+
+    final moreAvatarBgColor =
+        brightness == Brightness.dark
+            ? const Color(0xFF7F9DBA) // Lighter slate in dark mode
+            : const Color(0xFF627D98);
+
     return SizedBox(
       height: 24,
       width: containerWidth, // Fixed width
@@ -654,10 +852,10 @@ class _ItemCardState extends State<ItemCard>
               child: Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 1.5),
+                  border: Border.all(color: borderColor, width: 1.5),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: shadowColor,
                       blurRadius: 2,
                       offset: const Offset(0, 1),
                     ),
@@ -686,10 +884,10 @@ class _ItemCardState extends State<ItemCard>
               child: Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 1.5),
+                  border: Border.all(color: borderColor, width: 1.5),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: shadowColor,
                       blurRadius: 2,
                       offset: const Offset(0, 1),
                     ),
@@ -697,7 +895,7 @@ class _ItemCardState extends State<ItemCard>
                 ),
                 child: CircleAvatar(
                   radius: 10,
-                  backgroundColor: const Color(0xFF627D98),
+                  backgroundColor: moreAvatarBgColor,
                   child: Text(
                     '+${widget.assignedPeople.length - 3}',
                     style: const TextStyle(
@@ -715,7 +913,77 @@ class _ItemCardState extends State<ItemCard>
   }
 
   // Action buttons with Multi-Split logic
-  Widget _buildActionButtons(Color dominantColor) {
+  Widget _buildActionButtons(Color dominantColor, Brightness brightness) {
+    // Theme-aware button colors
+    final indigoGradient =
+        brightness == Brightness.dark
+            ? [
+              const Color(0xFF818CF8), // Lighter indigo for dark mode
+              const Color(0xFF6366F1),
+            ]
+            : [
+              const Color(0xFF6366F1), // Normal indigo for light mode
+              const Color(0xFF4F46E5),
+            ];
+
+    final greenGradient =
+        brightness == Brightness.dark
+            ? [
+              const Color(0xFF34D399), // Lighter green for dark mode
+              const Color(0xFF10B981),
+            ]
+            : [
+              const Color(0xFF10B981), // Normal green for light mode
+              const Color(0xFF059669),
+            ];
+
+    final slateGradient =
+        brightness == Brightness.dark
+            ? [
+              const Color(0xFF94A3B8), // Lighter slate for dark mode
+              const Color(0xFF64748B),
+            ]
+            : [
+              const Color(0xFF64748B), // Normal slate for light mode
+              const Color(0xFF475569),
+            ];
+
+    // For dominant color gradient, apply extra lightening in dark mode
+    Color gradientStart, gradientEnd;
+    if (brightness == Brightness.dark) {
+      bool isPurplish = ColorUtils.isPurplish(dominantColor);
+      double lightenFactor = isPurplish ? 0.5 : 0.3;
+
+      gradientStart = ColorUtils.getLightenedColor(
+        dominantColor,
+        lightenFactor,
+      );
+      gradientEnd = dominantColor;
+    } else {
+      gradientStart = ColorUtils.getDarkenedColor(dominantColor, 0.1);
+      gradientEnd = ColorUtils.getDarkenedColor(dominantColor, 0.3);
+    }
+
+    final dominantGradient = [gradientStart, gradientEnd];
+
+    final cancelButtonBgColor =
+        brightness == Brightness.dark
+            ? Colors.grey.shade800
+            : Colors.grey.shade200;
+
+    final cancelButtonTextColor =
+        brightness == Brightness.dark
+            ? Colors.grey.shade300
+            : Colors.grey.shade700;
+
+    // Button text color - for dark mode, use darker text on bright backgrounds for better contrast
+    final buttonTextColor =
+        brightness == Brightness.dark
+            ? Colors.black.withOpacity(
+              0.9,
+            ) // Dark text for better contrast in dark mode
+            : Colors.white;
+
     return Column(
       children: [
         // Main action buttons row
@@ -727,13 +995,11 @@ class _ItemCardState extends State<ItemCard>
                 label: 'Split Evenly',
                 icon: Icons.people_alt_outlined,
                 gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF6366F1), // Indigo
-                    const Color(0xFF4F46E5),
-                  ],
+                  colors: indigoGradient,
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
+                textColor: buttonTextColor,
                 onTap: _splitEvenlyAll,
               ),
             ),
@@ -748,36 +1014,25 @@ class _ItemCardState extends State<ItemCard>
                         label: 'Split It!',
                         icon: Icons.flash_on,
                         gradient: LinearGradient(
-                          colors: [
-                            const Color(0xFF10B981), // Success green
-                            const Color(0xFF059669), // Darker green
-                          ],
+                          colors: greenGradient,
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
+                        textColor: buttonTextColor,
                         onTap: _showCustomSplitWithSelectedPeople,
                       )
                       : _buildModernButton(
                         label: 'Multi-Split',
                         icon: Icons.groups_outlined,
                         gradient: LinearGradient(
-                          colors: [
-                            widget.assignedPeople.isNotEmpty
-                                ? ColorUtils.getDarkenedColor(
-                                  dominantColor,
-                                  0.1,
-                                )
-                                : const Color(0xFF64748B),
-                            widget.assignedPeople.isNotEmpty
-                                ? ColorUtils.getDarkenedColor(
-                                  dominantColor,
-                                  0.3,
-                                )
-                                : const Color(0xFF475569),
-                          ],
+                          colors:
+                              widget.assignedPeople.isNotEmpty
+                                  ? dominantGradient
+                                  : slateGradient,
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
+                        textColor: buttonTextColor,
                         onTap: _enterMultiSelectMode,
                       ),
             ),
@@ -805,7 +1060,7 @@ class _ItemCardState extends State<ItemCard>
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.grey.shade200,
+                color: cancelButtonBgColor,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
@@ -813,7 +1068,7 @@ class _ItemCardState extends State<ItemCard>
                   _multiSelectMode ? 'Cancel' : 'Done',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade700,
+                    color: cancelButtonTextColor,
                     fontSize: 14,
                   ),
                 ),
@@ -831,6 +1086,7 @@ class _ItemCardState extends State<ItemCard>
     required IconData icon,
     required Gradient gradient,
     required VoidCallback onTap,
+    required Color textColor,
   }) {
     return GestureDetector(
       onTap: () {
@@ -854,15 +1110,15 @@ class _ItemCardState extends State<ItemCard>
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: Colors.white, size: 18),
+            Icon(icon, color: textColor, size: 18),
             const SizedBox(width: 8),
             Flexible(
               child: Text(
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: textColor,
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
                 ),

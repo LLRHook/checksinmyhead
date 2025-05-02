@@ -1,3 +1,4 @@
+import 'package:checks_frontend/screens/quick_split/bill_summary/models/bill_summary_data.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
@@ -159,4 +160,225 @@ class ShareUtils {
     // Provide haptic feedback
     HapticFeedback.selectionClick();
   }
+}
+
+class ShareOptionsSheet extends StatefulWidget {
+  final ShareOptions initialOptions;
+  final Function(ShareOptions) onOptionsChanged;
+  final VoidCallback onShareTap;
+
+  const ShareOptionsSheet({
+    Key? key,
+    required this.initialOptions,
+    required this.onOptionsChanged,
+    required this.onShareTap,
+  }) : super(key: key);
+
+  static Future<void> show({
+    required BuildContext context,
+    required ShareOptions initialOptions,
+    required Function(ShareOptions) onOptionsChanged,
+    required VoidCallback onShareTap,
+  }) {
+    return showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder:
+          (context) => ShareOptionsSheet(
+            initialOptions: initialOptions,
+            onOptionsChanged: onOptionsChanged,
+            onShareTap: onShareTap,
+          ),
+    );
+  }
+
+  @override
+  State<ShareOptionsSheet> createState() => _ShareOptionsSheetState();
+}
+
+class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
+  late ShareOptions _options;
+
+  @override
+  void initState() {
+    super.initState();
+    // Create a copy of the initial options
+    _options = ShareOptions(
+      includeItemsInShare: widget.initialOptions.includeItemsInShare,
+      includePersonItemsInShare:
+          widget.initialOptions.includePersonItemsInShare,
+      hideBreakdownInShare: widget.initialOptions.hideBreakdownInShare,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    // Theme-aware colors
+    final sheetBgColor =
+        brightness == Brightness.dark ? colorScheme.surface : Colors.white;
+
+    final handleColor =
+        brightness == Brightness.dark
+            ? Colors.grey.shade600
+            : Colors.grey.shade300;
+
+    final containerBgColor =
+        brightness == Brightness.dark
+            ? colorScheme.surfaceContainerHighest
+            : Colors.grey.shade50;
+
+    final dividerColor =
+        brightness == Brightness.dark
+            ? Colors.grey.shade800
+            : Colors.grey.shade200;
+
+    final titleColor = colorScheme.onSurface;
+
+    // Button text color - for dark mode, use darker text on bright backgrounds for contrast
+    final buttonTextColor =
+        brightness == Brightness.dark
+            ? Colors.black.withOpacity(0.9) // Dark text for better contrast
+            : Colors.white;
+
+    return Container(
+      color: sheetBgColor,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Sheet handle for better UX
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: handleColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+
+              Center(
+                child: Text(
+                  'Share Options',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: titleColor,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Container for all toggles with a subtle background
+              Container(
+                decoration: BoxDecoration(
+                  color: containerBgColor,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  children: [
+                    // First toggle - Include all items
+                    SwitchListTile(
+                      title: Text(
+                        'Include all items',
+                        style: TextStyle(color: colorScheme.onSurface),
+                      ),
+                      value: _options.includeItemsInShare,
+                      activeColor: colorScheme.primary,
+                      onChanged: (value) {
+                        setState(() {
+                          _options.includeItemsInShare = value;
+                        });
+                        widget.onOptionsChanged(_options);
+                      },
+                    ),
+
+                    Divider(height: 1, thickness: 1, color: dividerColor),
+
+                    // Second toggle - Show each person's items
+                    SwitchListTile(
+                      title: Text(
+                        'Show each person\'s items',
+                        style: TextStyle(color: colorScheme.onSurface),
+                      ),
+                      value: _options.includePersonItemsInShare,
+                      activeColor: colorScheme.primary,
+                      onChanged: (value) {
+                        setState(() {
+                          _options.includePersonItemsInShare = value;
+                        });
+                        widget.onOptionsChanged(_options);
+                      },
+                    ),
+
+                    Divider(height: 1, thickness: 1, color: dividerColor),
+
+                    // Third toggle - Hide breakdown section
+                    SwitchListTile(
+                      title: Text(
+                        'Hide cost breakdown',
+                        style: TextStyle(color: colorScheme.onSurface),
+                      ),
+                      value: _options.hideBreakdownInShare,
+                      activeColor: colorScheme.primary,
+                      onChanged: (value) {
+                        setState(() {
+                          _options.hideBreakdownInShare = value;
+                        });
+                        widget.onOptionsChanged(_options);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Share button
+              FilledButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  widget.onShareTap();
+                },
+                icon: const Icon(Icons.ios_share, size: 20),
+                label: const Text('Share Bill Summary'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: colorScheme.primary,
+                  foregroundColor: buttonTextColor,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ShareOptions {
+  bool includeItemsInShare;
+  bool includePersonItemsInShare;
+  bool hideBreakdownInShare;
+
+  ShareOptions({
+    this.includeItemsInShare = true,
+    this.includePersonItemsInShare = false,
+    this.hideBreakdownInShare = false,
+  });
 }

@@ -15,18 +15,28 @@ class AssignmentAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    // Theme-aware colors
+    final backgroundColor = colorScheme.surface;
+    final iconColor = colorScheme.onSurface;
 
     return AppBar(
-      title: const Text(
+      title: Text(
         'Assign Items',
-        style: TextStyle(fontWeight: FontWeight.bold),
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          color: colorScheme.onSurface, // Theme-aware text color
+        ),
       ),
       centerTitle: true,
       elevation: 0,
-      backgroundColor: colorScheme.surface,
+      backgroundColor: backgroundColor,
+      foregroundColor: iconColor, // Theme-aware icons and text
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_ios_new),
         onPressed: onBackPressed,
+        color: iconColor, // Ensure icon respects theme
       ),
       actions: [
         if (showHelpButton && onHelpPressed != null)
@@ -34,6 +44,7 @@ class AssignmentAppBar extends StatelessWidget implements PreferredSizeWidget {
             icon: const Icon(Icons.help_outline),
             onPressed: onHelpPressed,
             tooltip: 'Show Tutorial',
+            color: colorScheme.primary, // Use primary color for help icon
           ),
       ],
     );
