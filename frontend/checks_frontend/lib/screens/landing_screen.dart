@@ -1,4 +1,5 @@
 import 'package:checks_frontend/screens/recent_bills/recent_bills_screen.dart';
+import 'package:checks_frontend/screens/settings/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'quick_split/add_people/participant_selection_sheet.dart';
 
@@ -52,6 +53,14 @@ class _LandingScreenState extends State<LandingScreen>
     );
   }
 
+  // Navigate to Settings screen
+  void _navigateToSettings() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const SettingsScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -59,13 +68,30 @@ class _LandingScreenState extends State<LandingScreen>
 
     return Scaffold(
       backgroundColor: colorScheme.primary,
+      // Add AppBar with settings icon
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        actions: [
+          // Settings cog button
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: IconButton(
+              icon: const Icon(Icons.settings, color: Colors.white, size: 26),
+              onPressed: _navigateToSettings,
+              tooltip: 'Settings',
+            ),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             children: [
-              // Empty space at top
-              SizedBox(height: size.height * 0.15),
+              // Reduced space at top since we now have an app bar
+              SizedBox(height: size.height * 0.08),
 
               // Action buttons take center stage
               Expanded(

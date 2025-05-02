@@ -76,12 +76,12 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
     );
   }
 
-  void _shareBillSummary() {
+  Future<void> _shareBillSummary() async {
     // Use the BillCalculations utility to prepare data
     final billCalculations = BillCalculations(widget.bill);
 
     // Convert the saved bill data back to the format needed for sharing
-    final String summary = ShareUtils.generateShareText(
+    final String summary = await ShareUtils.generateShareText(
       participants:
           widget.bill.participantNames
               .map((name) => Person(name: name, color: widget.bill.color))

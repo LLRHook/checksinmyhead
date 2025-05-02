@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -10,23 +12,14 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fadeInAnimation;
-  late Animation<double> _scaleAnimation;
-
-  // Additional animations for the exit transition
-  late Animation<double> _fadeOutAnimation;
-  late Animation<Offset> _slideOutAnimation;
-
-  bool _startExitAnimation = false;
-
+  // In _SplashScreenState class
   @override
   void initState() {
     super.initState();
 
-    // Create animation controller with even shorter duration (25% shorter again)
+    // Create animation controller with shorter duration
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 1300), // Reduced from 1500
+      duration: const Duration(milliseconds: 1300),
       vsync: this,
     );
 
@@ -55,7 +48,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     _slideOutAnimation = Tween<Offset>(
       begin: Offset.zero,
-      end: const Offset(0, -1.0), // Slide up and off screen
+      end: const Offset(0, -1.0),
     ).animate(
       CurvedAnimation(
         parent: _controller,
@@ -66,21 +59,42 @@ class _SplashScreenState extends State<SplashScreen>
     // Start entrance animation
     _controller.forward(from: 0.0);
 
+    // Check if it's the first launch
+    _checkFirstLaunch();
+  }
+
+  // Add this method to check first launch
+  Future<void> _checkFirstLaunch() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isFirstLaunch = prefs.getBool('is_first_launch') ?? true;
+
     // Wait before starting exit animation - shorter duration
     Timer(const Duration(milliseconds: 900), () {
-      // Reduced from 1100
       setState(() {
         _startExitAnimation = true;
       });
 
       // Continue animation to include exit sequence - shorter duration
       Timer(const Duration(milliseconds: 400), () {
-        // Reduced from 500
-        // Navigate to landing screen
-        Navigator.of(context).pushReplacementNamed('/landing');
+        // Navigate to landing screen or settings based on first launch
+        if (isFirstLaunch) {
+          Navigator.of(context).pushReplacementNamed('/settings');
+        } else {
+          Navigator.of(context).pushReplacementNamed('/landing');
+        }
       });
     });
   }
+
+  late AnimationController _controller;
+  late Animation<double> _fadeInAnimation;
+  late Animation<double> _scaleAnimation;
+
+  // Additional animations for the exit transition
+  late Animation<double> _fadeOutAnimation;
+  late Animation<Offset> _slideOutAnimation;
+
+  bool _startExitAnimation = false;
 
   @override
   void dispose() {

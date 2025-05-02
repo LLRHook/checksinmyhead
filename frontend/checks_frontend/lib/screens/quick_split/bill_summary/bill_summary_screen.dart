@@ -81,9 +81,9 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
     });
   }
 
-  void _shareBillSummary() {
-    // Generate formatted bill summary text
-    final String summary = ShareUtils.generateShareText(
+  void _shareBillSummary() async {
+    // Generate formatted bill summary text (now using await)
+    final String summary = await ShareUtils.generateShareText(
       participants: widget.participants,
       personShares: widget.personShares,
       items: widget.items,
