@@ -237,6 +237,7 @@ class AppDatabase extends _$AppDatabase {
 
   // Save a bill to recent bills
   // Update this method in your database_provider.dart or database.dart file
+  // In database.dart, update the saveBill method:
   Future<void> saveBill({
     required List<Person> participants,
     required Map<Person, double> personShares,
@@ -246,7 +247,8 @@ class AppDatabase extends _$AppDatabase {
     required double tipAmount,
     required double total,
     Person? birthdayPerson,
-    double tipPercentage = 0, // New parameter
+    double tipPercentage = 0,
+    bool isCustomTipAmount = false, // Add this parameter
   }) async {
     // Convert participants to a JSON-friendly format
     final participantNames = participants.map((p) => p.name).toList();

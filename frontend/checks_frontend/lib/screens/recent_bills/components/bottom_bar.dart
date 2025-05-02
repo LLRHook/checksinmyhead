@@ -13,7 +13,7 @@ class BottomBar extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
