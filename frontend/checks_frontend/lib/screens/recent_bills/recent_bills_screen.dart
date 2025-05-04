@@ -1,9 +1,11 @@
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
+import 'package:checks_frontend/screens/recent_bills/components/loading_dots.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'components/empty_bills_state.dart';
+import 'components/loading_bills_state.dart';
 import 'components/recent_bill_card.dart';
 
 class RecentBillsScreen extends StatefulWidget {
@@ -20,6 +22,9 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
 
   // Add animation controller for refresh button
   late AnimationController _refreshAnimationController;
+
+  // Track if refresh button was clicked
+  bool _isRefreshButtonClicked = false;
 
   @override
   void initState() {
@@ -51,17 +56,31 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
 
       final bills = await RecentBillsManager.getRecentBills();
 
+      // Add a small delay to make the loading state visible
+      await Future.delayed(const Duration(milliseconds: 800));
+
       if (mounted) {
         setState(() {
           _bills = bills;
           _isLoading = false;
+          _isRefreshButtonClicked = false; // Reset refresh button state
         });
+
+        // Stop the refresh animation when loading is complete
+        _refreshAnimationController.stop();
+        _refreshAnimationController.reset();
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _isRefreshButtonClicked = false; // Reset refresh button state
         });
+
+        // Stop the refresh animation if there's an error
+        _refreshAnimationController.stop();
+        _refreshAnimationController.reset();
+
         _showErrorSnackBar('Failed to load recent bills');
       }
     }
@@ -115,9 +134,6 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
 
     final titleColor = colorScheme.onSurface;
 
-    // Loading screen colors
-    final loadingTextColor = colorScheme.onSurface;
-
     // Header colors
     final headerTextColor = Colors.white;
     final headerSecondaryTextColor = Colors.white.withOpacity(0.9);
@@ -147,21 +163,33 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
             icon: AnimatedBuilder(
               animation: _refreshAnimationController,
               builder: (context, child) {
-                return Transform.rotate(
-                  angle:
-                      _refreshAnimationController.value *
-                      2.0 *
-                      3.14159, // Full 360-degree rotation
-                  child: const Icon(Icons.refresh_outlined),
-                );
+                // Only show rotation animation if refresh button was clicked
+                if (_isRefreshButtonClicked) {
+                  return Transform.rotate(
+                    angle: _refreshAnimationController.value * 2.0 * 3.14159,
+                    child: const Icon(Icons.refresh_outlined),
+                  );
+                } else {
+                  return const Icon(Icons.refresh_outlined);
+                }
               },
             ),
             onPressed: () {
-              HapticFeedback.selectionClick();
-              // Start animation
-              _refreshAnimationController.reset();
-              _refreshAnimationController.forward();
-              _loadBills();
+              if (!_isRefreshButtonClicked && !_isLoading) {
+                HapticFeedback.selectionClick();
+
+                // Set flag to show animation
+                setState(() {
+                  _isRefreshButtonClicked = true;
+                });
+
+                // Start rotation animation
+                _refreshAnimationController.reset();
+                _refreshAnimationController.repeat();
+
+                // Load bills
+                _loadBills();
+              }
             },
             tooltip: 'Refresh bills',
           ),
@@ -170,54 +198,32 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
       body: RefreshIndicator(
         onRefresh: _loadBills,
         color: colorScheme.primary,
-        child:
-            _bills.isEmpty && !_isLoading
-                ? const EmptyBillsState()
-                : _buildBillsList(
-                  headerTextColor,
-                  headerSecondaryTextColor,
-                  headerIconBgColor,
-                  colorScheme,
-                ),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          children: [
+            // Always show the header regardless of bill count
+            _buildListHeader(
+              headerTextColor,
+              headerSecondaryTextColor,
+              headerIconBgColor,
+              colorScheme,
+            ),
+
+            // Content area - show loading state or content based on _isLoading
+            if (_isLoading)
+              const LoadingBillsState()
+            else if (_bills.isEmpty)
+              const EmptyBillsState()
+            else
+              _buildBillsList(),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildBillsList(
-    Color headerTextColor,
-    Color headerSecondaryTextColor,
-    Color headerIconBgColor,
-    ColorScheme colorScheme,
-  ) {
-    // Sort bills by date (newest first)
-    final sortedBills = List<RecentBillModel>.from(_bills)
-      ..sort((a, b) => b.date.compareTo(a.date));
-
-    return ListView.builder(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-      itemCount: sortedBills.length + 1, // +1 for the header
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          // Header showing total bill count
-          return _buildListHeader(
-            headerTextColor,
-            headerSecondaryTextColor,
-            headerIconBgColor,
-            colorScheme,
-          );
-        }
-
-        // Adjust index to account for the header
-        final billIndex = index - 1;
-        return RecentBillCard(
-          bill: sortedBills[billIndex],
-          onDeleted: _loadBills,
-        );
-      },
-    );
-  }
-
+  // Modified list header to show accurate bill count
   Widget _buildListHeader(
     Color headerTextColor,
     Color headerSecondaryTextColor,
@@ -253,21 +259,24 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
       ),
       child: Row(
         children: [
-          // Bill count
+          // Bill count with animated dots when loading
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: headerIconBgColor,
               shape: BoxShape.circle,
             ),
-            child: Text(
-              '${_bills.length}',
-              style: TextStyle(
-                color: headerTextColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
+            child:
+                _isLoading
+                    ? _buildAnimatedDots(headerTextColor)
+                    : Text(
+                      '${_bills.length}',
+                      style: TextStyle(
+                        color: headerTextColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
           ),
 
           const SizedBox(width: 12),
@@ -286,42 +295,90 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
                   ),
                 ),
                 const SizedBox(height: 4),
-Row(
-  crossAxisAlignment: CrossAxisAlignment.start,
-  children: [
-    Padding(
-      padding: const EdgeInsets.only(top: 2),
-      child: Icon(
-        Icons.info_outline,
-        color: headerSecondaryTextColor,
-        size: 16,
-      ),
-    ),
-    const SizedBox(width: 6),
-    Expanded(
-      child: Text.rich(
-        TextSpan(
-          style: TextStyle(
-            color: headerSecondaryTextColor,
-            fontSize: 12,
-            fontWeight: FontWeight.w300,
-            height: 1.3, // Add some line height for better readability
-          ),
-          children: const [
-            TextSpan(text: 'Only your 30 latest bills are kept. '),
-            TextSpan(text: '\n'), // Force line break here
-            TextSpan(text: 'New ones bump the oldest ones out!'),
-          ],
-        ),
-      ),
-    ),
-  ],
-)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Icon(
+                        Icons.info_outline,
+                        color: headerSecondaryTextColor,
+                        size: 16,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text.rich(
+                        TextSpan(
+                          style: TextStyle(
+                            color: headerSecondaryTextColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w300,
+                            height: 1.3,
+                          ),
+                          children: const [
+                            TextSpan(
+                              text: 'Only your 30 latest bills are kept. ',
+                            ),
+                            TextSpan(text: '\n'),
+                            TextSpan(
+                              text: 'New ones bump the oldest ones out!',
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
+
+          // Total amount (only show when not loading and bills exist)
+          if (!_isLoading && _bills.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                CurrencyFormatter.formatCurrency(totalSpent),
+                style: TextStyle(
+                  color: headerTextColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ),
         ],
       ),
+    );
+  }
+
+  // Create a new method for the animated dots
+  // Create a new method for the animated dots
+  // Create a new method for the animated dots
+  Widget _buildAnimatedDots(Color dotColor) {
+    return SizedBox(
+      width: 24,
+      height: 20,
+      child: Center(
+        child: LoadingDots(color: dotColor, size: 4.0, spacing: 3.0),
+      ),
+    );
+  }
+
+  Widget _buildBillsList() {
+    // Sort bills by date (newest first)
+    final sortedBills = List<RecentBillModel>.from(_bills)
+      ..sort((a, b) => b.date.compareTo(a.date));
+
+    return Column(
+      children:
+          sortedBills
+              .map((bill) => RecentBillCard(bill: bill, onDeleted: _loadBills))
+              .toList(),
     );
   }
 }

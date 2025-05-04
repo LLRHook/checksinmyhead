@@ -38,7 +38,6 @@ class RecentBillsManager {
         tax: tax,
         tipAmount: tipAmount,
         total: total,
-        birthdayPerson: birthdayPerson,
         tipPercentage: tipPercentage, // Pass the tipPercentage to the database
       );
     } catch (e) {

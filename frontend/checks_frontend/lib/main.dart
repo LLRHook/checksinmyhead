@@ -6,10 +6,8 @@ import 'config/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
-  // Ensure Flutter is initialized
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Check if this is the first launch
   final prefs = await SharedPreferences.getInstance();
   final bool isFirstLaunch = prefs.getBool('is_first_launch') ?? true;
 
@@ -33,7 +31,6 @@ class MyApp extends StatelessWidget {
       routes: {
         '/landing': (context) => const LandingScreen(),
         '/settings': (context) => SettingsScreen(isOnboarding: isFirstLaunch),
-        // Add more routes as needed
       },
     );
   }

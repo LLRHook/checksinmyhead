@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class EmptyBillsState extends StatelessWidget {
-  const EmptyBillsState({Key? key}) : super(key: key);
+  const EmptyBillsState({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -10,38 +10,32 @@ class EmptyBillsState extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final brightness = Theme.of(context).brightness;
 
-    // Theme-aware colors
-    final iconBgColor =
-        brightness == Brightness.dark
-            ? colorScheme.primary.withOpacity(
-              0.2,
-            ) // Slightly brighter in dark mode
-            : colorScheme.primary.withOpacity(0.1);
-
     final iconColor = colorScheme.primary;
 
     final titleColor = colorScheme.onSurface;
 
     final subtitleColor =
         brightness == Brightness.dark
-            ? colorScheme.onSurface.withOpacity(
-              0.8,
+            ? colorScheme.onSurface.withValues(
+              alpha: 0.8,
             ) // Slightly brighter for better readability
-            : colorScheme.onSurface.withOpacity(0.7);
+            : colorScheme.onSurface.withValues(alpha: 0.7);
 
     // Button text color - for dark mode, use darker text on bright backgrounds for contrast
     final buttonTextColor =
         brightness == Brightness.dark
-            ? Colors.black.withOpacity(
-              0.9,
+            ? Colors.black.withValues(
+              alpha: 0.9,
             ) // Dark text for better contrast in dark mode
             : Colors.white;
 
     // Button shadow color
     final buttonShadowColor =
         brightness == Brightness.dark
-            ? colorScheme.primary.withOpacity(0.6) // More visible in dark mode
-            : colorScheme.primary.withOpacity(0.4);
+            ? colorScheme.primary.withValues(
+              alpha: 0.6,
+            ) // More visible in dark mode
+            : colorScheme.primary.withValues(alpha: 0.4);
 
     return Center(
       child: Padding(
@@ -50,20 +44,16 @@ class EmptyBillsState extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Premium styled icon with subtle animation
-            Container(
+            SizedBox(
               width: 80,
               height: 80,
-              decoration: BoxDecoration(
-                color: iconBgColor,
-                shape: BoxShape.circle,
-              ),
               child: Icon(Icons.receipt_long, size: 40, color: iconColor),
             ),
 
             const SizedBox(height: 24),
 
             Text(
-              'No bills yet',
+              'No Bills Yet!',
               style: textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: titleColor,
@@ -73,7 +63,7 @@ class EmptyBillsState extends StatelessWidget {
             const SizedBox(height: 16),
 
             Text(
-              'Split bills with friends and track your expenses',
+              'Make your first bill to get started.',
               textAlign: TextAlign.center,
               style: textTheme.bodyLarge?.copyWith(color: subtitleColor),
             ),

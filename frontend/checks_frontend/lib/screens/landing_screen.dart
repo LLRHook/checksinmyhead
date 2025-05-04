@@ -106,7 +106,9 @@ class _LandingScreenState extends State<LandingScreen>
                         ElevatedButton(
                           onPressed: _showQuickSplitSheet,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white.withOpacity(0.15),
+                            backgroundColor: Colors.white.withValues(
+                              alpha: 0.15,
+                            ),
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 20),
                             shape: RoundedRectangleBorder(
@@ -160,7 +162,6 @@ class _LandingScreenState extends State<LandingScreen>
                 ),
               ),
 
-              // App logo and name at the bottom - NO HERO ANIMATION
               AnimatedBuilder(
                 animation: _animationController,
                 builder: (context, child) {

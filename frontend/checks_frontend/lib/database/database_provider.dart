@@ -1,21 +1,17 @@
-// lib/data/database_provider.dart
 import 'database.dart';
 
 class DatabaseProvider {
-  // Singleton instance
+  // Ensures single instance across the app
   static final DatabaseProvider _instance = DatabaseProvider._internal();
 
-  // Factory constructor
   factory DatabaseProvider() {
     return _instance;
   }
 
-  // Private constructor
   DatabaseProvider._internal();
 
-  // Single database instance
   final AppDatabase database = AppDatabase();
 
-  // Getter for easy access
+  // Global access point for database operations
   static AppDatabase get db => DatabaseProvider().database;
 }

@@ -1,19 +1,18 @@
-// lib/data/database.dart
 import 'dart:convert';
 import 'dart:io';
 import 'package:checks_frontend/models/bill_item.dart';
 import 'package:checks_frontend/screens/quick_split/bill_summary/utils/share_utils.dart';
-import 'package:drift/drift.dart'
-    hide Column; // Avoid Column conflict with Flutter
+import 'package:drift/drift.dart' hide Column;
 import 'package:drift/native.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
-import 'package:flutter/material.dart' hide Table; // Hide Table from Flutter
+import 'package:flutter/material.dart' hide Table;
 import '../models/person.dart';
 
-//generated with dart run build_runner build --delete-conflicting-outputs
+// Generated with dart run build_runner build --delete-conflicting-outputs
 part 'database.g.dart';
 
+// Database table for storing person information
 class People extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text()();
@@ -22,6 +21,7 @@ class People extends Table {
       dateTime().withDefault(Constant(DateTime.now()))();
 }
 
+// Database table for tracking tutorial completion status
 class TutorialStates extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get tutorialKey => text().unique()();
@@ -29,6 +29,7 @@ class TutorialStates extends Table {
   DateTimeColumn get lastShownDate => dateTime().nullable()();
 }
 
+// Database table for user preferences
 class UserPreferences extends Table {
   IntColumn get id => integer().autoIncrement()();
   BoolColumn get includeItemsInShare =>
@@ -41,25 +42,25 @@ class UserPreferences extends Table {
       dateTime().withDefault(Constant(DateTime.now()))();
 }
 
-// Add this class to your database.dart file
+// Database table for storing bill history
 class RecentBills extends Table {
   IntColumn get id => integer().autoIncrement()();
-  TextColumn get participants => text()(); // Stored as JSON array of names
+  TextColumn get participants => text()();
   IntColumn get participantCount => integer()();
   RealColumn get total => real()();
-  TextColumn get date => text()(); // ISO 8601 format
+  TextColumn get date => text()();
   RealColumn get subtotal => real()();
   RealColumn get tax => real()();
   RealColumn get tipAmount => real()();
-  RealColumn get tipPercentage =>
-      real().nullable()(); // New column for tip percentage
-  TextColumn get items => text().nullable()(); // Stored as JSON
+  RealColumn get tipPercentage => real().nullable()();
+  TextColumn get items => text().nullable()();
   IntColumn get colorValue =>
-      integer().withDefault(const Constant(0xFF2196F3))(); // Default to blue
+      integer().withDefault(const Constant(0xFF2196F3))();
   DateTimeColumn get createdAt =>
       dateTime().withDefault(Constant(DateTime.now()))();
 }
 
+// Main database class handling all database operations
 @DriftDatabase(tables: [People, TutorialStates, UserPreferences, RecentBills])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
@@ -67,31 +68,16 @@ class AppDatabase extends _$AppDatabase {
   @override
   int get schemaVersion => 1;
 
-  @override
-  MigrationStrategy get migration => MigrationStrategy(
-    onCreate: (migrator) async {
-      // Create all tables when database is first created
-      await migrator.createAll();
-
-      // Insert default preferences
-      await into(userPreferences).insert(
-        const UserPreferencesCompanion(
-          id: Value(1), // Single row with ID 1 for app preferences
-        ),
-      );
-    },
-  );
-
-  // Convert database entity to model
+  // Converts database person entry to Person model
   Person peopleDataToPerson(PeopleData entry) {
     return Person(
       name: entry.name,
       color: Color(entry.colorValue),
-      icon: Icons.person, // Default icon
+      icon: Icons.person,
     );
   }
 
-  // Get recent people
+  // Fetches recently used people
   Future<List<Person>> getRecentPeople({int limit = 12}) async {
     final query =
         select(people)
@@ -102,16 +88,14 @@ class AppDatabase extends _$AppDatabase {
     return results.map(peopleDataToPerson).toList();
   }
 
-  // Add person to recents
+  // Updates or adds a person to recent list
   Future<void> addPersonToRecent(Person person) async {
-    // Check if person already exists
     final query = select(people)
       ..where((p) => p.name.equals(person.name.toLowerCase()));
 
     final existing = await query.getSingleOrNull();
 
     if (existing != null) {
-      // Update last used timestamp
       await (update(people)..where((p) => p.id.equals(existing.id))).write(
         PeopleCompanion(
           colorValue: Value(person.color.value),
@@ -119,7 +103,6 @@ class AppDatabase extends _$AppDatabase {
         ),
       );
     } else {
-      // Add new person
       await into(people).insert(
         PeopleCompanion(
           name: Value(person.name),
@@ -130,14 +113,14 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
-  // Add multiple people to recents
+  // Batch adds multiple people to recents
   Future<void> addPeopleToRecent(List<Person> personList) async {
     for (final person in personList) {
       await addPersonToRecent(person);
     }
   }
 
-  // Tutorial methods
+  // Tutorial tracking methods
   Future<bool> hasTutorialBeenSeen(String tutorialKey) async {
     final query = select(tutorialStates)
       ..where((t) => t.tutorialKey.equals(tutorialKey));
@@ -192,19 +175,17 @@ class AppDatabase extends _$AppDatabase {
     return results.map((r) => r.tutorialKey).toList();
   }
 
-  // User Preferences methods
+  // User preferences management
   Future<ShareOptions> getShareOptions() async {
     final prefs =
         await (select(userPreferences)
           ..where((p) => p.id.equals(1))).getSingleOrNull();
 
     if (prefs == null) {
-      // If no preferences exist, insert default preferences
       await into(
         userPreferences,
       ).insert(const UserPreferencesCompanion(id: Value(1)));
 
-      // Return default values
       return ShareOptions();
     }
 
@@ -226,16 +207,10 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
-  // Clear all people (for testing)
-  Future<void> clearAllPeople() async {
-    await delete(people).go();
-  }
-
-  //-- RECENT BILL METHODS --//
-  // Maximum number of recent bills to store
+  // Recent bills management (max 30 bills stored)
   static const int maxRecentBills = 30;
 
-  // Save a bill to recent bills
+  // Stores a new bill in history
   Future<void> saveBill({
     required List<Person> participants,
     required Map<Person, double> personShares,
@@ -244,23 +219,17 @@ class AppDatabase extends _$AppDatabase {
     required double tax,
     required double tipAmount,
     required double total,
-    Person? birthdayPerson,
     double tipPercentage = 0,
     bool isCustomTipAmount = false,
   }) async {
-    // Convert participants to a JSON-friendly format
     final participantNames = participants.map((p) => p.name).toList();
     final participantsJson = jsonEncode(participantNames);
 
-    // Convert items to JSON with assignments
     String? itemsJson;
     if (items.isNotEmpty) {
       final itemsData =
           items.map((item) {
-            // Create a simplified map of assignments by person name
             Map<String, double> assignmentsByName = {};
-
-            // Convert Person keys to person names
             item.assignments.forEach((person, percentage) {
               assignmentsByName[person.name] = percentage;
             });
@@ -268,8 +237,7 @@ class AppDatabase extends _$AppDatabase {
             return {
               'name': item.name,
               'price': item.price,
-              'assignments':
-                  assignmentsByName, // Store assignments by person name
+              'assignments': assignmentsByName,
             };
           }).toList();
 
@@ -286,17 +254,14 @@ class AppDatabase extends _$AppDatabase {
       tipAmount: Value(tipAmount),
       tipPercentage: Value(tipPercentage),
       items: Value(itemsJson),
-      // Use the primary participant's color if available
       colorValue:
           participants.isNotEmpty
               ? Value(participants.first.color.value)
               : const Value.absent(),
     );
 
-    // First, check how many recent bills we have
     final count = await select(recentBills).get().then((bills) => bills.length);
 
-    // If we're at the limit, delete the oldest one
     if (count >= maxRecentBills) {
       final oldest =
           await (select(recentBills)
@@ -307,11 +272,9 @@ class AppDatabase extends _$AppDatabase {
       await (delete(recentBills)..where((t) => t.id.equals(oldest.id))).go();
     }
 
-    // Insert the new bill
     await into(recentBills).insert(companion);
   }
 
-  // Get recent bills
   Future<List<RecentBill>> getRecentBills() async {
     final query = select(recentBills)
       ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]);
@@ -319,17 +282,16 @@ class AppDatabase extends _$AppDatabase {
     return query.get();
   }
 
-  // Delete a specific bill
   Future<void> deleteBill(int id) async {
     await (delete(recentBills)..where((t) => t.id.equals(id))).go();
   }
 
-  // Clear all bills
   Future<void> clearAllBills() async {
     await delete(recentBills).go();
   }
 }
 
+// Database connection initialization
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();

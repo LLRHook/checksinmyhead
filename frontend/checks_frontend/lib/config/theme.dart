@@ -1,27 +1,27 @@
 import 'package:flutter/material.dart';
 
+/// Defines the app's theme configuration for both light and dark modes
 class AppTheme {
-  // Updated modern color palette
-  static const Color _primaryColor = Color(0xFF627D98); // Slate blue-gray
-  static const Color _secondaryColor = Color(0xFFD9B38C); // Muted warm tan
-  static const Color _accentColor = Color(0xFF4C5B6B); // Deep steel blue
-  static const Color _errorColor = Color(0xFFDC4C4C); // Softer modern red
+  // Core color palette
+  static const Color _primaryColor = Color(0xFF627D98);
+  static const Color _secondaryColor = Color(0xFFD9B38C);
+  static const Color _accentColor = Color(0xFF4C5B6B);
+  static const Color _errorColor = Color(0xFFDC4C4C);
 
-  // Light theme
+  /// Light theme configuration
   static final ThemeData lightTheme = ThemeData(
     useMaterial3: true,
     colorScheme: ColorScheme.light(
+      // Light theme color definitions
       primary: _primaryColor,
-      primaryContainer: Color(0xFFE3EAF0), // Soft background for slate
+      primaryContainer: Color(0xFFE3EAF0),
       onPrimaryContainer: _primaryColor,
       secondary: _secondaryColor,
       secondaryContainer: Color(0xFFFFF5ED),
-      onSecondaryContainer: _secondaryColor.withAlpha(
-        217,
-      ), // Approx 0.85 opacity
+      onSecondaryContainer: _secondaryColor.withAlpha(217),
       tertiary: _accentColor,
       tertiaryContainer: Color(0xFFE6EAF1),
-      onTertiaryContainer: _accentColor.withAlpha(217), // Approx 0.85 opacity
+      onTertiaryContainer: _accentColor.withAlpha(217),
       error: _errorColor,
       surface: Colors.white,
       onSurface: Color(0xFF2C2C2C),
@@ -63,7 +63,7 @@ class AppTheme {
 
     cardTheme: CardThemeData(
       elevation: 2,
-      shadowColor: const Color(0x26000000), // Using a standard shadow color
+      shadowColor: const Color(0x26000000),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       clipBehavior: Clip.antiAlias,
     ),
@@ -137,7 +137,6 @@ class AppTheme {
     ),
   );
 
-  // Dark theme - More complete implementation
   static final ThemeData darkTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
@@ -158,12 +157,9 @@ class AppTheme {
       onSurface: Colors.white,
       surfaceContainerHighest: Color(0xFF2A2A2A),
       onSurfaceVariant: Color(0xFFB0B0B0),
-      background: Color(0xFF121212),
-      onBackground: Colors.white,
       outline: Color(0xFF5E5E5E), // Darker outline for dark mode
     ),
 
-    // Add dark mode text theme
     textTheme: const TextTheme(
       displayLarge: TextStyle(
         fontSize: 36,
@@ -214,12 +210,9 @@ class AppTheme {
       ),
     ),
 
-    // Card theme for dark mode
     cardTheme: CardThemeData(
       elevation: 2,
-      shadowColor: const Color(
-        0x3D000000,
-      ), // Slightly darker shadow for dark mode
+      shadowColor: const Color(0x3D000000),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       clipBehavior: Clip.antiAlias,
       color: Color(0xFF242424), // Slightly lighter than background
@@ -285,7 +278,6 @@ class AppTheme {
       ),
     ),
 
-    // Text button for dark mode
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: _primaryColor,
@@ -298,7 +290,6 @@ class AppTheme {
       ),
     ),
 
-    // Dialog theme for dark mode
     dialogTheme: DialogTheme(
       backgroundColor: Color(0xFF1C1C1C),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -308,7 +299,7 @@ class AppTheme {
         fontWeight: FontWeight.w600,
       ),
       contentTextStyle: TextStyle(
-        color: Colors.white.withOpacity(0.9),
+        color: Colors.white.withValues(alpha: 0.9),
         fontSize: 14,
       ),
     ),
