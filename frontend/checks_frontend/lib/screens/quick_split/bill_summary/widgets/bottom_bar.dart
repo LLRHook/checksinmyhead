@@ -17,7 +17,7 @@ class BottomBar extends StatelessWidget {
   final Person? birthdayPerson;
 
   const BottomBar({
-    Key? key,
+    super.key,
     required this.onShareTap,
     required this.onDoneTap,
     required this.participants,
@@ -28,7 +28,7 @@ class BottomBar extends StatelessWidget {
     required this.tipAmount,
     required this.total,
     this.birthdayPerson,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -41,28 +41,21 @@ class BottomBar extends StatelessWidget {
 
     final shadowColor =
         brightness == Brightness.dark
-            ? Colors.black.withOpacity(0.2)
-            : Colors.black.withOpacity(0.05);
-
-    final labelColor =
-        brightness == Brightness.dark
-            ? colorScheme.onSurface.withOpacity(0.7)
-            : Colors.grey;
-
-    final valueColor = colorScheme.onSurface;
+            ? Colors.black.withValues(alpha: 0.2)
+            : Colors.black.withValues(alpha: 0.05);
 
     // Button text color - for dark mode, use darker text on bright backgrounds for contrast
     final buttonTextColor =
         brightness == Brightness.dark
-            ? Colors.black.withOpacity(
-              0.9,
+            ? Colors.black.withValues(
+              alpha: 0.9,
             ) // Dark text for better contrast in dark mode
             : Colors.white;
 
     // Outline button colors
     final outlineButtonColor =
         brightness == Brightness.dark
-            ? colorScheme.primary.withOpacity(0.8)
+            ? colorScheme.primary.withValues(alpha: 0.8)
             : colorScheme.primary;
 
     return Container(

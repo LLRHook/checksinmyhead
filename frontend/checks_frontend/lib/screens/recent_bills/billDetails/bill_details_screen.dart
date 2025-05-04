@@ -1,7 +1,5 @@
-import 'package:checks_frontend/screens/quick_split/bill_summary/models/bill_summary_data.dart';
 import 'package:checks_frontend/screens/quick_split/bill_summary/utils/share_utils.dart';
 import 'package:checks_frontend/screens/recent_bills/components/bill_summary_card.dart';
-import 'package:checks_frontend/screens/recent_bills/components/bottom_bar.dart';
 import 'package:checks_frontend/screens/recent_bills/components/participants_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -62,6 +60,7 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
   }
 
   void _promptShareOptions() {
+    final billCalculations = BillCalculations(widget.bill);
     ShareOptionsSheet.show(
       context: context,
       initialOptions: _shareOptions,
@@ -212,7 +211,6 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
           ],
         ),
       ),
-      // Bottom Action Bar with slide-up animation
       // Bottom Action Bar with slide-up animation (inside BillDetailsScreen)
       bottomNavigationBar: TweenAnimationBuilder<double>(
         tween: Tween<double>(begin: 0.0, end: 1.0),
@@ -225,9 +223,62 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
             child: Opacity(opacity: delayedValue, child: child),
           );
         },
-        child: BottomBar(
-          onShareTap: _promptShareOptions,
-          bill: widget.bill, // Pass the bill here
+        // Use a custom BottomBar with the share tap function
+        child: _buildCustomBottomBar(context),
+      ),
+    );
+  }
+
+  // Custom bottom bar specific to BillDetailsScreen that preserves share options
+  Widget _buildCustomBottomBar(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    // Theme-aware colors
+    final backgroundColor =
+        brightness == Brightness.dark ? colorScheme.surface : Colors.white;
+    final shadowColor =
+        brightness == Brightness.dark
+            ? Colors.black.withOpacity(0.2)
+            : Colors.black.withOpacity(0.03);
+    // Outline button colors
+    final outlineColor =
+        brightness == Brightness.dark
+            ? colorScheme.primary.withOpacity(0.8)
+            : colorScheme.primary;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        boxShadow: [
+          BoxShadow(
+            color: shadowColor,
+            blurRadius: 6,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Row(
+          children: [
+            // Share button
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _promptShareOptions, // Use the options drawer
+                icon: const Icon(Icons.ios_share, size: 18),
+                label: const Text('Share'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: outlineColor,
+                  side: BorderSide(color: outlineColor),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

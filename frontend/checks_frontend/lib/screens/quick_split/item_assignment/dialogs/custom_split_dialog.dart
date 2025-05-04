@@ -380,13 +380,15 @@ void showCustomSplitDialog({
                           // Apply button - using a more theme-aware green
                           Expanded(
                             child: ElevatedButton(
+                              // Find the code section in the showCustomSplitDialog function where the SnackBar is shown
+                              // Replace this part in the onPressed callback of the Apply button:
                               onPressed:
                                   totalPercentage == 100.0
                                       ? () {
                                         Navigator.pop(context);
                                         onAssign(item, workingAssignments);
 
-                                        // Show confirmation with theme-aware colors
+                                        // Show confirmation with theme-aware colors and consistent positioning
                                         final successColor =
                                             brightness == Brightness.dark
                                                 ? const Color(
@@ -396,18 +398,71 @@ void showCustomSplitDialog({
                                                   0xFF10B981,
                                                 ); // Original green for light mode
 
+                                        // Get the top padding value to account for status bar height
+                                        final topPadding =
+                                            MediaQuery.of(context).padding.top;
+
+                                        // First hide any current SnackBar
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).hideCurrentSnackBar();
+
                                         ScaffoldMessenger.of(
                                           context,
                                         ).showSnackBar(
                                           SnackBar(
-                                            content: const Text(
-                                              'Split successfully applied',
+                                            content: GestureDetector(
+                                              onTap: () {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).hideCurrentSnackBar();
+                                              },
+                                              child: Row(
+                                                children: [
+                                                  const Icon(
+                                                    Icons.check_circle,
+                                                    color: Colors.white,
+                                                    size: 18,
+                                                  ),
+                                                  const SizedBox(width: 10),
+                                                  Expanded(
+                                                    child: Text(
+                                                      'Split successfully applied',
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                      ),
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      maxLines: 1,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
                                             ),
                                             backgroundColor: successColor,
                                             behavior: SnackBarBehavior.floating,
                                             shape: RoundedRectangleBorder(
                                               borderRadius:
-                                                  BorderRadius.circular(10),
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            // Position the toast about 1/6 of the way down from the top of the screen
+                                            margin: EdgeInsets.only(
+                                              top:
+                                                  topPadding +
+                                                  60, // Move it down further from the top
+                                              left: 16,
+                                              right: 16,
+                                              bottom:
+                                                  MediaQuery.of(
+                                                    context,
+                                                  ).size.height -
+                                                  150 -
+                                                  topPadding,
+                                            ),
+                                            duration: const Duration(
+                                              seconds: 2,
                                             ),
                                           ),
                                         );
