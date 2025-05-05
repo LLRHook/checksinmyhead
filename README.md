@@ -41,4 +41,4 @@ repo-root/
 
 ## Setup Instructions
 
-To set up the project, follow the instructions in the [frontend/README.md](frontend/README.md).
+To set up the project, follow the instructions in the [mobile/README.md](mobile/README.md).

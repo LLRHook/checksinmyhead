@@ -8,8 +8,26 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 
+/// SettingsScreen
+///
+/// A configurable settings screen that handles both initial onboarding setup and
+/// subsequent configuration of payment methods and app preferences.
+///
+/// This screen provides functionality for:
+/// - Adding, editing, and removing payment methods for receiving money
+/// - Viewing privacy information
+/// - Contacting support
+/// - Rating the app
+/// - Sharing the app with friends
+///
+/// The screen has two modes controlled by the isOnboarding parameter:
+/// - Onboarding mode: Focused on payment setup with limited navigation options
+/// - Regular mode: Full settings experience with additional support options
+///
+/// All settings are persisted locally using SharedPreferences for privacy.
 class SettingsScreen extends StatefulWidget {
-  // Controls whether shown during onboarding or as settings page
+  /// Controls whether the screen is shown during initial onboarding
+  /// or as a regular settings page
   final bool isOnboarding;
 
   const SettingsScreen({super.key, this.isOnboarding = false});
@@ -19,7 +37,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  // Available payment methods
+  /// Available payment methods that can be configured
   final List<String> _paymentOptions = [
     'Venmo',
     'Zelle',
@@ -28,10 +46,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     'Cash App',
   ];
 
-  // Stores user identifiers for each payment method
+  /// Map storing the user identifier for each payment method
+  /// Key: Payment method name, Value: User identifier
   final Map<String, String> _paymentIdentifiers = {};
 
-  // Input field hints for different payment methods
+  /// Input field hints for different payment methods to guide users
   final Map<String, String> _paymentHints = {
     'Venmo': '@username',
     'PayPal': 'PayPal email/username',
@@ -40,28 +59,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
     'Apple Pay': 'Phone number',
   };
 
-  // Currently selected payment methods
+  /// List of payment methods the user has selected to use
   List<String> _selectedPayments = [];
 
   @override
   void initState() {
     super.initState();
+
+    // Load saved payment preferences when screen initializes
     _loadPaymentSettings();
 
-    // Auto-show payment selection during onboarding
+    // Automatically show payment selection when in onboarding mode
     if (widget.isOnboarding) {
+      // Wait for the first frame to be rendered, then show the modal
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _showPaymentSelection();
       });
     }
   }
 
-  // Load saved payment preferences
+  /// Loads saved payment preferences from persistent storage
+  ///
+  /// This method retrieves:
+  /// - List of selected payment methods
+  /// - User identifiers for each payment method
   Future<void> _loadPaymentSettings() async {
     final prefs = await SharedPreferences.getInstance();
 
+    // Get list of payment methods or empty list if none found
     final savedPayments = prefs.getStringList('selectedPayments') ?? [];
 
+    // Load identifiers for each payment method
     final Map<String, String> savedIdentifiers = {};
     for (final method in _paymentOptions) {
       final identifier = prefs.getString('payment_$method');
@@ -70,27 +98,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     }
 
+    // Update state with retrieved values
     setState(() {
       _selectedPayments = savedPayments;
       _paymentIdentifiers.addAll(savedIdentifiers);
     });
   }
 
-  // Persist payment preferences
+  /// Persists payment preferences to persistent storage
+  ///
+  /// This method saves:
+  /// - List of selected payment methods
+  /// - User identifiers for each payment method
+  /// - Onboarding status (if applicable)
   Future<void> _savePaymentSettings() async {
     final prefs = await SharedPreferences.getInstance();
 
+    // Save list of selected payment methods
     await prefs.setStringList('selectedPayments', _selectedPayments);
 
+    // Save identifiers for each payment method
     for (final entry in _paymentIdentifiers.entries) {
       await prefs.setString('payment_${entry.key}', entry.value);
     }
 
-    // Mark onboarding as complete if applicable
+    // Mark onboarding as complete if this is onboarding mode
     if (widget.isOnboarding) {
       await prefs.setBool('is_first_launch', false);
     }
 
+    // Show confirmation if widget is still mounted
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -99,11 +136,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           duration: Duration(seconds: 2),
         ),
       );
-      HapticFeedback.selectionClick();
+      HapticFeedback.selectionClick(); // Provide tactile feedback
     }
   }
 
-  // Show bottom sheet for configuring payment methods
+  /// Shows the payment method selection and configuration sheet
+  ///
+  /// This modal allows users to:
+  /// - View all available payment options
+  /// - Add new payment methods
+  /// - Edit existing payment methods
+  /// - Delete payment methods
   void _showPaymentSelection() {
     showModalBottomSheet(
       context: context,
@@ -111,9 +154,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       isScrollControlled: true,
-      isDismissible: !widget.isOnboarding,
-      enableDrag: !widget.isOnboarding,
+      isDismissible:
+          !widget.isOnboarding, // Prevent dismissal during onboarding
+      enableDrag: !widget.isOnboarding, // Prevent dragging during onboarding
       builder: (context) {
+        // Use StatefulBuilder to manage state within the modal
         return StatefulBuilder(
           builder: (context, setModalState) {
             return SafeArea(
@@ -126,6 +171,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Title section
                     const Padding(
                       padding: EdgeInsets.only(bottom: 16),
                       child: Text(
@@ -136,6 +182,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                     ),
+
+                    // Description (only shown during onboarding)
                     widget.isOnboarding
                         ? const Padding(
                           padding: EdgeInsets.only(bottom: 16),
@@ -145,6 +193,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         )
                         : const SizedBox.shrink(),
+
+                    // Payment methods list
                     Flexible(
                       child: ListView.builder(
                         shrinkWrap: true,
@@ -160,17 +210,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             children: [
                               ListTile(
                                 title: Text(option),
+                                // Show identifier as subtitle if available
                                 subtitle:
                                     hasIdentifier
                                         ? Text(
                                           _paymentIdentifiers[option] ?? '',
                                         )
                                         : null,
+                                // Show action buttons for selected methods
                                 trailing:
                                     isSelected
                                         ? Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
+                                            // Edit button
                                             IconButton(
                                               icon: const Icon(
                                                 Icons.edit,
@@ -183,6 +236,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                 );
                                               },
                                             ),
+                                            // Delete button
                                             IconButton(
                                               icon: const Icon(
                                                 Icons.delete,
@@ -218,6 +272,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   }
                                 },
                               ),
+                              // Add divider between items except the last one
                               if (index < _paymentOptions.length - 1)
                                 const Divider(height: 1),
                             ],
@@ -225,21 +280,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         },
                       ),
                     ),
+
                     const SizedBox(height: 16),
+
+                    // Save button
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton(
                         onPressed: () {
+                          // Save settings and handle navigation
                           _savePaymentSettings();
 
-                          // Navigate to main screen if onboarding complete
+                          // Navigate to main screen if onboarding is complete
+                          // and at least one payment method is configured
                           if (widget.isOnboarding &&
                               _selectedPayments.isNotEmpty) {
                             Navigator.of(
                               context,
                             ).pushReplacementNamed('/landing');
                           } else {
-                            Navigator.pop(context);
+                            Navigator.pop(context); // Just close the modal
                           }
                         },
                         style: FilledButton.styleFrom(
@@ -275,7 +335,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // Display action menu for an existing payment method
+  /// Displays action menu for an existing payment method
+  ///
+  /// This modal shows options to edit or delete a configured payment method
+  ///
+  /// Parameters:
+  /// - paymentMethod: The name of the payment method to show options for
+  /// - setModalState: State setter function to update the parent modal
   void _showPaymentMethodOptions(
     String paymentMethod,
     StateSetter setModalState,
@@ -287,6 +353,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Edit option
               ListTile(
                 leading: const Icon(Icons.edit),
                 title: const Text('Edit'),
@@ -295,6 +362,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _showIdentifierInput(paymentMethod, setModalState);
                 },
               ),
+              // Delete option
               ListTile(
                 leading: const Icon(Icons.delete, color: Colors.redAccent),
                 title: const Text(
@@ -317,8 +385,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // Show input field for payment identifier
+  /// Shows input field for entering/editing a payment identifier
+  ///
+  /// This modal provides an appropriate input field based on the payment method,
+  /// pre-filled with existing data if available.
+  ///
+  /// Parameters:
+  /// - paymentMethod: The name of the payment method to configure
+  /// - setModalState: State setter function to update the parent modal
   void _showIdentifierInput(String paymentMethod, StateSetter setModalState) {
+    // Create controller with existing value if available
     final TextEditingController controller = TextEditingController();
     controller.text = _paymentIdentifiers[paymentMethod] ?? '';
 
@@ -335,12 +411,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
+      isScrollControlled: true, // Allow modal to resize with keyboard
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
         return Padding(
+          // Adjust padding to avoid keyboard overlap
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom,
             top: 20,
@@ -351,6 +428,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Title
               Text(
                 'Set Up $paymentMethod',
                 style: const TextStyle(
@@ -359,10 +437,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+
+              // Input field with appropriate keyboard type and hint
               TextField(
                 controller: controller,
                 keyboardType: keyboardType,
-                autofocus: true,
+                autofocus: true, // Automatically show keyboard
                 style: TextStyle(
                   color:
                       Theme.of(context).brightness == Brightness.dark
@@ -387,6 +467,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+
+              // Save button
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
@@ -394,9 +476,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     final value = controller.text.trim();
                     setModalState(() {
                       if (value.isNotEmpty) {
+                        // Add method to selected list if not already there
                         if (!_selectedPayments.contains(paymentMethod)) {
                           _selectedPayments.add(paymentMethod);
                         }
+                        // Save the identifier
                         _paymentIdentifiers[paymentMethod] = value;
                       }
                     });
@@ -428,7 +512,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // Open app store rating page
+  /// Opens the app store page for leaving a rating
+  ///
+  /// This method launches the device's app store to the app's page,
+  /// allowing users to leave a review.
   Future<void> _openAppStore() async {
     final Uri url = Uri.parse(
       'https://apps.apple.com/app/yourappid',
@@ -438,7 +525,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  // Launch share sheet with app info
+  /// Opens the device's share sheet to share the app
+  ///
+  /// This method allows users to share information about the app
+  /// through their preferred sharing method.
   Future<void> _shareApp() async {
     const String appStoreLink = 'https://apps.apple.com/app/yourappid';
     // TODO: Replace with actual app ID
@@ -447,11 +537,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     const String subject = 'Try Checkmate!';
 
+    // Launch the system share sheet
     SharePlus.instance.share(ShareParams(text: shareText, subject: subject));
   }
 
   @override
   Widget build(BuildContext context) {
+    // Extract theme data for adaptive styling
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
     final isDark = brightness == Brightness.dark;
@@ -470,17 +562,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
+        // Only show back button in regular mode
         automaticallyImplyLeading: !widget.isOnboarding,
+        // Only show skip button in onboarding mode (currently empty)
         actions:
             widget.isOnboarding
                 ? [
                   TextButton(
-                    onPressed: () {
+                    onPressed: () async {
                       // Skip payment setup and go to main screen
-                      SharedPreferences.getInstance().then((prefs) {
-                        prefs.setBool('is_first_launch', false);
+                      final prefs = await SharedPreferences.getInstance();
+                      prefs.setBool('is_first_launch', false);
+
+                      // Check if widget is still mounted
+                      if (context.mounted) {
                         Navigator.of(context).pushReplacementNamed('/landing');
-                      });
+                      }
                     },
                     child: const Text(
                       '',
@@ -525,7 +622,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 const SizedBox(height: 40),
 
-                // Payment methods section
+                // Payment methods section - card with either add button or list of methods
                 Container(
                   decoration: BoxDecoration(
                     color:
@@ -537,6 +634,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Section header
                       const Padding(
                         padding: EdgeInsets.all(16),
                         child: Row(
@@ -554,7 +652,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
 
-                      // "Add Payment Methods" button or list of existing methods
+                      // Show "Add Payment Methods" button if none exist
                       _selectedPayments.isEmpty
                           ? Padding(
                             padding: const EdgeInsets.all(16),
@@ -577,6 +675,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                             ),
                           )
+                          // Otherwise show list of configured methods
                           : ListView.separated(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
@@ -594,6 +693,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   _paymentIdentifiers[paymentMethod] ??
                                   'Not set';
 
+                              // Each payment method as dismissible item for swipe deletion
                               return Dismissible(
                                 key: Key(paymentMethod),
                                 background: Container(
@@ -606,6 +706,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ),
                                 ),
                                 direction: DismissDirection.endToStart,
+                                // Confirm deletion with dialog
                                 confirmDismiss: (direction) async {
                                   return await showDialog(
                                     context: context,
@@ -637,6 +738,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     },
                                   );
                                 },
+                                // Handle actual deletion when confirmed
                                 onDismissed: (direction) {
                                   setState(() {
                                     _selectedPayments.removeAt(index);

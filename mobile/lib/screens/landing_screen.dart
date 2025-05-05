@@ -1,3 +1,14 @@
+// Purpose: Serves as the main entry point/home screen for the Checkmate bill-splitting app.
+// This screen provides navigation to core app features with an animated interface.
+//
+// Features:
+// - Quick Split: Opens participant selection for bill splitting
+// - Recent Bills: Shows history of previous bill splits
+// - Settings: Access to app configuration options
+//
+// Animations:
+// - Uses fade-in animations for a smooth user experience
+//
 import 'package:checks_frontend/screens/recent_bills/recent_bills_screen.dart';
 import 'package:checks_frontend/screens/settings/settings_screen.dart';
 import 'package:flutter/material.dart';
@@ -12,40 +23,44 @@ class LandingScreen extends StatefulWidget {
 
 class _LandingScreenState extends State<LandingScreen>
     with SingleTickerProviderStateMixin {
+  // Animation controller to handle all animations on the landing screen
   late AnimationController _animationController;
+
+  // Animation for fading in the content
   late Animation<double> _fadeInAnimation;
 
   @override
   void initState() {
     super.initState();
 
-    // Create animation controller
+    // Initialize animation controller with 700ms duration
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 700),
-      vsync: this,
+      vsync: this, // The SingleTickerProviderStateMixin provides vsync
     );
 
-    // Fade in animation for content
+    // Create a fade-in animation that eases out
     _fadeInAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
     );
 
+    // Start the animation immediately when screen loads
     _animationController.forward();
   }
 
   @override
   void dispose() {
+    // Clean up animation controller to prevent memory leaks
     _animationController.dispose();
     super.dispose();
   }
 
-  // Show participant selection sheet when quick split button is pressed
+  /// Opens the bottom sheet for selecting participants in a bill split
   void _showQuickSplitSheet() {
-    // Use the imported function with the updated name
     showParticipantSelectionSheet(context);
   }
 
-  // Navigate to Recent Bills screen
+  /// Navigates to the screen showing history of recent bills
   void _navigateToRecentBills() {
     Navigator.push(
       context,
@@ -53,7 +68,7 @@ class _LandingScreenState extends State<LandingScreen>
     );
   }
 
-  // Navigate to Settings screen
+  /// Navigates to the app settings screen
   void _navigateToSettings() {
     Navigator.push(
       context,
@@ -63,24 +78,27 @@ class _LandingScreenState extends State<LandingScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Get the app's color scheme for consistent styling
     final colorScheme = Theme.of(context).colorScheme;
+
+    // Get screen dimensions to create responsive layout
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
       backgroundColor: colorScheme.primary,
-      // Add AppBar with settings icon
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        automaticallyImplyLeading: false,
+        backgroundColor:
+            Colors.transparent, // Transparent app bar blends with background
+        elevation: 0, // Remove shadow
+        automaticallyImplyLeading: false, // Don't show back button
         actions: [
-          // Settings cog button
+          // Settings button in top-right corner
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: IconButton(
               icon: const Icon(Icons.settings, color: Colors.white, size: 26),
               onPressed: _navigateToSettings,
-              tooltip: 'Settings',
+              tooltip: 'Settings', // Accessibility feature
             ),
           ),
         ],
@@ -90,10 +108,10 @@ class _LandingScreenState extends State<LandingScreen>
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             children: [
-              // Reduced space at top since we now have an app bar
+              // Top spacing - reduced because we have an app bar
               SizedBox(height: size.height * 0.08),
 
-              // Action buttons take center stage
+              // Main content area with action buttons
               Expanded(
                 child: FadeTransition(
                   opacity: _fadeInAnimation,
@@ -102,10 +120,11 @@ class _LandingScreenState extends State<LandingScreen>
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Quick Split Button
+                        // Primary button: Quick Split with calculator icon
                         ElevatedButton(
                           onPressed: _showQuickSplitSheet,
                           style: ElevatedButton.styleFrom(
+                            // Semi-transparent white background
                             backgroundColor: Colors.white.withValues(
                               alpha: 0.15,
                             ),
@@ -114,7 +133,7 @@ class _LandingScreenState extends State<LandingScreen>
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
-                            elevation: 0,
+                            elevation: 0, // Flat button with no shadow
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -134,7 +153,7 @@ class _LandingScreenState extends State<LandingScreen>
 
                         const SizedBox(height: 24),
 
-                        // Recent Bills Button
+                        // Secondary button: Recent Bills with history icon
                         TextButton(
                           onPressed: _navigateToRecentBills,
                           style: TextButton.styleFrom(
@@ -162,6 +181,7 @@ class _LandingScreenState extends State<LandingScreen>
                 ),
               ),
 
+              // Footer with logo and copyright - animated to fade in with content
               AnimatedBuilder(
                 animation: _animationController,
                 builder: (context, child) {
@@ -176,6 +196,7 @@ class _LandingScreenState extends State<LandingScreen>
                             children: [
                               Row(
                                 children: [
+                                  // App logo icon
                                   Icon(
                                     Icons.receipt_long_rounded,
                                     size: 20,
@@ -184,7 +205,7 @@ class _LandingScreenState extends State<LandingScreen>
 
                                   const SizedBox(width: 8),
 
-                                  // App name
+                                  // App name with SF Pro Display font for iOS-like appearance
                                   Text(
                                     'Checkmate',
                                     style: TextStyle(
@@ -197,6 +218,7 @@ class _LandingScreenState extends State<LandingScreen>
                                   ),
                                 ],
                               ),
+                              // Copyright text with slightly reduced opacity
                               Text(
                                 '© 2025 Kruski Ko.',
                                 style: TextStyle(

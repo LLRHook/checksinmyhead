@@ -1,30 +1,51 @@
+import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_utils.dart';
 import 'package:checks_frontend/screens/recent_bills/billDetails/utils/bill_calculations.dart';
 import 'package:flutter/material.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 
+/// ParticipantsCard
+///
+/// A sophisticated card widget that displays all participants in a bill along with
+/// their individual payment breakdowns. This component provides an expandable view
+/// with detailed information about each participant's assigned items and costs.
+///
+/// Features:
+/// - Displays all participants with their total payment amounts
+/// - Expandable sections showing detailed item breakdowns for each person
+/// - Visual indicators for shared items (with percentage badges)
+/// - Theme-aware styling that adapts to light/dark mode
+/// - Automatic state management for expansion panels
+///
+/// This component is a core part of the bill details screen, providing a comprehensive
+/// overview of how costs are distributed among participants.
 class ParticipantsCard extends StatefulWidget {
+  /// The bill model containing participant and item data
   final RecentBillModel bill;
+
+  /// Pre-calculated bill data to avoid redundant calculations
   final BillCalculations calculations;
 
   const ParticipantsCard({
-    Key? key,
+    super.key,
     required this.bill,
     required this.calculations,
-  }) : super(key: key);
+  });
 
   @override
   State<ParticipantsCard> createState() => _ParticipantsCardState();
 }
 
 class _ParticipantsCardState extends State<ParticipantsCard> {
-  // Map to track expansion state for each participant
+  /// Track the expansion state of each participant panel
+  /// Map keys are participant names, values are boolean expansion states
   final Map<String, bool> _expansionState = {};
 
   @override
   void initState() {
     super.initState();
-    // Set initial expansion state (first participant expanded)
+
+    // Initialize expansion state - first participant expanded by default
     if (widget.bill.participantNames.isNotEmpty) {
       _expansionState[widget.bill.participantNames[0]] = true;
     }
@@ -32,33 +53,34 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
 
   @override
   Widget build(BuildContext context) {
+    // Extract theme data for adaptive styling
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
-    // Get totals for each person
+    // Get pre-calculated person totals from the BillCalculations utility
     final personTotals = widget.calculations.calculatePersonTotals();
 
-    // Check if we have real assignments
+    // Check if bill has custom item assignments or uses equal splitting
     final hasRealAssignments = widget.calculations.hasRealAssignments();
     final equalShare = widget.calculations.calculateEqualShare();
 
-    // Theme-aware colors
+    // Define theme-aware colors that adapt to light/dark mode
     final cardBgColor =
         brightness == Brightness.dark ? colorScheme.surface : Colors.white;
 
     final cardBorderColor =
         brightness == Brightness.dark
-            ? colorScheme.outline.withOpacity(0.3)
+            ? colorScheme.outline.withValues(alpha: .3)
             : Colors.grey.shade200;
 
     final headerBgColor =
         brightness == Brightness.dark
-            ? colorScheme.primaryContainer.withOpacity(0.15)
-            : colorScheme.primaryContainer.withOpacity(0.3);
+            ? colorScheme.primaryContainer.withValues(alpha: .15)
+            : colorScheme.primaryContainer.withValues(alpha: .3);
 
     final dividerColor =
         brightness == Brightness.dark
-            ? colorScheme.outline.withOpacity(0.2)
+            ? colorScheme.outline.withValues(alpha: .2)
             : Colors.grey.shade200;
 
     final tileBgColor =
@@ -69,28 +91,28 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
 
     final amountBgColor =
         brightness == Brightness.dark
-            ? colorScheme.primary.withOpacity(0.2)
-            : colorScheme.primaryContainer.withOpacity(0.7);
+            ? colorScheme.primary.withValues(alpha: .2)
+            : colorScheme.primaryContainer.withValues(alpha: .7);
 
     final viewDetailsColor =
         brightness == Brightness.dark
-            ? colorScheme.primary.withOpacity(0.8)
-            : colorScheme.primary.withOpacity(0.7);
+            ? colorScheme.primary.withValues(alpha: .8)
+            : colorScheme.primary.withValues(alpha: .7);
 
     final sectionHeaderColor =
         brightness == Brightness.dark
-            ? colorScheme.onSurface.withOpacity(0.8)
-            : colorScheme.onSurface.withOpacity(0.7);
+            ? colorScheme.onSurface.withValues(alpha: .8)
+            : colorScheme.onSurface.withValues(alpha: .7);
 
     final bulletColor =
         brightness == Brightness.dark
-            ? colorScheme.primary.withOpacity(0.7)
-            : colorScheme.primary.withOpacity(0.5);
+            ? colorScheme.primary.withValues(alpha: .7)
+            : colorScheme.primary.withValues(alpha: .5);
 
     final percentageBgColor =
         brightness == Brightness.dark
-            ? colorScheme.surfaceVariant.withOpacity(0.6)
-            : colorScheme.surfaceVariant;
+            ? colorScheme.surfaceContainerHighest.withValues(alpha: .6)
+            : colorScheme.surfaceContainerHighest;
 
     return Card(
       elevation: 1,
@@ -104,7 +126,7 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
+          // Card header with title and participant count badge
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
@@ -127,13 +149,14 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                   ),
                 ),
                 const Spacer(),
+                // Participant count badge
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: colorScheme.primary.withOpacity(0.15),
+                    color: colorScheme.primary.withValues(alpha: .15),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -149,24 +172,27 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
             ),
           ),
 
-          // Participants list
+          // Expandable list of participants
           ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
+            shrinkWrap: true, // Use only the space needed
+            physics:
+                const NeverScrollableScrollPhysics(), // Disable scrolling within this list
             itemCount: widget.bill.participantNames.length,
             itemBuilder: (context, index) {
               final name = widget.bill.participantNames[index];
-              // Check if this participant's tile is expanded
+              // Get expansion state for this participant
               final isExpanded = _expansionState[name] ?? false;
 
-              // Get amounts for this person
+              // Calculate amounts for this person
+              // Use pre-calculated totals or fallback to equal share if no assignments exist
               final totalAmount =
                   hasRealAssignments ? (personTotals[name] ?? 0.0) : equalShare;
 
+              // Get tax and tip portion for this person
               final taxAndTipAmount =
                   widget.calculations.calculatePersonTaxAndTip()[name] ?? 0.0;
 
-              // Get items this person is paying for
+              // Extract items this person is paying for from the bill data
               List<Map<String, dynamic>> personItems = [];
               if (widget.bill.items != null) {
                 for (var item in widget.bill.items!) {
@@ -175,11 +201,13 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                   final assignments =
                       item['assignments'] as Map<String, dynamic>?;
 
+                  // If this person has an assignment for this item
                   if (assignments != null && assignments.containsKey(name)) {
                     final percentage = assignments[name] as num;
                     if (percentage > 0) {
+                      // Only include if percentage is positive
                       final itemAmount = price * percentage / 100;
-                      // Only flag as shared if percentage < 100
+                      // Flag as shared if percentage < 100
                       final isShared = percentage < 100;
                       personItems.add({
                         'name': itemName,
@@ -192,19 +220,20 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                 }
               }
 
-              // Sort items by price (highest first)
+              // Sort items by price (highest first) for better UX
               personItems.sort(
                 (a, b) =>
                     (b['price'] as double).compareTo(a['price'] as double),
               );
 
-              // Create a widget for this participant
+              // Build the expansion tile for this participant
               return Column(
                 children: [
                   // Add a divider before each participant except the first one
                   if (index > 0)
                     Divider(color: dividerColor, height: 1, thickness: 1),
 
+                  // Wrap in Theme to remove the default expansion tile divider
                   Theme(
                     data: Theme.of(
                       context,
@@ -217,23 +246,25 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                         vertical: 8,
                       ),
                       childrenPadding: const EdgeInsets.only(
-                        left: 56,
+                        left: 56, // Aligns child content with the title text
                         right: 16,
                         bottom: 16,
                       ),
                       expandedCrossAxisAlignment: CrossAxisAlignment.start,
-                      maintainState: true,
+                      maintainState:
+                          true, // Keep state when collapsed for better performance
                       initiallyExpanded:
-                          index == 0, // First one expanded by default
+                          index == 0, // First participant expanded by default
                       onExpansionChanged: (expanded) {
-                        // Update the expansion state for this participant
+                        // Update the expansion state when toggled
                         setState(() {
                           _expansionState[name] = expanded;
                         });
                       },
-                      // Leading avatar
+
+                      // Avatar with first letter of participant's name
                       leading: CircleAvatar(
-                        backgroundColor: _getPersonColor(
+                        backgroundColor: ColorUtils.getPersonColor(
                           index,
                           colorScheme,
                           brightness,
@@ -248,7 +279,7 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                         ),
                       ),
 
-                      // Title is person's name
+                      // Participant's name
                       title: Text(
                         name,
                         style: TextStyle(
@@ -258,7 +289,7 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                         ),
                       ),
 
-                      // Subtitle is a preview of what they're paying for
+                      // Item count as subtitle (only if they have items)
                       subtitle:
                           personItems.isNotEmpty
                               ? Text(
@@ -270,11 +301,12 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                               )
                               : null,
 
-                      // Trailing is the amount
+                      // Total amount and expand/collapse indicator
                       trailing: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
+                          // Total amount in a badge
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 10,
@@ -293,10 +325,12 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                               ),
                             ),
                           ),
+
+                          // View/close details text (only if they have items)
                           if (personItems.isNotEmpty) const SizedBox(height: 4),
                           if (personItems.isNotEmpty)
                             Text(
-                              // Use the tracked expansion state to change the text
+                              // Text changes based on expansion state
                               isExpanded ? 'Close details' : 'View details',
                               style: TextStyle(
                                 fontSize: 11,
@@ -306,8 +340,9 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                         ],
                       ),
 
-                      // Children are the breakdown of items and tax/tip
+                      // Expanded content showing item breakdown
                       children: [
+                        // Items section
                         if (personItems.isNotEmpty) ...[
                           // Items header
                           Padding(
@@ -321,7 +356,8 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                               ),
                             ),
                           ),
-                          // Item rows
+
+                          // List of items this person is paying for
                           ...personItems.map(
                             (item) => _buildItemRow(
                               context,
@@ -335,7 +371,7 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                           ),
                         ],
 
-                        // Standard Tax & Tip section (if applicable)
+                        // Tax & Tip section (only shown if non-zero)
                         if (taxAndTipAmount > 0) ...[
                           Padding(
                             padding: const EdgeInsets.only(top: 12, bottom: 8),
@@ -351,10 +387,8 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                                   ),
                                 ),
 
-                                // Spacer to push the amount to the right
-                                const Spacer(),
-
-                                // Amount - now using the same text style as regular text
+                                const Spacer(), // Push amount to right side
+                                // Tax & Tip amount
                                 Text(
                                   CurrencyFormatter.formatCurrency(
                                     taxAndTipAmount,
@@ -381,6 +415,19 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
     );
   }
 
+  /// Builds a row displaying an individual item with its price and percentage
+  ///
+  /// This helper method creates a consistent item row for the expanded details
+  /// section, showing the item name, amount, and percentage badge if applicable.
+  ///
+  /// Parameters:
+  /// - context: The build context
+  /// - name: The name of the item
+  /// - amount: The amount this person is paying for the item
+  /// - percentage: The percentage of the item assigned to this person
+  /// - colorScheme: The current theme's color scheme
+  /// - bulletColor: The color for the bullet point
+  /// - percentageBgColor: The background color for the percentage badge
   Widget _buildItemRow(
     BuildContext context,
     String name,
@@ -395,7 +442,8 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
       child: Row(
         children: [
           const SizedBox(width: 14),
-          // Bullet point
+
+          // Bullet point indicator
           Container(
             width: 6,
             height: 6,
@@ -418,10 +466,10 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
             ),
           ),
 
-          // Amount and percentage
+          // Amount and percentage section
           Row(
             children: [
-              // Amount
+              // Formatted currency amount
               Text(
                 CurrencyFormatter.formatCurrency(amount),
                 style: TextStyle(
@@ -431,7 +479,7 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                 ),
               ),
 
-              // Only show percentage badge if it's a partial amount
+              // Percentage badge - only shown for shared items (less than 100%)
               if (percentage < 100) ...[
                 const SizedBox(width: 6),
                 Container(
@@ -457,53 +505,6 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
           ),
         ],
       ),
-    );
-  }
-
-  // Get a color for the person's avatar based on their index - with brightness adjustment
-  Color _getPersonColor(
-    int index,
-    ColorScheme colorScheme,
-    Brightness brightness,
-  ) {
-    final colors = [
-      colorScheme.primary,
-      colorScheme.tertiary,
-      Colors.orange,
-      Colors.teal,
-      Colors.indigo,
-      Colors.deepPurple,
-      Colors.pink,
-      Colors.brown,
-    ];
-
-    final baseColor = colors[index % colors.length];
-
-    // For dark mode, lighten dark colors to ensure good visibility
-    if (brightness == Brightness.dark) {
-      // Calculate luminance (simple formula)
-      final luminance =
-          (0.299 * baseColor.red +
-              0.587 * baseColor.green +
-              0.114 * baseColor.blue) /
-          255;
-
-      // If color is too dark, lighten it
-      if (luminance < 0.5) {
-        return _lightenColor(baseColor, 0.2);
-      }
-    }
-
-    return baseColor;
-  }
-
-  // Helper method to lighten colors for dark mode
-  Color _lightenColor(Color color, double amount) {
-    return Color.fromARGB(
-      color.alpha,
-      (color.red + (255 - color.red) * amount).round(),
-      (color.green + (255 - color.green) * amount).round(),
-      (color.blue + (255 - color.blue) * amount).round(),
     );
   }
 }

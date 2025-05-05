@@ -1,3 +1,4 @@
+import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_utils.dart';
 import 'package:checks_frontend/screens/recent_bills/billDetails/bill_details_screen.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.dart';
@@ -5,17 +6,43 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 
+/// RecentBillCard
+///
+/// A card widget that displays a summary of a recent bill in the bill history list.
+/// This component serves as an entry point to view detailed bill information and
+/// provides quick actions for managing the bill.
+///
+/// Features:
+/// - Displays key bill information (date, participants, total amount)
+/// - Theme-aware styling that adapts to light/dark mode
+/// - Interactive elements with visual feedback (ripple effects, haptic feedback)
+/// - Quick actions for viewing details or deleting the bill
+/// - Confirmation dialog for delete operations
+///
+/// This component is designed to be used within a list of recent bills, providing
+/// a consistent and visually appealing way to browse bill history.
 class RecentBillCard extends StatelessWidget {
+  /// The bill model containing data to display
   final RecentBillModel bill;
+
+  /// Callback function to notify parent when this bill is deleted
   final VoidCallback onDeleted;
 
-  const RecentBillCard({Key? key, required this.bill, required this.onDeleted})
-    : super(key: key);
+  const RecentBillCard({
+    super.key,
+    required this.bill,
+    required this.onDeleted,
+  });
 
-  // Navigate to bill details screen
+  /// Navigates to the bill details screen with haptic feedback
+  ///
+  /// This method provides tactile feedback and navigates to a detailed
+  /// view of the bill when the card is tapped.
   void _navigateToBillDetails(BuildContext context) {
+    // Provide subtle haptic feedback for better user experience
     HapticFeedback.selectionClick();
 
+    // Navigate to the bill details screen
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => BillDetailsScreen(bill: bill)),
@@ -24,41 +51,48 @@ class RecentBillCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Extract theme data for adaptive styling
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final brightness = Theme.of(context).brightness;
 
-    // Theme-aware colors
+    // Define theme-aware colors for adaptive styling
+    // Card background - surface color in dark mode, white in light mode
     final cardBgColor =
         brightness == Brightness.dark ? colorScheme.surface : Colors.white;
 
+    // Card shadow - more pronounced in dark mode for better visibility
     final cardShadowColor =
         brightness == Brightness.dark
-            ? Colors.black.withOpacity(0.2)
-            : Colors.black.withOpacity(0.04);
+            ? Colors.black.withValues(alpha: .2)
+            : Colors.black.withValues(alpha: .04);
 
+    // Divider color - subtle in both modes
     final dividerColor =
         brightness == Brightness.dark
-            ? colorScheme.outline.withOpacity(0.2)
+            ? colorScheme.outline.withValues(alpha: .2)
             : Colors.grey.shade100;
 
+    // Date text color - full contrast for good readability
     final dateColor = colorScheme.onSurface;
 
+    // Participants text color - slightly reduced opacity for visual hierarchy
     final participantsTextColor =
         brightness == Brightness.dark
-            ? colorScheme.onSurface.withOpacity(0.7)
-            : colorScheme.onSurface.withOpacity(0.6);
+            ? colorScheme.onSurface.withValues(alpha: .7)
+            : colorScheme.onSurface.withValues(alpha: .6);
 
     // Adjust bill color for better visibility in dark mode if needed
     final adjustedBillColor =
         brightness == Brightness.dark
-            ? _adjustColorForDarkMode(bill.color)
+            ? ColorUtils.adjustColorForDarkMode(bill.color)
             : bill.color;
 
-    // Dialog colors
+    // Dialog background color
     final dialogBgColor =
         brightness == Brightness.dark ? colorScheme.surface : Colors.white;
 
+    // Build the card UI
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -68,41 +102,44 @@ class RecentBillCard extends StatelessWidget {
           BoxShadow(
             color: cardShadowColor,
             blurRadius: 8,
-            offset: const Offset(0, 2),
+            offset: const Offset(0, 2), // Shadow below the card
           ),
         ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: Material(
-          color: Colors.transparent,
+          color: Colors.transparent, // Allows ink effects to show
           child: InkWell(
-            onTap:
-                () =>
-                    _navigateToBillDetails(context), // Navigate to bill details
-            splashColor: adjustedBillColor.withOpacity(0.1),
-            highlightColor: adjustedBillColor.withOpacity(0.05),
+            onTap: () => _navigateToBillDetails(context), // Navigate on tap
+            splashColor: adjustedBillColor.withValues(
+              alpha: .1,
+            ), // Custom splash using bill color
+            highlightColor: adjustedBillColor.withValues(
+              alpha: .05,
+            ), // Subtle highlight effect
             child: Column(
               children: [
-                // Main content area
+                // Main content area with bill information
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Left - Date and participants
+                      // Left side - Date and participants information
                       Expanded(
-                        flex: 6,
+                        flex: 6, // 60% of horizontal space
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Date with formatting
+                            // Date row with calendar icon
                             Row(
                               children: [
                                 Icon(
                                   Icons.event,
                                   size: 16,
-                                  color: adjustedBillColor,
+                                  color:
+                                      adjustedBillColor, // Use bill color for icon
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
@@ -117,7 +154,7 @@ class RecentBillCard extends StatelessWidget {
 
                             const SizedBox(height: 8),
 
-                            // Participants
+                            // Participants row with people icon
                             Row(
                               children: [
                                 Icon(
@@ -128,12 +165,14 @@ class RecentBillCard extends StatelessWidget {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    bill.participantSummary,
+                                    bill.participantSummary, // Names or count of participants
                                     style: textTheme.bodyMedium?.copyWith(
                                       color: participantsTextColor,
                                     ),
                                     maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                    overflow:
+                                        TextOverflow
+                                            .ellipsis, // Truncate with ... if too long
                                   ),
                                 ),
                               ],
@@ -142,37 +181,44 @@ class RecentBillCard extends StatelessWidget {
                         ),
                       ),
 
-                      // Right - Total amount in highlighted box
+                      // Right side - Total amount in highlighted box
                       Expanded(
-                        flex: 4,
+                        flex: 4, // 40% of horizontal space
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 12,
                             vertical: 8,
                           ),
                           decoration: BoxDecoration(
+                            // Background using bill color with appropriate opacity
                             color:
                                 brightness == Brightness.dark
-                                    ? adjustedBillColor.withOpacity(
-                                      0.15,
-                                    ) // Slightly higher opacity in dark mode
-                                    : adjustedBillColor.withOpacity(0.1),
+                                    ? adjustedBillColor.withValues(
+                                      alpha: .15,
+                                    ) // Higher opacity in dark mode
+                                    : adjustedBillColor.withValues(alpha: .1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
+                              // "Total" label
                               Text(
                                 'Total',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: adjustedBillColor.withOpacity(
-                                    brightness == Brightness.dark ? 0.9 : 0.8,
-                                  ), // Brighter in dark mode
+                                  // Text color uses bill color with opacity adjusted for theme
+                                  color: adjustedBillColor.withValues(
+                                    alpha:
+                                        brightness == Brightness.dark
+                                            ? 0.9
+                                            : 0.8, // Brighter in dark mode
+                                  ),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
                               const SizedBox(height: 2),
+                              // Total amount with automatic scaling if too large
                               FittedBox(
                                 fit: BoxFit.scaleDown,
                                 child: Text(
@@ -192,16 +238,19 @@ class RecentBillCard extends StatelessWidget {
                   ),
                 ),
 
-                // Bottom action buttons with subtle divider
+                // Bottom action buttons with divider
                 Container(
                   decoration: BoxDecoration(
                     border: Border(
-                      top: BorderSide(color: dividerColor, width: 1),
+                      top: BorderSide(
+                        color: dividerColor,
+                        width: 1,
+                      ), // Top border as divider
                     ),
                   ),
                   child: Row(
                     children: [
-                      // View button
+                      // "View" button
                       Expanded(
                         child: _buildActionButton(
                           context,
@@ -212,10 +261,10 @@ class RecentBillCard extends StatelessWidget {
                         ),
                       ),
 
-                      // Vertical divider
+                      // Vertical divider between buttons
                       Container(width: 1, height: 24, color: dividerColor),
 
-                      // Delete button
+                      // "Delete" button
                       Expanded(
                         child: _buildActionButton(
                           context,
@@ -227,7 +276,8 @@ class RecentBillCard extends StatelessWidget {
                                 colorScheme,
                                 dialogBgColor,
                               ),
-                          color: colorScheme.error,
+                          color:
+                              colorScheme.error, // Use error color for delete
                         ),
                       ),
                     ],
@@ -241,6 +291,17 @@ class RecentBillCard extends StatelessWidget {
     );
   }
 
+  /// Builds a consistent action button for the bottom bar
+  ///
+  /// This helper method creates action buttons with consistent styling
+  /// for the bottom of the card.
+  ///
+  /// Parameters:
+  /// - context: The build context
+  /// - icon: The icon to display
+  /// - label: The button text
+  /// - onTap: The callback function when button is tapped
+  /// - color: The color for the icon and text
   Widget _buildActionButton(
     BuildContext context, {
     required IconData icon,
@@ -271,14 +332,24 @@ class RecentBillCard extends StatelessWidget {
     );
   }
 
+  /// Displays a confirmation dialog and handles bill deletion
+  ///
+  /// This method shows a dialog asking the user to confirm deletion,
+  /// then deletes the bill if confirmed and notifies the parent widget.
+  ///
+  /// Parameters:
+  /// - context: The build context
+  /// - colorScheme: The current theme's color scheme
+  /// - dialogBgColor: The background color for the dialog
   Future<void> _confirmDelete(
     BuildContext context,
     ColorScheme colorScheme,
     Color dialogBgColor,
   ) async {
+    // Provide haptic feedback when delete is tapped
     HapticFeedback.mediumImpact();
 
-    // Confirm deletion with a premium dialog
+    // Show a confirmation dialog with custom styling
     final confirmed = await showDialog<bool>(
       context: context,
       builder:
@@ -295,49 +366,36 @@ class RecentBillCard extends StatelessWidget {
               'This bill will be permanently removed from your history.',
             ),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(
+                16,
+              ), // Rounded corners for dialog
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context, false),
+                onPressed: () => Navigator.pop(context, false), // Cancel
                 child: const Text('Cancel'),
               ),
               TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: TextButton.styleFrom(foregroundColor: colorScheme.error),
+                onPressed: () => Navigator.pop(context, true), // Confirm
+                style: TextButton.styleFrom(
+                  foregroundColor: colorScheme.error,
+                ), // Error color for delete
                 child: const Text('Delete'),
               ),
             ],
           ),
     );
 
+    // If user confirmed, delete the bill and notify parent
     if (confirmed == true) {
+      // Delete from persistent storage
       await RecentBillsManager.deleteBill(bill.id);
 
       // Provide haptic feedback for successful deletion
       HapticFeedback.mediumImpact();
 
-      // Refresh the list through callback
+      // Notify parent widget to refresh the list
       onDeleted();
     }
-  }
-
-  // Helper method to adjust colors for better visibility in dark mode
-  Color _adjustColorForDarkMode(Color color) {
-    // If the color is too dark, brighten it for dark mode
-    if (_luminance(color) < 0.4) {
-      // Increase the brightness while maintaining hue
-      final HSLColor hslColor = HSLColor.fromColor(color);
-      return hslColor
-          .withLightness((hslColor.lightness + 0.2).clamp(0.0, 1.0))
-          .toColor();
-    }
-    return color;
-  }
-
-  // Calculate relative luminance of a color
-  double _luminance(Color color) {
-    // Formula for relative luminance
-    return (0.299 * color.red + 0.587 * color.green + 0.114 * color.blue) / 255;
   }
 }
