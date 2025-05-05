@@ -381,21 +381,9 @@ class ShareUtils {
     required String summary,
   }) {
     // Use the SharePlus instance with ShareParams
-    SharePlus.instance
-        .share(ShareParams(text: summary, subject: 'Bill Summary'))
-        .then((result) {
-          // Optionally handle the result
-          if (result.status == ShareResultStatus.success) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Shared successfully'),
-                behavior: SnackBarBehavior.floating,
-                duration: Duration(seconds: 2),
-              ),
-            );
-          }
-        });
-
+    SharePlus.instance.share(
+      ShareParams(text: summary, subject: 'Bill Summary'),
+    );
     // Provide haptic feedback
     HapticFeedback.selectionClick();
   }
@@ -407,11 +395,11 @@ class ShareOptionsSheet extends StatefulWidget {
   final VoidCallback onShareTap;
 
   const ShareOptionsSheet({
-    Key? key,
+    super.key,
     required this.initialOptions,
     required this.onOptionsChanged,
     required this.onShareTap,
-  }) : super(key: key);
+  });
 
   static Future<void> show({
     required BuildContext context,

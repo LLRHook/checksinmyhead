@@ -1,3 +1,7 @@
+// SettingsScreen manages user payment preferences, allowing setup during onboarding
+// or configuration through the settings menu. Users can add, edit, or remove payment
+// methods that friends can use to send them money.
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -5,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 
 class SettingsScreen extends StatefulWidget {
+  // Controls whether shown during onboarding or as settings page
   final bool isOnboarding;
 
   const SettingsScreen({super.key, this.isOnboarding = false});
@@ -14,21 +19,28 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  // Payment options
-  final List<String> _paymentOptions = ['Venmo', 'PayPal', 'Cash App', 'Zelle'];
+  // Available payment methods
+  final List<String> _paymentOptions = [
+    'Venmo',
+    'Zelle',
+    'Apple Pay',
+    'PayPal',
+    'Cash App',
+  ];
 
-  // Map to store payment method identifiers
+  // Stores user identifiers for each payment method
   final Map<String, String> _paymentIdentifiers = {};
 
-  // Map of hint texts for different payment methods
+  // Input field hints for different payment methods
   final Map<String, String> _paymentHints = {
     'Venmo': '@username',
     'PayPal': 'PayPal email/username',
     'Cash App': '\$cashtag',
     'Zelle': 'Zelle phone number/email',
+    'Apple Pay': 'Phone number',
   };
 
-  // Selected payment methods
+  // Currently selected payment methods
   List<String> _selectedPayments = [];
 
   @override
@@ -36,23 +48,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _loadPaymentSettings();
 
-    // If this is onboarding, show payment selection immediately
+    // Auto-show payment selection during onboarding
     if (widget.isOnboarding) {
-      // Use a delay to ensure the screen is built before showing the bottom sheet
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _showPaymentSelection();
       });
     }
   }
 
-  // Load saved payment settings
+  // Load saved payment preferences
   Future<void> _loadPaymentSettings() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // Load selected payments
     final savedPayments = prefs.getStringList('selectedPayments') ?? [];
 
-    // Load identifiers for each payment method
     final Map<String, String> savedIdentifiers = {};
     for (final method in _paymentOptions) {
       final identifier = prefs.getString('payment_$method');
@@ -67,24 +76,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
-  // Save payment settings
+  // Persist payment preferences
   Future<void> _savePaymentSettings() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // Save selected payment methods
     await prefs.setStringList('selectedPayments', _selectedPayments);
 
-    // Save identifiers for each payment method
     for (final entry in _paymentIdentifiers.entries) {
       await prefs.setString('payment_${entry.key}', entry.value);
     }
 
-    // Mark first launch as complete if this is onboarding
+    // Mark onboarding as complete if applicable
     if (widget.isOnboarding) {
       await prefs.setBool('is_first_launch', false);
     }
 
-    // Show confirmation
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -93,12 +99,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           duration: Duration(seconds: 2),
         ),
       );
-      // Provide haptic feedback
       HapticFeedback.selectionClick();
     }
   }
 
-  // Handle payment option selection and identifier input
+  // Show bottom sheet for configuring payment methods
   void _showPaymentSelection() {
     showModalBottomSheet(
       context: context,
@@ -106,8 +111,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       isScrollControlled: true,
-      isDismissible: !widget.isOnboarding, // Can't dismiss if onboarding
-      enableDrag: !widget.isOnboarding, // Can't drag to dismiss if onboarding
+      isDismissible: !widget.isOnboarding,
+      enableDrag: !widget.isOnboarding,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
@@ -202,13 +207,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         : null,
                                 onTap: () {
                                   if (isSelected) {
-                                    // Show options when tapping a selected method
+                                    // Show options menu for existing method
                                     _showPaymentMethodOptions(
                                       option,
                                       setModalState,
                                     );
                                   } else {
-                                    // Show input field on selection
+                                    // Direct to input for new method
                                     _showIdentifierInput(option, setModalState);
                                   }
                                 },
@@ -227,7 +232,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onPressed: () {
                           _savePaymentSettings();
 
-                          // If onboarding, navigate to landing screen after saving
+                          // Navigate to main screen if onboarding complete
                           if (widget.isOnboarding &&
                               _selectedPayments.isNotEmpty) {
                             Navigator.of(
@@ -270,7 +275,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // Show options for an existing payment method
+  // Display action menu for an existing payment method
   void _showPaymentMethodOptions(
     String paymentMethod,
     StateSetter setModalState,
@@ -313,22 +318,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // Show input field for payment identifier
-  // Show input field for payment identifier
   void _showIdentifierInput(String paymentMethod, StateSetter setModalState) {
     final TextEditingController controller = TextEditingController();
     controller.text = _paymentIdentifiers[paymentMethod] ?? '';
 
-    // Input format hints based on payment method
-    String? inputFormatHint;
+    // Select appropriate keyboard type based on payment method
     TextInputType keyboardType = TextInputType.text;
 
-    if (paymentMethod == 'Zelle') {
+    if (paymentMethod == 'Zelle' || paymentMethod == 'Apple Pay') {
       keyboardType = TextInputType.phone;
-    } else if (paymentMethod == 'PayPal') {
-      keyboardType = TextInputType.emailAddress;
-    } else if (paymentMethod == 'Venmo') {
-      keyboardType = TextInputType.emailAddress;
-    } else if (paymentMethod == 'Cash App') {
+    } else if (paymentMethod == 'PayPal' ||
+        paymentMethod == 'Venmo' ||
+        paymentMethod == 'Cash App') {
       keyboardType = TextInputType.emailAddress;
     }
 
@@ -370,12 +371,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 decoration: InputDecoration(
                   hintText: _paymentHints[paymentMethod],
-                  helperText: inputFormatHint,
                   filled: true,
                   fillColor:
                       Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white.withOpacity(0.1)
-                          : Colors.black.withOpacity(0.05),
+                          ? Colors.white.withValues(alpha: 0.1)
+                          : Colors.black.withValues(alpha: 0.05),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -387,7 +387,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              // Save button
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
@@ -429,24 +428,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // Open app store for ratings
+  // Open app store rating page
   Future<void> _openAppStore() async {
     final Uri url = Uri.parse(
       'https://apps.apple.com/app/yourappid',
-    ); // Replace with actual app ID
+    ); // TODO: Replace with actual app ID
     if (!await launchUrl(url)) {
       throw Exception('Could not launch $url');
     }
   }
 
-  // Share app with friends
+  // Launch share sheet with app info
   Future<void> _shareApp() async {
-    const String appStoreLink =
-        'https://apps.apple.com/app/yourappid'; // Replace with actual app ID
-    await Share.share(
-      'Check out Checkmate, the smartest way to split bills with friends! $appStoreLink',
-      subject: 'Try Checkmate for simple bill splitting',
-    );
+    const String appStoreLink = 'https://apps.apple.com/app/yourappid';
+    // TODO: Replace with actual app ID
+    const String shareText =
+        'Check out Checkmate, the easiest way to split bills with friends! $appStoreLink';
+
+    const String subject = 'Try Checkmate!';
+
+    SharePlus.instance.share(ShareParams(text: shareText, subject: subject));
   }
 
   @override
@@ -469,21 +470,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
-        // Show back button only if not in onboarding
         automaticallyImplyLeading: !widget.isOnboarding,
-        // In onboarding mode, add a skip button
         actions:
             widget.isOnboarding
                 ? [
                   TextButton(
                     onPressed: () {
-                      // Mark first launch as complete and navigate to landing
+                      // Skip payment setup and go to main screen
                       SharedPreferences.getInstance().then((prefs) {
                         prefs.setBool('is_first_launch', false);
                         Navigator.of(context).pushReplacementNamed('/landing');
                       });
                     },
-                    child: const Text(''),
+                    child: const Text(
+                      '',
+                    ), // Empty skip button - should have text
                   ),
                 ]
                 : null,
@@ -495,7 +496,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // App title and description
+                // App branding section
                 const Center(
                   child: Column(
                     children: [
@@ -524,25 +525,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 const SizedBox(height: 40),
 
-                // Payment options section
+                // Payment methods section
                 Container(
                   decoration: BoxDecoration(
                     color:
                         isDark
                             ? colorScheme.surfaceContainerHighest
-                            : Colors.white.withOpacity(0.15),
+                            : Colors.white.withValues(alpha: .15),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Section header
-                      Padding(
-                        padding: const EdgeInsets.all(16),
+                      const Padding(
+                        padding: EdgeInsets.all(16),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
+                            Text(
                               'Payment Options',
                               style: TextStyle(
                                 color: Colors.white,
@@ -554,7 +554,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
 
-                      // Show selected payment methods or a prompt to add some
+                      // "Add Payment Methods" button or list of existing methods
                       _selectedPayments.isEmpty
                           ? Padding(
                             padding: const EdgeInsets.all(16),
@@ -652,7 +652,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   subtitle: Text(
                                     identifier,
                                     style: TextStyle(
-                                      color: Colors.white.withOpacity(0.7),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.7,
+                                      ),
                                     ),
                                   ),
                                   trailing: Row(
@@ -680,7 +682,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             },
                           ),
 
-                      // Add button at the bottom if we already have methods
+                      // "Edit Payment Methods" button for existing methods
                       if (_selectedPayments.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.all(16),
@@ -707,16 +709,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
 
-                // Add this after the Payment options section and before the Other options section
                 const SizedBox(height: 24),
 
-                // Privacy information section - collapsible
+                // Privacy information section with expandable details
                 Container(
                   decoration: BoxDecoration(
                     color:
                         isDark
                             ? colorScheme.surfaceContainerHighest
-                            : Colors.white.withOpacity(0.15),
+                            : Colors.white.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Theme(
@@ -726,13 +727,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: ExpansionTile(
                       title: Row(
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.shield_outlined,
                             color: Colors.white,
                             size: 20,
                           ),
-                          SizedBox(width: 8),
-                          Text(
+                          const SizedBox(width: 8),
+                          const Text(
                             'Privacy & Data',
                             style: TextStyle(
                               color: Colors.white,
@@ -744,16 +745,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       iconColor: Colors.white,
                       collapsedIconColor: Colors.white70,
-                      tilePadding: EdgeInsets.symmetric(
+                      tilePadding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 8,
                       ),
-                      childrenPadding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                       children: [
-                        Text(
-                          'Your data never leaves your device. Checkmate is designed with privacy-first principles—zero cloud storage, no accounts, no databases. All information is stored locally and removed completely when you uninstall.',
+                        const Text(
+                          'Your data never leaves your device. Checkmate is designed with privacy-first principles—zero cloud storage and zero accounts. All information is stored locally and removed completely when you uninstall.',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
+                            color: Colors.white70,
                             fontSize: 14,
                             height: 1.5,
                           ),
@@ -765,19 +766,75 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 const SizedBox(height: 24),
 
-                // Other options - only show if not in onboarding mode
+                // Support options (only visible in regular settings mode)
                 if (!widget.isOnboarding)
                   Container(
                     decoration: BoxDecoration(
                       color:
                           isDark
                               ? colorScheme.surfaceContainerHighest
-                              : Colors.white.withOpacity(0.15),
+                              : Colors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Column(
                       children: [
-                        // Rate app
+                        // Contact support option
+                        ListTile(
+                          title: const Text(
+                            'Contact Us',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          subtitle: const Text(
+                            'checkmateapp@duck.com',
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                          leading: const Icon(
+                            Icons.email_outlined,
+                            color: Colors.white,
+                          ),
+                          onTap: () {
+                            final currentContext = context;
+                            final emailUri = Uri(
+                              scheme: 'mailto',
+                              path: 'checkmateapp@duck.com',
+                            );
+
+                            // Try email app, fallback to clipboard copy
+                            canLaunchUrl(emailUri).then((canLaunch) {
+                              if (canLaunch) {
+                                launchUrl(emailUri);
+                              } else {
+                                Clipboard.setData(
+                                  const ClipboardData(
+                                    text: 'checkmateapp@duck.com',
+                                  ),
+                                ).then((_) {
+                                  if (currentContext.mounted) {
+                                    ScaffoldMessenger.of(
+                                      currentContext,
+                                    ).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Email copied to clipboard',
+                                        ),
+                                        duration: Duration(seconds: 2),
+                                      ),
+                                    );
+                                  }
+                                });
+                              }
+                            });
+                          },
+                        ),
+
+                        const Divider(
+                          color: Colors.white24,
+                          height: 1,
+                          indent: 16,
+                          endIndent: 16,
+                        ),
+
+                        // App store rating option
                         ListTile(
                           title: const Text(
                             'Rate Us on App Store',
@@ -801,7 +858,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           endIndent: 16,
                         ),
 
-                        // Share app
+                        // Share app option
                         ListTile(
                           title: const Text(
                             'Share with Friends',
@@ -823,18 +880,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 const SizedBox(height: 40),
 
-                // App version
-                Center(
+                // Version info
+                const Center(
                   child: Text(
                     'Version 1.0.0',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.6),
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Colors.white60, fontSize: 14),
                   ),
                 ),
 
-                // Add "Continue" button at the bottom in onboarding mode
+                // Continue button during onboarding
                 if (widget.isOnboarding)
                   Padding(
                     padding: const EdgeInsets.only(top: 20),
