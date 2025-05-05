@@ -1,7 +1,22 @@
 import 'package:flutter/material.dart';
 
+/// LoadingBillsState
+///
+/// A loading indicator widget that displays animated bill card placeholders
+/// while bill data is being fetched. This component provides visual feedback
+/// to users during the loading process with a subtle pulsing animation.
+///
+/// Features:
+/// - Animated shimmer effect with theme-aware colors
+/// - Placeholder cards that match the layout of actual bill cards
+/// - Smooth opacity animation to indicate loading state
+/// - Responsive layout that adapts to different screen sizes
+///
+/// This component creates a seamless loading experience that maintains
+/// the same visual structure as the actual content, reducing perceived
+/// loading time and layout shifts when the real data arrives.
 class LoadingBillsState extends StatefulWidget {
-  const LoadingBillsState({Key? key}) : super(key: key);
+  const LoadingBillsState({super.key});
 
   @override
   State<LoadingBillsState> createState() => _LoadingBillsStateState();
@@ -9,39 +24,48 @@ class LoadingBillsState extends StatefulWidget {
 
 class _LoadingBillsStateState extends State<LoadingBillsState>
     with SingleTickerProviderStateMixin {
+  // Animation controller for the loading effect
   late AnimationController _loadingAnimationController;
+
+  // Animation for the pulsing opacity effect
   late Animation<double> _loadingAnimation;
 
   @override
   void initState() {
     super.initState();
 
-    // Initialize the loading animation controller
+    // Initialize the animation controller with a moderate duration
+    // and set it to repeat with reverse for a breathing effect
     _loadingAnimationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat(reverse: true);
+      vsync: this, // Use this widget as the vsync source
+      duration: const Duration(milliseconds: 1500), // 1.5 seconds per cycle
+    )..repeat(reverse: true); // Automatically repeat the animation in reverse
 
-    // Create loading animation
+    // Create a tween animation that changes opacity from 60% to 100%
+    // This creates a subtle breathing effect that indicates loading
     _loadingAnimation = Tween<double>(begin: 0.6, end: 1.0).animate(
       CurvedAnimation(
         parent: _loadingAnimationController,
-        curve: Curves.easeInOut,
+        curve: Curves.easeInOut, // Smooth acceleration and deceleration
       ),
     );
   }
 
   @override
   void dispose() {
+    // Clean up the animation controller when the widget is removed
+    // This prevents memory leaks and unnecessary processing
     _loadingAnimationController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    // Extract theme information for adaptive styling
     final brightness = Theme.of(context).brightness;
 
+    // Define shimmer colors based on the current theme
+    // Darker grays for dark mode, lighter grays for light mode
     final shimmerBaseColor =
         brightness == Brightness.dark ? Colors.grey[800]! : Colors.grey[300]!;
     final shimmerHighlightColor =
@@ -50,24 +74,29 @@ class _LoadingBillsStateState extends State<LoadingBillsState>
     return Padding(
       padding: const EdgeInsets.only(top: 20.0),
       child: Column(
+        // Generate 3 placeholder bill cards
         children: List.generate(3, (index) {
           return Padding(
-            padding: const EdgeInsets.only(bottom: 16.0),
+            padding: const EdgeInsets.only(bottom: 16.0), // Space between cards
             child: AnimatedBuilder(
+              // Attach the animated builder to our loading animation
               animation: _loadingAnimation,
               builder: (context, child) {
                 return Opacity(
+                  // Apply the animated opacity value
                   opacity: _loadingAnimation.value,
                   child: Container(
-                    height: 100,
+                    height: 100, // Fixed height matching real bill cards
                     decoration: BoxDecoration(
-                      color: shimmerBaseColor,
-                      borderRadius: BorderRadius.circular(16),
+                      color: shimmerBaseColor, // Background color of the card
+                      borderRadius: BorderRadius.circular(
+                        16,
+                      ), // Rounded corners
                     ),
                     child: Row(
                       children: [
-                        const SizedBox(width: 16),
-                        // Bill icon placeholder
+                        const SizedBox(width: 16), // Left padding
+                        // Bill icon placeholder (circular)
                         Container(
                           width: 50,
                           height: 50,
@@ -76,13 +105,14 @@ class _LoadingBillsStateState extends State<LoadingBillsState>
                             shape: BoxShape.circle,
                           ),
                         ),
-                        const SizedBox(width: 16),
-                        // Bill details placeholder
+                        const SizedBox(width: 16), // Spacing
+                        // Bill details placeholder (two horizontal bars)
                         Expanded(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              // Title placeholder (shorter, thicker bar)
                               Container(
                                 height: 18,
                                 width: 120,
@@ -91,7 +121,8 @@ class _LoadingBillsStateState extends State<LoadingBillsState>
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                               ),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 12), // Vertical spacing
+                              // Subtitle placeholder (longer, thinner bar)
                               Container(
                                 height: 14,
                                 width: 180,
@@ -103,8 +134,8 @@ class _LoadingBillsStateState extends State<LoadingBillsState>
                             ],
                           ),
                         ),
-                        const SizedBox(width: 16),
-                        // Price placeholder
+                        const SizedBox(width: 16), // Spacing
+                        // Price placeholder (right-aligned bar)
                         Container(
                           height: 22,
                           width: 70,
@@ -113,7 +144,7 @@ class _LoadingBillsStateState extends State<LoadingBillsState>
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 16), // Right padding
                       ],
                     ),
                   ),

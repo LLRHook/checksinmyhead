@@ -152,4 +152,112 @@ class ColorUtils {
   static bool isPurplish(Color baseColor) {
     return baseColor.red > baseColor.green && baseColor.blue > baseColor.green;
   }
+
+  /// Determines an appropriate color for a participant's avatar
+  ///
+  /// This method selects a color from a predefined palette based on the participant's
+  /// index, and adjusts the brightness for dark mode to ensure good visibility.
+  ///
+  /// Parameters:
+  /// - index: The participant's index in the list
+  /// - colorScheme: The current theme's color scheme
+  /// - brightness: The current theme's brightness (light/dark)
+  ///
+  /// Returns a color appropriate for the participant's avatar
+  static Color getPersonColor(
+    int index,
+    ColorScheme colorScheme,
+    Brightness brightness,
+  ) {
+    // Color palette for avatars - uses theme colors and standard material colors
+    final colors = [
+      colorScheme.primary,
+      colorScheme.tertiary,
+      Colors.orange,
+      Colors.teal,
+      Colors.indigo,
+      Colors.deepPurple,
+      Colors.pink,
+      Colors.brown,
+    ];
+
+    // Select color based on index (wrap around if more participants than colors)
+    final baseColor = colors[index % colors.length];
+
+    // For dark mode, check if the color needs to be lightened for visibility
+    if (brightness == Brightness.dark) {
+      // Calculate approximate luminance using RGB components
+      // This simplified formula gives a value between 0-1 indicating brightness
+      final luminance =
+          (0.299 * baseColor.red +
+              0.587 * baseColor.green +
+              0.114 * baseColor.blue) /
+          255;
+
+      // If color is too dark (luminance < 0.5), lighten it
+      if (luminance < 0.5) {
+        return _lightenColor(baseColor, 0.2); // Lighten by 20%
+      }
+    }
+
+    return baseColor;
+  }
+
+  /// Helper method to lighten a color by a specified amount
+  ///
+  /// This utility function creates a lighter version of the provided color
+  /// by moving each RGB component towards white by the specified percentage.
+  ///
+  /// Parameters:
+  /// - color: The original color to lighten
+  /// - amount: The amount to lighten (0.0 to 1.0, where 1.0 is white)
+  ///
+  /// Returns a new color that is lighter than the original
+  static Color _lightenColor(Color color, double amount) {
+    return Color.fromARGB(
+      color.alpha,
+      (color.red + (255 - color.red) * amount).round(), // Move red towards 255
+      (color.green + (255 - color.green) * amount)
+          .round(), // Move green towards 255
+      (color.blue + (255 - color.blue) * amount)
+          .round(), // Move blue towards 255
+    );
+  }
+
+  /// Adjusts colors for better visibility in dark mode
+  ///
+  /// This helper method brightens colors that would be too dark
+  /// to see properly in dark mode.
+  ///
+  /// Parameters:
+  /// - color: The original color to adjust
+  ///
+  /// Returns a color that is visible in dark mode
+  static Color adjustColorForDarkMode(Color color) {
+    // If the color is too dark (luminance < 0.4), brighten it
+    if (_luminance(color) < 0.4) {
+      // Convert to HSL color space to adjust lightness while preserving hue
+      final HSLColor hslColor = HSLColor.fromColor(color);
+      // Increase lightness by 20%, clamped to valid range
+      return hslColor
+          .withLightness((hslColor.lightness + 0.2).clamp(0.0, 1.0))
+          .toColor();
+    }
+    return color; // No adjustment needed
+  }
+
+  /// Calculates the relative luminance of a color
+  ///
+  /// This utility method calculates the perceived brightness of a color
+  /// using the standard luminance formula.
+  ///
+  /// Parameters:
+  /// - color: The color to calculate luminance for
+  ///
+  /// Returns a value between 0.0 (black) and 1.0 (white)
+  static double _luminance(Color color) {
+    // Standard formula for relative luminance
+    // Red contributes 30%, green 59%, blue 11% to perceived brightness
+    return (0.299 * color.red + 0.587 * color.green + 0.114 * color.blue) / 255;
+  }
 }
