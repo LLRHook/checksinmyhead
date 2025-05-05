@@ -1,7 +1,7 @@
 import 'package:checks_frontend/screens/recent_bills/recent_bills_screen.dart';
 import 'package:checks_frontend/screens/settings/settings_screen.dart';
 import 'package:flutter/material.dart';
-import 'quick_split/add_people/participant_selection_sheet.dart';
+import 'quick_split/participant_selection/participant_selection_sheet.dart';
 
 class LandingScreen extends StatefulWidget {
   const LandingScreen({super.key});
