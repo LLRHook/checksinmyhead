@@ -1,17 +1,38 @@
+import 'package:checks_frontend/screens/quick_split/item_assignment/models/assignment_data.dart';
+import 'package:checks_frontend/screens/quick_split/item_assignment/utils/assignment_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../models/assignment_data.dart';
-import '../utils/assignment_utils.dart';
 import '/models/person.dart';
 import '/models/bill_item.dart';
 
+/// AssignmentProvider
+///
+/// A ChangeNotifier that manages the state of bill splitting assignments.
+/// This provider serves as the central state management class for the bill
+/// splitting functionality, handling all operations that modify the assignment state
+/// such as selecting participants, assigning items, and calculating shares.
+///
+/// It uses the AssignmentData immutable data class to store the current state
+/// and AssignmentUtils to perform calculations.
 class AssignmentProvider extends ChangeNotifier {
+  // The current state of assignments
   AssignmentData _data;
 
-  // Universal food/drink icon
-  final IconData universalItemIcon = Icons.restaurant_menu;
-  final IconData alcoholItemIcon = Icons.local_bar;
+  // Icons used for categorizing bill items
+  final IconData universalItemIcon =
+      Icons.restaurant_menu; // For general food/drink items
+  final IconData alcoholItemIcon = Icons.local_bar; // For alcohol items
 
+  /// Creates an AssignmentProvider with initial bill data.
+  ///
+  /// @param participants List of people participating in the bill
+  /// @param items List of bill items to be split
+  /// @param subtotal Sum of all item prices before tax and tip
+  /// @param tax Tax amount
+  /// @param tipAmount Tip amount in currency
+  /// @param total Total bill amount (subtotal + tax + tip)
+  /// @param tipPercentage Tip as percentage of subtotal
+  /// @param isCustomTipAmount Whether tip was entered as amount (true) or percentage (false)
   AssignmentProvider({
     required List<Person> participants,
     required List<BillItem> items,
@@ -20,8 +41,6 @@ class AssignmentProvider extends ChangeNotifier {
     required double tipAmount,
     required double total,
     required double tipPercentage,
-    required double alcoholTipPercentage,
-    required bool useDifferentAlcoholTip,
     required bool isCustomTipAmount,
   }) : _data = AssignmentData.initial(
          participants: participants,
@@ -31,15 +50,13 @@ class AssignmentProvider extends ChangeNotifier {
          tipAmount: tipAmount,
          total: total,
          tipPercentage: tipPercentage,
-         alcoholTipPercentage: alcoholTipPercentage,
-         useDifferentAlcoholTip: useDifferentAlcoholTip,
          isCustomTipAmount: isCustomTipAmount,
        ) {
-    // Initialize data with calculated values
+    // Initialize data with calculated values including tax and tip distribution
     _calculateInitialAssignments();
   }
 
-  // Getters for the data
+  // Getters for accessing the data properties
   AssignmentData get data => _data;
   List<Person> get participants => _data.participants;
   List<BillItem> get items => _data.items;
@@ -55,13 +72,23 @@ class AssignmentProvider extends ChangeNotifier {
   Person? get selectedPerson => _data.selectedPerson;
   Person? get birthdayPerson => _data.birthdayPerson;
 
-  // Initialize with calculated values
+  /// Initializes assignments and calculates each person's share
+  /// including proportional tax and tip allocation.
+  ///
+  /// This is called during initialization and when significant
+  /// changes to the assignment state occur.
   void _calculateInitialAssignments() {
     _data = AssignmentUtils.calculateInitialAssignments(_data);
     notifyListeners();
   }
 
-  // Handle person selection
+  /// Toggles selection state for a person.
+  ///
+  /// If the person is already selected, they will be deselected.
+  /// Otherwise, they will be selected and any previously selected
+  /// person will be deselected.
+  ///
+  /// @param person The person to toggle selection for
   void togglePersonSelection(Person person) {
     if (_data.selectedPerson == person) {
       _data = _data.copyWith(clearSelectedPerson: true);
@@ -72,7 +99,14 @@ class AssignmentProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Toggle birthday person
+  /// Toggles birthday status for a person.
+  ///
+  /// Birthday persons receive special handling, such as having their
+  /// items paid for by others. If the person already has birthday status,
+  /// it will be removed. Otherwise, they will be marked as the birthday person
+  /// and any previous birthday person designation will be cleared.
+  ///
+  /// @param person The person to toggle birthday status for
   void toggleBirthdayPerson(Person person) {
     if (_data.birthdayPerson == person) {
       _data = _data.copyWith(clearBirthdayPerson: true);
@@ -81,17 +115,20 @@ class AssignmentProvider extends ChangeNotifier {
       _data = _data.copyWith(birthdayPerson: person);
 
       // If the selected person is now the birthday person, deselect them
+      // to avoid confusion in the UI
       if (_data.selectedPerson == person) {
         _data = _data.copyWith(clearSelectedPerson: true);
       }
 
-      // Important: Unassign all items from the birthday person
+      // Remove any existing item assignments from the birthday person
+      // since their items will be covered by others
       _data = AssignmentUtils.unassignItemsFromBirthdayPerson(_data, person);
 
       HapticFeedback.mediumImpact();
     }
 
-    // Important: If no items, recalculate initial assignments to handle birthday person
+    // Recalculate assignments if needed (e.g., with no items)
+    // to properly handle birthday person's share
     if (_data.items.isEmpty) {
       _data = AssignmentUtils.calculateInitialAssignments(_data);
     }
@@ -99,24 +136,37 @@ class AssignmentProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Assign an item to participants
+  /// Assigns an item to participants based on the given percentage distribution.
+  ///
+  /// @param item The bill item to assign
+  /// @param newAssignments Map of Person to percentage values (0-100)
   void assignItem(BillItem item, Map<Person, double> newAssignments) {
-    HapticFeedback.mediumImpact(); // Provide haptic feedback
+    HapticFeedback.mediumImpact(); // Provide haptic feedback for user confirmation
     _data = AssignmentUtils.assignItem(_data, item, newAssignments);
     notifyListeners();
   }
 
-  // Evenly split an item among selected participants
+  /// Splits an item evenly among the specified participants.
+  ///
+  /// @param item The bill item to split
+  /// @param people List of people to split the item among
   void splitItemEvenly(BillItem item, List<Person> people) {
     if (people.isEmpty) return;
 
+    // Calculate even split percentages
     Map<Person, double> newAssignments = AssignmentUtils.splitItemEvenly(
       people,
     );
     assignItem(item, newAssignments);
   }
 
-  // Balance an item between current assignees
+  /// Rebalances an item equally between people who already have a share of it.
+  ///
+  /// This is useful for redistributing percentages when people are added
+  /// or removed from an item's assignment.
+  ///
+  /// @param item The bill item to rebalance
+  /// @param assignedPeople List of people currently assigned to the item
   void balanceItemBetweenAssignees(BillItem item, List<Person> assignedPeople) {
     if (assignedPeople.isEmpty) return;
 
@@ -125,18 +175,24 @@ class AssignmentProvider extends ChangeNotifier {
     assignItem(item, newAssignments);
   }
 
-  // Split unassigned amount evenly among participants
+  /// Splits any remaining unassigned amount evenly among all participants.
+  ///
+  /// This is typically used at the end of the bill splitting process to
+  /// distribute any items that haven't been manually assigned.
   void splitUnassignedAmountEvenly() {
     if (_data.unassignedAmount <= 0) return;
 
     _data = AssignmentUtils.splitUnassignedAmountEvenly(_data);
 
-    // Add a success sound or animation here
+    // Provide tactile feedback to confirm the action
     HapticFeedback.mediumImpact();
     notifyListeners();
   }
 
-  // Helper method to get a person's percentage of the total bill
+  /// Calculates a person's percentage of the total bill.
+  /// This is useful for UI displays showing proportional contributions.
+  /// @param person The person to calculate percentage for
+  /// @return The percentage of the total bill assigned to the person
   double getPersonBillPercentage(Person person) {
     return AssignmentUtils.getPersonBillPercentage(person, _data);
   }

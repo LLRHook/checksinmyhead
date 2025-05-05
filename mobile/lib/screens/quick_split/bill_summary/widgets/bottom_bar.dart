@@ -1,33 +1,22 @@
-import 'package:checks_frontend/models/bill_item.dart';
-import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../models/bill_summary_data.dart'; // Add this import
 
+/// BottomBar - Fixed navigation bar at bottom of bill screens
+///
+/// Displays "Share" and "Done" buttons for completing bill actions.
+/// Uses a consolidated BillSummaryData object for all bill information.
 class BottomBar extends StatelessWidget {
   final VoidCallback onShareTap;
   final Function onDoneTap;
-  final List<Person> participants;
-  final Map<Person, double> personShares;
-  final List<BillItem> items;
-  final double subtotal;
-  final double tax;
-  final double tipAmount;
-  final double total;
-  final Person? birthdayPerson;
+  final BillSummaryData data;
 
   const BottomBar({
     super.key,
     required this.onShareTap,
     required this.onDoneTap,
-    required this.participants,
-    required this.personShares,
-    required this.items,
-    required this.subtotal,
-    required this.tax,
-    required this.tipAmount,
-    required this.total,
-    this.birthdayPerson,
+    required this.data,
   });
 
   @override
@@ -44,15 +33,12 @@ class BottomBar extends StatelessWidget {
             ? Colors.black.withValues(alpha: 0.2)
             : Colors.black.withValues(alpha: 0.05);
 
-    // Button text color - for dark mode, use darker text on bright backgrounds for contrast
+    // In dark mode, use dark text on bright buttons for better contrast
     final buttonTextColor =
         brightness == Brightness.dark
-            ? Colors.black.withValues(
-              alpha: 0.9,
-            ) // Dark text for better contrast in dark mode
+            ? Colors.black.withValues(alpha: 0.9)
             : Colors.white;
 
-    // Outline button colors
     final outlineButtonColor =
         brightness == Brightness.dark
             ? colorScheme.primary.withValues(alpha: 0.8)
@@ -92,7 +78,6 @@ class BottomBar extends StatelessWidget {
             Expanded(
               child: FilledButton.icon(
                 onPressed: () {
-                  // Save bill and handle done
                   onDoneTap();
                 },
                 icon: const Icon(Icons.check_circle_outline, size: 18),
@@ -114,50 +99,51 @@ class BottomBar extends StatelessWidget {
   }
 }
 
-// Helper class for external use (if needed)
+/// Utility class to handle the "Done" button actions
+///
+/// Provides a static method to save bill data, show confirmation,
+/// and navigate back to the starting screen.
 class DoneButtonHandler {
+  /// Saves the bill and handles UI feedback
+  ///
+  /// Saves bill to storage, shows confirmation message,
+  /// provides haptic feedback, and navigates back to first screen.
+  /// Uses a BillSummaryData object to simplify parameter passing.
   static Future<void> handleDone(
     BuildContext context, {
-    required List<Person> participants,
-    required Map<Person, double> personShares,
-    required List<BillItem> items,
-    required double subtotal,
-    required double tax,
-    required double tipAmount,
-    required double total,
-    Person? birthdayPerson,
-    double tipPercentage = 0, // New parameter
-    bool isCustomTipAmount = false, // New parameter
+    required BillSummaryData data,
   }) async {
-    // Get theme info for snackbar
+    // Capture theme info before async operation
     final brightness = Theme.of(context).brightness;
     final snackBarBgColor =
-        brightness == Brightness.dark
-            ? const Color(0xFF2D2D2D) // Darker background for dark mode
-            : null; // Use default for light mode
+        brightness == Brightness.dark ? const Color(0xFF2D2D2D) : null;
 
     final snackBarTextColor =
-        brightness == Brightness.dark
-            ? Colors.white
-            : null; // Use default for light mode
+        brightness == Brightness.dark ? Colors.white : null;
 
-    // Save the bill to the database
+    // Store a navigator reference to avoid context usage after async gap
+    final navigator = Navigator.of(context);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+    // Save bill data using the consolidated BillSummaryData object
     await RecentBillsManager.saveBill(
-      participants: participants,
-      personShares: personShares,
-      items: items,
-      subtotal: subtotal,
-      tax: tax,
-      tipAmount: tipAmount,
-      total: total,
-      birthdayPerson: birthdayPerson,
-      tipPercentage: tipPercentage, // Pass the tip percentage
-      isCustomTipAmount:
-          isCustomTipAmount, // Pass whether it's a custom tip amount
+      participants: data.participants,
+      personShares: data.personShares,
+      items: data.items,
+      subtotal: data.subtotal,
+      tax: data.tax,
+      tipAmount: data.tipAmount,
+      total: data.total,
+      birthdayPerson: data.birthdayPerson,
+      tipPercentage: data.tipPercentage,
+      isCustomTipAmount: data.isCustomTipAmount,
     );
 
-    // Show success message with theme-aware colors
-    ScaffoldMessenger.of(context).showSnackBar(
+    // Check if widget is still mounted before proceeding
+    if (!navigator.mounted) return;
+
+    // Show success message using the stored scaffoldMessenger
+    scaffoldMessenger.showSnackBar(
       SnackBar(
         content: Text(
           'Bill saved successfully',
@@ -169,10 +155,9 @@ class DoneButtonHandler {
       ),
     );
 
-    // Provide haptic feedback
     HapticFeedback.mediumImpact();
 
-    // Navigate to first screen
-    Navigator.of(context).popUntil((route) => route.isFirst);
+    // Return to home screen using the stored navigator reference
+    navigator.popUntil((route) => route.isFirst);
   }
 }

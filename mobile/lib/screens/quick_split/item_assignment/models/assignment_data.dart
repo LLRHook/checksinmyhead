@@ -1,26 +1,43 @@
 import '/models/person.dart';
 import '/models/bill_item.dart';
 
-/// A class to hold all the item assignment data
+/// AssignmentData
+///
+/// This class serves as a centralized container for all data related to bill splitting
+/// and item assignments. It holds information about participants, bill items,
+/// monetary values (subtotal, tax, tip, etc.), and the current state of assignments.
+///
+/// The class is immutable - all updates are made through the copyWith method, which
+/// creates a new instance with the specified changes. This pattern supports a clean,
+/// predictable state management approach.
 class AssignmentData {
-  final List<Person> participants;
-  final List<BillItem> items;
-  final double subtotal;
-  final double tax;
-  final double tipAmount;
-  final double total;
-  final double tipPercentage;
-  final double alcoholTipPercentage;
-  final bool useDifferentAlcoholTip;
-  final bool isCustomTipAmount;
+  // Bill participants and items
+  final List<Person> participants; // People sharing the bill
+  final List<BillItem> items; // Individual items on the bill
 
-  // State data
-  final Map<Person, double> personTotals;
-  final Map<Person, double> personFinalShares;
-  final double unassignedAmount;
-  final Person? selectedPerson;
-  final Person? birthdayPerson;
+  // Bill monetary values
+  final double subtotal; // Sum of all item prices
+  final double tax; // Tax amount
+  final double tipAmount; // Tip amount in currency
+  final double total; // Total bill amount (subtotal + tax + tip)
+  final double tipPercentage; // Tip as percentage of subtotal
+  final bool
+  isCustomTipAmount; // Whether tip was entered as amount (true) or percentage (false)
 
+  // Assignment state data
+  final Map<Person, double>
+  personTotals; // Amount assigned to each person (item costs only)
+  final Map<Person, double>
+  personFinalShares; // Final amounts including tax and tip
+  final double unassignedAmount; // Portion of bill not yet assigned to anyone
+  final Person? selectedPerson; // Currently selected person in the UI
+  final Person?
+  birthdayPerson; // Person receiving special handling (e.g., birthday discount)
+
+  /// Creates an instance of AssignmentData with all required fields.
+  ///
+  /// All fields are final since this is an immutable data class.
+  /// Updates should be made through the copyWith method.
   const AssignmentData({
     required this.participants,
     required this.items,
@@ -29,8 +46,6 @@ class AssignmentData {
     required this.tipAmount,
     required this.total,
     required this.tipPercentage,
-    required this.alcoholTipPercentage,
-    required this.useDifferentAlcoholTip,
     required this.isCustomTipAmount,
     required this.personTotals,
     required this.personFinalShares,
@@ -39,7 +54,31 @@ class AssignmentData {
     this.birthdayPerson,
   });
 
-  /// Create a copy of the assignment data with updated values
+  /// Creates a new AssignmentData instance with updated values.
+  ///
+  /// This method implements the immutable update pattern, allowing selective
+  /// updating of properties while preserving the values of properties that
+  /// aren't explicitly changed.
+  ///
+  /// @param participants Updated list of participants
+  /// @param items Updated list of bill items
+  /// @param subtotal Updated subtotal amount
+  /// @param tax Updated tax amount
+  /// @param tipAmount Updated tip amount
+  /// @param total Updated total bill amount
+  /// @param tipPercentage Updated tip percentage
+  /// @param alcoholTipPercentage Legacy parameter (not used in current implementation)
+  /// @param useDifferentAlcoholTip Legacy parameter (not used in current implementation)
+  /// @param isCustomTipAmount Whether tip is specified as amount or percentage
+  /// @param personTotals Updated amounts assigned to each person
+  /// @param personFinalShares Updated final shares including tax and tip
+  /// @param unassignedAmount Updated unassigned amount
+  /// @param selectedPerson Updated selected person
+  /// @param clearSelectedPerson When true, clears selected person regardless of selectedPerson param
+  /// @param birthdayPerson Updated birthday person
+  /// @param clearBirthdayPerson When true, clears birthday person regardless of birthdayPerson param
+  ///
+  /// @return A new AssignmentData instance with updated values
   AssignmentData copyWith({
     List<Person>? participants,
     List<BillItem>? items,
@@ -48,8 +87,8 @@ class AssignmentData {
     double? tipAmount,
     double? total,
     double? tipPercentage,
-    double? alcoholTipPercentage,
-    bool? useDifferentAlcoholTip,
+    double? alcoholTipPercentage, // Legacy parameter
+    bool? useDifferentAlcoholTip, // Legacy parameter
     bool? isCustomTipAmount,
     Map<Person, double>? personTotals,
     Map<Person, double>? personFinalShares,
@@ -67,9 +106,6 @@ class AssignmentData {
       tipAmount: tipAmount ?? this.tipAmount,
       total: total ?? this.total,
       tipPercentage: tipPercentage ?? this.tipPercentage,
-      alcoholTipPercentage: alcoholTipPercentage ?? this.alcoholTipPercentage,
-      useDifferentAlcoholTip:
-          useDifferentAlcoholTip ?? this.useDifferentAlcoholTip,
       isCustomTipAmount: isCustomTipAmount ?? this.isCustomTipAmount,
       personTotals: personTotals ?? this.personTotals,
       personFinalShares: personFinalShares ?? this.personFinalShares,
@@ -81,7 +117,21 @@ class AssignmentData {
     );
   }
 
-  /// Factory method to create an initial instance with empty state data
+  /// Factory method that creates an initial instance with empty state data.
+  ///
+  /// This is typically used when starting a new bill split, before any items
+  /// have been assigned to participants.
+  ///
+  /// @param participants List of people participating in the bill
+  /// @param items List of bill items to be split
+  /// @param subtotal Sum of all item prices
+  /// @param tax Tax amount
+  /// @param tipAmount Tip amount
+  /// @param total Total bill amount
+  /// @param tipPercentage Tip as percentage of subtotal
+  /// @param isCustomTipAmount Whether tip was entered as amount or percentage
+  ///
+  /// @return A new AssignmentData instance with empty/initial state values
   factory AssignmentData.initial({
     required List<Person> participants,
     required List<BillItem> items,
@@ -90,8 +140,6 @@ class AssignmentData {
     required double tipAmount,
     required double total,
     required double tipPercentage,
-    required double alcoholTipPercentage,
-    required bool useDifferentAlcoholTip,
     required bool isCustomTipAmount,
   }) {
     return AssignmentData(
@@ -102,14 +150,13 @@ class AssignmentData {
       tipAmount: tipAmount,
       total: total,
       tipPercentage: tipPercentage,
-      alcoholTipPercentage: alcoholTipPercentage,
-      useDifferentAlcoholTip: useDifferentAlcoholTip,
       isCustomTipAmount: isCustomTipAmount,
-      personTotals: {},
-      personFinalShares: {},
-      unassignedAmount: items.isEmpty ? 0.0 : subtotal,
-      selectedPerson: null,
-      birthdayPerson: null,
+      personTotals: {}, // Initially empty - no assignments
+      personFinalShares: {}, // Initially empty - no calculated shares
+      unassignedAmount:
+          items.isEmpty ? 0.0 : subtotal, // All items unassigned initially
+      selectedPerson: null, // No person selected initially
+      birthdayPerson: null, // No birthday person initially
     );
   }
 }

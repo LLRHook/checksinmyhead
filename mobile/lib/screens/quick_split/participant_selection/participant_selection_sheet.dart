@@ -124,7 +124,7 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
       borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.15),
+          color: Colors.black.withValues(alpha: .15),
           blurRadius: 20,
           offset: const Offset(0, -5),
         ),

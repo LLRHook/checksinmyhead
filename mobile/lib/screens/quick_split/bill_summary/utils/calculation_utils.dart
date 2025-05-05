@@ -1,8 +1,21 @@
 import '/models/person.dart';
 import '/models/bill_item.dart';
 
+/// CalculationUtils - Utility for calculating individual bill payments
+///
+/// Calculates each person's portion of a bill (subtotal, tax, tip, total)
+/// based on either itemized assignments or proportional shares.
+///
+/// Inputs:
+///   - person: Person to calculate for
+///   - participants: All people involved in the bill
+///   - personShares: Map of each person to their share amount
+///   - items: Bill items with person assignments (optional)
+///   - subtotal, tax, tipAmount: Bill totals
+///   - birthdayPerson: Person receiving special birthday handling (optional)
+///
+/// Returns: Map with 'subtotal', 'tax', 'tip', and 'total' amounts
 class CalculationUtils {
-  /// Calculate a person's amounts (subtotal, tax, tip)
   static Map<String, double> calculatePersonAmounts({
     required Person person,
     required List<Person> participants,
@@ -15,23 +28,22 @@ class CalculationUtils {
   }) {
     double personSubtotal = 0.0;
 
-    // If using items, calculate from item assignments
     if (items.isNotEmpty) {
+      // Itemized approach: Sum costs of items assigned to this person
       for (var item in items) {
         personSubtotal += item.amountForPerson(person);
       }
     } else {
-      // Otherwise, estimate based on final share proportion
+      // Proportional approach based on person's share
       final personTotal = personShares[person] ?? 0.0;
       final totalWithoutExtras = subtotal;
       final extras = tax + tipAmount;
 
-      // If the person is the birthday person with $0 share
+      // Special case: birthday person or anyone with $0 share
       if (personTotal <= 0) {
         return {'subtotal': 0.0, 'tax': 0.0, 'tip': 0.0, 'total': 0.0};
       }
 
-      // Calculate the proportion of the subtotal this person is responsible for
       final proportion = personTotal / (totalWithoutExtras + extras);
       personSubtotal = proportion * totalWithoutExtras;
     }

@@ -1,93 +1,77 @@
-import 'package:checks_frontend/models/person.dart';
 import 'package:flutter/material.dart';
 import '/models/bill_item.dart';
 
+/// BillData - ChangeNotifier class that manages bill calculation state
+///
+/// Handles input controllers, calculations, and state management for
+/// bill splitting functionality including subtotal, tax, tip, and itemized expenses.
+///
+/// Provides methods to:
+/// - Calculate bill totals based on user inputs
+/// - Manage bill items (add, remove, calculate totals)
+/// - Control tip settings (percentage or custom amount)
+///
+/// Notifies listeners when bill data changes to update UI components.
 class BillData extends ChangeNotifier {
-  // Existing controllers
+  // Text input controllers
   final TextEditingController subtotalController = TextEditingController();
   final TextEditingController taxController = TextEditingController();
   final TextEditingController customTipController = TextEditingController();
-  final TextEditingController alcoholController = TextEditingController();
   final TextEditingController itemNameController = TextEditingController();
   final TextEditingController itemPriceController = TextEditingController();
 
-  // Keep these controllers but they won't be used actively
-  final TextEditingController alcoholTaxController = TextEditingController();
-  final TextEditingController customAlcoholTipController =
-      TextEditingController();
-
   // Tip settings
   double tipPercentage = 18.0;
-  bool useDifferentTipForAlcohol = false; // Keep but won't actively use
-  double alcoholTipPercentage = 20.0; // Keep but won't actively use
-  double alcoholAmount = 0.0; // Keep but won't actively use
   bool useCustomTipAmount = false;
-  bool useCustomAlcoholTipAmount = false; // Keep but won't actively use
 
   // Bill calculation values
   double subtotal = 0.0;
   double tax = 0.0;
-  double alcoholTax = 0.0; // Keep but won't actively use
   double tipAmount = 0.0;
-  double alcoholTipAmount = 0.0; // Keep but won't actively use
   double total = 0.0;
 
   // List of items to split
   List<BillItem> items = [];
 
-  // Items total
+  // Items total tracking
   double itemsTotal = 0.0;
   double animatedItemsTotal = 0.0;
 
   BillData() {
-    // Add listeners to controllers
+    // Add listeners to controllers for real-time calculation updates
     subtotalController.addListener(calculateBill);
     taxController.addListener(calculateBill);
-    alcoholController.addListener(calculateBill);
     customTipController.addListener(calculateBill);
-    alcoholTaxController.addListener(calculateBill);
-    customAlcoholTipController.addListener(calculateBill);
-  }
-
-  // Keep this but simplify its implementation
-  void updateSharesWithAlcoholCharges(
-    Map<Person, double> personShares,
-    List<Person> participants,
-    Person? birthdayPerson,
-  ) {
-    // Now this is just a pass-through method that doesn't do anything special
-    // We keep it to avoid breaking existing code that calls it
   }
 
   @override
   void dispose() {
-    // Dispose controllers
+    // Clean up controllers to prevent memory leaks
     subtotalController.dispose();
     taxController.dispose();
-    alcoholController.dispose();
     itemNameController.dispose();
     itemPriceController.dispose();
     customTipController.dispose();
-    alcoholTaxController.dispose();
-    customAlcoholTipController.dispose();
     super.dispose();
   }
 
+  /// Calculates bill totals based on current input values
   void calculateBill() {
-    // Safely parse input values with validation
+    // Parse subtotal with error handling
     try {
       subtotal = double.tryParse(subtotalController.text) ?? 0.0;
     } catch (_) {
       subtotal = 0.0;
     }
 
+    // Parse tax with error handling
     try {
       tax = double.tryParse(taxController.text) ?? 0.0;
     } catch (_) {
       tax = 0.0;
     }
 
-    // Calculate tip (simplify to just use one approach)
+    // Calculate tip based on mode (percentage or custom amount)
     if (useCustomTipAmount) {
       try {
         tipAmount = double.tryParse(customTipController.text) ?? 0.0;
@@ -98,18 +82,13 @@ class BillData extends ChangeNotifier {
       tipAmount = subtotal * (tipPercentage / 100);
     }
 
-    // Set total without alcohol-specific calculations
+    // Calculate final total
     total = subtotal + tax + tipAmount;
 
     notifyListeners();
   }
 
-  // Simplified method - no longer distributes anything
-  void distributeAlcoholCosts() {
-    // This is now a no-op method to avoid breaking existing code
-  }
-
-  // Calculate the total of all items
+  /// Recalculates the total of all items in the list
   void calculateItemsTotal() {
     double total = 0.0;
     for (var item in items) {
@@ -119,58 +98,35 @@ class BillData extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Simplified method that doesn't calculate anything
-  void calculateAlcoholAmount() {
-    // This is now a no-op method to avoid breaking existing code
-  }
-
-  // Add an item to the list
+  /// Adds a new item to the list and updates totals
   void addItem(String name, double price) {
     items.add(BillItem(name: name, price: price, assignments: {}));
     calculateItemsTotal();
     notifyListeners();
   }
 
-  // Remove an item from the list
+  /// Removes an item from the list and updates totals
   void removeItem(int index) {
     items.removeAt(index);
     calculateItemsTotal();
     notifyListeners();
   }
 
-  // Keep this method but make it a no-op
-  void toggleItemAlcohol(int index, bool isAlcohol) {
-    // No-op method to avoid breaking existing code
-  }
-
-  // Update animated items total
+  /// Updates the animated total for UI transitions
   void updateAnimatedItemsTotal(double value) {
     animatedItemsTotal = value;
     notifyListeners();
   }
 
-  // Set tip percentage
+  /// Sets the tip percentage and recalculates the bill
   void setTipPercentage(double value) {
     tipPercentage = value;
     calculateBill();
   }
 
-  // Toggle custom tip amount
+  /// Toggles between percentage-based and custom tip amounts
   void toggleCustomTipAmount(bool value) {
     useCustomTipAmount = value;
     calculateBill();
-  }
-
-  // Keep these methods but make them no-ops
-  void toggleDifferentTipForAlcohol(bool value) {
-    // No-op
-  }
-
-  void setAlcoholTipPercentage(double value) {
-    // No-op
-  }
-
-  void toggleCustomAlcoholTipAmount(bool value) {
-    // No-op
   }
 }

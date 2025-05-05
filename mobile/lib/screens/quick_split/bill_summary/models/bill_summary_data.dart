@@ -1,7 +1,8 @@
 import '/models/person.dart';
 import '/models/bill_item.dart';
 
-/// A class to hold all the bill summary data to avoid prop drilling
+/// Data container class that encapsulates all bill-related information
+/// to simplify state management and avoid prop drilling across widgets
 class BillSummaryData {
   final List<Person> participants;
   final Map<Person, double> personShares;
@@ -27,7 +28,8 @@ class BillSummaryData {
     this.isCustomTipAmount = false,
   });
 
-  /// Get sorted participants by payment amount (highest first)
+  /// Returns participants sorted by their payment amount in descending order
+  /// Useful for displaying participants in order of contribution
   List<Person> get sortedParticipants {
     final sorted = List<Person>.from(participants);
     sorted.sort((a, b) {

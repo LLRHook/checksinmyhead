@@ -1,11 +1,24 @@
+import 'package:checks_frontend/screens/quick_split/bill_entry/models/bill_data.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/bill_data.dart';
 
+/// ContinueButton - Context-aware action button for bill entry navigation
+///
+/// A prominent button that changes appearance and text based on the current
+/// state of bill entry. Shows different states for:
+/// - Items matching subtotal (success state with checkmark)
+/// - Items added but not matching subtotal (standard continue)
+/// - No items added (prompting user to add items)
+///
+/// Features:
+/// - Visual feedback through color changes based on validation state
+/// - Theme-aware styling for both light and dark modes
+/// - Subtle elevation shadow for depth
+/// - Adaptive text and icons based on current bill state
 class ContinueButton extends StatelessWidget {
   final VoidCallback onPressed;
 
-  const ContinueButton({Key? key, required this.onPressed}) : super(key: key);
+  const ContinueButton({super.key, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -13,33 +26,28 @@ class ContinueButton extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
-    // Check if items match subtotal (with small tolerance for rounding errors)
+    // Check if items total matches subtotal (with small tolerance for rounding errors)
     final isItemsMatchingSubtotal =
         billData.subtotal > 0 &&
         (billData.subtotal - billData.itemsTotal).abs() <= 0.01;
 
-    // Theme-aware success color
+    // Use a distinct green color for success state
     final successColor =
         brightness == Brightness.dark
-            ? const Color(0xFF66BB6A) // Darker green for dark mode
-            : const Color(0xFF4CAF50); // Normal green for light mode
+            ? const Color(0xFF66BB6A) // Softer green for dark mode
+            : const Color(0xFF4CAF50); // Standard green for light mode
 
-    // Determine button appearance based on validation state
+    // Use success color when items match, otherwise use theme primary color
     final buttonColor =
         isItemsMatchingSubtotal ? successColor : colorScheme.primary;
 
-    final buttonIcon =
-        isItemsMatchingSubtotal ? Icons.check_circle : Icons.arrow_forward;
-
-    // Button text color
+    // Use dark text on bright backgrounds for better contrast in dark mode
     final textColor =
         brightness == Brightness.dark
-            ? Colors.black.withOpacity(
-              0.9,
-            ) // Dark text for better contrast in dark mode
+            ? Colors.black.withValues(alpha: 0.9)
             : Colors.white;
 
-    // Has items check
+    // Check if any items have been added
     final hasItems = billData.items.isNotEmpty;
 
     return Container(
@@ -49,8 +57,8 @@ class ContinueButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: buttonColor.withOpacity(
-              brightness == Brightness.dark ? 0.2 : 0.3,
+            color: buttonColor.withValues(
+              alpha: brightness == Brightness.dark ? 0.2 : 0.3,
             ),
             blurRadius: 12,
             offset: const Offset(0, 4),
@@ -71,6 +79,7 @@ class ContinueButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            // Success state - items match subtotal
             if (isItemsMatchingSubtotal) ...[
               Icon(Icons.check_circle, size: 20, color: textColor),
               const SizedBox(width: 8),
@@ -83,23 +92,27 @@ class ContinueButton extends StatelessWidget {
                   color: textColor,
                 ),
               ),
-            ] else if (hasItems) ...[
+            ]
+            // Items added but don't match subtotal
+            else if (hasItems) ...[
               Text(
                 'CONTINUE',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1,
-                  color: textColor.withOpacity(0.9),
+                  color: textColor.withValues(alpha: .9),
                 ),
               ),
               const SizedBox(width: 8),
               Icon(
                 Icons.arrow_forward,
                 size: 20,
-                color: textColor.withOpacity(0.9),
+                color: textColor.withValues(alpha: .9),
               ),
-            ] else ...[
+            ]
+            // No items added yet
+            else ...[
               Text(
                 'ADD ITEMS & CONTINUE',
                 style: TextStyle(

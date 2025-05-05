@@ -1,23 +1,52 @@
 import 'package:flutter/material.dart';
 
+/// A customized AppBar widget specifically designed for the item assignment screens.
+///
+/// This AppBar provides a consistent navigation experience with:
+/// - A back button for returning to the previous screen
+/// - An optional help button that can be toggled on/off
+/// - Theme-aware styling that adapts to both light and dark modes
+///
+/// The AppBar maintains a clean, minimal design with zero elevation and proper
+/// accessibility features like tooltips on interactive elements.
+///
+/// Example usage:
+/// ```dart
+/// AssignmentAppBar(
+///   onBackPressed: () => Navigator.pop(context),
+///   onHelpPressed: _showTutorial,
+///   showHelpButton: true,
+/// )
+/// ```
 class AssignmentAppBar extends StatelessWidget implements PreferredSizeWidget {
+  /// Callback function executed when the back button is pressed
   final VoidCallback onBackPressed;
+
+  /// Optional callback function executed when the help button is pressed
   final VoidCallback? onHelpPressed;
+
+  /// Controls the visibility of the help button in the AppBar
+  /// When false, the help button will not be displayed regardless of onHelpPressed
   final bool showHelpButton;
 
+  /// Creates an AssignmentAppBar with required and optional parameters
+  ///
+  /// The [onBackPressed] parameter is required to handle navigation.
+  /// The [onHelpPressed] parameter is optional but needed if [showHelpButton] is true.
+  /// The [showHelpButton] defaults to false if not specified.
   const AssignmentAppBar({
-    Key? key,
+    super.key,
     required this.onBackPressed,
     this.onHelpPressed,
     this.showHelpButton = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
+    // Retrieve the current theme's color scheme for theme-aware styling
     final colorScheme = Theme.of(context).colorScheme;
-    final brightness = Theme.of(context).brightness;
 
-    // Theme-aware colors
+    // Define theme-aware colors for consistent styling
     final backgroundColor = colorScheme.surface;
     final iconColor = colorScheme.onSurface;
 
@@ -30,7 +59,7 @@ class AssignmentAppBar extends StatelessWidget implements PreferredSizeWidget {
         ),
       ),
       centerTitle: true,
-      elevation: 0,
+      elevation: 0, // Flat design with no shadow
       backgroundColor: backgroundColor,
       foregroundColor: iconColor, // Theme-aware icons and text
       leading: IconButton(
@@ -39,17 +68,26 @@ class AssignmentAppBar extends StatelessWidget implements PreferredSizeWidget {
         color: iconColor, // Ensure icon respects theme
       ),
       actions: [
+        // Conditionally display the help button only when both:
+        // 1. showHelpButton is true, and
+        // 2. onHelpPressed callback is provided
         if (showHelpButton && onHelpPressed != null)
           IconButton(
             icon: const Icon(Icons.help_outline),
             onPressed: onHelpPressed,
-            tooltip: 'Show Tutorial',
-            color: colorScheme.primary, // Use primary color for help icon
+            tooltip: 'Show Tutorial', // Accessibility enhancement
+            color:
+                colorScheme
+                    .primary, // Use primary color for help icon to draw attention
           ),
       ],
     );
   }
 
+  /// Defines the preferred size for this widget
+  ///
+  /// Uses the standard toolbar height (kToolbarHeight) defined in the Material library
+  /// This implementation is required by the PreferredSizeWidget interface
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }

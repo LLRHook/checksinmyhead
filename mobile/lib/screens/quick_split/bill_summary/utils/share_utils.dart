@@ -6,15 +6,17 @@ import '/models/bill_item.dart';
 import 'calculation_utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// ShareUtils - Utility for generating and sharing bill summaries
+///
+/// Contains methods for retrieving payment information, generating formatted
+/// bill summary text (with multiple options), and sharing the summary with others.
 class ShareUtils {
-  /// Get payment info from shared preferences
+  /// Retrieves payment method information from shared preferences
   static Future<Map<String, dynamic>> getPaymentInfo() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // Get selected payment methods
     final selectedPayments = prefs.getStringList('selectedPayments') ?? [];
 
-    // Get identifiers for each payment method
     final Map<String, String> paymentIdentifiers = {};
     for (final method in selectedPayments) {
       final identifier = prefs.getString('payment_$method');
@@ -29,8 +31,7 @@ class ShareUtils {
     };
   }
 
-  /// Generate text for sharing bill summary
-  /// Generate text for sharing bill summary
+  /// Generates formatted text for bill summary with person-based lookups
   static Future<String> generateShareText({
     required List<Person> participants,
     required Map<Person, double> personShares,
@@ -46,16 +47,6 @@ class ShareUtils {
     required bool includePersonItemsInShare,
     required bool hideBreakdownInShare,
   }) async {
-    debugPrint("DEBUG: generateShareText called");
-    debugPrint("DEBUG: participants: ${participants.length}");
-    debugPrint("DEBUG: personShares: ${personShares.length}");
-    debugPrint("DEBUG: items: ${items.length}");
-
-    // Print individual shares
-    personShares.forEach((person, amount) {
-      debugPrint("DEBUG: SHARE: ${person.name} = $amount");
-    });
-
     // Sort participants by payment amount (highest first)
     final sortedParticipants = List<Person>.from(participants);
     sortedParticipants.sort((a, b) {
@@ -70,15 +61,12 @@ class ShareUtils {
     final paymentIdentifiers =
         paymentInfo['paymentIdentifiers'] as Map<String, String>;
 
-    // Build the text
     StringBuffer text = StringBuffer();
 
-    // Clean, premium header
     text.writeln('BILL SUMMARY');
     text.writeln('Total: \$${total.toStringAsFixed(2)}');
     text.writeln('───────────────');
 
-    // Items (if toggled on and items exist)
     if (includeItemsInShare && items.isNotEmpty) {
       text.writeln('ITEMS:');
       for (var item in items) {
@@ -87,13 +75,11 @@ class ShareUtils {
       text.writeln('───────────────');
     }
 
-    // Breakdown with tip percentage (only if not hidden)
     if (!hideBreakdownInShare) {
       text.writeln('BREAKDOWN:');
       text.writeln('Subtotal: \$${subtotal.toStringAsFixed(2)}');
       text.writeln('Tax: \$${tax.toStringAsFixed(2)}');
 
-      // Display tip differently based on whether it's custom or percentage
       if (isCustomTipAmount) {
         text.writeln('Tip: \$${tipAmount.toStringAsFixed(2)}');
       } else {
@@ -105,31 +91,19 @@ class ShareUtils {
       text.writeln('───────────────');
     }
 
-    // Individual shares with optional person-specific items
     text.writeln('INDIVIDUAL SHARES:');
-    debugPrint("DEBUG: Writing individual shares section");
-
-    // Debug information about personShares
-    if (personShares.isEmpty) {
-      debugPrint("DEBUG: WARNING - personShares map is empty!");
-    }
 
     bool anySharesWritten = false;
 
     for (var person in sortedParticipants) {
-      debugPrint("DEBUG: Processing ${person.name}");
       final share = personShares[person] ?? 0;
-      debugPrint("DEBUG: Share for ${person.name}: $share");
 
       if (share > 0 || person == birthdayPerson) {
         anySharesWritten = true;
-        // Person's name and share - simplified for everyone including birthday person
         text.writeln('• ${person.name}: \$${share.toStringAsFixed(2)}');
-        debugPrint("DEBUG: Added ${person.name} with share $share to summary");
 
-        // Add person-specific items if toggled on
         if (includePersonItemsInShare && items.isNotEmpty) {
-          // Calculate the amounts
+          // Use calculation utils to get personal breakdown
           final amounts = CalculationUtils.calculatePersonAmounts(
             person: person,
             participants: participants,
@@ -143,14 +117,11 @@ class ShareUtils {
           List<String> personItems = [];
 
           for (var item in items) {
-            // Check if this person is assigned to this item
             if (item.assignments.containsKey(person) &&
                 item.assignments[person]! > 0) {
-              // Calculate the amount this person is paying for this item
               double percentage = item.assignments[person]! / 100.0;
               double amount = item.price * percentage;
 
-              // Format shared indicator - much simpler now
               String sharedText = "";
               if (percentage < 0.99) {
                 sharedText = " (shared)";
@@ -162,69 +133,54 @@ class ShareUtils {
             }
           }
 
-          // Only add the items section if the person has items
           if (personItems.isNotEmpty) {
             for (var itemText in personItems) {
               text.writeln(itemText);
             }
 
-            // Add tax and tip without repeating the total
             if (!hideBreakdownInShare) {
               text.writeln(
                 '  + Tax & tip: \$${(amounts['tax']! + amounts['tip']!).toStringAsFixed(2)}',
               );
             }
 
-            // Add a spacer between people
             text.writeln('');
           }
         }
-      } else {
-        debugPrint("DEBUG: Skipped ${person.name} because share is $share");
       }
     }
 
     if (!anySharesWritten) {
-      debugPrint("DEBUG: WARNING - No individual shares were written!");
+      // Keep this as an error log
+      debugPrint("ERROR: No individual shares were written!");
     }
 
-    // Payment information (add only if payment options are set)
+    // Add payment details if available
     if (selectedPayments.isNotEmpty && paymentIdentifiers.isNotEmpty) {
       text.writeln('───────────────');
       text.writeln('PAYMENT DETAILS:');
 
-      // Add each payment method and its identifier
       for (var i = 0; i < selectedPayments.length; i++) {
         final method = selectedPayments[i];
         final identifier = paymentIdentifiers[method];
 
         if (identifier != null && identifier.isNotEmpty) {
-          // If it's the first payment method
-          if (i == 0) {
-            text.writeln('$method: $identifier');
-          }
-          // For additional payment methods
-          else {
-            text.writeln('$method: $identifier');
-          }
+          text.writeln('$method: $identifier');
         }
       }
     }
 
-    // App signature - more professional
     text.writeln('───────────────');
     text.writeln('Split with CheckMate');
-
-    debugPrint("DEBUG: Final share text: ${text.toString()}");
 
     return text.toString();
   }
 
-  /// Generate text for sharing bill summary using name-based lookups
+  /// Alternative implementation using name-based lookups for more reliable matching
+  /// when Person object equality may fail (e.g., after serialization/deserialization)
   static Future<String> generateShareTextWithNameLookup({
     required List<Person> participants,
-    required Map<String, double>
-    personSharesByName, // Using string keys for reliable lookup
+    required Map<String, double> personSharesByName,
     required List<BillItem> items,
     required double subtotal,
     required double tax,
@@ -244,21 +200,17 @@ class ShareUtils {
       return bShare.compareTo(aShare);
     });
 
-    // Get payment information
     final paymentInfo = await getPaymentInfo();
     final selectedPayments = paymentInfo['selectedPayments'] as List<String>;
     final paymentIdentifiers =
         paymentInfo['paymentIdentifiers'] as Map<String, String>;
 
-    // Build the text
     StringBuffer text = StringBuffer();
 
-    // Clean, premium header
     text.writeln('BILL SUMMARY');
     text.writeln('Total: \$${total.toStringAsFixed(2)}');
     text.writeln('───────────────');
 
-    // Items (if toggled on and items exist)
     if (includeItemsInShare && items.isNotEmpty) {
       text.writeln('ITEMS:');
       for (var item in items) {
@@ -267,13 +219,11 @@ class ShareUtils {
       text.writeln('───────────────');
     }
 
-    // Breakdown with tip percentage (only if not hidden)
     if (!hideBreakdownInShare) {
       text.writeln('BREAKDOWN:');
       text.writeln('Subtotal: \$${subtotal.toStringAsFixed(2)}');
       text.writeln('Tax: \$${tax.toStringAsFixed(2)}');
 
-      // Display tip differently based on whether it's custom or percentage
       if (isCustomTipAmount) {
         text.writeln('Tip: \$${tipAmount.toStringAsFixed(2)}');
       } else {
@@ -285,27 +235,23 @@ class ShareUtils {
       text.writeln('───────────────');
     }
 
-    // Individual shares with optional person-specific items
     text.writeln('INDIVIDUAL SHARES:');
 
     for (var person in sortedParticipants) {
       final share = personSharesByName[person.name] ?? 0;
 
       if (share > 0) {
-        // Person's name and share
         text.writeln('• ${person.name}: \$${share.toStringAsFixed(2)}');
 
-        // Add person-specific items if toggled on
         if (includePersonItemsInShare && items.isNotEmpty) {
           List<String> personItems = [];
 
           for (var item in items) {
-            // Find if this person is assigned to this item
+            // Find assignments by matching person name instead of object reference
             bool hasAssignment = false;
             double percentage = 0.0;
             double amount = 0.0;
 
-            // Check assignments by name - critical change here
             item.assignments.forEach((assignedPerson, assignedPercentage) {
               if (assignedPerson.name == person.name &&
                   assignedPercentage > 0) {
@@ -316,7 +262,6 @@ class ShareUtils {
             });
 
             if (hasAssignment) {
-              // Format shared indicator
               String sharedText = "";
               if (percentage < 0.99) {
                 sharedText = " (shared)";
@@ -328,15 +273,13 @@ class ShareUtils {
             }
           }
 
-          // Only add the items section if the person has items
           if (personItems.isNotEmpty) {
             for (var itemText in personItems) {
               text.writeln(itemText);
             }
 
-            // Calculate tax and tip portion
             if (!hideBreakdownInShare) {
-              // Simple proportional tax and tip calculation
+              // Calculate tax and tip based on proportion of total
               final proportion = share / total;
               final taxAndTipPortion = proportion * (tax + tipAmount);
 
@@ -345,19 +288,16 @@ class ShareUtils {
               );
             }
 
-            // Add a spacer between people
             text.writeln('');
           }
         }
       }
     }
 
-    // Payment information (add only if payment options are set)
     if (selectedPayments.isNotEmpty && paymentIdentifiers.isNotEmpty) {
       text.writeln('───────────────');
       text.writeln('PAYMENT DETAILS:');
 
-      // Add each payment method and its identifier
       for (var i = 0; i < selectedPayments.length; i++) {
         final method = selectedPayments[i];
         final identifier = paymentIdentifiers[method];
@@ -368,27 +308,23 @@ class ShareUtils {
       }
     }
 
-    // App signature
     text.writeln('───────────────');
     text.writeln('Split with CheckMate');
 
     return text.toString();
   }
 
-  /// Share bill summary
-  static void shareBillSummary({
-    required BuildContext context,
-    required String summary,
-  }) {
-    // Use the SharePlus instance with ShareParams
+  /// Shares the bill summary text using the system share sheet
+  static void shareBillSummary({required String summary}) {
     SharePlus.instance.share(
       ShareParams(text: summary, subject: 'Bill Summary'),
     );
-    // Provide haptic feedback
+    // Provide tactile feedback to confirm the action
     HapticFeedback.selectionClick();
   }
 }
 
+/// Bottom sheet widget for configuring share options
 class ShareOptionsSheet extends StatefulWidget {
   final ShareOptions initialOptions;
   final Function(ShareOptions) onOptionsChanged;
@@ -401,6 +337,7 @@ class ShareOptionsSheet extends StatefulWidget {
     required this.onShareTap,
   });
 
+  /// Shows this sheet as a modal bottom sheet
   static Future<void> show({
     required BuildContext context,
     required ShareOptions initialOptions,
@@ -432,7 +369,7 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
   @override
   void initState() {
     super.initState();
-    // Create a copy of the initial options
+    // Create a copy to avoid modifying the original
     _options = ShareOptions(
       includeItemsInShare: widget.initialOptions.includeItemsInShare,
       includePersonItemsInShare:
@@ -446,7 +383,7 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
-    // Theme-aware colors
+    // Calculate theme-aware colors for better appearance in both light/dark modes
     final sheetBgColor =
         brightness == Brightness.dark ? colorScheme.surface : Colors.white;
 
@@ -467,10 +404,10 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
 
     final titleColor = colorScheme.onSurface;
 
-    // Button text color - for dark mode, use darker text on bright backgrounds for contrast
+    // Dark text on bright button in dark mode for better contrast
     final buttonTextColor =
         brightness == Brightness.dark
-            ? Colors.black.withOpacity(0.9) // Dark text for better contrast
+            ? Colors.black.withValues(alpha: 0.9)
             : Colors.white;
 
     return Container(
@@ -482,7 +419,6 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Sheet handle for better UX
               Center(
                 child: Container(
                   width: 40,
@@ -508,7 +444,6 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
 
               const SizedBox(height: 20),
 
-              // Container for all toggles with a subtle background
               Container(
                 decoration: BoxDecoration(
                   color: containerBgColor,
@@ -516,10 +451,9 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
                 ),
                 child: Column(
                   children: [
-                    // First toggle - Include all items
                     SwitchListTile(
                       title: Text(
-                        'Include all items',
+                        'List all items',
                         style: TextStyle(color: colorScheme.onSurface),
                       ),
                       value: _options.includeItemsInShare,
@@ -534,7 +468,22 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
 
                     Divider(height: 1, thickness: 1, color: dividerColor),
 
-                    // Second toggle - Show each person's items
+                    SwitchListTile(
+                      title: Text(
+                        'Hide breakdown',
+                        style: TextStyle(color: colorScheme.onSurface),
+                      ),
+                      value: _options.hideBreakdownInShare,
+                      activeColor: colorScheme.primary,
+                      onChanged: (value) {
+                        setState(() {
+                          _options.hideBreakdownInShare = value;
+                        });
+                        widget.onOptionsChanged(_options);
+                      },
+                    ),
+
+                    Divider(height: 1, thickness: 1, color: dividerColor),
                     SwitchListTile(
                       title: Text(
                         'Show each person\'s items',
@@ -549,31 +498,12 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
                         widget.onOptionsChanged(_options);
                       },
                     ),
-
-                    Divider(height: 1, thickness: 1, color: dividerColor),
-
-                    // Third toggle - Hide breakdown section
-                    SwitchListTile(
-                      title: Text(
-                        'Hide cost breakdown',
-                        style: TextStyle(color: colorScheme.onSurface),
-                      ),
-                      value: _options.hideBreakdownInShare,
-                      activeColor: colorScheme.primary,
-                      onChanged: (value) {
-                        setState(() {
-                          _options.hideBreakdownInShare = value;
-                        });
-                        widget.onOptionsChanged(_options);
-                      },
-                    ),
                   ],
                 ),
               ),
 
               const SizedBox(height: 24),
 
-              // Share button
               FilledButton.icon(
                 onPressed: () {
                   Navigator.pop(context);
@@ -598,6 +528,7 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
   }
 }
 
+/// Model class for share customization options
 class ShareOptions {
   bool includeItemsInShare;
   bool includePersonItemsInShare;

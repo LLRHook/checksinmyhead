@@ -1,35 +1,63 @@
+import 'package:checks_frontend/screens/quick_split/item_assignment/utils/animation_utils.dart';
 import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_utils.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'dart:math';
 import '/models/person.dart';
 
-/// A reusable participant avatar that can be used consistently across the app
+/// A reusable participant avatar component that displays user information with
+/// various visual states for assignment, selection, and birthday status.
+///
+/// This widget creates a consistent, accessible representation of participants
+/// across the app with features including:
+/// - Customized avatar appearance with user's initial or birthday cake icon
+/// - Visual indicators for assignment and selection states
+/// - Animated effects including pulse animations and birthday celebrations
+/// - Color adaptations for both light and dark themes to ensure readability
+/// - Haptic feedback on interactions for enhanced user experience
+/// - Proper overflow handling for names of different lengths
+///
+/// The avatar displays the person's first initial by default, but shows a
+/// cake icon with animation effects when the person is marked as the birthday person.
 class ParticipantAvatar extends StatelessWidget {
+  /// The person data to display in this avatar
   final Person person;
+
+  /// Whether this person is currently assigned to an item
   final bool isAssigned;
+
+  /// Whether this person is currently selected in multi-select mode
   final bool isSelected;
+
+  /// Whether this person is celebrating their birthday (and exempt from payment)
   final bool isBirthdayPerson;
+
+  /// Callback when the avatar is tapped
   final VoidCallback onTap;
+
+  /// Callback when the avatar is long-pressed
   final VoidCallback onLongPress;
 
+  /// Creates a participant avatar with the specified states and callbacks
+  ///
+  /// All parameters are required to ensure consistent appearance and behavior across the app.
   const ParticipantAvatar({
-    Key? key,
+    super.key,
     required this.person,
     required this.isAssigned,
     required this.isSelected,
     required this.isBirthdayPerson,
     required this.onTap,
     required this.onLongPress,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
-    // Theme-aware colors
+    // Get theme information for adaptive styling
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
-    // Birthday color - adjusted for dark mode
+    // Special color for the birthday person - adjusted for theme brightness
+    // Use lighter purple in dark mode for better visibility
     final birthdayColor =
         brightness == Brightness.dark
             ? const Color(
@@ -37,10 +65,10 @@ class ParticipantAvatar extends StatelessWidget {
             ) // Extra light purple for dark mode (Purple 200)
             : const Color(0xFF8E24AA); // Purple 600 for light mode
 
-    // Text color for name - adjusted for dark mode
+    // Calculate the appropriate text color for the name based on state and theme
     final nameColor = _getNameColor(context, birthdayColor);
 
-    // Border colors
+    // Border color for the checkmark - use neutral background color based on theme
     final checkmarkBorderColor =
         brightness == Brightness.dark ? colorScheme.surface : Colors.white;
 
@@ -52,18 +80,19 @@ class ParticipantAvatar extends StatelessWidget {
         child: SizedBox(
           width: 70,
           height: 70,
-          // Use a more flexible layout with proper constraints
+          // Use a flexible layout with proper constraints to prevent overflow
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min, // Add this to prevent overflow
+            mainAxisSize:
+                MainAxisSize.min, // Minimize column size to prevent overflow
             children: [
-              // Avatar with selection indication - give it more space
+              // Avatar with selection indication - explicit height for consistency
               SizedBox(
-                height: 46, // Explicit height to contain the avatar
+                height: 46, // Fixed height contains all avatar elements
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    // Selection ring
+                    // Outer selection ring - shows when selected or assigned
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
                       width: (isSelected || isAssigned) ? 46 : 42,
@@ -80,28 +109,25 @@ class ParticipantAvatar extends StatelessWidget {
                                   : Colors.transparent,
                           width:
                               isSelected
-                                  ? 3
+                                  ? 3 // Thicker border for selected state
                                   : isAssigned
-                                  ? 2
-                                  : 0,
+                                  ? 2 // Medium border for assigned state
+                                  : 0, // No border for default state
                         ),
                       ),
                     ),
 
-                    // Pulse effect for selected state - enhanced for dark mode
+                    // Animated pulse effect for selected avatars (except birthday person)
                     if (isSelected && !isBirthdayPerson)
                       SizedBox(
                         width: 54,
                         height: 54,
                         child: CustomPaint(
-                          painter: PulsePainter(
-                            color: person.color,
-                            brightness: brightness,
-                          ),
+                          painter: PulsePainter(color: person.color),
                         ),
                       ),
 
-                    // Avatar circle
+                    // Main avatar circle with person's color and initial
                     Container(
                       margin: const EdgeInsets.all(4),
                       width: 38,
@@ -113,8 +139,8 @@ class ParticipantAvatar extends StatelessWidget {
                           BoxShadow(
                             color:
                                 isBirthdayPerson
-                                    ? birthdayColor.withOpacity(0.3)
-                                    : person.color.withOpacity(0.3),
+                                    ? birthdayColor.withValues(alpha: .3)
+                                    : person.color.withValues(alpha: .3),
                             blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),
@@ -129,7 +155,7 @@ class ParticipantAvatar extends StatelessWidget {
                                   size: 18,
                                 )
                                 : Text(
-                                  person.name[0].toUpperCase(),
+                                  person.name[0].toUpperCase(), // First initial
                                   style: TextStyle(
                                     color: ColorUtils.getContrastiveTextColor(
                                       person.color,
@@ -141,11 +167,11 @@ class ParticipantAvatar extends StatelessWidget {
                       ),
                     ),
 
-                    // Use the animated cake icon for birthday person
+                    // Animated cake icon for birthday person with special effects
                     if (isBirthdayPerson)
                       _buildShakingCakeIcon(birthdayColor, brightness),
 
-                    // Standardized colored checkmark for both selection and assignment
+                    // Checkmark indicator for selected or assigned state
                     if (isSelected || isAssigned)
                       Positioned(
                         bottom: 0,
@@ -174,9 +200,10 @@ class ParticipantAvatar extends StatelessWidget {
                 ),
               ),
 
-              // Reduce space between avatar and name
-              const SizedBox(height: 2), // Reduced from 4 to 2
-              // Name - with explicit constraints
+              // Small gap between avatar and name
+              const SizedBox(height: 2),
+
+              // Name label with explicit constraints and overflow handling
               SizedBox(
                 height: 16,
                 child: Text(
@@ -188,8 +215,10 @@ class ParticipantAvatar extends StatelessWidget {
                     fontSize: 12,
                     fontWeight:
                         isSelected || isAssigned || isBirthdayPerson
-                            ? FontWeight.w600
-                            : FontWeight.w500,
+                            ? FontWeight
+                                .w600 // Bold for active states
+                            : FontWeight
+                                .w500, // Medium weight for default state
                     color: nameColor,
                   ),
                 ),
@@ -201,12 +230,16 @@ class ParticipantAvatar extends StatelessWidget {
     );
   }
 
-  // Enhanced name color for better visibility in dark mode
+  /// Calculates the appropriate text color for the name label based on state and theme
+  ///
+  /// Enhances visibility in dark mode with adaptive lightening for different colors.
+  /// Returns a color that ensures proper contrast against the background.
   Color _getNameColor(BuildContext context, Color birthdayColor) {
     final brightness = Theme.of(context).brightness;
 
+    // Special handling for birthday person
     if (isBirthdayPerson) {
-      // Make birthday color extra bright in dark mode
+      // Make birthday color extra bright in dark mode for visibility
       return brightness == Brightness.dark
           ? ColorUtils.getLightenedColor(
             birthdayColor,
@@ -215,12 +248,13 @@ class ParticipantAvatar extends StatelessWidget {
           : birthdayColor;
     }
 
+    // For selected or assigned states, use the person's color with adjustments
     if (isSelected || isAssigned) {
-      // Detect if the person color is purplish
+      // Check if color is in the purple family (harder to see in dark mode)
       bool isPurplish = ColorUtils.isPurplish(person.color);
 
       if (brightness == Brightness.dark) {
-        // Apply extra lightening for purplish colors
+        // Apply extra lightening for purplish colors in dark mode
         if (isPurplish) {
           return ColorUtils.getLightenedColor(
             person.color,
@@ -233,23 +267,27 @@ class ParticipantAvatar extends StatelessWidget {
           ); // 30% lighter for other colors
         }
       }
-      return person.color;
+      return person.color; // Use original color in light mode
     }
 
+    // Default color for inactive state - lighter in dark mode
     return brightness == Brightness.dark
-        ? Theme.of(context).colorScheme.onSurface.withOpacity(
-          0.9,
-        ) // Brighter default text
-        : Colors.grey.shade700;
+        ? Theme.of(context).colorScheme.onSurface.withValues(
+          alpha: 0.9,
+        ) // Brighter default text in dark mode
+        : Colors.grey.shade700; // Darker gray in light mode
   }
 
-  // Enhanced selection ring color for better visibility
+  /// Calculates the appropriate color for the selection ring based on theme
+  ///
+  /// Enhances visibility in dark mode with adaptive lightening for different colors.
+  /// Returns a color that ensures the selection indicator is clearly visible.
   Color _getSelectionColor(Color color, Brightness brightness) {
-    // Detect if the color is purplish
+    // Check if color is in the purple family (harder to see in dark mode)
     bool isPurplish = ColorUtils.isPurplish(color);
 
     if (brightness == Brightness.dark) {
-      // Apply extra lightening for purplish colors
+      // Apply extra lightening for purplish colors in dark mode
       if (isPurplish) {
         return ColorUtils.getLightenedColor(
           color,
@@ -262,18 +300,22 @@ class ParticipantAvatar extends StatelessWidget {
         ); // 40% lighter for other colors
       }
     }
+    // Slightly darker color for light mode to enhance contrast
     return ColorUtils.getDarkenedColor(color, 0.1);
   }
 
-  // The enhanced cake animation - extracted to a shared component
+  /// Builds an animated cake icon with rotation, scaling, and glowing effects
+  ///
+  /// Creates a celebratory animation for the birthday person's avatar
+  /// with multiple overlapping effects for visual interest.
   Widget _buildShakingCakeIcon(Color backgroundColor, Brightness brightness) {
-    // Adjust cake icon color for dark mode
+    // Adjust cake icon color for dark mode to ensure visibility
     final iconColor =
         brightness == Brightness.dark
-            ? Colors.black.withOpacity(
-              0.9,
+            ? Colors.black.withValues(
+              alpha: 0.9,
             ) // Dark icon for better contrast in dark mode
-            : Colors.white;
+            : Colors.white; // White icon for light mode
 
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0.0, end: 1.0),
@@ -284,19 +326,22 @@ class ParticipantAvatar extends StatelessWidget {
         Future.microtask(() {});
       },
       builder: (context, value, child) {
-        // Calculate rotation using a sin wave for more natural motion
-        final rotation = sin(value * pi * 2) * 0.08;
+        // Calculate rotation using a sin wave for natural swaying motion
+        final rotation =
+            sin(value * pi * 2) * 0.08; // Gentle rotation of ±0.08 radians
 
-        // Calculate scale using a different frequency for variety
-        final scale = 1.0 + sin(value * pi * 4 + 0.3) * 0.1;
+        // Calculate scale using a different frequency sin wave for bouncing effect
+        final scale =
+            1.0 + sin(value * pi * 4 + 0.3) * 0.1; // Scale between 0.9-1.1
 
-        // Calculate glow intensity to add subtle pulsing
-        final glowIntensity = 0.3 + sin(value * pi * 3) * 0.1;
+        // Calculate glow intensity with a third sin wave for pulsing effect
+        final glowIntensity =
+            0.3 + sin(value * pi * 3) * 0.1; // Glow between 0.2-0.4
 
         return Stack(
           alignment: Alignment.center,
           children: [
-            // Enhanced glowing background effect with pulsing
+            // Glowing background effect with pulsing intensity
             Container(
               width: 36,
               height: 36,
@@ -305,15 +350,15 @@ class ParticipantAvatar extends StatelessWidget {
                 gradient: RadialGradient(
                   colors: [
                     backgroundColor,
-                    backgroundColor.withOpacity(0.5 * glowIntensity),
-                    backgroundColor.withOpacity(0.0),
+                    backgroundColor.withValues(alpha: .5 * glowIntensity),
+                    backgroundColor.withValues(alpha: .0),
                   ],
                   stops: const [0.3, 0.6, 1.0],
                 ),
               ),
             ),
 
-            // Rotating and scaling cake icon with more fluid animation
+            // Rotating and scaling cake icon for lively animation
             Transform.scale(
               scale: scale,
               child: Transform.rotate(
@@ -326,15 +371,18 @@ class ParticipantAvatar extends StatelessWidget {
               ),
             ),
 
-            // Add a subtle sparkle effect
+            // Sparkle effect that moves independently from the cake
             Positioned(
-              top: 4 + sin(value * pi * 5) * 4,
-              right: 4 + cos(value * pi * 5) * 4,
+              top: 4 + sin(value * pi * 5) * 4, // Moving vertically
+              right: 4 + cos(value * pi * 5) * 4, // Moving horizontally
               child: Transform.rotate(
-                angle: value * pi * 4,
+                angle: value * pi * 4, // Rotating sparkle
                 child: Icon(
                   Icons.star,
-                  color: iconColor.withOpacity(0.7 + sin(value * pi * 6) * 0.3),
+                  // Opacity also pulses for twinkling effect
+                  color: iconColor.withValues(
+                    alpha: .7 + sin(value * pi * 6) * 0.3,
+                  ),
                   size: 6,
                 ),
               ),
@@ -343,57 +391,5 @@ class ParticipantAvatar extends StatelessWidget {
         );
       },
     );
-  }
-}
-
-// Enhanced pulse painter for better visibility in dark mode
-class PulsePainter extends CustomPainter {
-  final Color color;
-  final Brightness brightness;
-
-  PulsePainter({required this.color, required this.brightness});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final maxRadius = size.width / 2;
-
-    // Adjust color for dark mode to be more visible
-    final adjustedColor =
-        brightness == Brightness.dark
-            ? ColorUtils.getLightenedColor(
-              color,
-              ColorUtils.isPurplish(color) ? 0.5 : 0.3,
-            )
-            : color;
-
-    // Create multiple pulse waves with different opacities and sizes
-    for (int i = 0; i < 3; i++) {
-      final animationPhase =
-          (DateTime.now().millisecondsSinceEpoch / 1500 + i * 0.33) % 1.0;
-
-      // Adjust the pulse radius based on the animation phase
-      final pulseRadius = maxRadius * animationPhase;
-
-      // Make the pulse fade out as it expands, but use higher opacity in dark mode
-      final baseOpacity = brightness == Brightness.dark ? 0.6 : 0.4;
-      final opacity = (1.0 - animationPhase) * baseOpacity;
-
-      final paint =
-          Paint()
-            ..color = adjustedColor.withOpacity(opacity)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth =
-                brightness == Brightness.dark
-                    ? 2.5
-                    : 2.0; // Thicker stroke in dark mode
-
-      canvas.drawCircle(center, pulseRadius, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return true; // Always repaint to animate
   }
 }

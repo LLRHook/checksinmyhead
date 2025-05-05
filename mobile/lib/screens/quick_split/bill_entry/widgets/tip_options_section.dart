@@ -6,8 +6,20 @@ import '../components/section_card.dart';
 import '../components/input_decoration.dart';
 import '../utils/currency_formatter.dart';
 
+/// TipOptionsSection - Controls for configuring tip amount
+///
+/// Provides two modes for setting the tip:
+/// 1. Percentage-based (with slider and quick selection buttons)
+/// 2. Custom amount (with direct currency input)
+///
+/// Features:
+/// - Animated toggle between percentage and custom modes
+/// - Interactive slider with visual feedback for selecting tip percentage
+/// - Quick-select percentage buttons for common tip values
+/// - Theme-aware styling that adapts to light and dark modes
+/// - Haptic feedback for improved user experience
 class TipOptionsSection extends StatelessWidget {
-  const TipOptionsSection({Key? key}) : super(key: key);
+  const TipOptionsSection({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -15,21 +27,21 @@ class TipOptionsSection extends StatelessWidget {
     final billData = Provider.of<BillData>(context);
     final brightness = Theme.of(context).brightness;
 
-    // Theme-aware toggle container color
+    // Slightly different background color for toggle based on theme
     final toggleBgColor =
         brightness == Brightness.dark
             ? colorScheme.surfaceContainerHighest
-            : colorScheme.surfaceVariant.withOpacity(0.5);
+            : colorScheme.surfaceContainerHighest.withValues(alpha: .5);
 
     return SectionCard(
       title: 'Tip Options',
       icon: Icons.volunteer_activism,
       children: [
-        // Title and tip toggle
+        // Align the mode toggle to the right
         Row(
           children: [
             const Spacer(),
-            // Modern toggle between percentage and custom amount
+            // Segmented control for switching between percentage and custom modes
             Container(
               height: 36,
               decoration: BoxDecoration(
@@ -63,7 +75,7 @@ class TipOptionsSection extends StatelessWidget {
 
         const SizedBox(height: 16),
 
-        // Custom tip amount field (visible when custom amount is selected)
+        // Show either custom amount field or percentage controls based on selected mode
         if (billData.useCustomTipAmount)
           TextFormField(
             controller: billData.customTipController,
@@ -78,19 +90,19 @@ class TipOptionsSection extends StatelessWidget {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w500,
-              color: colorScheme.onSurface, // Theme-aware text color
+              color: colorScheme.onSurface,
             ),
           ),
 
-        // Percentage tip options (visible when percentage is selected)
+        // Percentage-based tip controls
         if (!billData.useCustomTipAmount) ...[
-          // Tip percentage display with premium styling
+          // Interactive slider with current percentage display
           _TipPercentageSlider(
             tipPercentage: billData.tipPercentage,
             color: colorScheme.primary,
             onChanged: (value) {
               billData.setTipPercentage(value);
-              // Light feedback on drag
+              // Provide subtle haptic feedback at 5% intervals
               if (value.toInt() % 5 == 0) {
                 HapticFeedback.selectionClick();
               }
@@ -99,7 +111,7 @@ class TipOptionsSection extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          // Quick tip percentage buttons with premium styling
+          // Quick-select buttons for common percentages
           _QuickTipPercentageButtons(
             tipPercentage: billData.tipPercentage,
             onPercentageSelected: (percentage) {
@@ -115,32 +127,36 @@ class TipOptionsSection extends StatelessWidget {
   }
 }
 
+/// Toggle option button for switching between percentage and custom tip modes
+///
+/// Part of a segmented control that highlights the currently selected mode
+/// and provides a visual transition when switching modes.
 class _ToggleOption extends StatelessWidget {
   final String title;
   final bool isSelected;
   final VoidCallback onTap;
 
   const _ToggleOption({
-    Key? key,
     required this.title,
     required this.isSelected,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
-    // Theme-aware text colors
+    // Use dark text on bright backgrounds for better contrast in dark mode
     final selectedTextColor =
         brightness == Brightness.dark
-            ? Colors.black.withOpacity(0.9)
+            ? Colors.black.withValues(alpha: .9)
             : Colors.white;
 
+    // Dimmed text for unselected state
     final unselectedTextColor =
         brightness == Brightness.dark
-            ? colorScheme.onSurface.withOpacity(0.7)
+            ? colorScheme.onSurface.withValues(alpha: .7)
             : colorScheme.onSurfaceVariant;
 
     return GestureDetector(
@@ -166,31 +182,34 @@ class _ToggleOption extends StatelessWidget {
   }
 }
 
+/// Interactive slider for selecting tip percentage
+///
+/// Displays the current percentage value and provides a customized
+/// slider with theme-appropriate styling for adjusting the value.
 class _TipPercentageSlider extends StatelessWidget {
   final double tipPercentage;
   final Color color;
   final ValueChanged<double> onChanged;
 
   const _TipPercentageSlider({
-    Key? key,
     required this.tipPercentage,
     required this.color,
     required this.onChanged,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
 
-    // Theme-aware background color
+    // Softer background for the container based on theme
     final containerBgColor =
         brightness == Brightness.dark
-            ? color.withOpacity(0.15)
-            : color.withOpacity(0.1);
+            ? color.withValues(alpha: .15)
+            : color.withValues(alpha: .1);
 
-    // Theme-aware text color
+    // Slightly adjust text color for dark mode
     final percentageTextColor =
-        brightness == Brightness.dark ? color.withOpacity(0.9) : color;
+        brightness == Brightness.dark ? color.withValues(alpha: .9) : color;
 
     return Container(
       height: 50,
@@ -201,6 +220,7 @@ class _TipPercentageSlider extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
+          // Display current percentage value
           Text(
             '${tipPercentage.toInt()}%',
             style: TextStyle(
@@ -210,14 +230,15 @@ class _TipPercentageSlider extends StatelessWidget {
             ),
           ),
           Expanded(
+            // Customized slider with theme-appropriate styling
             child: SliderTheme(
               data: SliderTheme.of(context).copyWith(
                 activeTrackColor: color,
-                inactiveTrackColor: color.withOpacity(
-                  brightness == Brightness.dark ? 0.3 : 0.2,
+                inactiveTrackColor: color.withValues(
+                  alpha: brightness == Brightness.dark ? 0.3 : 0.2,
                 ),
                 thumbColor: color,
-                overlayColor: color.withOpacity(0.2),
+                overlayColor: color.withValues(alpha: .2),
                 trackHeight: 4,
                 thumbShape: const RoundSliderThumbShape(
                   enabledThumbRadius: 8,
@@ -229,7 +250,7 @@ class _TipPercentageSlider extends StatelessWidget {
                 value: tipPercentage,
                 min: 0,
                 max: 99,
-                divisions: 99, // 1% increments
+                divisions: 99, // Allow 1% increments
                 onChanged: onChanged,
               ),
             ),
@@ -240,25 +261,28 @@ class _TipPercentageSlider extends StatelessWidget {
   }
 }
 
+/// Quick-select buttons for common tip percentages
+///
+/// Displays a row of buttons for commonly used tip percentages
+/// with visual highlighting for the currently selected value.
 class _QuickTipPercentageButtons extends StatelessWidget {
   final double tipPercentage;
   final ValueChanged<double> onPercentageSelected;
 
   const _QuickTipPercentageButtons({
-    Key? key,
     required this.tipPercentage,
     required this.onPercentageSelected,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
-    // Theme-aware colors
+    // Theme-aware colors for selected and unselected states
     final selectedTextColor =
         brightness == Brightness.dark
-            ? Colors.black.withOpacity(0.9)
+            ? Colors.black.withValues(alpha: .9)
             : Colors.white;
 
     final unselectedTextColor =
@@ -273,14 +297,16 @@ class _QuickTipPercentageButtons extends StatelessWidget {
 
     final borderColor =
         brightness == Brightness.dark
-            ? colorScheme.outline.withOpacity(0.3)
-            : colorScheme.outline.withOpacity(0.5);
+            ? colorScheme.outline.withValues(alpha: .3)
+            : colorScheme.outline.withValues(alpha: .5);
 
+    // Common tip percentages to display as quick-select options
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children:
           [15, 18, 20, 25, 30].map((percentage) {
+            final isSelected = tipPercentage == percentage;
             return GestureDetector(
               onTap: () => onPercentageSelected(percentage.toDouble()),
               child: AnimatedContainer(
@@ -290,24 +316,20 @@ class _QuickTipPercentageButtons extends StatelessWidget {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color:
-                      tipPercentage == percentage
-                          ? colorScheme.primary
-                          : unselectedBgColor,
+                  color: isSelected ? colorScheme.primary : unselectedBgColor,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color:
-                        tipPercentage == percentage
-                            ? colorScheme.primary
-                            : borderColor,
+                    color: isSelected ? colorScheme.primary : borderColor,
                     width: 1.5,
                   ),
+                  // Add subtle elevation shadow only to selected button
                   boxShadow:
-                      tipPercentage == percentage
+                      isSelected
                           ? [
                             BoxShadow(
-                              color: colorScheme.primary.withOpacity(
-                                brightness == Brightness.dark ? 0.15 : 0.2,
+                              color: colorScheme.primary.withValues(
+                                alpha:
+                                    brightness == Brightness.dark ? 0.15 : 0.2,
                               ),
                               blurRadius: 4,
                               offset: const Offset(0, 2),
@@ -318,14 +340,9 @@ class _QuickTipPercentageButtons extends StatelessWidget {
                 child: Text(
                   '$percentage%',
                   style: TextStyle(
-                    color:
-                        tipPercentage == percentage
-                            ? selectedTextColor
-                            : unselectedTextColor,
+                    color: isSelected ? selectedTextColor : unselectedTextColor,
                     fontWeight:
-                        tipPercentage == percentage
-                            ? FontWeight.bold
-                            : FontWeight.normal,
+                        isSelected ? FontWeight.bold : FontWeight.normal,
                   ),
                 ),
               ),

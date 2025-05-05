@@ -1,6 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+/// UnassignedAmountBanner
+///
+/// A notification banner that displays the amount of money that hasn't been
+/// assigned to participants and provides a call-to-action to split it evenly.
+///
+/// This widget adapts to the current theme (light/dark mode) with appropriate
+/// color adjustments for optimal visibility and consistent styling.
+///
+/// The banner includes:
+/// - Warning icon to draw attention
+/// - Amount not assigned with currency formatting
+/// - Explanatory text encouraging user action
+/// - Visual indicator (hand icon) suggesting the banner is tappable
+///
+/// When tapped, the banner triggers haptic feedback and executes the provided
+/// onSplitEvenly callback.
+///
+/// Inputs:
+/// - unassignedAmount: The dollar amount that hasn't been assigned to participants
+/// - onSplitEvenly: Callback function to execute when banner is tapped
+///
+/// Side effects:
+/// - Triggers medium haptic feedback on tap for better user experience
 class UnassignedAmountBanner extends StatelessWidget {
   final double unassignedAmount;
   final VoidCallback onSplitEvenly;
@@ -15,17 +38,17 @@ class UnassignedAmountBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
 
-    // Theme-aware colors
+    // Define theme-aware colors for consistent appearance in both light and dark modes
     final backgroundColor =
         brightness == Brightness.dark
-            ? Color(0xFF442700).withOpacity(
-              0.4,
-            ) // Dark orange background for dark mode
-            : Colors.orange.shade50;
+            ? Color(0xFF442700).withValues(
+              alpha: .4,
+            ) // Dark orange background with opacity for dark mode
+            : Colors.orange.shade50; // Light orange background for light mode
 
     final borderColor =
         brightness == Brightness.dark
-            ? Colors.orange.shade700.withOpacity(0.4)
+            ? Colors.orange.shade700.withValues(alpha: .4)
             : Colors.orange.shade200;
 
     final iconColor =
@@ -40,13 +63,14 @@ class UnassignedAmountBanner extends StatelessWidget {
 
     final subtitleColor =
         brightness == Brightness.dark
-            ? Colors.orange.shade300.withOpacity(0.7)
+            ? Colors.orange.shade300.withValues(alpha: .7)
             : Colors.orange.shade800;
 
-    // Ensure we're using a proper GestureDetector instead of just InkWell
+    // Using GestureDetector instead of InkWell for better control over touch behavior
+    // and to enable haptic feedback functionality
     return GestureDetector(
       onTap: () {
-        HapticFeedback.mediumImpact();
+        HapticFeedback.mediumImpact(); // Provide tactile feedback when tapped
         onSplitEvenly();
       },
       child: Container(
@@ -60,15 +84,16 @@ class UnassignedAmountBanner extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
-              // Warning icon
+              // Warning icon to draw attention to the unassigned amount
               Icon(Icons.warning_amber_rounded, color: iconColor, size: 24),
               const SizedBox(width: 12),
 
-              // Warning text with proper string interpolation
+              // Text content with amount and action suggestion
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Format currency with 2 decimal places for consistency
                     Text(
                       "\$${unassignedAmount.toStringAsFixed(2)} not assigned",
                       style: TextStyle(
@@ -85,7 +110,7 @@ class UnassignedAmountBanner extends StatelessWidget {
                 ),
               ),
 
-              // Action button
+              // Touch icon indicates the banner is interactive
               Icon(Icons.touch_app, color: iconColor, size: 20),
             ],
           ),

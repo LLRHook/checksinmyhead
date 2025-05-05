@@ -5,17 +5,53 @@ import 'package:flutter/services.dart';
 import '/models/person.dart';
 import '/models/bill_item.dart';
 
+/// An interactive card widget that displays a bill item and allows users to assign
+/// it to one or more participants in different ways.
+///
+/// This widget provides a rich UI for bill item assignment with features including:
+/// - Visual indication of assignment status (unassigned, partially assigned, fully assigned)
+/// - Single-tap assignment to individual people
+/// - Multi-select mode for assigning to multiple people simultaneously
+/// - Split-evenly functionality for quick fair divisions
+/// - Custom split option for precise percentage assignments
+/// - Special handling for birthday people who are exempt from payment
+/// - Animations and haptic feedback for an engaging user experience
+/// - Adaptive theming for both light and dark modes
+///
+/// The card has both collapsed and expanded states, with the expanded state
+/// revealing participant selection and action buttons.
 class ItemCard extends StatefulWidget {
+  /// The bill item being displayed and assigned
   final BillItem item;
+
+  /// Current percentage of the item that has been assigned (0-100)
   final double assignedPercentage;
+
+  /// List of all available participants in the bill
   final List<Person> participants;
+
+  /// List of people currently assigned to this item
   final List<Person> assignedPeople;
+
+  /// Icon to display for this item
   final IconData universalItemIcon;
+
+  /// Callback when assignments are updated with new percentages
   final Function(BillItem, Map<Person, double>) onAssign;
+
+  /// Callback to split item evenly among specified people
   final Function(BillItem, List<Person>) onSplitEvenly;
+
+  /// Callback to show custom split UI for precise percentage assignment
   final Function(BillItem, List<Person>) onShowCustomSplit;
+
+  /// Person who is celebrating their birthday (exempt from payment)
   final Person? birthdayPerson;
+
+  /// Callback to toggle birthday status for a person
   final Function(Person) onBirthdayToggle;
+
+  /// Function to calculate what percentage of the total bill a person is responsible for
   final double Function(Person) getPersonBillPercentage;
 
   const ItemCard({
@@ -39,42 +75,66 @@ class ItemCard extends StatefulWidget {
 
 class _ItemCardState extends State<ItemCard>
     with SingleTickerProviderStateMixin {
+  /// Whether the card is in expanded state showing participant selector
   bool _isExpanded = false;
-  bool _multiSelectMode = false;
-  Set<Person> _selectedPeople = {};
 
-  // Store original assignments for cancellation
+  /// Whether multi-select mode is active for selecting multiple participants
+  bool _multiSelectMode = false;
+
+  /// Set of people selected in multi-select mode
+  final Set<Person> _selectedPeople = {};
+
+  /// Store original assignments to restore if multi-select is cancelled
   Map<Person, double>? _savedAssignmentsBeforeMultiSelect;
 
-  // Animation controllers
+  // Animation controllers and animations
+  /// Controller for all animations
   late AnimationController _animController;
+
+  /// Animation for the expand/collapse effect
   late Animation<double> _expandAnimation;
+
+  /// Animation for rotating the expand/collapse arrow
   late Animation<double> _rotateAnimation;
+
+  /// Animation for fading in the expanded content
   late Animation<double> _fadeAnimation;
 
-  // For card highlight animation
+  /// Whether to show highlight effect when item is newly assigned
   bool _showHighlight = false;
 
-  // Color constants - will be overridden with theme-aware colors
+  // Color constants - theme-aware versions are calculated in build method
+  /// Default slate gray for neutral elements
   static const Color slateGray = Color(0xFF64748B);
+
+  /// Lighter slate gray for secondary text
   static const Color lightSlateGray = Color(0xFF94A3B8);
+
+  /// Primary blue for partially assigned items
   static const Color primaryBlue = Color(0xFF3B82F6);
+
+  /// Success green for fully assigned items
   static const Color successGreen = Color(0xFF10B981);
+
+  /// Warning orange for unassigned items
   static const Color warningOrange = Color(0xFFF59E0B);
 
   @override
   void initState() {
     super.initState();
+    // Initialize animation controller with moderate duration
     _animController = AnimationController(
       duration: const Duration(milliseconds: 350),
       vsync: this,
     );
 
+    // Create expand animation with easing for natural motion
     _expandAnimation = CurvedAnimation(
       parent: _animController,
       curve: Curves.easeOutCubic,
     );
 
+    // Create rotation animation for the dropdown arrow (180 degrees)
     _rotateAnimation = Tween<double>(
       begin: 0.0,
       end: 0.5, // Half a turn (180 degrees)
@@ -82,6 +142,7 @@ class _ItemCardState extends State<ItemCard>
       CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
     );
 
+    // Create fade animation with delay for sequential appearance
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animController,
@@ -92,11 +153,12 @@ class _ItemCardState extends State<ItemCard>
 
   @override
   void dispose() {
+    // Clean up animation controller to prevent memory leaks
     _animController.dispose();
     super.dispose();
   }
 
-  // Listen for changes to assigned people
+  /// Detect assignment changes to trigger highlight animation
   @override
   void didUpdateWidget(ItemCard oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -107,12 +169,15 @@ class _ItemCardState extends State<ItemCard>
     }
   }
 
-  // Play a brief highlight effect when item is assigned
+  /// Play a brief highlight effect when an item is newly assigned
+  ///
+  /// Creates a momentary glow effect around the card to provide visual feedback
   void _playHighlightAnimation() {
     setState(() {
       _showHighlight = true;
     });
 
+    // Remove highlight after a short delay
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted) {
         setState(() {
@@ -122,35 +187,40 @@ class _ItemCardState extends State<ItemCard>
     });
   }
 
-  // Toggle expansion state with animation
+  /// Toggle between expanded and collapsed states with animation
   void _toggleExpand() {
     setState(() {
       _isExpanded = !_isExpanded;
 
+      // Run the appropriate animation based on new state
       if (_isExpanded) {
         _animController.forward();
       } else {
         _animController.reverse();
       }
     });
+    // Provide tactile feedback
     HapticFeedback.selectionClick();
   }
 
-  // Handle single person assignment in normal mode
+  /// Handle taps on a person in either normal or multi-select mode
+  ///
+  /// In normal mode: Toggle 100% assignment to the person
+  /// In multi-select mode: Add/remove person from selection
   void _handlePersonTap(Person person) {
-    // Skip if this is a birthday person
+    // Skip if this is the birthday person (who doesn't pay)
     if (widget.birthdayPerson == person) return;
 
     if (_multiSelectMode) {
-      // In multi-select mode, toggle selection
+      // In multi-select mode, toggle selection status
       _togglePersonSelection(person);
     } else {
-      // In normal mode, assign 100% or remove
+      // In normal mode, assign 100% or remove assignment
       _handleSinglePersonAssignment(person);
     }
   }
 
-  // Toggle selection of a person in multi-select mode
+  /// Add or remove a person from the selection in multi-select mode
   void _togglePersonSelection(Person person) {
     setState(() {
       if (_selectedPeople.contains(person)) {
@@ -159,10 +229,14 @@ class _ItemCardState extends State<ItemCard>
         _selectedPeople.add(person);
       }
     });
+    // Provide tactile feedback
     HapticFeedback.selectionClick();
   }
 
-  // Handle single person assignment
+  /// Handle assignment when a single person is tapped in normal mode
+  ///
+  /// If person is already assigned: Remove their assignment and redistribute
+  /// If person is not assigned: Assign 100% to them
   void _handleSinglePersonAssignment(Person person) {
     final isCurrentlyAssigned = widget.assignedPeople.contains(person);
 
@@ -176,10 +250,11 @@ class _ItemCardState extends State<ItemCard>
         newAssignments[p] = p == person ? 0.0 : currentValue;
       }
 
-      // If there are still people assigned, redistribute
+      // Find people who are still assigned after removal
       final remainingPeople =
           widget.assignedPeople.where((p) => p != person).toList();
 
+      // If there are still people assigned, redistribute percentages proportionally
       if (remainingPeople.isNotEmpty) {
         double totalRemaining = 0.0;
         for (var p in remainingPeople) {
@@ -187,7 +262,7 @@ class _ItemCardState extends State<ItemCard>
         }
 
         if (totalRemaining > 0) {
-          // Scale factor to redistribute
+          // Calculate scaling factor to ensure total remains 100%
           double scaleFactor = 100.0 / totalRemaining;
 
           // Rescale remaining people's percentages
@@ -197,28 +272,30 @@ class _ItemCardState extends State<ItemCard>
         }
       }
 
-      // Update assignments
+      // Update assignments through callback
       widget.onAssign(widget.item, newAssignments);
       HapticFeedback.mediumImpact();
       _showSuccessToast("Removed ${person.name}");
     } else {
-      // In single-select mode, just assign 100% to this person
+      // Assign 100% to this person, 0% to everyone else
       Map<Person, double> newAssignments = {};
       for (var p in widget.participants) {
         newAssignments[p] = p == person ? 100.0 : 0.0;
       }
 
-      // Update assignments
+      // Update assignments through callback
       widget.onAssign(widget.item, newAssignments);
 
-      // Play assignment animation and haptic feedback
+      // Provide visual and tactile feedback
       _playHighlightAnimation();
       HapticFeedback.mediumImpact();
       _showSuccessToast("Assigned to ${person.name}");
     }
   }
 
-  // Enter multi-select mode
+  /// Activate multi-select mode for selecting multiple participants
+  ///
+  /// Saves current assignments for potential restoration and clears current assignments
   void _enterMultiSelectMode() {
     setState(() {
       _multiSelectMode = true;
@@ -231,7 +308,7 @@ class _ItemCardState extends State<ItemCard>
             widget.item.assignments[person] ?? 0.0;
       }
 
-      // Clear all assignments
+      // Clear all assignments temporarily
       Map<Person, double> clearAssignments = {};
       for (var p in widget.participants) {
         clearAssignments[p] = 0.0;
@@ -241,7 +318,9 @@ class _ItemCardState extends State<ItemCard>
     HapticFeedback.mediumImpact();
   }
 
-  // Cancel multi-select mode and restore assignments
+  /// Exit multi-select mode without applying changes
+  ///
+  /// Restores original assignments if no selections were made
   void _cancelMultiSelectMode() {
     if (_selectedPeople.isEmpty) {
       // Only restore if no selections were made
@@ -256,28 +335,31 @@ class _ItemCardState extends State<ItemCard>
     HapticFeedback.mediumImpact();
   }
 
-  // Restore original assignments
+  /// Restore assignments to their state before entering multi-select mode
   void _restoreOriginalAssignments() {
     if (_savedAssignmentsBeforeMultiSelect != null) {
-      // Restore the original assignments
+      // Restore the original assignments through callback
       widget.onAssign(widget.item, _savedAssignmentsBeforeMultiSelect!);
       _savedAssignmentsBeforeMultiSelect = null; // Clear the saved state
     }
   }
 
-  // Show custom split dialog with selected people
+  /// Open custom split dialog for precise percentage assignment
+  ///
+  /// Shows error if no people are selected in multi-select mode
   void _showCustomSplitWithSelectedPeople() {
     if (_selectedPeople.isEmpty) {
-      // Only check mounted status for showing the error SnackBar
+      // Show error message if no people are selected
       if (mounted) {
-        final colorScheme = Theme.of(context).colorScheme;
         final brightness = Theme.of(context).brightness;
 
+        // Theme-aware snackbar background
         final snackBarBgColor =
             brightness == Brightness.dark
                 ? Colors.grey.shade800
                 : Colors.grey.shade700;
 
+        // Display floating snackbar with selection instruction
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -319,18 +401,22 @@ class _ItemCardState extends State<ItemCard>
     // Using the stored variables to ensure they're not accessed after state change
     onShowCustomSplit(item, selectedPeopleList);
 
-    // Clear saved assignments since we've applied them
+    // Clear saved assignments since we've applied new ones
     _savedAssignmentsBeforeMultiSelect = null;
   }
 
-  // Split evenly among all participants
+  /// Split the item evenly among all participants
+  ///
+  /// Assigns the item equally to everyone in the participants list
   void _splitEvenlyAll() {
     widget.onSplitEvenly(widget.item, widget.participants);
     _playHighlightAnimation();
     _showSuccessToast('Split evenly among all');
   }
 
-  // Show success toast
+  /// Display a success toast message at the top of the screen
+  ///
+  /// Shows a temporary notification with the specified message
   void _showSuccessToast(String message) {
     // Check if the widget is still mounted before showing the toast
     if (!mounted) return;
@@ -389,16 +475,18 @@ class _ItemCardState extends State<ItemCard>
     );
   }
 
-  // Get dominant color with enhanced handling for dark mode
+  /// Calculate a dominant color with enhanced visibility for dark mode
+  ///
+  /// Applies special handling for purple hues which are difficult to see in dark mode
   Color getDominantColorForTheme(
     List<Person> assignedPeople,
     Brightness brightness,
   ) {
+    // Get base color from assigned people
     Color baseColor = ColorUtils.getDominantColor(assignedPeople);
 
-    // If we're in dark mode, significantly lighten the color (especially for purple)
+    // For dark mode, lighten colors for better visibility
     if (brightness == Brightness.dark) {
-      // Special handling for purple hues which are particularly hard to see
       // Check if it's a purple or blue-purple color
       bool isPurplish = ColorUtils.isPurplish(baseColor);
 
@@ -421,11 +509,12 @@ class _ItemCardState extends State<ItemCard>
 
   @override
   Widget build(BuildContext context) {
-    // Get theme info
+    // Get theme info for adaptive styling
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
-    // Theme-aware color variables
+    // Calculate theme-aware color variables
+    // These adapt all UI elements to current theme brightness
     final Color themeSlateGray =
         brightness == Brightness.dark
             ? Color(0xFFA1A1AA) // Lighter slate for dark mode
@@ -463,8 +552,8 @@ class _ItemCardState extends State<ItemCard>
     final containerBgColor =
         brightness == Brightness.dark
             ? (isAssigned
-                ? ColorUtils.getDarkenedColor(dominantColor, 0.5).withOpacity(
-                  0.4,
+                ? ColorUtils.getDarkenedColor(dominantColor, 0.5).withValues(
+                  alpha: 0.4,
                 ) // Less darkening, more opacity
                 : colorScheme.surfaceContainerHighest)
             : (isAssigned
@@ -475,37 +564,39 @@ class _ItemCardState extends State<ItemCard>
     final containerBorderColor =
         brightness == Brightness.dark
             ? (isAssigned
-                ? dominantColor.withOpacity(
-                  0.6,
+                ? dominantColor.withValues(
+                  alpha: 0.6,
                 ) // Increase opacity for better visibility
-                : colorScheme.outline.withOpacity(0.3))
+                : colorScheme.outline.withValues(alpha: .3))
             : (isAssigned
                 ? ColorUtils.getLightenedColor(dominantColor, 0.7)
                 : Colors.grey.shade200);
 
-    // Shadow color
+    // Shadow color - subtler in light mode, more pronounced in dark
     final shadowColor =
         brightness == Brightness.dark
             ? (isAssigned
-                ? dominantColor.withOpacity(0.2)
-                : Colors.black.withOpacity(0.1))
+                ? dominantColor.withValues(alpha: .2)
+                : Colors.black.withValues(alpha: .1))
             : (isAssigned
-                ? dominantColor.withOpacity(0.1)
-                : Colors.black.withOpacity(0.03));
+                ? dominantColor.withValues(alpha: .1)
+                : Colors.black.withValues(alpha: .03));
 
     // Highlight shadow color - enhanced for dark mode
     final highlightShadowColor =
         brightness == Brightness.dark
-            ? dominantColor.withOpacity(0.7) // Stronger highlight in dark mode
-            : dominantColor.withOpacity(0.3);
+            ? dominantColor.withValues(
+              alpha: .7,
+            ) // Stronger highlight in dark mode
+            : dominantColor.withValues(alpha: .3);
 
-    // Icon background color - brighter in dark mode
+    // Icon background color - brighter in dark mode for visibility
     final iconBgColor =
         brightness == Brightness.dark
             ? (isAssigned
-                ? ColorUtils.getLightenedColor(dominantColor, 0.2).withOpacity(
-                  0.4,
-                ) // Much brighter
+                ? ColorUtils.getLightenedColor(dominantColor, 0.2).withValues(
+                  alpha: 0.4,
+                ) // Much brighter for contrast
                 : colorScheme.surfaceContainerHighest)
             : (isAssigned
                 ? ColorUtils.getLightenedColor(dominantColor, 0.85)
@@ -518,7 +609,7 @@ class _ItemCardState extends State<ItemCard>
                 ? ColorUtils.getLightenedColor(
                   dominantColor,
                   0.4,
-                ) // Much brighter text
+                ) // Much brighter text for contrast
                 : colorScheme.onSurface)
             : (isAssigned ? dominantColor : themeSlateGray);
 
@@ -528,20 +619,20 @@ class _ItemCardState extends State<ItemCard>
                 ? ColorUtils.getLightenedColor(
                   dominantColor,
                   0.2,
-                ).withOpacity(0.9)
-                : colorScheme.onSurface.withOpacity(0.7))
+                ).withValues(alpha: .9)
+                : colorScheme.onSurface.withValues(alpha: .7))
             : (isAssigned
-                ? dominantColor.withOpacity(0.8)
+                ? dominantColor.withValues(alpha: .8)
                 : themeLightSlateGray);
 
-    // Divider color
+    // Divider color - more visible in dark mode
     final dividerColor =
         brightness == Brightness.dark
             ? (isAssigned
-                ? dominantColor.withOpacity(
-                  0.3,
+                ? dominantColor.withValues(
+                  alpha: 0.3,
                 ) // Brighter divider in dark mode
-                : colorScheme.outline.withOpacity(0.2))
+                : colorScheme.outline.withValues(alpha: .2))
             : (isAssigned
                 ? ColorUtils.getLightenedColor(dominantColor, 0.85)
                 : Colors.grey.shade200);
@@ -576,12 +667,12 @@ class _ItemCardState extends State<ItemCard>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Card header
+          // Card header - always visible part with item details
           InkWell(
             onTap: _toggleExpand,
             borderRadius: BorderRadius.circular(16),
-            splashColor: dominantColor.withOpacity(0.05),
-            highlightColor: dominantColor.withOpacity(0.1),
+            splashColor: dominantColor.withValues(alpha: .05),
+            highlightColor: dominantColor.withValues(alpha: .1),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Row(
@@ -589,7 +680,7 @@ class _ItemCardState extends State<ItemCard>
                   // Item icon with assignment status indicator
                   Stack(
                     children: [
-                      // Icon background
+                      // Icon background - adapts to assignment state
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 300),
                         padding: const EdgeInsets.all(10),
@@ -600,7 +691,9 @@ class _ItemCardState extends State<ItemCard>
                               _showHighlight
                                   ? [
                                     BoxShadow(
-                                      color: dominantColor.withOpacity(0.3),
+                                      color: dominantColor.withValues(
+                                        alpha: .3,
+                                      ),
                                       blurRadius: 10,
                                       spreadRadius: 1,
                                     ),
@@ -614,7 +707,7 @@ class _ItemCardState extends State<ItemCard>
                         ),
                       ),
 
-                      // Status indicator dot
+                      // Green checkmark dot for fully assigned items
                       if (isFullyAssigned)
                         Positioned(
                           top: 0,
@@ -662,11 +755,11 @@ class _ItemCardState extends State<ItemCard>
                     ),
                   ),
 
-                  // Assignment status
+                  // Assignment status section at right side
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      // Status text
+                      // Status text badge (Unassigned/Assigned/Percentage)
                       _buildAssignmentStatus(
                         isAssigned,
                         isFullyAssigned,
@@ -679,7 +772,7 @@ class _ItemCardState extends State<ItemCard>
 
                       const SizedBox(height: 4),
 
-                      // Avatars or expand indicator
+                      // Either show assignee avatars or expand indicator
                       if (isAssigned && !_isExpanded)
                         _buildAssigneeAvatars()
                       else
@@ -701,14 +794,14 @@ class _ItemCardState extends State<ItemCard>
             ),
           ),
 
-          // Expanded section with animation
+          // Expandable section with participant selector and action buttons
           SizeTransition(
             sizeFactor: _expandAnimation,
             child: FadeTransition(
               opacity: _fadeAnimation,
               child: Column(
                 children: [
-                  // Divider
+                  // Divider between header and expanded content
                   Divider(height: 1, thickness: 1, color: dividerColor),
 
                   // Participant selector with action buttons
@@ -730,7 +823,7 @@ class _ItemCardState extends State<ItemCard>
 
                         const SizedBox(height: 16),
 
-                        // Action buttons
+                        // Action buttons (Split Evenly, Multi-Split, etc.)
                         _buildActionButtons(dominantColor, brightness),
                       ],
                     ),
@@ -744,7 +837,9 @@ class _ItemCardState extends State<ItemCard>
     );
   }
 
-  // Build the assignment status tag
+  /// Build a status tag indicating assignment state (unassigned/partial/full)
+  ///
+  /// Shows color-coded pills with status text based on assignment percentage
   Widget _buildAssignmentStatus(
     bool isAssigned,
     bool isFullyAssigned,
@@ -754,23 +849,24 @@ class _ItemCardState extends State<ItemCard>
     Color themeWarningOrange,
     Brightness brightness,
   ) {
-    // Theme-aware colors for status tags
+    // Theme-aware background colors for status tags
     final unassignedBgColor =
         brightness == Brightness.dark
-            ? themeWarningOrange.withOpacity(0.2)
-            : themeWarningOrange.withOpacity(0.15);
+            ? themeWarningOrange.withValues(alpha: .2)
+            : themeWarningOrange.withValues(alpha: .15);
 
     final fullyAssignedBgColor =
         brightness == Brightness.dark
-            ? themeSuccessGreen.withOpacity(0.2)
-            : themeSuccessGreen.withOpacity(0.15);
+            ? themeSuccessGreen.withValues(alpha: .2)
+            : themeSuccessGreen.withValues(alpha: .15);
 
     final partiallyAssignedBgColor =
         brightness == Brightness.dark
-            ? themePrimaryBlue.withOpacity(0.2)
-            : themePrimaryBlue.withOpacity(0.15);
+            ? themePrimaryBlue.withValues(alpha: .2)
+            : themePrimaryBlue.withValues(alpha: .15);
 
     if (!isAssigned) {
+      // Unassigned status tag (orange)
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
@@ -787,6 +883,7 @@ class _ItemCardState extends State<ItemCard>
         ),
       );
     } else if (isFullyAssigned) {
+      // Fully assigned status tag (green)
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
@@ -803,6 +900,7 @@ class _ItemCardState extends State<ItemCard>
         ),
       );
     } else {
+      // Partially assigned status tag (blue with percentage)
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
@@ -821,24 +919,27 @@ class _ItemCardState extends State<ItemCard>
     }
   }
 
-  // Build the assignee avatars
+  /// Build the avatar stack showing assigned people
+  ///
+  /// Shows circular avatars with initials, overlapping slightly
+  /// Limits display to 3 avatars plus a +N indicator for more
   Widget _buildAssigneeAvatars() {
     if (widget.assignedPeople.isEmpty) return const SizedBox.shrink();
 
-    // Limit to showing max 3 avatars
+    // Limit to showing max 3 avatars to avoid overcrowding
     final displayPeople =
         widget.assignedPeople.length > 3
             ? widget.assignedPeople.sublist(0, 3)
             : widget.assignedPeople;
 
-    // Calculate a fixed width for the container
+    // Calculate a fixed width for the container based on number of avatars
     final containerWidth =
         widget.assignedPeople.length > 3
             ? 4 * 12.0 +
                 10.0 // 4 avatars at 12px spacing plus some buffer
             : displayPeople.length * 12.0 + 10.0;
 
-    // Theme-aware colors
+    // Theme-aware colors for avatar styling
     final brightness = Theme.of(context).brightness;
     final borderColor =
         brightness == Brightness.dark
@@ -847,8 +948,8 @@ class _ItemCardState extends State<ItemCard>
 
     final shadowColor =
         brightness == Brightness.dark
-            ? Colors.black.withOpacity(0.2)
-            : Colors.black.withOpacity(0.1);
+            ? Colors.black.withValues(alpha: .2)
+            : Colors.black.withValues(alpha: .1);
 
     final moreAvatarBgColor =
         brightness == Brightness.dark
@@ -857,13 +958,14 @@ class _ItemCardState extends State<ItemCard>
 
     return SizedBox(
       height: 24,
-      width: containerWidth, // Fixed width
+      width: containerWidth, // Fixed width based on number of avatars
       child: Stack(
         alignment: Alignment.centerRight,
         children: [
+          // Generate overlapping avatars for each person to display
           for (int i = 0; i < displayPeople.length; i++)
             Positioned(
-              right: i * 12.0,
+              right: i * 12.0, // Overlap avatars by positioning them
               child: Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
@@ -893,9 +995,10 @@ class _ItemCardState extends State<ItemCard>
               ),
             ),
 
+          // If there are more than 3 people, show +N indicator
           if (widget.assignedPeople.length > 3)
             Positioned(
-              right: 3 * 12.0,
+              right: 3 * 12.0, // Position after the third avatar
               child: Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
@@ -927,9 +1030,14 @@ class _ItemCardState extends State<ItemCard>
     );
   }
 
-  // Action buttons with Multi-Split logic
+  /// Build action buttons for the expanded section
+  ///
+  /// Shows different buttons based on the current state:
+  /// - Split Evenly: Always visible
+  /// - Multi-Split/Split It!: Context-dependent based on mode
+  /// - Done/Cancel: For closing the expanded view
   Widget _buildActionButtons(Color dominantColor, Brightness brightness) {
-    // Theme-aware button colors
+    // Theme-aware gradient colors for buttons
     final indigoGradient =
         brightness == Brightness.dark
             ? [
@@ -981,6 +1089,7 @@ class _ItemCardState extends State<ItemCard>
 
     final dominantGradient = [gradientStart, gradientEnd];
 
+    // Theme-aware colors for the cancel/done button
     final cancelButtonBgColor =
         brightness == Brightness.dark
             ? Colors.grey.shade800
@@ -994,17 +1103,17 @@ class _ItemCardState extends State<ItemCard>
     // Button text color - for dark mode, use darker text on bright backgrounds for better contrast
     final buttonTextColor =
         brightness == Brightness.dark
-            ? Colors.black.withOpacity(
-              0.9,
+            ? Colors.black.withValues(
+              alpha: 0.9,
             ) // Dark text for better contrast in dark mode
             : Colors.white;
 
     return Column(
       children: [
-        // Main action buttons row
+        // Main action buttons row with two buttons side by side
         Row(
           children: [
-            // Split evenly button
+            // Split evenly button (always present)
             Expanded(
               child: _buildModernButton(
                 label: 'Split Evenly',
@@ -1021,7 +1130,7 @@ class _ItemCardState extends State<ItemCard>
 
             const SizedBox(width: 10),
 
-            // Multi-split button
+            // Multi-split/Split It! button (context dependent)
             Expanded(
               child:
                   _multiSelectMode
@@ -1054,7 +1163,7 @@ class _ItemCardState extends State<ItemCard>
           ],
         ),
 
-        // Done/Cancel button
+        // Done/Cancel button at the bottom
         Padding(
           padding: const EdgeInsets.only(top: 16),
           child: GestureDetector(
@@ -1095,7 +1204,10 @@ class _ItemCardState extends State<ItemCard>
     );
   }
 
-  // Button with gradient background
+  /// Build a modern-styled gradient button with icon and label
+  ///
+  /// Creates an attractive button with rounded corners, gradient background,
+  /// and slight elevation for a three-dimensional effect
   Widget _buildModernButton({
     required String label,
     required IconData icon,
@@ -1115,7 +1227,7 @@ class _ItemCardState extends State<ItemCard>
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: .1),
               blurRadius: 4,
               spreadRadius: 0,
               offset: const Offset(0, 2),

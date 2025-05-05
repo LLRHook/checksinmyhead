@@ -1,4 +1,3 @@
-import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 import 'package:checks_frontend/screens/recent_bills/components/loading_dots.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.dart';
@@ -86,6 +85,211 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
     }
   }
 
+  // Add this method to your RecentBillsScreen class
+  void _showDeleteConfirmation() {
+    // Provide haptic feedback when opening modal
+    HapticFeedback.mediumImpact();
+
+    final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    // Define colors based on theme
+    final backgroundColor =
+        brightness == Brightness.dark
+            ? colorScheme.surfaceContainerHighest
+            : Colors.white;
+
+    final warningColor =
+        brightness == Brightness.dark
+            ? Color(0xFF6D0D12) // Deeper red for dark mode
+            : Color(0xFFFDECEE); // Light red background for light mode
+
+    final warningTextColor =
+        brightness == Brightness.dark
+            ? Color(0xFFFF8282) // Lighter red text for dark mode
+            : Color(0xFFB3261E); // Darker red text for light mode
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withOpacity(0.5),
+      builder: (context) {
+        return TweenAnimationBuilder<double>(
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
+          tween: Tween(begin: 1.0, end: 0.0),
+          builder: (context, value, child) {
+            return Transform.translate(
+              offset: Offset(0, 50 * value),
+              child: Opacity(opacity: 1 - value, child: child),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.only(top: 12),
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(28),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.12),
+                  blurRadius: 12,
+                  offset: const Offset(0, -4),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Drag handle
+                Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Warning icon
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: warningColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.delete_forever_rounded,
+                    color: warningTextColor,
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Title
+                Text(
+                  'Delete All Bills',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: colorScheme.onSurface,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+
+                // Description
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 36),
+                  child: Text(
+                    'This will permanently delete all ${_bills.length} bills from your history. This action cannot be undone.',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                      color: colorScheme.onSurfaceVariant,
+                      height: 1.4,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // Action buttons with modern styling
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  child: Row(
+                    children: [
+                      // Cancel button
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            HapticFeedback.lightImpact();
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: colorScheme.onSurface,
+                            backgroundColor: Colors.transparent,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide(
+                                color: colorScheme.outlineVariant,
+                                width: 1.5,
+                              ),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 16),
+
+                      // Delete button
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () {
+                            // Close modal
+                            Navigator.of(context).pop();
+
+                            // Strong haptic feedback for destructive action
+                            HapticFeedback.heavyImpact();
+
+                            // Perform delete action
+                            setState(() {
+                              _isLoading = true;
+                            });
+
+                            // Call the clearAllBills method and then reload
+                            RecentBillsManager.clearAllBills().then((_) {
+                              _loadBills();
+                            });
+                          },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: colorScheme.errorContainer,
+                            foregroundColor: colorScheme.onErrorContainer,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            'Delete All',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Extra padding for bottom safe area
+                SizedBox(height: MediaQuery.of(context).padding.bottom),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _showErrorSnackBar(String message) {
     HapticFeedback.vibrate();
 
@@ -123,9 +327,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
 
     // Theme-aware colors
     final scaffoldBgColor =
-        brightness == Brightness.dark
-            ? colorScheme.background
-            : Colors.grey[50];
+        brightness == Brightness.dark ? colorScheme.surface : Colors.grey[50];
 
     final appBarBgColor =
         brightness == Brightness.dark ? colorScheme.surface : Colors.white;
@@ -136,8 +338,8 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
 
     // Header colors
     final headerTextColor = Colors.white;
-    final headerSecondaryTextColor = Colors.white.withOpacity(0.9);
-    final headerIconBgColor = Colors.white.withOpacity(0.2);
+    final headerSecondaryTextColor = Colors.white.withValues(alpha: .9);
+    final headerIconBgColor = Colors.white.withValues(alpha: .2);
 
     return Scaffold(
       backgroundColor: scaffoldBgColor,
@@ -158,6 +360,19 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
           },
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_forever_outlined),
+            color: colorScheme.error,
+            onPressed: () {
+              if (!_isRefreshButtonClicked &&
+                  !_isLoading &&
+                  _bills.isNotEmpty) {
+                HapticFeedback.selectionClick();
+                _showDeleteConfirmation();
+              }
+            },
+          ),
+
           // Refresh button with rotation animation
           IconButton(
             icon: AnimatedBuilder(
@@ -191,7 +406,6 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
                 _loadBills();
               }
             },
-            tooltip: 'Refresh bills',
           ),
         ],
       ),
@@ -230,18 +444,15 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
     Color headerIconBgColor,
     ColorScheme colorScheme,
   ) {
-    // Calculate total amount spent
-    final double totalSpent = _bills.fold(0, (sum, bill) => sum + bill.total);
-
     final brightness = Theme.of(context).brightness;
 
     // Shadow color should be different for dark mode
     final shadowColor =
         brightness == Brightness.dark
-            ? colorScheme.primary.withOpacity(
-              0.5,
+            ? colorScheme.primary.withValues(
+              alpha: 0.5,
             ) // More prominent in dark mode
-            : colorScheme.primary.withOpacity(0.3);
+            : colorScheme.primary.withValues(alpha: .3);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -298,14 +509,6 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Icon(
-                        Icons.info_outline,
-                        color: headerSecondaryTextColor,
-                        size: 16,
-                      ),
-                    ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text.rich(
@@ -333,31 +536,11 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
               ],
             ),
           ),
-
-          // Total amount (only show when not loading and bills exist)
-          if (!_isLoading && _bills.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                CurrencyFormatter.formatCurrency(totalSpent),
-                style: TextStyle(
-                  color: headerTextColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-            ),
         ],
       ),
     );
   }
 
-  // Create a new method for the animated dots
-  // Create a new method for the animated dots
   // Create a new method for the animated dots
   Widget _buildAnimatedDots(Color dotColor) {
     return SizedBox(

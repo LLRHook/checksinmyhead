@@ -1,9 +1,34 @@
+//
+// This module provides a dialog UI for custom splitting of bill items among participants.
+// It allows users to manually adjust percentage allocations for each person with an
+// intuitive slider interface that maintains a 100% total.
+//
+// Features:
+// - Even distribution among participants
+// - Individual percentage adjustment with sliders
+// - Preset percentage buttons (0%, 25%, 50%, 75%, 100%)
+// - Automatic total calculation and validation
+// - Special handling for birthday people
+// - Theme-aware styling (supports light and dark modes)
+// - Normalize function to fix percentages when total is not 100%
+
 import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '/models/person.dart';
 import '/models/bill_item.dart';
 
+/// Shows a dialog for custom splitting of bill items among participants.
+///
+/// @param context The build context for showing the dialog
+/// @param item The bill item to be split
+/// @param participants All possible participants who can share the bill
+/// @param onAssign Callback function when assignments are confirmed, receives updated item and assignments
+/// @param preselectedPeople Optional list of pre-selected people for the split (defaults to all participants)
+/// @param birthdayPerson Optional special person who gets visual highlighting (e.g., for birthday discounts)
+///
+/// The dialog allows percentage-based allocation of the bill item cost and validates
+/// that the total equals 100% before allowing submission.
 void showCustomSplitDialog({
   required BuildContext context,
   required BillItem item,
@@ -12,40 +37,41 @@ void showCustomSplitDialog({
   List<Person>? preselectedPeople,
   Person? birthdayPerson,
 }) {
-  // Initialize working assignments
+  // Initialize working assignments map that will track percentage allocations
   Map<Person, double> workingAssignments = {};
 
-  // Get the participants we need to show
+  // Determine which participants to show in the dialog - either preselected or all
   List<Person> relevantParticipants =
       preselectedPeople != null && preselectedPeople.isNotEmpty
           ? preselectedPeople
           : participants;
 
-  // Distribute evenly among preselected/all participants
+  // Initially distribute the bill evenly among relevant participants
   double evenShare = 100.0 / relevantParticipants.length;
   for (var person in participants) {
     workingAssignments[person] =
         relevantParticipants.contains(person) ? evenShare : 0.0;
   }
 
-  // Calculate initial total
+  // Initial total should be 100%
   double totalPercentage = 100.0;
 
   showDialog(
     context: context,
     builder:
         (context) => StatefulBuilder(
+          // StatefulBuilder allows the dialog to manage its own state
           builder: (context, setStateDialog) {
-            // Get dominant color
+            // Get predominant color based on participant colors for theming
             Color dominantColor = ColorUtils.getDominantColor(
               relevantParticipants,
             );
 
-            // Get theme info
+            // Get the current theme information
             final colorScheme = Theme.of(context).colorScheme;
             final brightness = Theme.of(context).brightness;
 
-            // Theme-aware colors
+            // Define theme-aware colors for different UI elements
             final dialogBgColor =
                 brightness == Brightness.dark
                     ? colorScheme.surface
@@ -56,13 +82,13 @@ void showCustomSplitDialog({
                     ? ColorUtils.getDarkenedColor(
                       dominantColor,
                       0.7,
-                    ).withOpacity(0.15)
-                    : dominantColor.withOpacity(0.08);
+                    ).withValues(alpha: .15)
+                    : dominantColor.withValues(alpha: .08);
 
             final textColor = colorScheme.onSurface;
             final subtitleColor =
                 brightness == Brightness.dark
-                    ? colorScheme.onSurface.withOpacity(0.7)
+                    ? colorScheme.onSurface.withValues(alpha: .7)
                     : Colors.grey.shade700;
 
             final bottomBarColor =
@@ -72,12 +98,12 @@ void showCustomSplitDialog({
 
             final bottomBarShadowColor =
                 brightness == Brightness.dark
-                    ? Colors.black.withOpacity(0.2)
+                    ? Colors.black.withValues(alpha: .2)
                     : Colors.grey.shade200;
 
             final cancelButtonColor =
                 brightness == Brightness.dark
-                    ? colorScheme.outline.withOpacity(0.7)
+                    ? colorScheme.outline.withValues(alpha: .7)
                     : Colors.grey.shade300;
 
             final cancelTextColor =
@@ -96,6 +122,7 @@ void showCustomSplitDialog({
                 vertical: 24,
               ),
               child: ConstrainedBox(
+                // Constrain dialog size for better appearance on different screen sizes
                 constraints: BoxConstraints(
                   maxHeight: MediaQuery.of(context).size.height * 0.8,
                   maxWidth: MediaQuery.of(context).size.width * 0.9,
@@ -103,7 +130,7 @@ void showCustomSplitDialog({
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Header with item details and total percentage
+                    // Header section: Shows item details and percentage status
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -115,7 +142,7 @@ void showCustomSplitDialog({
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Item name and price
+                          // Item name and price display
                           Row(
                             children: [
                               Icon(
@@ -154,10 +181,10 @@ void showCustomSplitDialog({
 
                           const SizedBox(height: 12),
 
-                          // Total percentage indicator
+                          // Total percentage indicator with status color
                           Row(
                             children: [
-                              // Status indicator
+                              // Visual indicator that changes color based on total percentage
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 10,
@@ -167,7 +194,7 @@ void showCustomSplitDialog({
                                   color: _getStatusColor(
                                     totalPercentage,
                                     brightness,
-                                  ).withOpacity(0.1),
+                                  ).withValues(alpha: .1),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Row(
@@ -175,8 +202,10 @@ void showCustomSplitDialog({
                                   children: [
                                     Icon(
                                       totalPercentage == 100.0
-                                          ? Icons.check_circle
-                                          : Icons.pie_chart,
+                                          ? Icons
+                                              .check_circle // Check mark when total is valid
+                                          : Icons
+                                              .pie_chart, // Pie chart when adjustments needed
                                       size: 16,
                                       color: _getStatusColor(
                                         totalPercentage,
@@ -201,13 +230,14 @@ void showCustomSplitDialog({
 
                               const SizedBox(width: 8),
 
-                              // Normalize button (only show when needed)
+                              // "Fix" button - only shown when total isn't 100% but is > 0
                               if (totalPercentage != 100.0 &&
                                   totalPercentage > 0)
                                 TextButton.icon(
                                   onPressed: () {
                                     setStateDialog(() {
-                                      // Normalize to 100%
+                                      // Normalize all values to make total 100%
+                                      // by scaling each percentage proportionally
                                       double factor = 100.0 / totalPercentage;
                                       for (var person
                                           in workingAssignments.keys.toList()) {
@@ -226,8 +256,8 @@ void showCustomSplitDialog({
                                   ),
                                   style: TextButton.styleFrom(
                                     foregroundColor: dominantColor,
-                                    backgroundColor: dominantColor.withOpacity(
-                                      0.08,
+                                    backgroundColor: dominantColor.withValues(
+                                      alpha: 0.08,
                                     ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
@@ -244,10 +274,11 @@ void showCustomSplitDialog({
 
                               const Spacer(),
 
-                              // Even split button
+                              // "Even" button to reset to even distribution
                               TextButton.icon(
                                 onPressed: () {
                                   setStateDialog(() {
+                                    // Reset to even distribution among relevant participants
                                     double evenShare =
                                         100.0 / relevantParticipants.length;
                                     for (var person in participants) {
@@ -267,8 +298,8 @@ void showCustomSplitDialog({
                                 ),
                                 style: TextButton.styleFrom(
                                   foregroundColor: dominantColor,
-                                  backgroundColor: dominantColor.withOpacity(
-                                    0.08,
+                                  backgroundColor: dominantColor.withValues(
+                                    alpha: 0.08,
                                   ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
@@ -285,13 +316,15 @@ void showCustomSplitDialog({
                             ],
                           ),
 
-                          // Progress bar
+                          // Visual progress bar showing percentage completion
                           Padding(
                             padding: const EdgeInsets.only(top: 10),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(4),
                               child: LinearProgressIndicator(
-                                value: totalPercentage / 100,
+                                value:
+                                    totalPercentage /
+                                    100, // Normalized to 0.0-1.0 range
                                 backgroundColor:
                                     brightness == Brightness.dark
                                         ? Colors.grey.shade800
@@ -307,7 +340,7 @@ void showCustomSplitDialog({
                       ),
                     ),
 
-                    // Participant sliders
+                    // Scrollable list of participants with their sliders
                     Flexible(
                       child: ListView.builder(
                         padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
@@ -315,10 +348,13 @@ void showCustomSplitDialog({
                         itemCount: relevantParticipants.length,
                         itemBuilder: (context, index) {
                           final person = relevantParticipants[index];
+                          // Special color for birthday person
                           final isBirthdayPerson = birthdayPerson == person;
                           final personColor =
                               isBirthdayPerson
-                                  ? const Color(0xFF8E24AA) // Purple
+                                  ? const Color(
+                                    0xFF8E24AA,
+                                  ) // Purple for birthday
                                   : person.color;
                           final percentage = workingAssignments[person] ?? 0.0;
 
@@ -331,7 +367,9 @@ void showCustomSplitDialog({
                             brightness: brightness,
                             onChanged: (value) {
                               setStateDialog(() {
+                                // Update this person's percentage
                                 workingAssignments[person] = value;
+                                // Recalculate the total
                                 totalPercentage = workingAssignments.values
                                     .fold(0, (sum, value) => sum + value);
                               });
@@ -342,7 +380,7 @@ void showCustomSplitDialog({
                       ),
                     ),
 
-                    // Actions
+                    // Bottom action buttons
                     Container(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                       decoration: BoxDecoration(
@@ -377,18 +415,17 @@ void showCustomSplitDialog({
 
                           const SizedBox(width: 12),
 
-                          // Apply button - using a more theme-aware green
+                          // Apply button - only enabled when total is 100%
                           Expanded(
                             child: ElevatedButton(
-                              // Find the code section in the showCustomSplitDialog function where the SnackBar is shown
-                              // Replace this part in the onPressed callback of the Apply button:
                               onPressed:
                                   totalPercentage == 100.0
                                       ? () {
+                                        // Close dialog and call the assignment callback
                                         Navigator.pop(context);
                                         onAssign(item, workingAssignments);
 
-                                        // Show confirmation with theme-aware colors and consistent positioning
+                                        // Show success confirmation with theme-aware styling
                                         final successColor =
                                             brightness == Brightness.dark
                                                 ? const Color(
@@ -398,15 +435,16 @@ void showCustomSplitDialog({
                                                   0xFF10B981,
                                                 ); // Original green for light mode
 
-                                        // Get the top padding value to account for status bar height
+                                        // Account for status bar height when positioning
                                         final topPadding =
                                             MediaQuery.of(context).padding.top;
 
-                                        // First hide any current SnackBar
+                                        // Hide any existing SnackBar first
                                         ScaffoldMessenger.of(
                                           context,
                                         ).hideCurrentSnackBar();
 
+                                        // Show success toast
                                         ScaffoldMessenger.of(
                                           context,
                                         ).showSnackBar(
@@ -447,11 +485,11 @@ void showCustomSplitDialog({
                                               borderRadius:
                                                   BorderRadius.circular(12),
                                             ),
-                                            // Position the toast about 1/6 of the way down from the top of the screen
+                                            // Position toast at a user-friendly location
                                             margin: EdgeInsets.only(
                                               top:
                                                   topPadding +
-                                                  60, // Move it down further from the top
+                                                  60, // Offset from top
                                               left: 16,
                                               right: 16,
                                               bottom:
@@ -467,7 +505,7 @@ void showCustomSplitDialog({
                                           ),
                                         );
                                       }
-                                      : null,
+                                      : null, // Disabled when total is not 100%
                               style: ElevatedButton.styleFrom(
                                 backgroundColor:
                                     brightness == Brightness.dark
@@ -479,8 +517,8 @@ void showCustomSplitDialog({
                                         ), // Original green for light mode
                                 foregroundColor:
                                     brightness == Brightness.dark
-                                        ? Colors.black.withOpacity(
-                                          0.9,
+                                        ? Colors.black.withValues(
+                                          alpha: 0.9,
                                         ) // Better contrast in dark mode
                                         : Colors.white,
                                 disabledBackgroundColor:
@@ -520,7 +558,18 @@ void showCustomSplitDialog({
   );
 }
 
-// Clean, space-efficient slider for each person
+/// Builds a slider UI for a single person's percentage allocation.
+///
+/// @param person The person this slider controls
+/// @param percentage Current percentage allocation (0-100)
+/// @param price Total price of the item being split
+/// @param personColor Theme color associated with this person
+/// @param isBirthdayPerson Whether this person has birthday status
+/// @param brightness Current theme brightness
+/// @param onChanged Callback when percentage changes
+///
+/// @return A Widget containing the person's details, a slider for adjustment,
+///         increment/decrement buttons, and preset percentage buttons
 Widget _buildPersonSlider({
   required Person person,
   required double percentage,
@@ -533,7 +582,7 @@ Widget _buildPersonSlider({
   final isActive = percentage > 0;
   final individualAmount = (price * percentage / 100);
 
-  // Theme-aware colors
+  // Theme-aware colors for UI elements
   final containerBgColor =
       brightness == Brightness.dark
           ? Color(0xFF1E1E1E) // Dark background for dark mode
@@ -554,13 +603,13 @@ Widget _buildPersonSlider({
 
   final percentageBgColor =
       brightness == Brightness.dark
-          ? personColor.withOpacity(0.1)
-          : personColor.withOpacity(0.03);
+          ? personColor.withValues(alpha: .1)
+          : personColor.withValues(alpha: .03);
 
   final percentageBorderColor =
       brightness == Brightness.dark
-          ? personColor.withOpacity(0.3)
-          : personColor.withOpacity(0.12);
+          ? personColor.withValues(alpha: .3)
+          : personColor.withValues(alpha: .12);
 
   final textColor =
       brightness == Brightness.dark
@@ -579,8 +628,8 @@ Widget _buildPersonSlider({
 
   final inactiveButtonColor =
       brightness == Brightness.dark
-          ? personColor.withOpacity(0.5)
-          : personColor.withOpacity(0.3);
+          ? personColor.withValues(alpha: .5)
+          : personColor.withValues(alpha: .3);
 
   return Container(
     margin: const EdgeInsets.only(bottom: 12),
@@ -589,17 +638,19 @@ Widget _buildPersonSlider({
       color: containerBgColor,
       borderRadius: BorderRadius.circular(14),
       border: Border.all(
-        color: isActive ? personColor.withOpacity(0.3) : inactiveBorderColor,
+        // Highlight active selections with thicker border
+        color:
+            isActive ? personColor.withValues(alpha: .3) : inactiveBorderColor,
         width: isActive ? 1.5 : 1,
       ),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Person info and percentage display
+        // Person info section with avatar, name, amount and percentage
         Row(
           children: [
-            // Avatar
+            // Avatar with first letter or cake icon for birthday
             Container(
               width: 36,
               height: 36,
@@ -624,7 +675,7 @@ Widget _buildPersonSlider({
 
             const SizedBox(width: 10),
 
-            // Name and amount
+            // Person name and their individual amount
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -647,7 +698,7 @@ Widget _buildPersonSlider({
               ),
             ),
 
-            // Percentage badge
+            // Current percentage badge
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
@@ -669,18 +720,18 @@ Widget _buildPersonSlider({
 
         const SizedBox(height: 12),
 
-        // Row with slider and +/- buttons
+        // Interactive adjustment controls
         Row(
           children: [
-            // Decrease button
+            // Decrease button (5% increments)
             IconButton(
               onPressed:
                   percentage > 0
                       ? () {
-                        // Decrement by 5%
+                        // Decrement by 5% but don't go below 0
                         onChanged(percentage - 5 < 0 ? 0 : percentage - 5);
                       }
-                      : null,
+                      : null, // Disabled when already at 0%
               icon: const Icon(Icons.remove_circle_outline, size: 18),
               color: percentage > 0 ? personColor : inactiveButtonColor,
               padding: EdgeInsets.zero,
@@ -688,7 +739,7 @@ Widget _buildPersonSlider({
               splashRadius: 20,
             ),
 
-            // Slider with theme-aware colors
+            // Percentage slider with custom theme
             Expanded(
               child: SliderTheme(
                 data: SliderThemeData(
@@ -696,17 +747,17 @@ Widget _buildPersonSlider({
                   activeTrackColor: personColor,
                   inactiveTrackColor:
                       brightness == Brightness.dark
-                          ? personColor.withOpacity(
-                            0.2,
+                          ? personColor.withValues(
+                            alpha: 0.2,
                           ) // Brighter in dark mode
-                          : personColor.withOpacity(0.1),
+                          : personColor.withValues(alpha: .1),
                   thumbColor: personColor,
                   thumbShape: const RoundSliderThumbShape(
                     enabledThumbRadius: 8,
                     elevation: 2,
                     pressedElevation: 4,
                   ),
-                  overlayColor: personColor.withOpacity(0.2),
+                  overlayColor: personColor.withValues(alpha: .2),
                   overlayShape: const RoundSliderOverlayShape(
                     overlayRadius: 16,
                   ),
@@ -716,8 +767,8 @@ Widget _buildPersonSlider({
                   valueIndicatorTextStyle: TextStyle(
                     color:
                         brightness == Brightness.dark
-                            ? Colors.black.withOpacity(
-                              0.9,
+                            ? Colors.black.withValues(
+                              alpha: 0.9,
                             ) // Better contrast in dark mode
                             : Colors.white,
                     fontSize: 12,
@@ -728,22 +779,22 @@ Widget _buildPersonSlider({
                   value: percentage,
                   min: 0,
                   max: 100,
-                  divisions: 20, // 5% increments
+                  divisions: 20, // Creates 5% increments (100/20 = 5)
                   label: '${percentage.toStringAsFixed(0)}%',
                   onChanged: onChanged,
                 ),
               ),
             ),
 
-            // Increase button
+            // Increase button (5% increments)
             IconButton(
               onPressed:
                   percentage < 100
                       ? () {
-                        // Increment by 5%
+                        // Increment by 5% but don't exceed 100
                         onChanged(percentage + 5 > 100 ? 100 : percentage + 5);
                       }
-                      : null,
+                      : null, // Disabled when already at 100%
               icon: const Icon(Icons.add_circle_outline, size: 18),
               color: percentage < 100 ? personColor : inactiveButtonColor,
               padding: EdgeInsets.zero,
@@ -753,15 +804,16 @@ Widget _buildPersonSlider({
           ],
         ),
 
-        // Preset percentage buttons
+        // Quick preset percentage buttons
         const SizedBox(height: 8),
 
-        // Use SingleChildScrollView to prevent overflow
+        // Horizontally scrollable preset buttons (0%, 25%, 50%, 75%, 100%)
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
             children:
                 [0, 25, 50, 75, 100].map((presetValue) {
+                  // Highlight the currently selected preset
                   final isSelected = (percentage - presetValue).abs() < 0.1;
 
                   return Padding(
@@ -775,7 +827,7 @@ Widget _buildPersonSlider({
                         foregroundColor:
                             isSelected
                                 ? (brightness == Brightness.dark
-                                    ? Colors.black.withOpacity(0.9)
+                                    ? Colors.black.withValues(alpha: .9)
                                     : Colors.white)
                                 : personColor,
                         backgroundColor:
@@ -790,8 +842,11 @@ Widget _buildPersonSlider({
                             color:
                                 isSelected
                                     ? Colors.transparent
-                                    : personColor.withOpacity(
-                                      brightness == Brightness.dark ? 0.5 : 0.3,
+                                    : personColor.withValues(
+                                      alpha:
+                                          brightness == Brightness.dark
+                                              ? 0.5
+                                              : 0.3,
                                     ),
                             width: 1,
                           ),
@@ -816,31 +871,37 @@ Widget _buildPersonSlider({
   );
 }
 
-// Get appropriate color based on percentage total and theme brightness
+/// Determines the appropriate status color based on total percentage and theme.
+///
+/// @param percentage The current total percentage (0-100)
+/// @param brightness The current theme brightness
+/// @return A Color representing the status:
+///   - Green: Total is exactly 100% (valid)
+///   - Blue: Total is between 0% and 100% (in progress)
+///   - Orange: Total is 0% (warning/empty)
 Color _getStatusColor(double percentage, Brightness brightness) {
-  // Success green adjusted for dark mode
+  // Define theme-aware colors for different statuses
   final successGreen =
       brightness == Brightness.dark
           ? const Color(0xFF34D399) // Lighter green for dark mode
           : const Color(0xFF10B981); // Original green for light mode
 
-  // Primary blue adjusted for dark mode
   final primaryBlue =
       brightness == Brightness.dark
           ? const Color(0xFF60A5FA) // Lighter blue for dark mode
           : const Color(0xFF3B82F6); // Original blue for light mode
 
-  // Warning orange adjusted for dark mode
   final warningOrange =
       brightness == Brightness.dark
           ? const Color(0xFFFCD34D) // Lighter orange for dark mode
           : const Color(0xFFF97316); // Original orange for light mode
 
+  // Return color based on percentage
   if (percentage == 100.0) {
-    return successGreen; // Success green
+    return successGreen; // Ready to submit
   } else if (percentage > 0) {
-    return primaryBlue; // Primary blue
+    return primaryBlue; // In progress
   } else {
-    return warningOrange; // Warning orange
+    return warningOrange; // No allocation yet
   }
 }
