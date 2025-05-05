@@ -336,13 +336,8 @@ class AssignmentUtils {
       // we need to assign that amount evenly to all existing items
 
       // Calculate what percentage of each item is currently unassigned
-      double totalUnassignedPercentage = 0;
       for (var item in data.items) {
-        double assignedPercentage = item.assignments.values.fold(
-          0.0,
-          (sum, value) => sum + value,
-        );
-        totalUnassignedPercentage += (100.0 - assignedPercentage);
+        item.assignments.values.fold(0.0, (sum, value) => sum + value);
       }
 
       // For each item, assign its unassigned portion evenly

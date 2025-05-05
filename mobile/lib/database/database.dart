@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:checks_frontend/models/bill_item.dart';
+import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/screens/quick_split/bill_summary/utils/share_utils.dart';
 import 'package:drift/drift.dart' hide Column;
 import 'package:drift/native.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:flutter/material.dart' hide Table;
-import '../models/person.dart';
 
 // Generated with dart run build_runner build --delete-conflicting-outputs
 part 'database.g.dart';
@@ -63,6 +63,8 @@ class RecentBills extends Table {
 // Main database class handling all database operations
 @DriftDatabase(tables: [People, TutorialStates, UserPreferences, RecentBills])
 class AppDatabase extends _$AppDatabase {
+  static const int maxRecentPeople = 12;
+
   AppDatabase() : super(_openConnection());
 
   @override
@@ -88,7 +90,6 @@ class AppDatabase extends _$AppDatabase {
     return results.map(peopleDataToPerson).toList();
   }
 
-  // Updates or adds a person to recent list
   Future<void> addPersonToRecent(Person person) async {
     final query = select(people)
       ..where((p) => p.name.equals(person.name.toLowerCase()));
@@ -98,22 +99,33 @@ class AppDatabase extends _$AppDatabase {
     if (existing != null) {
       await (update(people)..where((p) => p.id.equals(existing.id))).write(
         PeopleCompanion(
-          colorValue: Value(person.color.value),
+          colorValue: Value(person.color.toARGB32()),
           lastUsed: Value(DateTime.now()),
         ),
       );
     } else {
+      final count = await select(people).get().then((people) => people.length);
+
+      if (count >= maxRecentPeople) {
+        final oldest =
+            await (select(people)
+                  ..orderBy([(t) => OrderingTerm.asc(t.lastUsed)])
+                  ..limit(1))
+                .getSingle();
+
+        await (delete(people)..where((p) => p.id.equals(oldest.id))).go();
+      }
+
       await into(people).insert(
         PeopleCompanion(
           name: Value(person.name),
-          colorValue: Value(person.color.value),
+          colorValue: Value(person.color.toARGB32()),
           lastUsed: Value(DateTime.now()),
         ),
       );
     }
   }
 
-  // Batch adds multiple people to recents
   Future<void> addPeopleToRecent(List<Person> personList) async {
     for (final person in personList) {
       await addPersonToRecent(person);
@@ -256,7 +268,7 @@ class AppDatabase extends _$AppDatabase {
       items: Value(itemsJson),
       colorValue:
           participants.isNotEmpty
-              ? Value(participants.first.color.value)
+              ? Value(participants.first.color.toARGB32())
               : const Value.absent(),
     );
 

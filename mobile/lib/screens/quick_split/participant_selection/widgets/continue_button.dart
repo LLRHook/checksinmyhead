@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/participants_provider.dart';
 
+/// A context-aware button that enables/disables based on participant selection,
+/// showing a count badge when participants are present.
 class ContinueButton extends StatelessWidget {
   final VoidCallback onContinue;
 
-  const ContinueButton({Key? key, required this.onContinue}) : super(key: key);
+  const ContinueButton({super.key, required this.onContinue});
 
   @override
   Widget build(BuildContext context) {
@@ -14,15 +16,14 @@ class ContinueButton extends StatelessWidget {
     final hasParticipants = participantsProvider.hasParticipants;
     final participantsCount = participantsProvider.participants.length;
 
-    // Use theme-aware colors
+    // Pre-calculate theme-dependent colors
     final disabledBgColor =
         colorScheme.brightness == Brightness.dark
-            ? colorScheme.surface.withOpacity(0.2)
+            ? colorScheme.surface.withValues(alpha: 0.2)
             : Colors.grey.shade200;
-
     final disabledTextColor =
         colorScheme.brightness == Brightness.dark
-            ? colorScheme.onSurface.withOpacity(0.4)
+            ? colorScheme.onSurface.withValues(alpha: 0.4)
             : Colors.grey.shade500;
 
     return Padding(
@@ -39,7 +40,7 @@ class ContinueButton extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          shadowColor: colorScheme.primary.withOpacity(0.4),
+          shadowColor: colorScheme.primary.withValues(alpha: 0.4),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -55,24 +56,28 @@ class ContinueButton extends StatelessWidget {
             ),
             if (hasParticipants) ...[
               const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  // Use semi-transparent onPrimary instead of hardcoded white
-                  color: colorScheme.onPrimary.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  "$participantsCount ${participantsCount == 1 ? 'person' : 'people'}",
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: colorScheme.onPrimary,
-                  ),
-                ),
-              ),
+              _buildCountBadge(participantsCount, colorScheme),
             ],
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Creates a pill-shaped badge showing participant count with proper pluralization
+  Widget _buildCountBadge(int count, ColorScheme colorScheme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: colorScheme.onPrimary.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        "$count ${count == 1 ? 'person' : 'people'}",
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: colorScheme.onPrimary,
         ),
       ),
     );
