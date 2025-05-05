@@ -1,6 +1,26 @@
 import 'package:flutter/material.dart';
 
+/// AppInputDecoration - Utility class for consistent text input styling
+///
+/// Provides a factory method to create standardized InputDecoration objects
+/// with theme-aware styling that adapts to light and dark modes.
+///
+/// Purpose:
+///   Creates consistent, theme-aware text field decorations across the app
+///
+/// Inputs:
+///   - context: BuildContext for accessing theme data
+///   - labelText: The label text displayed above the input
+///   - prefixText: Optional text to display at the start of the input
+///   - hintText: Optional placeholder text shown when the field is empty
+///   - prefixIcon: Optional icon to display at the start of the input
+///
+/// Output:
+///   Returns an InputDecoration configured with appropriate styling for the current theme
 class AppInputDecoration {
+  /// Creates a standardized InputDecoration with theme-aware styling
+  ///
+  /// Automatically adapts colors and appearance based on the current theme (light/dark)
   static InputDecoration buildInputDecoration({
     required BuildContext context,
     required String labelText,
@@ -11,12 +31,16 @@ class AppInputDecoration {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
-    // Theme-aware colors
-    final labelColor = colorScheme.onSurface.withOpacity(0.7);
+    // Semi-transparent label color for better contrast while remaining subtle
+    final labelColor = colorScheme.onSurface.withValues(alpha: .7);
+
+    // Background fill color - darker in dark mode, light gray in light mode
     final fillColor =
         brightness == Brightness.dark
             ? colorScheme.surfaceContainerHighest
             : Colors.grey.shade50;
+
+    // Border color - uses theme outline in dark mode, light gray in light mode
     final borderColor =
         brightness == Brightness.dark
             ? colorScheme.outline
@@ -31,7 +55,7 @@ class AppInputDecoration {
               ? Icon(prefixIcon, size: 18, color: labelColor)
               : null,
       hintText: hintText,
-      hintStyle: TextStyle(color: colorScheme.onSurface.withOpacity(0.5)),
+      hintStyle: TextStyle(color: colorScheme.onSurface.withValues(alpha: .5)),
       filled: true,
       fillColor: fillColor,
       enabledBorder: OutlineInputBorder(

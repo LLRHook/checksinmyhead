@@ -2,11 +2,25 @@ import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_
 import 'package:flutter/material.dart';
 import '/models/person.dart';
 
+/// ParticipantAvatars - Horizontal scrollable display of bill participants
+///
+/// Displays a row of circular avatars with names representing the people
+/// participating in the bill split. Each avatar uses the person's assigned color
+/// and first letter of their name.
+///
+/// Features:
+/// - Horizontally scrollable container for any number of participants
+/// - Color-coded avatars with shadow effects for depth
+/// - Automatically handles name truncation for longer names
+/// - Adapts colors for both light and dark themes
+/// - Uses contrast calculations to ensure text readability on colored backgrounds
+///
+/// Inputs:
+///   - participants: List of Person objects to display
 class ParticipantAvatars extends StatelessWidget {
   final List<Person> participants;
 
-  const ParticipantAvatars({Key? key, required this.participants})
-    : super(key: key);
+  const ParticipantAvatars({super.key, required this.participants});
 
   @override
   Widget build(BuildContext context) {
@@ -14,13 +28,13 @@ class ParticipantAvatars extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final brightness = Theme.of(context).brightness;
 
-    // Theme-aware container color
+    // Container background adapts to theme - more opaque in dark mode
     final containerColor =
         brightness == Brightness.dark
             ? colorScheme.surfaceContainerHighest
-            : colorScheme.surfaceVariant.withOpacity(0.3);
+            : colorScheme.surfaceContainerHighest.withValues(alpha: .3);
 
-    // Theme-aware text color
+    // Name text color - solid in dark mode, variant in light mode
     final nameColor =
         brightness == Brightness.dark
             ? colorScheme.onSurface
@@ -43,12 +57,13 @@ class ParticipantAvatars extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // Avatar with shadow for depth
                 Container(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: person.color.withOpacity(0.3),
+                        color: person.color.withValues(alpha: .3),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
@@ -60,7 +75,7 @@ class ParticipantAvatars extends StatelessWidget {
                     child: Text(
                       person.name[0].toUpperCase(),
                       style: TextStyle(
-                        // Using ColorUtils for better contrast
+                        // Using ColorUtils to ensure readable text on any background color
                         color: ColorUtils.getContrastiveTextColor(person.color),
                         fontWeight: FontWeight.bold,
                       ),
@@ -68,6 +83,7 @@ class ParticipantAvatars extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
+                // Fixed width container for name with ellipsis for overflow
                 SizedBox(
                   width: 45,
                   child: Text(

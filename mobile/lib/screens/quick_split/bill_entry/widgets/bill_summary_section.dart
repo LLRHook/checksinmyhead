@@ -1,9 +1,20 @@
+import 'package:checks_frontend/screens/quick_split/bill_entry/models/bill_data.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/bill_data.dart';
 
+/// BillSummarySection - Displays a summary card of the bill's financial details
+///
+/// Shows a cleanly formatted breakdown of the bill including subtotal, tax,
+/// tip (with percentage or custom indication), and total. Uses theme-aware
+/// styling to maintain visual consistency in both light and dark modes.
+///
+/// The component:
+/// - Automatically updates when bill data changes (via Provider)
+/// - Adapts colors and styling based on the current theme
+/// - Formats currency values consistently
+/// - Shows appropriate tip information based on whether percentage or custom tip is used
 class BillSummarySection extends StatelessWidget {
-  const BillSummarySection({Key? key}) : super(key: key);
+  const BillSummarySection({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -11,10 +22,10 @@ class BillSummarySection extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
-    // Theme-aware colors
+    // Border color adapts to theme - more visible in dark mode
     final borderColor =
         brightness == Brightness.dark
-            ? colorScheme.outline.withOpacity(0.3)
+            ? colorScheme.outline.withValues(alpha: .3)
             : Colors.grey.shade200;
 
     return Card(
@@ -31,7 +42,7 @@ class BillSummarySection extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // Title with icon
+            // Header with title and icon
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -50,11 +61,12 @@ class BillSummarySection extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Premium summary rows
+            // Bill breakdown rows
             _buildBreakdownRow(context, 'Subtotal', billData.subtotal),
             const SizedBox(height: 8),
             _buildBreakdownRow(context, 'Tax', billData.tax),
 
+            // Only show tip row if amount is greater than zero
             if (billData.tipAmount > 0) ...[
               const SizedBox(height: 8),
               _buildBreakdownRow(
@@ -66,13 +78,11 @@ class BillSummarySection extends StatelessWidget {
               ),
             ],
 
-            // Total row with divider
+            // Total row with visual separator
             const SizedBox(height: 12),
             Divider(
               height: 1,
-              color: colorScheme.outline.withOpacity(
-                0.3,
-              ), // Theme-aware divider
+              color: colorScheme.outline.withValues(alpha: 0.3),
             ),
             const SizedBox(height: 12),
             _buildBreakdownRow(
@@ -89,7 +99,10 @@ class BillSummarySection extends StatelessWidget {
     );
   }
 
-  // Helper method to build consistent breakdown rows
+  /// Creates a consistent row layout for each bill component
+  ///
+  /// Displays a label on the left and the monetary value on the right
+  /// with optional formatting for the total row and tip percentage.
   Widget _buildBreakdownRow(
     BuildContext context,
     String label,
@@ -101,13 +114,11 @@ class BillSummarySection extends StatelessWidget {
     double? tipPercentage,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
-
-    // Default text color that respects theme
     final defaultTextColor = colorScheme.onSurface;
 
     return Row(
       children: [
-        // Left side - the label
+        // Label text (left-aligned)
         Text(
           label,
           style: TextStyle(
@@ -117,10 +128,10 @@ class BillSummarySection extends StatelessWidget {
           ),
         ),
 
-        // Spacer to push the price to the right
+        // Flexible space to push amount to right edge
         const Spacer(),
 
-        // Right side - the value
+        // Amount value (right-aligned) with optional percentage
         Text(
           '\$${value.toStringAsFixed(2)}${showPercentage && tipPercentage != null ? ' (${tipPercentage.toInt()}%)' : ''}',
           style: TextStyle(
@@ -134,12 +145,13 @@ class BillSummarySection extends StatelessWidget {
     );
   }
 
-  // Helper method to get the appropriate tip label
+  /// Determines appropriate tip label based on tip mode
+  ///
+  /// Returns "Tip (Custom)" for manually entered amounts,
+  /// or just "Tip" for percentage-based amounts
   String _getTipLabel(BillData billData) {
     if (billData.useCustomTipAmount) {
       return 'Tip (Custom)';
-    } else if (billData.useDifferentTipForAlcohol) {
-      return 'Tip (Food)';
     } else {
       return 'Tip';
     }

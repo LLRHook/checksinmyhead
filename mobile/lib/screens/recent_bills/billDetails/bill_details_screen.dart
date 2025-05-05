@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
-import 'package:checks_frontend/utils/settings_manager.dart';
+import 'package:checks_frontend/screens/settings/utils/settings_manager.dart';
 import 'package:checks_frontend/models/person.dart';
 
 // Local imports
@@ -14,7 +14,7 @@ import 'utils/bill_calculations.dart';
 class BillDetailsScreen extends StatefulWidget {
   final RecentBillModel bill;
 
-  const BillDetailsScreen({Key? key, required this.bill}) : super(key: key);
+  const BillDetailsScreen({super.key, required this.bill});
 
   @override
   State<BillDetailsScreen> createState() => _BillDetailsScreenState();
@@ -60,7 +60,6 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
   }
 
   void _promptShareOptions() {
-    final billCalculations = BillCalculations(widget.bill);
     ShareOptionsSheet.show(
       context: context,
       initialOptions: _shareOptions,
@@ -101,7 +100,7 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
     );
 
     // Share the summary
-    ShareUtils.shareBillSummary(context: context, summary: summary);
+    ShareUtils.shareBillSummary(summary: summary);
   }
 
   @override
@@ -111,9 +110,7 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
 
     // Theme-aware colors
     final scaffoldBgColor =
-        brightness == Brightness.dark
-            ? colorScheme.background
-            : Colors.grey[50];
+        brightness == Brightness.dark ? colorScheme.surface : Colors.grey[50];
 
     final loadingIndicatorColor = colorScheme.primary;
 
@@ -124,8 +121,10 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
     // Header shadow color
     final headerShadowColor =
         brightness == Brightness.dark
-            ? colorScheme.primary.withOpacity(0.4) // More visible in dark mode
-            : colorScheme.primary.withOpacity(0.2);
+            ? colorScheme.primary.withValues(
+              alpha: .4,
+            ) // More visible in dark mode
+            : colorScheme.primary.withValues(alpha: .2);
 
     if (_isLoading) {
       return Scaffold(
@@ -239,12 +238,12 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
         brightness == Brightness.dark ? colorScheme.surface : Colors.white;
     final shadowColor =
         brightness == Brightness.dark
-            ? Colors.black.withOpacity(0.2)
-            : Colors.black.withOpacity(0.03);
+            ? Colors.black.withValues(alpha: .2)
+            : Colors.black.withValues(alpha: .03);
     // Outline button colors
     final outlineColor =
         brightness == Brightness.dark
-            ? colorScheme.primary.withOpacity(0.8)
+            ? colorScheme.primary.withValues(alpha: .8)
             : colorScheme.primary;
 
     return Container(
@@ -365,10 +364,10 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
     final gradientStartColor = colorScheme.primary;
     final gradientEndColor =
         brightness == Brightness.dark
-            ? colorScheme.primary.withOpacity(
-              0.9,
+            ? colorScheme.primary.withValues(
+              alpha: 0.9,
             ) // Less opacity difference in dark mode
-            : colorScheme.primary.withOpacity(0.85);
+            : colorScheme.primary.withValues(alpha: .85);
 
     // Wrap the header in an animated container
     return TweenAnimationBuilder<double>(
@@ -411,14 +410,14 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
                 children: [
                   Icon(
                     Icons.calendar_today,
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: .9),
                     size: 16,
                   ),
                   const SizedBox(width: 8),
                   Text(
                     widget.bill.formattedDate,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withValues(alpha: .9),
                       fontWeight: FontWeight.w500,
                       fontSize: 16,
                     ),
@@ -457,7 +456,7 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
 class ShimmerEffect extends StatefulWidget {
   final Widget child;
 
-  const ShimmerEffect({Key? key, required this.child}) : super(key: key);
+  const ShimmerEffect({super.key, required this.child});
 
   @override
   State<ShimmerEffect> createState() => _ShimmerEffectState();

@@ -5,17 +5,21 @@ import '../utils/calculation_utils.dart';
 import '/models/person.dart';
 import '/models/bill_item.dart';
 
+/// PersonCard - Displays an individual's payment details with expandable item breakdown
+///
+/// Shows a person's total share, assigned items, and tax/tip contribution in an
+/// interactive card with collapsible sections. Special styling for birthday person.
 class PersonCard extends StatefulWidget {
   final Person person;
   final BillSummaryData data;
   final bool initiallyExpanded;
 
   const PersonCard({
-    Key? key,
+    super.key,
     required this.person,
     required this.data,
     this.initiallyExpanded = false,
-  }) : super(key: key);
+  });
 
   @override
   State<PersonCard> createState() => _PersonCardState();
@@ -27,6 +31,7 @@ class _PersonCardState extends State<PersonCard>
   late AnimationController _controller;
   late Animation<double> _iconTurns;
 
+  // Animation curves for smooth transitions
   static final Animatable<double> _easeInTween = CurveTween(
     curve: Curves.easeIn,
   );
@@ -58,6 +63,7 @@ class _PersonCardState extends State<PersonCard>
     super.dispose();
   }
 
+  /// Toggles the expanded state with animation
   void _toggleExpanded() {
     setState(() {
       _isExpanded = !_isExpanded;
@@ -75,13 +81,13 @@ class _PersonCardState extends State<PersonCard>
     final brightness = Theme.of(context).brightness;
     final isBirthdayPerson = widget.data.birthdayPerson == widget.person;
 
-    // Get items assigned to this person
+    // Find items assigned to this person
     final personItems =
         widget.data.items
             .where((item) => (item.assignments[widget.person] ?? 0) > 0)
             .toList();
 
-    // Calculate person's base amounts from CalculationUtils
+    // Get person's calculated amounts (subtotal, tax, tip, total)
     final personAmounts = CalculationUtils.calculatePersonAmounts(
       person: widget.person,
       participants: widget.data.participants,
@@ -93,7 +99,6 @@ class _PersonCardState extends State<PersonCard>
       birthdayPerson: widget.data.birthdayPerson,
     );
 
-    // Calculate total share
     final double totalShare = personAmounts['total'] ?? 0.0;
 
     // Theme-aware colors
@@ -102,8 +107,8 @@ class _PersonCardState extends State<PersonCard>
 
     final cardShadowColor =
         brightness == Brightness.dark
-            ? Colors.black.withOpacity(0.2)
-            : Colors.black.withOpacity(0.03);
+            ? Colors.black.withValues(alpha: 0.2)
+            : Colors.black.withValues(alpha: 0.03);
 
     final expandIconColor =
         brightness == Brightness.dark
@@ -112,30 +117,26 @@ class _PersonCardState extends State<PersonCard>
 
     final dividerColor =
         brightness == Brightness.dark
-            ? colorScheme.outline.withOpacity(0.2)
+            ? colorScheme.outline.withValues(alpha: 0.2)
             : Colors.grey.shade200;
 
-    // Birthday colors - enhanced for dark mode
+    // Birthday-specific colors
     final birthdayBgColor =
-        brightness == Brightness.dark
-            ? Color(0xFF4A243B) // Darker pink for dark mode
-            : Colors.pink.shade50;
+        brightness == Brightness.dark ? Color(0xFF4A243B) : Colors.pink.shade50;
 
     final birthdayTextColor =
         brightness == Brightness.dark
-            ? Color(0xFFF48FB1) // Lighter pink for dark mode text
+            ? Color(0xFFF48FB1)
             : Colors.pink.shade400;
 
     final birthdayPillBgColor =
         brightness == Brightness.dark
-            ? Color(0xFF6A2C50).withOpacity(
-              0.6,
-            ) // Darker pink for pill in dark mode
+            ? Color(0xFF6A2C50).withValues(alpha: 0.6)
             : Colors.pink.shade100;
 
     final birthdayPillTextColor =
         brightness == Brightness.dark
-            ? Color(0xFFF8BBD0) // Very light pink for text in pill
+            ? Color(0xFFF8BBD0)
             : Colors.pink.shade700;
 
     return Container(
@@ -154,7 +155,7 @@ class _PersonCardState extends State<PersonCard>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Person header with total - now clickable
+          // Interactive header with person info and total amount
           InkWell(
             onTap: _toggleExpanded,
             borderRadius: BorderRadius.circular(16),
@@ -170,7 +171,7 @@ class _PersonCardState extends State<PersonCard>
             ),
           ),
 
-          // Collapsible content with animation
+          // Animated collapsible content
           AnimatedSize(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
@@ -179,7 +180,7 @@ class _PersonCardState extends State<PersonCard>
                     ? Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Items list (if any)
+                        // Items list
                         if (personItems.isNotEmpty) ...[
                           Padding(
                             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -198,7 +199,7 @@ class _PersonCardState extends State<PersonCard>
                                 _buildItemRow(context, item, widget.person),
                           ),
 
-                          if (!isBirthdayPerson) // Only add divider if not birthday person
+                          if (!isBirthdayPerson)
                             Divider(
                               height: 16,
                               indent: 16,
@@ -207,7 +208,7 @@ class _PersonCardState extends State<PersonCard>
                             ),
                         ],
 
-                        // Tax and tip details - only for non-birthday people
+                        // Tax and tip breakdown (not shown for birthday person)
                         if (!isBirthdayPerson)
                           Padding(
                             padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
@@ -221,7 +222,6 @@ class _PersonCardState extends State<PersonCard>
                                     isTotal: false,
                                   ),
 
-                                // Only show tip if amount > 0
                                 if ((personAmounts['tip'] ?? 0) > 0)
                                   _buildAmountRow(
                                     context,
@@ -241,6 +241,7 @@ class _PersonCardState extends State<PersonCard>
     );
   }
 
+  /// Builds the person card header with avatar, name, and total amount
   Widget _buildPersonHeader(
     BuildContext context,
     bool isBirthdayPerson,
@@ -253,7 +254,7 @@ class _PersonCardState extends State<PersonCard>
   ) {
     final brightness = Theme.of(context).brightness;
 
-    // Calculate header background color based on person's color
+    // Calculate color based on person's assigned color or birthday status
     final headerBgColor =
         isBirthdayPerson
             ? birthdayBgColor
@@ -261,10 +262,9 @@ class _PersonCardState extends State<PersonCard>
             ? ColorUtils.getDarkenedColor(
               widget.person.color,
               0.5,
-            ).withOpacity(0.2)
-            : widget.person.color.withOpacity(0.1);
+            ).withValues(alpha: 0.2)
+            : widget.person.color.withValues(alpha: .1);
 
-    // Calculate pill background and text colors
     final pillBgColor =
         isBirthdayPerson
             ? birthdayPillBgColor
@@ -272,8 +272,8 @@ class _PersonCardState extends State<PersonCard>
             ? ColorUtils.getLightenedColor(
               widget.person.color,
               0.1,
-            ).withOpacity(0.3)
-            : widget.person.color.withOpacity(0.2);
+            ).withValues(alpha: .3)
+            : widget.person.color.withValues(alpha: .2);
 
     final pillTextColor =
         isBirthdayPerson
@@ -322,8 +322,6 @@ class _PersonCardState extends State<PersonCard>
                                   widget.person.color,
                                   0.3,
                                 )
-                            : brightness == Brightness.dark
-                            ? Theme.of(context).colorScheme.onSurface
                             : Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
@@ -379,15 +377,14 @@ class _PersonCardState extends State<PersonCard>
     );
   }
 
+  /// Builds a row for an item assigned to the person
   Widget _buildItemRow(BuildContext context, BillItem item, Person person) {
     final percentage = item.assignments[person] ?? 0;
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
-    // Calculate amount from the item price
     final amount = item.price * (percentage / 100);
 
-    // Theme-aware colors
     final secondaryTextColor =
         brightness == Brightness.dark
             ? Colors.grey.shade400
@@ -425,6 +422,7 @@ class _PersonCardState extends State<PersonCard>
     );
   }
 
+  /// Builds a row for displaying tax/tip amounts
   Widget _buildAmountRow(
     BuildContext context,
     String label,
@@ -434,7 +432,6 @@ class _PersonCardState extends State<PersonCard>
   }) {
     final brightness = Theme.of(context).brightness;
 
-    // Theme-aware default text color if not specified
     final defaultColor =
         brightness == Brightness.dark
             ? Colors.grey.shade300

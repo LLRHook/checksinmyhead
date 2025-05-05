@@ -1,15 +1,31 @@
+import 'package:checks_frontend/screens/quick_split/bill_entry/components/input_decoration.dart';
+import 'package:checks_frontend/screens/quick_split/bill_entry/components/section_card.dart';
+import 'package:checks_frontend/screens/quick_split/bill_entry/models/bill_data.dart';
+import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../models/bill_data.dart';
-import '../components/section_card.dart';
-import '../components/input_decoration.dart';
-import '../utils/currency_formatter.dart';
 
+/// ItemsSection - Interactive section for adding and managing bill line items
+///
+/// Provides a complete interface for entering, tracking, and managing bill items.
+/// Features animated progress tracking, collapsible item lists, and real-time validation.
+///
+/// Purpose:
+///   - Allow users to itemize their bill with individual items and prices
+///   - Display a progress indicator showing how much of the subtotal has been itemized
+///   - Provide visual feedback on input validation and subtotal matching status
+///
+/// Inputs:
+///   - showSnackBar: Function to display temporary notification messages
+///
+/// Side effects:
+///   - Updates the BillData provider with new items
+///   - Provides haptic feedback for user interactions
 class ItemsSection extends StatefulWidget {
   final Function(String) showSnackBar;
 
-  const ItemsSection({Key? key, required this.showSnackBar}) : super(key: key);
+  const ItemsSection({super.key, required this.showSnackBar});
 
   @override
   State<ItemsSection> createState() => _ItemsSectionState();
@@ -20,17 +36,17 @@ class _ItemsSectionState extends State<ItemsSection>
   late AnimationController _progressAnimationController;
   late Animation<double> _progressAnimation;
 
-  // Add a state variable to track collapsed/expanded state
+  // Tracks whether the items list is shown in full or collapsed state
   bool _isItemsListCollapsed = false;
 
-  // Define the maximum number of visible items when collapsed
+  // Maximum number of items to show when the list is collapsed
   final int _maxVisibleItemsWhenCollapsed = 3;
 
   @override
   void initState() {
     super.initState();
 
-    // Initialize animation controller
+    // Set up animation for smooth transitions in the progress indicator
     _progressAnimationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
@@ -43,6 +59,7 @@ class _ItemsSectionState extends State<ItemsSection>
       ),
     );
 
+    // Update the BillData model whenever the animation updates
     _progressAnimation.addListener(() {
       final billData = Provider.of<BillData>(context, listen: false);
       billData.updateAnimatedItemsTotal(_progressAnimation.value);
@@ -55,8 +72,12 @@ class _ItemsSectionState extends State<ItemsSection>
     super.dispose();
   }
 
+  /// Updates the progress animation when items total changes
+  ///
+  /// Only starts a new animation if there's a significant change to prevent
+  /// unnecessary animations for small rounding differences.
   void _updateAnimation(BillData billData) {
-    // Only animate if there's a significant change
+    // Only animate if there's a significant change (greater than 1 cent)
     if ((billData.itemsTotal - billData.animatedItemsTotal).abs() > 0.01) {
       // Update the animation with new values
       _progressAnimation = Tween<double>(
@@ -75,11 +96,17 @@ class _ItemsSectionState extends State<ItemsSection>
     }
   }
 
+  /// Adds a new item to the bill with validation
+  ///
+  /// Performs multiple validation checks:
+  /// - Ensures subtotal has been entered
+  /// - Validates item name and price are provided
+  /// - Ensures price is a valid positive number
+  /// - Checks that adding the item won't exceed the subtotal
   void _addItem(BillData billData) {
-    // FIRST CHECK: Validate that a subtotal has been entered
+    // First check: Validate that a subtotal has been entered
     if (billData.subtotal <= 0) {
       widget.showSnackBar('Please enter a subtotal before adding items');
-      // Provide haptic feedback for error
       HapticFeedback.vibrate();
       return;
     }
@@ -102,7 +129,6 @@ class _ItemsSectionState extends State<ItemsSection>
     try {
       price = double.parse(priceText);
     } catch (_) {
-      // Show error for invalid number
       widget.showSnackBar('Please enter a valid price');
       return;
     }
@@ -140,48 +166,53 @@ class _ItemsSectionState extends State<ItemsSection>
       });
     }
 
-    // Focus back to the name field for quick entry of multiple items
+    // Clear focus for a better user experience
     FocusScope.of(context).requestFocus(FocusNode());
   }
 
+  /// Removes an item from the bill
   void _removeItem(BillData billData, int index) {
-    // Provide haptic feedback for item removal
     HapticFeedback.mediumImpact();
     billData.removeItem(index);
     _updateAnimation(billData);
   }
 
-  // Get color for progress indicator
+  /// Determines progress indicator color based on completion percentage
+  ///
+  /// Returns different colors based on how close the items total is to the subtotal:
+  /// - Red when over the subtotal
+  /// - Green when exactly matching the subtotal
+  /// - Primary color variations when approaching completion
   Color _getProgressColor(BuildContext context, double value, double subtotal) {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
-    // Precision threshold to account for floating point rounding errors
+    // Small threshold to account for floating point imprecision
     const precisionThreshold = 0.01;
 
-    // Define success color that works in both themes
+    // Theme-aware success color
     final successColor =
         brightness == Brightness.dark
             ? const Color(0xFF66BB6A) // Darker green for dark mode
             : const Color(0xFF4CAF50); // Normal green for light mode
 
     if ((value / subtotal) > 1.0 + (precisionThreshold / subtotal)) {
-      return colorScheme.error;
+      return colorScheme.error; // Over subtotal - show error color
     } else if ((subtotal - value).abs() <= precisionThreshold) {
-      return successColor;
+      return successColor; // Exact match - show success color
     } else if ((value / subtotal) > 0.9) {
-      return colorScheme.primary;
+      return colorScheme.primary; // Close to complete - show primary color
     } else {
-      return colorScheme.primary.withOpacity(0.8);
+      return colorScheme.primary.withValues(
+        alpha: .8,
+      ); // Default progress color
     }
   }
 
-  // Toggle the collapsed/expanded state
+  /// Toggles between collapsed and expanded items list
   void _toggleItemsList() {
     setState(() {
       _isItemsListCollapsed = !_isItemsListCollapsed;
-
-      // Provide haptic feedback when toggling
       HapticFeedback.selectionClick();
     });
   }
@@ -193,7 +224,7 @@ class _ItemsSectionState extends State<ItemsSection>
     final textTheme = Theme.of(context).textTheme;
     final brightness = Theme.of(context).brightness;
 
-    // Theme-aware colors
+    // Theme-aware colors for visual consistency
     final itemBgColor =
         brightness == Brightness.dark
             ? colorScheme.surfaceContainerHighest
@@ -201,31 +232,26 @@ class _ItemsSectionState extends State<ItemsSection>
 
     final itemShadowColor =
         brightness == Brightness.dark
-            ? Colors.black.withOpacity(0.15)
-            : Colors.black.withOpacity(0.05);
+            ? Colors.black.withValues(alpha: .15)
+            : Colors.black.withValues(alpha: .05);
 
     final progressBgColor =
         brightness == Brightness.dark
-            ? colorScheme.surfaceVariant.withOpacity(0.3)
-            : Colors.grey.withOpacity(0.1);
+            ? colorScheme.surfaceContainerHighest.withValues(alpha: .3)
+            : Colors.grey.withValues(alpha: .1);
 
-    final dividerColor =
-        brightness == Brightness.dark
-            ? colorScheme.outline.withOpacity(0.3)
-            : Colors.grey.shade300;
-
-    // Check if the subtotal is set to enable/disable input fields
+    // Enable/disable UI based on subtotal presence
     final isSubtotalSet = billData.subtotal > 0;
 
-    // Define field placeholder message based on subtotal status
+    // Help text based on subtotal status
     final itemNameHint =
         isSubtotalSet ? 'e.g., Pizza, Pasta, Salad' : 'Enter subtotal first';
 
-    // Determine if collapse/expand control should be shown
+    // Control visibility of expand/collapse toggle
     final shouldShowCollapseControl =
         billData.items.length > _maxVisibleItemsWhenCollapsed;
 
-    // Calculate visible items based on collapsed state
+    // Calculate which items to display based on collapsed state
     final visibleItems =
         _isItemsListCollapsed && shouldShowCollapseControl
             ? billData.items.take(_maxVisibleItemsWhenCollapsed).toList()
@@ -236,7 +262,7 @@ class _ItemsSectionState extends State<ItemsSection>
       subTitle: 'Add items that add to your subtotal',
       icon: Icons.restaurant_menu,
       children: [
-        // Item name field with premium styling
+        // Item name field
         TextFormField(
           controller: billData.itemNameController,
           decoration: AppInputDecoration.buildInputDecoration(
@@ -257,7 +283,7 @@ class _ItemsSectionState extends State<ItemsSection>
 
         const SizedBox(height: 16),
 
-        // Item price field with add button - premium styling
+        // Item price field with add button
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -287,18 +313,15 @@ class _ItemsSectionState extends State<ItemsSection>
             SizedBox(
               height: 56, // Match height with TextField
               child: ElevatedButton(
-                onPressed:
-                    isSubtotalSet
-                        ? () => _addItem(billData)
-                        : null, // Disable if no subtotal
+                onPressed: isSubtotalSet ? () => _addItem(billData) : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor:
                       isSubtotalSet
                           ? colorScheme.primary
-                          : Colors.grey.withOpacity(0.3),
+                          : Colors.grey.withValues(alpha: .3),
                   foregroundColor:
                       brightness == Brightness.dark
-                          ? Colors.black.withOpacity(0.9)
+                          ? Colors.black.withValues(alpha: .9)
                           : Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -312,13 +335,13 @@ class _ItemsSectionState extends State<ItemsSection>
           ],
         ),
 
-        // Display a helper message when subtotal is not set
+        // Helper message when subtotal is not set
         if (!isSubtotalSet) ...[
           const SizedBox(height: 20),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: colorScheme.primary.withOpacity(0.1),
+              color: colorScheme.primary.withValues(alpha: .1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -329,7 +352,7 @@ class _ItemsSectionState extends State<ItemsSection>
                   child: Text(
                     'Please enter a subtotal before adding items.',
                     style: TextStyle(
-                      color: colorScheme.onSurface.withOpacity(0.8),
+                      color: colorScheme.onSurface.withValues(alpha: .8),
                       fontSize: 13,
                     ),
                   ),
@@ -341,10 +364,11 @@ class _ItemsSectionState extends State<ItemsSection>
 
         const SizedBox(height: 20),
 
-        // Progress indicator showing items total vs subtotal - premium styling
+        // Progress indicator showing items total vs subtotal
         if (billData.items.isNotEmpty && billData.subtotal > 0) ...[
           Row(
             children: [
+              // Animated progress text with gradient color
               ShaderMask(
                 blendMode: BlendMode.srcIn,
                 shaderCallback:
@@ -361,7 +385,7 @@ class _ItemsSectionState extends State<ItemsSection>
                           context,
                           billData.animatedItemsTotal,
                           billData.subtotal,
-                        ).withOpacity(0.8),
+                        ).withValues(alpha: .8),
                       ],
                     ).createShader(bounds),
                 child: Text(
@@ -379,11 +403,11 @@ class _ItemsSectionState extends State<ItemsSection>
                 '\$${billData.subtotal.toStringAsFixed(2)}',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  color: colorScheme.onSurface.withOpacity(0.8),
+                  color: colorScheme.onSurface.withValues(alpha: .8),
                 ),
               ),
               const Spacer(),
-              // Animated percentage with premium styling
+              // Percentage pill with dynamic color
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
@@ -391,7 +415,7 @@ class _ItemsSectionState extends State<ItemsSection>
                     context,
                     billData.animatedItemsTotal,
                     billData.subtotal,
-                  ).withOpacity(0.1),
+                  ).withValues(alpha: .1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -411,7 +435,7 @@ class _ItemsSectionState extends State<ItemsSection>
           ),
           const SizedBox(height: 8),
 
-          // Premium animated progress indicator with gradient and rounded caps
+          // Animated progress bar
           Container(
             height: 8,
             decoration: BoxDecoration(
@@ -420,7 +444,7 @@ class _ItemsSectionState extends State<ItemsSection>
             ),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                // Calculate progress percentage capped at 100%
+                // Calculate progress percentage (capped at 100%)
                 final progressPercentage =
                     billData.subtotal > 0
                         ? (billData.animatedItemsTotal / billData.subtotal)
@@ -429,7 +453,7 @@ class _ItemsSectionState extends State<ItemsSection>
 
                 return Stack(
                   children: [
-                    // Progress bar
+                    // Animated progress fill with gradient and shadow
                     Container(
                       width: constraints.maxWidth * progressPercentage,
                       decoration: BoxDecoration(
@@ -447,7 +471,7 @@ class _ItemsSectionState extends State<ItemsSection>
                               context,
                               billData.animatedItemsTotal,
                               billData.subtotal,
-                            ).withOpacity(0.8),
+                            ).withValues(alpha: .8),
                           ],
                         ),
                         boxShadow: [
@@ -456,7 +480,7 @@ class _ItemsSectionState extends State<ItemsSection>
                               context,
                               billData.animatedItemsTotal,
                               billData.subtotal,
-                            ).withOpacity(0.3),
+                            ).withValues(alpha: .3),
                             blurRadius: 4,
                             offset: const Offset(0, 1),
                           ),
@@ -469,11 +493,11 @@ class _ItemsSectionState extends State<ItemsSection>
             ),
           ),
 
-          // Only show items list if there are items
+          // Items list section
           if (billData.items.isNotEmpty) ...[
             const SizedBox(height: 20),
 
-            // Header row with "Added Items" text and Clear All button
+            // Header with items count and clear all button
             Row(
               children: [
                 Icon(
@@ -500,11 +524,11 @@ class _ItemsSectionState extends State<ItemsSection>
                 ],
                 const Spacer(),
 
-                // Add "clear all" button
+                // Clear all button - only show if multiple items exist
                 if (billData.items.length > 1)
                   TextButton.icon(
                     onPressed: () {
-                      // Show confirmation dialog
+                      // Confirmation dialog for clearing all items
                       showDialog(
                         context: context,
                         builder:
@@ -565,7 +589,7 @@ class _ItemsSectionState extends State<ItemsSection>
               ],
             ),
 
-            // Collapse/expand control in its own row below the header
+            // Expand/collapse control button
             if (shouldShowCollapseControl) ...[
               const SizedBox(height: 8),
               GestureDetector(
@@ -577,10 +601,12 @@ class _ItemsSectionState extends State<ItemsSection>
                     horizontal: 12,
                   ),
                   decoration: BoxDecoration(
-                    color: colorScheme.surfaceVariant.withOpacity(0.2),
+                    color: colorScheme.surfaceContainerHighest.withValues(
+                      alpha: .2,
+                    ),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: colorScheme.outline.withOpacity(0.1),
+                      color: colorScheme.outline.withValues(alpha: .1),
                       width: 1,
                     ),
                   ),
@@ -612,9 +638,11 @@ class _ItemsSectionState extends State<ItemsSection>
             ],
             const SizedBox(height: 12),
 
-            // Visible items list based on collapsed/expanded state
+            // Items list with card-style design for each item
             ...List.generate(visibleItems.length, (index) {
               final item = visibleItems[index];
+              final originalIndex = billData.items.indexOf(item);
+
               return Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: Container(
@@ -647,7 +675,7 @@ class _ItemsSectionState extends State<ItemsSection>
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Make the price container adaptable
+                        // Price pill with theme-colored background
                         Flexible(
                           child: Container(
                             padding: const EdgeInsets.symmetric(
@@ -655,7 +683,7 @@ class _ItemsSectionState extends State<ItemsSection>
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: colorScheme.primary.withOpacity(0.1),
+                              color: colorScheme.primary.withValues(alpha: .1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -669,13 +697,13 @@ class _ItemsSectionState extends State<ItemsSection>
                           ),
                         ),
                         const SizedBox(width: 8),
-                        // Delete button with premium styling
+                        // Delete button with ripple effect
                         Material(
                           color: Colors.transparent,
                           borderRadius: BorderRadius.circular(20),
                           child: InkWell(
                             borderRadius: BorderRadius.circular(20),
-                            onTap: () => _removeItem(billData, index),
+                            onTap: () => _removeItem(billData, originalIndex),
                             child: Padding(
                               padding: const EdgeInsets.all(6),
                               child: Icon(
@@ -692,6 +720,77 @@ class _ItemsSectionState extends State<ItemsSection>
                 ),
               );
             }),
+            // Add bottom collapse control when list is expanded and has enough items
+            if (!_isItemsListCollapsed &&
+                shouldShowCollapseControl &&
+                visibleItems.length >= 6) ...[
+              const SizedBox(height: 8),
+              // AnimatedContainer for subtle entrance animation
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(
+                      color: colorScheme.outline.withValues(alpha: .15),
+                      width: 1,
+                    ),
+                  ),
+                ),
+                padding: const EdgeInsets.only(top: 8),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    splashColor: colorScheme.primary.withValues(alpha: .1),
+                    highlightColor: colorScheme.primary.withValues(alpha: .05),
+                    onTap: () {
+                      _toggleItemsList();
+                      // Subtle haptic feedback for microinteraction
+                      HapticFeedback.lightImpact();
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 10,
+                        horizontal: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            colorScheme.primary.withValues(alpha: .05),
+                            colorScheme.primary.withValues(alpha: .1),
+                          ],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.keyboard_double_arrow_up,
+                            size: 16,
+                            color: colorScheme.primary,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Show Less',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: colorScheme.primary,
+                              letterSpacing: 0.1,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
         ],
       ],
