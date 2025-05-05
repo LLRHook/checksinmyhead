@@ -1,5 +1,6 @@
 import 'package:checks_frontend/database/database_provider.dart';
 import 'package:checks_frontend/screens/quick_split/bill_summary/utils/share_utils.dart';
+import 'package:flutter/widgets.dart';
 
 class SettingsManager {
   /// Get the saved share options from database
@@ -7,7 +8,7 @@ class SettingsManager {
     try {
       return await DatabaseProvider.db.getShareOptions();
     } catch (e) {
-      print('Error loading share options: $e');
+      debugPrint('Error loading share options: $e');
       // Return default values if there's an error
       return ShareOptions();
     }
@@ -18,7 +19,7 @@ class SettingsManager {
     try {
       await DatabaseProvider.db.saveShareOptions(options);
     } catch (e) {
-      print('Error saving share options: $e');
+      debugPrint('Error saving share options: $e');
     }
   }
 }

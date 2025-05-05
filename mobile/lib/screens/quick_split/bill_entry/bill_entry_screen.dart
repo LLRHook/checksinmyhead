@@ -15,6 +15,25 @@ import 'widgets/items_section.dart';
 import 'widgets/bill_summary_section.dart';
 import 'widgets/continue_button.dart';
 
+/// BillEntryScreen - Main interface for entering bill details
+///
+/// This screen allows users to:
+/// - Enter bill subtotal and tax
+/// - Configure tip amount (percentage or custom)
+/// - Add itemized expenses
+/// - Review bill summary before proceeding
+///
+/// The screen handles validation to ensure that:
+/// - A subtotal is entered
+/// - At least one item is added
+/// - The items' total matches the entered subtotal
+///
+/// Inputs:
+///   - List of participants from the previous screen
+///
+/// Side effects:
+///   - Creates and manages a BillData instance
+///   - Navigates to ItemAssignmentScreen when valid data is entered
 class BillEntryScreen extends StatefulWidget {
   final List<Person> participants;
 
@@ -39,6 +58,12 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
     super.dispose();
   }
 
+  /// Validates bill data and proceeds to item assignment screen
+  ///
+  /// Checks that:
+  /// - Subtotal is greater than zero
+  /// - At least one item has been added
+  /// - Total of all items matches the entered subtotal (within rounding tolerance)
   void _continueToItemAssignment() {
     if (_billData.subtotal <= 0) {
       _showSnackBar('Please enter a subtotal amount');
@@ -65,6 +90,10 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
     _navigateToItemAssignment();
   }
 
+  /// Shows a detailed validation error in a bottom sheet
+  ///
+  /// Displays an error message with an icon and a dismissible button,
+  /// providing clear feedback about validation issues.
   void _showValidationError(String message) {
     // Provide haptic feedback for error
     HapticFeedback.vibrate();
@@ -83,10 +112,11 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Error icon in a colored container
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: colorScheme.error.withOpacity(0.1),
+                  color: colorScheme.error.withValues(alpha: .1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -97,7 +127,7 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                ' Items Don\'t Add Up',
+                'Items Don\'t Add Up',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -143,6 +173,10 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
     );
   }
 
+  /// Navigates to the item assignment screen with bill data
+  ///
+  /// Passes all necessary bill information to the next screen for
+  /// assigning items to participants.
   void _navigateToItemAssignment() {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -155,15 +189,16 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
               tipAmount: _billData.tipAmount,
               total: _billData.total,
               tipPercentage: _billData.tipPercentage,
-              alcoholTipPercentage: _billData.alcoholTipPercentage,
-              useDifferentAlcoholTip: _billData.useDifferentTipForAlcohol,
               isCustomTipAmount: _billData.useCustomTipAmount,
             ),
       ),
     );
   }
 
-  // Show a premium styled snackbar with haptic feedback
+  /// Shows a floating snackbar with an info icon
+  ///
+  /// Used for lightweight notifications that don't require
+  /// user intervention to dismiss.
   void _showSnackBar(String message) {
     // Provide haptic feedback for error
     HapticFeedback.vibrate();
@@ -201,36 +236,37 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
           ),
         ),
         body: GestureDetector(
+          // Dismiss keyboard when tapping outside input fields
           onTap: () => FocusScope.of(context).unfocus(),
           child: ListView(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             children: [
-              // Participant avatars with premium styling
+              // Horizontal scrollable list of participant avatars
               ParticipantAvatars(participants: widget.participants),
 
               const SizedBox(height: 20),
 
-              // Bill totals section
+              // Subtotal and tax input fields
               const BillTotalSection(),
 
               const SizedBox(height: 20),
 
-              // Tip section
+              // Tip configuration (percentage or custom amount)
               const TipOptionsSection(),
 
               const SizedBox(height: 20),
 
-              // Item entry section
+              // Itemized bill entry with progress tracking
               ItemsSection(showSnackBar: _showSnackBar),
 
               const SizedBox(height: 20),
 
-              // Bill summary with premium styling
+              // Overview of bill totals
               const BillSummarySection(),
 
               const SizedBox(height: 24),
 
-              // Premium continue button
+              // Adaptive continue button with validation
               ContinueButton(onPressed: _continueToItemAssignment),
 
               const SizedBox(height: 24),

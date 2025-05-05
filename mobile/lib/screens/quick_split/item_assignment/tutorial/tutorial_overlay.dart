@@ -1,17 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+// A widget that displays a step-by-step tutorial overlay with navigation
+// and progress indicators. Designed to guide users through app features.
 class TutorialOverlay extends StatefulWidget {
+  // List of tutorial steps to display in sequence
   final List<TutorialStep> steps;
+
+  // Callback function when tutorial is completed or dismissed
   final VoidCallback onComplete;
+
+  // Whether to show the close button in the top-right corner
   final bool showCloseButton;
 
   const TutorialOverlay({
-    Key? key,
+    super.key,
     required this.steps,
     required this.onComplete,
     this.showCloseButton = true,
-  }) : super(key: key);
+  });
 
   @override
   State<TutorialOverlay> createState() => _TutorialOverlayState();
@@ -19,8 +26,13 @@ class TutorialOverlay extends StatefulWidget {
 
 class _TutorialOverlayState extends State<TutorialOverlay>
     with SingleTickerProviderStateMixin {
+  // Current step index being displayed
   int _currentStep = 0;
+
+  // Controller for page transitions between steps
   late PageController _pageController;
+
+  // Progress value between 0.0 and 1.0
   double _progressValue = 0.0;
 
   @override
@@ -36,12 +48,14 @@ class _TutorialOverlayState extends State<TutorialOverlay>
     super.dispose();
   }
 
+  // Updates the progress indicator based on current step
   void _updateProgress() {
     setState(() {
       _progressValue = (_currentStep + 1) / widget.steps.length;
     });
   }
 
+  // Advances to the next tutorial step or completes if on last step
   void _nextStep() {
     // Add haptic feedback for a premium feel
     HapticFeedback.lightImpact();
@@ -60,6 +74,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
     }
   }
 
+  // Returns to the previous tutorial step if not on first step
   void _previousStep() {
     // Add haptic feedback for a premium feel
     HapticFeedback.lightImpact();
@@ -76,6 +91,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
     }
   }
 
+  // Closes the tutorial and calls the onComplete callback
   void _close() {
     HapticFeedback.mediumImpact();
     widget.onComplete();
@@ -92,7 +108,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
 
     final progressTextColor =
         brightness == Brightness.dark
-            ? colorScheme.onSurface.withOpacity(0.7)
+            ? colorScheme.onSurface.withValues(alpha: .7)
             : Colors.grey[600];
 
     final closeButtonColor =
@@ -100,13 +116,13 @@ class _TutorialOverlayState extends State<TutorialOverlay>
 
     final progressTrackColor =
         brightness == Brightness.dark
-            ? colorScheme.surfaceVariant
+            ? colorScheme.surfaceContainerHighest
             : Colors.grey.shade200;
 
     final shadowColor =
         brightness == Brightness.dark
-            ? Colors.black.withOpacity(0.3)
-            : Colors.black.withOpacity(0.2);
+            ? Colors.black.withValues(alpha: .3)
+            : Colors.black.withValues(alpha: .2);
 
     return Material(
       type: MaterialType.transparency,
@@ -116,7 +132,9 @@ class _TutorialOverlayState extends State<TutorialOverlay>
           GestureDetector(
             onTap: widget.showCloseButton ? _close : null,
             child: Container(
-              decoration: BoxDecoration(color: Colors.black.withOpacity(0.6)),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: .6),
+              ),
             ),
           ),
 
@@ -250,7 +268,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
                           style: OutlinedButton.styleFrom(
                             foregroundColor: colorScheme.primary,
                             side: BorderSide(
-                              color: colorScheme.primary.withOpacity(0.5),
+                              color: colorScheme.primary.withValues(alpha: .5),
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -279,8 +297,8 @@ class _TutorialOverlayState extends State<TutorialOverlay>
                           backgroundColor: colorScheme.primary,
                           foregroundColor:
                               brightness == Brightness.dark
-                                  ? Colors.black.withOpacity(
-                                    0.9,
+                                  ? Colors.black.withValues(
+                                    alpha: 0.9,
                                   ) // Better contrast in dark mode
                                   : Colors.white,
                           shape: RoundedRectangleBorder(
@@ -325,6 +343,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
     );
   }
 
+  // Builds the content widget for an individual tutorial step
   Widget _buildStepContent(
     TutorialStep step,
     ColorScheme colorScheme,
@@ -334,14 +353,14 @@ class _TutorialOverlayState extends State<TutorialOverlay>
     final titleColor = colorScheme.onSurface;
     final descriptionColor =
         brightness == Brightness.dark
-            ? colorScheme.onSurface.withOpacity(0.9)
+            ? colorScheme.onSurface.withValues(alpha: .9)
             : colorScheme.onSurface;
 
-    final iconBgColor = colorScheme.primary.withOpacity(
-      brightness == Brightness.dark ? 0.2 : 0.1,
+    final iconBgColor = colorScheme.primary.withValues(
+      alpha: brightness == Brightness.dark ? 0.2 : 0.1,
     );
-    final iconShadowColor = colorScheme.primary.withOpacity(
-      brightness == Brightness.dark ? 0.2 : 0.1,
+    final iconShadowColor = colorScheme.primary.withValues(
+      alpha: brightness == Brightness.dark ? 0.2 : 0.1,
     );
 
     return SingleChildScrollView(
@@ -409,10 +428,18 @@ class _TutorialOverlayState extends State<TutorialOverlay>
   }
 }
 
+// A data class representing a single step in a tutorial sequence
 class TutorialStep {
+  // The title displayed at the top of the step
   final String title;
+
+  // Detailed description explaining the feature
   final String description;
+
+  // Icon displayed next to the title
   final IconData icon;
+
+  // Optional image path for visual illustrations
   final String? image;
 
   const TutorialStep({
@@ -423,12 +450,16 @@ class TutorialStep {
   });
 }
 
+// A button widget that shows a help icon with an optional notification badge
+// Used to trigger the tutorial overlay from various parts of the app
 class TutorialButton extends StatelessWidget {
+  // Callback when the button is pressed
   final VoidCallback onPressed;
+
+  // Optional badge to indicate new or unread tutorials
   final Widget? badge;
 
-  const TutorialButton({Key? key, required this.onPressed, this.badge})
-    : super(key: key);
+  const TutorialButton({super.key, required this.onPressed, this.badge});
 
   @override
   Widget build(BuildContext context) {
@@ -475,7 +506,8 @@ class TutorialButton extends StatelessWidget {
   }
 }
 
-// Helper function to show the tutorial overlay
+// Helper function to show the tutorial overlay with a fade-in animation
+// Makes it easy to display tutorials from anywhere in the app
 void showTutorialOverlay(
   BuildContext context, {
   required List<TutorialStep> steps,

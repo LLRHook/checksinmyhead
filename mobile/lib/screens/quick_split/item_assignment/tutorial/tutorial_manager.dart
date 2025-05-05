@@ -2,12 +2,12 @@ import 'package:checks_frontend/database/database_provider.dart';
 import 'package:flutter/material.dart';
 import 'tutorial_overlay.dart';
 
-/// Manages the tutorial state and functionality for item assignment screen
+// A class that manages the tutorial state and functionality for the item assignment screen
 class TutorialManager {
   // Flag to track if user has seen the tutorial
   bool _hasSeenTutorial = false;
 
-  // Preference key for storing tutorial state
+  // Preference key for storing tutorial state in the database
   static const String _tutorialPreferenceKey =
       'has_seen_item_assignment_tutorial';
 
@@ -44,64 +44,76 @@ class TutorialManager {
     ),
   ];
 
-  // Private constructor
+  // Private constructor to enforce factory pattern
   TutorialManager._();
 
   // Factory method to create and initialize the manager
+  // Returns a future that completes when the tutorial state is loaded
   static Future<TutorialManager> create() async {
     final manager = TutorialManager._();
     await manager._loadTutorialState();
     return manager;
   }
 
-  /// Get whether the user has seen the tutorial
+  // Getter for whether the user has seen the tutorial
   bool get hasSeenTutorial => _hasSeenTutorial;
 
-  /// Load tutorial state from database
+  // Loads the tutorial state from the database
+  // Sets _hasSeenTutorial to false if there's an error
   Future<void> _loadTutorialState() async {
     try {
       _hasSeenTutorial = await DatabaseProvider.db.hasTutorialBeenSeen(
         _tutorialPreferenceKey,
       );
     } catch (e) {
-      print('Error loading tutorial state: $e');
+      debugPrint('Error loading tutorial state: $e');
       _hasSeenTutorial = false;
     }
   }
 
-  /// Save tutorial state to database
+  // Saves the tutorial state to the database
+  // Returns true if successful, false otherwise
   Future<bool> saveTutorialState() async {
     try {
       await DatabaseProvider.db.markTutorialAsSeen(_tutorialPreferenceKey);
       _hasSeenTutorial = true;
       return true;
     } catch (e) {
-      print('Error saving tutorial state: $e');
+      debugPrint('Error saving tutorial state: $e');
       return false;
     }
   }
 
-  /// Show the tutorial overlay and save state
+  // Shows the tutorial overlay and saves state
+  // Checks if the context is still valid before showing
   Future<void> showTutorial(BuildContext context) async {
     // Save state first and wait for it to complete
     await saveTutorialState();
-
     // Only show tutorial if context is still valid
     if (context.mounted) {
       showTutorialOverlay(context, steps: tutorialSteps);
     }
   }
 
-  /// Initialize the tutorial on first launch
-  void initializeWithDelay(BuildContext context, bool mounted) {
+  // Initializes the tutorial with a delay on first launch
+  // Only shows if the user hasn't seen it before
+  void initializeWithDelay(
+    BuildContext Function() contextProvider,
+    bool mounted,
+  ) {
     if (!_hasSeenTutorial) {
       Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) showTutorial(context);
+        // Check if still mounted before accessing context
+        if (mounted) {
+          // Only get context when needed and when we're sure mounted is true
+          showTutorial(contextProvider());
+        }
       });
     }
   }
 
-  /// Create a tutorial button widget
+  // Creates a tutorial button widget with an optional notification badge
+  // Badge appears if the user hasn't seen the tutorial
   Widget buildTutorialButton(VoidCallback onPressed) {
     return TutorialButton(
       onPressed: onPressed,
@@ -117,15 +129,5 @@ class TutorialManager {
               )
               : null,
     );
-  }
-
-  /// Reset the tutorial state (useful for testing)
-  Future<void> resetTutorial() async {
-    try {
-      await DatabaseProvider.db.resetTutorial(_tutorialPreferenceKey);
-      _hasSeenTutorial = false;
-    } catch (e) {
-      print('Error resetting tutorial: $e');
-    }
   }
 }

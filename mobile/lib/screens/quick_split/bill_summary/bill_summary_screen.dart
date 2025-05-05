@@ -1,4 +1,4 @@
-import 'package:checks_frontend/utils/settings_manager.dart';
+import 'package:checks_frontend/screens/settings/utils/settings_manager.dart';
 import 'package:flutter/material.dart';
 import '/models/person.dart';
 import '/models/bill_item.dart';
@@ -10,6 +10,23 @@ import 'widgets/person_card.dart';
 import 'widgets/bottom_bar.dart';
 import 'utils/share_utils.dart';
 
+/// BillSummaryScreen - Displays a complete bill breakdown with sharing options
+///
+/// This screen shows the final bill summary, including total amount, item breakdown,
+/// and individual shares for each participant. It allows users to share the bill
+/// via the platform's share sheet and save the bill for later reference.
+///
+/// Inputs:
+///   - Participant list and their respective shares
+///   - Bill items with prices and assignments
+///   - Bill totals (subtotal, tax, tip, final total)
+///   - Tip configuration (percentage or custom amount)
+///   - Optional birthday person who pays nothing
+///
+/// Side effects:
+///   - Saves share preferences to persistent storage
+///   - Can trigger system share sheet
+///   - Can save bill to recent bills database
 class BillSummaryScreen extends StatefulWidget {
   final List<Person> participants;
   final Map<Person, double> personShares;
@@ -52,10 +69,10 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
   void initState() {
     super.initState();
 
-    // Initialize with default share options until loaded
+    // Initialize with default share options until loaded from storage
     _shareOptions = ShareOptions();
 
-    // Initialize bill summary data
+    // Consolidate bill data into a single object for easier passing to widgets
     _summaryData = BillSummaryData(
       participants: widget.participants,
       personShares: widget.personShares,
@@ -69,20 +86,26 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
       isCustomTipAmount: widget.isCustomTipAmount,
     );
 
-    // Load share options from database
+    // Asynchronously load saved share options
     _loadShareOptions();
   }
 
+  /// Loads share options from persistent storage
   Future<void> _loadShareOptions() async {
     final options = await SettingsManager.getShareOptions();
-    setState(() {
-      _shareOptions = options;
-      _isLoading = false;
-    });
+
+    // Only update state if widget is still mounted
+    if (mounted) {
+      setState(() {
+        _shareOptions = options;
+        _isLoading = false;
+      });
+    }
   }
 
+  /// Generates and shares the bill summary via platform share sheet
   void _shareBillSummary() async {
-    // Generate formatted bill summary text (now using await)
+    // Generate formatted bill summary text with current options
     final String summary = await ShareUtils.generateShareText(
       participants: widget.participants,
       personShares: widget.personShares,
@@ -99,10 +122,11 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
       hideBreakdownInShare: _shareOptions.hideBreakdownInShare,
     );
 
-    // Share the summary
-    ShareUtils.shareBillSummary(context: context, summary: summary);
+    // Trigger platform share sheet with the generated summary
+    ShareUtils.shareBillSummary(summary: summary);
   }
 
+  /// Shows the share options sheet for customizing share content
   void _promptShareOptions() {
     ShareOptionsSheet.show(
       context: context,
@@ -111,7 +135,7 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
         setState(() {
           _shareOptions = updatedOptions;
         });
-        // Save updated options to database
+        // Persist the updated options for future sessions
         SettingsManager.saveShareOptions(updatedOptions);
       },
       onShareTap: _shareBillSummary,
@@ -124,20 +148,22 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
-    // Theme-aware colors
+    // Theme-aware colors for light/dark mode support
     final backgroundColor =
-        brightness == Brightness.dark ? colorScheme.background : Colors.white;
+        brightness == Brightness.dark ? colorScheme.surface : Colors.white;
 
     final appBarColor =
         brightness == Brightness.dark ? colorScheme.surface : Colors.white;
 
     final titleColor = colorScheme.onSurface;
 
+    // Only override text color in dark mode
     final sectionTitleColor =
         brightness == Brightness.dark
             ? Colors.white
             : null; // Use default for light mode
 
+    // Show loading indicator while initializing
     if (_isLoading) {
       return Scaffold(
         backgroundColor: backgroundColor,
@@ -164,7 +190,7 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
       ),
       body: Stack(
         children: [
-          // Main content
+          // Main scrollable content
           SafeArea(
             child: Column(
               children: [
@@ -172,12 +198,12 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
                   child: ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
-                      // Bill overview card with integrated items
+                      // Bill total card shows overall bill with items breakdown
                       BillTotalCard(data: _summaryData),
 
                       const SizedBox(height: 16),
 
-                      // Individual shares
+                      // Individual shares section
                       Text(
                         'Individual Shares',
                         style: Theme.of(
@@ -189,12 +215,13 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
                       ),
                       const SizedBox(height: 12),
 
+                      // Generate a PersonCard for each participant
                       ...sortedParticipants.map(
                         (person) =>
                             PersonCard(person: person, data: _summaryData),
                       ),
 
-                      // Add space at bottom for button
+                      // Extra space to ensure content isn't hidden behind the bottom bar
                       const SizedBox(height: 80),
                     ],
                   ),
@@ -203,35 +230,17 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
             ),
           ),
 
-          // Bottom action bar
           Positioned(
             left: 0,
             right: 0,
             bottom: 0,
             child: BottomBar(
               onShareTap: _promptShareOptions,
-              onDoneTap:
-                  () => DoneButtonHandler.handleDone(
-                    context,
-                    participants: widget.participants,
-                    personShares: widget.personShares,
-                    items: widget.items,
-                    subtotal: widget.subtotal,
-                    tax: widget.tax,
-                    tipAmount: widget.tipAmount,
-                    total: widget.total,
-                    birthdayPerson: widget.birthdayPerson,
-                    tipPercentage: widget.tipPercentage,
-                    isCustomTipAmount: widget.isCustomTipAmount,
-                  ),
-              participants: widget.participants,
-              personShares: widget.personShares,
-              items: widget.items,
-              subtotal: widget.subtotal,
-              tax: widget.tax,
-              tipAmount: widget.tipAmount,
-              total: widget.total,
-              birthdayPerson: widget.birthdayPerson,
+              onDoneTap: () async {
+                await DoneButtonHandler.handleDone(context, data: _summaryData);
+              },
+              data:
+                  _summaryData, // Pass the entire data object instead of individual props
             ),
           ),
         ],

@@ -1,36 +1,66 @@
 import 'package:flutter/material.dart';
 
+/// A customized bottom bar widget for the assignment screen that displays
+/// the total bill amount and provides a continue button for navigation.
+///
+/// This widget creates a persistent bottom bar with:
+/// - Total bill amount display on the left side
+/// - Continue button with arrow icon on the right side
+/// - Theme-aware styling for both light and dark modes
+/// - Subtle shadow effect for visual depth
+///
+/// The bottom bar is designed to provide clear next steps for users while
+/// maintaining visibility of the important bill total information.
+///
+/// Example usage:
+/// ```dart
+/// AssignmentBottomBar(
+///   totalBill: 45.75,
+///   onContinueTap: () => Navigator.push(context, MaterialPage(...)),
+/// )
+/// ```
 class AssignmentBottomBar extends StatelessWidget {
+  /// The total bill amount to display, typically in dollars
   final double totalBill;
+
+  /// Callback function executed when the continue button is tapped
   final VoidCallback onContinueTap;
 
+  /// Creates an AssignmentBottomBar with the required parameters
+  ///
+  /// Both [totalBill] and [onContinueTap] must be provided.
   const AssignmentBottomBar({
-    Key? key,
+    super.key,
     required this.totalBill,
     required this.onContinueTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
+    // Access theme data for adaptive styling
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
-    // Theme-aware colors
+    // Define theme-aware colors that adapt to light/dark mode
+    // Background color uses different surface colors based on brightness
     final backgroundColor =
         brightness == Brightness.dark
             ? colorScheme.surfaceContainerHighest
             : Theme.of(context).scaffoldBackgroundColor;
 
+    // Shadow intensity varies by theme brightness for proper visual hierarchy
     final shadowColor =
         brightness == Brightness.dark
-            ? Colors.black.withOpacity(0.2)
-            : Colors.black.withOpacity(0.05);
+            ? Colors.black.withValues(alpha: .2)
+            : Colors.black.withValues(alpha: .05);
 
+    // Label color is more subdued than the value color
     final labelColor =
         brightness == Brightness.dark
-            ? colorScheme.onSurface.withOpacity(0.7)
+            ? colorScheme.onSurface.withValues(alpha: .7)
             : Colors.grey;
 
+    // Value color uses the main contrast color for visibility
     final valueColor = colorScheme.onSurface;
 
     return Container(
@@ -41,14 +71,15 @@ class AssignmentBottomBar extends StatelessWidget {
           BoxShadow(
             color: shadowColor,
             blurRadius: 10,
-            offset: const Offset(0, -3),
+            offset: const Offset(0, -3), // Shadow appears above the container
           ),
         ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Bill total info - Keep fixed width
+          // Bill total information section
+          // Fixed position on the left side
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -68,20 +99,22 @@ class AssignmentBottomBar extends StatelessWidget {
             ],
           ),
 
-          // Continue button - Position at the right
+          // Continue button section
+          // Fixed position on the right side
           ElevatedButton(
             onPressed: onContinueTap,
             style: ElevatedButton.styleFrom(
               backgroundColor: colorScheme.primary,
+              // Button text color adapts to provide better contrast in different themes
               foregroundColor:
                   brightness == Brightness.dark
-                      ? Colors.black.withOpacity(
-                        0.9,
+                      ? Colors.black.withValues(
+                        alpha: .9,
                       ) // Better contrast in dark mode
                       : Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               elevation: 2,
-              shadowColor: colorScheme.primary.withOpacity(0.4),
+              shadowColor: colorScheme.primary.withValues(alpha: .4),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),

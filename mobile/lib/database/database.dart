@@ -166,27 +166,6 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
-  Future<void> resetTutorial(String tutorialKey) async {
-    final query = select(tutorialStates)
-      ..where((t) => t.tutorialKey.equals(tutorialKey));
-
-    final existing = await query.getSingleOrNull();
-
-    if (existing != null) {
-      await (update(tutorialStates)..where(
-        (t) => t.id.equals(existing.id),
-      )).write(const TutorialStatesCompanion(hasBeenSeen: Value(false)));
-    }
-  }
-
-  Future<List<String>> getAllSeenTutorials() async {
-    final query = select(tutorialStates)
-      ..where((t) => t.hasBeenSeen.equals(true));
-
-    final results = await query.get();
-    return results.map((r) => r.tutorialKey).toList();
-  }
-
   // User preferences management
   Future<ShareOptions> getShareOptions() async {
     final prefs =

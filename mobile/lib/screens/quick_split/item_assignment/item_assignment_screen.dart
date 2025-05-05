@@ -19,16 +19,20 @@ import 'package:checks_frontend/screens/quick_split/bill_summary/bill_summary_sc
 import 'providers/assignment_provider.dart';
 import 'utils/assignment_utils.dart';
 
+// Screen that allows users to assign bill items to participants
+// Shows a list of items with options to split them among people
 class ItemAssignmentScreen extends StatefulWidget {
+  // List of people sharing the bill
   final List<Person> participants;
+  // List of items on the bill to be assigned
   final List<BillItem> items;
+  // Bill amounts
   final double subtotal;
   final double tax;
   final double tipAmount;
   final double total;
   final double tipPercentage;
-  final double alcoholTipPercentage;
-  final bool useDifferentAlcoholTip;
+  // Whether tip was entered as a custom amount rather than percentage
   final bool isCustomTipAmount;
 
   const ItemAssignmentScreen({
@@ -40,8 +44,6 @@ class ItemAssignmentScreen extends StatefulWidget {
     required this.tipAmount,
     required this.total,
     required this.tipPercentage,
-    required this.alcoholTipPercentage,
-    required this.useDifferentAlcoholTip,
     required this.isCustomTipAmount,
   });
 
@@ -71,6 +73,7 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
     _initTutorialManager();
   }
 
+  // Initializes the tutorial manager and triggers UI update when ready
   Future<void> _initTutorialManager() async {
     _tutorialManager = await TutorialManager.create();
     if (mounted) {
@@ -78,8 +81,7 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
         _tutorialManagerInitialized = true;
       });
 
-      // Now that we have the manager initialized, check if we should show the tutorial
-      _tutorialManager.initializeWithDelay(context, mounted);
+      _tutorialManager.initializeWithDelay(() => context, mounted);
     }
   }
 
@@ -89,6 +91,7 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
     super.dispose();
   }
 
+  // Validates assignment completeness and navigates to summary or shows error
   void _checkAssignmentComplete(
     BuildContext context,
     AssignmentProvider provider,
@@ -218,11 +221,12 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
     );
   }
 
+  // Convenience method for the continue button
   void _continueToSummary(AssignmentProvider provider) {
     _checkAssignmentComplete(context, provider);
   }
 
-  // Show custom split dialog for an item
+  // Shows dialog for custom splitting of an item
   void _showCustomSplitDialog(
     BillItem item,
     List<Person> preselectedPeople,
@@ -250,8 +254,6 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
             tipAmount: widget.tipAmount,
             total: widget.total,
             tipPercentage: widget.tipPercentage,
-            alcoholTipPercentage: widget.alcoholTipPercentage,
-            useDifferentAlcoholTip: widget.useDifferentAlcoholTip,
             isCustomTipAmount: widget.isCustomTipAmount,
           ),
       child: Consumer<AssignmentProvider>(
@@ -298,6 +300,7 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
+    // Calculate how much of the bill has been assigned
     final assignedAmount = widget.subtotal - provider.unassignedAmount;
     final assignedPercentage =
         widget.subtotal > 0
@@ -464,7 +467,7 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
     );
   }
 
-  // Build the item list with the improved cards
+  // Builds the scrollable list of bill items
   Widget _buildItemsListView(AssignmentProvider provider) {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

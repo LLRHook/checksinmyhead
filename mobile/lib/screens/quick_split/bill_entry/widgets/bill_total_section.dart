@@ -1,23 +1,36 @@
+import 'package:checks_frontend/screens/quick_split/bill_entry/components/input_decoration.dart';
+import 'package:checks_frontend/screens/quick_split/bill_entry/components/section_card.dart';
+import 'package:checks_frontend/screens/quick_split/bill_entry/models/bill_data.dart';
+import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/bill_data.dart';
-import '../components/section_card.dart';
-import '../components/input_decoration.dart';
-import '../utils/currency_formatter.dart';
 
+/// BillTotalSection - Input section for entering bill subtotal and tax amounts
+///
+/// Provides standardized text input fields for the primary bill values:
+/// - Subtotal amount
+/// - Tax amount
+///
+/// Features:
+/// - Currency-formatted input with automatic validation
+/// - Dollar sign prefix and decimal formatting
+/// - Integrated with the BillData provider for automatic calculations
+/// - Consistent styling with the rest of the application
+///
+/// This component automatically triggers bill recalculation when values change
+/// through the controllers connected to the BillData provider.
 class BillTotalSection extends StatelessWidget {
-  const BillTotalSection({Key? key}) : super(key: key);
+  const BillTotalSection({super.key});
 
   @override
   Widget build(BuildContext context) {
     final billData = Provider.of<BillData>(context);
-    final showAlcoholTax = billData.useDifferentTipForAlcohol;
 
     return SectionCard(
       title: 'Bill Total',
       icon: Icons.receipt_long,
       children: [
-        // Subtotal field with premium styling
+        // Subtotal input field with currency formatting
         TextFormField(
           controller: billData.subtotalController,
           decoration: AppInputDecoration.buildInputDecoration(
@@ -33,7 +46,7 @@ class BillTotalSection extends StatelessWidget {
 
         const SizedBox(height: 16),
 
-        // Tax field with premium styling
+        // Tax input field with currency formatting
         TextFormField(
           controller: billData.taxController,
           decoration: AppInputDecoration.buildInputDecoration(
@@ -46,24 +59,6 @@ class BillTotalSection extends StatelessWidget {
           inputFormatters: [CurrencyFormatter.currencyFormatter],
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
         ),
-
-        if (showAlcoholTax) ...[
-          const SizedBox(height: 16),
-
-          TextFormField(
-            controller: billData.alcoholTaxController,
-            decoration: AppInputDecoration.buildInputDecoration(
-              context: context,
-              labelText: 'Alcohol Tax',
-              prefixText: '\$',
-              hintText: '0.00',
-              prefixIcon: Icons.local_bar,
-            ),
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [CurrencyFormatter.currencyFormatter],
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-          ),
-        ],
       ],
     );
   }

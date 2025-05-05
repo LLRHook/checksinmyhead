@@ -2,17 +2,21 @@ import 'package:flutter/material.dart';
 import '../models/bill_summary_data.dart';
 import '/models/bill_item.dart';
 
+/// BillTotalCard - Displays bill total with expandable sections for items and breakdown
+///
+/// Shows the total bill amount with collapsible sections for itemized costs
+/// and a detailed cost breakdown (subtotal, tax, tip).
 class BillTotalCard extends StatefulWidget {
   final BillSummaryData data;
   final bool initiallyExpandedItems;
   final bool initiallyExpandedCostBreakdown;
 
   const BillTotalCard({
-    Key? key,
+    super.key,
     required this.data,
     this.initiallyExpandedItems = true,
     this.initiallyExpandedCostBreakdown = true,
-  }) : super(key: key);
+  });
 
   @override
   State<BillTotalCard> createState() => _BillTotalCardState();
@@ -27,6 +31,7 @@ class _BillTotalCardState extends State<BillTotalCard>
   late Animation<double> _itemsIconTurns;
   late Animation<double> _costBreakdownIconTurns;
 
+  // Animation curves for smooth transitions
   static final Animatable<double> _easeInTween = CurveTween(
     curve: Curves.easeIn,
   );
@@ -56,6 +61,7 @@ class _BillTotalCardState extends State<BillTotalCard>
       _halfTween.chain(_easeInTween),
     );
 
+    // Initialize animation states based on expansion
     if (_isItemsExpanded) {
       _itemsController.value = 1.0;
     }
@@ -72,6 +78,7 @@ class _BillTotalCardState extends State<BillTotalCard>
     super.dispose();
   }
 
+  /// Toggles the expansion state of the items section
   void _toggleItemsExpanded() {
     setState(() {
       _isItemsExpanded = !_isItemsExpanded;
@@ -83,6 +90,7 @@ class _BillTotalCardState extends State<BillTotalCard>
     });
   }
 
+  /// Toggles the expansion state of the cost breakdown section
   void _toggleCostBreakdownExpanded() {
     setState(() {
       _isCostBreakdownExpanded = !_isCostBreakdownExpanded;
@@ -99,20 +107,20 @@ class _BillTotalCardState extends State<BillTotalCard>
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
-    // Theme-aware colors
+    // Theme-aware colors for light/dark mode support
     final cardBackgroundColor =
         brightness == Brightness.dark ? colorScheme.surface : Colors.white;
 
     final cardBorderColor =
         brightness == Brightness.dark
-            ? colorScheme.outline.withOpacity(0.3)
+            ? colorScheme.outline.withValues(alpha: 0.3)
             : Colors.grey.shade200;
 
     final titleColor = colorScheme.primary;
 
     final dividerColor =
         brightness == Brightness.dark
-            ? colorScheme.outline.withOpacity(0.2)
+            ? colorScheme.outline.withValues(alpha: .2)
             : Colors.grey.shade200;
 
     final expandIconColor =
@@ -122,7 +130,7 @@ class _BillTotalCardState extends State<BillTotalCard>
 
     final itemBorderColor =
         brightness == Brightness.dark
-            ? colorScheme.outline.withOpacity(0.1)
+            ? colorScheme.outline.withValues(alpha: .1)
             : Colors.grey.shade100;
 
     return Card(
@@ -186,8 +194,7 @@ class _BillTotalCardState extends State<BillTotalCard>
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color:
-                                colorScheme.onSurface, // Theme-aware text color
+                            color: colorScheme.onSurface,
                           ),
                         ),
                       ),
@@ -214,7 +221,6 @@ class _BillTotalCardState extends State<BillTotalCard>
                     _isItemsExpanded
                         ? Column(
                           children: [
-                            // Show all items without limitation
                             for (int i = 0; i < widget.data.items.length; i++)
                               _buildItemRow(
                                 context,
@@ -243,12 +249,11 @@ class _BillTotalCardState extends State<BillTotalCard>
                   children: [
                     Expanded(
                       child: Text(
-                        'Cost Breakdown',
+                        'Breakdown',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color:
-                              colorScheme.onSurface, // Theme-aware text color
+                          color: colorScheme.onSurface,
                         ),
                       ),
                     ),
@@ -305,6 +310,7 @@ class _BillTotalCardState extends State<BillTotalCard>
     );
   }
 
+  /// Builds a row for an individual bill item
   Widget _buildItemRow(
     BuildContext context,
     BillItem item, {
@@ -313,8 +319,6 @@ class _BillTotalCardState extends State<BillTotalCard>
     required Color itemBorderColor,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
-
-    // Calculate total including alcohol costs
     final totalItemCost = item.price;
 
     return Container(
@@ -341,8 +345,7 @@ class _BillTotalCardState extends State<BillTotalCard>
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.normal,
-                          color:
-                              colorScheme.onSurface, // Theme-aware text color
+                          color: colorScheme.onSurface,
                         ),
                       ),
                     ),
@@ -354,7 +357,7 @@ class _BillTotalCardState extends State<BillTotalCard>
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: colorScheme.onSurface, // Theme-aware text color
+                  color: colorScheme.onSurface,
                 ),
               ),
             ],
@@ -364,6 +367,7 @@ class _BillTotalCardState extends State<BillTotalCard>
     );
   }
 
+  /// Builds a row for the cost breakdown section (subtotal, tax, tip)
   Widget _buildBreakdownRow(
     BuildContext context,
     String label,
@@ -373,10 +377,8 @@ class _BillTotalCardState extends State<BillTotalCard>
     double fontSize = 14,
     Color? textColor,
   }) {
-    final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
-    // Set default text color if none provided, based on theme
     final defaultTextColor =
         brightness == Brightness.dark
             ? Colors.grey.shade300
