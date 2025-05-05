@@ -39,8 +39,6 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Checkmate',
-      debugShowCheckedModeBanner:
-          false, // Remove "Debug" banner in top-right corner
       // Theme configuration
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
