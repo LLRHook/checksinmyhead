@@ -7,6 +7,22 @@ import 'components/empty_bills_state.dart';
 import 'components/loading_bills_state.dart';
 import 'components/recent_bill_card.dart';
 
+/// RecentBillsScreen
+///
+/// A screen that displays a user's saved bill history, with functionality
+/// for viewing, refreshing, and managing saved bills.
+///
+/// Features:
+/// - Displays a list of recent bills in chronological order
+/// - Pull-to-refresh support for updating the bill list
+/// - Loading states with animated indicators
+/// - Empty state when no bills exist
+/// - Actions for deleting individual bills or all bills
+/// - Haptic feedback for improved user experience
+/// - Theme-aware styling that adapts to light/dark mode
+///
+/// This screen serves as the central hub for accessing bill history
+/// and provides entry points to detailed bill views.
 class RecentBillsScreen extends StatefulWidget {
   const RecentBillsScreen({super.key});
 
@@ -16,48 +32,61 @@ class RecentBillsScreen extends StatefulWidget {
 
 class _RecentBillsScreenState extends State<RecentBillsScreen>
     with SingleTickerProviderStateMixin {
+  /// Flag indicating whether bills are currently loading
   bool _isLoading = true;
+
+  /// List of bill models retrieved from storage
   List<RecentBillModel> _bills = [];
 
-  // Add animation controller for refresh button
+  /// Controls the rotation animation for the refresh button
   late AnimationController _refreshAnimationController;
 
-  // Track if refresh button was clicked
+  /// Tracks if the refresh button was clicked to control animation state
   bool _isRefreshButtonClicked = false;
 
   @override
   void initState() {
     super.initState();
 
-    // Initialize the animation controller
+    // Initialize the refresh button rotation animation controller
     _refreshAnimationController = AnimationController(
       vsync: this,
       duration: const Duration(
         milliseconds: 1000,
-      ), // 1 second for a full rotation
+      ), // Full rotation takes 1 second
     );
 
+    // Load bills from storage when the screen is first shown
     _loadBills();
   }
 
   @override
   void dispose() {
-    // Dispose the animation controller when widget is disposed
+    // Clean up animation controller to prevent memory leaks
     _refreshAnimationController.dispose();
     super.dispose();
   }
 
+  /// Loads bills from persistent storage
+  ///
+  /// This method retrieves the list of saved bills from the database,
+  /// handling loading states and errors. It includes a small artificial
+  /// delay to ensure the loading state is visible for better UX.
   Future<void> _loadBills() async {
     try {
+      // Show loading state
       setState(() {
         _isLoading = true;
       });
 
+      // Fetch bills from storage via the manager
       final bills = await RecentBillsManager.getRecentBills();
 
       // Add a small delay to make the loading state visible
+      // This improves perceived performance and reduces UI flashing
       await Future.delayed(const Duration(milliseconds: 800));
 
+      // Update state if widget is still mounted
       if (mounted) {
         setState(() {
           _bills = bills;
@@ -65,40 +94,48 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
           _isRefreshButtonClicked = false; // Reset refresh button state
         });
 
-        // Stop the refresh animation when loading is complete
+        // Reset refresh animation
         _refreshAnimationController.stop();
         _refreshAnimationController.reset();
       }
     } catch (e) {
+      // Handle errors gracefully
       if (mounted) {
         setState(() {
           _isLoading = false;
           _isRefreshButtonClicked = false; // Reset refresh button state
         });
 
-        // Stop the refresh animation if there's an error
+        // Stop refresh animation
         _refreshAnimationController.stop();
         _refreshAnimationController.reset();
 
+        // Show error message to user
         _showErrorSnackBar('Failed to load recent bills');
       }
     }
   }
 
-  // Add this method to your RecentBillsScreen class
+  /// Shows a confirmation dialog for deleting all bills
+  ///
+  /// This method displays a modal bottom sheet with information about
+  /// the consequences of deleting all bills, requiring explicit confirmation
+  /// to proceed with the deletion.
   void _showDeleteConfirmation() {
-    // Provide haptic feedback when opening modal
+    // Provide tactile feedback when opening modal
     HapticFeedback.mediumImpact();
 
+    // Get theme information for adaptive styling
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
-    // Define colors based on theme
+    // Define theme-aware colors
     final backgroundColor =
         brightness == Brightness.dark
             ? colorScheme.surfaceContainerHighest
             : Colors.white;
 
+    // Warning colors - deeper red for dark mode, light red for light mode
     final warningColor =
         brightness == Brightness.dark
             ? Color(0xFF6D0D12) // Deeper red for dark mode
@@ -109,17 +146,19 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
             ? Color(0xFFFF8282) // Lighter red text for dark mode
             : Color(0xFFB3261E); // Darker red text for light mode
 
+    // Show the modal bottom sheet with animated entry
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withOpacity(0.5),
+      barrierColor: Colors.black.withValues(alpha: .5),
       builder: (context) {
         return TweenAnimationBuilder<double>(
           duration: const Duration(milliseconds: 350),
           curve: Curves.easeOutCubic,
           tween: Tween(begin: 1.0, end: 0.0),
           builder: (context, value, child) {
+            // Slide up animation
             return Transform.translate(
               offset: Offset(0, 50 * value),
               child: Opacity(opacity: 1 - value, child: child),
@@ -134,7 +173,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.12),
+                  color: Colors.black.withValues(alpha: .12),
                   blurRadius: 12,
                   offset: const Offset(0, -4),
                 ),
@@ -143,18 +182,18 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Drag handle
+                // Drag handle at the top
                 Container(
                   width: 36,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.3),
+                    color: Colors.grey.withValues(alpha: .3),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
                 const SizedBox(height: 24),
 
-                // Warning icon
+                // Warning icon in a colored circle
                 Container(
                   width: 64,
                   height: 64,
@@ -170,7 +209,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
                 ),
                 const SizedBox(height: 24),
 
-                // Title
+                // Title text
                 Text(
                   'Delete All Bills',
                   style: TextStyle(
@@ -182,7 +221,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
                 ),
                 const SizedBox(height: 12),
 
-                // Description
+                // Description text with bill count
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 36),
                   child: Text(
@@ -206,12 +245,12 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
                   ),
                   child: Row(
                     children: [
-                      // Cancel button
+                      // Cancel button (outline style)
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () {
                             Navigator.of(context).pop();
-                            HapticFeedback.lightImpact();
+                            HapticFeedback.lightImpact(); // Subtle feedback
                           },
                           style: OutlinedButton.styleFrom(
                             foregroundColor: colorScheme.onSurface,
@@ -238,7 +277,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
 
                       const SizedBox(width: 16),
 
-                      // Delete button
+                      // Delete button (filled style with error color)
                       Expanded(
                         child: FilledButton(
                           onPressed: () {
@@ -248,12 +287,12 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
                             // Strong haptic feedback for destructive action
                             HapticFeedback.heavyImpact();
 
-                            // Perform delete action
+                            // Show loading state
                             setState(() {
                               _isLoading = true;
                             });
 
-                            // Call the clearAllBills method and then reload
+                            // Delete all bills and reload the view
                             RecentBillsManager.clearAllBills().then((_) {
                               _loadBills();
                             });
@@ -280,7 +319,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
                   ),
                 ),
 
-                // Extra padding for bottom safe area
+                // Extra padding to account for bottom safe area on devices with notches
                 SizedBox(height: MediaQuery.of(context).padding.bottom),
               ],
             ),
@@ -290,9 +329,18 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
     );
   }
 
+  /// Shows an error message as a snackbar
+  ///
+  /// This method displays a themed error message with an icon
+  /// and provides haptic feedback to alert the user.
+  ///
+  /// Parameters:
+  /// - message: The error message to display
   void _showErrorSnackBar(String message) {
+    // Provide strong haptic feedback for errors
     HapticFeedback.vibrate();
 
+    // Apply theme-aware styling
     final brightness = Theme.of(context).brightness;
     final snackBarBgColor =
         brightness == Brightness.dark
@@ -301,6 +349,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
 
     final snackBarTextColor = Colors.white;
 
+    // Show the snackbar with error styling
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -312,8 +361,8 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
             ),
           ],
         ),
-        behavior: SnackBarBehavior.floating,
-        width: MediaQuery.of(context).size.width * 0.9,
+        behavior: SnackBarBehavior.floating, // Float above content
+        width: MediaQuery.of(context).size.width * 0.9, // Responsive width
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         backgroundColor: snackBarBgColor,
       ),
@@ -322,10 +371,11 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Extract theme data for adaptive styling
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
-    // Theme-aware colors
+    // Define theme-aware colors
     final scaffoldBgColor =
         brightness == Brightness.dark ? colorScheme.surface : Colors.grey[50];
 
@@ -355,19 +405,21 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 20),
           onPressed: () {
-            HapticFeedback.selectionClick();
+            HapticFeedback.selectionClick(); // Tactile feedback
             Navigator.pop(context);
           },
         ),
         actions: [
+          // Delete all button
           IconButton(
             icon: const Icon(Icons.delete_forever_outlined),
             color: colorScheme.error,
             onPressed: () {
+              // Only enable if not currently loading and bills exist
               if (!_isRefreshButtonClicked &&
                   !_isLoading &&
                   _bills.isNotEmpty) {
-                HapticFeedback.selectionClick();
+                HapticFeedback.selectionClick(); // Tactile feedback
                 _showDeleteConfirmation();
               }
             },
@@ -378,7 +430,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
             icon: AnimatedBuilder(
               animation: _refreshAnimationController,
               builder: (context, child) {
-                // Only show rotation animation if refresh button was clicked
+                // Only show rotation animation when refresh is in progress
                 if (_isRefreshButtonClicked) {
                   return Transform.rotate(
                     angle: _refreshAnimationController.value * 2.0 * 3.14159,
@@ -390,10 +442,11 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
               },
             ),
             onPressed: () {
+              // Only enable if not already refreshing
               if (!_isRefreshButtonClicked && !_isLoading) {
-                HapticFeedback.selectionClick();
+                HapticFeedback.selectionClick(); // Tactile feedback
 
-                // Set flag to show animation
+                // Update state to show animation
                 setState(() {
                   _isRefreshButtonClicked = true;
                 });
@@ -402,18 +455,20 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
                 _refreshAnimationController.reset();
                 _refreshAnimationController.repeat();
 
-                // Load bills
+                // Reload bills
                 _loadBills();
               }
             },
           ),
         ],
       ),
+      // Main content with pull-to-refresh support
       body: RefreshIndicator(
         onRefresh: _loadBills,
         color: colorScheme.primary,
         child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
+          physics:
+              const AlwaysScrollableScrollPhysics(), // Enable overscroll for refresh
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
           children: [
             // Always show the header regardless of bill count
@@ -424,20 +479,29 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
               colorScheme,
             ),
 
-            // Content area - show loading state or content based on _isLoading
+            // Content area - show appropriate state based on loading and bill count
             if (_isLoading)
-              const LoadingBillsState()
+              const LoadingBillsState() // Loading placeholder
             else if (_bills.isEmpty)
-              const EmptyBillsState()
+              const EmptyBillsState() // Empty state with CTA
             else
-              _buildBillsList(),
+              _buildBillsList(), // List of bill cards
           ],
         ),
       ),
     );
   }
 
-  // Modified list header to show accurate bill count
+  /// Builds the header with bill count and information
+  ///
+  /// This method creates a visually appealing header card that displays
+  /// the bill count and helpful information about bill storage limits.
+  ///
+  /// Parameters:
+  /// - headerTextColor: Color for primary text
+  /// - headerSecondaryTextColor: Color for secondary text
+  /// - headerIconBgColor: Background color for the icon container
+  /// - colorScheme: The current theme's color scheme
   Widget _buildListHeader(
     Color headerTextColor,
     Color headerSecondaryTextColor,
@@ -446,12 +510,12 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
   ) {
     final brightness = Theme.of(context).brightness;
 
-    // Shadow color should be different for dark mode
+    // Shadow color with different opacity based on theme
     final shadowColor =
         brightness == Brightness.dark
             ? colorScheme.primary.withValues(
               alpha: 0.5,
-            ) // More prominent in dark mode
+            ) // More visible in dark mode
             : colorScheme.primary.withValues(alpha: .3);
 
     return Container(
@@ -470,7 +534,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
       ),
       child: Row(
         children: [
-          // Bill count with animated dots when loading
+          // Bill count badge (or loading indicator)
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
@@ -479,9 +543,11 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
             ),
             child:
                 _isLoading
-                    ? _buildAnimatedDots(headerTextColor)
+                    ? _buildAnimatedDots(
+                      headerTextColor,
+                    ) // Show dots when loading
                     : Text(
-                      '${_bills.length}',
+                      '${_bills.length}', // Show actual count when loaded
                       style: TextStyle(
                         color: headerTextColor,
                         fontWeight: FontWeight.bold,
@@ -492,7 +558,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
 
           const SizedBox(width: 12),
 
-          // Stats text
+          // Header text content
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -541,7 +607,13 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
     );
   }
 
-  // Create a new method for the animated dots
+  /// Creates the animated loading dots indicator
+  ///
+  /// This method returns a widget with animated dots for the loading state,
+  /// providing visual feedback during data retrieval.
+  ///
+  /// Parameters:
+  /// - dotColor: The color for the animated dots
   Widget _buildAnimatedDots(Color dotColor) {
     return SizedBox(
       width: 24,
@@ -552,11 +624,16 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
     );
   }
 
+  /// Builds the list of bill cards
+  ///
+  /// This method sorts bills by date (newest first) and creates
+  /// a card for each bill with appropriate callbacks.
   Widget _buildBillsList() {
     // Sort bills by date (newest first)
     final sortedBills = List<RecentBillModel>.from(_bills)
       ..sort((a, b) => b.date.compareTo(a.date));
 
+    // Create a card for each bill with the onDeleted callback
     return Column(
       children:
           sortedBills
