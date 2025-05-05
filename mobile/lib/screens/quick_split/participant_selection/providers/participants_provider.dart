@@ -3,83 +3,68 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '/models/person.dart';
 
+/// Manages the participant list for bill splitting with animations and deduplication.
+/// Implements ChangeNotifier pattern for reactive UI updates.
 class ParticipantsProvider extends ChangeNotifier {
   final List<Person> _participants = [];
   final Map<String, Animation<double>> _listItemAnimations = {};
   int _colorIndex = 0;
 
-  // Getters
+  // Simple getters
   List<Person> get participants => _participants;
   Map<String, Animation<double>> get listItemAnimations => _listItemAnimations;
   bool get hasParticipants => _participants.isNotEmpty;
 
-  /// Add a new person to the participants list
+  /// Adds a new person with automatic color assignment and duplicate prevention
   void addPerson(String name, {Color? color}) {
-    if (name.trim().isEmpty) return;
+    final trimmedName = name.trim();
+    if (trimmedName.isEmpty) return;
 
-    // Check if this name already exists
-    if (_participants.any(
-      (p) => p.name.toLowerCase() == name.trim().toLowerCase(),
-    )) {
-      return;
-    }
+    // Prevent duplicates (case-insensitive)
+    if (_isNameDuplicate(trimmedName)) return;
 
+    // Cycle through predefined colors when no color is specified
     final colors = ColorUtils.getParticipantColors();
-
-    // Add new person
     _participants.add(
       Person(
-        name: name.trim(),
+        name: trimmedName,
         color: color ?? colors[_colorIndex % colors.length],
       ),
     );
-
     _colorIndex++;
 
-    // Vibrate to confirm addition
     HapticFeedback.lightImpact();
     notifyListeners();
   }
 
-  /// Add a recent person to the participants list
+  /// Adds an existing Person object if not already in the list
+  /// Returns true if person was added, false otherwise
   bool addRecentPerson(Person person) {
-    if (_participants.any(
-      (p) => p.name.toLowerCase() == person.name.toLowerCase(),
-    )) {
-      return false; // Person already exists in the list
-    }
+    if (_isNameDuplicate(person.name)) return false;
 
     _participants.add(person);
-
-    // Vibrate to confirm selection
     HapticFeedback.selectionClick();
     notifyListeners();
     return true;
   }
 
-  /// Remove a person from the participants list
+  /// Safely removes a person at specified index with haptic feedback
   void removePerson(int index) {
     if (index < 0 || index >= _participants.length) return;
 
     _participants.removeAt(index);
-
-    // Vibrate to confirm removal
     HapticFeedback.mediumImpact();
     notifyListeners();
   }
 
-  /// Check if a person is in the participants list
+  /// Case-insensitive check for existing participants
   bool isPersonSelected(Person person) {
-    return _participants.any(
-      (p) => p.name.toLowerCase() == person.name.toLowerCase(),
-    );
+    return _isNameDuplicate(person.name);
   }
 
-  /// Toggle selection of a recent person
+  /// Toggles a person's inclusion (add if absent, remove if present)
   void toggleRecentPerson(Person person) {
-    final isSelected = isPersonSelected(person);
-
-    if (isSelected) {
+    if (isPersonSelected(person)) {
       _participants.removeWhere(
         (p) => p.name.toLowerCase() == person.name.toLowerCase(),
       );
@@ -87,26 +72,31 @@ class ParticipantsProvider extends ChangeNotifier {
     } else {
       addRecentPerson(person);
     }
-
     notifyListeners();
   }
 
-  /// Clear all participants
+  /// Resets provider state entirely
   void clearAll() {
     _participants.clear();
     _listItemAnimations.clear();
     notifyListeners();
   }
 
-  /// Register an animation for a person being removed
+  /// Tracks animations for smooth list item removal effects
+  /// Animation key is person name for identification
   void registerAnimation(String personName, Animation<double> animation) {
     _listItemAnimations[personName] = animation;
     notifyListeners();
   }
 
-  /// Unregister an animation when it's complete
+  /// Removes completed animations to prevent memory leaks
   void unregisterAnimation(String personName) {
     _listItemAnimations.remove(personName);
     notifyListeners();
+  }
+
+  // Private helper method to reduce code duplication for name comparison
+  bool _isNameDuplicate(String name) {
+    return _participants.any((p) => p.name.toLowerCase() == name.toLowerCase());
   }
 }
