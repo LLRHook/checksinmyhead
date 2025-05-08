@@ -194,13 +194,16 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
   ///
   /// Passes all necessary bill information to the next screen for
   /// assigning items to participants.
-  void _navigateToItemAssignment() {
-    Navigator.of(context).push(
+  void _navigateToItemAssignment() async {
+    final originalItems = List.of(_billData.items);
+    
+    // Navigate to item assignment screen
+    final result = await Navigator.of(context).push(
       MaterialPageRoute(
         builder:
             (context) => ItemAssignmentScreen(
               participants: widget.participants,
-              items: _billData.items,
+              items: originalItems,
               subtotal: _billData.subtotal,
               tax: _billData.tax,
               tipAmount: _billData.tipAmount,
@@ -210,6 +213,27 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
             ),
       ),
     );
+    
+    // If items were returned with assignments, update them one by one
+    if (result != null && result is List) {
+      // Clear existing items
+      while (_billData.items.isNotEmpty) {
+        _billData.removeItem(0);
+      }
+      
+      // Add returned items back
+      for (final item in result) {
+        // We know these are BillItems because that's what we passed in
+        if (item is dynamic) {
+          _billData.addItem(item.name, item.price);
+          // Copy assignments from the returned item to the newly added one
+          if (item.assignments != null) {
+            final index = _billData.items.length - 1;
+            _billData.items[index].assignments = Map.from(item.assignments);
+          }
+        }
+      }
+    }
   }
 
   /// Shows a floating snackbar with an info icon

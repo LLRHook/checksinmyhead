@@ -69,8 +69,22 @@ class AssignmentProvider extends ChangeNotifier {
          tipPercentage: tipPercentage,
          isCustomTipAmount: isCustomTipAmount,
        ) {
-    // Initialize data with calculated values including tax and tip distribution
-    _calculateInitialAssignments();
+    // Check if items already have assignments
+    bool hasExistingAssignments = false;
+    for (var item in items) {
+      if (item.assignments.isNotEmpty) {
+        hasExistingAssignments = true;
+        break;
+      }
+    }
+    
+    if (hasExistingAssignments) {
+      // Use the existing assignments instead of initializing from scratch
+      _recalculateFromExistingAssignments();
+    } else {
+      // Initialize data with calculated values including tax and tip distribution
+      _calculateInitialAssignments();
+    }
   }
 
   // Getters for accessing the data properties
@@ -96,6 +110,58 @@ class AssignmentProvider extends ChangeNotifier {
   /// changes to the assignment state occur.
   void _calculateInitialAssignments() {
     _data = AssignmentUtils.calculateInitialAssignments(_data);
+    notifyListeners();
+  }
+
+  /// Recalculates assignment data based on existing item assignments
+  void _recalculateFromExistingAssignments() {
+    // Calculate person totals from existing assignments
+    Map<Person, double> personItemTotals = {};
+    
+    for (var person in _data.participants) {
+      double total = 0.0;
+      
+      for (var item in _data.items) {
+        if (item.assignments.containsKey(person)) {
+          total += item.price * item.assignments[person]! / 100.0;
+        }
+      }
+      
+      personItemTotals[person] = total;
+    }
+    
+    // Calculate unassigned amount
+    double assignedAmount = personItemTotals.values.fold(0.0, (sum, amount) => sum + amount);
+    double unassignedAmount = _data.subtotal - assignedAmount;
+    
+    // Calculate tax and tip distribution proportionally
+    Map<Person, double> personTaxAndTip = {};
+    Map<Person, double> personFinalShares = {};
+    
+    double totalTaxAndTip = _data.tax + _data.tipAmount;
+    
+    for (var entry in personItemTotals.entries) {
+      if (assignedAmount > 0) {
+        // Calculate proportional tax and tip
+        double proportion = entry.value / assignedAmount;
+        double taxAndTipShare = totalTaxAndTip * proportion;
+        personTaxAndTip[entry.key] = taxAndTipShare;
+        
+        // Final share includes items plus tax and tip
+        personFinalShares[entry.key] = entry.value + taxAndTipShare;
+      } else {
+        personTaxAndTip[entry.key] = 0.0;
+        personFinalShares[entry.key] = 0.0;
+      }
+    }
+    
+    // Update the data with calculated values
+    _data = _data.copyWith(
+      personTotals: personItemTotals,
+      personFinalShares: personFinalShares,
+      unassignedAmount: unassignedAmount,
+    );
+    
     notifyListeners();
   }
 

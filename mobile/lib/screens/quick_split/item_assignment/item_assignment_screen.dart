@@ -277,7 +277,10 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
         builder: (context, provider, _) {
           return Scaffold(
             appBar: AssignmentAppBar(
-              onBackPressed: () => Navigator.pop(context),
+              onBackPressed: () {
+                // Return updated item assignments when navigating back
+                Navigator.pop(context, provider.items);
+              },
               onHelpPressed:
                   _tutorialManagerInitialized
                       ? () => _tutorialManager.showTutorial(context)
