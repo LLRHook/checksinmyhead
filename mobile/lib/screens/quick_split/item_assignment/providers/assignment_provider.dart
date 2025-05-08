@@ -32,8 +32,7 @@ import '/models/bill_item.dart';
 /// It uses the AssignmentData immutable data class to store the current state
 /// and AssignmentUtils to perform calculations.
 class AssignmentProvider extends ChangeNotifier {
-  // The current state of assignments
-  AssignmentData _data;
+  late AssignmentData _data;
 
   // Icons used for categorizing bill items
   final IconData universalItemIcon =
@@ -50,6 +49,7 @@ class AssignmentProvider extends ChangeNotifier {
   /// @param total Total bill amount (subtotal + tax + tip)
   /// @param tipPercentage Tip as percentage of subtotal
   /// @param isCustomTipAmount Whether tip was entered as amount (true) or percentage (false)
+  /// @param initialBirthdayPerson The initial birthday person for the bill
   AssignmentProvider({
     required List<Person> participants,
     required List<BillItem> items,
@@ -59,18 +59,37 @@ class AssignmentProvider extends ChangeNotifier {
     required double total,
     required double tipPercentage,
     required bool isCustomTipAmount,
-  }) : _data = AssignmentData.initial(
-         participants: participants,
-         items: items,
-         subtotal: subtotal,
-         tax: tax,
-         tipAmount: tipAmount,
-         total: total,
-         tipPercentage: tipPercentage,
-         isCustomTipAmount: isCustomTipAmount,
-       ) {
-    // Initialize data with calculated values including tax and tip distribution
-    _calculateInitialAssignments();
+    Person? initialBirthdayPerson,
+  }) {
+    // Initialize data with provided values
+    _data = AssignmentData.initial(
+      participants: participants,
+      items: items,
+      subtotal: subtotal,
+      tax: tax,
+      tipAmount: tipAmount,
+      total: total,
+      tipPercentage: tipPercentage,
+      isCustomTipAmount: isCustomTipAmount,
+      birthdayPerson: initialBirthdayPerson,
+    );
+
+    // Check if items already have assignments
+    bool hasExistingAssignments = false;
+    for (var item in items) {
+      if (item.assignments.isNotEmpty) {
+        hasExistingAssignments = true;
+        break;
+      }
+    }
+    
+    if (hasExistingAssignments) {
+      // Use the existing assignments instead of initializing from scratch
+      _recalculateFromExistingAssignments();
+    } else {
+      // Initialize data with calculated values including tax and tip distribution
+      _calculateInitialAssignments();
+    }
   }
 
   // Getters for accessing the data properties
@@ -96,6 +115,58 @@ class AssignmentProvider extends ChangeNotifier {
   /// changes to the assignment state occur.
   void _calculateInitialAssignments() {
     _data = AssignmentUtils.calculateInitialAssignments(_data);
+    notifyListeners();
+  }
+
+  /// Recalculates assignment data based on existing item assignments
+  void _recalculateFromExistingAssignments() {
+    // Calculate person totals from existing assignments
+    Map<Person, double> personItemTotals = {};
+    
+    for (var person in _data.participants) {
+      double total = 0.0;
+      
+      for (var item in _data.items) {
+        if (item.assignments.containsKey(person)) {
+          total += item.price * item.assignments[person]! / 100.0;
+        }
+      }
+      
+      personItemTotals[person] = total;
+    }
+    
+    // Calculate unassigned amount
+    double assignedAmount = personItemTotals.values.fold(0.0, (sum, amount) => sum + amount);
+    double unassignedAmount = _data.subtotal - assignedAmount;
+    
+    // Calculate tax and tip distribution proportionally
+    Map<Person, double> personTaxAndTip = {};
+    Map<Person, double> personFinalShares = {};
+    
+    double totalTaxAndTip = _data.tax + _data.tipAmount;
+    
+    for (var entry in personItemTotals.entries) {
+      if (assignedAmount > 0) {
+        // Calculate proportional tax and tip
+        double proportion = entry.value / assignedAmount;
+        double taxAndTipShare = totalTaxAndTip * proportion;
+        personTaxAndTip[entry.key] = taxAndTipShare;
+        
+        // Final share includes items plus tax and tip
+        personFinalShares[entry.key] = entry.value + taxAndTipShare;
+      } else {
+        personTaxAndTip[entry.key] = 0.0;
+        personFinalShares[entry.key] = 0.0;
+      }
+    }
+    
+    // Update the data with calculated values
+    _data = _data.copyWith(
+      personTotals: personItemTotals,
+      personFinalShares: personFinalShares,
+      unassignedAmount: unassignedAmount,
+    );
+    
     notifyListeners();
   }
 

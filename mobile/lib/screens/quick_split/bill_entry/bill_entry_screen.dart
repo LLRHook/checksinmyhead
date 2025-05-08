@@ -20,9 +20,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '/models/person.dart';
+import '/models/bill_item.dart';
 
 // Models
 import 'models/bill_data.dart';
+import '../item_assignment/models/assignment_result.dart';
 
 // Widgets
 import 'widgets/participant_avatars.dart';
@@ -194,22 +196,50 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
   ///
   /// Passes all necessary bill information to the next screen for
   /// assigning items to participants.
-  void _navigateToItemAssignment() {
-    Navigator.of(context).push(
+  void _navigateToItemAssignment() async {
+    // Create a deep copy of the original items with their assignments
+    final originalItems = _billData.items.map((item) => BillItem(
+      name: item.name,
+      price: item.price,
+      assignments: Map.from(item.assignments),
+    )).toList();
+    
+    // Navigate to item assignment screen
+    final result = await Navigator.of(context).push(
       MaterialPageRoute(
         builder:
             (context) => ItemAssignmentScreen(
               participants: widget.participants,
-              items: _billData.items,
+              items: originalItems,
               subtotal: _billData.subtotal,
               tax: _billData.tax,
               tipAmount: _billData.tipAmount,
               total: _billData.total,
               tipPercentage: _billData.tipPercentage,
               isCustomTipAmount: _billData.useCustomTipAmount,
+              initialBirthdayPerson: _billData.birthdayPerson,
             ),
       ),
     );
+    
+    // If result was returned with assignments, update items and birthday person
+    if (result != null && result is AssignmentResult) {
+      // Clear existing items
+      while (_billData.items.isNotEmpty) {
+        _billData.removeItem(0);
+      }
+      
+      // Add returned items back with deep copy of assignments
+      for (final item in result.items) {
+        _billData.addItem(item.name, item.price);
+        // Copy assignments from the returned item to the newly added one
+        final index = _billData.items.length - 1;
+        _billData.items[index].assignments = Map.from(item.assignments);
+      }
+
+      // Update birthday person if it was set
+      _billData.birthdayPerson = result.birthdayPerson;
+    }
   }
 
   /// Shows a floating snackbar with an info icon
