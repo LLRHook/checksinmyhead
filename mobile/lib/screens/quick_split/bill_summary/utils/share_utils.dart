@@ -117,11 +117,10 @@ class ShareUtils {
 
       if (share > 0 || person == birthdayPerson) {
         anySharesWritten = true;
-        text.writeln('• ${person.name}: \$${share.toStringAsFixed(2)}');
-        
-        // Add birthday explanation if this is the birthday person
         if (person == birthdayPerson) {
-          text.writeln('  (Free because it\'s their birthday!)');
+          text.writeln('• 🎂 ${person.name}: \$${share.toStringAsFixed(2)}');
+        } else {
+          text.writeln('• ${person.name}: \$${share.toStringAsFixed(2)}');
         }
 
         if (includePersonItemsInShare && items.isNotEmpty) {
