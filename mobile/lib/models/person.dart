@@ -1,3 +1,22 @@
+// Checkmate: Privacy-first receipt spliting
+//     Copyright (C) 2025  Kruski Ko.
+//     Email us: checkmateapp@duck.com
+
+//     This program is free software: you can redistribute it and/or modify
+//     it under the terms of the GNU General Public License as published by
+//     the Free Software Foundation, either version 3 of the License, or
+//     (at your option) any later version.
+
+//     This program is distributed in the hope that it will be useful,
+//     but WITHOUT ANY WARRANTY; without even the implied warranty of
+//     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//     GNU General Public License for more details.
+
+//     You should have received a copy of the GNU General Public License
+//     along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+import 'package:flutter/material.dart';
+
 /// A model class representing a person with a name, color, and optional icon.
 ///
 /// This class provides a way to uniquely identify and compare people based on their
@@ -6,7 +25,6 @@
 /// Properties:
 /// * [name] - Unique identifier string for the person
 /// * [color] - Associated color, typically used for UI representation
-/// * [icon] - Optional UI icon, defaults to [Icons.person]
 ///
 /// Notable implementation details:
 /// * Custom equality operator implementation using [Color.toARGB32] for reliable color comparison
@@ -17,16 +35,12 @@
 /// ```dart
 /// final person = Person(name: "John", color: Colors.blue);
 /// ```
-library;
-
-import 'package:flutter/material.dart';
 
 class Person {
   final String name;
   final Color color;
-  final IconData icon;
 
-  Person({required this.name, required this.color, this.icon = Icons.person});
+  Person({required this.name, required this.color});
 
   @override
   bool operator ==(Object other) {
