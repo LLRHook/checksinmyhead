@@ -1,3 +1,20 @@
+// Checkmate: Privacy-first receipt spliting
+//     Copyright (C) 2025  Kruski Ko.
+//     Email us: checkmateapp@duck.com
+
+//     This program is free software: you can redistribute it and/or modify
+//     it under the terms of the GNU General Public License as published by
+//     the Free Software Foundation, either version 3 of the License, or
+//     (at your option) any later version.
+
+//     This program is distributed in the hope that it will be useful,
+//     but WITHOUT ANY WARRANTY; without even the implied warranty of
+//     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//     GNU General Public License for more details.
+
+//     You should have received a copy of the GNU General Public License
+//     along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import 'package:checks_frontend/screens/quick_split/bill_summary/utils/share_utils.dart';
 import 'package:checks_frontend/screens/recent_bills/components/bill_summary_card.dart';
 import 'package:checks_frontend/screens/recent_bills/components/participants_card.dart';
@@ -7,8 +24,6 @@ import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.da
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 import 'package:checks_frontend/screens/settings/utils/settings_manager.dart';
 import 'package:checks_frontend/models/person.dart';
-
-// Local imports
 import 'utils/bill_calculations.dart';
 
 /// BillDetailsScreen

@@ -100,4 +100,4 @@ Checkmate is open-source and welcomes contributions. See our contribution guidel
 
 ## License
 
-This project is licensed under [LICENSE TYPE] - see the LICENSE file for details.
+This project is licensed under GNU GPL - see the [LICENSE](LICENSE) file for details.
