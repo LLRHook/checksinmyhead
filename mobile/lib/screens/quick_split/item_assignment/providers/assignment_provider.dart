@@ -32,8 +32,7 @@ import '/models/bill_item.dart';
 /// It uses the AssignmentData immutable data class to store the current state
 /// and AssignmentUtils to perform calculations.
 class AssignmentProvider extends ChangeNotifier {
-  // The current state of assignments
-  AssignmentData _data;
+  late AssignmentData _data;
 
   // Icons used for categorizing bill items
   final IconData universalItemIcon =
@@ -50,6 +49,7 @@ class AssignmentProvider extends ChangeNotifier {
   /// @param total Total bill amount (subtotal + tax + tip)
   /// @param tipPercentage Tip as percentage of subtotal
   /// @param isCustomTipAmount Whether tip was entered as amount (true) or percentage (false)
+  /// @param initialBirthdayPerson The initial birthday person for the bill
   AssignmentProvider({
     required List<Person> participants,
     required List<BillItem> items,
@@ -59,16 +59,21 @@ class AssignmentProvider extends ChangeNotifier {
     required double total,
     required double tipPercentage,
     required bool isCustomTipAmount,
-  }) : _data = AssignmentData.initial(
-         participants: participants,
-         items: items,
-         subtotal: subtotal,
-         tax: tax,
-         tipAmount: tipAmount,
-         total: total,
-         tipPercentage: tipPercentage,
-         isCustomTipAmount: isCustomTipAmount,
-       ) {
+    Person? initialBirthdayPerson,
+  }) {
+    // Initialize data with provided values
+    _data = AssignmentData.initial(
+      participants: participants,
+      items: items,
+      subtotal: subtotal,
+      tax: tax,
+      tipAmount: tipAmount,
+      total: total,
+      tipPercentage: tipPercentage,
+      isCustomTipAmount: isCustomTipAmount,
+      birthdayPerson: initialBirthdayPerson,
+    );
+
     // Check if items already have assignments
     bool hasExistingAssignments = false;
     for (var item in items) {

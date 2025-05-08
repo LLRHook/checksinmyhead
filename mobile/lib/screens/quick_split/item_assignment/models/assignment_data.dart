@@ -147,6 +147,7 @@ class AssignmentData {
   /// @param total Total bill amount
   /// @param tipPercentage Tip as percentage of subtotal
   /// @param isCustomTipAmount Whether tip was entered as amount or percentage
+  /// @param birthdayPerson Birthday person
   ///
   /// @return A new AssignmentData instance with empty/initial state values
   factory AssignmentData.initial({
@@ -158,6 +159,7 @@ class AssignmentData {
     required double total,
     required double tipPercentage,
     required bool isCustomTipAmount,
+    Person? birthdayPerson,
   }) {
     return AssignmentData(
       participants: participants,
@@ -173,7 +175,7 @@ class AssignmentData {
       unassignedAmount:
           items.isEmpty ? 0.0 : subtotal, // All items unassigned initially
       selectedPerson: null, // No person selected initially
-      birthdayPerson: null, // No birthday person initially
+      birthdayPerson: birthdayPerson, // Use provided birthday person
     );
   }
 }
