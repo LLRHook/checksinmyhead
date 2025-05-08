@@ -414,7 +414,7 @@ Key privacy features:
 
 ## Component Hierarchy
 
-The UI components are organized in a hierarchical structure that promotes reusability and maintainability. Here's the breakdown of the main screen components:
+The UI components are organized in a hierarchical structure that promotes reusability and maintainability.
 
 ### Bill Splitting Flow
 
