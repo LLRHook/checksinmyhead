@@ -114,6 +114,8 @@ This guide will help you set up Flutter for iOS development on macOS and get our
    - Check "Automatically manage signing"
    - Select your Apple Developer team
    - Update the Bundle Identifier to something unique
+   
+   - [If you can't find the "Signing & Capabilities" tab, click here](https://stackoverflow.com/questions/72420093/signing-and-capabilities-tab-missing-in-xcode) 
 
 3. **Run the application from the command line:**
    ```bash
