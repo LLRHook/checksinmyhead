@@ -1,3 +1,27 @@
+// Checkmate: Privacy-first receipt spliting
+//     Copyright (C) 2025  Kruski Ko.
+//     Email us: checkmateapp@duck.com
+
+//     This program is free software: you can redistribute it and/or modify
+//     it under the terms of the GNU General Public License as published by
+//     the Free Software Foundation, either version 3 of the License, or
+//     (at your option) any later version.
+
+//     This program is distributed in the hope that it will be useful,
+//     but WITHOUT ANY WARRANTY; without even the implied warranty of
+//     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//     GNU General Public License for more details.
+
+//     You should have received a copy of the GNU General Public License
+//     along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+import 'package:flutter/material.dart';
+import 'screens/splash_screen.dart';
+import 'screens/landing_screen.dart';
+import 'screens/settings/settings_screen.dart';
+import 'config/theme.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 // Purpose: Entry point for the Checkmate bill-splitting application.
 // This file initializes the app, manages first-launch detection, and sets up
 // the global theme and navigation routes.
@@ -7,12 +31,6 @@
 // - Configures app-wide theming with light/dark mode support
 // - Sets up navigation routes to key screens
 // - Initializes Flutter binding and preferences
-import 'package:flutter/material.dart';
-import 'screens/splash_screen.dart';
-import 'screens/landing_screen.dart';
-import 'screens/settings/settings_screen.dart';
-import 'config/theme.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 /// App entry point - initializes first launch detection before creating the app
 void main() async {
