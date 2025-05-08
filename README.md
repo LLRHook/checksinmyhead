@@ -6,7 +6,7 @@
 
 [Why Privacy-First?](docs/privacy.md)
 
-[Watch a demo!](https://youtu.be/rBQPQRh_igY)
+[Watch a demo!]()
 
 [See an example bill, explained in text.](sample-data/inputoutput.md)
 
