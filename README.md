@@ -14,6 +14,7 @@ Checkmate is a Flutter-based iOS application designed for seamless receipt split
 - **Flexible Splitting**: Supports custom split ratios (20/20/60, 10/10/10/70, etc.)
 - **Local Storage**: Securely saves the last 30 bills on-device using SQLite
 - **Customizable Receipts**: Configurable text receipts that can be shared instantly
+- **Last Dined With Users**: Stored and showed the last 12 dined with names, on the selection screen for QoL
 
 ### User Flow
 
@@ -91,12 +92,13 @@ To set up the development environment and run the project locally:
 
 - OCR Integration: Add receipt scanning via Google Vision API
 - Enhanced Splitting Logic: Support more complex division scenarios
+- Addition of Dining Groups: Allow a group to be saved, if dined with frequently
 - UI Refinements: Ongoing improvements to user experience
 - Android Release: Expansion to additional platforms
 
 ## Contributing
 
-Checkmate is open-source and welcomes contributions. See our contribution guidelines for more information on how to get involved.
+Checkmate is open-source and welcomes contributions. See our [contribution guidelines](docs/contribution.md) for more information on how to get involved.
 
 ## License
 
