@@ -228,6 +228,19 @@ class AppDatabase extends _$AppDatabase {
     final participantNames = participants.map((p) => p.name).toList();
     final participantsJson = jsonEncode(participantNames);
 
+    // Check for duplicate bills within the last minute
+    final oneMinuteAgo = DateTime.now().subtract(const Duration(minutes: 1));
+    final recentBillsResults = await (select(recentBills)
+          ..where((b) => b.createdAt.isBiggerThanValue(oneMinuteAgo))
+          ..where((b) => b.total.equals(total))
+          ..where((b) => b.participants.equals(participantsJson)))
+        .get();
+
+    // If a similar bill exists within the last minute, skip saving
+    if (recentBillsResults.isNotEmpty) {
+      return;
+    }
+
     String? itemsJson;
     if (items.isNotEmpty) {
       final itemsData =

@@ -146,4 +146,17 @@ class BillData extends ChangeNotifier {
     useCustomTipAmount = value;
     calculateBill();
   }
+
+  /// Updates the items list with new items that may have assignments
+  void updateItems(List<BillItem> newItems) {
+    // Clear current items
+    items.clear();
+    
+    // Add all new items with their assignments
+    items.addAll(newItems);
+    
+    // Recalculate totals
+    calculateItemsTotal();
+    notifyListeners();
+  }
 }
