@@ -2,6 +2,14 @@
 
 **Privacy-first receipt splitting made simple**
 
+[Interested in our architecture?](docs/architecture.md)
+
+[Why Privacy-First?](docs/privacy.md)
+
+[Watch a demo!](https://youtu.be/rBQPQRh_igY)
+
+[See an example bill, explained in text.](sample-data/inputoutput.md)
+
 ## Project Overview
 
 Checkmate is a Flutter-based iOS application designed for seamless receipt splitting without compromising user privacy. The core value proposition is built around **zero data collection** - distinguishing it from competitors that collect and store user data in the cloud.
@@ -24,6 +32,9 @@ Checkmate is a Flutter-based iOS application designed for seamless receipt split
 4. **Split Configuration**: Apply custom split ratios as needed
 5. **Summary & Sharing**: View bill breakdown and share via messaging platforms
 6. **History**: Access past bills stored locally on the device
+
+#### What does the output look like?
+
 
 ## Technical Architecture
 
