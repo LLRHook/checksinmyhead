@@ -176,59 +176,60 @@ Checkmate implements a unidirectional data flow pattern as shown below:
 
 ```mermaid
 flowchart TD
-    subgraph "UI Layer"
+    %% UI Layer
+    subgraph UILayer["UI Layer"]
         UI_Components[UI Components]
         Screens[Screens]
         BottomSheets[Bottom Sheets]
     end
     
-    subgraph "State Management"
+    %% State Management
+    subgraph StateManagement["State Management"]
         Providers[Provider Models]
         ChangeNotifiers[ChangeNotifier Classes]
     end
     
-    subgraph "Data Models"
+    %% Data Models
+    subgraph DataModels["Data Models"]
         Person[Person Model]
         BillItem[Bill Item Model]
         BillData[Bill Data Model]
     end
     
-    subgraph "Persistence"
+    %% Persistence
+    subgraph PersistenceLayer["Persistence"]
         DB[Drift/SQLite Database]
         SharedPrefs[Shared Preferences]
     end
     
-    UI_Components <-->|Widget events| Screens
-    Screens <-->|Shows| BottomSheets
+    UI_Components <--> Screens
+    Screens <--> BottomSheets
     
-    Screens -->|Updates| Providers
-    Providers -->|Notifies| Screens
-    BottomSheets -->|Updates| Providers
+    Screens --> Providers
+    Providers --> Screens
+    BottomSheets --> Providers
     
-    Providers -->|Manages| ChangeNotifiers
-    ChangeNotifiers -->|Uses| Data Models
+    Providers --> ChangeNotifiers
+    ChangeNotifiers --> DataModels
     
-    Person <-->|Referenced by| BillItem
-    BillItem <-->|Contained in| BillData
+    Person <--> BillItem
+    BillItem <--> BillData
     
-    Providers -->|Persists| DB
-    DB -->|Loads| Providers
-    Providers -->|Stores settings| SharedPrefs
-    SharedPrefs -->|Loads settings| Providers
+    Providers --> DB
+    DB --> Providers
+    Providers --> SharedPrefs
+    SharedPrefs --> Providers
     
-    style UI_Components fill:#FFB6C1,stroke:#333,stroke-width:2px
-    style Screens fill:#FFB6C1,stroke:#333,stroke-width:2px
-    style BottomSheets fill:#FFB6C1,stroke:#333,stroke-width:2px
+    %% Styling
+    classDef uiStyle fill:#FFB6C1,stroke:#333,stroke-width:2px
+    classDef stateStyle fill:#98FB98,stroke:#333,stroke-width:2px
+    classDef modelStyle fill:#FFFACD,stroke:#333,stroke-width:2px
+    classDef dbStyle fill:#6495ED,stroke:#333,stroke-width:2px
     
-    style Providers fill:#98FB98,stroke:#333,stroke-width:2px
-    style ChangeNotifiers fill:#98FB98,stroke:#333,stroke-width:2px
-    
-    style Person fill:#FFFACD,stroke:#333,stroke-width:2px
-    style BillItem fill:#FFFACD,stroke:#333,stroke-width:2px
-    style BillData fill:#FFFACD,stroke:#333,stroke-width:2px
-    
-    style DB fill:#6495ED,stroke:#333,stroke-width:2px
-    style SharedPrefs fill:#6495ED,stroke:#333,stroke-width:2px
+    class UI_Components,Screens,BottomSheets uiStyle
+    class Providers,ChangeNotifiers stateStyle
+    class Person,BillItem,BillData modelStyle
+    class DB,SharedPrefs dbStyle
 ```
 
 This pattern ensures:
