@@ -35,6 +35,7 @@ import 'package:checks_frontend/screens/quick_split/bill_summary/bill_summary_sc
 // Provider and utils
 import 'providers/assignment_provider.dart';
 import 'utils/assignment_utils.dart';
+import 'models/assignment_result.dart';
 
 // Screen that allows users to assign bill items to participants
 // Shows a list of items with options to split them among people
@@ -51,6 +52,7 @@ class ItemAssignmentScreen extends StatefulWidget {
   final double tipPercentage;
   // Whether tip was entered as a custom amount rather than percentage
   final bool isCustomTipAmount;
+  final Person? initialBirthdayPerson;
 
   const ItemAssignmentScreen({
     super.key,
@@ -62,6 +64,7 @@ class ItemAssignmentScreen extends StatefulWidget {
     required this.total,
     required this.tipPercentage,
     required this.isCustomTipAmount,
+    this.initialBirthdayPerson,
   });
 
   @override
@@ -272,14 +275,21 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
             total: widget.total,
             tipPercentage: widget.tipPercentage,
             isCustomTipAmount: widget.isCustomTipAmount,
+            initialBirthdayPerson: widget.initialBirthdayPerson,
           ),
       child: Consumer<AssignmentProvider>(
         builder: (context, provider, _) {
           return Scaffold(
             appBar: AssignmentAppBar(
               onBackPressed: () {
-                // Return updated item assignments when navigating back
-                Navigator.pop(context, provider.items);
+                // Return updated item assignments and birthday person when navigating back
+                Navigator.pop(
+                  context,
+                  AssignmentResult(
+                    items: provider.items,
+                    birthdayPerson: provider.birthdayPerson,
+                  ),
+                );
               },
               onHelpPressed:
                   _tutorialManagerInitialized

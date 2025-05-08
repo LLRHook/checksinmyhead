@@ -17,6 +17,7 @@
 
 import 'package:flutter/material.dart';
 import '/models/bill_item.dart';
+import '/models/person.dart';
 
 /// BillData - ChangeNotifier class that manages bill calculation state
 ///
@@ -53,6 +54,14 @@ class BillData extends ChangeNotifier {
   // Items total tracking
   double itemsTotal = 0.0;
   double animatedItemsTotal = 0.0;
+
+  // Birthday person tracking
+  Person? _birthdayPerson;
+  Person? get birthdayPerson => _birthdayPerson;
+  set birthdayPerson(Person? person) {
+    _birthdayPerson = person;
+    notifyListeners();
+  }
 
   BillData() {
     // Add listeners to controllers for real-time calculation updates
