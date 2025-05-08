@@ -414,46 +414,60 @@ Key privacy features:
 
 ## Component Hierarchy
 
-The UI components for the bill splitting flow are organized in a hierarchical structure:
+The UI components are organized in a hierarchical structure that promotes reusability and maintainability. Here's the breakdown of the main screen components:
 
-```mermaid
-graph TD
-    subgraph "Bill Splitting Flow"
-        ParticipantSelection[Participant Selection] --> AddPersonField[Add Person Field]
-        ParticipantSelection --> RecentPeopleSection[Recent People Section]
-        ParticipantSelection --> CurrentParticipantsSection[Current Participants Section]
-        
-        BillEntry[Bill Entry] --> ParticipantAvatars[Participant Avatars]
-        BillEntry --> BillTotalSection[Bill Total Section]
-        BillEntry --> TipOptionsSection[Tip Options Section]
-        BillEntry --> ItemsSection[Items Section]
-        BillEntry --> BillSummarySection[Bill Summary Section]
-        
-        ItemAssignment[Item Assignment] --> UnassignedAmountBanner[Unassigned Amount Banner]
-        ItemAssignment --> AssignmentAppBar[Assignment App Bar]
-        ItemAssignment --> ItemCard[Item Card]
-        ItemAssignment --> AssignmentBottomBar[Assignment Bottom Bar]
-        ItemAssignment --> CustomSplitDialog[Custom Split Dialog]
-        
-        BillSummary[Bill Summary] --> BillTotalCard[Bill Total Card]
-        BillSummary --> PersonCard[Person Card]
-        BillSummary --> BottomBar[Bottom Bar]
-        BillSummary --> ShareOptionsSheet[Share Options Sheet]
-    end
-    
-    classDef screen fill:#FFB6C1,stroke:#333,stroke-width:2px
-    classDef component fill:#98FB98,stroke:#333,stroke-width:2px
-    
-    class ParticipantSelection,BillEntry,ItemAssignment,BillSummary screen
-    class AddPersonField,RecentPeopleSection,CurrentParticipantsSection,ParticipantAvatars,BillTotalSection,TipOptionsSection,ItemsSection,BillSummarySection,UnassignedAmountBanner,AssignmentAppBar,ItemCard,AssignmentBottomBar,CustomSplitDialog,BillTotalCard,PersonCard,BottomBar,ShareOptionsSheet component
-```
+### Bill Splitting Flow
+
+**1. Participant Selection Screen**
+- Add Person Field
+- Recent People Section 
+- Current Participants Section
+- Continue Button
+
+**2. Bill Entry Screen**
+- Participant Avatars (horizontal scroll)
+- Bill Total Section (subtotal, tax inputs)
+- Tip Options Section (percentage/custom)
+- Items Section (editable list)
+- Bill Summary Section
+- Continue Button
+
+**3. Item Assignment Screen**
+- Unassigned Amount Banner (when needed)
+- Assignment App Bar
+- Item Cards (with assignment options)
+  - Equal Split
+  - Person Selection
+  - Custom Split Dialog
+- Assignment Bottom Bar
+
+**4. Bill Summary Screen**
+- Bill Total Card
+- Person Cards (individual shares)
+- Bottom Bar (share/done)
+- Share Options Sheet
+
+### Recent Bills Flow
+
+**1. Recent Bills Screen**
+- Header with Bills Count
+- Recent Bill Cards
+  - Swipe Actions for Deletion
+  - Tap for Details
+- Empty State
+- Loading State
+
+**2. Bill Details Screen**
+- Premium Header (date, total)
+- Bill Summary Card
+- Participants Card
+- Custom Bottom Bar (share)
 
 This pattern:
 - **Promotes Reusability**: Common elements are abstracted into reusable widgets
 - **Maintains Consistency**: Interface elements share common styling and behavior
 - **Simplifies Testing**: Components can be tested in isolation
 - **Enhances Readability**: Clear separation between UI sections
-
 ## Animation Architecture
 
 Checkmate employs a structured approach to animations for enhanced user experience:
