@@ -46,11 +46,11 @@ class Person {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is Person &&
-        name == other.name &&
+        name.toLowerCase() == other.name.toLowerCase() &&
         color.toARGB32() == other.color.toARGB32();
   }
 
   //If you override ==, you must override hashCode
   @override
-  int get hashCode => name.hashCode ^ color.toARGB32().hashCode;
+  int get hashCode => name.toLowerCase().hashCode ^ color.toARGB32().hashCode;
 }
