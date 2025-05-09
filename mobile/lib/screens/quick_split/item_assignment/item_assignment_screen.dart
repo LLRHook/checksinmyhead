@@ -124,8 +124,8 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
     final dialogBgColor =
         brightness == Brightness.dark ? colorScheme.surface : Colors.white;
 
-    final errorIconBgColor = colorScheme.error.withOpacity(
-      brightness == Brightness.dark ? 0.2 : 0.1,
+    final errorIconBgColor = colorScheme.error.withValues(
+      alpha: brightness == Brightness.dark ? 0.2 : 0.1,
     );
 
     // Check if everything is assigned
@@ -345,12 +345,12 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
 
     final shadowColor =
         brightness == Brightness.dark
-            ? Colors.black.withOpacity(0.15)
-            : Colors.black.withOpacity(0.05);
+            ? Colors.black.withValues(alpha: .15)
+            : Colors.black.withValues(alpha: .05);
 
     final labelColor =
         brightness == Brightness.dark
-            ? colorScheme.onSurface.withOpacity(0.7)
+            ? colorScheme.onSurface.withValues(alpha: .7)
             : Colors.grey.shade600;
 
     final valueColor = colorScheme.onSurface;

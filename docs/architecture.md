@@ -95,7 +95,7 @@ The data models form the foundation of the application. Key models include:
 lib/screens/
 ├── landing_screen.dart            # Main entry point
 ├── splash_screen.dart             # Startup screen with animations
-├── settings/                      # App settings module
+├── settings/                      # App settings module & components
 ├── quick_split/                   # Bill splitting flow
 │   ├── participant_selection/     # Adding people to the bill
 │   ├── bill_entry/                # Entering bill details
@@ -494,16 +494,46 @@ This ensures:
 
 ## Settings Flow Architecture
 
-The settings system uses a layered approach for user preferences:
+The settings system has been refactored to use a more modular, layered approach for user preferences:
 
-1. **Settings UI Components**: User-facing interface for configuration
-2. **Settings Manager**: Mediates between UI and storage systems
-3. **Storage (SharedPrefs/SQLite)**: Persists settings locally on device
+1. **UI Layer**: 
+   - **SettingsScreen**: Main interface for configuring app preferences
+   - **PaymentMethodSheet**: Dedicated UI component for payment method configuration
+   - **PaymentMethodItem**: Reusable widget for displaying payment methods in lists
 
-This ensures:
-- **Centralized Settings Logic**: Settings manager acts as a façade for persistence
-- **Consistent Storage**: Both simple preferences and complex data stored appropriately
-- **UI Independence**: Settings UI doesn't need to know storage implementation
+2. **Service Layer**: 
+   - **PreferencesService**: Abstracts all interactions with SharedPreferences
+   - Provides a clean API for settings persistence and retrieval
+   - Acts as a facade that shields UI components from storage implementation details
+
+3. **Utility Layer**:
+   - **ValidationUtils**: Manages input validation logic
+   - **FormattingUtils**: Handles consistent formatting of user data
+   - **AnimationUtils**: Provides consistent animation behaviors
+
+4. **Model Layer**:
+   - **PaymentMethod**: Encapsulates payment method data and business rules
+   - Centralizes validation logic specific to payment methods
+
+5. **Storage Layer**:
+   - **SharedPreferences**: Persists simple settings locally on device
+   - **SQLite/Drift**: Stores more complex structured data (bills, etc.)
+
+This layered approach ensures:
+
+- **Enhanced Modularity**: Each component has a single responsibility
+- **Improved Testability**: Business logic is separated from UI, enabling unit testing
+- **Centralized Settings Logic**: PreferencesService acts as the single source of truth
+- **Consistent Storage Patterns**: Both simple preferences and complex data have well-defined persistence paths
+- **UI Independence**: UI components don't need to know storage implementation details
+- **Premium User Experience**: Validation, formatting, and feedback are consistent throughout the app
+
+The flow of data through these layers follows a clear pattern:
+1. User interacts with UI components
+2. UI components validate inputs using utility classes
+3. Valid data is passed to the service layer
+4. Service layer persists data to the appropriate storage system
+5. UI components retrieve data from service layer to display settings
 
 ## Conclusion
 

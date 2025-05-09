@@ -6,8 +6,5 @@ class AssignmentResult {
   final List<BillItem> items;
   final Person? birthdayPerson;
 
-  const AssignmentResult({
-    required this.items,
-    this.birthdayPerson,
-  });
-} 
+  const AssignmentResult({required this.items, this.birthdayPerson});
+}
