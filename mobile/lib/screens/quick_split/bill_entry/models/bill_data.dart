@@ -160,10 +160,10 @@ class BillData extends ChangeNotifier {
   void updateItems(List<BillItem> newItems) {
     // Clear current items
     items.clear();
-    
+
     // Add all new items with their assignments
     items.addAll(newItems);
-    
+
     // Recalculate totals
     calculateItemsTotal();
     notifyListeners();

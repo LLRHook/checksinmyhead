@@ -82,7 +82,7 @@ class AssignmentProvider extends ChangeNotifier {
         break;
       }
     }
-    
+
     if (hasExistingAssignments) {
       // Use the existing assignments instead of initializing from scratch
       _recalculateFromExistingAssignments();
@@ -122,36 +122,39 @@ class AssignmentProvider extends ChangeNotifier {
   void _recalculateFromExistingAssignments() {
     // Calculate person totals from existing assignments
     Map<Person, double> personItemTotals = {};
-    
+
     for (var person in _data.participants) {
       double total = 0.0;
-      
+
       for (var item in _data.items) {
         if (item.assignments.containsKey(person)) {
           total += item.price * item.assignments[person]! / 100.0;
         }
       }
-      
+
       personItemTotals[person] = total;
     }
-    
+
     // Calculate unassigned amount
-    double assignedAmount = personItemTotals.values.fold(0.0, (sum, amount) => sum + amount);
+    double assignedAmount = personItemTotals.values.fold(
+      0.0,
+      (sum, amount) => sum + amount,
+    );
     double unassignedAmount = _data.subtotal - assignedAmount;
-    
+
     // Calculate tax and tip distribution proportionally
     Map<Person, double> personTaxAndTip = {};
     Map<Person, double> personFinalShares = {};
-    
+
     double totalTaxAndTip = _data.tax + _data.tipAmount;
-    
+
     for (var entry in personItemTotals.entries) {
       if (assignedAmount > 0) {
         // Calculate proportional tax and tip
         double proportion = entry.value / assignedAmount;
         double taxAndTipShare = totalTaxAndTip * proportion;
         personTaxAndTip[entry.key] = taxAndTipShare;
-        
+
         // Final share includes items plus tax and tip
         personFinalShares[entry.key] = entry.value + taxAndTipShare;
       } else {
@@ -159,14 +162,14 @@ class AssignmentProvider extends ChangeNotifier {
         personFinalShares[entry.key] = 0.0;
       }
     }
-    
+
     // Update the data with calculated values
     _data = _data.copyWith(
       personTotals: personItemTotals,
       personFinalShares: personFinalShares,
       unassignedAmount: unassignedAmount,
     );
-    
+
     notifyListeners();
   }
 

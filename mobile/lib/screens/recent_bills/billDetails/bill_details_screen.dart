@@ -22,7 +22,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
-import 'package:checks_frontend/screens/settings/utils/settings_manager.dart';
+import 'package:checks_frontend/screens/settings/services/settings_manager.dart';
 import 'package:checks_frontend/models/person.dart';
 import 'utils/bill_calculations.dart';
 

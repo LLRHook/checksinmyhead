@@ -19,7 +19,7 @@ import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/models/bill_item.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.dart';
 import 'package:checks_frontend/screens/quick_split/bill_summary/utils/share_utils.dart';
-import 'package:checks_frontend/screens/settings/utils/settings_manager.dart';
+import 'package:checks_frontend/screens/settings/services/settings_manager.dart';
 import 'package:flutter/material.dart';
 
 /// RecentBillShareUtils

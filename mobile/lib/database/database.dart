@@ -230,11 +230,12 @@ class AppDatabase extends _$AppDatabase {
 
     // Check for duplicate bills within the last minute
     final oneMinuteAgo = DateTime.now().subtract(const Duration(minutes: 1));
-    final recentBillsResults = await (select(recentBills)
-          ..where((b) => b.createdAt.isBiggerThanValue(oneMinuteAgo))
-          ..where((b) => b.total.equals(total))
-          ..where((b) => b.participants.equals(participantsJson)))
-        .get();
+    final recentBillsResults =
+        await (select(recentBills)
+              ..where((b) => b.createdAt.isBiggerThanValue(oneMinuteAgo))
+              ..where((b) => b.total.equals(total))
+              ..where((b) => b.participants.equals(participantsJson)))
+            .get();
 
     // If a similar bill exists within the last minute, skip saving
     if (recentBillsResults.isNotEmpty) {
