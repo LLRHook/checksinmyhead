@@ -2,71 +2,71 @@
 
 ## Origin Story
 
-Checkmate was born from a real-world problem encountered during a group trip to Utah. Our team of seven friends chose to simplify restaurant experiences by having one person pay the entire bill—reducing confusion for restaurant staff and streamlining the dining experience (until, ironically, our designated payer forgot his card at a restaurant).
+Checkmate started with a real problem we faced during a group trip to Utah. Our group of seven friends decided to simplify restaurant visits by having just one person pay the entire bill—making things easier for restaurant staff and streamlining our dining experience (until, ironically, our designated payer forgot his card at a restaurant).
 
-Throughout the trip, we accumulated numerous receipts that needed reconciliation. We believed that tax and tip should be split proportionally based on what each person ordered, so our "bill master" would diligently calculate everyone's share each evening using Excel. After full days of hiking 20+ miles, managing three meals' worth of receipts became an increasingly tedious task.
+Throughout the trip, we collected a stack of receipts that needed to be sorted out. We all agreed that tax and tip should be split proportionally based on what each person ordered, so our "bill master" would calculate everyone's share each evening using Excel. After full days of hiking 20+ miles, dealing with three meals' worth of receipts became increasingly tedious.
 
-This pain point sparked a realization: we could apply our computer science expertise to solve this common problem. The core mission became clear—eliminate repetitive manual calculations through an elegant algorithmic approach wrapped in an intuitive interface. Before diving into development, we conducted market research to understand existing solutions.
+This frustration sparked an idea: we could use our computer science background to solve this common problem. Our mission became clear—eliminate those repetitive manual calculations with a smart algorithmic approach wrapped in an easy-to-use interface. Before starting development, we looked at what solutions already existed.
 
 ## Competitive Landscape Analysis
 
-Our App Store research revealed two primary competitors in the receipt-splitting space:
+Our App Store research showed two main competitors in the receipt-splitting space:
 
 ### Tab: "The Simple Bill Splitter"
 
 **Core Functionality:**
-- OCR technology for receipt scanning (server-side processing)
-- Item claiming via tap interface
-- Real-time collaboration allowing users to join bills on separate devices
+- OCR technology for scanning receipts (processed on their servers)
+- Simple tap interface for claiming items
+- Real-time collaboration so users can join bills on different devices
 - Proportional tax and tip allocation
 - Special "birthday mode" feature
 
 **Key Limitations:**
-1. **Privacy Concerns:** Collects extensive user data including usage patterns, contact information, device identifiers, and diagnostic data
-2. **Account Requirement:** Saved bills functionality locked behind mandatory user accounts
-3. **Limited OCR Flexibility:** No ability to edit items if OCR misinterprets the receipt
-4. **Dated User Experience:** Interface feels cluttered and lacks modern design principles
+1. **Privacy Issues:** Collects lots of user data including usage patterns, contact information, device IDs, and diagnostic data
+2. **Forced Accounts:** You can't save bills without creating an account
+3. **Inflexible OCR:** No way to edit items if the scanner misreads the receipt
+4. **Outdated Experience:** Interface feels cluttered and doesn't follow modern design principles
 
 ### Plates by Splitwise
 
 **Core Functionality:**
-- Color-coded plate system for up to 10 participants
+- Color-coded plate system for up to 10 people
 - Item assignment with custom ratio splitting options
 - Tax entry and tip selection via slider (0-30%)
-- Final cost calculation per participant
+- Final cost calculation for each person
 
 **Key Limitations:**
-1. **Usability Issues:** Color-coded system becomes confusing with larger groups
-2. **Arbitrary Limitations:** 10-person maximum seems unnecessarily restrictive
-3. **Inflexible Tipping:** No custom tip amount option beyond percentage slider
-4. **Unintuitive Item Splitting:** "Break and drag" operation creates confusion
-5. **No Historical Record:** Lacks bill history and sharing capabilities
-6. **No Longer Supported:** Last update 2 years ago to support iPhone X
+1. **Usability Problems:** The color-coded system gets confusing with larger groups
+2. **Arbitrary Limits:** 10-person maximum seems unnecessary
+3. **Restrictive Tipping:** No option for custom tip amounts beyond the percentage slider
+4. **Confusing Item Splitting:** The "break and drag" operation isn't intuitive
+5. **No History:** Doesn't save past bills or offer sharing options
+6. **Abandoned App:** Last updated 2 years ago just to support iPhone X
 
 ## Market Opportunity
 
-Through analyzing these competitors, we identified several opportunities for Checkmate to excel:
+By analyzing these competitors, we saw several opportunities for Checkmate to do better:
 
 **Privacy-First Approach:**
-- Eliminate unnecessary data collection
-- Function without cloud storage or user accounts
-- Provide full utility with zero privacy compromises
+- Skip unnecessary data collection
+- Work without cloud storage or user accounts
+- Provide full functionality with zero privacy compromises
 
-**Enhanced User Experience:**
-- Create a modern, intuitive interface with visual feedback and microinteractions
-- Implement flexible naming instead of color-coding
-- Remove arbitrary limitations on group size
+**Better User Experience:**
+- Create a modern, intuitive interface with visual feedback
+- Use flexible naming instead of confusing color-codes
+- Remove arbitrary limits on group size
 
 **Technical Improvements:**
-- Offer manual override options for item entry
+- Offer manual override options when entering items
 - Create intuitive splitting mechanisms
-- Provide flexible tip and tax handling options
+- Provide flexible tip and tax handling
 - Store recent bills locally for reference
 
 **Quality-of-Life Features:**
 - Easy sharing of final calculations
-- Remembering frequent dining companions
-- Clean visualization of who ordered what
-- Support for special scenarios (birthdays, business meals, etc.)
+- Remember frequent dining companions
+- Clearly show who ordered what
+- Support special scenarios (birthdays, business meals, etc.)
 
-Checkmate's vision emerged from this analysis: create a privacy-focused, intuitive receipt-splitting utility that addresses the shortcomings of existing solutions while introducing thoughtful innovations that enhance the user experience.
+Checkmate's vision came from this analysis: create a privacy-focused, intuitive receipt-splitting tool that fixes the problems with existing solutions while introducing thoughtful innovations that make the experience better for everyone.
