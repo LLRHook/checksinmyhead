@@ -12,17 +12,17 @@
 
 ## Project Overview
 
-Checkmate is a Flutter-based iOS application designed for seamless receipt splitting without compromising user privacy. The core value proposition is built around **zero data collection** - distinguishing it from competitors that collect and store user data in the cloud.
+Checkmate is a Flutter-based iOS application designed for seamless receipt splitting without compromising user privacy. Our core value proposition is built around **zero data collection** - setting us apart from competitors that collect and store user data in the cloud.
 
 ### Key Features
 
 - **Zero Data Collection**: No user data stored on any cloud service
-- **No Permissions Required**: Functions without accessing contacts or personal data
+- **No Permissions Required**: Works without accessing contacts or personal data
 - **Intuitive UI**: Beautiful, seamless user experience
 - **Flexible Splitting**: Supports custom split ratios (20/20/60, 10/10/10/70, etc.)
 - **Local Storage**: Securely saves the last 30 bills on-device using SQLite
 - **Customizable Receipts**: Configurable text receipts that can be shared instantly
-- **Last Dined With Users**: Stored and showed the last 12 dined with names, on the selection screen for QoL
+- **Last Dined With**: Remembers the last 12 people you've dined with for quick selection
 
 ### User Flow
 
@@ -31,10 +31,7 @@ Checkmate is a Flutter-based iOS application designed for seamless receipt split
 3. **Item Assignment**: Assign items to participants
 4. **Split Configuration**: Apply custom split ratios as needed
 5. **Summary & Sharing**: View bill breakdown and share via messaging platforms
-6. **History**: Access past bills stored locally on the device
-
-#### What does the output look like?
-
+6. **History**: Access past bills stored locally on your device
 
 ## Technical Architecture
 
@@ -103,7 +100,7 @@ To set up the development environment and run the project locally:
 
 - OCR Integration: Add receipt scanning via Google Vision API
 - Enhanced Splitting Logic: Support more complex division scenarios
-- Addition of Dining Groups: Allow a group to be saved, if dined with frequently
+- Dining Groups: Save frequently used groups of people for quick selection
 - UI Refinements: Ongoing improvements to user experience
 - Android Release: Expansion to additional platforms
 
