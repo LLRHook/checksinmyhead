@@ -375,11 +375,9 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
                 onTap: () {
                   // Add haptic feedback for better tactile response
                   HapticFeedback.selectionClick();
-
-                  // Small delay to let the ripple animation show before navigating
-                  Future.delayed(const Duration(milliseconds: 50), () {
+                  if (mounted) {
                     Navigator.pop(context);
-                  });
+                  }
                 },
                 child: Container(
                   padding: const EdgeInsets.all(8),

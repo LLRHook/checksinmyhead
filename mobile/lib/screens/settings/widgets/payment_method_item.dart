@@ -90,7 +90,7 @@ class PaymentMethodItem extends StatelessWidget {
         title: Text(methodName, style: const TextStyle(color: Colors.white)),
         subtitle: Text(
           identifier,
-          style: TextStyle(color: Colors.white.withOpacity(0.7)),
+          style: TextStyle(color: Colors.white.withValues(alpha: .7)),
         ),
         trailing: IconButton(
           icon: const Icon(Icons.more_horiz, color: Colors.white70, size: 20),
