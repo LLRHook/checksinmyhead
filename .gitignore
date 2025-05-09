@@ -57,3 +57,4 @@ htmlcov/
 .pub-cache/
 .pub/
 build/ 
+**/.claude/settings.local.json
