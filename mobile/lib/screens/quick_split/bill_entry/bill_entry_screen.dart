@@ -16,6 +16,7 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import 'package:checks_frontend/screens/quick_split/item_assignment/item_assignment_screen.dart';
+import 'package:checks_frontend/screens/quick_split/item_assignment/models/assignment_result.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -24,7 +25,6 @@ import '/models/bill_item.dart';
 
 // Models
 import 'models/bill_data.dart';
-import '../item_assignment/models/assignment_result.dart';
 
 // Widgets
 import 'widgets/participant_avatars.dart';
@@ -198,12 +198,17 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
   /// assigning items to participants.
   void _navigateToItemAssignment() async {
     // Create a deep copy of the original items with their assignments
-    final originalItems = _billData.items.map((item) => BillItem(
-      name: item.name,
-      price: item.price,
-      assignments: Map.from(item.assignments),
-    )).toList();
-    
+    final originalItems =
+        _billData.items
+            .map(
+              (item) => BillItem(
+                name: item.name,
+                price: item.price,
+                assignments: Map.from(item.assignments),
+              ),
+            )
+            .toList();
+
     // Navigate to item assignment screen
     final result = await Navigator.of(context).push(
       MaterialPageRoute(
@@ -221,14 +226,14 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
             ),
       ),
     );
-    
+
     // If result was returned with assignments, update items and birthday person
     if (result != null && result is AssignmentResult) {
       // Clear existing items
       while (_billData.items.isNotEmpty) {
         _billData.removeItem(0);
       }
-      
+
       // Add returned items back with deep copy of assignments
       for (final item in result.items) {
         _billData.addItem(item.name, item.price);

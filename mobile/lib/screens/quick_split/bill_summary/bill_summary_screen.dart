@@ -15,7 +15,7 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import 'package:checks_frontend/screens/settings/utils/settings_manager.dart';
+import 'package:checks_frontend/screens/settings/services/settings_manager.dart';
 import 'package:flutter/material.dart';
 import '/models/person.dart';
 import '/models/bill_item.dart';
