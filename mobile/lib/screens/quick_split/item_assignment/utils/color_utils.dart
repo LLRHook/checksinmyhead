@@ -67,15 +67,14 @@ class ColorUtils {
   ///   - 1.0 = Fully white
   ///
   /// Returns a new Color instance with lightened RGB values
-  static Color getLightenedColor(Color color, double factor) {
-    return Color.fromARGB(
-      color.alpha,
-      (color.red + (255 - color.red) * factor).round(),
-      (color.green + (255 - color.green) * factor).round(),
-      (color.blue + (255 - color.blue) * factor).round(),
-    );
-  }
-
+static Color getLightenedColor(Color color, double factor) {
+  return Color.fromARGB(
+    (color.a * 255.0).round(),
+    ((color.r * 255.0) + (255 - (color.r * 255.0)) * factor).round(),
+    ((color.g * 255.0) + (255 - (color.g * 255.0)) * factor).round(),
+    ((color.b * 255.0) + (255 - (color.b * 255.0)) * factor).round(),
+  );
+}
   /// Darkens a color by a specified factor
   ///
   /// This method decreases the brightness of a color by moving each RGB channel
@@ -90,10 +89,10 @@ class ColorUtils {
   /// Returns a new Color instance with darkened RGB values
   static Color getDarkenedColor(Color color, double factor) {
     return Color.fromARGB(
-      color.alpha,
-      (color.red * (1 - factor)).round(),
-      (color.green * (1 - factor)).round(),
-      (color.blue * (1 - factor)).round(),
+      (color.a * 255.0).round() & 0xff,
+      (((color.r * 255.0).round() & 0xff) * (1 - factor)).round(),
+      (((color.g * 255.0).round() & 0xff) * (1 - factor)).round(),
+      (((color.b * 255.0).round() & 0xff) * (1 - factor)).round(),
     );
   }
 
@@ -109,9 +108,9 @@ class ColorUtils {
   ///
   /// Returns true if the perceived brightness exceeds 70% (0.7)
   static bool isColorTooLight(Color color) {
-    return (0.299 * color.red + 0.587 * color.green + 0.114 * color.blue) /
-            255 >
-        0.7;
+    return (0.299 * ((color.r * 255.0).round() & 0xff) + 
+            0.587 * ((color.g * 255.0).round() & 0xff) + 
+            0.114 * ((color.b * 255.0).round() & 0xff)) / 255 > 0.7;
   }
 
   /// Provides a contrasting text color for optimal readability
@@ -167,7 +166,8 @@ class ColorUtils {
   ///
   /// Returns true if the color is likely in the purple family
   static bool isPurplish(Color baseColor) {
-    return baseColor.red > baseColor.green && baseColor.blue > baseColor.green;
+    return ((baseColor.r * 255.0).round() & 0xff) > ((baseColor.g * 255.0).round() & 0xff) && 
+           ((baseColor.b * 255.0).round() & 0xff) > ((baseColor.g * 255.0).round() & 0xff);
   }
 
   /// Determines an appropriate color for a participant's avatar
@@ -206,9 +206,9 @@ class ColorUtils {
       // Calculate approximate luminance using RGB components
       // This simplified formula gives a value between 0-1 indicating brightness
       final luminance =
-          (0.299 * baseColor.red +
-              0.587 * baseColor.green +
-              0.114 * baseColor.blue) /
+          (0.299 * ((baseColor.r * 255.0).round() & 0xff) +
+              0.587 * ((baseColor.g * 255.0).round() & 0xff) +
+              0.114 * ((baseColor.b * 255.0).round() & 0xff)) /
           255;
 
       // If color is too dark (luminance < 0.5), lighten it
@@ -232,12 +232,10 @@ class ColorUtils {
   /// Returns a new color that is lighter than the original
   static Color _lightenColor(Color color, double amount) {
     return Color.fromARGB(
-      color.alpha,
-      (color.red + (255 - color.red) * amount).round(), // Move red towards 255
-      (color.green + (255 - color.green) * amount)
-          .round(), // Move green towards 255
-      (color.blue + (255 - color.blue) * amount)
-          .round(), // Move blue towards 255
+      (color.a * 255.0).round() & 0xff,
+      (((color.r * 255.0).round() & 0xff) + (255 - ((color.r * 255.0).round() & 0xff)) * amount).round(), // Move red towards 255
+      (((color.g * 255.0).round() & 0xff) + (255 - ((color.g * 255.0).round() & 0xff)) * amount).round(), // Move green towards 255
+      (((color.b * 255.0).round() & 0xff) + (255 - ((color.b * 255.0).round() & 0xff)) * amount).round(), // Move blue towards 255
     );
   }
 
@@ -275,6 +273,8 @@ class ColorUtils {
   static double _luminance(Color color) {
     // Standard formula for relative luminance
     // Red contributes 30%, green 59%, blue 11% to perceived brightness
-    return (0.299 * color.red + 0.587 * color.green + 0.114 * color.blue) / 255;
+    return (0.299 * ((color.r * 255.0).round() & 0xff) + 
+            0.587 * ((color.g * 255.0).round() & 0xff) + 
+            0.114 * ((color.b * 255.0).round() & 0xff)) / 255;
   }
 }
