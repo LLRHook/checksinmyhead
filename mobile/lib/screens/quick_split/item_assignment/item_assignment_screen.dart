@@ -337,15 +337,14 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
             ? (assignedAmount / widget.subtotal * 100).clamp(0.0, 100.0)
             : 0.0;
 
-    // Theme-aware colors
+    // Theme-aware colors - using transparent background in dark mode for seamless look
     final panelBgColor =
-        brightness == Brightness.dark
-            ? colorScheme.surfaceContainerHighest
-            : Colors.white;
+        brightness == Brightness.dark ? Colors.transparent : Colors.white;
 
     final shadowColor =
         brightness == Brightness.dark
-            ? Colors.black.withValues(alpha: .15)
+            ? Colors
+                .transparent // No shadow in dark mode for seamless look
             : Colors.black.withValues(alpha: .05);
 
     final labelColor =
@@ -364,7 +363,7 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
 
     final trackBgColor =
         brightness == Brightness.dark
-            ? Colors.grey.shade800
+            ? Colors.grey.shade900.withOpacity(0.4) // Subtle track in dark mode
             : Colors.grey.shade200;
 
     return Container(
