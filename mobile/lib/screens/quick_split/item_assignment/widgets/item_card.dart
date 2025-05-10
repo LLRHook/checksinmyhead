@@ -950,11 +950,12 @@ class _ItemCardState extends State<ItemCard>
             : widget.assignedPeople;
 
     // Calculate a fixed width for the container based on number of avatars
+    // Add extra padding to ensure borders aren't cut off in dark mode
     final containerWidth =
         widget.assignedPeople.length > 3
             ? 4 * 12.0 +
-                10.0 // 4 avatars at 12px spacing plus some buffer
-            : displayPeople.length * 12.0 + 10.0;
+                16.0 // 4 avatars at 12px spacing plus buffer for borders
+            : displayPeople.length * 12.0 + 16.0;
 
     // Theme-aware colors for avatar styling
     final brightness = Theme.of(context).brightness;
@@ -982,7 +983,8 @@ class _ItemCardState extends State<ItemCard>
           // Generate overlapping avatars for each person to display
           for (int i = 0; i < displayPeople.length; i++)
             Positioned(
-              right: i * 12.0, // Overlap avatars by positioning them
+              // Add extra padding on right to ensure borders don't get cut off
+              right: i * 12.0 + 3.0,
               child: Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
@@ -1015,7 +1017,8 @@ class _ItemCardState extends State<ItemCard>
           // If there are more than 3 people, show +N indicator
           if (widget.assignedPeople.length > 3)
             Positioned(
-              right: 3 * 12.0, // Position after the third avatar
+              // Add extra padding on right to ensure borders don't get cut off
+              right: 3 * 12.0 + 3.0,
               child: Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
