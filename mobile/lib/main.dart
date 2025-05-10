@@ -61,6 +61,7 @@ class MyApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system, // Follow system light/dark preference
+      debugShowCheckedModeBanner: false,
       // Initial screen is always the splash screen
       home: const SplashScreen(),
 

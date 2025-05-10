@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-  <path fill="#627D98" d="M40,8H8c-2.2,0-4,1.8-4,4v24c0,2.2,1.8,4,4,4h32c2.2,0,4-1.8,4-4V12C44,9.8,42.2,8,40,8z"/>
-  <path fill="#FFFFFF" d="M36,12H12v4h24V12z M36,20H12v4h24V20z M30,28H12v4h18V28z"/>
-  <circle fill="#4C5B6B" cx="38" cy="34" r="10"/>
-  <path fill="#FFFFFF" d="M36.5,30h3v8h-3V30z M32,33.5v3h8v-3H32z"/>
-</svg>

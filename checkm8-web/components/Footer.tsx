@@ -53,7 +53,6 @@ export default function Footer() {
     {
       title: "Checkmate",
       links: [
-        { text: "About Us", href: "#" },
         { text: "Features", href: "#features" },
         { text: "Privacy", href: "#privacy" },
         { text: "How It Works", href: "#how-it-works" }
@@ -62,15 +61,14 @@ export default function Footer() {
     {
       title: "Resources",
       links: [
-        { text: "Documentation", href: "https://github.com/LLRHook/checksinmyhead" },
-        { text: "GitHub", href: "https://github.com/LLRHook/checksinmyhead" },
+        { text: "Documentation", href: "https://github.com/LLRHook/checksinmyhead/tree/main/docs" },
         { text: "Bug Reports", href: "https://github.com/LLRHook/checksinmyhead/issues" }
       ]
     },
     {
       title: "Legal",
       links: [
-        { text: "License", href: "/LICENSE" }
+        { text: "License", href: "https://github.com/LLRHook/checksinmyhead/blob/main/LICENSE" }
       ]
     }
   ];
@@ -86,7 +84,7 @@ export default function Footer() {
             </Link>
             
             <p className="text-[var(--text-secondary)] mb-6 max-w-md">
-              Checkmate is a privacy-first bill-splitting app. All your data stays on your device, with no accounts required.
+              Checkmate is an open source, privacy-first bill-splitting app. All your data stays on your device, with no accounts required.
             </p>
             
             <div className="flex space-x-5 mb-10">
