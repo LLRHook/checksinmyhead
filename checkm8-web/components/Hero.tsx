@@ -29,7 +29,7 @@ export default function Hero() {
                 isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
               }`}
             >
-              Checkmate is a privacy-first bill-splitting app. No accounts, no cloud storage, just a simple way to divide expenses with friends.
+              Checkmate is an open source, privacy-first bill-splitting app. No accounts, no cloud storage, just a simple way to divide expenses with friends.
             </p>
             
             <div 
@@ -78,12 +78,12 @@ export default function Hero() {
               <div className="phone-mockup transform rotate-3 relative z-20">
                 <div className="phone-screen">
                   <Image
-                    src="/screenshot.png"
+                    src="/opening.gif"
                     alt="Checkmate App"
-                    width={300}
-                    height={600}
+                    width={290}
+                    height={615}
                     priority
-                    className="object-cover h-full w-full"
+                    className="object-contain h-full w-full gif-smooth"
                   />
                 </div>
               </div>
