@@ -234,10 +234,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 // Payment methods section - card with either add button or list of methods
                 Container(
                   decoration: BoxDecoration(
-                    color:
-                        isDark
-                            ? colorScheme.surfaceContainerHighest
-                            : Colors.white.withValues(alpha: .15),
+                    color: Colors.white.withValues(alpha: .15),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Column(
@@ -378,10 +375,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 // Privacy information section with expandable details
                 Container(
                   decoration: BoxDecoration(
-                    color:
-                        isDark
-                            ? colorScheme.surfaceContainerHighest
-                            : Colors.white.withValues(alpha: .15),
+                    color: Colors.white.withValues(alpha: .15),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Theme(
@@ -434,10 +428,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (!widget.isOnboarding)
                   Container(
                     decoration: BoxDecoration(
-                      color:
-                          isDark
-                              ? colorScheme.surfaceContainerHighest
-                              : Colors.white.withValues(alpha: .15),
+                      color: Colors.white.withValues(alpha: .15),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Column(
@@ -466,7 +457,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             // Try email app, fallback to clipboard copy
                             canLaunchUrl(emailUri).then((canLaunch) {
                               if (canLaunch) {
-                                launchUrl(emailUri);
+                                launchUrl(
+                                  emailUri,
+                                  mode: LaunchMode.platformDefault,
+                                  webOnlyWindowName: '_blank',
+                                );
                               } else {
                                 Clipboard.setData(
                                   const ClipboardData(

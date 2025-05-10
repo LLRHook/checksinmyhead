@@ -88,7 +88,20 @@ class AppDatabase extends _$AppDatabase {
 
   // Converts database person entry to Person model
   Person peopleDataToPerson(PeopleData entry) {
-    return Person(name: entry.name, color: Color(entry.colorValue));
+    // Properly capitalize each word in the name for display purposes
+    String displayName =
+        entry.name.isNotEmpty
+            ? entry.name
+                .split(' ')
+                .map(
+                  (word) =>
+                      word.isNotEmpty
+                          ? word[0].toUpperCase() + word.substring(1)
+                          : word,
+                )
+                .join(' ')
+            : entry.name;
+    return Person(name: displayName, color: Color(entry.colorValue));
   }
 
   // Fetches recently used people
@@ -103,8 +116,10 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> addPersonToRecent(Person person) async {
-    final query = select(people)
-      ..where((p) => p.name.equals(person.name.toLowerCase()));
+    // Always use lowercase for name storage and comparison to prevent duplicates
+    final lowercaseName = person.name.toLowerCase();
+
+    final query = select(people)..where((p) => p.name.equals(lowercaseName));
 
     final existing = await query.getSingleOrNull();
 
@@ -130,7 +145,7 @@ class AppDatabase extends _$AppDatabase {
 
       await into(people).insert(
         PeopleCompanion(
-          name: Value(person.name),
+          name: Value(lowercaseName),
           colorValue: Value(person.color.toARGB32()),
           lastUsed: Value(DateTime.now()),
         ),

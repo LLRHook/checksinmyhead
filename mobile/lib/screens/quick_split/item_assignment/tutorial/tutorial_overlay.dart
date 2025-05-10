@@ -376,9 +376,6 @@ class _TutorialOverlayState extends State<TutorialOverlay>
     final iconBgColor = colorScheme.primary.withValues(
       alpha: brightness == Brightness.dark ? 0.2 : 0.1,
     );
-    final iconShadowColor = colorScheme.primary.withValues(
-      alpha: brightness == Brightness.dark ? 0.2 : 0.1,
-    );
 
     return SingleChildScrollView(
       child: Column(
@@ -392,13 +389,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
                 decoration: BoxDecoration(
                   color: iconBgColor,
                   shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: iconShadowColor,
-                      blurRadius: 10,
-                      spreadRadius: 2,
-                    ),
-                  ],
+                  boxShadow: [],
                 ),
                 child: Icon(step.icon, color: colorScheme.primary, size: 28),
               ),

@@ -120,20 +120,26 @@ class _SplashScreenState extends State<SplashScreen>
 
     // After 900ms, trigger exit animations
     Timer(const Duration(milliseconds: 900), () {
-      setState(() {
-        _startExitAnimation = true;
-      });
+      // Check if widget is still mounted before calling setState
+      if (mounted) {
+        setState(() {
+          _startExitAnimation = true;
+        });
 
-      // After exit animation starts, wait 400ms before navigating
-      Timer(const Duration(milliseconds: 400), () {
-        if (isFirstLaunch) {
-          // First launch - go to settings/onboarding
-          Navigator.of(context).pushReplacementNamed('/settings');
-        } else {
-          // Returning user - go directly to main landing screen
-          Navigator.of(context).pushReplacementNamed('/landing');
-        }
-      });
+        // After exit animation starts, wait 400ms before navigating
+        Timer(const Duration(milliseconds: 400), () {
+          // Check again if widget is still mounted before navigating
+          if (mounted) {
+            if (isFirstLaunch) {
+              // First launch - go to settings/onboarding
+              Navigator.of(context).pushReplacementNamed('/settings');
+            } else {
+              // Returning user - go directly to main landing screen
+              Navigator.of(context).pushReplacementNamed('/landing');
+            }
+          }
+        });
+      }
     });
   }
 
