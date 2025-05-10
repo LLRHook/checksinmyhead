@@ -152,22 +152,13 @@ export default function Download() {
               <div className="phone-mockup transform rotate-6 relative z-20">
                 <div className="phone-screen">
                   <Image
-                    src="/screenshot.png"
-                    alt="Checkmate App"
-                    width={300}
-                    height={600}
-                    className="object-cover h-full w-full"
+                    src="/setup.png"
+                    alt="Checkmate App Setup"
+                    width={290}
+                    height={615}
+                    className="object-contain h-full w-full gif-smooth"
                     priority
                   />
-                </div>
-                
-                {/* Decorative elements */}
-                <div className="absolute -top-6 -right-6 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg">
-                  <i className="fas fa-receipt text-[var(--primary)] text-xl"></i>
-                </div>
-                
-                <div className="absolute -bottom-6 -left-6 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg">
-                  <i className="fas fa-shield-alt text-[var(--primary)] text-xl"></i>
                 </div>
               </div>
             </div>

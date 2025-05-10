@@ -20,7 +20,7 @@ import 'package:flutter/material.dart';
 /// Defines the app's theme configuration for both light and dark modes
 class AppTheme {
   // Core color palette
-  static const Color _primaryColor = Color(0xFF627D98);
+  static const Color _primaryColor = Color.fromARGB(255, 87, 135, 183);
   static const Color _secondaryColor = Color(0xFFD9B38C);
   static const Color _accentColor = Color(0xFF4C5B6B);
   static const Color _errorColor = Color(0xFFDC4C4C);

@@ -143,8 +143,8 @@ body {
 /* Device mockup */
 .phone-mockup {
   @apply relative;
-  width: 300px;
-  height: 600px;
+  width: 290px;
+  height: 615px;
   border-radius: 40px;
   background: #1D1D1F;
   box-shadow: 0 50px 100px rgba(0, 0, 0, 0.25);
@@ -155,7 +155,19 @@ body {
 .phone-screen {
   @apply absolute top-0 left-0 w-full h-full overflow-hidden;
   border-radius: 32px;
+  padding: 0;
+  margin: 0;
 }
+
+.gif-smooth {
+  image-rendering: -webkit-optimize-contrast;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  will-change: transform;
+}
+
+/* No additional animations */
 
 /* Gradient backgrounds */
 .gradient-bg {

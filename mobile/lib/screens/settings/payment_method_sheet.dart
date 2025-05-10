@@ -74,11 +74,16 @@ class _PaymentMethodSheetState extends State<PaymentMethodSheet>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Title section
-            const Padding(
-              padding: EdgeInsets.only(bottom: 16),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
               child: Text(
-                'Set Up Payment Methods',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                widget.isOnboarding
+                    ? 'Let\'s Get Set Up!'
+                    : 'Set Up Payment Methods',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
 
@@ -87,7 +92,7 @@ class _PaymentMethodSheetState extends State<PaymentMethodSheet>
                 ? const Padding(
                   padding: EdgeInsets.only(bottom: 16),
                   child: Text(
-                    'Add your payment info to help friends send you money when splitting bills.',
+                    'Choose how you want to receive money.',
                     style: TextStyle(fontSize: 14),
                   ),
                 )

@@ -67,14 +67,15 @@ class ColorUtils {
   ///   - 1.0 = Fully white
   ///
   /// Returns a new Color instance with lightened RGB values
-static Color getLightenedColor(Color color, double factor) {
-  return Color.fromARGB(
-    (color.a * 255.0).round(),
-    ((color.r * 255.0) + (255 - (color.r * 255.0)) * factor).round(),
-    ((color.g * 255.0) + (255 - (color.g * 255.0)) * factor).round(),
-    ((color.b * 255.0) + (255 - (color.b * 255.0)) * factor).round(),
-  );
-}
+  static Color getLightenedColor(Color color, double factor) {
+    return Color.fromARGB(
+      (color.a * 255.0).round(),
+      ((color.r * 255.0) + (255 - (color.r * 255.0)) * factor).round(),
+      ((color.g * 255.0) + (255 - (color.g * 255.0)) * factor).round(),
+      ((color.b * 255.0) + (255 - (color.b * 255.0)) * factor).round(),
+    );
+  }
+
   /// Darkens a color by a specified factor
   ///
   /// This method decreases the brightness of a color by moving each RGB channel
@@ -108,9 +109,11 @@ static Color getLightenedColor(Color color, double factor) {
   ///
   /// Returns true if the perceived brightness exceeds 70% (0.7)
   static bool isColorTooLight(Color color) {
-    return (0.299 * ((color.r * 255.0).round() & 0xff) + 
-            0.587 * ((color.g * 255.0).round() & 0xff) + 
-            0.114 * ((color.b * 255.0).round() & 0xff)) / 255 > 0.7;
+    return (0.299 * ((color.r * 255.0).round() & 0xff) +
+                0.587 * ((color.g * 255.0).round() & 0xff) +
+                0.114 * ((color.b * 255.0).round() & 0xff)) /
+            255 >
+        0.7;
   }
 
   /// Provides a contrasting text color for optimal readability
@@ -166,8 +169,10 @@ static Color getLightenedColor(Color color, double factor) {
   ///
   /// Returns true if the color is likely in the purple family
   static bool isPurplish(Color baseColor) {
-    return ((baseColor.r * 255.0).round() & 0xff) > ((baseColor.g * 255.0).round() & 0xff) && 
-           ((baseColor.b * 255.0).round() & 0xff) > ((baseColor.g * 255.0).round() & 0xff);
+    return ((baseColor.r * 255.0).round() & 0xff) >
+            ((baseColor.g * 255.0).round() & 0xff) &&
+        ((baseColor.b * 255.0).round() & 0xff) >
+            ((baseColor.g * 255.0).round() & 0xff);
   }
 
   /// Determines an appropriate color for a participant's avatar
@@ -233,9 +238,15 @@ static Color getLightenedColor(Color color, double factor) {
   static Color _lightenColor(Color color, double amount) {
     return Color.fromARGB(
       (color.a * 255.0).round() & 0xff,
-      (((color.r * 255.0).round() & 0xff) + (255 - ((color.r * 255.0).round() & 0xff)) * amount).round(), // Move red towards 255
-      (((color.g * 255.0).round() & 0xff) + (255 - ((color.g * 255.0).round() & 0xff)) * amount).round(), // Move green towards 255
-      (((color.b * 255.0).round() & 0xff) + (255 - ((color.b * 255.0).round() & 0xff)) * amount).round(), // Move blue towards 255
+      (((color.r * 255.0).round() & 0xff) +
+              (255 - ((color.r * 255.0).round() & 0xff)) * amount)
+          .round(), // Move red towards 255
+      (((color.g * 255.0).round() & 0xff) +
+              (255 - ((color.g * 255.0).round() & 0xff)) * amount)
+          .round(), // Move green towards 255
+      (((color.b * 255.0).round() & 0xff) +
+              (255 - ((color.b * 255.0).round() & 0xff)) * amount)
+          .round(), // Move blue towards 255
     );
   }
 
@@ -273,8 +284,9 @@ static Color getLightenedColor(Color color, double factor) {
   static double _luminance(Color color) {
     // Standard formula for relative luminance
     // Red contributes 30%, green 59%, blue 11% to perceived brightness
-    return (0.299 * ((color.r * 255.0).round() & 0xff) + 
-            0.587 * ((color.g * 255.0).round() & 0xff) + 
-            0.114 * ((color.b * 255.0).round() & 0xff)) / 255;
+    return (0.299 * ((color.r * 255.0).round() & 0xff) +
+            0.587 * ((color.g * 255.0).round() & 0xff) +
+            0.114 * ((color.b * 255.0).round() & 0xff)) /
+        255;
   }
 }
