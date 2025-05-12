@@ -1052,6 +1052,18 @@ class $RecentBillsTable extends RecentBills
       'PRIMARY KEY AUTOINCREMENT',
     ),
   );
+  static const VerificationMeta _billNameMeta = const VerificationMeta(
+    'billName',
+  );
+  @override
+  late final GeneratedColumn<String> billName = GeneratedColumn<String>(
+    'bill_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   static const VerificationMeta _participantsMeta = const VerificationMeta(
     'participants',
   );
@@ -1170,6 +1182,7 @@ class $RecentBillsTable extends RecentBills
   @override
   List<GeneratedColumn> get $columns => [
     id,
+    billName,
     participants,
     participantCount,
     total,
@@ -1196,6 +1209,12 @@ class $RecentBillsTable extends RecentBills
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('bill_name')) {
+      context.handle(
+        _billNameMeta,
+        billName.isAcceptableOrUnknown(data['bill_name']!, _billNameMeta),
+      );
     }
     if (data.containsKey('participants')) {
       context.handle(
@@ -1300,6 +1319,11 @@ class $RecentBillsTable extends RecentBills
             DriftSqlType.int,
             data['${effectivePrefix}id'],
           )!,
+      billName:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}bill_name'],
+          )!,
       participants:
           attachedDatabase.typeMapping.read(
             DriftSqlType.string,
@@ -1364,6 +1388,7 @@ class $RecentBillsTable extends RecentBills
 
 class RecentBill extends DataClass implements Insertable<RecentBill> {
   final int id;
+  final String billName;
   final String participants;
   final int participantCount;
   final double total;
@@ -1377,6 +1402,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
   final DateTime createdAt;
   const RecentBill({
     required this.id,
+    required this.billName,
     required this.participants,
     required this.participantCount,
     required this.total,
@@ -1393,6 +1419,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
+    map['bill_name'] = Variable<String>(billName);
     map['participants'] = Variable<String>(participants);
     map['participant_count'] = Variable<int>(participantCount);
     map['total'] = Variable<double>(total);
@@ -1414,6 +1441,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
   RecentBillsCompanion toCompanion(bool nullToAbsent) {
     return RecentBillsCompanion(
       id: Value(id),
+      billName: Value(billName),
       participants: Value(participants),
       participantCount: Value(participantCount),
       total: Value(total),
@@ -1439,6 +1467,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return RecentBill(
       id: serializer.fromJson<int>(json['id']),
+      billName: serializer.fromJson<String>(json['billName']),
       participants: serializer.fromJson<String>(json['participants']),
       participantCount: serializer.fromJson<int>(json['participantCount']),
       total: serializer.fromJson<double>(json['total']),
@@ -1457,6 +1486,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
+      'billName': serializer.toJson<String>(billName),
       'participants': serializer.toJson<String>(participants),
       'participantCount': serializer.toJson<int>(participantCount),
       'total': serializer.toJson<double>(total),
@@ -1473,6 +1503,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
 
   RecentBill copyWith({
     int? id,
+    String? billName,
     String? participants,
     int? participantCount,
     double? total,
@@ -1486,6 +1517,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
     DateTime? createdAt,
   }) => RecentBill(
     id: id ?? this.id,
+    billName: billName ?? this.billName,
     participants: participants ?? this.participants,
     participantCount: participantCount ?? this.participantCount,
     total: total ?? this.total,
@@ -1502,6 +1534,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
   RecentBill copyWithCompanion(RecentBillsCompanion data) {
     return RecentBill(
       id: data.id.present ? data.id.value : this.id,
+      billName: data.billName.present ? data.billName.value : this.billName,
       participants:
           data.participants.present
               ? data.participants.value
@@ -1530,6 +1563,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
   String toString() {
     return (StringBuffer('RecentBill(')
           ..write('id: $id, ')
+          ..write('billName: $billName, ')
           ..write('participants: $participants, ')
           ..write('participantCount: $participantCount, ')
           ..write('total: $total, ')
@@ -1548,6 +1582,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
   @override
   int get hashCode => Object.hash(
     id,
+    billName,
     participants,
     participantCount,
     total,
@@ -1565,6 +1600,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
       identical(this, other) ||
       (other is RecentBill &&
           other.id == this.id &&
+          other.billName == this.billName &&
           other.participants == this.participants &&
           other.participantCount == this.participantCount &&
           other.total == this.total &&
@@ -1580,6 +1616,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
 
 class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
   final Value<int> id;
+  final Value<String> billName;
   final Value<String> participants;
   final Value<int> participantCount;
   final Value<double> total;
@@ -1593,6 +1630,7 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
   final Value<DateTime> createdAt;
   const RecentBillsCompanion({
     this.id = const Value.absent(),
+    this.billName = const Value.absent(),
     this.participants = const Value.absent(),
     this.participantCount = const Value.absent(),
     this.total = const Value.absent(),
@@ -1607,6 +1645,7 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
   });
   RecentBillsCompanion.insert({
     this.id = const Value.absent(),
+    this.billName = const Value.absent(),
     required String participants,
     required int participantCount,
     required double total,
@@ -1627,6 +1666,7 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
        tipAmount = Value(tipAmount);
   static Insertable<RecentBill> custom({
     Expression<int>? id,
+    Expression<String>? billName,
     Expression<String>? participants,
     Expression<int>? participantCount,
     Expression<double>? total,
@@ -1641,6 +1681,7 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (billName != null) 'bill_name': billName,
       if (participants != null) 'participants': participants,
       if (participantCount != null) 'participant_count': participantCount,
       if (total != null) 'total': total,
@@ -1657,6 +1698,7 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
 
   RecentBillsCompanion copyWith({
     Value<int>? id,
+    Value<String>? billName,
     Value<String>? participants,
     Value<int>? participantCount,
     Value<double>? total,
@@ -1671,6 +1713,7 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
   }) {
     return RecentBillsCompanion(
       id: id ?? this.id,
+      billName: billName ?? this.billName,
       participants: participants ?? this.participants,
       participantCount: participantCount ?? this.participantCount,
       total: total ?? this.total,
@@ -1690,6 +1733,9 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<int>(id.value);
+    }
+    if (billName.present) {
+      map['bill_name'] = Variable<String>(billName.value);
     }
     if (participants.present) {
       map['participants'] = Variable<String>(participants.value);
@@ -1731,6 +1777,7 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
   String toString() {
     return (StringBuffer('RecentBillsCompanion(')
           ..write('id: $id, ')
+          ..write('billName: $billName, ')
           ..write('participants: $participants, ')
           ..write('participantCount: $participantCount, ')
           ..write('total: $total, ')
@@ -2363,6 +2410,7 @@ typedef $$UserPreferencesTableProcessedTableManager =
 typedef $$RecentBillsTableCreateCompanionBuilder =
     RecentBillsCompanion Function({
       Value<int> id,
+      Value<String> billName,
       required String participants,
       required int participantCount,
       required double total,
@@ -2378,6 +2426,7 @@ typedef $$RecentBillsTableCreateCompanionBuilder =
 typedef $$RecentBillsTableUpdateCompanionBuilder =
     RecentBillsCompanion Function({
       Value<int> id,
+      Value<String> billName,
       Value<String> participants,
       Value<int> participantCount,
       Value<double> total,
@@ -2402,6 +2451,11 @@ class $$RecentBillsTableFilterComposer
   });
   ColumnFilters<int> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get billName => $composableBuilder(
+    column: $table.billName,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2475,6 +2529,11 @@ class $$RecentBillsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get billName => $composableBuilder(
+    column: $table.billName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get participants => $composableBuilder(
     column: $table.participants,
     builder: (column) => ColumnOrderings(column),
@@ -2542,6 +2601,9 @@ class $$RecentBillsTableAnnotationComposer
   });
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get billName =>
+      $composableBuilder(column: $table.billName, builder: (column) => column);
 
   GeneratedColumn<String> get participants => $composableBuilder(
     column: $table.participants,
@@ -2618,6 +2680,7 @@ class $$RecentBillsTableTableManager
           updateCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
+                Value<String> billName = const Value.absent(),
                 Value<String> participants = const Value.absent(),
                 Value<int> participantCount = const Value.absent(),
                 Value<double> total = const Value.absent(),
@@ -2631,6 +2694,7 @@ class $$RecentBillsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
               }) => RecentBillsCompanion(
                 id: id,
+                billName: billName,
                 participants: participants,
                 participantCount: participantCount,
                 total: total,
@@ -2646,6 +2710,7 @@ class $$RecentBillsTableTableManager
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
+                Value<String> billName = const Value.absent(),
                 required String participants,
                 required int participantCount,
                 required double total,
@@ -2659,6 +2724,7 @@ class $$RecentBillsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
               }) => RecentBillsCompanion.insert(
                 id: id,
+                billName: billName,
                 participants: participants,
                 participantCount: participantCount,
                 total: total,

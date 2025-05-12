@@ -149,27 +149,49 @@ class RecentBillCard extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Date row with calendar icon
+                            // Bill name
                             Row(
                               children: [
                                 Icon(
-                                  Icons.event,
+                                  Icons.receipt_long,
                                   size: 16,
-                                  color:
-                                      adjustedBillColor, // Use bill color for icon
+                                  color: adjustedBillColor,
                                 ),
                                 const SizedBox(width: 8),
-                                Text(
-                                  bill.formattedDate,
-                                  style: textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: dateColor,
+                                Expanded(
+                                  child: Text(
+                                    bill.billName,
+                                    style: textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: dateColor,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ],
                             ),
 
-                            const SizedBox(height: 8),
+                            // Date line
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4, bottom: 4),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.event,
+                                    size: 14,
+                                    color: participantsTextColor,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    bill.formattedDate,
+                                    style: textTheme.bodySmall?.copyWith(
+                                      color: participantsTextColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
 
                             // Participants row with people icon
                             Row(
@@ -378,9 +400,6 @@ class RecentBillCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 const Text('Delete Bill'),
               ],
-            ),
-            content: const Text(
-              'This bill will be permanently removed from your history.',
             ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(
