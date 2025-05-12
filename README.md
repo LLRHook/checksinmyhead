@@ -2,13 +2,18 @@
 
 **Privacy-first receipt splitting made simple**
 
-[Interested in our architecture?](docs/architecture.md)
+[Where did the idea come from?](docs/analysis.md)
 
-[Why Privacy-First?](docs/privacy.md)
+[Built with privacy in mind.](docs/privacy.md)
+
+[Interested in our architecture?](docs/architecture.md)
 
 [Watch a demo!]()
 
-[See an example bill, explained in text.](sample-data/inputoutput.md)
+[See an example bill, explained in text.](docs/sampledata.md)
+
+[User]
+
 
 ## Project Overview
 

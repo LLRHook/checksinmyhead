@@ -2,7 +2,7 @@
 
 ## Origin Story
 
-Checkmate started with a real problem we faced during a group trip to Utah. Our group of seven friends decided to simplify restaurant visits by having just one person pay the entire bill—making things easier for restaurant staff and streamlining our dining experience (until, ironically, our designated payer forgot his card at a restaurant).
+Checkmate started with a real problem we faced during a group trip to Utah. Our group of seven friends decided to simplify restaurant visits by having just one person pay the entire bill—making things easier for restaurant staff and streamlining our dining experience.
 
 Throughout the trip, we collected a stack of receipts that needed to be sorted out. We all agreed that tax and tip should be split proportionally based on what each person ordered, so our "bill master" would calculate everyone's share each evening using Excel. After full days of hiking 20+ miles, dealing with three meals' worth of receipts became increasingly tedious.
 

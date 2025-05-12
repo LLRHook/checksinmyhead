@@ -66,6 +66,28 @@ Watching users interact with Checkmate forced us to:
 
 The most valuable question became: "Would my non-technical parent understand this screen without explanation?"
 
+## Building Features Nobody Wanted
+
+The hardest lesson in building Checkmate wasn't technical – it was watching features we loved get immediately ignored by users.
+
+Our development graveyard filled quickly, one dead idea after another.
+
+Initially, this felt like wasted effort. But we soon recognized these weren't failures – they were course corrections that prevented us from building an app filled with unused features.
+
+We adapted by creating a simpler approach:
+1. Test ideas with rough prototypes before writing real code
+2. Build the smallest possible version of a feature for testing
+3. Immediately remove anything users didn't find valuable
+
+The most successful additions came directly from user observation:
+- The "quick split" option after seeing people divide bills equally when in a hurry
+
+Our development question changed from "What's the next feature to build?" to "What's the smallest thing we can create to test our assumptions?"
+
+"This isn't what we set out to build," we realized before launch. "It's better."
+
+The final app bore little resemblance to our original vision – simpler in some ways, more sophisticated in others, and shaped entirely by watching real people split real bills.
+
 ## Start Small, Learn Fast
 
 "Can I share this with my roommates?" asked one of our testers after a successful bill split. That question confirmed we were on the right track, but we weren't ready for primetime yet.
