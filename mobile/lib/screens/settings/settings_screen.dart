@@ -173,8 +173,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     // Extract theme data for adaptive styling
     final colorScheme = Theme.of(context).colorScheme;
-    final brightness = Theme.of(context).brightness;
-    final isDark = brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: colorScheme.primary,
