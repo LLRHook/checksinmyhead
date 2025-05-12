@@ -12,9 +12,6 @@
 
 [See an example bill, explained in text.](docs/sampledata.md)
 
-[User]
-
-
 ## Project Overview
 
 Checkmate is a Flutter-based iOS application designed for seamless receipt splitting without compromising user privacy. Our core value proposition is built around **zero data collection** - setting us apart from competitors that collect and store user data in the cloud.
