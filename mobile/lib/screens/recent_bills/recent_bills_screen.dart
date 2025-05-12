@@ -641,6 +641,22 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
     );
   }
 
+  /// Handles deleting a bill without full reload
+  ///
+  /// This method deletes a bill from storage and updates the local state
+  /// without showing a loading indicator, for a smoother user experience.
+  Future<void> _handleBillDeleted(int billId) async {
+    // Delete the bill from storage
+    await RecentBillsManager.deleteBill(billId);
+
+    // Update local state by removing the deleted bill
+    if (mounted) {
+      setState(() {
+        _bills.removeWhere((bill) => bill.id == billId);
+      });
+    }
+  }
+
   /// Builds the list of bill cards
   ///
   /// This method sorts bills by date (newest first) and creates
@@ -650,11 +666,17 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
     final sortedBills = List<RecentBillModel>.from(_bills)
       ..sort((a, b) => b.date.compareTo(a.date));
 
-    // Create a card for each bill with the onDeleted callback
+    // Create a card for each bill with the onDeleted callback that
+    // updates state without a full reload for better UX
     return Column(
       children:
           sortedBills
-              .map((bill) => RecentBillCard(bill: bill, onDeleted: _loadBills))
+              .map(
+                (bill) => RecentBillCard(
+                  bill: bill,
+                  onDeleted: () => _handleBillDeleted(bill.id),
+                ),
+              )
               .toList(),
     );
   }

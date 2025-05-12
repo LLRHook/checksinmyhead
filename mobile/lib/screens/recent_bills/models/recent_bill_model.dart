@@ -39,6 +39,9 @@ class RecentBillModel {
   /// Unique identifier for the bill
   final int id;
 
+  /// Name of the bill for display purposes
+  final String billName;
+
   /// List of participant names
   final List<String> participantNames;
 
@@ -74,6 +77,7 @@ class RecentBillModel {
 
   RecentBillModel({
     required this.id,
+    this.billName = '',
     required this.participantNames,
     required this.participantCount,
     required this.total,
@@ -163,6 +167,7 @@ class RecentBillModel {
     // Construct and return the model
     return RecentBillModel(
       id: data.id,
+      billName: data.billName,
       participantNames: names,
       participantCount: data.participantCount,
       total: data.total,
