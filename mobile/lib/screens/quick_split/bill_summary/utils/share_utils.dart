@@ -408,11 +408,6 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
     final sheetBgColor =
         brightness == Brightness.dark ? colorScheme.surface : Colors.white;
 
-    final handleColor =
-        brightness == Brightness.dark
-            ? Colors.grey.shade600
-            : Colors.grey.shade300;
-
     final containerBgColor =
         brightness == Brightness.dark
             ? colorScheme.surfaceContainerHighest
@@ -446,7 +441,7 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
-                    color: handleColor,
+                    color: Colors.grey.shade300,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),

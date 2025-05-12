@@ -61,6 +61,7 @@ class UserPreferences extends Table {
 // Database table for storing bill history
 class RecentBills extends Table {
   IntColumn get id => integer().autoIncrement()();
+  TextColumn get billName => text().withDefault(const Constant(''))();
   TextColumn get participants => text()();
   IntColumn get participantCount => integer()();
   RealColumn get total => real()();
@@ -237,6 +238,7 @@ class AppDatabase extends _$AppDatabase {
     required double tax,
     required double tipAmount,
     required double total,
+    String billName = '',
     double tipPercentage = 0,
     bool isCustomTipAmount = false,
   }) async {
@@ -277,6 +279,7 @@ class AppDatabase extends _$AppDatabase {
     }
 
     final companion = RecentBillsCompanion(
+      billName: Value(billName),
       participants: Value(participantsJson),
       participantCount: Value(participants.length),
       total: Value(total),
@@ -320,6 +323,35 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> clearAllBills() async {
     await delete(recentBills).go();
+  }
+
+  /// Updates the name of a bill in the database
+  ///
+  /// This method allows renaming an existing bill by its ID.
+  ///
+  /// Parameters:
+  /// - id: The unique identifier of the bill to update
+  /// - newName: The new name to assign to the bill
+  ///
+  /// Returns a Future that completes when the operation is finished.
+  Future<void> updateBillName(int id, String newName) async {
+    await (update(recentBills)..where(
+      (t) => t.id.equals(id),
+    )).write(RecentBillsCompanion(billName: Value(newName)));
+  }
+
+  /// Gets a single bill by its ID
+  ///
+  /// This method retrieves a specific bill from the database by its ID.
+  ///
+  /// Parameters:
+  /// - id: The unique identifier of the bill to retrieve
+  ///
+  /// Returns the bill if found, or null if it doesn't exist.
+  Future<RecentBill?> getBillById(int id) async {
+    final query = select(recentBills)..where((b) => b.id.equals(id));
+
+    return query.getSingleOrNull();
   }
 }
 

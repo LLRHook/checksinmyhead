@@ -66,6 +66,10 @@ class _PaymentMethodSheetState extends State<PaymentMethodSheet>
 
   @override
   Widget build(BuildContext context) {
+    // Calculate theme-aware colors for better appearance in both light/dark modes
+
+    // Dark text on bright button in dark mode for better contrast
+
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
@@ -73,6 +77,19 @@ class _PaymentMethodSheetState extends State<PaymentMethodSheet>
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Drag handle
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+
             // Title section
             Padding(
               padding: const EdgeInsets.only(bottom: 16),
@@ -173,7 +190,7 @@ class _PaymentMethodSheetState extends State<PaymentMethodSheet>
 
             const SizedBox(height: 16),
 
-            // Save button with success animation
+            // Save button
             SizedBox(
               width: double.infinity,
               child: FilledButton(
@@ -225,6 +242,18 @@ class _PaymentMethodSheetState extends State<PaymentMethodSheet>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Drag handle
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
               // Edit option
               ListTile(
                 leading: const Icon(Icons.edit),
@@ -278,9 +307,6 @@ class _PaymentMethodSheetState extends State<PaymentMethodSheet>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true, // Allow modal to resize with keyboard
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
       builder: (context) {
         // Use StatefulBuilder to manage the error state within the modal
         return StatefulBuilder(
@@ -297,6 +323,19 @@ class _PaymentMethodSheetState extends State<PaymentMethodSheet>
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Drag handle
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+
                   // Title
                   Text(
                     'Set Up $paymentMethod',
@@ -307,7 +346,7 @@ class _PaymentMethodSheetState extends State<PaymentMethodSheet>
                   ),
                   const SizedBox(height: 16),
 
-                  // Input field with appropriate keyboard type and hint
+                  // Input field
                   TextField(
                     controller: controller,
                     keyboardType: keyboardType,

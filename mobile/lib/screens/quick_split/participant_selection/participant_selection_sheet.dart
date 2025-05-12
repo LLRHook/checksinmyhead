@@ -117,12 +117,34 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
               right: 20,
               bottom: 10,
             ),
-            decoration: _buildSheetDecoration(context),
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: .15),
+                  blurRadius: 20,
+                  offset: const Offset(0, -5),
+                ),
+              ],
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildSheetHandle(),
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    margin: const EdgeInsets.only(bottom: 16),
+                  ),
+                ),
                 _buildSheetHeader(context),
                 _buildScrollableContent(),
                 _buildContinueButton(context),
@@ -130,36 +152,6 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
             ),
           );
         },
-      ),
-    );
-  }
-
-  /// Creates the sheet's visual container with rounded corners and shadow
-  BoxDecoration _buildSheetDecoration(BuildContext context) {
-    return BoxDecoration(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: .15),
-          blurRadius: 20,
-          offset: const Offset(0, -5),
-        ),
-      ],
-    );
-  }
-
-  /// Creates the draggable sheet handle indicator
-  Widget _buildSheetHandle() {
-    return Center(
-      child: Container(
-        width: 40,
-        height: 5,
-        decoration: BoxDecoration(
-          color: Colors.grey.shade300,
-          borderRadius: BorderRadius.circular(3),
-        ),
-        margin: const EdgeInsets.only(bottom: 16),
       ),
     );
   }

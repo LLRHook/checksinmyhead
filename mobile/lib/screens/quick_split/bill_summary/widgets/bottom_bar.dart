@@ -16,6 +16,7 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import 'package:checks_frontend/screens/quick_split/bill_summary/models/bill_summary_data.dart';
+import 'package:checks_frontend/screens/quick_split/bill_summary/widgets/bill_name_sheet.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -123,13 +124,24 @@ class BottomBar extends StatelessWidget {
 class DoneButtonHandler {
   /// Saves the bill and handles UI feedback
   ///
-  /// Saves bill to storage, shows confirmation message,
+  /// Prompts for a bill name, saves to storage, shows confirmation message,
   /// provides haptic feedback, and navigates back to first screen.
   /// Uses a BillSummaryData object to simplify parameter passing.
   static Future<void> handleDone(
     BuildContext context, {
     required BillSummaryData data,
   }) async {
+    // Bill naming dialog is shown here with a premium bottom sheet
+    final billName = await BillNameSheet.show(
+      context: context,
+      initialName: data.billName, // Use any previously set name
+    );
+
+    // If the user dismissed the sheet without entering a name, just return to the summary screen
+    if (billName.isEmpty) {
+      return; // Don't save the bill, just return to the summary screen
+    }
+
     // Capture theme info before async operation
     final brightness = Theme.of(context).brightness;
     final snackBarBgColor =
@@ -142,8 +154,8 @@ class DoneButtonHandler {
     final navigator = Navigator.of(context);
     final scaffoldMessenger = ScaffoldMessenger.of(context);
 
-    // Save bill data using the consolidated BillSummaryData object
-    await RecentBillsManager.saveBill(
+    // Create a new BillSummaryData with the updated bill name
+    final updatedData = BillSummaryData(
       participants: data.participants,
       personShares: data.personShares,
       items: data.items,
@@ -154,6 +166,22 @@ class DoneButtonHandler {
       birthdayPerson: data.birthdayPerson,
       tipPercentage: data.tipPercentage,
       isCustomTipAmount: data.isCustomTipAmount,
+      billName: billName, // Use the name from dialog
+    );
+
+    // Save bill data using the consolidated BillSummaryData object
+    await RecentBillsManager.saveBill(
+      participants: updatedData.participants,
+      personShares: updatedData.personShares,
+      items: updatedData.items,
+      subtotal: updatedData.subtotal,
+      tax: updatedData.tax,
+      tipAmount: updatedData.tipAmount,
+      total: updatedData.total,
+      birthdayPerson: updatedData.birthdayPerson,
+      tipPercentage: updatedData.tipPercentage,
+      isCustomTipAmount: updatedData.isCustomTipAmount,
+      billName: updatedData.billName,
     );
 
     // Check if widget is still mounted before proceeding

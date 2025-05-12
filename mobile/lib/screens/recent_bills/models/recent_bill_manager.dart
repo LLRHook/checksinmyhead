@@ -88,8 +88,8 @@ class RecentBillsManager {
     required double total,
     Person? birthdayPerson,
     double tipPercentage = 0, // Tip percentage with default value of 0
-    bool isCustomTipAmount =
-        false, // Flag for custom tip amount with default value
+    bool isCustomTipAmount = false,
+    required String billName, // Flag for custom tip amount with default value
   }) async {
     try {
       // Forward all data to the database provider
@@ -102,6 +102,7 @@ class RecentBillsManager {
         tipAmount: tipAmount,
         total: total,
         tipPercentage: tipPercentage, // Pass tip percentage to database
+        billName: billName, // Pass bill name to database
       );
     } catch (e) {
       // Log any errors but don't propagate them to the UI
@@ -145,6 +146,26 @@ class RecentBillsManager {
     } catch (e) {
       // Log any errors but don't propagate them to the UI
       debugPrint('Error deleting all bills: $e');
+    }
+  }
+
+  /// Updates the name of a specific bill
+  ///
+  /// This method renames a single bill based on its ID.
+  ///
+  /// Parameters:
+  /// - id: The unique identifier of the bill to update
+  /// - newName: The new name to assign to the bill
+  ///
+  /// Errors during updating are caught and logged but not propagated
+  /// to prevent UI crashes.
+  static Future<void> updateBillName(int id, String newName) async {
+    try {
+      // Request update from the database provider
+      await DatabaseProvider.db.updateBillName(id, newName);
+    } catch (e) {
+      // Log any errors but don't propagate them to the UI
+      debugPrint('Error updating bill name: $e');
     }
   }
 }

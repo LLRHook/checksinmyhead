@@ -31,6 +31,7 @@ class BillSummaryData {
   final Person? birthdayPerson;
   final double tipPercentage;
   final bool isCustomTipAmount;
+  final String billName;
 
   const BillSummaryData({
     required this.participants,
@@ -43,6 +44,7 @@ class BillSummaryData {
     this.birthdayPerson,
     this.tipPercentage = 0.0,
     this.isCustomTipAmount = false,
+    this.billName = '',
   });
 
   /// Returns participants sorted by their payment amount in descending order

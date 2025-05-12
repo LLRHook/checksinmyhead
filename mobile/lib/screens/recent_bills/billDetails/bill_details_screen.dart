@@ -16,6 +16,7 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import 'package:checks_frontend/screens/quick_split/bill_summary/utils/share_utils.dart';
+import 'package:checks_frontend/screens/quick_split/bill_summary/widgets/bill_name_sheet.dart';
 import 'package:checks_frontend/screens/recent_bills/components/bill_summary_card.dart';
 import 'package:checks_frontend/screens/recent_bills/components/participants_card.dart';
 import 'package:flutter/material.dart';
@@ -24,6 +25,7 @@ import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.da
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 import 'package:checks_frontend/screens/settings/services/settings_manager.dart';
 import 'package:checks_frontend/models/person.dart';
+import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
 import 'utils/bill_calculations.dart';
 
 /// BillDetailsScreen
@@ -58,6 +60,9 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
   // Loading state tracker for async initialization
   bool _isLoading = true;
 
+  // Local copy of the bill to track updates
+  late RecentBillModel _bill;
+
   @override
   void initState() {
     super.initState();
@@ -69,8 +74,37 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
       hideBreakdownInShare: false,
     );
 
+    // Initialize local bill copy
+    _bill = widget.bill;
+
     // Load user's previously saved share options
     _loadShareOptions();
+  }
+
+  /// Shows the bottom sheet for editing bill name
+  ///
+  /// This method displays a modal bottom sheet allowing the user to
+  /// edit the bill name and save changes to the database.
+  Future<bool> _showBillNameEditSheet(
+    String currentName,
+    Function(String) onNameUpdated,
+  ) async {
+    final newName = await BillNameSheet.show(
+      context: context,
+      initialName: currentName,
+    );
+
+    // Check if name was changed and not empty
+    if (newName.isNotEmpty && newName != currentName) {
+      // Provide haptic feedback for successful update
+      HapticFeedback.lightImpact();
+
+      // Call the callback to update the name
+      onNameUpdated(newName);
+      return true;
+    }
+
+    return false;
   }
 
   /// Loads share options from persistent storage
@@ -123,23 +157,23 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
   /// sharing preferences, then triggers the system share sheet.
   Future<void> _shareBillSummary() async {
     // Use the BillCalculations utility to prepare data
-    final billCalculations = BillCalculations(widget.bill);
+    final billCalculations = BillCalculations(_bill);
 
     // Convert the saved bill data back to the format needed for sharing
     final String summary = await ShareUtils.generateShareText(
       participants:
-          widget.bill.participantNames
-              .map((name) => Person(name: name, color: widget.bill.color))
+          _bill.participantNames
+              .map((name) => Person(name: name, color: _bill.color))
               .toList(),
       personShares: billCalculations.generatePersonShares(),
       items: billCalculations.generateBillItems(),
-      subtotal: widget.bill.subtotal,
-      tax: widget.bill.tax,
-      tipAmount: widget.bill.tipAmount,
-      total: widget.bill.total,
+      subtotal: _bill.subtotal,
+      tax: _bill.tax,
+      tipAmount: _bill.tipAmount,
+      total: _bill.total,
       birthdayPerson:
           null, // Assuming birthday person isn't stored in recent bills
-      tipPercentage: widget.bill.tipPercentage,
+      tipPercentage: _bill.tipPercentage,
       isCustomTipAmount: false, // Assuming this isn't stored
       includeItemsInShare: _shareOptions.includeItemsInShare,
       includePersonItemsInShare: _shareOptions.includePersonItemsInShare,
@@ -184,7 +218,7 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
 
     // Create a single instance of BillCalculations for all child widgets
     // This avoids redundant calculations across different components
-    final billCalculations = BillCalculations(widget.bill);
+    final billCalculations = BillCalculations(_bill);
 
     return Scaffold(
       backgroundColor: scaffoldBgColor,
@@ -192,7 +226,7 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
         child: Column(
           children: [
             // Custom app bar with back button and title
-            _buildAppBar(context, appBarIconColor, titleColor),
+            _buildAppBar(context, appBarIconColor, titleColor, scaffoldBgColor),
 
             // Main scrollable content area
             Expanded(
@@ -202,7 +236,34 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
                 padding: EdgeInsets.zero,
                 children: [
                   // Animated premium header with bill date and total
-                  _buildPremiumHeader(context, headerShadowColor),
+                  _buildPremiumHeader(context, headerShadowColor, (
+                    newName,
+                  ) async {
+                    // Update bill name in database
+                    await RecentBillsManager.updateBillName(_bill.id, newName);
+
+                    // Update local state
+                    if (mounted) {
+                      setState(() {
+                        // Create a new bill model with updated name
+                        _bill = RecentBillModel(
+                          id: _bill.id,
+                          billName: newName,
+                          participantNames: _bill.participantNames,
+                          participantCount: _bill.participantCount,
+                          total: _bill.total,
+                          date: _bill.date,
+                          subtotal: _bill.subtotal,
+                          tax: _bill.tax,
+                          tipAmount: _bill.tipAmount,
+                          tipPercentage: _bill.tipPercentage,
+                          items: _bill.items,
+                          color: _bill.color,
+                          itemAssignments: _bill.itemAssignments,
+                        );
+                      });
+                    }
+                  }),
 
                   // Main content section with cards
                   Padding(
@@ -231,7 +292,7 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
                               ),
                             );
                           },
-                          child: BillSummaryCard(bill: widget.bill),
+                          child: BillSummaryCard(bill: _bill),
                         ),
 
                         const SizedBox(height: 16),
@@ -254,7 +315,7 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
                             );
                           },
                           child: ParticipantsCard(
-                            bill: widget.bill,
+                            bill: _bill,
                             calculations:
                                 billCalculations, // Pass the calculations instance
                           ),
@@ -352,7 +413,12 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
   ///
   /// This method creates an app bar with animated elements and
   /// haptic feedback for better user experience.
-  Widget _buildAppBar(BuildContext context, Color iconColor, Color titleColor) {
+  Widget _buildAppBar(
+    BuildContext context,
+    Color iconColor,
+    Color titleColor,
+    Color? bgColor,
+  ) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 8, 8, 0),
       child: Row(
@@ -429,7 +495,11 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
   ///
   /// This method creates an eye-catching header that displays the bill date
   /// and total amount with various animations for a premium feel.
-  Widget _buildPremiumHeader(BuildContext context, Color shadowColor) {
+  Widget _buildPremiumHeader(
+    BuildContext context,
+    Color shadowColor,
+    Function(String) onNameUpdated,
+  ) {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
@@ -477,25 +547,94 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Date row with subtle shimmer effect for premium feel
+            // Bill name (if provided) or date with shimmer effect
             ShimmerEffect(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: Column(
                 children: [
-                  Icon(
-                    Icons.calendar_today,
-                    color: Colors.white.withValues(alpha: .9),
-                    size: 16,
+                  // Show bill name if available (tappable to edit)
+                  // Make the whole header area tappable for name editing
+                  GestureDetector(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      _showBillNameEditSheet(_bill.billName, onNameUpdated);
+                    },
+                    child: Container(
+                      child:
+                          _bill.billName.isNotEmpty
+                              ? Row(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      _bill.billName,
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 20,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Icon(
+                                    Icons.edit,
+                                    color: Colors.white.withValues(alpha: .7),
+                                    size: 16,
+                                  ),
+                                ],
+                              )
+                              : Row(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.edit_note,
+                                    color: Colors.white.withValues(alpha: .8),
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    "Name this bill",
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(alpha: .8),
+                                      fontWeight: FontWeight.w500,
+                                      fontStyle: FontStyle.italic,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                    ),
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    widget
-                        .bill
-                        .formattedDate, // Display formatted date from bill model
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: .9),
-                      fontWeight: FontWeight.w500,
-                      fontSize: 16,
+
+                  // Always show date with format based on presence of bill name
+                  Padding(
+                    padding: EdgeInsets.only(
+                      top: _bill.billName.isNotEmpty ? 8 : 16,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (_bill.billName.isEmpty)
+                          Icon(
+                            Icons.calendar_today,
+                            color: Colors.white.withValues(alpha: .9),
+                            size: 16,
+                          ),
+                        if (_bill.billName.isEmpty) const SizedBox(width: 8),
+                        Text(
+                          _bill.billName.isEmpty
+                              ? _bill.formattedDate
+                              : "on ${_bill.formattedDate}",
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: .9),
+                            fontWeight: FontWeight.w500,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -512,7 +651,7 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
                 return Transform.scale(scale: value, child: child);
               },
               child: Text(
-                CurrencyFormatter.formatCurrency(widget.bill.total),
+                CurrencyFormatter.formatCurrency(_bill.total),
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
