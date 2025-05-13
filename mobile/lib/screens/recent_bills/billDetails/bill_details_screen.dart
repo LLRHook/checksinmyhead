@@ -587,11 +587,7 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        const Icon(
-                          Icons.edit,
-                          color: Colors.white,
-                          size: 16,
-                        ),
+                        const Icon(Icons.edit, color: Colors.white, size: 16),
                       ],
                     ),
 
