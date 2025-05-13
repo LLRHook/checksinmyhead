@@ -63,6 +63,9 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
   // Local copy of the bill to track updates
   late RecentBillModel _bill;
 
+  // Track if the bill name was updated
+  bool _wasNameUpdated = false;
+
   @override
   void initState() {
     super.initState();
@@ -130,6 +133,12 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
         });
       }
     }
+  }
+
+  // We'll handle the navigation in the back button instead of dispose()
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   /// Shows the share options bottom sheet
@@ -261,6 +270,9 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
                           color: _bill.color,
                           itemAssignments: _bill.itemAssignments,
                         );
+
+                        // Mark that bill name was updated to notify previous screen
+                        _wasNameUpdated = true;
                       });
                     }
                   }),
@@ -442,7 +454,8 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
                   // Add haptic feedback for better tactile response
                   HapticFeedback.selectionClick();
                   if (mounted) {
-                    Navigator.pop(context);
+                    // Return whether the bill name was updated
+                    Navigator.pop(context, _wasNameUpdated);
                   }
                 },
                 child: Container(
@@ -493,7 +506,7 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
 
   /// Builds the premium header with gradient background and animations
   ///
-  /// This method creates an eye-catching header that displays the bill date
+  /// This method creates an eye-catching header that displays the bill name, date,
   /// and total amount with various animations for a premium feel.
   Widget _buildPremiumHeader(
     BuildContext context,
@@ -547,97 +560,66 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Bill name (if provided) or date with shimmer effect
+            // Bill name and date with shimmer effect
             ShimmerEffect(
-              child: Column(
-                children: [
-                  // Show bill name if available (tappable to edit)
-                  // Make the whole header area tappable for name editing
-                  GestureDetector(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      _showBillNameEditSheet(_bill.billName, onNameUpdated);
-                    },
-                    child: Container(
-                      child:
-                          _bill.billName.isNotEmpty
-                              ? Row(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      _bill.billName,
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 20,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Icon(
-                                    Icons.edit,
-                                    color: Colors.white.withValues(alpha: .7),
-                                    size: 16,
-                                  ),
-                                ],
-                              )
-                              : Row(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.edit_note,
-                                    color: Colors.white.withValues(alpha: .8),
-                                    size: 16,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    "Name this bill",
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(alpha: .8),
-                                      fontWeight: FontWeight.w500,
-                                      fontStyle: FontStyle.italic,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                    ),
-                  ),
-
-                  // Always show date with format based on presence of bill name
-                  Padding(
-                    padding: EdgeInsets.only(
-                      top: _bill.billName.isNotEmpty ? 8 : 16,
-                    ),
-                    child: Row(
+              child: GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  _showBillNameEditSheet(_bill.billName, onNameUpdated);
+                },
+                child: Column(
+                  children: [
+                    // Combined name and date section
+                    Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        if (_bill.billName.isEmpty)
-                          Icon(
-                            Icons.calendar_today,
-                            color: Colors.white.withValues(alpha: .9),
-                            size: 16,
+                        // Name display or prompt
+                        Flexible(
+                          child: Text(
+                            _bill.billName,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 20,
+                            ),
+                            textAlign: TextAlign.center,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        if (_bill.billName.isEmpty) const SizedBox(width: 8),
-                        Text(
-                          _bill.billName.isEmpty
-                              ? _bill.formattedDate
-                              : "on ${_bill.formattedDate}",
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: .9),
-                            fontWeight: FontWeight.w500,
-                            fontSize: 15,
-                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(
+                          Icons.edit,
+                          color: Colors.white,
+                          size: 16,
                         ),
                       ],
                     ),
-                  ),
-                ],
+
+                    // Date display always shown below the name
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.calendar_today,
+                            color: Colors.white,
+                            size: 14,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            _bill.formattedDate,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 12),
