@@ -221,8 +221,8 @@ class _BillNameSheetState extends State<BillNameSheet> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    disabledBackgroundColor: colorScheme.primary.withValues(alpha: 
-                      0.3,
+                    disabledBackgroundColor: colorScheme.primary.withValues(
+                      alpha: 0.3,
                     ),
                   ),
                   child: const Text(

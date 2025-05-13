@@ -690,7 +690,8 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
                 (bill) => RecentBillCard(
                   bill: bill,
                   onDeleted: () => _handleBillDeleted(bill.id),
-                  onRefreshNeeded: () => _handleBillDeleted(-1), // Special refresh signal
+                  onRefreshNeeded:
+                      () => _handleBillDeleted(-1), // Special refresh signal
                 ),
               )
               .toList(),
