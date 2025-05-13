@@ -19,6 +19,7 @@ import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_
 import 'package:checks_frontend/screens/recent_bills/billDetails/bill_details_screen.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.dart';
+import 'package:checks_frontend/screens/recent_bills/recent_bills_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
@@ -45,25 +46,35 @@ class RecentBillCard extends StatelessWidget {
   /// Callback function to notify parent when this bill is deleted
   final VoidCallback onDeleted;
 
+  /// Callback function to trigger a refresh of the bills list
+  final VoidCallback onRefreshNeeded;
+
   const RecentBillCard({
     super.key,
     required this.bill,
     required this.onDeleted,
+    required this.onRefreshNeeded,
   });
 
   /// Navigates to the bill details screen with haptic feedback
   ///
   /// This method provides tactile feedback and navigates to a detailed
   /// view of the bill when the card is tapped.
-  void _navigateToBillDetails(BuildContext context) {
+  Future<void> _navigateToBillDetails(BuildContext context) async {
     // Provide subtle haptic feedback for better user experience
     HapticFeedback.selectionClick();
 
-    // Navigate to the bill details screen
-    Navigator.push(
+    // Navigate to the bill details screen and listen for name changes
+    final wasUpdated = await Navigator.push<bool>(
       context,
       MaterialPageRoute(builder: (context) => BillDetailsScreen(bill: bill)),
     );
+
+    // If bill name was updated, trigger a refresh instead of deletion
+    if (wasUpdated == true) {
+      // Use the dedicated refresh callback
+      onRefreshNeeded();
+    }
   }
 
   @override
