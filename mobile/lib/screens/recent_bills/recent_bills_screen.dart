@@ -641,12 +641,27 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
     );
   }
 
-  /// Handles deleting a bill without full reload
+  /// Handles deleting a bill or refreshing a specific bill
   ///
-  /// This method deletes a bill from storage and updates the local state
-  /// without showing a loading indicator, for a smoother user experience.
+  /// This method can be used in two ways:
+  /// 1. When billId >= 0, it deletes that specific bill
+  /// 2. When billId is -1, it acts as a refresh for the entire list
+  ///
+  /// This dual-purpose approach allows for a smooth UX with quick updates.
   Future<void> _handleBillDeleted(int billId) async {
-    // Delete the bill from storage
+    // If billId is -1, we're just doing a refresh, not a delete
+    if (billId == -1) {
+      // Just reload the bills without showing loading state
+      final bills = await RecentBillsManager.getRecentBills();
+      if (mounted) {
+        setState(() {
+          _bills = bills;
+        });
+      }
+      return;
+    }
+
+    // Otherwise, delete the bill from storage
     await RecentBillsManager.deleteBill(billId);
 
     // Update local state by removing the deleted bill
@@ -675,6 +690,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
                 (bill) => RecentBillCard(
                   bill: bill,
                   onDeleted: () => _handleBillDeleted(bill.id),
+                  onRefreshNeeded: () => _handleBillDeleted(-1), // Special refresh signal
                 ),
               )
               .toList(),

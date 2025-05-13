@@ -135,7 +135,7 @@ class _BillNameSheetState extends State<BillNameSheet> {
 
     // Error and hint text colors
     final errorColor = colorScheme.error;
-    final hintColor = colorScheme.onSurface.withOpacity(0.6);
+    final hintColor = colorScheme.onSurface.withValues(alpha: .6);
 
     return Container(
       decoration: BoxDecoration(
@@ -168,7 +168,7 @@ class _BillNameSheetState extends State<BillNameSheet> {
                   IconButton(
                     icon: Icon(
                       Icons.close,
-                      color: colorScheme.onSurface.withOpacity(0.7),
+                      color: colorScheme.onSurface.withValues(alpha: .7),
                     ),
                     onPressed: () {
                       HapticFeedback.selectionClick();
@@ -197,7 +197,7 @@ class _BillNameSheetState extends State<BillNameSheet> {
                   filled: true,
                   fillColor:
                       isDarkMode
-                          ? colorScheme.surface.withOpacity(0.8)
+                          ? colorScheme.surface.withValues(alpha: .8)
                           : Colors.grey[50],
                 ),
                 onSubmitted: (_) {
@@ -221,7 +221,7 @@ class _BillNameSheetState extends State<BillNameSheet> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    disabledBackgroundColor: colorScheme.primary.withOpacity(
+                    disabledBackgroundColor: colorScheme.primary.withValues(alpha: 
                       0.3,
                     ),
                   ),
