@@ -31,6 +31,8 @@ import '/models/bill_item.dart';
 ///
 /// It uses the AssignmentData immutable data class to store the current state
 /// and AssignmentUtils to perform calculations.
+///
+/// This provider properly cleans up resources when disposed to prevent memory leaks.
 class AssignmentProvider extends ChangeNotifier {
   late AssignmentData _data;
 
@@ -286,5 +288,19 @@ class AssignmentProvider extends ChangeNotifier {
   /// @return The percentage of the total bill assigned to the person
   double getPersonBillPercentage(Person person) {
     return AssignmentUtils.getPersonBillPercentage(person, _data);
+  }
+
+  /// Cleanup resources when the provider is no longer needed
+  /// to prevent memory leaks.
+  @override
+  void dispose() {
+    // Clear any references that might cause memory leaks
+    _data = _data.copyWith(
+      clearSelectedPerson: true,
+      clearBirthdayPerson: true,
+    );
+
+    // Call the parent dispose method
+    super.dispose();
   }
 }

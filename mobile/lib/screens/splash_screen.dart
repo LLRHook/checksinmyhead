@@ -56,6 +56,10 @@ class _SplashScreenState extends State<SplashScreen>
   // Flag to trigger exit animations
   bool _startExitAnimation = false;
 
+  // Timers for animation control
+  Timer? _exitAnimationTimer;
+  Timer? _navigationTimer;
+
   @override
   void initState() {
     super.initState();
@@ -119,7 +123,7 @@ class _SplashScreenState extends State<SplashScreen>
     final isFirstLaunch = prefs.getBool('is_first_launch') ?? true;
 
     // After 900ms, trigger exit animations
-    Timer(const Duration(milliseconds: 900), () {
+    _exitAnimationTimer = Timer(const Duration(milliseconds: 900), () {
       // Check if widget is still mounted before calling setState
       if (mounted) {
         setState(() {
@@ -127,7 +131,7 @@ class _SplashScreenState extends State<SplashScreen>
         });
 
         // After exit animation starts, wait 400ms before navigating
-        Timer(const Duration(milliseconds: 400), () {
+        _navigationTimer = Timer(const Duration(milliseconds: 400), () {
           // Check again if widget is still mounted before navigating
           if (mounted) {
             if (isFirstLaunch) {
@@ -147,6 +151,11 @@ class _SplashScreenState extends State<SplashScreen>
   void dispose() {
     // Clean up animation controller to prevent memory leaks
     _controller.dispose();
+
+    // Cancel timers to prevent memory leaks
+    _exitAnimationTimer?.cancel();
+    _navigationTimer?.cancel();
+
     super.dispose();
   }
 
