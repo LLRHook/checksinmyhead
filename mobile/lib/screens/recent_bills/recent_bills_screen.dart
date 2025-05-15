@@ -61,6 +61,9 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
   /// Tracks if the refresh button was clicked to control animation state
   bool _isRefreshButtonClicked = false;
 
+  /// Instance of RecentBillsManager for managing bill data
+  final _billsManager = RecentBillsManager();
+
   @override
   void initState() {
     super.initState();
@@ -97,7 +100,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
       });
 
       // Fetch bills from storage via the manager
-      final bills = await RecentBillsManager.getRecentBills();
+      final bills = await _billsManager.getRecentBills();
 
       // Add a small delay to make the loading state visible
       // This improves perceived performance and reduces UI flashing
@@ -310,7 +313,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
                             });
 
                             // Delete all bills and reload the view
-                            RecentBillsManager.clearAllBills().then((_) {
+                            _billsManager.clearAllBills().then((_) {
                               _loadBills();
                             });
                           },
@@ -652,7 +655,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
     // If billId is -1, we're just doing a refresh, not a delete
     if (billId == -1) {
       // Just reload the bills without showing loading state
-      final bills = await RecentBillsManager.getRecentBills();
+      final bills = await _billsManager.getRecentBills();
       if (mounted) {
         setState(() {
           _bills = bills;
@@ -662,7 +665,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
     }
 
     // Otherwise, delete the bill from storage
-    await RecentBillsManager.deleteBill(billId);
+    await _billsManager.deleteBill(billId);
 
     // Update local state by removing the deleted bill
     if (mounted) {

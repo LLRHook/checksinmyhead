@@ -108,6 +108,12 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
   @override
   void dispose() {
     _animationController.dispose();
+
+    // Dispose tutorial manager if initialized
+    if (_tutorialManagerInitialized) {
+      _tutorialManager.dispose();
+    }
+
     super.dispose();
   }
 

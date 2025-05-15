@@ -119,9 +119,12 @@ class BottomBar extends StatelessWidget {
 
 /// Utility class to handle the "Done" button actions
 ///
-/// Provides a static method to save bill data, show confirmation,
+/// Provides a method to save bill data, show confirmation,
 /// and navigate back to the starting screen.
 class DoneButtonHandler {
+  /// Bills manager instance
+  static final _billsManager = RecentBillsManager();
+
   /// Saves the bill and handles UI feedback
   ///
   /// Prompts for a bill name, saves to storage, shows confirmation message,
@@ -170,7 +173,7 @@ class DoneButtonHandler {
     );
 
     // Save bill data using the consolidated BillSummaryData object
-    await RecentBillsManager.saveBill(
+    await _billsManager.saveBill(
       participants: updatedData.participants,
       personShares: updatedData.personShares,
       items: updatedData.items,

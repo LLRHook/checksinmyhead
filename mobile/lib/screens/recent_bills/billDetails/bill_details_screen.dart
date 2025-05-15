@@ -66,6 +66,9 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
   // Track if the bill name was updated
   bool _wasNameUpdated = false;
 
+  // Instance of RecentBillsManager for managing bill data
+  final _billsManager = RecentBillsManager();
+
   @override
   void initState() {
     super.initState();
@@ -249,7 +252,7 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
                     newName,
                   ) async {
                     // Update bill name in database
-                    await RecentBillsManager.updateBillName(_bill.id, newName);
+                    await _billsManager.updateBillName(_bill.id, newName);
 
                     // Update local state
                     if (mounted) {

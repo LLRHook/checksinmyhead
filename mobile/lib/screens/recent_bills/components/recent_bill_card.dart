@@ -19,7 +19,6 @@ import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_
 import 'package:checks_frontend/screens/recent_bills/billDetails/bill_details_screen.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.dart';
-import 'package:checks_frontend/screens/recent_bills/recent_bills_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
@@ -436,7 +435,7 @@ class RecentBillCard extends StatelessWidget {
     // If user confirmed, delete the bill and notify parent
     if (confirmed == true) {
       // Delete from persistent storage
-      await RecentBillsManager.deleteBill(bill.id);
+      await RecentBillsManager().deleteBill(bill.id);
 
       // Provide haptic feedback for successful deletion
       HapticFeedback.mediumImpact();

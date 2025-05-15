@@ -17,16 +17,16 @@
 
 import 'package:checks_frontend/database/database_provider.dart';
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'tutorial_overlay.dart';
 
 // A class that manages the tutorial state and functionality for the item assignment screen
-class TutorialManager {
+class TutorialManager extends ChangeNotifier {
   // Flag to track if user has seen the tutorial
   bool _hasSeenTutorial = false;
 
   // Preference key for storing tutorial state in the database
-  static const String _tutorialPreferenceKey =
-      'has_seen_item_assignment_tutorial';
+  final String _tutorialPreferenceKey = 'has_seen_item_assignment_tutorial';
 
   // Tutorial steps for item assignment screen with enhanced descriptions
   final List<TutorialStep> tutorialSteps = [
@@ -61,7 +61,7 @@ class TutorialManager {
     ),
   ];
 
-  // Private constructor to enforce factory pattern
+  // Private constructor
   TutorialManager._();
 
   // Factory method to create and initialize the manager
@@ -70,6 +70,23 @@ class TutorialManager {
     final manager = TutorialManager._();
     await manager._loadTutorialState();
     return manager;
+  }
+
+  // Singleton instance
+  static TutorialManager? _instance;
+
+  // Get or create an instance of TutorialManager
+  static Future<TutorialManager> getInstance() async {
+    if (_instance == null) {
+      _instance = await create();
+    }
+    return _instance!;
+  }
+
+  // Reset the singleton instance (useful for testing or when you need a fresh instance)
+  static void resetInstance() {
+    _instance?.dispose();
+    _instance = null;
   }
 
   // Getter for whether the user has seen the tutorial
@@ -114,12 +131,15 @@ class TutorialManager {
 
   // Initializes the tutorial with a delay on first launch
   // Only shows if the user hasn't seen it before
+  // Timer for delayed initialization
+  Timer? _initTimer;
+
   void initializeWithDelay(
     BuildContext Function() contextProvider,
     bool mounted,
   ) {
     if (!_hasSeenTutorial) {
-      Future.delayed(const Duration(milliseconds: 500), () {
+      _initTimer = Timer(const Duration(milliseconds: 500), () {
         // Check if still mounted before accessing context
         if (mounted) {
           // Only get context when needed and when we're sure mounted is true
@@ -127,6 +147,12 @@ class TutorialManager {
         }
       });
     }
+  }
+
+  // Clean up resources
+  void dispose() {
+    _initTimer?.cancel();
+    notifyListeners();
   }
 
   // Creates a tutorial button widget with an optional notification badge
