@@ -18,6 +18,41 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'landing_screen.dart';
+import 'settings/settings_screen.dart';
+
+/// A custom page route that provides a smooth fade transition between screens
+class FadePageRoute<T> extends PageRouteBuilder<T> {
+  final Widget Function(BuildContext) builder;
+
+  FadePageRoute({required this.builder})
+    : super(
+        pageBuilder:
+            (context, animation, secondaryAnimation) => builder(context),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          // Define curves for more premium feeling animations
+          const fadeInCurve = Curves.easeOutCubic;
+          const scaleCurve = Curves.easeOutQuint;
+
+          var fadeAnimation = CurvedAnimation(
+            parent: animation,
+            curve: fadeInCurve,
+          );
+
+          // Add a subtle scale transition for premium feel
+          var scaleAnimation = Tween<double>(
+            begin: 1.04, // Start slightly larger
+            end: 1.0, // End at normal size
+          ).animate(CurvedAnimation(parent: animation, curve: scaleCurve));
+
+          return FadeTransition(
+            opacity: fadeAnimation,
+            child: ScaleTransition(scale: scaleAnimation, child: child),
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 500),
+      );
+}
 
 // Purpose: Provides an animated intro screen displayed when the app launches.
 // This screen shows the app logo and name with smooth animations before
@@ -135,11 +170,17 @@ class _SplashScreenState extends State<SplashScreen>
           // Check again if widget is still mounted before navigating
           if (mounted) {
             if (isFirstLaunch) {
-              // First launch - go to settings/onboarding
-              Navigator.of(context).pushReplacementNamed('/settings');
+              // First launch - go to settings/onboarding with fade transition
+              Navigator.of(context).pushReplacement(
+                FadePageRoute(
+                  builder: (context) => SettingsScreen(isOnboarding: true),
+                ),
+              );
             } else {
-              // Returning user - go directly to main landing screen
-              Navigator.of(context).pushReplacementNamed('/landing');
+              // Returning user - go directly to main landing screen with fade transition
+              Navigator.of(context).pushReplacement(
+                FadePageRoute(builder: (context) => const LandingScreen()),
+              );
             }
           }
         });
@@ -163,9 +204,12 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     // Get app theme colors for consistent styling
     final colorScheme = Theme.of(context).colorScheme;
+    // Use white for light mode, black for dark mode
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDarkMode ? Colors.black : Colors.white;
 
     return Scaffold(
-      backgroundColor: colorScheme.primary,
+      backgroundColor: backgroundColor,
       body: Center(
         child: AnimatedBuilder(
           animation: _controller,
