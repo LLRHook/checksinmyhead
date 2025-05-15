@@ -187,22 +187,28 @@ class _SplashScreenState extends State<SplashScreen>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       // App logo icon
-                      Icon(
-                        Icons.receipt_long_rounded,
-                        size: 80,
-                        color: Colors.white,
-                      ),
-                      const SizedBox(height: 30),
-                      // App name with styled text
-                      Text(
-                        'Checkmate',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 34,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.37,
-                          fontFamily: '.SF Pro Display', // iOS-style font
-                        ),
+                      TweenAnimationBuilder<double>(
+                        tween: Tween<double>(begin: 0, end: 1),
+                        duration: const Duration(milliseconds: 600),
+                        curve: Curves.easeOutBack,
+                        builder: (context, value, child) {
+                          return Transform.scale(
+                            scale: 0.85 + (0.15 * value),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(32),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(32),
+                                child: Image.asset(
+                                  'ios/Runner/Assets.xcassets/AppIcon.appiconset/appicon_1024 1.png',
+                                  width: 160,
+                                  height: 160,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
