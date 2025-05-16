@@ -15,9 +15,9 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import 'package:checks_frontend/config/dialogUtils/dialog_utils.dart';
 import 'package:checks_frontend/screens/quick_split/participant_selection/providers/participants_provider.dart';
 import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_utils.dart';
-import 'package:checks_frontend/config/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
