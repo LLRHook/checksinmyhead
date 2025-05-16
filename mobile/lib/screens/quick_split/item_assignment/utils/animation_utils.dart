@@ -16,6 +16,7 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import 'package:flutter/material.dart';
+import 'dart:math';
 
 /// A custom painter that creates a pulsing animation effect by drawing multiple concentric circles
 /// that expand and fade out over time.
@@ -75,5 +76,60 @@ class PulsePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) {
     return true;
+  }
+}
+
+/// Custom painter for drawing a percentage arc indicator around an avatar
+///
+/// This painter creates a circular progress indicator that shows what percentage
+/// of a bill item is assigned to a person. The arc starts from the top (12 o'clock)
+/// and proceeds clockwise based on the percentage value.
+///
+/// Parameters:
+///   - color: The color of the arc
+///   - percentage: The percentage to display (0-100)
+///   - strokeWidth: The width of the arc stroke
+class ArcPainter extends CustomPainter {
+  final Color color;
+  final double percentage;
+  final double strokeWidth;
+
+  ArcPainter({
+    required this.color,
+    required this.percentage,
+    required this.strokeWidth,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width - strokeWidth) / 2;
+
+    // Draw the arc
+    final paint =
+        Paint()
+          ..color = color
+          ..strokeWidth = strokeWidth
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round;
+
+    // Convert percentage to radians (start from top)
+    const startAngle = -pi / 2;
+    final sweepAngle = (percentage / 100) * 2 * pi;
+
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      startAngle,
+      sweepAngle,
+      false,
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(ArcPainter oldDelegate) {
+    return oldDelegate.percentage != percentage ||
+        oldDelegate.color != color ||
+        oldDelegate.strokeWidth != strokeWidth;
   }
 }

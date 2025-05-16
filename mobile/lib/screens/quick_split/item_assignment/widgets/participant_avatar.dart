@@ -54,6 +54,8 @@ class ParticipantAvatar extends StatelessWidget {
   /// Callback when the avatar is long-pressed
   final VoidCallback onLongPress;
 
+  final double? assignedPercentage;
+
   /// Creates a participant avatar with the specified states and callbacks
   ///
   /// All parameters are required to ensure consistent appearance and behavior across the app.
@@ -65,6 +67,7 @@ class ParticipantAvatar extends StatelessWidget {
     required this.isBirthdayPerson,
     required this.onTap,
     required this.onLongPress,
+    this.assignedPercentage,
   });
 
   @override
@@ -89,6 +92,12 @@ class ParticipantAvatar extends StatelessWidget {
     final checkmarkBorderColor =
         brightness == Brightness.dark ? colorScheme.surface : Colors.white;
 
+    // Check if we need to show percentage info
+    final hasCustomSplit =
+        assignedPercentage != null &&
+        assignedPercentage != 100.0 &&
+        assignedPercentage! > 0;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: GestureDetector(
@@ -96,7 +105,7 @@ class ParticipantAvatar extends StatelessWidget {
         onLongPress: onLongPress,
         child: SizedBox(
           width: 70,
-          height: 70,
+          height: 90, // Increased height to accommodate percentage text
           // Use a flexible layout with proper constraints to prevent overflow
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -109,30 +118,70 @@ class ParticipantAvatar extends StatelessWidget {
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    // Outer selection ring - shows when selected or assigned
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      width: (isSelected || isAssigned) ? 46 : 42,
-                      height: (isSelected || isAssigned) ? 46 : 42,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.transparent,
-                        border: Border.all(
-                          color:
-                              isSelected
-                                  ? _getSelectionColor(person.color, brightness)
-                                  : isAssigned
-                                  ? person.color
-                                  : Colors.transparent,
-                          width:
-                              isSelected
-                                  ? 3 // Thicker border for selected state
-                                  : isAssigned
-                                  ? 2 // Medium border for assigned state
-                                  : 0, // No border for default state
+                    // Circular progress indicator for custom split percentages
+                    if (hasCustomSplit)
+                      SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            // Background circle
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: person.color.withValues(alpha: 0.15),
+                                  width: 2.5,
+                                ),
+                              ),
+                            ),
+                            // Progress arc
+                            SizedBox(
+                              width: 48,
+                              height: 48,
+                              child: CustomPaint(
+                                painter: ArcPainter(
+                                  color: person.color,
+                                  percentage: assignedPercentage!,
+                                  strokeWidth: 2.5,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
+
+                    // Outer selection ring - shows when selected or assigned (but not custom split)
+                    if (!hasCustomSplit)
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        width: (isSelected || isAssigned) ? 46 : 42,
+                        height: (isSelected || isAssigned) ? 46 : 42,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.transparent,
+                          border: Border.all(
+                            color:
+                                isSelected
+                                    ? _getSelectionColor(
+                                      person.color,
+                                      brightness,
+                                    )
+                                    : isAssigned
+                                    ? person.color
+                                    : Colors.transparent,
+                            width:
+                                isSelected
+                                    ? 3 // Thicker border for selected state
+                                    : isAssigned
+                                    ? 2 // Medium border for assigned state
+                                    : 0, // No border for default state
+                          ),
+                        ),
+                      ),
 
                     // Animated pulse effect for selected avatars (except birthday person)
                     if (isSelected && !isBirthdayPerson)
@@ -220,25 +269,41 @@ class ParticipantAvatar extends StatelessWidget {
               // Small gap between avatar and name
               const SizedBox(height: 2),
 
-              // Name label with explicit constraints and overflow handling
-              SizedBox(
-                height: 16,
-                child: Text(
-                  person.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight:
-                        isSelected || isAssigned || isBirthdayPerson
-                            ? FontWeight
-                                .w600 // Bold for active states
-                            : FontWeight
-                                .w500, // Medium weight for default state
-                    color: nameColor,
+              // Name and percentage labels stacked vertically
+              Column(
+                children: [
+                  // Name label with explicit constraints and overflow handling
+                  SizedBox(
+                    height: 16,
+                    child: Text(
+                      person.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight:
+                            isSelected || isAssigned || isBirthdayPerson
+                                ? FontWeight
+                                    .w600 // Bold for active states
+                                : FontWeight
+                                    .w500, // Medium weight for default state
+                        color: nameColor,
+                      ),
+                    ),
                   ),
-                ),
+
+                  // Percentage label if custom split
+                  if (hasCustomSplit)
+                    Text(
+                      '${assignedPercentage!.toStringAsFixed(0)}%',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: person.color,
+                      ),
+                    ),
+                ],
               ),
             ],
           ),
