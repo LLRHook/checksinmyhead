@@ -202,9 +202,6 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Get app theme colors for consistent styling
-    final colorScheme = Theme.of(context).colorScheme;
-    // Use white for light mode, black for dark mode
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final backgroundColor = isDarkMode ? Colors.black : Colors.white;
 

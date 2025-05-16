@@ -15,8 +15,8 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import 'package:checks_frontend/config/dialogUtils/dialog_utils.dart';
 import 'package:flutter/material.dart';
-import 'package:checks_frontend/config/theme.dart';
 
 /// A widget that displays a payment method with edit and delete options
 class PaymentMethodItem extends StatelessWidget {
