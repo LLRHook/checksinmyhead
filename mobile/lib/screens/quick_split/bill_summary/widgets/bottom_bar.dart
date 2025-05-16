@@ -134,6 +134,15 @@ class DoneButtonHandler {
     BuildContext context, {
     required BillSummaryData data,
   }) async {
+    // Capture all context-dependent references before async operation
+    final brightness = Theme.of(context).brightness;
+    final snackBarBgColor =
+        brightness == Brightness.dark ? const Color(0xFF2D2D2D) : null;
+    final snackBarTextColor =
+        brightness == Brightness.dark ? Colors.white : null;
+    final navigator = Navigator.of(context);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
     // Bill naming dialog is shown here with a premium bottom sheet
     final billName = await BillNameSheet.show(
       context: context,
@@ -144,18 +153,6 @@ class DoneButtonHandler {
     if (billName.isEmpty) {
       return; // Don't save the bill, just return to the summary screen
     }
-
-    // Capture theme info before async operation
-    final brightness = Theme.of(context).brightness;
-    final snackBarBgColor =
-        brightness == Brightness.dark ? const Color(0xFF2D2D2D) : null;
-
-    final snackBarTextColor =
-        brightness == Brightness.dark ? Colors.white : null;
-
-    // Store a navigator reference to avoid context usage after async gap
-    final navigator = Navigator.of(context);
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
 
     // Create a new BillSummaryData with the updated bill name
     final updatedData = BillSummaryData(
