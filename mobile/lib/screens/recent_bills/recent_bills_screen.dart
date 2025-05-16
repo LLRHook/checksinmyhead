@@ -71,9 +71,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
     // Initialize the refresh button rotation animation controller
     _refreshAnimationController = AnimationController(
       vsync: this,
-      duration: const Duration(
-        milliseconds: 1000,
-      ), // Full rotation takes 1 second
+      duration: const Duration(milliseconds: 745),
     );
 
     // Load bills from storage when the screen is first shown

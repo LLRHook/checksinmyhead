@@ -80,12 +80,16 @@ class PreferencesService {
     await saveSelectedPaymentMethods(selected);
   }
 
-  /// Loads all configured payment methods
+  /// Loads all configured payment identifiers for selected methods only
   Future<Map<String, String>> getAllPaymentIdentifiers() async {
     final prefs = await SharedPreferences.getInstance();
     final Map<String, String> results = {};
 
-    for (final method in PaymentMethod.availablePaymentMethods) {
+    // Get currently selected methods
+    final selectedMethods = await getSelectedPaymentMethods();
+
+    // Only load identifiers for selected methods
+    for (final method in selectedMethods) {
       final identifier = prefs.getString('$_paymentPrefix$method');
       if (identifier != null && identifier.isNotEmpty) {
         results[method] = identifier;
@@ -105,9 +109,16 @@ class PreferencesService {
     // Save selected methods list
     await prefs.setStringList(_selectedPaymentsKey, selectedMethods);
 
-    // Save each identifier
+    // First, remove all payment identifiers to ensure cleanup
+    for (final method in PaymentMethod.availablePaymentMethods) {
+      await prefs.remove('$_paymentPrefix$method');
+    }
+
+    // Then save only the identifiers for selected methods
     for (final entry in identifiers.entries) {
-      await prefs.setString('$_paymentPrefix${entry.key}', entry.value);
+      if (selectedMethods.contains(entry.key)) {
+        await prefs.setString('$_paymentPrefix${entry.key}', entry.value);
+      }
     }
   }
 }

@@ -19,6 +19,7 @@ import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_
 import 'package:checks_frontend/screens/recent_bills/billDetails/bill_details_screen.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.dart';
+import 'package:checks_frontend/config/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
@@ -398,38 +399,14 @@ class RecentBillCard extends StatelessWidget {
     // Provide haptic feedback when delete is tapped
     HapticFeedback.mediumImpact();
 
-    // Show a confirmation dialog with custom styling
-    final confirmed = await showDialog<bool>(
+    // Show a confirmation dialog with iOS-native styling
+    final confirmed = await AppDialogs.showConfirmationDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            backgroundColor: dialogBgColor,
-            title: Row(
-              children: [
-                Icon(Icons.delete_outline, color: colorScheme.error),
-                const SizedBox(width: 8),
-                const Text('Delete Bill'),
-              ],
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(
-                16,
-              ), // Rounded corners for dialog
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false), // Cancel
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true), // Confirm
-                style: TextButton.styleFrom(
-                  foregroundColor: colorScheme.error,
-                ), // Error color for delete
-                child: const Text('Delete'),
-              ),
-            ],
-          ),
+      title: 'Delete Bill',
+      message: 'Are you sure you want to delete this bill?',
+      cancelText: 'Cancel',
+      confirmText: 'Delete',
+      isDestructive: true,
     );
 
     // If user confirmed, delete the bill and notify parent

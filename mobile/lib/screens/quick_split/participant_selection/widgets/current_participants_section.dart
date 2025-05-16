@@ -17,6 +17,7 @@
 
 import 'package:checks_frontend/screens/quick_split/participant_selection/providers/participants_provider.dart';
 import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_utils.dart';
+import 'package:checks_frontend/config/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -41,40 +42,19 @@ class _CurrentParticipantsSectionState
   /// Shows a confirmation dialog and clears all participants if confirmed
   void _confirmClearAll(BuildContext context, ParticipantsProvider provider) {
     HapticFeedback.mediumImpact();
-    final colorScheme = Theme.of(context).colorScheme;
 
-    showDialog(
+    AppDialogs.showConfirmationDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text("Clear all participants?"),
-            content: const Text(
-              "This will remove all people from your current list.",
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(
-                  "Cancel",
-                  style: TextStyle(
-                    color: colorScheme.onSurface.withValues(alpha: 0.7),
-                  ),
-                ),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  provider.clearAll();
-                  Navigator.pop(context);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red.shade600,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text("Clear All"),
-              ),
-            ],
-          ),
-    );
+      title: "Clear all participants?",
+      message: "This will remove all people from your current list.",
+      cancelText: "Cancel",
+      confirmText: "Clear All",
+      isDestructive: true,
+    ).then((confirmed) {
+      if (confirmed == true) {
+        provider.clearAll();
+      }
+    });
   }
 
   /// Animates the removal of a person before actually removing them from the list
@@ -148,10 +128,10 @@ class _CurrentParticipantsSectionState
         if (participantsProvider.participants.length > 1)
           TextButton.icon(
             onPressed: () => _confirmClearAll(context, participantsProvider),
-            icon: Icon(Icons.clear_all, size: 18, color: labelColor),
+            icon: Icon(Icons.clear_all, size: 18, color: colorScheme.error),
             label: Text(
               "Clear All",
-              style: TextStyle(color: labelColor, fontSize: 12),
+              style: TextStyle(color: colorScheme.error, fontSize: 12),
             ),
             style: TextButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

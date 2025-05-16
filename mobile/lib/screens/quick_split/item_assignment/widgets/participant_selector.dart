@@ -51,6 +51,7 @@ class ParticipantSelector extends StatelessWidget {
   final Function(Person) onPersonTap;
   final Function(Person) onBirthdayToggle;
   final bool isMultiSelectMode; // Controlled by parent
+  final Map<Person, double>? assignments; // Optional assignment percentages
 
   const ParticipantSelector({
     super.key,
@@ -61,6 +62,7 @@ class ParticipantSelector extends StatelessWidget {
     required this.onPersonTap,
     required this.onBirthdayToggle,
     this.isMultiSelectMode = false,
+    this.assignments,
   });
 
   @override
@@ -68,107 +70,144 @@ class ParticipantSelector extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
-    // Define theme-aware colors for better readability in both light and dark modes
+    // Premium color scheme
     final primaryBlueColor =
         brightness == Brightness.dark
-            ? Color(0xFF60A5FA) // Lighter blue for better contrast in dark mode
-            : Color(0xFF3B82F6); // Standard blue for light mode
+            ? const Color(0xFF60A5FA)
+            : const Color(0xFF3B82F6);
 
-    final headerTextColor =
+    final subtleTextColor =
         brightness == Brightness.dark
-            ? colorScheme.primary.withValues(
-              alpha: .9,
-            ) // Slightly transparent in dark mode
-            : primaryBlueColor;
+            ? colorScheme.onSurface.withValues(alpha: 0.7)
+            : colorScheme.onSurface.withValues(alpha: 0.6);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize:
-          MainAxisSize.min, // Prevent column from expanding unnecessarily
-      children: [
-        // Multi-select mode header - only shown when multi-select is active
-        if (isMultiSelectMode)
-          SizedBox(
-            height:
-                40, // Fixed height prevents layout shifts when toggling modes
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              child: Row(
-                children: [
-                  // Touch icon indicates interactive selection mode
-                  Icon(
-                    Icons.touch_app_outlined,
-                    size: 16,
-                    color: primaryBlueColor,
-                  ),
-                  const SizedBox(width: 8),
-                  // Flexible prevents text overflow on smaller screens
-                  Flexible(
-                    child: Text(
-                      'Select people to split with:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        color: headerTextColor,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  // Selection counter - empty when no selections to avoid "0" display
-                  Text(
-                    selectedPeople.isEmpty
-                        ? ''
-                        : selectedPeople.length.toString(),
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: headerTextColor,
-                    ),
-                  ),
-                ],
-              ),
+    // Fixed height container to prevent layout shifts
+    return SizedBox(
+      height: 132, // Further reduced for tighter, premium layout
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header area with fixed height - always present, content conditionally shown
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            height: 32, // Reduced height
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            alignment: Alignment.centerLeft,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              switchInCurve: Curves.easeIn,
+              switchOutCurve: Curves.easeOut,
+              child:
+                  isMultiSelectMode
+                      ? Row(
+                        key: const ValueKey('multiselect-header'),
+                        children: [
+                          // Animated icon
+                          TweenAnimationBuilder<double>(
+                            duration: const Duration(milliseconds: 300),
+                            tween: Tween(begin: 0.0, end: 1.0),
+                            builder: (context, value, child) {
+                              return Transform.scale(
+                                scale: value,
+                                child: Icon(
+                                  Icons.touch_app_rounded,
+                                  size: 18,
+                                  color: primaryBlueColor,
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Select people to split with:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 15,
+                              color: subtleTextColor,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                          const Spacer(),
+                          // Animated counter badge
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 150),
+                            transitionBuilder: (
+                              Widget child,
+                              Animation<double> animation,
+                            ) {
+                              return ScaleTransition(
+                                scale: animation,
+                                child: child,
+                              );
+                            },
+                            child:
+                                selectedPeople.isNotEmpty
+                                    ? Container(
+                                      key: ValueKey(selectedPeople.length),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 4,
+                                      ),
+                                      child: Text(
+                                        selectedPeople.length.toString(),
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                          color: primaryBlueColor,
+                                        ),
+                                      ),
+                                    )
+                                    : const SizedBox.shrink(),
+                          ),
+                        ],
+                      )
+                      : const SizedBox.shrink(),
             ),
           ),
 
-        // Small spacing between header and avatar list
-        const SizedBox(height: 6),
+          const SizedBox(height: 2), // Minimal spacing for premium feel
+          // Avatar list with consistent height and premium padding
+          Container(
+            height: 96, // Slightly reduced height
+            padding: const EdgeInsets.only(
+              top: 2,
+            ), // Small top padding to bring avatars slightly up
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              itemCount: participants.length,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemBuilder: (context, index) {
+                final person = participants[index];
+                final isAssigned = assignedPeople.contains(person);
+                final isSelected = selectedPeople.contains(person);
+                final isBirthdayPerson = birthdayPerson == person;
+                final showAssignedIndicator =
+                    isMultiSelectMode ? false : isAssigned;
+                final percentage = assignments?[person];
 
-        // Horizontally scrollable avatar list with consistent fixed height
-        SizedBox(
-          height:
-              70, // Fixed height ensures consistent UI across different screens
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: participants.length,
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            itemBuilder: (context, index) {
-              final person = participants[index];
-
-              // Determine participant states for visual indicators
-              final isAssigned = assignedPeople.contains(person);
-              final isSelected = selectedPeople.contains(person);
-              final isBirthdayPerson = birthdayPerson == person;
-
-              // In multi-select mode, we hide assignment indicators to avoid visual confusion
-              final showAssignedIndicator =
-                  isMultiSelectMode ? false : isAssigned;
-
-              return ParticipantAvatar(
-                person: person,
-                isAssigned: showAssignedIndicator,
-                isSelected: isSelected,
-                isBirthdayPerson: isBirthdayPerson,
-                onTap: () => onPersonTap(person),
-                onLongPress:
-                    () => onBirthdayToggle(
-                      person,
-                    ), // Long press toggles birthday status
-              );
-            },
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: AnimatedScale(
+                    duration: const Duration(milliseconds: 200),
+                    scale: isSelected ? 0.95 : 1.0,
+                    child: ParticipantAvatar(
+                      person: person,
+                      isAssigned: showAssignedIndicator,
+                      isSelected: isSelected,
+                      isBirthdayPerson: isBirthdayPerson,
+                      onTap: () => onPersonTap(person),
+                      onLongPress: () => onBirthdayToggle(person),
+                      assignedPercentage: percentage,
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

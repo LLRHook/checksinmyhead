@@ -16,6 +16,7 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import 'package:flutter/material.dart';
+import 'package:checks_frontend/config/theme.dart';
 
 /// A widget that displays a payment method with edit and delete options
 class PaymentMethodItem extends StatelessWidget {
@@ -55,31 +56,16 @@ class PaymentMethodItem extends StatelessWidget {
         child: const Icon(Icons.delete, color: Colors.white),
       ),
       direction: DismissDirection.endToStart,
-      // Confirm deletion with dialog
+      // Confirm deletion with native iOS dialog
       confirmDismiss: (direction) async {
-        return await showDialog(
+        return await AppDialogs.showConfirmationDialog(
           context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: Text('Delete $methodName?'),
-              content: Text(
-                'Are you sure you want to remove this payment method?',
-              ),
-              actions: <Widget>[
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('Cancel'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text(
-                    'Delete',
-                    style: TextStyle(color: Colors.redAccent),
-                  ),
-                ),
-              ],
-            );
-          },
+          title: 'Delete $methodName?',
+          message: 'Are you sure you want to remove this payment method?',
+          cancelText: 'Cancel',
+          confirmText: 'Delete',
+          isDestructive: true,
+          icon: Icons.credit_card_off,
         );
       },
       // Handle actual deletion when confirmed
