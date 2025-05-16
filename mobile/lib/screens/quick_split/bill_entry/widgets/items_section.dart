@@ -15,11 +15,11 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import 'package:checks_frontend/config/dialogUtils/dialog_utils.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/components/input_decoration.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/components/section_card.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/models/bill_data.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
-import 'package:checks_frontend/config/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';

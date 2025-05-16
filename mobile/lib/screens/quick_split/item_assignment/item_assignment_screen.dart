@@ -369,7 +369,7 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
 
     final trackBgColor =
         brightness == Brightness.dark
-            ? Colors.grey.shade900.withOpacity(0.4) // Subtle track in dark mode
+            ? Colors.grey.shade900.withValues(alpha: .4)
             : Colors.grey.shade200;
 
     return Container(
