@@ -162,11 +162,6 @@ void showCustomSplitDialog({
                           // Item name and price display
                           Row(
                             children: [
-                              Icon(
-                                Icons.receipt,
-                                size: 20,
-                                color: dominantColor,
-                              ),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Column(
@@ -310,7 +305,7 @@ void showCustomSplitDialog({
                                 },
                                 icon: const Icon(Icons.people, size: 14),
                                 label: const Text(
-                                  'Even',
+                                  'Split Evenly?',
                                   style: TextStyle(fontSize: 13),
                                 ),
                                 style: TextButton.styleFrom(
@@ -740,13 +735,13 @@ Widget _buildPersonSlider({
         // Interactive adjustment controls
         Row(
           children: [
-            // Decrease button (5% increments)
+            // Decrease button (1% increments)
             IconButton(
               onPressed:
                   percentage > 0
                       ? () {
-                        // Decrement by 5% but don't go below 0
-                        onChanged(percentage - 5 < 0 ? 0 : percentage - 5);
+                        // Decrement by 1% but don't go below 0
+                        onChanged(percentage - 1 < 0 ? 0 : percentage - 1);
                       }
                       : null, // Disabled when already at 0%
               icon: const Icon(Icons.remove_circle_outline, size: 18),
@@ -796,20 +791,20 @@ Widget _buildPersonSlider({
                   value: percentage,
                   min: 0,
                   max: 100,
-                  divisions: 20, // Creates 5% increments (100/20 = 5)
+                  divisions: 100, // Creates 1% increments (100/100 = 1)
                   label: '${percentage.toStringAsFixed(0)}%',
                   onChanged: onChanged,
                 ),
               ),
             ),
 
-            // Increase button (5% increments)
+            // Increase button (1% increments)
             IconButton(
               onPressed:
                   percentage < 100
                       ? () {
-                        // Increment by 5% but don't exceed 100
-                        onChanged(percentage + 5 > 100 ? 100 : percentage + 5);
+                        // Increment by 1% but don't exceed 100
+                        onChanged(percentage + 1 > 100 ? 100 : percentage + 1);
                       }
                       : null, // Disabled when already at 100%
               icon: const Icon(Icons.add_circle_outline, size: 18),

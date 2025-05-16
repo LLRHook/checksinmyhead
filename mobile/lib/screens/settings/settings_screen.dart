@@ -104,13 +104,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     // Show confirmation if widget is still mounted
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Payment settings saved'),
-          behavior: SnackBarBehavior.floating,
-          duration: Duration(seconds: 2),
-        ),
-      );
       HapticFeedback.selectionClick(); // Provide tactile feedback
     }
   }

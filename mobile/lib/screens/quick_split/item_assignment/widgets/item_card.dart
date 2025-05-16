@@ -406,12 +406,10 @@ class _ItemCardState extends State<ItemCard>
     final item = widget.item;
     final onShowCustomSplit = widget.onShowCustomSplit;
 
-    // Close the expanded view and exit multi-select mode
+    // Exit multi-select mode but keep the card expanded
     setState(() {
       _multiSelectMode = false;
       _selectedPeople.clear();
-      _isExpanded = false;
-      _animController.reverse();
     });
 
     // Call the callback to show the custom split dialog
@@ -819,31 +817,34 @@ class _ItemCardState extends State<ItemCard>
               child: Column(
                 children: [
                   // Divider between header and expanded content
-                  Divider(height: 1, thickness: 1, color: dividerColor),
+                  Container(
+                    height: 1,
+                    color: dividerColor,
+                    margin: const EdgeInsets.only(bottom: 6),
+                  ),
 
-                  // Participant selector with action buttons
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Use the participant selector component
-                        ParticipantSelector(
-                          participants: widget.participants,
-                          assignedPeople: widget.assignedPeople,
-                          selectedPeople: _selectedPeople,
-                          birthdayPerson: widget.birthdayPerson,
-                          onPersonTap: _handlePersonTap,
-                          onBirthdayToggle: widget.onBirthdayToggle,
-                          isMultiSelectMode: _multiSelectMode,
-                        ),
+                  // Participant selector with action buttons - tighter padding
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Use the participant selector component
+                      ParticipantSelector(
+                        participants: widget.participants,
+                        assignedPeople: widget.assignedPeople,
+                        selectedPeople: _selectedPeople,
+                        birthdayPerson: widget.birthdayPerson,
+                        onPersonTap: _handlePersonTap,
+                        onBirthdayToggle: widget.onBirthdayToggle,
+                        isMultiSelectMode: _multiSelectMode,
+                        assignments: widget.item.assignments,
+                      ),
 
-                        const SizedBox(height: 16),
-
-                        // Action buttons (Split Evenly, Multi-Split, etc.)
-                        _buildActionButtons(dominantColor, brightness),
-                      ],
-                    ),
+                      // Action buttons with adjusted spacing and padding
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                        child: _buildActionButtons(dominantColor, brightness),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -1091,6 +1092,17 @@ class _ItemCardState extends State<ItemCard>
               const Color(0xFF475569),
             ];
 
+    final disabledGradient =
+        brightness == Brightness.dark
+            ? [
+              Colors.grey.shade700, // Lighter gray for dark mode
+              Colors.grey.shade800,
+            ]
+            : [
+              Colors.grey.shade300, // Lighter gray for light mode
+              Colors.grey.shade400,
+            ];
+
     // For dominant color gradient, apply extra lightening in dark mode
     Color gradientStart, gradientEnd;
     if (brightness == Brightness.dark) {
@@ -1128,6 +1140,17 @@ class _ItemCardState extends State<ItemCard>
             ) // Dark text for better contrast in dark mode
             : Colors.white;
 
+    // Disabled button text color
+    final disabledTextColor =
+        brightness == Brightness.dark
+            ? Colors
+                .grey
+                .shade400 // Dimmed text for dark mode
+            : Colors.grey.shade600; // Dimmed text for light mode
+
+    // Check if button should be enabled in multi-select mode
+    final bool isSplitItEnabled = _selectedPeople.isNotEmpty;
+
     return Column(
       children: [
         // Main action buttons row with two buttons side by side
@@ -1145,6 +1168,7 @@ class _ItemCardState extends State<ItemCard>
                 ),
                 textColor: buttonTextColor,
                 onTap: _splitEvenlyAll,
+                isEnabled: true,
               ),
             ),
 
@@ -1158,12 +1182,19 @@ class _ItemCardState extends State<ItemCard>
                         label: 'Split It!',
                         icon: Icons.flash_on,
                         gradient: LinearGradient(
-                          colors: greenGradient,
+                          colors:
+                              isSplitItEnabled
+                                  ? greenGradient
+                                  : disabledGradient,
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
-                        textColor: buttonTextColor,
+                        textColor:
+                            isSplitItEnabled
+                                ? buttonTextColor
+                                : disabledTextColor,
                         onTap: _showCustomSplitWithSelectedPeople,
+                        isEnabled: isSplitItEnabled,
                       )
                       : _buildModernButton(
                         label: 'Multi-Split',
@@ -1178,6 +1209,7 @@ class _ItemCardState extends State<ItemCard>
                         ),
                         textColor: buttonTextColor,
                         onTap: _enterMultiSelectMode,
+                        isEnabled: true,
                       ),
             ),
           ],
@@ -1191,13 +1223,13 @@ class _ItemCardState extends State<ItemCard>
               // If in multi-select mode, cancel it
               if (_multiSelectMode) {
                 _cancelMultiSelectMode();
+              } else {
+                // Only close when pressing "Done" (not in multi-select mode)
+                setState(() {
+                  _isExpanded = false;
+                  _animController.reverse();
+                });
               }
-
-              // Close the expanded view
-              setState(() {
-                _isExpanded = false;
-                _animController.reverse();
-              });
               HapticFeedback.mediumImpact();
             },
             child: Container(
@@ -1234,11 +1266,14 @@ class _ItemCardState extends State<ItemCard>
     required Gradient gradient,
     required VoidCallback onTap,
     required Color textColor,
+    required bool isEnabled,
   }) {
     return GestureDetector(
       onTap: () {
-        onTap();
-        HapticFeedback.mediumImpact();
+        if (isEnabled) {
+          onTap();
+          HapticFeedback.mediumImpact();
+        }
       },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),

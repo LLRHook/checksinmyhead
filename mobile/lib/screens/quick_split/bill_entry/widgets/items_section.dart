@@ -19,6 +19,7 @@ import 'package:checks_frontend/screens/quick_split/bill_entry/components/input_
 import 'package:checks_frontend/screens/quick_split/bill_entry/components/section_card.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/models/bill_data.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
+import 'package:checks_frontend/config/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -261,8 +262,12 @@ class _ItemsSectionState extends State<ItemsSection>
     final isSubtotalSet = billData.subtotal > 0;
 
     // Help text based on subtotal status
-    final itemNameHint =
-        isSubtotalSet ? 'e.g., Pizza, Pasta, Salad' : 'Enter subtotal first';
+    final itemDescription =
+        isSubtotalSet
+            ? 'Add items that add to your subtotal'
+            : 'Please enter a subtotal before adding items';
+
+    final itemIcon = isSubtotalSet ? Icons.restaurant_menu : Icons.info_outline;
 
     // Control visibility of expand/collapse toggle
     final shouldShowCollapseControl =
@@ -276,8 +281,8 @@ class _ItemsSectionState extends State<ItemsSection>
 
     return SectionCard(
       title: 'Add Items',
-      subTitle: 'Add items that add to your subtotal',
-      icon: Icons.restaurant_menu,
+      subTitle: itemDescription,
+      icon: itemIcon,
       children: [
         // Item name field
         TextFormField(
@@ -285,7 +290,6 @@ class _ItemsSectionState extends State<ItemsSection>
           decoration: AppInputDecoration.buildInputDecoration(
             context: context,
             labelText: 'Item name',
-            hintText: itemNameHint,
             prefixIcon: Icons.fastfood,
           ),
           style: TextStyle(
@@ -351,33 +355,6 @@ class _ItemsSectionState extends State<ItemsSection>
             ),
           ],
         ),
-
-        // Helper message when subtotal is not set
-        if (!isSubtotalSet) ...[
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: colorScheme.primary.withValues(alpha: .1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline, color: colorScheme.primary, size: 20),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Please enter a subtotal before adding items.',
-                    style: TextStyle(
-                      color: colorScheme.onSurface.withValues(alpha: .8),
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
 
         const SizedBox(height: 20),
 
@@ -546,48 +523,22 @@ class _ItemsSectionState extends State<ItemsSection>
                   TextButton.icon(
                     onPressed: () {
                       // Confirmation dialog for clearing all items
-                      showDialog(
+                      AppDialogs.showConfirmationDialog(
                         context: context,
-                        builder:
-                            (context) => AlertDialog(
-                              title: Text(
-                                'Clear All Items?',
-                                style: TextStyle(color: colorScheme.onSurface),
-                              ),
-                              content: Text(
-                                'Are you sure you want to remove all items? This action cannot be undone.',
-                                style: TextStyle(
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                              backgroundColor:
-                                  brightness == Brightness.dark
-                                      ? colorScheme.surface
-                                      : Colors.white,
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: const Text('CANCEL'),
-                                ),
-                                FilledButton(
-                                  onPressed: () {
-                                    Navigator.pop(context);
-                                    // Clear all items
-                                    for (
-                                      int i = billData.items.length - 1;
-                                      i >= 0;
-                                      i--
-                                    ) {
-                                      billData.removeItem(i);
-                                    }
-                                    _updateAnimation(billData);
-                                    HapticFeedback.mediumImpact();
-                                  },
-                                  child: const Text('CLEAR ALL'),
-                                ),
-                              ],
-                            ),
-                      );
+                        title: 'Clear All Items?',
+                        message: 'Are you sure you want to remove all items?',
+                        confirmText: 'Clear All',
+                        isDestructive: true,
+                      ).then((confirmed) {
+                        if (confirmed == true) {
+                          // Clear all items
+                          for (int i = billData.items.length - 1; i >= 0; i--) {
+                            billData.removeItem(i);
+                          }
+                          _updateAnimation(billData);
+                          HapticFeedback.mediumImpact();
+                        }
+                      });
                     },
                     icon: const Icon(Icons.clear_all, size: 16),
                     label: const Text(
@@ -737,10 +688,75 @@ class _ItemsSectionState extends State<ItemsSection>
                 ),
               );
             }),
-            // Add bottom collapse control when list is expanded and has enough items
+
+            // Add "+X more items" indicator when list is in collapsed state
+            if (_isItemsListCollapsed && shouldShowCollapseControl) ...[
+              const SizedBox(height: 8),
+              // Calculate remaining items count
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(
+                      color: colorScheme.outline.withValues(alpha: .15),
+                      width: 1,
+                    ),
+                  ),
+                ),
+                padding: const EdgeInsets.only(top: 8),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    splashColor: colorScheme.primary.withValues(alpha: .1),
+                    highlightColor: colorScheme.primary.withValues(alpha: .05),
+                    onTap: () {
+                      _toggleItemsList();
+                      // Subtle haptic feedback for microinteraction
+                      HapticFeedback.lightImpact();
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 10,
+                        horizontal: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            colorScheme.primary.withValues(alpha: .05),
+                            colorScheme.primary.withValues(alpha: .1),
+                          ],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '+ ${billData.items.length - _maxVisibleItemsWhenCollapsed} more',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: colorScheme.primary,
+                              letterSpacing: 0.1,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+
+            // Keep the existing "Show Less" button for expanded view
             if (!_isItemsListCollapsed &&
                 shouldShowCollapseControl &&
-                visibleItems.length >= 6) ...[
+                visibleItems.length >= 4) ...[
               const SizedBox(height: 8),
               // AnimatedContainer for subtle entrance animation
               AnimatedContainer(

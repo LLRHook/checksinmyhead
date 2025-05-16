@@ -31,26 +31,24 @@ class TutorialManager extends ChangeNotifier {
   // Tutorial steps for item assignment screen with enhanced descriptions
   final List<TutorialStep> tutorialSteps = [
     const TutorialStep(
-      title: 'Expand Items!',
-      description: 'Tap any dish to see its magical splitting options!',
+      title: 'Expand Items',
+      description: 'Tap any dish to see its splitting options!',
       icon: Icons.touch_app,
     ),
     const TutorialStep(
       title: 'One-Tap Magic',
-      description:
-          'Tap a friend\'s avatar to instantly assign the whole item. Color-coding makes tracking a breeze!',
+      description: 'Tap a friend\'s avatar to instantly assign the whole item.',
       icon: Icons.person_outline,
     ),
     const TutorialStep(
       title: 'Share the Love',
       description:
-          'Hit "Multi-Split" to divide an item among multiple hungry friends. Perfect for those shared nachos!',
+          'Hit "Split Evenly" to share an item among everyone. Perfect for those shared nachos!',
       icon: Icons.groups_outlined,
     ),
     const TutorialStep(
       title: 'Precision Mode',
-      description:
-          'Drag sliders within multi-split to set exact percentages, allowing more precise splits!',
+      description: '"Multi-Split" gives you the power for more precise splits!',
       icon: Icons.pie_chart,
     ),
     const TutorialStep(
@@ -77,9 +75,7 @@ class TutorialManager extends ChangeNotifier {
 
   // Get or create an instance of TutorialManager
   static Future<TutorialManager> getInstance() async {
-    if (_instance == null) {
-      _instance = await create();
-    }
+    _instance ??= await create();
     return _instance!;
   }
 
@@ -150,9 +146,11 @@ class TutorialManager extends ChangeNotifier {
   }
 
   // Clean up resources
+  @override
   void dispose() {
     _initTimer?.cancel();
-    notifyListeners();
+    // Don't call notifyListeners after disposing - it causes errors
+    super.dispose();
   }
 
   // Creates a tutorial button widget with an optional notification badge
