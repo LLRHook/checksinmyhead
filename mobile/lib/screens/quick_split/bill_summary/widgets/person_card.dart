@@ -19,6 +19,7 @@ import 'package:checks_frontend/screens/quick_split/bill_summary/models/bill_sum
 import 'package:checks_frontend/screens/quick_split/bill_summary/utils/calculation_utils.dart';
 import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_utils.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '/models/person.dart';
 import '/models/bill_item.dart';
 
@@ -82,6 +83,9 @@ class _PersonCardState extends State<PersonCard>
 
   /// Toggles the expanded state with animation
   void _toggleExpanded() {
+    // Provide haptic feedback for card interaction
+    HapticFeedback.lightImpact();
+
     setState(() {
       _isExpanded = !_isExpanded;
       if (_isExpanded) {
@@ -174,7 +178,7 @@ class _PersonCardState extends State<PersonCard>
         children: [
           // Interactive header with person info and total amount
           InkWell(
-            onTap: _toggleExpanded,
+            onTap: totalShare > 0 ? _toggleExpanded : null,
             borderRadius: BorderRadius.circular(16),
             child: _buildPersonHeader(
               context,
@@ -206,7 +210,7 @@ class _PersonCardState extends State<PersonCard>
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 14,
-                                color: colorScheme.onSurface,
+                                color: colorScheme.primary,
                               ),
                             ),
                           ),
@@ -378,15 +382,17 @@ class _PersonCardState extends State<PersonCard>
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              RotationTransition(
-                turns: _iconTurns,
-                child: Icon(
-                  Icons.expand_more,
-                  color: expandIconColor,
-                  size: 20,
+              if (totalShare > 0) ...[
+                const SizedBox(width: 8),
+                RotationTransition(
+                  turns: _iconTurns,
+                  child: Icon(
+                    Icons.expand_more,
+                    color: expandIconColor,
+                    size: 20,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ],

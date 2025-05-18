@@ -17,6 +17,7 @@
 
 import 'package:checks_frontend/screens/quick_split/bill_summary/models/bill_summary_data.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '/models/bill_item.dart';
 
 /// BillTotalCard - Displays bill total with expandable sections for items and breakdown
@@ -97,6 +98,7 @@ class _BillTotalCardState extends State<BillTotalCard>
 
   /// Toggles the expansion state of the items section
   void _toggleItemsExpanded() {
+    HapticFeedback.lightImpact();
     setState(() {
       _isItemsExpanded = !_isItemsExpanded;
       if (_isItemsExpanded) {
@@ -109,6 +111,7 @@ class _BillTotalCardState extends State<BillTotalCard>
 
   /// Toggles the expansion state of the cost breakdown section
   void _toggleCostBreakdownExpanded() {
+    HapticFeedback.lightImpact();
     setState(() {
       _isCostBreakdownExpanded = !_isCostBreakdownExpanded;
       if (_isCostBreakdownExpanded) {
@@ -201,6 +204,8 @@ class _BillTotalCardState extends State<BillTotalCard>
               InkWell(
                 onTap: _toggleItemsExpanded,
                 borderRadius: BorderRadius.circular(8),
+                splashColor: Colors.transparent,
+                highlightColor: Colors.transparent,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Row(
@@ -211,7 +216,7 @@ class _BillTotalCardState extends State<BillTotalCard>
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: colorScheme.onSurface,
+                            color: colorScheme.primary,
                           ),
                         ),
                       ),
@@ -260,6 +265,8 @@ class _BillTotalCardState extends State<BillTotalCard>
             InkWell(
               onTap: _toggleCostBreakdownExpanded,
               borderRadius: BorderRadius.circular(8),
+              splashColor: Colors.transparent,
+              highlightColor: Colors.transparent,
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(
@@ -270,7 +277,7 @@ class _BillTotalCardState extends State<BillTotalCard>
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: colorScheme.onSurface,
+                          color: colorScheme.primary,
                         ),
                       ),
                     ),

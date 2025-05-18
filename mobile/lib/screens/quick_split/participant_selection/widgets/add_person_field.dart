@@ -17,6 +17,7 @@
 
 import 'package:checks_frontend/screens/quick_split/participant_selection/providers/participants_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 /// A dual-state widget that expands from a button to a form field
@@ -154,7 +155,10 @@ class _AddPersonFieldState extends State<AddPersonField> {
     Color borderColor,
   ) {
     return ElevatedButton.icon(
-      onPressed: () => setState(() => _isAdding = true),
+      onPressed: () {
+        HapticFeedback.lightImpact();
+        setState(() => _isAdding = true);
+      },
       icon: const Icon(Icons.add),
       label: const Text("Add Person"),
       style: ElevatedButton.styleFrom(

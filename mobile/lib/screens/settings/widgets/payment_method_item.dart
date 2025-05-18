@@ -65,7 +65,6 @@ class PaymentMethodItem extends StatelessWidget {
           cancelText: 'Cancel',
           confirmText: 'Delete',
           isDestructive: true,
-          icon: Icons.credit_card_off,
         );
       },
       // Handle actual deletion when confirmed
