@@ -18,6 +18,7 @@
 import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_utils.dart';
 import 'package:checks_frontend/screens/recent_bills/billDetails/utils/bill_calculations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 
@@ -270,9 +271,10 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                       expandedCrossAxisAlignment: CrossAxisAlignment.start,
                       maintainState:
                           true, // Keep state when collapsed for better performance
-                      initiallyExpanded:
-                          index == 0, // First participant expanded by default
                       onExpansionChanged: (expanded) {
+                        // Provide haptic feedback when expansion state changes
+                        HapticFeedback.lightImpact();
+
                         // Update the expansion state when toggled
                         setState(() {
                           _expansionState[name] = expanded;

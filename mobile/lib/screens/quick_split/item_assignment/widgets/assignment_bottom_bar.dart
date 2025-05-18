@@ -81,7 +81,7 @@ class AssignmentBottomBar extends StatelessWidget {
     final valueColor = colorScheme.onSurface;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       decoration: BoxDecoration(
         color: backgroundColor,
         boxShadow: [
@@ -92,63 +92,68 @@ class AssignmentBottomBar extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Bill total information section
-          // Fixed position on the left side
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Total Bill',
-                style: TextStyle(fontSize: 12, color: labelColor),
-              ),
-              Text(
-                '\$${totalBill.toStringAsFixed(2)}',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: valueColor, // Theme-aware price color
-                ),
-              ),
-            ],
-          ),
-
-          // Continue button section
-          // Fixed position on the right side
-          ElevatedButton(
-            onPressed: onContinueTap,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: colorScheme.primary,
-              // Button text color adapts to provide better contrast in different themes
-              foregroundColor:
-                  brightness == Brightness.dark
-                      ? Colors.black.withValues(
-                        alpha: .9,
-                      ) // Better contrast in dark mode
-                      : Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              elevation: 2,
-              shadowColor: colorScheme.primary.withValues(alpha: .4),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            child: Row(
+      child: SafeArea(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Bill total information section
+            // Fixed position on the left side
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
-              children: const [
+              children: [
                 Text(
-                  'Continue',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  'Total Bill',
+                  style: TextStyle(fontSize: 12, color: labelColor),
                 ),
-                SizedBox(width: 4),
-                Icon(Icons.arrow_forward_rounded, size: 18),
+                Text(
+                  '\$${totalBill.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: valueColor, // Theme-aware price color
+                  ),
+                ),
               ],
             ),
-          ),
-        ],
+
+            // Continue button section
+            // Fixed position on the right side
+            ElevatedButton(
+              onPressed: onContinueTap,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colorScheme.primary,
+                // Button text color adapts to provide better contrast in different themes
+                foregroundColor:
+                    brightness == Brightness.dark
+                        ? Colors.black.withValues(
+                          alpha: .9,
+                        ) // Better contrast in dark mode
+                        : Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
+                elevation: 2,
+                shadowColor: colorScheme.primary.withValues(alpha: .4),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Text(
+                    'Continue',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                  SizedBox(width: 4),
+                  Icon(Icons.arrow_forward_rounded, size: 18),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

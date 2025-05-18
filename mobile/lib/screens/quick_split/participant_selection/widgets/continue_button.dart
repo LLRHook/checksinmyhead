@@ -44,7 +44,7 @@ class ContinueButton extends StatelessWidget {
             : Colors.grey.shade500;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 20),
       child: ElevatedButton(
         onPressed: hasParticipants ? onContinue : null,
         style: ElevatedButton.styleFrom(

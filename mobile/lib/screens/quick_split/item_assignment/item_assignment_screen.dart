@@ -249,6 +249,8 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
 
   // Convenience method for the continue button
   void _continueToSummary(AssignmentProvider provider) {
+    // Provide haptic feedback for continue button tap
+    HapticFeedback.mediumImpact();
     _checkAssignmentComplete(context, provider);
   }
 

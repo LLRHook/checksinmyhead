@@ -226,7 +226,7 @@ void showCustomSplitDialog({
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
-                                      'Total: ${totalPercentage.toStringAsFixed(0)}%',
+                                      '${totalPercentage.toStringAsFixed(0)}%',
                                       style: TextStyle(
                                         color: _getStatusColor(
                                           totalPercentage,
@@ -240,54 +240,10 @@ void showCustomSplitDialog({
                                 ),
                               ),
 
-                              const SizedBox(width: 8),
-
-                              // "Fix" button - only shown when total isn't 100% but is > 0
-                              if (totalPercentage != 100.0 &&
-                                  totalPercentage > 0)
-                                TextButton.icon(
-                                  onPressed: () {
-                                    setStateDialog(() {
-                                      // Normalize all values to make total 100%
-                                      // by scaling each percentage proportionally
-                                      double factor = 100.0 / totalPercentage;
-                                      for (var person
-                                          in workingAssignments.keys.toList()) {
-                                        workingAssignments[person] =
-                                            workingAssignments[person]! *
-                                            factor;
-                                      }
-                                      totalPercentage = 100.0;
-                                    });
-                                    HapticFeedback.mediumImpact();
-                                  },
-                                  icon: const Icon(Icons.autorenew, size: 14),
-                                  label: const Text(
-                                    'Fix',
-                                    style: TextStyle(fontSize: 13),
-                                  ),
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: dominantColor,
-                                    backgroundColor: dominantColor.withValues(
-                                      alpha: 0.08,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 6,
-                                    ),
-                                    minimumSize: Size.zero,
-                                    tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                  ),
-                                ),
-
                               const Spacer(),
 
                               // "Even" button to reset to even distribution
-                              TextButton.icon(
+                              TextButton(
                                 onPressed: () {
                                   setStateDialog(() {
                                     // Reset to even distribution among relevant participants
@@ -303,9 +259,8 @@ void showCustomSplitDialog({
                                   });
                                   HapticFeedback.mediumImpact();
                                 },
-                                icon: const Icon(Icons.people, size: 14),
-                                label: const Text(
-                                  'Split Evenly?',
+                                child: const Text(
+                                  'Split Even',
                                   style: TextStyle(fontSize: 13),
                                 ),
                                 style: TextButton.styleFrom(
