@@ -268,7 +268,10 @@ class _TipPercentageSlider extends StatelessWidget {
                 min: 0,
                 max: 99,
                 divisions: 99, // Allow 1% increments
-                onChanged: onChanged,
+                onChanged: (value) {
+                  // Round to nearest integer to ensure precise selection
+                  onChanged(value.roundToDouble());
+                },
               ),
             ),
           ),

@@ -112,7 +112,7 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
         builder: (context) {
           return Container(
             padding: const EdgeInsets.only(
-              top: 20,
+              top: 16,
               left: 20,
               right: 20,
               bottom: 10,
@@ -120,32 +120,29 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
             decoration: BoxDecoration(
               color: Theme.of(context).scaffoldBackgroundColor,
               borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
+                top: Radius.circular(24),
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: .15),
-                  blurRadius: 20,
-                  offset: const Offset(0, -5),
-                ),
-              ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // Sheet handle
                 Center(
                   child: Container(
-                    width: 40,
-                    height: 5,
+                    width: 48,
+                    height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(3),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                    margin: const EdgeInsets.only(bottom: 16),
                   ),
                 ),
+                const SizedBox(height: 20),
                 _buildSheetHeader(context),
+                const SizedBox(height: 20),
                 _buildScrollableContent(),
                 _buildContinueButton(context),
               ],
@@ -158,21 +155,53 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
 
   /// Creates the sheet title and close button header
   Widget _buildSheetHeader(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          "Who's splitting this bill?",
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
-        ),
-        IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => Navigator.pop(context),
-          style: IconButton.styleFrom(foregroundColor: Colors.grey.shade700),
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const SizedBox(width: 32), // Balance the close button
+          Expanded(
+            child: Text(
+              "Who's splitting this bill?",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface,
+                letterSpacing: -0.3,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          // Close button
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: Icon(
+                Icons.close_rounded,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.7),
+                size: 18,
+              ),
+              onPressed: () => Navigator.pop(context),
+              padding: EdgeInsets.zero,
+              style: IconButton.styleFrom(
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -180,11 +209,10 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
   Widget _buildScrollableContent() {
     return Expanded(
       child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
+        physics: const BouncingScrollPhysics(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: 20),
             const AddPersonField(),
             const SizedBox(height: 24),
             RecentPeopleSection(recentPeople: _recentPeople),
