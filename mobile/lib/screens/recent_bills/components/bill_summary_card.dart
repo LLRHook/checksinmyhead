@@ -31,6 +31,7 @@ import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_fo
 /// - Special formatting for the tip amount (shows percentage badge)
 /// - Consistent spacing and alignment for readability
 /// - Bold formatting for the total amount to emphasize the final cost
+/// - Collapsible content using ExpansionTile
 ///
 /// This component is designed to be easily integrated into bill detail screens
 /// and requires a RecentBillModel to populate the financial data.
@@ -57,15 +58,6 @@ class BillSummaryCard extends StatelessWidget {
             ? colorScheme.outline.withValues(alpha: .3)
             : Colors.grey.shade200;
 
-    // Header background - uses primary container with appropriate opacity for each mode
-    final headerBgColor =
-        brightness == Brightness.dark
-            ? colorScheme.primaryContainer.withValues(alpha: .15)
-            : colorScheme.primaryContainer.withValues(alpha: .3);
-
-    // Header text - uses primary color for both modes
-    final headerTextColor = colorScheme.primary;
-
     // Divider color - subtle separator that works in both modes
     final dividerColor =
         brightness == Brightness.dark
@@ -90,112 +82,110 @@ class BillSummaryCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: cardBorderColor, width: 0.5),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header section with title and icon
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: headerBgColor,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          backgroundColor: cardBgColor,
+          collapsedBackgroundColor: cardBgColor,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          expandedCrossAxisAlignment: CrossAxisAlignment.start,
+          title: Row(
+            children: [
+              Icon(Icons.receipt_long, color: colorScheme.primary, size: 20),
+              const SizedBox(width: 10),
+              Text(
+                'Bill Breakdown',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                  color: colorScheme.primary,
+                ),
               ),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.receipt_long, color: headerTextColor, size: 20),
-                const SizedBox(width: 10),
-                Text(
-                  'Bill Breakdown',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: headerTextColor,
-                  ),
-                ),
-              ],
-            ),
+            ],
           ),
-
-          // Bill details section with financial breakdown
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                // Subtotal row
-                _buildDetailRow(
-                  context,
-                  'Subtotal',
-                  bill.subtotal,
-                  textColor: textColor,
-                ),
-                const SizedBox(height: 12),
-
-                // Tax row
-                _buildDetailRow(context, 'Tax', bill.tax, textColor: textColor),
-
-                // Tip row - only shown if tip amount is greater than zero
-                if (bill.tipAmount > 0) ...[
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+              child: Column(
+                children: [
+                  // Subtotal row
+                  _buildDetailRow(
+                    context,
+                    'Subtotal',
+                    bill.subtotal,
+                    textColor: textColor,
+                  ),
                   const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Tip', style: TextStyle(color: textColor)),
-                      Row(
-                        children: [
-                          // Tip amount in currency format
-                          Text(
-                            CurrencyFormatter.formatCurrency(bill.tipAmount),
-                            style: TextStyle(
-                              fontWeight: FontWeight.w500,
-                              color: textColor,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          // Tip percentage badge
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: tipBadgeBgColor,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              '${bill.tipPercentage.toStringAsFixed(0)}%',
+
+                  // Tax row
+                  _buildDetailRow(
+                    context,
+                    'Tax',
+                    bill.tax,
+                    textColor: textColor,
+                  ),
+
+                  // Tip row - only shown if tip amount is greater than zero
+                  if (bill.tipAmount > 0) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Tip', style: TextStyle(color: textColor)),
+                        Row(
+                          children: [
+                            // Tip amount in currency format
+                            Text(
+                              CurrencyFormatter.formatCurrency(bill.tipAmount),
                               style: TextStyle(
-                                fontSize: 12,
                                 fontWeight: FontWeight.w500,
-                                color: colorScheme.primary,
+                                color: textColor,
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                            const SizedBox(width: 6),
+                            // Tip percentage badge
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: tipBadgeBgColor,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                '${bill.tipPercentage.toStringAsFixed(0)}%',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: colorScheme.primary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+
+                  // Divider before total
+                  const SizedBox(height: 16),
+                  Divider(color: dividerColor),
+                  const SizedBox(height: 12),
+
+                  // Total row - emphasized with bold text and larger font
+                  _buildDetailRow(
+                    context,
+                    'Total',
+                    bill.total,
+                    isTotal: true, // Flag for special styling
+                    textColor: totalTextColor,
                   ),
                 ],
-
-                // Divider before total
-                const SizedBox(height: 16),
-                Divider(color: dividerColor),
-                const SizedBox(height: 12),
-
-                // Total row - emphasized with bold text and larger font
-                _buildDetailRow(
-                  context,
-                  'Total',
-                  bill.total,
-                  isTotal: true, // Flag for special styling
-                  textColor: totalTextColor,
-                ),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
