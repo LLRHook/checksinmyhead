@@ -63,6 +63,7 @@ class ShareUtils {
     required bool includeItemsInShare,
     required bool includePersonItemsInShare,
     required bool hideBreakdownInShare,
+    String? billName,
   }) async {
     // Sort participants by payment amount (highest first)
     final sortedParticipants = List<Person>.from(participants);
@@ -79,6 +80,12 @@ class ShareUtils {
         paymentInfo['paymentIdentifiers'] as Map<String, String>;
 
     StringBuffer text = StringBuffer();
+
+    // Add bill name if provided
+    if (billName != null && billName.isNotEmpty) {
+      text.writeln(billName.toUpperCase());
+      text.writeln('───────────────');
+    }
 
     text.writeln('BILL SUMMARY');
     text.writeln('Total: \$${total.toStringAsFixed(2)}');
@@ -159,11 +166,9 @@ class ShareUtils {
               text.writeln(itemText);
             }
 
-            if (!hideBreakdownInShare) {
-              text.writeln(
-                '  + Tax & tip: \$${(amounts['tax']! + amounts['tip']!).toStringAsFixed(2)}',
-              );
-            }
+            text.writeln(
+              '  + Tax & tip: \$${(amounts['tax']! + amounts['tip']!).toStringAsFixed(2)}',
+            );
 
             text.writeln('');
           }
@@ -212,6 +217,7 @@ class ShareUtils {
     required bool includeItemsInShare,
     required bool includePersonItemsInShare,
     required bool hideBreakdownInShare,
+    String? billName,
   }) async {
     // Sort participants by payment amount (highest first)
     final sortedParticipants = List<Person>.from(participants);
@@ -227,6 +233,12 @@ class ShareUtils {
         paymentInfo['paymentIdentifiers'] as Map<String, String>;
 
     StringBuffer text = StringBuffer();
+
+    // Add bill name if provided
+    if (billName != null && billName.isNotEmpty) {
+      text.writeln(billName.toUpperCase());
+      text.writeln('───────────────');
+    }
 
     text.writeln('BILL SUMMARY');
     text.writeln('Total: \$${total.toStringAsFixed(2)}');
@@ -469,7 +481,7 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
                   children: [
                     SwitchListTile(
                       title: Text(
-                        'List all items',
+                        'List all bill items',
                         style: TextStyle(color: colorScheme.onSurface),
                       ),
                       value: _options.includeItemsInShare,

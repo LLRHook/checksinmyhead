@@ -319,9 +319,9 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                               : null,
 
                       // Total amount and expand/collapse indicator
-                      trailing: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           // Total amount in a badge
                           Container(
@@ -343,17 +343,23 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                             ),
                           ),
 
-                          // View/close details text (only if they have items)
-                          if (personItems.isNotEmpty) const SizedBox(height: 4),
-                          if (personItems.isNotEmpty)
-                            Text(
-                              // Text changes based on expansion state
-                              isExpanded ? 'Close details' : 'View details',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: viewDetailsColor,
+                          // Animated chevron (only if they have items)
+                          if (personItems.isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            AnimatedRotation(
+                              turns: isExpanded ? 0.5 : 0,
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                child: Icon(
+                                  Icons.expand_more,
+                                  color: viewDetailsColor,
+                                  size: 20,
+                                ),
                               ),
                             ),
+                          ],
                         ],
                       ),
 

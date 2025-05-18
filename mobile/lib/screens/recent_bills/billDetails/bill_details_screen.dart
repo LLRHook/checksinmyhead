@@ -190,6 +190,7 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
       includeItemsInShare: _shareOptions.includeItemsInShare,
       includePersonItemsInShare: _shareOptions.includePersonItemsInShare,
       hideBreakdownInShare: _shareOptions.hideBreakdownInShare,
+      billName: _bill.billName,
     );
 
     // Invoke the system share sheet with the formatted summary
@@ -290,10 +291,10 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
                     ), // Extra bottom padding for FAB
                     child: Column(
                       children: [
-                        // Bill summary card with fade-in and slide-up animation
+                        // Bill Items card with fade-in and slide-up animation
                         TweenAnimationBuilder<double>(
                           tween: Tween<double>(begin: 0.0, end: 1.0),
-                          duration: const Duration(milliseconds: 400),
+                          duration: const Duration(milliseconds: 300),
                           curve: Curves.easeOutCubic,
                           builder: (context, value, child) {
                             return Opacity(
@@ -302,6 +303,32 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
                                 offset: Offset(
                                   0,
                                   10 * (1 - value),
+                                ), // Slide up as opacity increases
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: BillItemsCard(
+                            bill: _bill,
+                            calculations: billCalculations,
+                          ),
+                        ),
+
+                        // Bill summary card with staggered animation
+                        TweenAnimationBuilder<double>(
+                          tween: Tween<double>(begin: 0.0, end: 1.0),
+                          duration: const Duration(milliseconds: 400),
+                          curve: Curves.easeOutCubic,
+                          builder: (context, value, child) {
+                            // Delay the start for staggered effect
+                            final delayedValue =
+                                (value - 0.15).clamp(0.0, 1.0) * 1.15;
+                            return Opacity(
+                              opacity: delayedValue,
+                              child: Transform.translate(
+                                offset: Offset(
+                                  0,
+                                  10 * (1 - delayedValue),
                                 ), // Slide up as opacity increases
                                 child: child,
                               ),
@@ -320,7 +347,7 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
                           builder: (context, value, child) {
                             // Delay the start for staggered effect
                             final delayedValue =
-                                (value - 0.2).clamp(0.0, 1.0) * 1.25;
+                                (value - 0.3).clamp(0.0, 1.0) * 1.4;
                             return Opacity(
                               opacity: delayedValue,
                               child: Transform.translate(
@@ -329,7 +356,7 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
                               ),
                             );
                           },
-                          child: ParticipantsCard(
+                          child: SortedParticipantsCard(
                             bill: _bill,
                             calculations:
                                 billCalculations, // Pass the calculations instance
@@ -704,5 +731,182 @@ class _ShimmerEffectState extends State<ShimmerEffect>
         return Opacity(opacity: _animation.value, child: widget.child);
       },
     );
+  }
+}
+
+/// BillItemsCard
+///
+/// A collapsible card widget that displays all items in the bill.
+/// This component provides a view of all items before showing the breakdown section.
+class BillItemsCard extends StatelessWidget {
+  final RecentBillModel bill;
+  final BillCalculations calculations;
+
+  const BillItemsCard({
+    super.key,
+    required this.bill,
+    required this.calculations,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    final cardBgColor =
+        brightness == Brightness.dark ? colorScheme.surface : Colors.white;
+
+    final cardBorderColor =
+        brightness == Brightness.dark
+            ? colorScheme.outline.withValues(alpha: .3)
+            : Colors.grey.shade200;
+
+    return Card(
+      elevation: 1,
+      surfaceTintColor: cardBgColor,
+      color: cardBgColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: cardBorderColor, width: 0.5),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          backgroundColor: cardBgColor,
+          collapsedBackgroundColor: cardBgColor,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          expandedCrossAxisAlignment: CrossAxisAlignment.start,
+          initiallyExpanded: true, // Start with the items card open
+          title: Row(
+            children: [
+              Icon(Icons.receipt, color: colorScheme.primary, size: 20),
+              const SizedBox(width: 10),
+              Text(
+                'Items',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                  color: colorScheme.primary,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: colorScheme.primary.withValues(alpha: .15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${bill.items?.length ?? 0}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                    color: colorScheme.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+              child: Column(
+                children:
+                    bill.items?.map((item) {
+                      final name = item['name'] as String? ?? 'Unknown Item';
+                      final price = (item['price'] as num?)?.toDouble() ?? 0.0;
+
+                      return _buildItemRow(context, name, price, colorScheme);
+                    }).toList() ??
+                    [],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildItemRow(
+    BuildContext context,
+    String name,
+    double price,
+    ColorScheme colorScheme,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              name,
+              style: TextStyle(fontSize: 14, color: colorScheme.onSurface),
+            ),
+          ),
+          Text(
+            CurrencyFormatter.formatCurrency(price),
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 14,
+              color: colorScheme.onSurface,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// SortedParticipantsCard
+///
+/// A wrapper around ParticipantsCard that sorts participants by amount owed in descending order
+class SortedParticipantsCard extends StatelessWidget {
+  final RecentBillModel bill;
+  final BillCalculations calculations;
+
+  const SortedParticipantsCard({
+    super.key,
+    required this.bill,
+    required this.calculations,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Get pre-calculated person totals from the BillCalculations utility
+    final personTotals = calculations.calculatePersonTotals();
+
+    // Check if bill has custom item assignments or uses equal splitting
+    final hasRealAssignments = calculations.hasRealAssignments();
+    final equalShare = calculations.calculateEqualShare();
+
+    // Create a sorted list of participants based on their total amounts
+    final sortedParticipants = List<String>.from(bill.participantNames);
+    sortedParticipants.sort((a, b) {
+      final amountA =
+          hasRealAssignments ? (personTotals[a] ?? 0.0) : equalShare;
+      final amountB =
+          hasRealAssignments ? (personTotals[b] ?? 0.0) : equalShare;
+      return amountB.compareTo(amountA); // Descending order
+    });
+
+    // Create a new bill with sorted participants
+    final sortedBill = RecentBillModel(
+      id: bill.id,
+      billName: bill.billName,
+      participantNames: sortedParticipants,
+      participantCount: bill.participantCount,
+      total: bill.total,
+      date: bill.date,
+      subtotal: bill.subtotal,
+      tax: bill.tax,
+      tipAmount: bill.tipAmount,
+      tipPercentage: bill.tipPercentage,
+      items: bill.items,
+      color: bill.color,
+      itemAssignments: bill.itemAssignments,
+    );
+
+    return ParticipantsCard(bill: sortedBill, calculations: calculations);
   }
 }

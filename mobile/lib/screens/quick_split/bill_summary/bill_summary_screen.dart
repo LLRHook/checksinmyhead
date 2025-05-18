@@ -137,6 +137,7 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
       includeItemsInShare: _shareOptions.includeItemsInShare,
       includePersonItemsInShare: _shareOptions.includePersonItemsInShare,
       hideBreakdownInShare: _shareOptions.hideBreakdownInShare,
+      billName: _summaryData.billName,
     );
 
     // Trigger platform share sheet with the generated summary
