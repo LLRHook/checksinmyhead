@@ -74,9 +74,9 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
 
     // Initialize with default share options until loaded from persistent storage
     _shareOptions = ShareOptions(
-      includeItemsInShare: true,
-      includePersonItemsInShare: true,
-      hideBreakdownInShare: false,
+      showAllItems: true,
+      showPersonItems: true,
+      showBreakdown: true,
     );
 
     // Initialize local bill copy
@@ -186,9 +186,9 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
           null, // Assuming birthday person isn't stored in recent bills
       tipPercentage: _bill.tipPercentage,
       isCustomTipAmount: false, // Assuming this isn't stored
-      includeItemsInShare: _shareOptions.includeItemsInShare,
-      includePersonItemsInShare: _shareOptions.includePersonItemsInShare,
-      hideBreakdownInShare: _shareOptions.hideBreakdownInShare,
+      includeItemsInShare: _shareOptions.showAllItems,
+      includePersonItemsInShare: _shareOptions.showPersonItems,
+      hideBreakdownInShare: !_shareOptions.showBreakdown,
       billName: _bill.billName,
     );
 

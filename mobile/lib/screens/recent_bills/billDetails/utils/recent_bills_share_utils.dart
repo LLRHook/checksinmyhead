@@ -89,9 +89,9 @@ class RecentBillShareUtils {
       isCustomTipAmount:
           bill.tipPercentage ==
           0, // A tip percentage of 0 indicates custom amount
-      includeItemsInShare: shareOptions.includeItemsInShare,
-      includePersonItemsInShare: shareOptions.includePersonItemsInShare,
-      hideBreakdownInShare: shareOptions.hideBreakdownInShare,
+      includeItemsInShare: shareOptions.showAllItems,
+      includePersonItemsInShare: shareOptions.showPersonItems,
+      hideBreakdownInShare: !shareOptions.showBreakdown,
     );
 
     // Trigger the device's share functionality with the formatted text

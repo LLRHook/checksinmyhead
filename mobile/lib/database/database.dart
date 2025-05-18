@@ -48,12 +48,12 @@ class TutorialStates extends Table {
 // Database table for user preferences
 class UserPreferences extends Table {
   IntColumn get id => integer().autoIncrement()();
-  BoolColumn get includeItemsInShare =>
+  BoolColumn get showAllItems =>
       boolean().withDefault(const Constant(true))();
-  BoolColumn get includePersonItemsInShare =>
+  BoolColumn get showPersonItems =>
       boolean().withDefault(const Constant(true))();
-  BoolColumn get hideBreakdownInShare =>
-      boolean().withDefault(const Constant(false))();
+  BoolColumn get showBreakdown =>
+      boolean().withDefault(const Constant(true))();
   DateTimeColumn get updatedAt =>
       dateTime().withDefault(Constant(DateTime.now()))();
 }
@@ -209,18 +209,18 @@ class AppDatabase extends _$AppDatabase {
     }
 
     return ShareOptions(
-      includeItemsInShare: prefs.includeItemsInShare,
-      includePersonItemsInShare: prefs.includePersonItemsInShare,
-      hideBreakdownInShare: prefs.hideBreakdownInShare,
+      showAllItems: prefs.showAllItems,
+      showPersonItems: prefs.showPersonItems,
+      showBreakdown: prefs.showBreakdown,
     );
   }
 
   Future<void> saveShareOptions(ShareOptions options) async {
     await (update(userPreferences)..where((p) => p.id.equals(1))).write(
       UserPreferencesCompanion(
-        includeItemsInShare: Value(options.includeItemsInShare),
-        includePersonItemsInShare: Value(options.includePersonItemsInShare),
-        hideBreakdownInShare: Value(options.hideBreakdownInShare),
+        showAllItems: Value(options.showAllItems),
+        showPersonItems: Value(options.showPersonItems),
+        showBreakdown: Value(options.showBreakdown),
         updatedAt: Value(DateTime.now()),
       ),
     );

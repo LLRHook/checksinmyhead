@@ -259,10 +259,6 @@ void showCustomSplitDialog({
                                   });
                                   HapticFeedback.mediumImpact();
                                 },
-                                child: const Text(
-                                  'Split Even',
-                                  style: TextStyle(fontSize: 13),
-                                ),
                                 style: TextButton.styleFrom(
                                   foregroundColor: dominantColor,
                                   backgroundColor: dominantColor.withValues(
@@ -278,6 +274,10 @@ void showCustomSplitDialog({
                                   minimumSize: Size.zero,
                                   tapTargetSize:
                                       MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: const Text(
+                                  'Split Evenly',
+                                  style: TextStyle(fontSize: 13),
                                 ),
                               ),
                             ],

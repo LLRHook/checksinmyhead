@@ -404,10 +404,9 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
     super.initState();
     // Create a copy to avoid modifying the original
     _options = ShareOptions(
-      includeItemsInShare: widget.initialOptions.includeItemsInShare,
-      includePersonItemsInShare:
-          widget.initialOptions.includePersonItemsInShare,
-      hideBreakdownInShare: widget.initialOptions.hideBreakdownInShare,
+      showAllItems: widget.initialOptions.showAllItems,
+      showPersonItems: widget.initialOptions.showPersonItems,
+      showBreakdown: widget.initialOptions.showBreakdown,
     );
   }
 
@@ -461,7 +460,7 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
 
               Center(
                 child: Text(
-                  'Share Options',
+                  'Text Receipt Options',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -481,14 +480,14 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
                   children: [
                     SwitchListTile(
                       title: Text(
-                        'List all bill items',
+                        'Show all items',
                         style: TextStyle(color: colorScheme.onSurface),
                       ),
-                      value: _options.includeItemsInShare,
+                      value: _options.showAllItems,
                       activeColor: colorScheme.primary,
                       onChanged: (value) {
                         setState(() {
-                          _options.includeItemsInShare = value;
+                          _options.showAllItems = value;
                         });
                         widget.onOptionsChanged(_options);
                       },
@@ -498,14 +497,21 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
 
                     SwitchListTile(
                       title: Text(
-                        'Hide breakdown',
+                        'Show breakdown',
                         style: TextStyle(color: colorScheme.onSurface),
                       ),
-                      value: _options.hideBreakdownInShare,
+                      subtitle: Text(
+                        'Subtotal, tax, and tip',
+                        style: TextStyle(
+                          color: colorScheme.onSurface.withAlpha(150),
+                          fontSize: 14,
+                        ),
+                      ),
+                      value: _options.showBreakdown,
                       activeColor: colorScheme.primary,
                       onChanged: (value) {
                         setState(() {
-                          _options.hideBreakdownInShare = value;
+                          _options.showBreakdown = value;
                         });
                         widget.onOptionsChanged(_options);
                       },
@@ -514,14 +520,21 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
                     Divider(height: 1, thickness: 1, color: dividerColor),
                     SwitchListTile(
                       title: Text(
-                        'Show each person\'s items',
+                        'Show person\'s details',
                         style: TextStyle(color: colorScheme.onSurface),
                       ),
-                      value: _options.includePersonItemsInShare,
+                      subtitle: Text(
+                        'Their items + tax & tip',
+                        style: TextStyle(
+                          color: colorScheme.onSurface.withAlpha(150),
+                          fontSize: 14,
+                        ),
+                      ),
+                      value: _options.showPersonItems,
                       activeColor: colorScheme.primary,
                       onChanged: (value) {
                         setState(() {
-                          _options.includePersonItemsInShare = value;
+                          _options.showPersonItems = value;
                         });
                         widget.onOptionsChanged(_options);
                       },
@@ -558,13 +571,23 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
 
 /// Model class for share customization options
 class ShareOptions {
-  bool includeItemsInShare;
-  bool includePersonItemsInShare;
-  bool hideBreakdownInShare;
+  bool showAllItems;
+  bool showPersonItems;
+  bool showBreakdown;
 
   ShareOptions({
-    this.includeItemsInShare = true,
-    this.includePersonItemsInShare = false,
-    this.hideBreakdownInShare = false,
+    this.showAllItems = true,
+    this.showPersonItems = false,
+    this.showBreakdown = true,
   });
+  
+  // Compatibility getters for existing code
+  bool get includeItemsInShare => showAllItems;
+  bool get includePersonItemsInShare => showPersonItems;
+  bool get hideBreakdownInShare => !showBreakdown;
+  
+  // Compatibility setters for existing code  
+  set includeItemsInShare(bool value) => showAllItems = value;
+  set includePersonItemsInShare(bool value) => showPersonItems = value;
+  set hideBreakdownInShare(bool value) => showBreakdown = !value;
 }
