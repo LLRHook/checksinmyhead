@@ -652,48 +652,50 @@ class $UserPreferencesTable extends UserPreferences
       'PRIMARY KEY AUTOINCREMENT',
     ),
   );
-  static const VerificationMeta _includeItemsInShareMeta =
-      const VerificationMeta('includeItemsInShare');
+  static const VerificationMeta _showAllItemsMeta = const VerificationMeta(
+    'showAllItems',
+  );
   @override
-  late final GeneratedColumn<bool> includeItemsInShare = GeneratedColumn<bool>(
-    'include_items_in_share',
+  late final GeneratedColumn<bool> showAllItems = GeneratedColumn<bool>(
+    'show_all_items',
     aliasedName,
     false,
     type: DriftSqlType.bool,
     requiredDuringInsert: false,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("include_items_in_share" IN (0, 1))',
+      'CHECK ("show_all_items" IN (0, 1))',
     ),
     defaultValue: const Constant(true),
   );
-  static const VerificationMeta _includePersonItemsInShareMeta =
-      const VerificationMeta('includePersonItemsInShare');
+  static const VerificationMeta _showPersonItemsMeta = const VerificationMeta(
+    'showPersonItems',
+  );
   @override
-  late final GeneratedColumn<bool> includePersonItemsInShare =
-      GeneratedColumn<bool>(
-        'include_person_items_in_share',
-        aliasedName,
-        false,
-        type: DriftSqlType.bool,
-        requiredDuringInsert: false,
-        defaultConstraints: GeneratedColumn.constraintIsAlways(
-          'CHECK ("include_person_items_in_share" IN (0, 1))',
-        ),
-        defaultValue: const Constant(true),
-      );
-  static const VerificationMeta _hideBreakdownInShareMeta =
-      const VerificationMeta('hideBreakdownInShare');
-  @override
-  late final GeneratedColumn<bool> hideBreakdownInShare = GeneratedColumn<bool>(
-    'hide_breakdown_in_share',
+  late final GeneratedColumn<bool> showPersonItems = GeneratedColumn<bool>(
+    'show_person_items',
     aliasedName,
     false,
     type: DriftSqlType.bool,
     requiredDuringInsert: false,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("hide_breakdown_in_share" IN (0, 1))',
+      'CHECK ("show_person_items" IN (0, 1))',
     ),
-    defaultValue: const Constant(false),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _showBreakdownMeta = const VerificationMeta(
+    'showBreakdown',
+  );
+  @override
+  late final GeneratedColumn<bool> showBreakdown = GeneratedColumn<bool>(
+    'show_breakdown',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("show_breakdown" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
   );
   static const VerificationMeta _updatedAtMeta = const VerificationMeta(
     'updatedAt',
@@ -710,9 +712,9 @@ class $UserPreferencesTable extends UserPreferences
   @override
   List<GeneratedColumn> get $columns => [
     id,
-    includeItemsInShare,
-    includePersonItemsInShare,
-    hideBreakdownInShare,
+    showAllItems,
+    showPersonItems,
+    showBreakdown,
     updatedAt,
   ];
   @override
@@ -730,30 +732,30 @@ class $UserPreferencesTable extends UserPreferences
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     }
-    if (data.containsKey('include_items_in_share')) {
+    if (data.containsKey('show_all_items')) {
       context.handle(
-        _includeItemsInShareMeta,
-        includeItemsInShare.isAcceptableOrUnknown(
-          data['include_items_in_share']!,
-          _includeItemsInShareMeta,
+        _showAllItemsMeta,
+        showAllItems.isAcceptableOrUnknown(
+          data['show_all_items']!,
+          _showAllItemsMeta,
         ),
       );
     }
-    if (data.containsKey('include_person_items_in_share')) {
+    if (data.containsKey('show_person_items')) {
       context.handle(
-        _includePersonItemsInShareMeta,
-        includePersonItemsInShare.isAcceptableOrUnknown(
-          data['include_person_items_in_share']!,
-          _includePersonItemsInShareMeta,
+        _showPersonItemsMeta,
+        showPersonItems.isAcceptableOrUnknown(
+          data['show_person_items']!,
+          _showPersonItemsMeta,
         ),
       );
     }
-    if (data.containsKey('hide_breakdown_in_share')) {
+    if (data.containsKey('show_breakdown')) {
       context.handle(
-        _hideBreakdownInShareMeta,
-        hideBreakdownInShare.isAcceptableOrUnknown(
-          data['hide_breakdown_in_share']!,
-          _hideBreakdownInShareMeta,
+        _showBreakdownMeta,
+        showBreakdown.isAcceptableOrUnknown(
+          data['show_breakdown']!,
+          _showBreakdownMeta,
         ),
       );
     }
@@ -777,20 +779,20 @@ class $UserPreferencesTable extends UserPreferences
             DriftSqlType.int,
             data['${effectivePrefix}id'],
           )!,
-      includeItemsInShare:
+      showAllItems:
           attachedDatabase.typeMapping.read(
             DriftSqlType.bool,
-            data['${effectivePrefix}include_items_in_share'],
+            data['${effectivePrefix}show_all_items'],
           )!,
-      includePersonItemsInShare:
+      showPersonItems:
           attachedDatabase.typeMapping.read(
             DriftSqlType.bool,
-            data['${effectivePrefix}include_person_items_in_share'],
+            data['${effectivePrefix}show_person_items'],
           )!,
-      hideBreakdownInShare:
+      showBreakdown:
           attachedDatabase.typeMapping.read(
             DriftSqlType.bool,
-            data['${effectivePrefix}hide_breakdown_in_share'],
+            data['${effectivePrefix}show_breakdown'],
           )!,
       updatedAt:
           attachedDatabase.typeMapping.read(
@@ -808,26 +810,24 @@ class $UserPreferencesTable extends UserPreferences
 
 class UserPreference extends DataClass implements Insertable<UserPreference> {
   final int id;
-  final bool includeItemsInShare;
-  final bool includePersonItemsInShare;
-  final bool hideBreakdownInShare;
+  final bool showAllItems;
+  final bool showPersonItems;
+  final bool showBreakdown;
   final DateTime updatedAt;
   const UserPreference({
     required this.id,
-    required this.includeItemsInShare,
-    required this.includePersonItemsInShare,
-    required this.hideBreakdownInShare,
+    required this.showAllItems,
+    required this.showPersonItems,
+    required this.showBreakdown,
     required this.updatedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
-    map['include_items_in_share'] = Variable<bool>(includeItemsInShare);
-    map['include_person_items_in_share'] = Variable<bool>(
-      includePersonItemsInShare,
-    );
-    map['hide_breakdown_in_share'] = Variable<bool>(hideBreakdownInShare);
+    map['show_all_items'] = Variable<bool>(showAllItems);
+    map['show_person_items'] = Variable<bool>(showPersonItems);
+    map['show_breakdown'] = Variable<bool>(showBreakdown);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
   }
@@ -835,9 +835,9 @@ class UserPreference extends DataClass implements Insertable<UserPreference> {
   UserPreferencesCompanion toCompanion(bool nullToAbsent) {
     return UserPreferencesCompanion(
       id: Value(id),
-      includeItemsInShare: Value(includeItemsInShare),
-      includePersonItemsInShare: Value(includePersonItemsInShare),
-      hideBreakdownInShare: Value(hideBreakdownInShare),
+      showAllItems: Value(showAllItems),
+      showPersonItems: Value(showPersonItems),
+      showBreakdown: Value(showBreakdown),
       updatedAt: Value(updatedAt),
     );
   }
@@ -849,15 +849,9 @@ class UserPreference extends DataClass implements Insertable<UserPreference> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return UserPreference(
       id: serializer.fromJson<int>(json['id']),
-      includeItemsInShare: serializer.fromJson<bool>(
-        json['includeItemsInShare'],
-      ),
-      includePersonItemsInShare: serializer.fromJson<bool>(
-        json['includePersonItemsInShare'],
-      ),
-      hideBreakdownInShare: serializer.fromJson<bool>(
-        json['hideBreakdownInShare'],
-      ),
+      showAllItems: serializer.fromJson<bool>(json['showAllItems']),
+      showPersonItems: serializer.fromJson<bool>(json['showPersonItems']),
+      showBreakdown: serializer.fromJson<bool>(json['showBreakdown']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
   }
@@ -866,44 +860,41 @@ class UserPreference extends DataClass implements Insertable<UserPreference> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
-      'includeItemsInShare': serializer.toJson<bool>(includeItemsInShare),
-      'includePersonItemsInShare': serializer.toJson<bool>(
-        includePersonItemsInShare,
-      ),
-      'hideBreakdownInShare': serializer.toJson<bool>(hideBreakdownInShare),
+      'showAllItems': serializer.toJson<bool>(showAllItems),
+      'showPersonItems': serializer.toJson<bool>(showPersonItems),
+      'showBreakdown': serializer.toJson<bool>(showBreakdown),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
 
   UserPreference copyWith({
     int? id,
-    bool? includeItemsInShare,
-    bool? includePersonItemsInShare,
-    bool? hideBreakdownInShare,
+    bool? showAllItems,
+    bool? showPersonItems,
+    bool? showBreakdown,
     DateTime? updatedAt,
   }) => UserPreference(
     id: id ?? this.id,
-    includeItemsInShare: includeItemsInShare ?? this.includeItemsInShare,
-    includePersonItemsInShare:
-        includePersonItemsInShare ?? this.includePersonItemsInShare,
-    hideBreakdownInShare: hideBreakdownInShare ?? this.hideBreakdownInShare,
+    showAllItems: showAllItems ?? this.showAllItems,
+    showPersonItems: showPersonItems ?? this.showPersonItems,
+    showBreakdown: showBreakdown ?? this.showBreakdown,
     updatedAt: updatedAt ?? this.updatedAt,
   );
   UserPreference copyWithCompanion(UserPreferencesCompanion data) {
     return UserPreference(
       id: data.id.present ? data.id.value : this.id,
-      includeItemsInShare:
-          data.includeItemsInShare.present
-              ? data.includeItemsInShare.value
-              : this.includeItemsInShare,
-      includePersonItemsInShare:
-          data.includePersonItemsInShare.present
-              ? data.includePersonItemsInShare.value
-              : this.includePersonItemsInShare,
-      hideBreakdownInShare:
-          data.hideBreakdownInShare.present
-              ? data.hideBreakdownInShare.value
-              : this.hideBreakdownInShare,
+      showAllItems:
+          data.showAllItems.present
+              ? data.showAllItems.value
+              : this.showAllItems,
+      showPersonItems:
+          data.showPersonItems.present
+              ? data.showPersonItems.value
+              : this.showPersonItems,
+      showBreakdown:
+          data.showBreakdown.present
+              ? data.showBreakdown.value
+              : this.showBreakdown,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
@@ -912,85 +903,76 @@ class UserPreference extends DataClass implements Insertable<UserPreference> {
   String toString() {
     return (StringBuffer('UserPreference(')
           ..write('id: $id, ')
-          ..write('includeItemsInShare: $includeItemsInShare, ')
-          ..write('includePersonItemsInShare: $includePersonItemsInShare, ')
-          ..write('hideBreakdownInShare: $hideBreakdownInShare, ')
+          ..write('showAllItems: $showAllItems, ')
+          ..write('showPersonItems: $showPersonItems, ')
+          ..write('showBreakdown: $showBreakdown, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-    id,
-    includeItemsInShare,
-    includePersonItemsInShare,
-    hideBreakdownInShare,
-    updatedAt,
-  );
+  int get hashCode =>
+      Object.hash(id, showAllItems, showPersonItems, showBreakdown, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is UserPreference &&
           other.id == this.id &&
-          other.includeItemsInShare == this.includeItemsInShare &&
-          other.includePersonItemsInShare == this.includePersonItemsInShare &&
-          other.hideBreakdownInShare == this.hideBreakdownInShare &&
+          other.showAllItems == this.showAllItems &&
+          other.showPersonItems == this.showPersonItems &&
+          other.showBreakdown == this.showBreakdown &&
           other.updatedAt == this.updatedAt);
 }
 
 class UserPreferencesCompanion extends UpdateCompanion<UserPreference> {
   final Value<int> id;
-  final Value<bool> includeItemsInShare;
-  final Value<bool> includePersonItemsInShare;
-  final Value<bool> hideBreakdownInShare;
+  final Value<bool> showAllItems;
+  final Value<bool> showPersonItems;
+  final Value<bool> showBreakdown;
   final Value<DateTime> updatedAt;
   const UserPreferencesCompanion({
     this.id = const Value.absent(),
-    this.includeItemsInShare = const Value.absent(),
-    this.includePersonItemsInShare = const Value.absent(),
-    this.hideBreakdownInShare = const Value.absent(),
+    this.showAllItems = const Value.absent(),
+    this.showPersonItems = const Value.absent(),
+    this.showBreakdown = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
   UserPreferencesCompanion.insert({
     this.id = const Value.absent(),
-    this.includeItemsInShare = const Value.absent(),
-    this.includePersonItemsInShare = const Value.absent(),
-    this.hideBreakdownInShare = const Value.absent(),
+    this.showAllItems = const Value.absent(),
+    this.showPersonItems = const Value.absent(),
+    this.showBreakdown = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
   static Insertable<UserPreference> custom({
     Expression<int>? id,
-    Expression<bool>? includeItemsInShare,
-    Expression<bool>? includePersonItemsInShare,
-    Expression<bool>? hideBreakdownInShare,
+    Expression<bool>? showAllItems,
+    Expression<bool>? showPersonItems,
+    Expression<bool>? showBreakdown,
     Expression<DateTime>? updatedAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (includeItemsInShare != null)
-        'include_items_in_share': includeItemsInShare,
-      if (includePersonItemsInShare != null)
-        'include_person_items_in_share': includePersonItemsInShare,
-      if (hideBreakdownInShare != null)
-        'hide_breakdown_in_share': hideBreakdownInShare,
+      if (showAllItems != null) 'show_all_items': showAllItems,
+      if (showPersonItems != null) 'show_person_items': showPersonItems,
+      if (showBreakdown != null) 'show_breakdown': showBreakdown,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
   }
 
   UserPreferencesCompanion copyWith({
     Value<int>? id,
-    Value<bool>? includeItemsInShare,
-    Value<bool>? includePersonItemsInShare,
-    Value<bool>? hideBreakdownInShare,
+    Value<bool>? showAllItems,
+    Value<bool>? showPersonItems,
+    Value<bool>? showBreakdown,
     Value<DateTime>? updatedAt,
   }) {
     return UserPreferencesCompanion(
       id: id ?? this.id,
-      includeItemsInShare: includeItemsInShare ?? this.includeItemsInShare,
-      includePersonItemsInShare:
-          includePersonItemsInShare ?? this.includePersonItemsInShare,
-      hideBreakdownInShare: hideBreakdownInShare ?? this.hideBreakdownInShare,
+      showAllItems: showAllItems ?? this.showAllItems,
+      showPersonItems: showPersonItems ?? this.showPersonItems,
+      showBreakdown: showBreakdown ?? this.showBreakdown,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
@@ -1001,18 +983,14 @@ class UserPreferencesCompanion extends UpdateCompanion<UserPreference> {
     if (id.present) {
       map['id'] = Variable<int>(id.value);
     }
-    if (includeItemsInShare.present) {
-      map['include_items_in_share'] = Variable<bool>(includeItemsInShare.value);
+    if (showAllItems.present) {
+      map['show_all_items'] = Variable<bool>(showAllItems.value);
     }
-    if (includePersonItemsInShare.present) {
-      map['include_person_items_in_share'] = Variable<bool>(
-        includePersonItemsInShare.value,
-      );
+    if (showPersonItems.present) {
+      map['show_person_items'] = Variable<bool>(showPersonItems.value);
     }
-    if (hideBreakdownInShare.present) {
-      map['hide_breakdown_in_share'] = Variable<bool>(
-        hideBreakdownInShare.value,
-      );
+    if (showBreakdown.present) {
+      map['show_breakdown'] = Variable<bool>(showBreakdown.value);
     }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
@@ -1024,9 +1002,9 @@ class UserPreferencesCompanion extends UpdateCompanion<UserPreference> {
   String toString() {
     return (StringBuffer('UserPreferencesCompanion(')
           ..write('id: $id, ')
-          ..write('includeItemsInShare: $includeItemsInShare, ')
-          ..write('includePersonItemsInShare: $includePersonItemsInShare, ')
-          ..write('hideBreakdownInShare: $hideBreakdownInShare, ')
+          ..write('showAllItems: $showAllItems, ')
+          ..write('showPersonItems: $showPersonItems, ')
+          ..write('showBreakdown: $showBreakdown, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
@@ -2190,17 +2168,17 @@ typedef $$TutorialStatesTableProcessedTableManager =
 typedef $$UserPreferencesTableCreateCompanionBuilder =
     UserPreferencesCompanion Function({
       Value<int> id,
-      Value<bool> includeItemsInShare,
-      Value<bool> includePersonItemsInShare,
-      Value<bool> hideBreakdownInShare,
+      Value<bool> showAllItems,
+      Value<bool> showPersonItems,
+      Value<bool> showBreakdown,
       Value<DateTime> updatedAt,
     });
 typedef $$UserPreferencesTableUpdateCompanionBuilder =
     UserPreferencesCompanion Function({
       Value<int> id,
-      Value<bool> includeItemsInShare,
-      Value<bool> includePersonItemsInShare,
-      Value<bool> hideBreakdownInShare,
+      Value<bool> showAllItems,
+      Value<bool> showPersonItems,
+      Value<bool> showBreakdown,
       Value<DateTime> updatedAt,
     });
 
@@ -2218,18 +2196,18 @@ class $$UserPreferencesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<bool> get includeItemsInShare => $composableBuilder(
-    column: $table.includeItemsInShare,
+  ColumnFilters<bool> get showAllItems => $composableBuilder(
+    column: $table.showAllItems,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<bool> get includePersonItemsInShare => $composableBuilder(
-    column: $table.includePersonItemsInShare,
+  ColumnFilters<bool> get showPersonItems => $composableBuilder(
+    column: $table.showPersonItems,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<bool> get hideBreakdownInShare => $composableBuilder(
-    column: $table.hideBreakdownInShare,
+  ColumnFilters<bool> get showBreakdown => $composableBuilder(
+    column: $table.showBreakdown,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2253,18 +2231,18 @@ class $$UserPreferencesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<bool> get includeItemsInShare => $composableBuilder(
-    column: $table.includeItemsInShare,
+  ColumnOrderings<bool> get showAllItems => $composableBuilder(
+    column: $table.showAllItems,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<bool> get includePersonItemsInShare => $composableBuilder(
-    column: $table.includePersonItemsInShare,
+  ColumnOrderings<bool> get showPersonItems => $composableBuilder(
+    column: $table.showPersonItems,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<bool> get hideBreakdownInShare => $composableBuilder(
-    column: $table.hideBreakdownInShare,
+  ColumnOrderings<bool> get showBreakdown => $composableBuilder(
+    column: $table.showBreakdown,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -2286,18 +2264,18 @@ class $$UserPreferencesTableAnnotationComposer
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<bool> get includeItemsInShare => $composableBuilder(
-    column: $table.includeItemsInShare,
+  GeneratedColumn<bool> get showAllItems => $composableBuilder(
+    column: $table.showAllItems,
     builder: (column) => column,
   );
 
-  GeneratedColumn<bool> get includePersonItemsInShare => $composableBuilder(
-    column: $table.includePersonItemsInShare,
+  GeneratedColumn<bool> get showPersonItems => $composableBuilder(
+    column: $table.showPersonItems,
     builder: (column) => column,
   );
 
-  GeneratedColumn<bool> get hideBreakdownInShare => $composableBuilder(
-    column: $table.hideBreakdownInShare,
+  GeneratedColumn<bool> get showBreakdown => $composableBuilder(
+    column: $table.showBreakdown,
     builder: (column) => column,
   );
 
@@ -2350,29 +2328,29 @@ class $$UserPreferencesTableTableManager
           updateCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
-                Value<bool> includeItemsInShare = const Value.absent(),
-                Value<bool> includePersonItemsInShare = const Value.absent(),
-                Value<bool> hideBreakdownInShare = const Value.absent(),
+                Value<bool> showAllItems = const Value.absent(),
+                Value<bool> showPersonItems = const Value.absent(),
+                Value<bool> showBreakdown = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => UserPreferencesCompanion(
                 id: id,
-                includeItemsInShare: includeItemsInShare,
-                includePersonItemsInShare: includePersonItemsInShare,
-                hideBreakdownInShare: hideBreakdownInShare,
+                showAllItems: showAllItems,
+                showPersonItems: showPersonItems,
+                showBreakdown: showBreakdown,
                 updatedAt: updatedAt,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
-                Value<bool> includeItemsInShare = const Value.absent(),
-                Value<bool> includePersonItemsInShare = const Value.absent(),
-                Value<bool> hideBreakdownInShare = const Value.absent(),
+                Value<bool> showAllItems = const Value.absent(),
+                Value<bool> showPersonItems = const Value.absent(),
+                Value<bool> showBreakdown = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => UserPreferencesCompanion.insert(
                 id: id,
-                includeItemsInShare: includeItemsInShare,
-                includePersonItemsInShare: includePersonItemsInShare,
-                hideBreakdownInShare: hideBreakdownInShare,
+                showAllItems: showAllItems,
+                showPersonItems: showPersonItems,
+                showBreakdown: showBreakdown,
                 updatedAt: updatedAt,
               ),
           withReferenceMapper:
