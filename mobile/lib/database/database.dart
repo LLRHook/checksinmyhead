@@ -48,12 +48,10 @@ class TutorialStates extends Table {
 // Database table for user preferences
 class UserPreferences extends Table {
   IntColumn get id => integer().autoIncrement()();
-  BoolColumn get showAllItems =>
-      boolean().withDefault(const Constant(true))();
+  BoolColumn get showAllItems => boolean().withDefault(const Constant(true))();
   BoolColumn get showPersonItems =>
       boolean().withDefault(const Constant(true))();
-  BoolColumn get showBreakdown =>
-      boolean().withDefault(const Constant(true))();
+  BoolColumn get showBreakdown => boolean().withDefault(const Constant(true))();
   DateTimeColumn get updatedAt =>
       dateTime().withDefault(Constant(DateTime.now()))();
 }

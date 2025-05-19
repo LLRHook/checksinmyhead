@@ -71,7 +71,7 @@ class EmptyState extends StatelessWidget {
           const SizedBox(height: 24),
           // Text
           Text(
-            "Your Move.",
+            "Your Move",
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w700,
@@ -80,7 +80,7 @@ class EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            "Add friends to get started!",
+            "Add friends to get started",
             style: TextStyle(
               fontSize: 15,
               color: colorScheme.onSurface.withValues(alpha: 0.6),

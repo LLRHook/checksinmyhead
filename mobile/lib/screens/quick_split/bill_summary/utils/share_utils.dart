@@ -580,13 +580,13 @@ class ShareOptions {
     this.showPersonItems = false,
     this.showBreakdown = true,
   });
-  
+
   // Compatibility getters for existing code
   bool get includeItemsInShare => showAllItems;
   bool get includePersonItemsInShare => showPersonItems;
   bool get hideBreakdownInShare => !showBreakdown;
-  
-  // Compatibility setters for existing code  
+
+  // Compatibility setters for existing code
   set includeItemsInShare(bool value) => showAllItems = value;
   set includePersonItemsInShare(bool value) => showPersonItems = value;
   set hideBreakdownInShare(bool value) => showBreakdown = !value;

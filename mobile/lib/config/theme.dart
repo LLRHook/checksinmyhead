@@ -17,6 +17,13 @@
 
 import 'package:flutter/material.dart';
 
+/// Simple spacing constants for consistent UI
+class AppSpacing {
+  static const double small = 8.0;
+  static const double medium = 16.0;
+  static const double large = 24.0;
+}
+
 /// Defines the app's theme configuration for both light and dark modes
 class AppTheme {
   // Core color palette
