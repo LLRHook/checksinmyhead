@@ -35,8 +35,13 @@ class PreferencesService {
 
   /// Checks if this is the first launch of the app
   Future<bool> isFirstLaunch() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_firstLaunchKey) ?? true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool(_firstLaunchKey) ?? true;
+    } catch (e) {
+      // Assume first launch on error
+      return true;
+    }
   }
 
   /// Marks the onboarding as complete
@@ -47,14 +52,23 @@ class PreferencesService {
 
   /// Saves the list of selected payment methods
   Future<void> saveSelectedPaymentMethods(List<String> methods) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_selectedPaymentsKey, methods);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_selectedPaymentsKey, methods);
+    } catch (e) {
+      // Silently fail for now
+    }
   }
 
   /// Gets the list of selected payment methods
   Future<List<String>> getSelectedPaymentMethods() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getStringList(_selectedPaymentsKey) ?? [];
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getStringList(_selectedPaymentsKey) ?? [];
+    } catch (e) {
+      // Return empty list on error
+      return [];
+    }
   }
 
   /// Saves the identifier for a payment method
@@ -104,21 +118,25 @@ class PreferencesService {
     required List<String> selectedMethods,
     required Map<String, String> identifiers,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
+    try {
+      final prefs = await SharedPreferences.getInstance();
 
-    // Save selected methods list
-    await prefs.setStringList(_selectedPaymentsKey, selectedMethods);
+      // Save selected methods list
+      await prefs.setStringList(_selectedPaymentsKey, selectedMethods);
 
-    // First, remove all payment identifiers to ensure cleanup
-    for (final method in PaymentMethod.availablePaymentMethods) {
-      await prefs.remove('$_paymentPrefix$method');
-    }
-
-    // Then save only the identifiers for selected methods
-    for (final entry in identifiers.entries) {
-      if (selectedMethods.contains(entry.key)) {
-        await prefs.setString('$_paymentPrefix${entry.key}', entry.value);
+      // First, remove all payment identifiers to ensure cleanup
+      for (final method in PaymentMethod.availablePaymentMethods) {
+        await prefs.remove('$_paymentPrefix$method');
       }
+
+      // Then save only the identifiers for selected methods
+      for (final entry in identifiers.entries) {
+        if (selectedMethods.contains(entry.key)) {
+          await prefs.setString('$_paymentPrefix${entry.key}', entry.value);
+        }
+      }
+    } catch (e) {
+      // Silently fail for now
     }
   }
 }

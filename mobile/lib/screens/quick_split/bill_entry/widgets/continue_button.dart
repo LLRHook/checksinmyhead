@@ -101,7 +101,7 @@ class ContinueButton extends StatelessWidget {
               Icon(Icons.check_circle, size: 20, color: textColor),
               const SizedBox(width: 8),
               Text(
-                'CONTINUE',
+                'Continue',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -113,7 +113,7 @@ class ContinueButton extends StatelessWidget {
             // Items added but don't match subtotal
             else if (hasItems) ...[
               Text(
-                'CONTINUE',
+                'Continue',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -131,7 +131,7 @@ class ContinueButton extends StatelessWidget {
             // No items added yet
             else ...[
               Text(
-                'ADD ITEMS & CONTINUE',
+                'Add Items & Continue',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
