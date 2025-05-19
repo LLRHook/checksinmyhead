@@ -186,9 +186,9 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
           null, // Assuming birthday person isn't stored in recent bills
       tipPercentage: _bill.tipPercentage,
       isCustomTipAmount: false, // Assuming this isn't stored
-      includeItemsInShare: _shareOptions.showAllItems,
-      includePersonItemsInShare: _shareOptions.showPersonItems,
-      hideBreakdownInShare: !_shareOptions.showBreakdown,
+      showAllItems: _shareOptions.showAllItems,
+      showPersonItems: _shareOptions.showPersonItems,
+      showBreakdown: !_shareOptions.showBreakdown,
       billName: _bill.billName,
     );
 

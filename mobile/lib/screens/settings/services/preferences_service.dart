@@ -16,6 +16,7 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import 'package:checks_frontend/screens/settings/models/payment_method.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Service class for handling app preferences storage
@@ -56,7 +57,7 @@ class PreferencesService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setStringList(_selectedPaymentsKey, methods);
     } catch (e) {
-      // Silently fail for now
+      debugPrint('Failed to save selected payment settings: $e');
     }
   }
 
@@ -136,7 +137,7 @@ class PreferencesService {
         }
       }
     } catch (e) {
-      // Silently fail for now
+      debugPrint('Failed to save all payment settings: $e');
     }
   }
 }

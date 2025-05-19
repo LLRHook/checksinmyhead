@@ -134,9 +134,9 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
       birthdayPerson: widget.birthdayPerson,
       tipPercentage: widget.tipPercentage,
       isCustomTipAmount: widget.isCustomTipAmount,
-      includeItemsInShare: _shareOptions.showAllItems,
-      includePersonItemsInShare: _shareOptions.showPersonItems,
-      hideBreakdownInShare: !_shareOptions.showBreakdown,
+      showAllItems: _shareOptions.showAllItems,
+      showPersonItems: _shareOptions.showPersonItems,
+      showBreakdown: !_shareOptions.showBreakdown,
       billName: _summaryData.billName,
     );
 
