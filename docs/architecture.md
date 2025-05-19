@@ -292,9 +292,9 @@ classDiagram
     }
 
     class ShareOptions {
-        +bool includeItemsInShare
-        +bool includePersonItemsInShare
-        +bool hideBreakdownInShare
+        +bool showAllItems
+        +bool showPersonItems
+        +bool showBreakdown
     }
 
     DatabaseProvider --* AppDatabase : contains
