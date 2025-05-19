@@ -15,6 +15,7 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import 'package:checks_frontend/config/theme.dart';
 import 'package:checks_frontend/screens/quick_split/item_assignment/item_assignment_screen.dart';
 import 'package:checks_frontend/screens/quick_split/item_assignment/models/assignment_result.dart';
 import 'package:flutter/material.dart';
@@ -274,55 +275,58 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider.value(
-      value: _billData,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Enter Bill Details'),
-          centerTitle: true,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new),
-            onPressed: () => Navigator.of(context).pop(),
+    return PopScope(
+      canPop: true,
+      child: ChangeNotifierProvider.value(
+        value: _billData,
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Enter Bill Details'),
+            centerTitle: true,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
           ),
-        ),
-        body: GestureDetector(
-          // Dismiss keyboard when tapping outside input fields
-          onTap: () => FocusScope.of(context).unfocus(),
-          child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            children: [
-              // Horizontal scrollable list of participant avatars
-              ParticipantAvatars(participants: widget.participants),
+          body: GestureDetector(
+            // Dismiss keyboard when tapping outside input fields
+            onTap: () => FocusScope.of(context).unfocus(),
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              children: [
+                // Horizontal scrollable list of participant avatars
+                ParticipantAvatars(participants: widget.participants),
 
-              const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.large),
 
-              // Subtotal and tax input fields
-              const BillTotalSection(),
+                // Subtotal and tax input fields
+                const BillTotalSection(),
 
-              const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.large),
 
-              // Tip configuration (percentage or custom amount)
-              const TipOptionsSection(),
+                // Tip configuration (percentage or custom amount)
+                const TipOptionsSection(),
 
-              const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.large),
 
-              // Itemized bill entry with progress tracking
-              ItemsSection(showSnackBar: _showSnackBar),
+                // Itemized bill entry with progress tracking
+                ItemsSection(showSnackBar: _showSnackBar),
 
-              const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.large),
 
-              // Overview of bill totals
-              const BillSummarySection(),
+                // Overview of bill totals
+                const BillSummarySection(),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: AppSpacing.large),
 
-              // Adaptive continue button with validation
-              ContinueButton(onPressed: _continueToItemAssignment),
+                // Adaptive continue button with validation
+                ContinueButton(onPressed: _continueToItemAssignment),
 
-              const SizedBox(height: 24),
-            ],
+                const SizedBox(height: AppSpacing.large),
+              ],
+            ),
           ),
         ),
       ),
