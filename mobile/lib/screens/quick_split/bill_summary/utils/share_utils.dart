@@ -60,9 +60,9 @@ class ShareUtils {
     required Person? birthdayPerson,
     required double tipPercentage,
     required bool isCustomTipAmount,
-    required bool includeItemsInShare,
-    required bool includePersonItemsInShare,
-    required bool hideBreakdownInShare,
+    required bool showAllItems,
+    required bool showPersonItems,
+    required bool showBreakdown,
     String? billName,
   }) async {
     // Sort participants by payment amount (highest first)
@@ -91,7 +91,7 @@ class ShareUtils {
     text.writeln('Total: \$${total.toStringAsFixed(2)}');
     text.writeln('───────────────');
 
-    if (includeItemsInShare && items.isNotEmpty) {
+    if (showAllItems && items.isNotEmpty) {
       text.writeln('ITEMS:');
       for (var item in items) {
         text.writeln('• ${item.name}: \$${item.price.toStringAsFixed(2)}');
@@ -99,7 +99,7 @@ class ShareUtils {
       text.writeln('───────────────');
     }
 
-    if (!hideBreakdownInShare) {
+    if (!showBreakdown) {
       text.writeln('BREAKDOWN:');
       text.writeln('Subtotal: \$${subtotal.toStringAsFixed(2)}');
       text.writeln('Tax: \$${tax.toStringAsFixed(2)}');
@@ -130,7 +130,7 @@ class ShareUtils {
           text.writeln('• ${person.name}: \$${share.toStringAsFixed(2)}');
         }
 
-        if (includePersonItemsInShare && items.isNotEmpty) {
+        if (showPersonItems && items.isNotEmpty) {
           // Use calculation utils to get personal breakdown
           final amounts = CalculationUtils.calculatePersonAmounts(
             person: person,
@@ -214,9 +214,9 @@ class ShareUtils {
     required double total,
     required double tipPercentage,
     required bool isCustomTipAmount,
-    required bool includeItemsInShare,
-    required bool includePersonItemsInShare,
-    required bool hideBreakdownInShare,
+    required bool showAllItems,
+    required bool showPersonItems,
+    required bool showBreakdown,
     String? billName,
   }) async {
     // Sort participants by payment amount (highest first)
@@ -244,7 +244,7 @@ class ShareUtils {
     text.writeln('Total: \$${total.toStringAsFixed(2)}');
     text.writeln('───────────────');
 
-    if (includeItemsInShare && items.isNotEmpty) {
+    if (showAllItems && items.isNotEmpty) {
       text.writeln('ITEMS:');
       for (var item in items) {
         text.writeln('• ${item.name}: \$${item.price.toStringAsFixed(2)}');
@@ -252,7 +252,7 @@ class ShareUtils {
       text.writeln('───────────────');
     }
 
-    if (!hideBreakdownInShare) {
+    if (!showBreakdown) {
       text.writeln('BREAKDOWN:');
       text.writeln('Subtotal: \$${subtotal.toStringAsFixed(2)}');
       text.writeln('Tax: \$${tax.toStringAsFixed(2)}');
@@ -276,7 +276,7 @@ class ShareUtils {
       if (share > 0) {
         text.writeln('• ${person.name}: \$${share.toStringAsFixed(2)}');
 
-        if (includePersonItemsInShare && items.isNotEmpty) {
+        if (showPersonItems && items.isNotEmpty) {
           List<String> personItems = [];
 
           for (var item in items) {
@@ -311,7 +311,7 @@ class ShareUtils {
               text.writeln(itemText);
             }
 
-            if (!hideBreakdownInShare) {
+            if (!showBreakdown) {
               // Calculate tax and tip based on proportion of total
               final proportion = share / total;
               final taxAndTipPortion = proportion * (tax + tipAmount);
@@ -469,6 +469,20 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
                 ),
               ),
 
+              const SizedBox(height: 8),
+
+              Center(
+                child: Text(
+                  'Person\'s shares are always included',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.15,
+                  ),
+                ),
+              ),
+
               const SizedBox(height: 20),
 
               Container(
@@ -580,14 +594,4 @@ class ShareOptions {
     this.showPersonItems = false,
     this.showBreakdown = true,
   });
-
-  // Compatibility getters for existing code
-  bool get includeItemsInShare => showAllItems;
-  bool get includePersonItemsInShare => showPersonItems;
-  bool get hideBreakdownInShare => !showBreakdown;
-
-  // Compatibility setters for existing code
-  set includeItemsInShare(bool value) => showAllItems = value;
-  set includePersonItemsInShare(bool value) => showPersonItems = value;
-  set hideBreakdownInShare(bool value) => showBreakdown = !value;
 }
