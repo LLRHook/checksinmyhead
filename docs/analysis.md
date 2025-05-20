@@ -27,6 +27,10 @@ Our App Store research showed two main competitors in the receipt-splitting spac
 3. **Inflexible OCR:** No way to edit items if the scanner misreads the receipt
 4. **Outdated Experience:** Interface feels cluttered and doesn't follow modern design principles
 
+**Key Issues:**
+- Requires multiple permissions for full functionality
+- Interface could be more modern
+
 ### Plates by Splitwise
 
 **Core Functionality:**
@@ -42,6 +46,10 @@ Our App Store research showed two main competitors in the receipt-splitting spac
 4. **Confusing Item Splitting:** The "break and drag" operation isn't intuitive
 5. **No History:** Doesn't save past bills or offer sharing options
 6. **Abandoned App:** Last updated 2 years ago just to support iPhone X
+
+**Technical Issues:**
+- Not optimized for newer iOS features
+- Some deprecated API usage
 
 ## Market Opportunity
 
@@ -69,4 +77,25 @@ By analyzing these competitors, we saw several opportunities for Checkmate to do
 - Clearly show who ordered what
 - Support special scenarios (birthdays, business meals, etc.)
 
-Checkmate's vision came from this analysis: create a privacy-focused, intuitive receipt-splitting tool that fixes the problems with existing solutions while introducing thoughtful innovations that make the experience better for everyone.
+## Engineering Approach
+
+From a technical standpoint, we identified several areas where we could excel:
+
+**Performance Goals:**
+- Fast startup time
+- Smooth animations
+- Minimal memory usage
+- Zero network dependency for core functionality
+
+**Algorithm Approach:**
+- O(n*m) complexity for bill splitting calculations
+- Proper percentage calculations to avoid floating-point errors
+- Fair rounding algorithm to ensure cents add up correctly
+
+**Architecture Benefits:**
+- Pure frontend solution eliminates server costs
+- Local-only data means no privacy concerns
+- Modular design allows rapid feature development
+- Flutter framework enables future cross-platform support
+
+Checkmate's vision came from this analysis: create a privacy-focused, intuitive receipt-splitting tool that fixes the problems with existing solutions while introducing thoughtful innovations that make the experience better for everyone. The combination of technical excellence and user-centered design would set us apart in a market ready for disruption.
