@@ -2,15 +2,26 @@
 
 **Privacy-first receipt splitting made simple**
 
-[Where did the idea come from?](docs/analysis.md)
+## Documentation
 
-[Built with privacy in mind.](docs/privacy.md)
+### Demo
+- [Watch Demo Video](https://example.com/demo) - Coming soon!
 
-[Interested in our architecture?](docs/architecture.md)
+### Product & Design
+- [The Genesis of Checkmate](docs/analysis.md) - Origin story and competitive analysis
+- [Privacy: A Core Value](docs/privacy.md) - Our privacy-first approach
+- [Sample Data Format](docs/sampledata.md) - See how bill splitting works
+- [User Experience Journey](docs/valuefromusers.md) - What we learned from real users
 
-[Watch a demo!]()
+### Technical Deep Dives
+- [Architecture Overview](docs/architecture.md) - System design and data flow
+- [Technical Deep Dive](docs/technical-deep-dive.md) - Code structure and implementation details
+- [Engineering Decisions](docs/engineering-decisions.md) - Key technical choices and trade-offs
+- [Innovation Highlights](docs/innovation-highlights.md) - Technical solutions to challenging problems
+- [Scaling Considerations](docs/scaling-considerations.md) - How the app could evolve
 
-[See an example bill, explained in text.](docs/sampledata.md)
+### Development
+- [Contributing Guide](docs/contribution.md) - How to get involved in the project
 
 ## Project Overview
 
