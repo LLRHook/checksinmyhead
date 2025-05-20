@@ -69,6 +69,64 @@ Checkmate follows the [official Dart style guide](https://dart.dev/guides/langua
 
 Run `flutter analyze` before submitting code to catch style and quality issues.
 
+## Engineering Standards
+
+### Performance Requirements
+
+All contributions must maintain our performance standards:
+
+```
+Metric                | Target      | How to Measure
+---------------------|-------------|-------------------------
+Cold Start Time      | < 500ms     | flutter run --profile
+Frame Rate           | 60fps       | Flutter Performance tab
+Memory Usage         | < 150MB avg  | Xcode Instruments
+Test Coverage        | > 85%       | flutter test --coverage
+```
+
+### Code Quality Standards
+
+- **Type Safety**: Use strong typing and avoid `dynamic` unless necessary
+- **Null Safety**: Leverage Dart's null safety features
+- **Error Handling**: All errors must be caught and handled appropriately
+- **Memory Management**: Dispose of controllers and subscriptions properly
+
+Example of proper resource management:
+```dart
+class MyWidget extends StatefulWidget {
+  @override
+  State<MyWidget> createState() => _MyWidgetState();
+}
+
+class _MyWidgetState extends State<MyWidget> {
+  late final AnimationController _controller;
+  StreamSubscription? _subscription;
+  
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+  }
+  
+  @override
+  void dispose() {
+    _controller.dispose();
+    _subscription?.cancel();
+    super.dispose();
+  }
+}
+```
+
+### Architecture Guidelines
+
+- **State Management**: Use Provider pattern consistently
+- **Data Flow**: Maintain unidirectional data flow
+- **Separation of Concerns**: Keep UI, business logic, and data layers separate
+- **Reusability**: Extract common widgets and utilities
+
 ## Commit Guidelines
 
 We follow a simplified version of [Conventional Commits](https://www.conventionalcommits.org/):
@@ -89,18 +147,65 @@ Types include:
 - `refactor`: Code changes that neither fix bugs nor add features
 - `test`: Adding or modifying tests
 - `chore`: Changes to build process or auxiliary tools
+- `perf`: Performance improvements
 
 Examples:
 - `feat: add participant selection screen`
 - `fix: correct tax calculation formula` 
 - `docs: update setup instructions`
+- `perf: optimize bill calculation algorithm`
 
 ## Testing Guidelines
+
+### Test Requirements
 
 - Write unit tests for utilities and business logic
 - Write widget tests for UI components
 - Aim for high test coverage on core functionality
 - Run the test suite with `flutter test` before submitting
+
+### Test Structure
+
+```dart
+void main() {
+  group('BillCalculator', () {
+    test('calculates shares correctly with equal split', () {
+      // Arrange
+      final calculator = BillCalculator();
+      final items = [BillItem(name: 'Pizza', price: 20.0)];
+      
+      // Act
+      final shares = calculator.calculateShares(items, participants);
+      
+      // Assert
+      expect(shares[person1], equals(10.0));
+      expect(shares[person2], equals(10.0));
+    });
+    
+    test('handles rounding errors fairly', () {
+      // Test edge cases with penny rounding
+    });
+  });
+}
+```
+
+### Performance Testing
+
+For performance-critical code, include benchmarks:
+
+```dart
+test('bill calculation performance', () {
+  final stopwatch = Stopwatch()..start();
+  
+  // Run calculation 1000 times
+  for (int i = 0; i < 1000; i++) {
+    calculator.calculateShares(items, participants);
+  }
+  
+  stopwatch.stop();
+  expect(stopwatch.elapsedMilliseconds, lessThan(100));
+});
+```
 
 ## Documentation Guidelines
 
@@ -108,6 +213,35 @@ Examples:
 - Write clear, concise comments
 - Document public APIs with dartdoc comments
 - Keep the README up-to-date
+- Include performance implications in documentation
+
+Example documentation:
+```dart
+/// Calculates the share amounts for each participant in a bill.
+/// 
+/// This method uses an O(n*m) algorithm where n is the number of
+/// participants and m is the number of items.
+/// 
+/// The calculation includes:
+/// - Base item costs
+/// - Proportional tax distribution
+/// - Proportional tip distribution
+/// - Fair penny rounding
+/// 
+/// Example:
+/// ```dart
+/// final shares = calculateShares(items, participants);
+/// print(shares[person1]); // 25.67
+/// ```
+/// 
+/// Throws [ArgumentError] if items or participants are empty.
+Map<Person, double> calculateShares(
+  List<BillItem> items,
+  List<Person> participants,
+) {
+  // Implementation
+}
+```
 
 ## Branch Organization
 
@@ -116,6 +250,7 @@ Examples:
 - `feature/*` - feature development branches
 - `fix/*` - bug fix branches
 - `docs/*` - documentation update branches
+- `perf/*` - performance improvement branches
 
 ## Issue and Pull Request Labels
 
@@ -127,6 +262,8 @@ We use labels to categorize issues and pull requests:
 - `good first issue` - Good for newcomers
 - `help wanted` - Extra attention is needed
 - `priority:high` - Urgent issues that need quick resolution
+- `performance` - Performance-related improvements
+- `privacy` - Privacy-related enhancements
 
 ## Release Process
 
@@ -137,9 +274,11 @@ For maintainers:
 2. Update CHANGELOG.md
 3. Create a tagged release on GitHub
 4. Update release notes with key changes
+5. Run performance benchmarks
+6. Verify privacy compliance
 
 ## Questions?
 
-If you have questions about the contribution process, please open an issue with the label `question` or reach out to the maintainers at checkmateapp@duck.com.
+If you have questions about the contribution process, please open an issue with the label `question` or reach out to us at checkmateapp@duck.com.
 
 Thank you for contributing to Checkmate!
