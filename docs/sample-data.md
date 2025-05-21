@@ -1,6 +1,6 @@
 # Checkmate Sample Data Format
 
-This document outlines the data format for bill splitting in the Checkmate app, with examples of input parameters and expected output formats.
+This document provides a concrete example of how bill splitting works in Checkmate, from input to output.
 
 ## Input Parameters
 
@@ -38,13 +38,6 @@ Bill
 | Nachos | Even split with everyone |
 | Burger | Bob |
 | Mac & Cheese | Bill |
-
-### Sharing Options
-| Option | Status |
-|--------|--------|
-| List all items | OFF |
-| Hide Breakdown | ON |
-| Show each person's items | ON |
 
 ## Output Format
 
