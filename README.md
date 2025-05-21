@@ -1,27 +1,21 @@
 # Checkmate
 
 **Privacy-first receipt splitting made simple**
+- [Watch a Demo](https://youtube.com/shorts/T1GHR6JgOX8?feature=share)
 
 ## Documentation
 
-### Demo
-- [Watch Demo Video](https://example.com/demo) - Coming soon!
-
-### Product & Design
-- [The Genesis of Checkmate](docs/analysis.md) - Origin story and competitive analysis
-- [Privacy: A Core Value](docs/privacy.md) - Our privacy-first approach
-- [Sample Data Format](docs/sampledata.md) - See how bill splitting works
-- [User Experience Journey](docs/valuefromusers.md) - What we learned from real users
-
-### Technical Deep Dives
-- [Architecture Overview](docs/architecture.md) - System design and data flow
-- [Technical Deep Dive](docs/technical-deep-dive.md) - Code structure and implementation details
-- [Engineering Decisions](docs/engineering-decisions.md) - Key technical choices and trade-offs
-- [Innovation Highlights](docs/innovation-highlights.md) - Technical solutions to challenging problems
-- [Scaling Considerations](docs/scaling-considerations.md) - How the app could evolve
+### Core Documentation
+- [Technical Overview](docs/technical-overview.md) - Architecture and key innovations
+- [Market Analysis](docs/market-analysis.md) - Origin story and competitive landscape
+- [Privacy: A Core Value](docs/privacy.md) - Privacy-first approach and implementation
+- [User Experience](docs/user-experience.md) - Insights and lessons from building Checkmate
+- [Sample Data](docs/sample-data.md) - Real example of bill splitting in action
+- [Scaling Considerations](docs/scaling-considerations.md) - Future architectural evolution
 
 ### Development
 - [Contributing Guide](docs/contribution.md) - How to get involved in the project
+- [Code of Conduct](docs/CODE_OF_CONDUCT.md) - Community guidelines
 
 ## Project Overview
 
@@ -59,9 +53,7 @@ repo-root/
 │   ├── pubspec.yaml       # Flutter dependencies
 │   └── README.md          # Development setup instructions
 │
-├── docs/                  # Diagrams and architecture notes
-├── sample-data/           # Examples of input & their output
-├── testing/               # Reports of user tests and unit tests
+├── docs/                  # Project documentation
 └── README.md              # Project overview
 ```
 
