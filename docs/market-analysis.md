@@ -1,4 +1,4 @@
-# The Genesis of Checkmate
+# Origin Story & Market Analysis
 
 ## Origin Story
 
