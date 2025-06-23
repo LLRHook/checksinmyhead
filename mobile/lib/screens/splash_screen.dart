@@ -1,4 +1,4 @@
-// Checkmate: Privacy-first receipt spliting
+// Spliq: Privacy-first receipt spliting
 //     Copyright (C) 2025  Kruski Ko.
 //     Email us: checkmateapp@duck.com
 
@@ -242,7 +242,7 @@ class _SplashScreenState extends State<SplashScreen>
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(32),
                                 child: Image.asset(
-                                  'ios/Runner/Assets.xcassets/AppIcon.appiconset/appicon_1024 1.png',
+                                  'assets/images/spliqnobg.png',
                                   width: 160,
                                   height: 160,
                                 ),

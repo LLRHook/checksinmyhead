@@ -1,8 +1,8 @@
-# Checkmate: Technical Overview
+# Spliq: Technical Overview
 
 ## Architecture Summary
 
-Checkmate is a Flutter-based bill-splitting application with a focus on privacy and performance. This document highlights the key architectural decisions and technical innovations that make the app stand out.
+Spliq is a Flutter-based bill-splitting application with a focus on privacy and performance. This document highlights the key architectural decisions and technical innovations that make the app stand out.
 
 ### Core Architecture
 
@@ -287,4 +287,4 @@ The application is optimized for performance:
 
 ## Conclusion
 
-Checkmate demonstrates practical engineering skills through its thoughtful architecture, efficient algorithms, and focus on user privacy and performance. The deliberate technical choices reflect real-world engineering trade-offs and priorities that would scale well to larger applications.
+Spliq demonstrates practical engineering skills through its thoughtful architecture, efficient algorithms, and focus on user privacy and performance. The deliberate technical choices reflect real-world engineering trade-offs and priorities that would scale well to larger applications.

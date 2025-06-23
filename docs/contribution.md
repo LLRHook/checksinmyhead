@@ -1,6 +1,6 @@
-# Contributing to Checkmate
+# Contributing to Spliq
 
-Thanks for your interest in contributing to Checkmate! As a personal project, we welcome contributions that help improve the app's functionality and user experience.
+Thanks for your interest in contributing to Spliq! As a personal project, we welcome contributions that help improve the app's functionality and user experience.
 
 ## Getting Started
 
