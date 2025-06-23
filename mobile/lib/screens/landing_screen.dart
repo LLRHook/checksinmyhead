@@ -1,4 +1,4 @@
-// Checkmate: Privacy-first receipt spliting
+// Spliq: Privacy-first receipt spliting
 //     Copyright (C) 2025  Kruski Ko.
 //     Email us: checkmateapp@duck.com
 
@@ -20,7 +20,7 @@ import 'package:checks_frontend/screens/settings/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'quick_split/participant_selection/participant_selection_sheet.dart';
 
-// Purpose: Serves as the main entry point/home screen for the Checkmate bill-splitting app.
+// Purpose: Serves as the main entry point/home screen for the Spliq bill-splitting app.
 // This screen provides navigation to core app features with an animated interface.
 //
 // Features:
@@ -215,17 +215,17 @@ class _LandingScreenState extends State<LandingScreen>
                               Row(
                                 children: [
                                   // App logo icon
-                                  Icon(
-                                    Icons.receipt_long_rounded,
-                                    size: 20,
+                                  Image.asset(
+                                    'assets/images/spliqnobg.png',
+                                    width: 35,
+                                    height: 35,
                                     color: Colors.white.withAlpha(180),
+                                    colorBlendMode: BlendMode.srcIn,
                                   ),
-
-                                  const SizedBox(width: 8),
 
                                   // App name with SF Pro Display font for iOS-like appearance
                                   Text(
-                                    'Checkmate',
+                                    'Spliq',
                                     style: TextStyle(
                                       color: Colors.white.withAlpha(180),
                                       fontSize: 16,

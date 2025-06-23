@@ -2,7 +2,7 @@
 
 ## Our Pledge
 
-Checkmate is a personal project that welcomes constructive contributions. We pledge to foster an open and welcoming environment for anyone interested in contributing.
+Spliq is a personal project that welcomes constructive contributions. We pledge to foster an open and welcoming environment for anyone interested in contributing.
 
 ## Our Standards
 

@@ -1,4 +1,4 @@
-# Checkmate
+# Spliq
 
 **Privacy-first receipt splitting made simple**
 - [Watch a Demo](https://youtube.com/shorts/T1GHR6JgOX8?feature=share)
@@ -9,7 +9,7 @@
 - [Technical Overview](docs/technical-overview.md) - Architecture and key innovations
 - [Market Analysis](docs/market-analysis.md) - Origin story and competitive landscape
 - [Privacy: A Core Value](docs/privacy.md) - Privacy-first approach and implementation
-- [User Experience](docs/user-experience.md) - Insights and lessons from building Checkmate
+- [User Experience](docs/user-experience.md) - Insights and lessons from building Spliq
 - [Sample Data](docs/sample-data.md) - Real example of bill splitting in action
 - [Scaling Considerations](docs/scaling-considerations.md) - Future architectural evolution
 
@@ -19,7 +19,7 @@
 
 ## Project Overview
 
-Checkmate is a Flutter-based iOS application designed for seamless receipt splitting without compromising user privacy. Our core value proposition is built around **zero data collection** - setting us apart from competitors that collect and store user data in the cloud.
+Spliq is a Flutter-based iOS application designed for seamless receipt splitting without compromising user privacy. Our core value proposition is built around **zero data collection** - setting us apart from competitors that collect and store user data in the cloud.
 
 ### Key Features
 
@@ -61,7 +61,7 @@ repo-root/
 
 #### 1. Privacy by Design
 
-The cornerstone of Checkmate is its privacy-first approach. Unlike competitors that collect user data for various purposes, Checkmate operates entirely on-device:
+The cornerstone of Spliq is its privacy-first approach. Unlike competitors that collect user data for various purposes, Spliq operates entirely on-device:
 
 - No cloud storage of personal information
 - No user account requirements
@@ -111,7 +111,7 @@ To set up the development environment and run the project locally:
 
 ## Contributing
 
-Checkmate is open-source and welcomes contributions. See our [contribution guidelines](docs/contribution.md) for more information on how to get involved.
+Spliq is open-source and welcomes contributions. See our [contribution guidelines](docs/contribution.md) for more information on how to get involved.
 
 ## License
 
