@@ -69,7 +69,7 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-    - ios/Runner/Assets.xcassets/AppIcon.appiconset/appicon_1024 1.png
+    - ios/Runner/Assets.xcassets/AppIcon.appiconset/Spliq_Color.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
