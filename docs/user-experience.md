@@ -1,6 +1,6 @@
 # User Experience Journey
 
-This document explores how real-world user testing transformed Checkmate from a technically sound application into an intuitive product that people genuinely enjoy using.
+This document explores how real-world user testing transformed Spliq from a technically sound application into an intuitive product that people genuinely enjoy using.
 
 ## Testing Approach
 
@@ -123,7 +123,7 @@ The testing process fundamentally shifted our approach from "building for users"
 
 ## Conclusion
 
-The journey from "technically correct" to "actually useful" transformed Checkmate into a product that users genuinely value. This user-centered approach produced an application that:
+The journey from "technically correct" to "actually useful" transformed Spliq into a product that users genuinely value. This user-centered approach produced an application that:
 
 - Requires minimal explanation
 - Feels intuitive and natural

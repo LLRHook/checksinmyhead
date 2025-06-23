@@ -1,4 +1,4 @@
-// Checkmate: Privacy-first receipt spliting
+// Spliq: Privacy-first receipt spliting
 //     Copyright (C) 2025  Kruski Ko.
 //     Email us: checkmateapp@duck.com
 
@@ -69,16 +69,6 @@ class EmptyState extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          // Text
-          Text(
-            "Your Move",
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: colorScheme.onSurface,
-            ),
-          ),
-          const SizedBox(height: 8),
           Text(
             "Add friends to get started",
             style: TextStyle(

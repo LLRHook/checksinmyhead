@@ -1,10 +1,10 @@
 # Scaling Considerations
 
-This document explores how Checkmate's architecture could evolve to support growth beyond its current local-only implementation while balancing privacy concerns with scalability needs.
+This document explores how Spliq's architecture could evolve to support growth beyond its current local-only implementation while balancing privacy concerns with scalability needs.
 
 ## Current Local-Only Architecture
 
-Checkmate's privacy-first approach provides key advantages:
+Spliq's privacy-first approach provides key advantages:
 - Complete data privacy (no data ever leaves the device)
 - Zero server costs or maintenance
 - No authentication system required
@@ -157,6 +157,6 @@ Moving from local-only to cloud would introduce costs:
 
 ## Conclusion
 
-Scaling Checkmate beyond its current local-only architecture would require significant architectural changes, most notably the introduction of user accounts and cloud synchronization. While this would add complexity and infrastructure costs, it could be implemented in a way that maintains a strong privacy focus through client-side encryption and data minimization.
+Scaling Spliq beyond its current local-only architecture would require significant architectural changes, most notably the introduction of user accounts and cloud synchronization. While this would add complexity and infrastructure costs, it could be implemented in a way that maintains a strong privacy focus through client-side encryption and data minimization.
 
 The key insight is that scaling isn't just about handling more users—it's about making thoughtful architectural trade-offs that balance privacy, functionality, complexity, and cost. This understanding of system design principles would be crucial for any evolution of the application beyond its current scope.

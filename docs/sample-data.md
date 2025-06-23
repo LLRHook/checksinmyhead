@@ -1,6 +1,6 @@
-# Checkmate Sample Data Format
+# Spliq Sample Data Format
 
-This document provides a concrete example of how bill splitting works in Checkmate, from input to output.
+This document provides a concrete example of how bill splitting works in Spliq, from input to output.
 
 ## Input Parameters
 
@@ -67,7 +67,7 @@ PAYMENT DETAILS:
 Venmo: joebob1
 Zelle: 1234567890
 ───────────────
-Split with CheckMate
+Split with Spliq
 ```
 
 ## Calculation Logic

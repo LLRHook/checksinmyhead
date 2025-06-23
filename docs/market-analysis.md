@@ -2,7 +2,7 @@
 
 ## Origin Story
 
-Checkmate started with a real problem we faced during a group trip to Utah. Our group of seven friends decided to simplify restaurant visits by having just one person pay the entire bill—making things easier for restaurant staff and streamlining our dining experience.
+Spliq started with a real problem we faced during a group trip to Utah. Our group of seven friends decided to simplify restaurant visits by having just one person pay the entire bill—making things easier for restaurant staff and streamlining our dining experience.
 
 Throughout the trip, we collected a stack of receipts that needed to be sorted out. We all agreed that tax and tip should be split proportionally based on what each person ordered, so our "bill master" would calculate everyone's share each evening using Excel. After full days of hiking 20+ miles, dealing with three meals' worth of receipts became increasingly tedious.
 
@@ -53,7 +53,7 @@ Our App Store research showed two main competitors in the receipt-splitting spac
 
 ## Market Opportunity
 
-By analyzing these competitors, we saw several opportunities for Checkmate to do better:
+By analyzing these competitors, we saw several opportunities for Spliq to do better:
 
 **Privacy-First Approach:**
 - Skip unnecessary data collection
@@ -98,4 +98,4 @@ From a technical standpoint, we identified several areas where we could excel:
 - Modular design allows rapid feature development
 - Flutter framework enables future cross-platform support
 
-Checkmate's vision came from this analysis: create a privacy-focused, intuitive receipt-splitting tool that fixes the problems with existing solutions while introducing thoughtful innovations that make the experience better for everyone. The combination of technical excellence and user-centered design would set us apart in a market ready for disruption.
+Spliq's vision came from this analysis: create a privacy-focused, intuitive receipt-splitting tool that fixes the problems with existing solutions while introducing thoughtful innovations that make the experience better for everyone. The combination of technical excellence and user-centered design would set us apart in a market ready for disruption.

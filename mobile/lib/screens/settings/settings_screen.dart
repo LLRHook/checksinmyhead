@@ -1,4 +1,4 @@
-// Checkmate: Privacy-first receipt spliting
+// Spliq: Privacy-first receipt spliting
 //     Copyright (C) 2025  Kruski Ko.
 //     Email us: checkmateapp@duck.com
 
@@ -174,9 +174,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     const String appStoreLink = 'https://apps.apple.com/app/yourappid';
     // TODO: Replace with actual app ID
     const String shareText =
-        'Check out Checkmate, the easiest way to split bills with friends! $appStoreLink';
+        'Check out Spliq, the easiest way to split bills with friends! $appStoreLink';
 
-    const String subject = 'Try Checkmate!';
+    const String subject = 'Try Spliq!';
 
     // Launch the system share sheet
     SharePlus.instance.share(ShareParams(text: shareText, subject: subject));
@@ -229,7 +229,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           child: Column(
                             children: [
                               Text(
-                                'Checkmate',
+                                'Spliq',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 28,
@@ -458,7 +458,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                               children: [
                                 const Text(
-                                  'Your data never leaves your device. Checkmate is designed with privacy-first principles—zero cloud storage and zero accounts. All information is stored locally and removed completely when you uninstall.',
+                                  'Your data never leaves your device. Spliq is designed with privacy-first principles—zero cloud storage and zero accounts. All information is stored locally and removed completely when you uninstall.',
                                   style: TextStyle(
                                     color: Colors.white70,
                                     fontSize: 14,
@@ -486,10 +486,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   title: const Text(
                                     'Contact Us',
                                     style: TextStyle(color: Colors.white),
-                                  ),
-                                  subtitle: const Text(
-                                    'checkmateapp@duck.com',
-                                    style: TextStyle(color: Colors.white70),
                                   ),
                                   leading: const Icon(
                                     Icons.email_outlined,
@@ -548,7 +544,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     style: TextStyle(color: Colors.white),
                                   ),
                                   subtitle: const Text(
-                                    'Love Checkmate? Let us know!',
+                                    'Love Spliq? Let us know!',
                                     style: TextStyle(color: Colors.white70),
                                   ),
                                   leading: const Icon(
