@@ -1,21 +1,6 @@
-# Spliq
-
-**Privacy-first receipt splitting made simple**
+# Spliq - Share Bills, Not Your Data
 - [Watch a Demo](https://youtube.com/shorts/T1GHR6JgOX8?feature=share)
-
-## Documentation
-
-### Core Documentation
-- [Technical Overview](docs/technical-overview.md) - Architecture and key innovations
-- [Market Analysis](docs/market-analysis.md) - Origin story and competitive landscape
-- [Privacy: A Core Value](docs/privacy.md) - Privacy-first approach and implementation
-- [User Experience](docs/user-experience.md) - Insights and lessons from building Spliq
-- [Sample Data](docs/sample-data.md) - Real example of bill splitting in action
-- [Scaling Considerations](docs/scaling-considerations.md) - Future architectural evolution
-
-### Development
-- [Contributing Guide](docs/contribution.md) - How to get involved in the project
-- [Code of Conduct](docs/CODE_OF_CONDUCT.md) - Community guidelines
+- [Website](https://getspliq.vercel.app/)
 
 ## Project Overview
 
@@ -30,6 +15,20 @@ Spliq is a Flutter-based iOS application designed for seamless receipt splitting
 - **Local Storage**: Securely saves the last 30 bills on-device using SQLite
 - **Customizable Receipts**: Configurable text receipts that can be shared instantly
 - **Last Dined With**: Remembers the last 12 people you've dined with for quick selection
+
+## Documentation
+
+### Core Documentation
+- [Technical Overview](docs/technical-overview.md) - Architecture and key innovations
+- [Market Analysis](docs/market-analysis.md) - Origin story and competitive landscape
+- [Privacy: A Core Value](docs/privacy.md) - Privacy-first approach and implementation
+- [User Experience](docs/user-experience.md) - Insights and lessons from building Spliq
+- [Sample Data](docs/sample-data.md) - Real example of bill splitting in action
+- [Scaling Considerations](docs/scaling-considerations.md) - Future architectural evolution
+
+### Development
+- [Contributing Guide](docs/contribution.md) - How to get involved in the project
+- [Code of Conduct](docs/CODE_OF_CONDUCT.md) - Community guidelines
 
 ### User Flow
 
