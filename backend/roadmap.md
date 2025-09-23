@@ -21,29 +21,29 @@ Transform Spliq from a local Flutter app into a distributed microservices archit
   - [X] Create GitHub repository with proper .gitignore
   - [X] Initialize Go module: `go mod init github.com/username/spliq-backend`
 
-- [ ] **Day 3-4: Project Structure**
+- [X] **Day 3-4: Project Structure**
   - [X] Create directory structure (see architecture section below)
-  - [ ] Set up `pkg/models/` with basic structs
-  - [ ] Create `docker-compose.yml` for local development
-  - [ ] Write initial `README.md` with setup instructions
+  - [X] Set up `pkg/models/` with basic structs
+  - [X] Create `docker-compose.yml` for local development
+  - [X] Write initial `README.md` with setup instructions
 
-- [ ] **Day 5-7: First Service**
-  - [ ] Create `bill-service` with basic HTTP server (Gin)
-  - [ ] Add health check endpoint (`GET /health`)
-  - [ ] Add placeholder bill endpoints (`POST /api/bills`, `GET /api/bills/:id`)
-  - [ ] Test with Docker Compose
-  - [ ] **Milestone**: Can run service locally and get 200 responses
+- [X] **Day 5-7: First Service**
+  - [X] Create `bill-service` with basic HTTP server (Gin)
+  - [X] Add health check endpoint (`GET /health`)
+  - [X] Add placeholder bill endpoints (`POST /api/bills`, `GET /api/bills/:id`)
+  - [X] Test with Docker Compose
+  - [X] **Milestone**: Can run service locally and get 200 responses
 
 ### Week 2: Database Integration
 - [ ] **Day 8-10: Database Setup**
-  - [ ] Add PostgreSQL to docker-compose
+  - [X] Add PostgreSQL to docker-compose
   - [ ] Install database migration tool (golang-migrate)
-  - [ ] Create initial database schema
-  - [ ] Set up database connection in `pkg/database/`
-  - [ ] Add environment variable configuration
+  - [X] Create initial database schema
+  - [X] Set up database connection in `pkg/database/`
+  - [X] Add environment variable configuration
 
 - [ ] **Day 11-14: Bill CRUD Operations**
-  - [ ] Complete `Bill`, `Item`, `Participant` models in `pkg/models/bill.go`
+  - [ ] Complete `Bill`, `BillItem`, `Person`, `ItemAssignment` models in `pkg/models/bill.go`
   - [ ] Implement `internal/bill/repository.go` with database operations
   - [ ] Implement `internal/bill/service.go` with business logic
   - [ ] Complete `internal/bill/handler.go` with HTTP endpoints
@@ -59,7 +59,8 @@ Transform Spliq from a local Flutter app into a distributed microservices archit
   - [ ] Implement secure token generation for bill access
   - [ ] Add token validation middleware
   - [ ] Create bill sharing URL format: `/b/{billId}?t={token}`
-  - [ ] Add participant joining logic (no accounts needed)
+  - [ ] Create web service for recipient bill viewing
+  - [ ] Add web pages for recipients to view their portions
   - [ ] Test bill access control
 
 - [ ] **Day 18-21: Flutter Integration**
@@ -99,6 +100,7 @@ Transform Spliq from a local Flutter app into a distributed microservices archit
 
 - [ ] **Day 32-35: Payment Provider Integration**
   - [ ] Implement Venmo deep linking
+  - [ ] Implement Venmo deep linking for web recipients
   - [ ] Add Zelle integration (if available)
   - [ ] Create payment webhooks for status updates
   - [ ] Add payment status tracking
@@ -162,6 +164,7 @@ Transform Spliq from a local Flutter app into a distributed microservices archit
 spliq-backend/
 ├── cmd/
 │   ├── bill-service/main.go
+│   ├── web-service/main.go
 │   ├── event-service/main.go
 │   └── payment-service/main.go
 ├── pkg/
@@ -176,6 +179,10 @@ spliq-backend/
 │   │   ├── handler.go
 │   │   ├── service.go
 │   │   └── repository.go
+│   ├── web/
+│   │   ├── handler.go
+│   │   ├── service.go
+│   │   └── templates/
 │   ├── events/
 │   │   ├── handler.go
 │   │   ├── service.go
@@ -193,7 +200,7 @@ spliq-backend/
 ### Service Architecture
 ```
 ┌─────────────────┐    ┌─────────────────┐
-│   Mobile App    │    │     Web App     │
+│   Mobile App    │    │   Web Recipients│
 └─────────┬───────┘    └─────────┬───────┘
           │                      │
     ┌─────┴──────────────────────┴─────┐
@@ -202,15 +209,15 @@ spliq-backend/
           │
     ┌─────┴─────┐
     │           │
-┌───▼────┐  ┌──▼──────┐  ┌────────▼─┐
-│  Bill  │  │ Events  │  │ Payments │
-│Service │  │ Service │  │ Service  │
-└────────┘  └─────────┘  └──────────┘
-     │           │           │
-┌────▼────┐ ┌───▼────┐ ┌────▼─────┐
-│Bills DB │ │ Redis  │ │Payments  │
-│         │ │ Cache  │ │    DB    │
-└─────────┘ └────────┘ └──────────┘
+┌───▼────┐  ┌──▼──────┐  ┌────────▼─┐  ┌────────▼─┐
+│  Bill  │  │   Web   │  │ Events  │  │ Payments │
+│Service │  │ Service │  │ Service │  │ Service  │
+└────────┘  └─────────┘  └─────────┘  └──────────┘
+     │           │           │           │
+┌────▼────┐ ┌───▼────┐ ┌───▼────┐ ┌────▼─────┐
+│Bills DB │ │Bills DB│ │ Redis  │ │Payments  │
+│         │ │ (Read) │ │ Cache  │ │    DB    │
+└─────────┘ └────────┘ └────────┘ └──────────┘
 ```
 
 ---
@@ -218,7 +225,7 @@ spliq-backend/
 ## Success Metrics
 
 ### Technical Achievements
-- [ ] 3+ microservices running independently
+- [ ] 4+ microservices running independently
 - [ ] Sub-100ms API response times
 - [ ] Handle 100+ concurrent users
 - [ ] 99.9% uptime over 30 days
@@ -268,6 +275,7 @@ spliq-backend/
 - [ ] Bill CRUD operations
 - [ ] Access token system
 - [ ] Flutter integration
+- [ ] Web service for recipients
 - [ ] Event system
 - [ ] Real-time updates
 - [ ] Payment service
@@ -288,12 +296,6 @@ spliq-backend/
 
 ## Notes & Decisions
 *Use this section to document important architectural decisions, lessons learned, and insights gained during development*
-
-### Architecture Decisions
-- **Why Go?**: Performance, concurrency, cloud-native ecosystem
-- **Why microservices?**: Demonstrate distributed systems knowledge
-- **Why no user accounts?**: Privacy-first approach, reduced liability
-- **Database choice**: PostgreSQL for ACID compliance, Redis for caching
 
 ### Lessons Learned
 *Document key insights as you build*
