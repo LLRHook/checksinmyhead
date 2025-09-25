@@ -171,7 +171,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   /// Opens the device's share sheet to share the app
   Future<void> _shareApp() async {
-    const String appStoreLink = 'https://apps.apple.com/us/app/spliq/id6746379502';
+    const String appStoreLink =
+        'https://apps.apple.com/us/app/spliq/id6746379502';
 
     const String shareText =
         'Check out Billington, the easiest way to split bills with friends! $appStoreLink';
@@ -186,6 +187,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     // Extract theme data for adaptive styling
     final colorScheme = Theme.of(context).colorScheme;
+    final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
       backgroundColor: colorScheme.primary,
@@ -204,10 +206,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-        // Only show back button in regular mode
         automaticallyImplyLeading: !widget.isOnboarding,
-        // No skip button (removed for simplicity)
-        actions: null,
       ),
       body: SafeArea(
         child:
@@ -224,187 +223,405 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // App branding section
-                        const Center(
-                          child: Column(
-                            children: [
-                              Text(
-                                'Billington',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.37,
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                'Made by a few friends tired of using\nspreadsheets to split the bill.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 16,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ],
+                        // Logo stays fixed
+                        Center(
+                          child: Transform.translate(
+                            offset: Offset(0, -screenHeight * 0.07),
+
+                            child: Image.asset(
+                              'assets/images/billington.png',
+                              width: 150,
+                              height: 150,
+                            ),
                           ),
                         ),
 
-                        const SizedBox(height: 40),
-
-                        // Payment methods section - card with either add button or list of methods
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: .15),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
+                        // Everything below the logo shifts up responsively
+                        Transform.translate(
+                          offset: Offset(0, -screenHeight * 0.11),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Section header
-                              const Padding(
-                                padding: EdgeInsets.all(16),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
+                              const SizedBox(height: 8),
+                              const Center(
+                                child: Text(
+                                  'Made by a few friends tired of using\nspreadsheets to split the bill.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 16,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ),
+
+                              const SizedBox(height: 40),
+
+                              // Payment methods section - card with either add button or list of methods
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: .15),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      'Payment Options',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w600,
+                                    const Padding(
+                                      padding: EdgeInsets.all(16),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            'Payment Options',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
+
+                                    _selectedPayments.isEmpty
+                                        ? Padding(
+                                          padding: const EdgeInsets.all(16),
+                                          child: FilledButton(
+                                            onPressed: _showPaymentSelection,
+                                            style: FilledButton.styleFrom(
+                                              backgroundColor: Colors.white,
+                                              foregroundColor:
+                                                  colorScheme.primary,
+                                              minimumSize:
+                                                  const Size.fromHeight(50),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                            ),
+                                            child: const Text(
+                                              'Add Payment Methods',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        )
+                                        : ListView.separated(
+                                          shrinkWrap: true,
+                                          physics:
+                                              const NeverScrollableScrollPhysics(),
+                                          itemCount: _selectedPayments.length,
+                                          separatorBuilder:
+                                              (context, index) => const Divider(
+                                                color: Colors.white24,
+                                                height: 1,
+                                                indent: 16,
+                                                endIndent: 16,
+                                              ),
+                                          itemBuilder: (context, index) {
+                                            final paymentMethod =
+                                                _selectedPayments[index];
+                                            final identifier =
+                                                _paymentIdentifiers[paymentMethod] ??
+                                                'Not set';
+
+                                            return PaymentMethodItem(
+                                              methodName: paymentMethod,
+                                              identifier: identifier,
+                                              onEdit: () {
+                                                showPaymentMethodSheet(
+                                                  context: context,
+                                                  selectedMethods:
+                                                      _selectedPayments,
+                                                  identifiers:
+                                                      _paymentIdentifiers,
+                                                  onSave: (
+                                                    selectedMethods,
+                                                    identifiers,
+                                                  ) {
+                                                    setState(() {
+                                                      _selectedPayments =
+                                                          selectedMethods;
+                                                      _paymentIdentifiers =
+                                                          identifiers;
+                                                    });
+                                                    _savePaymentSettings();
+                                                  },
+                                                );
+                                              },
+                                              onDelete: () {
+                                                setState(() {
+                                                  _selectedPayments.remove(
+                                                    paymentMethod,
+                                                  );
+                                                  _paymentIdentifiers.remove(
+                                                    paymentMethod,
+                                                  );
+                                                });
+                                                _savePaymentSettings();
+                                              },
+                                              onTap: () {
+                                                showPaymentMethodSheet(
+                                                  context: context,
+                                                  selectedMethods:
+                                                      _selectedPayments,
+                                                  identifiers:
+                                                      _paymentIdentifiers,
+                                                  onSave: (
+                                                    selectedMethods,
+                                                    identifiers,
+                                                  ) {
+                                                    setState(() {
+                                                      _selectedPayments =
+                                                          selectedMethods;
+                                                      _paymentIdentifiers =
+                                                          identifiers;
+                                                    });
+                                                    _savePaymentSettings();
+                                                  },
+                                                );
+                                              },
+                                            );
+                                          },
+                                        ),
+
+                                    if (_selectedPayments.isNotEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.all(16),
+                                        child: OutlinedButton(
+                                          onPressed: _showPaymentSelection,
+                                          style: OutlinedButton.styleFrom(
+                                            side: const BorderSide(
+                                              color: Colors.white70,
+                                            ),
+                                            foregroundColor: Colors.white,
+                                            minimumSize: const Size.fromHeight(
+                                              50,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'Edit Payment Methods',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
                                   ],
                                 ),
                               ),
 
-                              // Show "Add Payment Methods" button if none exist
-                              _selectedPayments.isEmpty
-                                  ? Padding(
-                                    padding: const EdgeInsets.all(16),
-                                    child: FilledButton(
-                                      onPressed: _showPaymentSelection,
-                                      style: FilledButton.styleFrom(
-                                        backgroundColor: Colors.white,
-                                        foregroundColor: colorScheme.primary,
-                                        minimumSize: const Size.fromHeight(50),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
+                              const SizedBox(height: 24),
+
+                              // Privacy information section
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: .15),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Theme(
+                                  data: Theme.of(
+                                    context,
+                                  ).copyWith(dividerColor: Colors.transparent),
+                                  child: ExpansionTile(
+                                    title: Row(
+                                      children: const [
+                                        Icon(
+                                          Icons.shield_outlined,
+                                          color: Colors.white,
+                                          size: 20,
+                                        ),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Privacy & Data',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w600,
                                           ),
                                         ),
-                                      ),
-                                      child: const Text(
-                                        'Add Payment Methods',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
+                                      ],
                                     ),
-                                  )
-                                  // Otherwise show list of configured methods
-                                  : ListView.separated(
-                                    shrinkWrap: true,
-                                    physics:
-                                        const NeverScrollableScrollPhysics(),
-                                    itemCount: _selectedPayments.length,
-                                    separatorBuilder:
-                                        (context, index) => const Divider(
-                                          color: Colors.white24,
-                                          height: 1,
-                                          indent: 16,
-                                          endIndent: 16,
+                                    iconColor: Colors.white,
+                                    collapsedIconColor: Colors.white70,
+                                    tilePadding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8,
+                                    ),
+                                    childrenPadding: const EdgeInsets.fromLTRB(
+                                      16,
+                                      0,
+                                      16,
+                                      16,
+                                    ),
+                                    children: const [
+                                      Text(
+                                        'Your data never leaves your device. Billington is designed with privacy-first principles—zero cloud storage and zero accounts. All information is stored locally and removed completely when you uninstall.',
+                                        style: TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 14,
+                                          height: 1.5,
                                         ),
-                                    itemBuilder: (context, index) {
-                                      final paymentMethod =
-                                          _selectedPayments[index];
-                                      final identifier =
-                                          _paymentIdentifiers[paymentMethod] ??
-                                          'Not set';
-
-                                      return PaymentMethodItem(
-                                        methodName: paymentMethod,
-                                        identifier: identifier,
-                                        onEdit: () {
-                                          // Show the edit modal directly
-                                          showPaymentMethodSheet(
-                                            context: context,
-                                            selectedMethods: _selectedPayments,
-                                            identifiers: _paymentIdentifiers,
-                                            onSave: (
-                                              selectedMethods,
-                                              identifiers,
-                                            ) {
-                                              setState(() {
-                                                _selectedPayments =
-                                                    selectedMethods;
-                                                _paymentIdentifiers =
-                                                    identifiers;
-                                              });
-                                              _savePaymentSettings();
-                                            },
-                                          );
-                                        },
-                                        onDelete: () {
-                                          setState(() {
-                                            _selectedPayments.remove(
-                                              paymentMethod,
-                                            );
-                                            _paymentIdentifiers.remove(
-                                              paymentMethod,
-                                            );
-                                          });
-                                          _savePaymentSettings();
-                                        },
-                                        onTap: () {
-                                          // Show edit screen when tapped
-                                          showPaymentMethodSheet(
-                                            context: context,
-                                            selectedMethods: _selectedPayments,
-                                            identifiers: _paymentIdentifiers,
-                                            onSave: (
-                                              selectedMethods,
-                                              identifiers,
-                                            ) {
-                                              setState(() {
-                                                _selectedPayments =
-                                                    selectedMethods;
-                                                _paymentIdentifiers =
-                                                    identifiers;
-                                              });
-                                              _savePaymentSettings();
-                                            },
-                                          );
-                                        },
-                                      );
-                                    },
-                                  ),
-
-                              // "Edit Payment Methods" button for existing methods
-                              if (_selectedPayments.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: OutlinedButton(
-                                    onPressed: _showPaymentSelection,
-                                    style: OutlinedButton.styleFrom(
-                                      side: const BorderSide(
-                                        color: Colors.white70,
                                       ),
-                                      foregroundColor: Colors.white,
+                                    ],
+                                  ),
+                                ),
+                              ),
+
+                              const SizedBox(height: 24),
+
+                              // Support options (only visible in regular settings mode)
+                              if (!widget.isOnboarding)
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: .15),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      ListTile(
+                                        title: const Text(
+                                          'Contact Us',
+                                          style: TextStyle(color: Colors.white),
+                                        ),
+                                        leading: const Icon(
+                                          Icons.email_outlined,
+                                          color: Colors.white,
+                                        ),
+                                        onTap: () {
+                                          final currentContext = context;
+                                          final emailUri = Uri(
+                                            scheme: 'mailto',
+                                            path: 'checkmateapp@duck.com',
+                                          );
+
+                                          canLaunchUrl(emailUri).then((
+                                            canLaunch,
+                                          ) {
+                                            if (canLaunch) {
+                                              launchUrl(
+                                                emailUri,
+                                                mode:
+                                                    LaunchMode.platformDefault,
+                                                webOnlyWindowName: '_blank',
+                                              );
+                                            } else {
+                                              Clipboard.setData(
+                                                const ClipboardData(
+                                                  text: 'checkmateapp@duck.com',
+                                                ),
+                                              ).then((_) {
+                                                if (currentContext.mounted) {
+                                                  ScaffoldMessenger.of(
+                                                    currentContext,
+                                                  ).showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                        'Email copied to clipboard',
+                                                      ),
+                                                      duration: Duration(
+                                                        seconds: 2,
+                                                      ),
+                                                    ),
+                                                  );
+                                                }
+                                              });
+                                            }
+                                          });
+                                        },
+                                      ),
+
+                                      const Divider(
+                                        color: Colors.white24,
+                                        height: 1,
+                                        indent: 16,
+                                        endIndent: 16,
+                                      ),
+
+                                      ListTile(
+                                        title: const Text(
+                                          'Rate Us on App Store',
+                                          style: TextStyle(color: Colors.white),
+                                        ),
+                                        subtitle: const Text(
+                                          'Love Billington? Let us know!',
+                                          style: TextStyle(
+                                            color: Colors.white70,
+                                          ),
+                                        ),
+                                        leading: const Icon(
+                                          Icons.star_border_rounded,
+                                          color: Colors.white,
+                                        ),
+                                        onTap: _openAppStore,
+                                      ),
+
+                                      const Divider(
+                                        color: Colors.white24,
+                                        height: 1,
+                                        indent: 16,
+                                        endIndent: 16,
+                                      ),
+
+                                      ListTile(
+                                        title: const Text(
+                                          'Share with Friends',
+                                          style: TextStyle(color: Colors.white),
+                                        ),
+                                        subtitle: const Text(
+                                          'Spread the word!',
+                                          style: TextStyle(
+                                            color: Colors.white70,
+                                          ),
+                                        ),
+                                        leading: const Icon(
+                                          Icons.ios_share,
+                                          color: Colors.white,
+                                        ),
+                                        onTap: _shareApp,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                              const SizedBox(height: 40),
+
+                              const Center(
+                                child: Text(
+                                  'Version 1.0.0',
+                                  style: TextStyle(
+                                    color: Colors.white60,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+
+                              if (widget.isOnboarding)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 20),
+                                  child: FilledButton(
+                                    onPressed: _completeOnboarding,
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: Colors.white,
+                                      foregroundColor: colorScheme.primary,
                                       minimumSize: const Size.fromHeight(50),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                     ),
                                     child: const Text(
-                                      'Edit Payment Methods',
+                                      'Continue to App',
                                       style: TextStyle(
                                         fontSize: 16,
-                                        fontWeight: FontWeight.w500,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                   ),
@@ -412,211 +629,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ],
                           ),
                         ),
-
-                        const SizedBox(height: 24),
-
-                        // Privacy information section with expandable details
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: .15),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Theme(
-                            data: Theme.of(
-                              context,
-                            ).copyWith(dividerColor: Colors.transparent),
-                            child: ExpansionTile(
-                              title: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.shield_outlined,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Text(
-                                    'Privacy & Data',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              iconColor: Colors.white,
-                              collapsedIconColor: Colors.white70,
-                              tilePadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              childrenPadding: const EdgeInsets.fromLTRB(
-                                16,
-                                0,
-                                16,
-                                16,
-                              ),
-                              children: [
-                                const Text(
-                                  'Your data never leaves your device. Billington is designed with privacy-first principles—zero cloud storage and zero accounts. All information is stored locally and removed completely when you uninstall.',
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 14,
-                                    height: 1.5,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // Support options (only visible in regular settings mode)
-                        if (!widget.isOnboarding)
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: .15),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Column(
-                              children: [
-                                // Contact support option
-                                ListTile(
-                                  title: const Text(
-                                    'Contact Us',
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                  leading: const Icon(
-                                    Icons.email_outlined,
-                                    color: Colors.white,
-                                  ),
-                                  onTap: () {
-                                    final currentContext = context;
-                                    final emailUri = Uri(
-                                      scheme: 'mailto',
-                                      path: 'checkmateapp@duck.com',
-                                    );
-
-                                    // Try email app, fallback to clipboard copy
-                                    canLaunchUrl(emailUri).then((canLaunch) {
-                                      if (canLaunch) {
-                                        launchUrl(
-                                          emailUri,
-                                          mode: LaunchMode.platformDefault,
-                                          webOnlyWindowName: '_blank',
-                                        );
-                                      } else {
-                                        Clipboard.setData(
-                                          const ClipboardData(
-                                            text: 'checkmateapp@duck.com',
-                                          ),
-                                        ).then((_) {
-                                          if (currentContext.mounted) {
-                                            ScaffoldMessenger.of(
-                                              currentContext,
-                                            ).showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                  'Email copied to clipboard',
-                                                ),
-                                                duration: Duration(seconds: 2),
-                                              ),
-                                            );
-                                          }
-                                        });
-                                      }
-                                    });
-                                  },
-                                ),
-
-                                const Divider(
-                                  color: Colors.white24,
-                                  height: 1,
-                                  indent: 16,
-                                  endIndent: 16,
-                                ),
-
-                                // App store rating option
-                                ListTile(
-                                  title: const Text(
-                                    'Rate Us on App Store',
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                  subtitle: const Text(
-                                    'Love Billington? Let us know!',
-                                    style: TextStyle(color: Colors.white70),
-                                  ),
-                                  leading: const Icon(
-                                    Icons.star_border_rounded,
-                                    color: Colors.white,
-                                  ),
-                                  onTap: _openAppStore,
-                                ),
-
-                                const Divider(
-                                  color: Colors.white24,
-                                  height: 1,
-                                  indent: 16,
-                                  endIndent: 16,
-                                ),
-
-                                // Share app option
-                                ListTile(
-                                  title: const Text(
-                                    'Share with Friends',
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                  subtitle: const Text(
-                                    'Spread the word!',
-                                    style: TextStyle(color: Colors.white70),
-                                  ),
-                                  leading: const Icon(
-                                    Icons.ios_share,
-                                    color: Colors.white,
-                                  ),
-                                  onTap: _shareApp,
-                                ),
-                              ],
-                            ),
-                          ),
-
-                        const SizedBox(height: 40),
-
-                        // Version info
-                        const Center(
-                          child: Text(
-                            'Version 1.0.0',
-                            style: TextStyle(
-                              color: Colors.white60,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-
-                        // Continue button during onboarding - now uses the proper method to complete onboarding
-                        if (widget.isOnboarding)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 20),
-                            child: FilledButton(
-                              onPressed: _completeOnboarding,
-                              style: FilledButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: colorScheme.primary,
-                                minimumSize: const Size.fromHeight(50),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: const Text(
-                                'Continue to App',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ),
                       ],
                     ),
                   ),

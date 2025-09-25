@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "spliqnobg.png",
+      "filename" : "billington.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
@@ -14,6 +14,12 @@
       "filename" : "LaunchImage@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
+    },
+    {
+      "filename" : "billy.png",
+      "idiom" : "universal",
+      "scale" : "1x",
+      "unassigned" : true
     }
   ],
   "info" : {
