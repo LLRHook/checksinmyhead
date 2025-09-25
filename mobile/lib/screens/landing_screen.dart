@@ -215,23 +215,12 @@ class _LandingScreenState extends State<LandingScreen>
                               Row(
                                 children: [
                                   // App logo icon
-                                  Image.asset(
-                                    'assets/images/spliqnobg.png',
-                                    width: 35,
-                                    height: 35,
-                                    color: Colors.white.withAlpha(180),
-                                    colorBlendMode: BlendMode.srcIn,
-                                  ),
-
-                                  // App name with SF Pro Display font for iOS-like appearance
-                                  Text(
-                                    'Billington',
-                                    style: TextStyle(
-                                      color: Colors.white.withAlpha(180),
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                      letterSpacing: 0.37,
-                                      fontFamily: '.SF Pro Display',
+                                  Transform.translate(
+                                    offset: Offset(0, 35),
+                                    child: Image.asset(
+                                      'assets/images/billington.png',
+                                      width: 100,
+                                      height: 100,
                                     ),
                                   ),
                                 ],
