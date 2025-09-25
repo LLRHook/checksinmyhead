@@ -1,10 +1,10 @@
 # Privacy: A Core Value
 
-Spliq was built with privacy as a foundational principle, not as an afterthought. This document outlines the privacy-focused architecture and the technical decisions that support it.
+Billington was built with privacy as a foundational principle, not as an afterthought. This document outlines the privacy-focused architecture and the technical decisions that support it.
 
 ## Privacy Architecture
 
-Spliq uses a "zero-network" approach:
+Billington uses a "zero-network" approach:
 
 ```mermaid
 flowchart TD
@@ -158,4 +158,4 @@ class AppDatabase extends _$AppDatabase {
 
 ## Conclusion
 
-Privacy in Spliq isn't a marketing feature—it's a fundamental architectural decision that simplified development while creating user trust. By eliminating entire categories of privacy concerns through technical design, the app provides peace of mind alongside its core functionality.
+Privacy in Billington isn't a marketing feature—it's a fundamental architectural decision that simplified development while creating user trust. By eliminating entire categories of privacy concerns through technical design, the app provides peace of mind alongside its core functionality.

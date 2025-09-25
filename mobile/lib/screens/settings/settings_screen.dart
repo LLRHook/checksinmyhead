@@ -1,4 +1,4 @@
-// Spliq: Privacy-first receipt spliting
+// Billington: Privacy-first receipt spliting
 //     Copyright (C) 2025  Kruski Ko.
 //     Email us: checkmateapp@duck.com
 
@@ -162,8 +162,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// Opens the app store page for leaving a rating
   Future<void> _openAppStore() async {
     final Uri url = Uri.parse(
-      'https://apps.apple.com/app/yourappid',
-    ); // TODO: Replace with actual app ID
+      'https://apps.apple.com/us/app/spliq/id6746379502',
+    );
     if (!await launchUrl(url)) {
       throw Exception('Could not launch $url');
     }
@@ -171,12 +171,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   /// Opens the device's share sheet to share the app
   Future<void> _shareApp() async {
-    const String appStoreLink = 'https://apps.apple.com/app/yourappid';
-    // TODO: Replace with actual app ID
-    const String shareText =
-        'Check out Spliq, the easiest way to split bills with friends! $appStoreLink';
+    const String appStoreLink = 'https://apps.apple.com/us/app/spliq/id6746379502';
 
-    const String subject = 'Try Spliq!';
+    const String shareText =
+        'Check out Billington, the easiest way to split bills with friends! $appStoreLink';
+
+    const String subject = 'Try Billington!';
 
     // Launch the system share sheet
     SharePlus.instance.share(ShareParams(text: shareText, subject: subject));
@@ -229,7 +229,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           child: Column(
                             children: [
                               Text(
-                                'Spliq',
+                                'Billington',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 28,
@@ -458,7 +458,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                               children: [
                                 const Text(
-                                  'Your data never leaves your device. Spliq is designed with privacy-first principles—zero cloud storage and zero accounts. All information is stored locally and removed completely when you uninstall.',
+                                  'Your data never leaves your device. Billington is designed with privacy-first principles—zero cloud storage and zero accounts. All information is stored locally and removed completely when you uninstall.',
                                   style: TextStyle(
                                     color: Colors.white70,
                                     fontSize: 14,
@@ -544,7 +544,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     style: TextStyle(color: Colors.white),
                                   ),
                                   subtitle: const Text(
-                                    'Love Spliq? Let us know!',
+                                    'Love Billington? Let us know!',
                                     style: TextStyle(color: Colors.white70),
                                   ),
                                   leading: const Icon(
