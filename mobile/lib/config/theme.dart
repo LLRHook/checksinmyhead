@@ -1,4 +1,4 @@
-// Spliq: Privacy-first receipt spliting
+// Billington: Privacy-first receipt spliting
 //     Copyright (C) 2025  Kruski Ko.
 //     Email us: checkmateapp@duck.com
 
@@ -27,7 +27,7 @@ class AppSpacing {
 /// Defines the app's theme configuration for both light and dark modes
 class AppTheme {
   // Core color palette
-  static const Color _primaryColor = Color.fromARGB(255, 87, 135, 183);
+  static const Color _primaryColor = Color(0xFF328983);
   static const Color _secondaryColor = Color(0xFFD9B38C);
   static const Color _accentColor = Color(0xFF4C5B6B);
   static const Color _errorColor = Color(0xFFDC4C4C);
