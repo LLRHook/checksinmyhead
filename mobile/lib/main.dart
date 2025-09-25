@@ -1,4 +1,4 @@
-// Spliq: Privacy-first receipt spliting
+// Billington: Privacy-first receipt spliting
 //     Copyright (C) 2025  Kruski Ko.
 //     Email us: checkmateapp@duck.com
 
@@ -22,7 +22,7 @@ import 'screens/settings/settings_screen.dart';
 import 'config/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// Purpose: Entry point for the Spliq bill-splitting application.
+// Purpose: Entry point for the Billington bill-splitting application.
 // This file initializes the app, manages first-launch detection, and sets up
 // the global theme and navigation routes.
 //
@@ -56,7 +56,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Spliq',
+      title: 'Billington',
       // Theme configuration
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

@@ -1,4 +1,4 @@
-// Spliq: Privacy-first receipt spliting
+// Billington: Privacy-first receipt spliting
 //     Copyright (C) 2025  Kruski Ko.
 //     Email us: checkmateapp@duck.com
 
@@ -197,7 +197,7 @@ class ShareUtils {
     }
 
     text.writeln('───────────────');
-    text.writeln('Split with Spliq');
+    text.writeln('Split with Billington');
 
     return text.toString();
   }
@@ -342,7 +342,7 @@ class ShareUtils {
     }
 
     text.writeln('───────────────');
-    text.writeln('Split with Spliq');
+    text.writeln('Split with Billington');
 
     return text.toString();
   }

@@ -2,7 +2,7 @@
 
 ## Our Pledge
 
-Spliq is a personal project that welcomes constructive contributions. We pledge to foster an open and welcoming environment for anyone interested in contributing.
+Billington is a personal project that welcomes constructive contributions. We pledge to foster an open and welcoming environment for anyone interested in contributing.
 
 ## Our Standards
 

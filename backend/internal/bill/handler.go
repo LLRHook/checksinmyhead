@@ -49,7 +49,7 @@
 //		c.JSON(http.StatusCreated, CreateBillResponse{
 //			BillID:      billID,
 //			AccessToken: accessToken,
-//			ShareURL:    fmt.Sprintf("https://spliq.app/b/%s?t=%s", billID, accessToken),
+//			ShareURL:    fmt.Sprintf("https://Billington.app/b/%s?t=%s", billID, accessToken),
 //		})
 //	}
 package bill

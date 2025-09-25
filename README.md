@@ -1,10 +1,26 @@
-# Spliq - Share Bills, Not Your Data
+# Billington
+
+**Privacy-first receipt splitting made simple**
 - [Watch a Demo](https://youtube.com/shorts/T1GHR6JgOX8?feature=share)
 - [Website](https://getspliq.vercel.app/)
 
+## Documentation
+
+### Core Documentation
+- [Technical Overview](docs/technical-overview.md) - Architecture and key innovations
+- [Market Analysis](docs/market-analysis.md) - Origin story and competitive landscape
+- [Privacy: A Core Value](docs/privacy.md) - Privacy-first approach and implementation
+- [User Experience](docs/user-experience.md) - Insights and lessons from building Billington
+- [Sample Data](docs/sample-data.md) - Real example of bill splitting in action
+- [Scaling Considerations](docs/scaling-considerations.md) - Future architectural evolution
+
+### Development
+- [Contributing Guide](docs/contribution.md) - How to get involved in the project
+- [Code of Conduct](docs/CODE_OF_CONDUCT.md) - Community guidelines
+
 ## Project Overview
 
-Spliq is a Flutter-based iOS application designed for seamless receipt splitting without compromising user privacy. Our core value proposition is built around **zero data collection** - setting us apart from competitors that collect and store user data in the cloud.
+Billington is a Flutter-based iOS application designed for seamless receipt splitting without compromising user privacy. Our core value proposition is built around **zero data collection** - setting us apart from competitors that collect and store user data in the cloud.
 
 ### Key Features
 
@@ -60,7 +76,7 @@ repo-root/
 
 #### 1. Privacy by Design
 
-The cornerstone of Spliq is its privacy-first approach. Unlike competitors that collect user data for various purposes, Spliq operates entirely on-device:
+The cornerstone of Billington is its privacy-first approach. Unlike competitors that collect user data for various purposes, Billington operates entirely on-device:
 
 - No cloud storage of personal information
 - No user account requirements
@@ -110,7 +126,7 @@ To set up the development environment and run the project locally:
 
 ## Contributing
 
-Spliq is open-source and welcomes contributions. See our [contribution guidelines](docs/contribution.md) for more information on how to get involved.
+Billington is open-source and welcomes contributions. See our [contribution guidelines](docs/contribution.md) for more information on how to get involved.
 
 ## License
 

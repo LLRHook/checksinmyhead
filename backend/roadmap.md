@@ -1,7 +1,7 @@
-# Spliq Backend Development Roadmap
+# Billington Backend Development Roadmap
 
 ## Project Overview
-Transform Spliq from a local Flutter app into a distributed microservices architecture with real-time bill sharing, payment integration, and collaborative features - all while maintaining privacy-first principles.
+Transform Billington from a local Flutter app into a distributed microservices architecture with real-time bill sharing, payment integration, and collaborative features - all while maintaining privacy-first principles.
 
 ## Goals
 - **Primary**: Build impressive distributed systems experience for resume
@@ -19,7 +19,7 @@ Transform Spliq from a local Flutter app into a distributed microservices archit
   - [X] Install Docker & Docker Compose
   - [ ] Set up DigitalOcean Kubernetes cluster OR install K3s on home lab
   - [X] Create GitHub repository with proper .gitignore
-  - [X] Initialize Go module: `go mod init github.com/username/spliq-backend`
+  - [X] Initialize Go module: `go mod init github.com/username/Billington-backend`
 
 - [X] **Day 3-4: Project Structure**
   - [X] Create directory structure (see architecture section below)
@@ -161,7 +161,7 @@ Transform Spliq from a local Flutter app into a distributed microservices archit
 
 ### Project Structure
 ```
-spliq-backend/
+Billington-backend/
 ├── cmd/
 │   ├── bill-service/main.go
 │   ├── web-service/main.go
