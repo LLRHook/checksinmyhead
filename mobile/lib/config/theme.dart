@@ -47,7 +47,7 @@ class AppTheme {
       tertiaryContainer: Color(0xFFE6EAF1),
       onTertiaryContainer: _accentColor.withAlpha(217),
       error: _errorColor,
-      surface: Colors.white,
+      surface: Color(0xFFFFFFFF),
       onSurface: Color(0xFF2C2C2C),
       surfaceContainerHighest: Color(0xFFF1F3F5),
       onSurfaceVariant: Color(0xFF6B6B6B),
@@ -122,7 +122,7 @@ class AppTheme {
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: _primaryColor,
-        foregroundColor: Colors.white,
+        foregroundColor: Color(0xFFFFFFFF),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
         elevation: 0,
@@ -169,16 +169,16 @@ class AppTheme {
         255,
       ), // Make sure primary is fully opaque
       primaryContainer: Color(0xFF4C5E6A),
-      onPrimaryContainer: Colors.white,
+      onPrimaryContainer: Color(0xFFFFFFFF),
       secondary: _secondaryColor,
       secondaryContainer: Color(0xFFB48A63),
-      onSecondaryContainer: Colors.white,
+      onSecondaryContainer: Color(0xFFFFFFFF),
       tertiary: _accentColor,
       tertiaryContainer: Color(0xFF3B4B59),
-      onTertiaryContainer: Colors.white,
+      onTertiaryContainer: Color(0xFFFFFFFF),
       error: _errorColor,
       surface: Color(0xFF1C1C1C),
-      onSurface: Colors.white,
+      onSurface: Color(0xFFFFFFFF),
       surfaceContainerHighest: Color(0xFF2A2A2A),
       onSurfaceVariant: Color(0xFFB0B0B0),
       outline: Color(0xFF5E5E5E), // Darker outline for dark mode
@@ -189,7 +189,7 @@ class AppTheme {
         fontSize: 36,
         fontWeight: FontWeight.bold,
         letterSpacing: -0.5,
-        color: Colors.white,
+        color: Color(0xFFFFFFFF),
       ),
       displayMedium: TextStyle(
         fontSize: 30,
