@@ -226,10 +226,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         // Logo stays fixed
                         Center(
                           child: Transform.translate(
-                            offset: Offset(0, -screenHeight * 0.07),
+                            offset: Offset(0, -screenHeight * 0.06),
 
                             child: Image.asset(
-                              'assets/images/billington.png',
+                              'assets/images/billy.png',
                               width: 150,
                               height: 150,
                             ),
@@ -238,7 +238,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                         // Everything below the logo shifts up responsively
                         Transform.translate(
-                          offset: Offset(0, -screenHeight * 0.11),
+                          offset: Offset(0, -screenHeight * 0.10),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
