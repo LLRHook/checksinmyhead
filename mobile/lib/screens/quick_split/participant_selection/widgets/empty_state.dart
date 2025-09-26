@@ -42,11 +42,7 @@ class EmptyState extends StatelessWidget {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                Icon(
-                  Icons.groups_rounded,
-                  size: 52,
-                  color: colorScheme.primary.withValues(alpha: 0.7),
-                ),
+                Image.asset('assets/images/billy.png', width: 150, height: 150),
                 Positioned(
                   bottom: 10,
                   right: 10,
