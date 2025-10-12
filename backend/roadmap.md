@@ -43,11 +43,11 @@ Transform Billington from a local Flutter app into a distributed microservices a
   - [X] Add environment variable configuration
 
 - [ ] **Day 11-14: Bill CRUD Operations**
-  - [ ] Complete `Bill`, `BillItem`, `Person`, `ItemAssignment` models in `pkg/models/bill.go`
-  - [ ] Implement `internal/bill/repository.go` with database operations
-  - [ ] Implement `internal/bill/service.go` with business logic
-  - [ ] Complete `internal/bill/handler.go` with HTTP endpoints
-  - [ ] **Milestone**: Can create and retrieve bills via API
+  - [X] Complete `Bill`, `BillItem`, `Person`, `ItemAssignment` models in `pkg/models/bill.go`
+  - [X] Implement `internal/bill/repository.go` with database operations
+  - [X] Implement `internal/bill/service.go` with business logic
+  - [X] Complete `internal/bill/handler.go` with HTTP endpoints
+  - [X] **Milestone**: Can create and retrieve bills via API
 
 ---
 

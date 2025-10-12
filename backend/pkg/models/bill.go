@@ -49,7 +49,7 @@ type Bill struct {
 	TipPercentage float64       `json:"tip_percentage"`
 	Total         float64       `gorm:"not null" json:"total"`
 	Date          time.Time     `gorm:"not null" json:"date"`
-	PaymentMethod PaymentMethod `gorm:"type:jsonb" json:"payment_method"`
+	PaymentMethod PaymentMethod `gorm:"type:jsonb;serializer:json" json:"payment_method"`
 	Participants  []Person      `gorm:"many2many:bill_participants;constraint:OnDelete:SET NULL" json:"participants"`
 	Items         []BillItem    `gorm:"constraint:OnDelete:CASCADE" json:"items"`
 	CreatedAt     time.Time     `json:"created_at"`
