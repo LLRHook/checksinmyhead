@@ -35,14 +35,14 @@ Transform Billington from a local Flutter app into a distributed microservices a
   - [X] **Milestone**: Can run service locally and get 200 responses
 
 ### Week 2: Database Integration
-- [ ] **Day 8-10: Database Setup**
+- [X] **Day 8-10: Database Setup**
   - [X] Add PostgreSQL to docker-compose
   - [ ] Install database migration tool (golang-migrate)
   - [X] Create initial database schema
   - [X] Set up database connection in `pkg/database/`
   - [X] Add environment variable configuration
 
-- [ ] **Day 11-14: Bill CRUD Operations**
+- [X] **Day 11-14: Bill CRUD Operations**
   - [X] Complete `Bill`, `BillItem`, `Person`, `ItemAssignment` models in `pkg/models/bill.go`
   - [X] Implement `internal/bill/repository.go` with database operations
   - [X] Implement `internal/bill/service.go` with business logic
@@ -56,9 +56,9 @@ Transform Billington from a local Flutter app into a distributed microservices a
 
 ### Week 3: Bill Sharing & Access Control
 - [ ] **Day 15-17: Security & Access Tokens**
-  - [ ] Implement secure token generation for bill access
-  - [ ] Add token validation middleware
-  - [ ] Create bill sharing URL format: `/b/{billId}?t={token}`
+  - [X] Implement secure token generation for bill access
+  - [X] Add token validation middleware
+  - [X] Create bill sharing URL format: `/b/{billId}?t={token}`
   - [ ] Create web service for recipient bill viewing
   - [ ] Add web pages for recipients to view their portions
   - [ ] Test bill access control
