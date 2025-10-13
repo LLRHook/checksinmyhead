@@ -54,6 +54,7 @@ type Bill struct {
 	Items         []BillItem    `gorm:"constraint:OnDelete:CASCADE" json:"items"`
 	CreatedAt     time.Time     `json:"created_at"`
 	UpdatedAt     time.Time     `json:"updated_at"`
+	AccessToken string `gorm:"type:varchar(64);uniqueIndex" json:"access_token,omitempty"`
 }
 
 // BeforeCreate hook to set default values before creating a Bill.

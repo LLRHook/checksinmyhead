@@ -2,7 +2,9 @@ package bill
 
 import (
 	"backend/pkg/models"
+	"backend/pkg/security"
 	"strconv"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -25,6 +27,8 @@ func (h *BillHandler) CreateBill(c *gin.Context) {
 		return
 	}
 
+	token := security.GenerateSecureToken()
+	bill.AccessToken = token
 	//Call service
 	err := h.service.CreateBill(&bill)
 
@@ -35,7 +39,11 @@ func (h *BillHandler) CreateBill(c *gin.Context) {
 	}
 
 	// Return created bill with ID
-	c.JSON(201, bill)
+	c.JSON(201, gin.H{
+       "bill": bill,
+       "access_token": token,
+       "share_url": fmt.Sprintf("https://billington.app/b/%d?t=%s", bill.ID, token)
+   })
 }
 
 func (h *BillHandler) GetBill(c *gin.Context) {
