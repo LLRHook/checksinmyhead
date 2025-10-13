@@ -3,8 +3,8 @@ package bill
 import (
 	"backend/pkg/models"
 	"backend/pkg/security"
-	"strconv"
 	"fmt"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -40,14 +40,15 @@ func (h *BillHandler) CreateBill(c *gin.Context) {
 
 	// Return created bill with ID
 	c.JSON(201, gin.H{
-       "bill": bill,
-       "access_token": token,
-       "share_url": fmt.Sprintf("https://billington.app/b/%d?t=%s", bill.ID, token)
-   })
+		"bill":         bill,
+		"access_token": token,
+		"share_url":    fmt.Sprintf("https://billington.app/b/%d?t=%s", bill.ID, token),
+	})
 }
 
 func (h *BillHandler) GetBill(c *gin.Context) {
 	id := c.Param("id")
+	URLtoken := c.Query("t")
 
 	if id == "" {
 		c.JSON(400, gin.H{"error": "bad id"})
@@ -67,6 +68,10 @@ func (h *BillHandler) GetBill(c *gin.Context) {
 			return
 		}
 		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	if URLtoken != bill.AccessToken {
+		c.JSON(403, gin.H{"error": "token mismatch"})
 		return
 	}
 
