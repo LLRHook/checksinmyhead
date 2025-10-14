@@ -33,5 +33,5 @@ func main() {
 }
 
 func getHealth(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	c.JSON(http.StatusOK, gin.H{"status": "bill service - ok"})
 }

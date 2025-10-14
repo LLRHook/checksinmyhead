@@ -39,6 +39,25 @@ type ItemAssignment struct {
 	UpdatedAt  time.Time `json:"updated_at"`
 }
 
+// ItemDetail represents an item in a person's share
+type ItemDetail struct {
+	Name     string  `json:"name"`
+	Amount   float64 `json:"amount"`
+	IsShared bool    `json:"is_shared"`
+}
+
+// PersonShare represents a person's calculated share of the bill.
+type PersonShare struct {
+	ID         uint         `gorm:"primaryKey" json:"id"`
+	BillID     uint         `gorm:"not null;index" json:"bill_id"`
+	PersonName string       `gorm:"not null" json:"person_name"`
+	Items      []ItemDetail `gorm:"type:jsonb;serializer:json" json:"items"`
+	Subtotal   float64      `gorm:"not null" json:"subtotal"`
+	TaxShare   float64      `gorm:"not null" json:"tax_share"`
+	TipShare   float64      `gorm:"not null" json:"tip_share"`
+	Total      float64      `gorm:"not null" json:"total"`
+}
+
 // Bill represents a complete bill with participants, items, and financial details.
 type Bill struct {
 	ID            uint          `gorm:"primaryKey" json:"id"`
@@ -52,9 +71,10 @@ type Bill struct {
 	PaymentMethod PaymentMethod `gorm:"type:jsonb;serializer:json" json:"payment_method"`
 	Participants  []Person      `gorm:"many2many:bill_participants;constraint:OnDelete:SET NULL" json:"participants"`
 	Items         []BillItem    `gorm:"constraint:OnDelete:CASCADE" json:"items"`
+	PersonShares  []PersonShare `gorm:"constraint:OnDelete:CASCADE" json:"person_shares"`
+	AccessToken   string        `gorm:"type:varchar(64);uniqueIndex" json:"access_token,omitempty"`
 	CreatedAt     time.Time     `json:"created_at"`
 	UpdatedAt     time.Time     `json:"updated_at"`
-	AccessToken   string        `gorm:"type:varchar(64);uniqueIndex" json:"access_token,omitempty"`
 }
 
 // BeforeCreate hook to set default values before creating a Bill.

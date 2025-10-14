@@ -59,9 +59,9 @@ Transform Billington from a local Flutter app into a distributed microservices a
   - [X] Implement secure token generation for bill access
   - [X] Add token validation middleware
   - [X] Create bill sharing URL format: `/b/{billId}?t={token}`
-  - [ ] Create web service for recipient bill viewing
-  - [ ] Add web pages for recipients to view their portions
-  - [ ] Test bill access control
+  - [X] Create web service for recipient bill viewing
+  - [X] Add web pages for recipients to view their portions
+  - [X] Test bill access control
 
 - [ ] **Day 18-21: Flutter Integration**
   - [ ] Update Flutter app to call backend APIs

@@ -27,7 +27,11 @@ func (b *billRepository) Delete(id uint) error {
 
 func (b *billRepository) GetById(id uint) (bill *models.Bill, err error) {
 	bill = &models.Bill{}
-	err = b.db.Preload("Items").Preload("Participants").First(bill, id).Error
+	err = b.db.
+		Preload("Items.Assignments").
+		Preload("Participants").
+		Preload("PersonShares").
+		First(bill, id).Error
 	return bill, err
 }
 
