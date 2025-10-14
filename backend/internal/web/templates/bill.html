@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .Name }} - Bill Summary</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #328983;
+            --primary-dark: #309A93;
+            --secondary: #f5f5f7;
+            --accent: #1d1d1f;
+            --text-secondary: #86868b;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: linear-gradient(135deg, var(--secondary) 0%, #fff 100%);
+            color: var(--accent);
+            line-height: 1.6;
+            padding: 20px;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: white;
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 24px;
+            border-bottom: 2px solid var(--secondary);
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 8px;
+            letter-spacing: -0.02em;
+        }
+        
+        .total-badge {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 16px;
+            font-size: 24px;
+            font-weight: 600;
+            margin-top: 16px;
+        }
+        
+        .section {
+            margin: 32px 0;
+        }
+        
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+        
+        .item-list {
+            background: var(--secondary);
+            border-radius: 16px;
+            padding: 20px;
+        }
+        
+        .item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .item:last-child { border-bottom: none; }
+        
+        .item-name {
+            font-weight: 500;
+            color: var(--accent);
+        }
+        
+        .item-price {
+            font-weight: 600;
+            color: var(--primary);
+        }
+        
+        .breakdown {
+            background: var(--secondary);
+            border-radius: 16px;
+            padding: 20px;
+        }
+        
+        .breakdown-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+        }
+        
+        .person-card {
+            background: white;
+            border: 2px solid var(--secondary);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .person-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(50, 137, 131, 0.15);
+        }
+        
+        .person-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--secondary);
+        }
+        
+        .person-name {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--accent);
+        }
+        
+        .person-total {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        
+        .person-items {
+            padding-left: 20px;
+        }
+        
+        .person-item {
+            padding: 6px 0;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        .shared-badge {
+            display: inline-block;
+            background: #FFF3CD;
+            color: #856404;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 6px;
+        }
+        
+        .payment-card {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+        }
+        
+        .payment-label {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .payment-value {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 24px;
+            border-top: 2px solid var(--secondary);
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        .footer i {
+            color: var(--primary);
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>{{ .Name }}</h1>
+            <div class="total-badge">${{ printf "%.2f" .Total }}</div>
+        </div>
+
+        <!-- Items Section -->
+        <div class="section">
+            <div class="section-title"><i class="fas fa-receipt"></i> Items</div>
+            <div class="item-list">
+                {{ range .Items }}
+                <div class="item">
+                    <span class="item-name">{{ .Name }}</span>
+                    <span class="item-price">${{ printf "%.2f" .Price }}</span>
+                </div>
+                {{ end }}
+            </div>
+        </div>
+
+        <!-- Breakdown Section -->
+        <div class="section">
+            <div class="section-title"><i class="fas fa-calculator"></i> Breakdown</div>
+            <div class="breakdown">
+                <div class="breakdown-row">
+                    <span>Subtotal</span>
+                    <strong>${{ printf "%.2f" .Subtotal }}</strong>
+                </div>
+                <div class="breakdown-row">
+                    <span>Tax</span>
+                    <strong>${{ printf "%.2f" .Tax }}</strong>
+                </div>
+                <div class="breakdown-row">
+                    <span>Tip{{ if .TipPercentage }} ({{ printf "%.0f" .TipPercentage }}%){{ end }}</span>
+                    <strong>${{ printf "%.2f" .TipAmount }}</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Individual Shares Section -->
+        <div class="section">
+            <div class="section-title"><i class="fas fa-users"></i> Individual Shares</div>
+            {{ range .PersonShares }}
+            <div class="person-card">
+                <div class="person-header">
+                    <span class="person-name">{{ .PersonName }}</span>
+                    <span class="person-total">${{ printf "%.2f" .Total }}</span>
+                </div>
+                <div class="person-items">
+                    {{ range .Items }}
+                    <div class="person-item">
+                        <i class="fas fa-circle" style="font-size: 4px; margin-right: 8px;"></i>
+                        {{ .Name }}: ${{ printf "%.2f" .Amount }}
+                        {{ if .IsShared }}<span class="shared-badge">shared</span>{{ end }}
+                    </div>
+                    {{ end }}
+                    <div class="person-item" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--secondary);">
+                        <i class="fas fa-circle" style="font-size: 4px; margin-right: 8px;"></i>
+                        Tax & tip: ${{ printf "%.2f" .TaxShare }} + ${{ printf "%.2f" .TipShare }}
+                    </div>
+                </div>
+            </div>
+            {{ end }}
+        </div>
+
+        <!-- Payment Details Section -->
+        {{ if or .PaymentMethod.Name .PaymentMethod.Identifier }}
+        <div class="section">
+            <div class="section-title"><i class="fas fa-credit-card"></i> Payment Details</div>
+            <div class="payment-card">
+                <div class="payment-label">{{ .PaymentMethod.Name }}</div>
+                <div class="payment-value">{{ .PaymentMethod.Identifier }}</div>
+            </div>
+        </div>
+        {{ end }}
+
+        <!-- Footer -->
+        <div class="footer">
+            <i class="fas fa-check-circle"></i>
+            Split with Billington
+        </div>
+    </div>
+</body>
+</html>
