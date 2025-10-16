@@ -433,8 +433,8 @@ curl -X POST http://localhost:8080/api/bills \
       }
     ],
     "payment_method": {
-      "name": "Zelle",
-      "identifier": "(240) 696-9750"
+      "name": "Venmo",
+      "identifier": "@dhaliwgs"
     }
   }'
 
