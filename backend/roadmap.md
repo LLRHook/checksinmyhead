@@ -88,6 +88,40 @@ Transform Billington from a local Flutter app into a distributed microservices a
   - [ ] **Milestone**: Real-time bill collaboration working
 
 ---
+## Phase 2.5: Flutter Integration & AI Receipt Scanning (Week 5-6)
+*Goal: Connect Flutter app + add AI receipt parsing*
+
+### Week 5: Flutter Backend Integration
+- [ ] **Day 29-31: Flutter API Client**
+  - [ ] Update Flutter app to call backend APIs
+  - [ ] Add HTTP client service in Flutter
+  - [ ] Update bill creation flow to POST to backend
+  - [ ] Test bill sharing between app and web viewer
+  - [ ] **Milestone**: End-to-end Flutter → Backend → Web working
+
+- [ ] **Day 32-35: AI Receipt Scanning**
+  - [ ] Add receipt parsing to bill-service (`internal/bill/ocr.go`)
+  - [ ] Sign up for OpenAI API (GPT-4 Vision) or Anthropic (Claude Vision)
+  - [ ] Create image upload endpoint (`POST /api/receipts/parse`)
+  - [ ] Design prompt for receipt → bill JSON extraction
+  - [ ] Test with various receipt types
+
+### Week 6: OCR Polish & Integration
+- [ ] **Day 36-38: Flutter OCR Integration**
+  - [ ] Add camera/gallery picker to Flutter app
+  - [ ] Implement image upload to backend
+  - [ ] Display parsed bill with edit capability before saving
+  - [ ] Add "Scan Receipt" as primary bill creation method
+
+- [ ] **Day 39-42: Testing & Polish**
+  - [ ] Test end-to-end: photo → parsed bill → shared → paid
+  - [ ] Add confidence scores and manual correction flow
+  - [ ] Performance testing with multiple concurrent users
+  - [ ] **Milestone**: AI-powered receipt scanning fully functional
+
+---
+
+---
 
 ## Phase 3: Payment Integration (Week 5-6)
 *Goal: Actual payment processing with Venmo/Zelle*
