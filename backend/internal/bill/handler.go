@@ -40,7 +40,7 @@ func (h *BillHandler) CreateBill(c *gin.Context) {
 
 	// Return created bill with ID
 	c.JSON(201, gin.H{
-		"bill":         bill,
+		"bill_id":      bill.ID,
 		"access_token": token,
 		"share_url":    fmt.Sprintf("https://billington.app/b/%d?t=%s", bill.ID, token),
 	})
