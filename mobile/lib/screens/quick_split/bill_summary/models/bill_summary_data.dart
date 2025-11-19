@@ -15,11 +15,13 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import '/models/person.dart';
-import '/models/bill_item.dart';
+// mobile/lib/screens/quick_split/bill_summary/models/bill_summary_data.dart
+// mobile/lib/screens/quick_split/bill_summary/models/bill_summary_data.dart
 
-/// Data container class that encapsulates all bill-related information
-/// to simplify state management and avoid prop drilling across widgets
+import 'package:checks_frontend/models/bill_item.dart';
+import 'package:checks_frontend/models/person.dart';
+
+/// Consolidated data model for bill summary
 class BillSummaryData {
   final List<Person> participants;
   final Map<Person, double> personShares;
@@ -32,8 +34,12 @@ class BillSummaryData {
   final double tipPercentage;
   final bool isCustomTipAmount;
   final String billName;
+  
+  // Payment method fields
+  final String? paymentMethodName;    // e.g., "Venmo", "Zelle"
+  final String? paymentMethodIdentifier; // e.g., "@username", "phone"
 
-  const BillSummaryData({
+  BillSummaryData({
     required this.participants,
     required this.personShares,
     required this.items,
@@ -42,19 +48,53 @@ class BillSummaryData {
     required this.tipAmount,
     required this.total,
     this.birthdayPerson,
-    this.tipPercentage = 0.0,
+    this.tipPercentage = 0,
     this.isCustomTipAmount = false,
     this.billName = '',
+    this.paymentMethodName,
+    this.paymentMethodIdentifier,
   });
 
-  /// Returns participants sorted by their payment amount in descending order
-  /// Useful for displaying participants in order of contribution
+  /// Creates a copy with updated fields
+  BillSummaryData copyWith({
+    List<Person>? participants,
+    Map<Person, double>? personShares,
+    List<BillItem>? items,
+    double? subtotal,
+    double? tax,
+    double? tipAmount,
+    double? total,
+    Person? birthdayPerson,
+    double? tipPercentage,
+    bool? isCustomTipAmount,
+    String? billName,
+    String? paymentMethodName,
+    String? paymentMethodIdentifier,
+  }) {
+    return BillSummaryData(
+      participants: participants ?? this.participants,
+      personShares: personShares ?? this.personShares,
+      items: items ?? this.items,
+      subtotal: subtotal ?? this.subtotal,
+      tax: tax ?? this.tax,
+      tipAmount: tipAmount ?? this.tipAmount,
+      total: total ?? this.total,
+      birthdayPerson: birthdayPerson ?? this.birthdayPerson,
+      tipPercentage: tipPercentage ?? this.tipPercentage,
+      isCustomTipAmount: isCustomTipAmount ?? this.isCustomTipAmount,
+      billName: billName ?? this.billName,
+      paymentMethodName: paymentMethodName ?? this.paymentMethodName,
+      paymentMethodIdentifier: paymentMethodIdentifier ?? this.paymentMethodIdentifier,
+    );
+  }
+
+  /// Returns participants sorted by total amount (highest to lowest)
   List<Person> get sortedParticipants {
     final sorted = List<Person>.from(participants);
     sorted.sort((a, b) {
-      final aShare = personShares[a] ?? 0;
-      final bShare = personShares[b] ?? 0;
-      return bShare.compareTo(aShare);
+      final aTotal = personShares[a] ?? 0;
+      final bTotal = personShares[b] ?? 0;
+      return bTotal.compareTo(aTotal); // Descending order
     });
     return sorted;
   }
