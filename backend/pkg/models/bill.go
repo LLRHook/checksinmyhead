@@ -33,7 +33,7 @@ type BillItem struct {
 type ItemAssignment struct {
 	ID         uint      `gorm:"primaryKey" json:"id"`
 	BillItemID uint      `gorm:"not null;index" json:"bill_item_id"`
-	PersonID   uint      `gorm:"not null;index" json:"person_id"`
+	PersonName string    `gorm:"not null;index" json:"person_name"`
 	Percentage float64   `gorm:"not null" json:"percentage"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`

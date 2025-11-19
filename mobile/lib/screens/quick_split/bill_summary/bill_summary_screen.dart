@@ -23,8 +23,8 @@ import '/models/bill_item.dart';
 // Import refactored components
 import 'models/bill_summary_data.dart';
 import 'widgets/bill_total_card.dart';
-import 'widgets/person_card.dart';
 import 'widgets/bottom_bar.dart';
+import 'widgets/person_card.dart';
 import 'utils/share_utils.dart';
 
 /// BillSummaryScreen - Displays a complete bill breakdown with sharing options

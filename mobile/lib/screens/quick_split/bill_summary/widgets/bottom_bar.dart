@@ -18,8 +18,10 @@
 import 'package:checks_frontend/screens/quick_split/bill_summary/models/bill_summary_data.dart';
 import 'package:checks_frontend/screens/quick_split/bill_summary/widgets/bill_name_sheet.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
+import 'package:checks_frontend/services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:logger/logger.dart';
 
 /// BottomBar - Fixed navigation bar at bottom of bill screens
 ///
@@ -121,20 +123,17 @@ class BottomBar extends StatelessWidget {
 ///
 /// Provides a method to save bill data, show confirmation,
 /// and navigate back to the starting screen.
-class DoneButtonHandler {
-  /// Bills manager instance
-  static final _billsManager = RecentBillsManager();
 
-  /// Saves the bill and handles UI feedback
-  ///
-  /// Prompts for a bill name, saves to storage, shows confirmation message,
-  /// provides haptic feedback, and navigates back to first screen.
-  /// Uses a BillSummaryData object to simplify parameter passing.
+class DoneButtonHandler {
+  static final _billsManager = RecentBillsManager();
+  static final _apiService = ApiService();
+
+  /// Saves the bill locally and uploads to backend
   static Future<void> handleDone(
     BuildContext context, {
     required BillSummaryData data,
   }) async {
-    // Capture all context-dependent references before async operation
+    // Capture ALL context-dependent references FIRST (before any async)
     final brightness = Theme.of(context).brightness;
     final snackBarBgColor =
         brightness == Brightness.dark ? const Color(0xFF2D2D2D) : null;
@@ -143,18 +142,28 @@ class DoneButtonHandler {
     final navigator = Navigator.of(context);
     final scaffoldMessenger = ScaffoldMessenger.of(context);
 
-    // Bill naming dialog is shown here with a premium bottom sheet
+    // Get bill name
     final billName = await BillNameSheet.show(
       context: context,
-      initialName: data.billName, // Use any previously set name
+      initialName: data.billName,
     );
 
-    // If the user dismissed the sheet without entering a name, just return to the summary screen
     if (billName.isEmpty) {
-      return; // Don't save the bill, just return to the summary screen
+      return; // User cancelled
     }
 
-    // Create a new BillSummaryData with the updated bill name
+    // Check context.mounted (not navigator.mounted) before using context
+    if (!context.mounted) return;
+
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (dialogContext) => const Center(child: CircularProgressIndicator()),
+    );
+
+    // Create updated data with bill name
     final updatedData = BillSummaryData(
       participants: data.participants,
       personShares: data.personShares,
@@ -166,10 +175,10 @@ class DoneButtonHandler {
       birthdayPerson: data.birthdayPerson,
       tipPercentage: data.tipPercentage,
       isCustomTipAmount: data.isCustomTipAmount,
-      billName: billName, // Use the name from dialog
+      billName: billName,
     );
 
-    // Save bill data using the consolidated BillSummaryData object
+    // Save locally first (always works even if backend fails)
     await _billsManager.saveBill(
       participants: updatedData.participants,
       personShares: updatedData.personShares,
@@ -184,11 +193,47 @@ class DoneButtonHandler {
       billName: updatedData.billName,
     );
 
-    // Check if widget is still mounted before proceeding
-    if (!navigator.mounted) return;
+    // Try to upload to backend
+    String? shareUrl;
+    var logger = Logger();
+    try {
+      // Get payment method info from data
+      final paymentMethodName = updatedData.paymentMethodName ?? 'Venmo';
+      final paymentMethodId =
+          updatedData.paymentMethodIdentifier ?? '@username';
 
-    // Show success message using the stored scaffoldMessenger
-    scaffoldMessenger.showSnackBar(
+      final response = await _apiService.uploadBill(
+        billName: billName,
+        participants: updatedData.participants,
+        personShares: updatedData.personShares,
+        items: updatedData.items,
+        subtotal: updatedData.subtotal,
+        tax: updatedData.tax,
+        tipAmount: updatedData.tipAmount,
+        tipPercentage: updatedData.tipPercentage,
+        total: updatedData.total,
+        paymentMethodName: paymentMethodName,
+        paymentMethodIdentifier: paymentMethodId,
+      );
+
+      if (response != null) {
+        shareUrl =
+            'https://billington.app/b/${response.billId}?t=${response.accessToken}';
+      }
+    } catch (e) {
+      logger.d('Failed to upload to backend: $e');
+      // Continue anyway - local save succeeded
+    }
+
+    // Close loading dialog
+    if (navigator.mounted) {
+      navigator.pop(); // Close loading dialog
+    }
+
+    if (!navigator.mounted) return;
+    //do something with the shareUrl
+
+      scaffoldMessenger.showSnackBar(
       SnackBar(
         content: Text(
           'Bill saved successfully',
@@ -202,7 +247,7 @@ class DoneButtonHandler {
 
     HapticFeedback.mediumImpact();
 
-    // Return to home screen using the stored navigator reference
+    // Return to home
     navigator.popUntil((route) => route.isFirst);
   }
 }
