@@ -1,194 +1,229 @@
 # Billington Backend Development Roadmap
 
 ## Project Overview
-Transform Billington from a local Flutter app into a distributed microservices architecture with real-time bill sharing, payment integration, and collaborative features - all while maintaining privacy-first principles.
+Transform Billington from a local Flutter app into a Splitwise competitor with group trip features, image uploads, and collaborative bill splitting - all while maintaining privacy-first principles.
 
 ## Goals
-- **Primary**: Build impressive distributed systems experience for resume
-- **Secondary**: Create a production-ready bill splitting platform
-- **Learning**: Master Go, microservices, Kubernetes, real-time systems
+- **Primary**: Build a working Splitwise competitor for group trips
+- **Secondary**: Impressive distributed systems experience for resume
+- **Learning**: Ship features fast, optimize later
 
 ---
 
-## Phase 1: Foundation (Week 1-2)
+## Phase 1: Foundation ✅ COMPLETE
 *Goal: Get basic infrastructure running locally*
 
-### Week 1: Environment & Project Setup
-- [X] **Day 1-2: Development Environment**
-  - [X] Install Go 1.21+ on development machine
-  - [X] Install Docker & Docker Compose
-  - [ ] Set up DigitalOcean Kubernetes cluster OR install K3s on home lab
-  - [X] Create GitHub repository with proper .gitignore
-  - [X] Initialize Go module: `go mod init github.com/username/Billington-backend`
-
-- [X] **Day 3-4: Project Structure**
-  - [X] Create directory structure (see architecture section below)
-  - [X] Set up `pkg/models/` with basic structs
-  - [X] Create `docker-compose.yml` for local development
-  - [X] Write initial `README.md` with setup instructions
-
-- [X] **Day 5-7: First Service**
-  - [X] Create `bill-service` with basic HTTP server (Gin)
-  - [X] Add health check endpoint (`GET /health`)
-  - [X] Add placeholder bill endpoints (`POST /api/bills`, `GET /api/bills/:id`)
-  - [X] Test with Docker Compose
-  - [X] **Milestone**: Can run service locally and get 200 responses
-
-### Week 2: Database Integration
-- [X] **Day 8-10: Database Setup**
-  - [X] Add PostgreSQL to docker-compose
-  - [ ] Install database migration tool (golang-migrate)
-  - [X] Create initial database schema
-  - [X] Set up database connection in `pkg/database/`
-  - [X] Add environment variable configuration
-
-- [X] **Day 11-14: Bill CRUD Operations**
-  - [X] Complete `Bill`, `BillItem`, `Person`, `ItemAssignment`, `PersonShare` models in `pkg/models/bill.go`
-  - [X] Implement `internal/bill/repository.go` with database operations
-  - [X] Implement `internal/bill/service.go` with business logic
-  - [X] Complete `internal/bill/handler.go` with HTTP endpoints
-  - [X] **Milestone**: Can create and retrieve bills via API
+### Week 1-2: Basic Setup ✅
+- [X] Environment setup (Go, Docker, PostgreSQL)
+- [X] Project structure
+- [X] First service running with health checks
+- [X] Database integration with GORM
+- [X] Bill CRUD operations
+- [X] Access token system
+- [X] Token validation middleware
 
 ---
 
-## Phase 2: Core Functionality (Week 3-4)
-*Goal: Working bill sharing with real-time updates*
+## Phase 2: Bill Sharing & Web Viewer ✅ MOSTLY COMPLETE
+*Goal: Working bill sharing with beautiful web interface*
 
-### Week 3: Bill Sharing & Access Control
-- [X] **Day 15-17: Security & Access Tokens**
-  - [X] Implement secure token generation for bill access (`pkg/security/token.go`)
-  - [X] Add token validation in handler
-  - [X] Create bill sharing URL format: `/b/{billId}?t={token}`
-  - [X] Create web service for recipient bill viewing
-  - [X] Add web pages for recipients to view their portions
-  - [X] Test bill access control
+### Week 3: Core Sharing ✅
+- [X] Secure token generation (`pkg/security/token.go`)
+- [X] Bill sharing URL format: `/b/{billId}?t={token}`
+- [X] Next.js bill viewer app with React components
+- [X] Venmo deep linking for payments
+- [X] Beautiful UI matching marketing site design
 
-- [X] **Day 18-21: Web Bill Viewer**
-  - [X] Create Next.js bill viewer app
-  - [X] Build React components matching marketing site design
-  - [X] Implement API client for fetching bills
-  - [X] Add Venmo deep linking for payments
-  - [X] Deploy bill viewer (separate from marketing site)
-  - [X] **Milestone**: Recipients can view bills in browser with beautiful UI
+### Week 4: Flutter Integration 🔄 IN PROGRESS
+- [X] HTTP client service in Flutter
+- [X] Bill creation flow generates shareable links
+- [X] Send complete bill data (with PersonShares) to backend
+- [🔄] **CURRENT: Fix multiple payment methods bug**
+  - [X] Update backend to accept `PaymentMethods []PaymentMethod`
+  - [X] Update Flutter to send all configured payment methods
+  - [X] Update Next.js viewer to display all payment methods
+  - [X] Test end-to-end: Flutter → Backend → Web viewer
+  - [ ] Verify Venmo deep linking works with multiple payment methods
+  - [ ] Test with real bill creation flow
+  - [ ] Ensure that bill viewer is in decent shape, don't need perfect. ~Good Enough~
 
-### Week 4: Flutter Integration & Real-time Updates
-- [ ] **Day 22-25: Flutter Backend Integration**
-  - [ ] Update Flutter app to call backend APIs
-  - [ ] Add HTTP client service in Flutter
-  - [ ] Update bill creation flow to generate shareable links
-  - [ ] Send complete bill data (with PersonShares) to backend
-  - [ ] Test bill sharing between devices
+- [ ] **Deploy & Test**
+  - [ ] Deploy backend to Railway/Render
+  - [ ] Deploy Next.js viewer to Vercel
+  - [ ] Set `NEXT_PUBLIC_API_URL` environment variable
+  - [ ] Test with production URLs
+  - [ ] Share test bill with friend to verify full flow
 
-- [ ] **Day 26-28: Event System (Optional)**
-  - [ ] Set up Redis for event caching
-  - [ ] Create `pkg/models/events.go` with event structures
-  - [ ] Implement `internal/events/` service for event publishing
-  - [ ] Add event publishing to bill operations
-  - [ ] Create event polling endpoint for clients
-  - [ ] **Milestone**: Real-time bill collaboration working
-
----
-## Phase 2.5: Flutter Integration & AI Receipt Scanning (Week 5-6)
-*Goal: Connect Flutter app + add AI receipt parsing*
-
-### Week 5: Flutter Backend Integration
-- [ ] **Day 29-31: Flutter API Client**
-  - [ ] Update Flutter app to call backend APIs
-  - [ ] Add HTTP client service in Flutter
-  - [ ] Update bill creation flow to POST to backend
-  - [ ] Test bill sharing between app and web viewer
-  - [ ] **Milestone**: End-to-end Flutter → Backend → Web working
-
-- [ ] **Day 32-35: AI Receipt Scanning**
-  - [ ] Add receipt parsing to bill-service (`internal/bill/ocr.go`)
-  - [ ] Sign up for OpenAI API (GPT-4 Vision) or Anthropic (Claude Vision)
-  - [ ] Create image upload endpoint (`POST /api/receipts/parse`)
-  - [ ] Design prompt for receipt → bill JSON extraction
-  - [ ] Test with various receipt types
-
-### Week 6: OCR Polish & Integration
-- [ ] **Day 36-38: Flutter OCR Integration**
-  - [ ] Add camera/gallery picker to Flutter app
-  - [ ] Implement image upload to backend
-  - [ ] Display parsed bill with edit capability before saving
-  - [ ] Add "Scan Receipt" as primary bill creation method
-
-- [ ] **Day 39-42: Testing & Polish**
-  - [ ] Test end-to-end: photo → parsed bill → shared → paid
-  - [ ] Add confidence scores and manual correction flow
-  - [ ] Performance testing with multiple concurrent users
-  - [ ] **Milestone**: AI-powered receipt scanning fully functional
+**Milestone**: End-to-end Flutter → Backend → Web working in production
 
 ---
 
+## Phase 3: Tabs & Group Trips (Next Priority)
+*Goal: Support multi-bill group trips*
+
+### Week 5-6: Tab System (4-6 weeks)
+- [ ] **Backend: Tab Model & API**
+  - [ ] Create `Tab` model in `pkg/models/tab.go`
+    ```go
+    type Tab struct {
+        ID          uint
+        Name        string
+        Description string
+        Bills       []Bill
+        TotalAmount float64
+        AccessToken string
+        CreatedAt   time.Time
+    }
+    ```
+  - [ ] Add `TabID *uint` to Bill model (optional foreign key)
+  - [ ] Create tab endpoints:
+    - `POST /api/tabs` - Create new tab
+    - `GET /api/tabs/:id?t=token` - Get tab with all bills
+    - `POST /api/tabs/:id/bills` - Add bill to existing tab
+    - `PATCH /api/tabs/:id` - Update tab details
+  - [ ] Implement `internal/tab/` (handler, service, repository)
+  - [ ] Test with curl
+
+- [ ] **Flutter: Tab UI**
+  - [ ] Add "New Tab" option on home screen
+  - [ ] Create tab creation screen (name, description)
+  - [ ] Tab list screen (show all user's tabs)
+  - [ ] Tab detail screen (show all bills in tab + total)
+  - [ ] "Add Bill to Tab" flow
+  - [ ] Save tabs to local database
+
+- [ ] **Web Viewer: Tab Display**
+  - [ ] Create `/t/[id]` route for tab viewing
+  - [ ] Display tab name, description, total
+  - [ ] List all bills in tab with expandable details
+  - [ ] Show per-person totals across all bills
+  - [ ] Payment buttons for settling entire tab
+
+**Milestone**: Users can create group trip tabs and add multiple bills
+
 ---
 
-## Phase 3: Payment Integration (Week 5-6)
-*Goal: Actual payment processing with Venmo/Zelle*
+## Phase 4: Image Uploads (After Tabs)
+*Goal: Receipt photos and trip memories*
 
-### Week 5: Payment Service
-- [ ] **Day 29-31: Payment Architecture**
-  - [ ] Create `payment-service` with basic structure
-  - [ ] Define payment models in `pkg/models/payment.go`
-  - [ ] Set up payment database schema
-  - [ ] Research Venmo/Zelle API integration options
-  - [ ] Create payment initiation endpoints
+### Week 7-8: Image Infrastructure (3-4 weeks)
+- [ ] **Backend: Storage Setup**
+  - [ ] Sign up for CloudFlare R2 (free 10GB) OR AWS S3
+  - [ ] Add image model:
+    ```go
+    type TabImage struct {
+        ID          uint
+        TabID       uint
+        URL         string
+        Processed   bool
+        UploadedBy  string
+        CreatedAt   time.Time
+    }
+    ```
+  - [ ] Create image endpoints:
+    - `POST /api/tabs/:id/images` - Upload image
+    - `GET /api/tabs/:id/images` - List tab images
+    - `PATCH /api/tabs/:id/images/:imageId` - Mark as processed
+    - `DELETE /api/tabs/:id/images/:imageId` - Delete image
+  - [ ] Implement image upload handler (multipart/form-data)
+  - [ ] Add abuse prevention (rate limiting, file size limits)
 
-- [ ] **Day 32-35: Payment Provider Integration**
-  - [X] Implement Venmo deep linking for web recipients
-  - [ ] Add payment status tracking
-  - [ ] Create payment webhooks for status updates (if available)
-  - [ ] Add Zelle integration (if available)
-  - [ ] Test payment flow end-to-end
+- [ ] **Flutter: Camera & Upload**
+  - [ ] Add `image_picker` package
+  - [ ] Camera/gallery picker UI
+  - [ ] Image compression before upload
+  - [ ] Upload progress indicator
+  - [ ] Display uploaded images in tab
+  - [ ] Mark images as "processed" checkbox
 
-### Week 6: Polish & Testing
-- [ ] **Day 36-38: Payment UX**
-  - [ ] Update Flutter app with payment buttons
-  - [ ] Add payment status UI indicators
-  - [ ] Implement payment confirmation flow
-  - [ ] Add payment history tracking
-  - [ ] Test payment edge cases
+- [ ] **Web Viewer: Image Gallery**
+  - [ ] Display tab images in grid layout
+  - [ ] Lightbox for full-size viewing
+  - [ ] Show processed/unprocessed status
 
-- [ ] **Day 39-42: Integration Testing**
-  - [ ] End-to-end testing of full bill splitting flow
-  - [ ] Performance testing with multiple concurrent users
-  - [ ] Error handling and recovery testing
-  - [ ] **Milestone**: Complete payment-enabled bill splitting
+**Milestone**: Users can photograph receipts and attach to tabs
 
 ---
 
-## Phase 4: Production Deployment (Week 7-8)
-*Goal: Deployed, monitored, production-ready system*
+## Phase 5: Processing Workflow (After Images)
+*Goal: Mark trip complete and settle up*
 
-### Week 7: Cloud Deployment
-- [ ] **Day 43-45: Deploy Backend**
-  - [ ] Choose deployment platform (Railway, Render, Fly.io, or DigitalOcean)
-  - [ ] Set up production PostgreSQL database
+### Week 9: Finalization (1-2 weeks)
+- [ ] **Backend: Finalization Logic**
+  - [ ] Add `Finalized bool` to Tab model
+  - [ ] `POST /api/tabs/:id/finalize` endpoint
+  - [ ] Validate all images are processed
+  - [ ] Lock tab from further edits
+  - [ ] Calculate final settlements
+
+- [ ] **Flutter: Settlement UI**
+  - [ ] "Finalize Tab" button (only when all images processed)
+  - [ ] Show warning: "This will lock the tab"
+  - [ ] Display final settlement amounts
+  - [ ] "Mark as Paid" buttons per person
+
+- [ ] **Web Viewer: Settlement Display**
+  - [ ] Show finalized status
+  - [ ] Display who owes whom
+  - [ ] Payment tracking checkboxes
+
+**Milestone**: Complete group trip workflow from start to settlement
+
+---
+
+## Phase 6: Production Deployment & Polish
+*Goal: Live, reliable, production system*
+
+### Week 10-11: Deploy & Monitor (2-3 weeks)
+- [ ] **Backend Deployment**
+  - [ ] Deploy to Railway/Render/Fly.io
+  - [ ] Set up production PostgreSQL
   - [ ] Configure environment variables
-  - [ ] Deploy bill-service to production
-  - [ ] Test API with production URLs
+  - [ ] Set up CloudFlare R2 bucket
+  - [ ] Configure CORS for production domains
+  - [ ] Add structured logging
+  - [ ] Set up health check monitoring
 
-- [ ] **Day 46-49: Monitoring & Observability**
-  - [ ] Add structured logging to all services
-  - [ ] Set up basic monitoring (platform metrics)
-  - [ ] Configure health checks
-  - [ ] Set up alerting for critical failures
-  - [ ] Test production deployment
+- [ ] **Frontend Deployment**
+  - [ ] Deploy Next.js viewer to Vercel
+  - [ ] Configure production API URLs
+  - [ ] Set up custom domain (optional)
+  - [ ] Test all flows in production
 
-### Week 8: Production Readiness
-- [ ] **Day 50-52: Security & Performance**
-  - [ ] Add rate limiting
-  - [ ] Configure TLS/SSL certificates
-  - [ ] Implement database connection pooling
-  - [ ] Add caching strategies for frequently accessed data
-  - [ ] Performance tuning and optimization
+- [ ] **Testing & Bug Fixes**
+  - [ ] Test with real group trip
+  - [ ] Fix reported bugs
+  - [ ] Performance testing (should be fine, but verify)
+  - [ ] Security audit (SQL injection, XSS, etc.)
 
-- [ ] **Day 53-56: Documentation & Cleanup**
-  - [ ] Write comprehensive API documentation
-  - [ ] Create deployment guides
-  - [ ] Clean up code and add comments
-  - [ ] Write architecture decision records (ADRs)
-  - [ ] **Milestone**: Production-ready distributed system
+**Milestone**: Production-ready Splitwise competitor
+
+---
+
+## Phase 7: Growth Features (After MVP)
+*Only add these if users ask for them*
+
+### Future Enhancements (Priority TBD)
+- [ ] **Social Features**
+  - [ ] User accounts (optional - maintain privacy-first)
+  - [ ] Friend list / frequent travelers
+  - [ ] Tab invites via link
+
+- [ ] **Advanced Calculations**
+  - [ ] Currency conversion for international trips
+  - [ ] Unequal splitting (weighted shares)
+  - [ ] Settlement optimization (minimize transactions)
+
+- [ ] **AI/Automation**
+  - [ ] OCR for receipt scanning (GPT-4 Vision)
+  - [ ] Auto-categorization of expenses
+  - [ ] Smart splitting suggestions
+
+- [ ] **Performance** (Only if needed)
+  - [ ] Redis caching for frequently accessed tabs
+  - [ ] CDN for images
+  - [ ] Database query optimization
+  - [ ] Rate limiting per IP
 
 ---
 
@@ -199,10 +234,11 @@ Transform Billington from a local Flutter app into a distributed microservices a
 Billington-backend/
 ├── cmd/
 │   ├── bill-service/main.go       ✅ Working
-│   └── web-service/main.go         ✅ Working (serves static Next.js)
+│   └── web-service/main.go        ✅ Working
 ├── pkg/
 │   ├── models/
-│   │   └── bill.go                ✅ Complete with PersonShare
+│   │   ├── bill.go                ✅ Updated (PaymentMethods array)
+│   │   └── tab.go                 ⏳ TODO
 │   ├── database/
 │   │   └── postgres.go            ✅ Working
 │   └── security/
@@ -212,23 +248,27 @@ Billington-backend/
 │   │   ├── handler.go             ✅ Complete
 │   │   ├── service.go             ✅ Complete
 │   │   └── repository.go          ✅ Complete
+│   ├── tab/                       ⏳ TODO
+│   │   ├── handler.go
+│   │   ├── service.go
+│   │   └── repository.go
 │   └── web/
 │       ├── handler.go             ✅ Complete
 │       └── templates/
 │           └── bill.html          ✅ Complete
-├── web-bill-viewer/               ✅ Next.js app (separate repo)
+├── web-bill-viewer/               ✅ Next.js app
 │   ├── app/
-│   │   └── b/[id]/page.tsx
+│   │   ├── b/[id]/page.tsx        ✅ Updated (multiple payments)
+│   │   └── t/[id]/page.tsx        ⏳ TODO
 │   ├── components/
-│   └── lib/api.ts
-├── services/
-│   ├── bill-service/Dockerfile    ✅ Working
-│   └── web-service/Dockerfile     ✅ Working
+│   │   ├── PaymentDetails.tsx    ✅ Updated (multiple payments)
+│   │   └── ...
+│   └── lib/api.ts                 ✅ Updated (PaymentMethod[])
 ├── docker-compose.yml             ✅ Working
 └── README.md
 ```
 
-### Service Architecture
+### Service Architecture (Current)
 ```
 ┌─────────────────┐    ┌─────────────────┐
 │   Mobile App    │    │  Next.js Viewer │
@@ -247,6 +287,48 @@ Billington-backend/
             └───────────┘
 ```
 
+### Service Architecture (After Tabs & Images)
+```
+┌─────────────────┐    ┌─────────────────┐
+│   Mobile App    │    │  Next.js Viewer │
+│   (Flutter)     │    │   (Vercel)      │
+└─────────┬───────┘    └─────────┬───────┘
+          │                      │
+    ┌─────┴──────────────────────┴─────┐
+    │      Backend API (bill-service)  │
+    │    /api/bills  /api/tabs         │
+    └─────────┬───────────┬────────────┘
+              │           │
+        ┌─────▼─────┐   ┌─▼──────────┐
+        │PostgreSQL │   │CloudFlare  │
+        │ Database  │   │R2 (images) │
+        └───────────┘   └────────────┘
+```
+
+---
+
+## Current Status
+
+### ✅ Completed
+- Basic backend infrastructure (Go + PostgreSQL)
+- Bill CRUD with access tokens
+- Next.js web viewer with beautiful UI
+- Flutter app sends bills to backend
+- Venmo deep linking
+
+### 🔄 In Progress (This Week)
+- **Fix multiple payment methods bug**
+  - Backend accepts array
+  - Flutter sends all payment methods
+  - Web viewer displays all methods
+  - Test end-to-end flow
+
+### ⏳ Next Up (After Current Fix)
+1. Deploy to production (backend + frontend)
+2. Test with real bill sharing
+3. Start Tab backend implementation
+4. Build Tab UI in Flutter
+
 ---
 
 ## Success Metrics
@@ -255,87 +337,48 @@ Billington-backend/
 - [X] Working bill-service with CRUD operations
 - [X] Secure token-based access control
 - [X] Beautiful web interface for bill viewing
-- [ ] Flutter integration complete
-- [ ] Sub-100ms API response times
-- [ ] Handle 100+ concurrent users
+- [X] Flutter integration with backend
+- [ ] Tabs for group trips
+- [ ] Image upload system
 - [ ] Production deployment
-- [ ] Zero data breaches/privacy violations
+- [ ] 10+ real users testing
 
 ### Resume Value
 - [X] Demonstrate layered architecture (handler/service/repository)
 - [X] Show Go backend development skills
-- [X] Prove full-stack capabilities (Go + React)
-- [ ] Evidence of payment system integration
+- [X] Prove full-stack capabilities (Go + React + Flutter)
+- [ ] Evidence of image storage/CDN integration
 - [ ] Display production deployment experience
-
-### Learning Goals
-- [X] Comfortable with Go backend development
-- [X] Understanding of REST API design
-- [X] Experience with Docker and containerization
-- [X] Knowledge of database design and ORMs (GORM)
-- [ ] Familiarity with production deployment
-
----
-
-## Current Progress
-
-### Completed Tasks
-- [X] Environment setup
-- [X] Project structure
-- [X] First service running
-- [X] Database integration
-- [X] Bill CRUD operations with complete data model
-- [X] Access token system with secure generation
-- [X] Token validation middleware
-- [X] Web service for recipients (Go templates)
-- [X] Next.js bill viewer with React components
-- [X] Beautiful UI matching marketing site
-- [X] Venmo deep linking
-
-### Current Focus
-
-**Week**: Week 3-4 transition  
-**Goal**: Complete Flutter integration to send bills to backend  
-**Blockers**: None currently  
-**Next Steps**: 
-1. Update Flutter app to POST bills to backend API
-2. Test end-to-end flow from app to web viewer
-3. Deploy backend to production (Railway/Render)
-4. Deploy Next.js viewer to Vercel
-5. Test with real URLs
+- [ ] Real users on production system
 
 ---
 
 ## Lessons Learned
 
 ### Architecture Decisions
-1. **Denormalized PersonShare model**: Storing pre-calculated shares with item details in JSONB makes the web display simple and performant. Source of truth stays in Flutter.
-
-2. **Separate bill viewer app**: Creating a dedicated Next.js app for bill viewing (instead of adding to marketing site) keeps concerns separated and allows independent deployment.
-
-3. **Token-based access**: Using secure random tokens instead of user accounts maintains privacy while enabling sharing.
-
-4. **Go templates vs React**: Started with Go templates, but React provides much better UX and matches the existing design system.
+1. **Skip premature optimization**: No Redis/caching until needed
+2. **Ship features first**: Tabs & images > performance tuning
+3. **Monolith is fine**: Don't split into microservices yet
+4. **Privacy-first**: No user accounts required (token-based sharing)
 
 ### Technical Insights
-- GORM's `serializer:json` tag handles JSONB columns elegantly
-- Go's `crypto/rand.Text()` (1.24+) simplifies token generation
-- Repository pattern enables easy testing and future database changes
-- Gin's template loading needs to happen before route registration
+- GORM's `serializer:json` handles JSONB elegantly
+- Go's `crypto/rand.Text()` simplifies token generation
+- Repository pattern enables easy testing
+- Flutter confusion is solvable - don't rewrite to Swift
+
+### What NOT to Build Yet
+- ❌ Redis caching (0 users = no need)
+- ❌ Kubernetes (single server handles thousands)
+- ❌ Microservices split (adds complexity, no benefit)
+- ❌ WebSockets (polling works fine for now)
+- ❌ Message queues (no async processing yet)
 
 ---
 
-## Future Enhancements
-- [ ] OCR integration for receipt scanning
-- [ ] Payment status tracking and webhooks
-- [ ] Multi-currency support
-- [ ] Bill history/analytics dashboard
-- [ ] Social features (frequent dining partners)
-- [ ] Real-time collaboration with WebSockets/SSE
-- [ ] Kubernetes orchestration for true microservices
+## Quick Reference
 
-## Test Curl for Local Dev
-
+### Test Curl (Create Bill)
 ```bash
 curl -X POST http://localhost:8080/api/bills \
   -H "Content-Type: application/json" \
@@ -346,130 +389,50 @@ curl -X POST http://localhost:8080/api/bills \
     "tip_amount": 27.60,
     "tip_percentage": 20.0,
     "total": 173.88,
-    "participants": [
-      { "name": "V" },
-      { "name": "J" },
-      { "name": "G" },
-      { "name": "D" },
-      { "name": "M" },
-      { "name": "P" }
-    ],
+    "participants": [{"name": "Alice"}, {"name": "Bob"}],
     "items": [
       {
-        "name": "apps",
-        "price": 30.0,
+        "name": "Pizza",
+        "price": 20.0,
         "assignments": [
-          { "person_id": 1, "percentage": 16.67 },
-          { "person_id": 2, "percentage": 16.67 },
-          { "person_id": 3, "percentage": 16.67 },
-          { "person_id": 4, "percentage": 16.67 },
-          { "person_id": 5, "percentage": 16.67 },
-          { "person_id": 6, "percentage": 16.67 }
+          {"person_name": "Alice", "percentage": 50},
+          {"person_name": "Bob", "percentage": 50}
         ]
-      },
-      {
-        "name": "beef pad",
-        "price": 19.0,
-        "assignments": [{ "person_id": 1, "percentage": 100 }]
-      },
-      {
-        "name": "duck",
-        "price": 19.0,
-        "assignments": [{ "person_id": 2, "percentage": 100 }]
-      },
-      {
-        "name": "beef dui",
-        "price": 19.0,
-        "assignments": [{ "person_id": 3, "percentage": 100 }]
-      },
-      {
-        "name": "dui chicken",
-        "price": 17.0,
-        "assignments": [{ "person_id": 4, "percentage": 100 }]
-      },
-      {
-        "name": "pannag curry",
-        "price": 17.0,
-        "assignments": [{ "person_id": 5, "percentage": 100 }]
-      },
-      {
-        "name": "pork dui",
-        "price": 17.0,
-        "assignments": [{ "person_id": 6, "percentage": 100 }]
       }
     ],
     "person_shares": [
       {
-        "person_name": "V",
-        "items": [
-          { "name": "apps", "amount": 5.00, "is_shared": true },
-          { "name": "beef pad", "amount": 19.00, "is_shared": false }
-        ],
-        "subtotal": 24.00,
-        "tax_share": 1.44,
-        "tip_share": 4.80,
-        "total": 30.24
-      },
-      {
-        "person_name": "J",
-        "items": [
-          { "name": "apps", "amount": 5.00, "is_shared": true },
-          { "name": "duck", "amount": 19.00, "is_shared": false }
-        ],
-        "subtotal": 24.00,
-        "tax_share": 1.44,
-        "tip_share": 4.80,
-        "total": 30.24
-      },
-      {
-        "person_name": "G",
-        "items": [
-          { "name": "apps", "amount": 5.00, "is_shared": true },
-          { "name": "beef dui", "amount": 19.00, "is_shared": false }
-        ],
-        "subtotal": 24.00,
-        "tax_share": 1.44,
-        "tip_share": 4.80,
-        "total": 30.24
-      },
-      {
-        "person_name": "D",
-        "items": [
-          { "name": "apps", "amount": 5.00, "is_shared": true },
-          { "name": "dui chicken", "amount": 17.00, "is_shared": false }
-        ],
-        "subtotal": 22.00,
-        "tax_share": 1.32,
-        "tip_share": 4.40,
-        "total": 27.72
-      },
-      {
-        "person_name": "M",
-        "items": [
-          { "name": "apps", "amount": 5.00, "is_shared": true },
-          { "name": "pannag curry", "amount": 17.00, "is_shared": false }
-        ],
-        "subtotal": 22.00,
-        "tax_share": 1.32,
-        "tip_share": 4.40,
-        "total": 27.72
-      },
-      {
-        "person_name": "P",
-        "items": [
-          { "name": "apps", "amount": 5.00, "is_shared": true },
-          { "name": "pork dui", "amount": 17.00, "is_shared": false }
-        ],
-        "subtotal": 22.00,
-        "tax_share": 1.32,
-        "tip_share": 4.40,
-        "total": 27.72
+        "person_name": "Alice",
+        "items": [{"name": "Pizza", "amount": 10.0, "is_shared": true}],
+        "subtotal": 10.0,
+        "tax_share": 0.60,
+        "tip_share": 2.00,
+        "total": 12.60
       }
     ],
-    "payment_method": {
-      "name": "Venmo",
-      "identifier": "@dhaliwgs"
-    }
+    "payment_methods": [
+      {"name": "Venmo", "identifier": "@alice"},
+      {"name": "Zelle", "identifier": "555-1234"}
+    ]
   }'
+```
 
+### Start Local Dev
+```bash
+# Backend
+cd backend
+docker-compose up --build
+
+# Frontend
+cd web-bill-viewer
+npm run dev
+```
+
+### Deploy Commands (Future)
+```bash
+# Backend to Railway
+railway up
+
+# Frontend to Vercel
+vercel --prod
 ```
