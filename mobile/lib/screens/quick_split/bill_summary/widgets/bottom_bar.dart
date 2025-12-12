@@ -231,6 +231,7 @@ class DoneButtonHandler {
     }
 
     if (!navigator.mounted) return;
+    logger.d(shareUrl);
     //do something with the shareUrl
 
       scaffoldMessenger.showSnackBar(
