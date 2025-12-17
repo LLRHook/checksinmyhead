@@ -18,6 +18,7 @@
 import 'package:checks_frontend/screens/recent_bills/recent_bills_screen.dart';
 import 'package:checks_frontend/screens/settings/settings_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:checks_frontend/screens/tabs/tabs_screen.dart';
 import 'quick_split/participant_selection/participant_selection_sheet.dart';
 
 // Purpose: Serves as the main entry point/home screen for the Billington bill-splitting app.
@@ -168,6 +169,25 @@ class _LandingScreenState extends State<LandingScreen>
                             ],
                           ),
                         ),
+
+                        ElevatedButton.icon(
+  onPressed: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const TabsScreen(),
+      ),
+    );
+  },
+  icon: const Icon(Icons.tab, size: 20),
+  label: const Text('Tabs'),
+  style: ElevatedButton.styleFrom(
+    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(16),
+    ),
+  ),
+),
 
                         const SizedBox(height: 24),
 
