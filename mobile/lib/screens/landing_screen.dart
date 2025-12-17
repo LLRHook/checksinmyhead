@@ -18,6 +18,7 @@
 import 'package:checks_frontend/screens/recent_bills/recent_bills_screen.dart';
 import 'package:checks_frontend/screens/settings/settings_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:checks_frontend/screens/tabs/tabs_screen.dart';
 import 'quick_split/participant_selection/participant_selection_sheet.dart';
 
@@ -26,6 +27,7 @@ import 'quick_split/participant_selection/participant_selection_sheet.dart';
 //
 // Features:
 // - Quick Split: Opens participant selection for bill splitting
+// - Tabs: Organize bills by trip or event
 // - Recent Bills: Shows history of previous bill splits
 // - Settings: Access to app configuration options
 //
@@ -76,11 +78,22 @@ class _LandingScreenState extends State<LandingScreen>
 
   /// Opens the bottom sheet for selecting participants in a bill split
   void _showQuickSplitSheet() {
+    HapticFeedback.mediumImpact();
     showParticipantSelectionSheet(context);
+  }
+
+  /// Navigates to the tabs screen
+  void _navigateToTabs() {
+    HapticFeedback.selectionClick();
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const TabsScreen()),
+    );
   }
 
   /// Navigates to the screen showing history of recent bills
   void _navigateToRecentBills() {
+    HapticFeedback.selectionClick();
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const RecentBillsScreen()),
@@ -89,6 +102,7 @@ class _LandingScreenState extends State<LandingScreen>
 
   /// Navigates to the app settings screen
   void _navigateToSettings() {
+    HapticFeedback.selectionClick();
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const SettingsScreen()),
@@ -106,10 +120,9 @@ class _LandingScreenState extends State<LandingScreen>
     return Scaffold(
       backgroundColor: colorScheme.primary,
       appBar: AppBar(
-        backgroundColor:
-            Colors.transparent, // Transparent app bar blends with background
-        elevation: 0, // Remove shadow
-        automaticallyImplyLeading: false, // Don't show back button
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        automaticallyImplyLeading: false,
         actions: [
           // Settings button in top-right corner
           Padding(
@@ -117,7 +130,7 @@ class _LandingScreenState extends State<LandingScreen>
             child: IconButton(
               icon: const Icon(Icons.settings, color: Colors.white, size: 26),
               onPressed: _navigateToSettings,
-              tooltip: 'Settings', // Accessibility feature
+              tooltip: 'Settings',
             ),
           ),
         ],
@@ -143,23 +156,20 @@ class _LandingScreenState extends State<LandingScreen>
                         ElevatedButton(
                           onPressed: _showQuickSplitSheet,
                           style: ElevatedButton.styleFrom(
-                            // Semi-transparent white background
-                            backgroundColor: Colors.white.withValues(
-                              alpha: 0.15,
-                            ),
+                            backgroundColor: Colors.white.withValues(alpha: 0.15),
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 20),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
-                            elevation: 0, // Flat button with no shadow
+                            elevation: 0,
                           ),
-                          child: Row(
+                          child: const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Icons.calculate, size: 22),
-                              const SizedBox(width: 10),
-                              const Text(
+                              Icon(Icons.calculate, size: 22),
+                              SizedBox(width: 10),
+                              Text(
                                 'Quick Split',
                                 style: TextStyle(
                                   fontSize: 18,
@@ -170,48 +180,69 @@ class _LandingScreenState extends State<LandingScreen>
                           ),
                         ),
 
-                        ElevatedButton.icon(
-  onPressed: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const TabsScreen(),
-      ),
-    );
-  },
-  icon: const Icon(Icons.tab, size: 20),
-  label: const Text('Tabs'),
-  style: ElevatedButton.styleFrom(
-    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(16),
-    ),
-  ),
-),
-
                         const SizedBox(height: 24),
 
-                        // Secondary button: Recent Bills with history icon
-                        TextButton(
-                          onPressed: _navigateToRecentBills,
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.history, size: 18),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Recent Bills',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
+                        // Secondary buttons row: Tabs and Recent Bills
+                        Row(
+                          children: [
+                            // Tabs button
+                            Expanded(
+                              child: TextButton(
+                                onPressed: _navigateToTabs,
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: const Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.folder_special_outlined, size: 28),
+                                    SizedBox(height: 6),
+                                    Text(
+                                      'Tabs',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+
+                            const SizedBox(width: 16),
+
+                            // Recent Bills button
+                            Expanded(
+                              child: TextButton(
+                                onPressed: _navigateToRecentBills,
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: const Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.history, size: 28),
+                                    SizedBox(height: 6),
+                                    Text(
+                                      'Recent Bills',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -236,7 +267,7 @@ class _LandingScreenState extends State<LandingScreen>
                                 children: [
                                   // App logo icon
                                   Transform.translate(
-                                    offset: Offset(0, 35),
+                                    offset: const Offset(0, 35),
                                     child: Image.asset(
                                       'assets/images/billington.png',
                                       width: 100,

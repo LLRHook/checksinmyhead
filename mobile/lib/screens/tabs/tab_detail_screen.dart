@@ -1,5 +1,3 @@
-// mobile/lib/screens/tabs/tab_detail_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:checks_frontend/models/tab.dart';
@@ -19,18 +17,29 @@ class TabDetailScreen extends StatefulWidget {
   State<TabDetailScreen> createState() => _TabDetailScreenState();
 }
 
-class _TabDetailScreenState extends State<TabDetailScreen> {
+class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProviderStateMixin {
   final _billsManager = RecentBillsManager();
   List<RecentBillModel> _allBills = [];
   List<RecentBillModel> _tabBills = [];
   bool _isLoading = true;
   late AppTab _currentTab;
+  late AnimationController _animController;
 
   @override
   void initState() {
     super.initState();
     _currentTab = widget.tab;
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
     _loadBills();
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadBills() async {
@@ -47,27 +56,25 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
   }
 
   Future<void> _addBillsToTab() async {
-    // Filter out bills already in this tab
+    HapticFeedback.mediumImpact();
+    
     final availableBills = _allBills
         .where((bill) => !_currentTab.billIds.contains(bill.id))
         .toList();
 
     if (availableBills.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No bills available to add'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      _showSnackBar('No bills available to add', isError: true);
       return;
     }
 
-    final selectedBills = await showDialog<List<int>>(
+    final selectedBills = await showModalBottomSheet<List<int>>(
       context: context,
-      builder: (context) => _BillSelectorDialog(bills: availableBills),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _BillSelectorSheet(bills: availableBills),
     );
 
-    if (selectedBills != null && selectedBills.isNotEmpty) {
+    if (selectedBills != null && selectedBills.isNotEmpty && mounted) {
       setState(() {
         _currentTab = AppTab(
           id: _currentTab.id,
@@ -80,14 +87,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
       await _saveTab();
       await _loadBills();
       
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Added ${selectedBills.length} bill${selectedBills.length == 1 ? '' : 's'}'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      _showSnackBar('Added ${selectedBills.length} bill${selectedBills.length == 1 ? '' : 's'}');
     }
   }
 
@@ -96,7 +96,6 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
     final tabsJson = prefs.getString('tabs') ?? '[]';
     final List<dynamic> tabsList = jsonDecode(tabsJson);
     
-    // Update this tab in the list
     final tabIndex = tabsList.indexWhere((t) => t['id'] == _currentTab.id);
     if (tabIndex != -1) {
       tabsList[tabIndex] = {
@@ -123,123 +122,208 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
     await _loadBills();
   }
 
+  void _showSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
+    
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.info_outline : Icons.check_circle,
+              color: Colors.white,
+              size: 18,
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        backgroundColor: isError ? Colors.orange.shade700 : colorScheme.primary,
+      ),
+    );
+  }
+
   double _calculateTotal() {
     return _tabBills.fold(0.0, (sum, bill) => sum + bill.total);
   }
 
-Map<String, double> _calculatePersonTotals() {
-  final Map<String, double> personTotals = {};
-  final Map<String, String> nameMapping = {}; // lowercase -> original case
-  
-  for (final bill in _tabBills) {
-    final billShares = bill.generatePersonShares();
+  Map<String, double> _calculatePersonTotals() {
+    final Map<String, double> personTotals = {};
+    final Map<String, String> nameMapping = {};
     
-    billShares.forEach((person, amount) {
-      final nameLower = person.name.toLowerCase();
+    for (final bill in _tabBills) {
+      final billShares = bill.generatePersonShares();
       
-      // Use the first occurrence's capitalization
-      if (!nameMapping.containsKey(nameLower)) {
-        nameMapping[nameLower] = person.name;
-      }
-      
-      final displayName = nameMapping[nameLower]!;
-      personTotals[displayName] = (personTotals[displayName] ?? 0.0) + amount;
-    });
+      billShares.forEach((person, amount) {
+        final nameLower = person.name.toLowerCase();
+        
+        if (!nameMapping.containsKey(nameLower)) {
+          nameMapping[nameLower] = person.name;
+        }
+        
+        final displayName = nameMapping[nameLower]!;
+        personTotals[displayName] = (personTotals[displayName] ?? 0.0) + amount;
+      });
+    }
+    
+    return personTotals;
   }
-  
-  return personTotals;
-}
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
-    final scaffoldBgColor =
-        brightness == Brightness.dark ? colorScheme.surface : Colors.grey[50];
-
     return Scaffold(
-        backgroundColor: scaffoldBgColor,
-        appBar: AppBar(
-          title: Text(
-            _currentTab.name,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-          centerTitle: true,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-            onPressed: () {
-              HapticFeedback.selectionClick();
-              Navigator.pop(context, true); // Return true to signal changes
-            },
-          ),
+      backgroundColor: brightness == Brightness.dark ? colorScheme.surface : Colors.grey[50],
+      appBar: AppBar(
+        title: Text(
+          _currentTab.name,
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        body: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _tabBills.isEmpty
-                ? _buildEmptyState()
-                : Column(
-                    children: [
-                      _buildTotalCard(),
-                      _buildPersonTotalsCard(),
-                      Expanded(
-                        child: _buildBillsList(),
-                      ),
-                    ],
-                  ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: _addBillsToTab,
-          icon: const Icon(Icons.add),
-          label: const Text('Add Bills'),
+        centerTitle: true,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new),
+          onPressed: () {
+            HapticFeedback.selectionClick();
+            Navigator.pop(context, true);
+          },
         ),
-      );
+      ),
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator(color: colorScheme.primary))
+          : _tabBills.isEmpty
+              ? _buildEmptyState()
+              : Column(
+                  children: [
+                    _buildTotalCard(),
+                    if (_calculatePersonTotals().isNotEmpty) _buildPersonTotalsCard(),
+                    Expanded(child: _buildBillsList()),
+                  ],
+                ),
+      floatingActionButton: _buildFAB(),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: colorScheme.primary.withValues(alpha: brightness == Brightness.dark ? 0.15 : 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.receipt_long_outlined,
+                size: 64,
+                color: colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 28),
+            Text(
+              'No Bills Yet',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Add bills from your recent history\nto track this ${_currentTab.name.toLowerCase()}',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                height: 1.5,
+                color: colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildTotalCard() {
     final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
     final total = _calculateTotal();
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [colorScheme.primary, colorScheme.primary.withValues(alpha: 0.8)],
+          colors: [
+            colorScheme.primary,
+            colorScheme.primary.withValues(alpha: 0.85),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: colorScheme.primary.withValues(alpha: 0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: colorScheme.primary.withValues(alpha: brightness == Brightness.dark ? 0.2 : 0.3),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: Column(
         children: [
-          const Text(
+          Text(
             'Total',
             style: TextStyle(
-              color: Colors.white70,
+              color: Colors.white.withValues(alpha: 0.9),
               fontSize: 14,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.2,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             CurrencyFormatter.formatCurrency(total),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 32,
+            style: TextStyle(
+              color: brightness == Brightness.dark 
+                  ? Colors.black.withValues(alpha: 0.9)
+                  : Colors.white,
+              fontSize: 36,
               fontWeight: FontWeight.bold,
+              letterSpacing: -1,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            '${_tabBills.length} bill${_tabBills.length == 1 ? '' : 's'}',
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              '${_tabBills.length} bill${_tabBills.length == 1 ? '' : 's'}',
+              style: TextStyle(
+                color: brightness == Brightness.dark 
+                    ? Colors.black.withValues(alpha: 0.8)
+                    : Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -251,97 +335,97 @@ Map<String, double> _calculatePersonTotals() {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
     final personTotals = _calculatePersonTotals();
-    
-    if (personTotals.isEmpty) return const SizedBox.shrink();
-
-    // Sort by amount (highest first)
     final sortedEntries = personTotals.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
+    final cardBgColor = brightness == Brightness.dark ? colorScheme.surface : Colors.white;
+
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
       decoration: BoxDecoration(
-        color: brightness == Brightness.dark
-            ? colorScheme.surface
-            : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: brightness == Brightness.dark
-              ? colorScheme.outline.withValues(alpha: 0.3)
-              : Colors.grey.shade200,
-        ),
+        color: cardBgColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: brightness == Brightness.dark
+                ? Colors.black.withValues(alpha: 0.2)
+                : Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             child: Row(
               children: [
-                Icon(
-                  Icons.people_outline,
-                  size: 20,
-                  color: colorScheme.primary,
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.people_alt, color: colorScheme.primary, size: 20),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 Text(
                   'Per Person',
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: colorScheme.primary,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                    letterSpacing: -0.3,
                   ),
                 ),
               ],
             ),
           ),
-          const Divider(height: 1),
+          Divider(height: 1, color: colorScheme.outline.withValues(alpha: 0.2)),
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             itemCount: sortedEntries.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final entry = sortedEntries[index];
               return Row(
                 children: [
                   CircleAvatar(
-                    radius: 16,
+                    radius: 18,
                     backgroundColor: colorScheme.primaryContainer,
                     child: Text(
                       entry.key[0].toUpperCase(),
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 15,
                         fontWeight: FontWeight.bold,
                         color: colorScheme.primary,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 14),
                   Expanded(
                     child: Text(
                       entry.key,
                       style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                         color: colorScheme.onSurface,
                       ),
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
-                      color: colorScheme.primaryContainer.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(8),
+                      color: colorScheme.primaryContainer.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       CurrencyFormatter.formatCurrency(entry.value),
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: colorScheme.primary,
                       ),
@@ -356,50 +440,12 @@ Map<String, double> _calculatePersonTotals() {
     );
   }
 
-  Widget _buildEmptyState() {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.receipt_long_outlined,
-              size: 80,
-              color: colorScheme.primary.withValues(alpha: 0.5),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'No Bills Yet',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Add bills from your recent history to track this trip',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                color: colorScheme.onSurface.withValues(alpha: 0.7),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildBillsList() {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
       itemCount: _tabBills.length,
       itemBuilder: (context, index) {
         final bill = _tabBills[index];
@@ -409,172 +455,437 @@ Map<String, double> _calculatePersonTotals() {
           direction: DismissDirection.endToStart,
           background: Container(
             alignment: Alignment.centerRight,
-            padding: const EdgeInsets.only(right: 20),
+            padding: const EdgeInsets.only(right: 24),
             margin: const EdgeInsets.only(bottom: 12),
             decoration: BoxDecoration(
-              color: Colors.red,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(Icons.remove_circle_outline, color: Colors.white),
-          ),
-          confirmDismiss: (direction) async {
-            return await showDialog<bool>(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('Remove from Tab'),
-                content: Text('Remove "${bill.billName}" from this tab? The bill will not be deleted.'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('Cancel'),
-                  ),
-                  FilledButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text('Remove'),
-                  ),
-                ],
+              gradient: LinearGradient(
+                colors: [Colors.red.shade400, Colors.red.shade600],
               ),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Icon(Icons.remove_circle_outline, color: Colors.white, size: 28),
+          ),
+          confirmDismiss: (_) async {
+            HapticFeedback.mediumImpact();
+            
+            final confirmed = await showModalBottomSheet<bool>(
+              context: context,
+              backgroundColor: Colors.transparent,
+              builder: (context) => _RemoveBillSheet(billName: bill.billName),
             );
+            
+            return confirmed ?? false;
           },
-          onDismissed: (direction) {
-            _removeBill(bill.id);
-          },
+          onDismissed: (_) => _removeBill(bill.id),
           child: Container(
             margin: const EdgeInsets.only(bottom: 12),
             decoration: BoxDecoration(
-              color: brightness == Brightness.dark
-                  ? colorScheme.surface
-                  : Colors.white,
-              borderRadius: BorderRadius.circular(16),
+              color: brightness == Brightness.dark ? colorScheme.surface : Colors.white,
+              borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 8,
+                  color: brightness == Brightness.dark
+                      ? Colors.black.withValues(alpha: 0.2)
+                      : Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
               ],
             ),
-            child: ListTile(
-              contentPadding: const EdgeInsets.all(16),
-              title: Text(
-                bill.billName,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () async {
+                  HapticFeedback.selectionClick();
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => BillDetailsScreen(bill: bill)),
+                  );
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primaryContainer.withValues(alpha: 0.6),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(
+                          Icons.receipt_long,
+                          color: colorScheme.primary,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              bill.billName,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: colorScheme.onSurface,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              bill.formattedDate,
+                              style: TextStyle(
+                                color: colorScheme.onSurface.withValues(alpha: 0.6),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              bill.participantSummary,
+                              style: TextStyle(
+                                color: colorScheme.onSurface.withValues(alpha: 0.5),
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primaryContainer.withValues(alpha: 0.7),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          CurrencyFormatter.formatCurrency(bill.total),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 4),
-                  Text(
-                    bill.formattedDate,
-                    style: TextStyle(
-                      color: colorScheme.onSurface.withValues(alpha: 0.6),
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    bill.participantSummary,
-                    style: TextStyle(
-                      color: colorScheme.onSurface.withValues(alpha: 0.6),
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-              trailing: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: colorScheme.primaryContainer.withValues(alpha: 0.7),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  CurrencyFormatter.formatCurrency(bill.total),
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.primary,
-                  ),
-                ),
-              ),
-              onTap: () async {
-                HapticFeedback.selectionClick();
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => BillDetailsScreen(bill: bill),
-                  ),
-                );
-              },
             ),
           ),
         );
       },
     );
   }
+
+  Widget _buildFAB() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    return Container(
+      height: 56,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.primary.withValues(alpha: brightness == Brightness.dark ? 0.2 : 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: FloatingActionButton.extended(
+        onPressed: _addBillsToTab,
+        elevation: 0,
+        backgroundColor: colorScheme.primary,
+        foregroundColor: brightness == Brightness.dark ? Colors.black.withValues(alpha: 0.9) : Colors.white,
+        icon: const Icon(Icons.add, size: 22),
+        label: const Text(
+          'Add Bills',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 0.5),
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ),
+    );
+  }
 }
 
-// Dialog for selecting bills to add
-class _BillSelectorDialog extends StatefulWidget {
+// Bill Selector Sheet
+class _BillSelectorSheet extends StatefulWidget {
   final List<RecentBillModel> bills;
 
-  const _BillSelectorDialog({required this.bills});
+  const _BillSelectorSheet({required this.bills});
 
   @override
-  State<_BillSelectorDialog> createState() => _BillSelectorDialogState();
+  State<_BillSelectorSheet> createState() => _BillSelectorSheetState();
 }
 
-class _BillSelectorDialogState extends State<_BillSelectorDialog> {
+class _BillSelectorSheetState extends State<_BillSelectorSheet> {
   final Set<int> _selectedBillIds = {};
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
 
-    return AlertDialog(
-      title: const Text('Add Bills to Tab'),
-      content: SizedBox(
-        width: double.maxFinite,
-        child: ListView.builder(
-          shrinkWrap: true,
-          itemCount: widget.bills.length,
-          itemBuilder: (context, index) {
-            final bill = widget.bills[index];
-            final isSelected = _selectedBillIds.contains(bill.id);
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.8,
+      ),
+      decoration: BoxDecoration(
+        color: brightness == Brightness.dark ? colorScheme.surface : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: colorScheme.onSurface.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.library_add, color: colorScheme.primary, size: 24),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        'Add Bills to Tab',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ),
+                    if (_selectedBillIds.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          '${_selectedBillIds.length}',
+                          style: TextStyle(
+                            color: brightness == Brightness.dark 
+                                ? Colors.black.withValues(alpha: 0.9)
+                                : Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Flexible(
+            child: ListView.builder(
+              shrinkWrap: true,
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              itemCount: widget.bills.length,
+              itemBuilder: (context, index) {
+                final bill = widget.bills[index];
+                final isSelected = _selectedBillIds.contains(bill.id);
 
-            return CheckboxListTile(
-              value: isSelected,
-              onChanged: (checked) {
-                setState(() {
-                  if (checked == true) {
-                    _selectedBillIds.add(bill.id);
-                  } else {
-                    _selectedBillIds.remove(bill.id);
-                  }
-                });
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: isSelected 
+                        ? colorScheme.primaryContainer.withValues(alpha: 0.3)
+                        : (brightness == Brightness.dark 
+                            ? colorScheme.surfaceContainerHighest 
+                            : Colors.grey.shade50),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isSelected 
+                          ? colorScheme.primary
+                          : colorScheme.outline.withValues(alpha: 0.2),
+                      width: isSelected ? 2 : 1,
+                    ),
+                  ),
+                  child: CheckboxListTile(
+                    value: isSelected,
+                    onChanged: (checked) {
+                      HapticFeedback.selectionClick();
+                      setState(() {
+                        if (checked == true) {
+                          _selectedBillIds.add(bill.id);
+                        } else {
+                          _selectedBillIds.remove(bill.id);
+                        }
+                      });
+                    },
+                    title: Text(
+                      bill.billName,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                    subtitle: Text(
+                      '${bill.formattedDate} • ${CurrencyFormatter.formatCurrency(bill.total)}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    activeColor: colorScheme.primary,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  ),
+                );
               },
-              title: Text(bill.billName),
-              subtitle: Text(
-                '${bill.formattedDate} • ${CurrencyFormatter.formatCurrency(bill.total)}',
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.5)),
+                    ),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: _selectedBillIds.isEmpty
+                        ? null
+                        : () {
+                            HapticFeedback.mediumImpact();
+                            Navigator.pop(context, _selectedBillIds.toList());
+                          },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: colorScheme.primary,
+                      foregroundColor: brightness == Brightness.dark 
+                          ? Colors.black.withValues(alpha: 0.9)
+                          : Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: Text(
+                      'Add ${_selectedBillIds.length}',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Remove Bill Confirmation Sheet
+class _RemoveBillSheet extends StatelessWidget {
+  final String billName;
+
+  const _RemoveBillSheet({required this.billName});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: brightness == Brightness.dark ? colorScheme.surface : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
               ),
-              activeColor: colorScheme.primary,
-            );
-          },
+              child: const Icon(Icons.remove_circle_outline, color: Colors.orange, size: 28),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Remove from Tab',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Remove "$billName" from this tab? The bill will not be deleted.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 15,
+                color: colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.5)),
+                    ),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: const Text(
+                      'Remove',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: _selectedBillIds.isEmpty
-              ? null
-              : () => Navigator.pop(context, _selectedBillIds.toList()),
-          child: Text('Add ${_selectedBillIds.length}'),
-        ),
-      ],
     );
   }
 }

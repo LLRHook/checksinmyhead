@@ -505,9 +505,7 @@ class _PaymentMethodSheetState extends State<PaymentMethodSheet>
                       },
                       style: FilledButton.styleFrom(
                         backgroundColor:
-                            Theme.of(context).brightness == Brightness.dark
-                                ? const Color(0xFF627D98)
-                                : Theme.of(context).colorScheme.primary,
+                             Theme.of(context).colorScheme.primary,
                         foregroundColor: Colors.white,
                         minimumSize: const Size.fromHeight(50),
                         shape: RoundedRectangleBorder(
@@ -589,6 +587,7 @@ Future<void> showPaymentMethodEditor({
   }
 
   return showModalBottomSheet(
+    
     context: context,
     isScrollControlled: true, // Allow modal to resize with keyboard
     builder: (context) {
@@ -764,9 +763,7 @@ Future<void> showPaymentMethodEditor({
                     },
                     style: FilledButton.styleFrom(
                       backgroundColor:
-                          Theme.of(context).brightness == Brightness.dark
-                              ? const Color(0xFF627D98)
-                              : Theme.of(context).colorScheme.primary,
+                          Theme.of(context).colorScheme.primary,
                       foregroundColor: Colors.white,
                       minimumSize: const Size.fromHeight(50),
                       shape: RoundedRectangleBorder(
