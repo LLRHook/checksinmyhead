@@ -37,8 +37,7 @@ class ApiService {
     required double tipAmount,
     required double tipPercentage,
     required double total,
-    required String paymentMethodName,
-    required String paymentMethodIdentifier,
+required List<Map<String, String>> paymentMethods, 
   }) async {
     var logger = Logger();
     try {
@@ -59,10 +58,7 @@ class ApiService {
           tipAmount,
           total,
         ),
-        'payment_method': {
-          'name': paymentMethodName,
-          'identifier': paymentMethodIdentifier,
-        },
+ 'payment_methods': paymentMethods,
       };
 
       final response = await http.post(

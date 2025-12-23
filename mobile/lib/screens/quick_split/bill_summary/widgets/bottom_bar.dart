@@ -123,7 +123,6 @@ class BottomBar extends StatelessWidget {
 ///
 /// Provides a method to save bill data, show confirmation,
 /// and navigate back to the starting screen.
-
 class DoneButtonHandler {
   static final _billsManager = RecentBillsManager();
   static final _apiService = ApiService();
@@ -152,7 +151,7 @@ class DoneButtonHandler {
       return; // User cancelled
     }
 
-    // Check context.mounted (not navigator.mounted) before using context
+    // Check context.mounted before using context
     if (!context.mounted) return;
 
     // Show loading indicator
@@ -176,6 +175,7 @@ class DoneButtonHandler {
       tipPercentage: data.tipPercentage,
       isCustomTipAmount: data.isCustomTipAmount,
       billName: billName,
+      paymentMethods: data.paymentMethods,
     );
 
     // Save locally first (always works even if backend fails)
@@ -197,10 +197,12 @@ class DoneButtonHandler {
     String? shareUrl;
     var logger = Logger();
     try {
-      // Get payment method info from data
-      final paymentMethodName = updatedData.paymentMethodName ?? 'Venmo';
-      final paymentMethodId =
-          updatedData.paymentMethodIdentifier ?? '@username';
+      // Use payment methods from data, or provide defaults
+      final paymentMethods = updatedData.paymentMethods.isNotEmpty
+          ? updatedData.paymentMethods
+          : [
+              {'name': 'Venmo', 'identifier': '@username'}
+            ];
 
       final response = await _apiService.uploadBill(
         billName: billName,
@@ -212,13 +214,12 @@ class DoneButtonHandler {
         tipAmount: updatedData.tipAmount,
         tipPercentage: updatedData.tipPercentage,
         total: updatedData.total,
-        paymentMethodName: paymentMethodName,
-        paymentMethodIdentifier: paymentMethodId,
+        paymentMethods: paymentMethods,
       );
 
       if (response != null) {
-        shareUrl =
-            'https://billington.app/b/${response.billId}?t=${response.accessToken}';
+        shareUrl = response.shareUrl;
+        logger.d('Bill uploaded successfully: $shareUrl');
       }
     } catch (e) {
       logger.d('Failed to upload to backend: $e');
@@ -231,18 +232,30 @@ class DoneButtonHandler {
     }
 
     if (!navigator.mounted) return;
-    logger.d(shareUrl);
-    //do something with the shareUrl
 
-      scaffoldMessenger.showSnackBar(
+    // Show success message with optional share URL
+    final message = shareUrl != null
+        ? 'Bill saved and uploaded successfully'
+        : 'Bill saved locally';
+
+    scaffoldMessenger.showSnackBar(
       SnackBar(
         content: Text(
-          'Bill saved successfully',
+          message,
           style: TextStyle(color: snackBarTextColor),
         ),
         backgroundColor: snackBarBgColor,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        action: shareUrl != null
+            ? SnackBarAction(
+                label: 'Copy Link',
+                textColor: Colors.white,
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: shareUrl ?? "Error copying text."));
+                },
+              )
+            : null,
       ),
     );
 
