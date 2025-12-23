@@ -36,8 +36,7 @@ class BillSummaryData {
   final String billName;
   
   // Payment method fields
-  final String? paymentMethodName;    // e.g., "Venmo", "Zelle"
-  final String? paymentMethodIdentifier; // e.g., "@username", "phone"
+ final List<Map<String, String>> paymentMethods;
 
   BillSummaryData({
     required this.participants,
@@ -51,8 +50,7 @@ class BillSummaryData {
     this.tipPercentage = 0,
     this.isCustomTipAmount = false,
     this.billName = '',
-    this.paymentMethodName,
-    this.paymentMethodIdentifier,
+ this.paymentMethods = const [],
   });
 
   /// Creates a copy with updated fields
@@ -68,8 +66,7 @@ class BillSummaryData {
     double? tipPercentage,
     bool? isCustomTipAmount,
     String? billName,
-    String? paymentMethodName,
-    String? paymentMethodIdentifier,
+ List<Map<String, String>>? paymentMethods,
   }) {
     return BillSummaryData(
       participants: participants ?? this.participants,
@@ -83,8 +80,7 @@ class BillSummaryData {
       tipPercentage: tipPercentage ?? this.tipPercentage,
       isCustomTipAmount: isCustomTipAmount ?? this.isCustomTipAmount,
       billName: billName ?? this.billName,
-      paymentMethodName: paymentMethodName ?? this.paymentMethodName,
-      paymentMethodIdentifier: paymentMethodIdentifier ?? this.paymentMethodIdentifier,
+ paymentMethods: paymentMethods ?? this.paymentMethods,
     );
   }
 
