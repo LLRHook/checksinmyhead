@@ -473,7 +473,7 @@ class _CreateTabSheetState extends State<_CreateTabSheet> {
                 textCapitalization: TextCapitalization.words,
                 style: TextStyle(fontSize: 18, color: colorScheme.onSurface),
                 decoration: InputDecoration(
-                  hintText: 'Utah Trip',
+                  hintText: 'Banff Trip',
                   prefixIcon: Icon(Icons.folder_special_outlined, color: colorScheme.primary),
                   filled: true,
                   fillColor: brightness == Brightness.dark

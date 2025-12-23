@@ -18,6 +18,7 @@
 import 'package:checks_frontend/screens/quick_split/bill_summary/models/bill_summary_data.dart';
 import 'package:checks_frontend/screens/quick_split/bill_summary/widgets/bill_name_sheet.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
+import 'package:checks_frontend/screens/settings/services/preferences_service.dart';
 import 'package:checks_frontend/services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -126,6 +127,7 @@ class BottomBar extends StatelessWidget {
 class DoneButtonHandler {
   static final _billsManager = RecentBillsManager();
   static final _apiService = ApiService();
+  static final _prefsService = PreferencesService();
 
   /// Saves the bill locally and uploads to backend
   static Future<void> handleDone(
@@ -162,7 +164,19 @@ class DoneButtonHandler {
           (dialogContext) => const Center(child: CircularProgressIndicator()),
     );
 
-    // Create updated data with bill name
+    // Load payment methods from preferences
+    final selectedMethods = await _prefsService.getSelectedPaymentMethods();
+    final identifiers = await _prefsService.getAllPaymentIdentifiers();
+
+    // Convert to the format expected by the API
+    final paymentMethods = selectedMethods.map((method) {
+      return {
+        'name': method,
+        'identifier': identifiers[method] ?? '',
+      };
+    }).toList();
+
+    // Create updated data with bill name and payment methods
     final updatedData = BillSummaryData(
       participants: data.participants,
       personShares: data.personShares,
@@ -175,7 +189,7 @@ class DoneButtonHandler {
       tipPercentage: data.tipPercentage,
       isCustomTipAmount: data.isCustomTipAmount,
       billName: billName,
-      paymentMethods: data.paymentMethods,
+      paymentMethods: paymentMethods,
     );
 
     // Save locally first (always works even if backend fails)
@@ -197,9 +211,9 @@ class DoneButtonHandler {
     String? shareUrl;
     var logger = Logger();
     try {
-      // Use payment methods from data, or provide defaults
-      final paymentMethods = updatedData.paymentMethods.isNotEmpty
-          ? updatedData.paymentMethods
+      // Use payment methods from settings, or provide defaults
+      final apiPaymentMethods = paymentMethods.isNotEmpty
+          ? paymentMethods
           : [
               {'name': 'Venmo', 'identifier': '@username'}
             ];
@@ -214,7 +228,7 @@ class DoneButtonHandler {
         tipAmount: updatedData.tipAmount,
         tipPercentage: updatedData.tipPercentage,
         total: updatedData.total,
-        paymentMethods: paymentMethods,
+        paymentMethods: apiPaymentMethods,
       );
 
       if (response != null) {
