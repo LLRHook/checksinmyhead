@@ -45,10 +45,9 @@ Transform Billington from a local Flutter app into a Splitwise competitor with g
   - [X] Test end-to-end: Flutter → Backend → Web viewer
   - [X] Verify Venmo deep linking works with multiple payment methods
   - [X] Ensure that bill viewer is in decent shape, don't need perfect. ~Good Enough~
-  - [ ] Test with real bill creation flow.
-  1) when sending bill from mobile, NO PAYMENT info gets through. Just says "@username". Even though payment info is set within the settings.
-  2) No way to get the link again later from Recent Bills?
-  3) Offer choice between link/text share
+  - [X] Test with real bill creation flow.
+  1) No way to get the link again later from Recent Bills?
+  2) Offer choice between link/text share
 
 - [ ] **Deploy & Test**
   - [ ] Deploy backend to Railway/Render
@@ -94,6 +93,7 @@ Transform Billington from a local Flutter app into a Splitwise competitor with g
   - [X] Tab detail screen (show all bills in tab + total)
   - [X] "Add Bill to Tab" flow
   - [ ] Save tabs to local database
+  - [ ] Fix Flutter error when deleting tabs
 
 - [ ] **Web Viewer: Tab Display**
   - [ ] Create `/t/[id]` route for tab viewing
@@ -103,6 +103,9 @@ Transform Billington from a local Flutter app into a Splitwise competitor with g
   - [ ] Payment buttons for settling entire tab
 
 **Milestone**: Users can create group trip tabs and add multiple bills
+
+- [ ] standardize how the deletion stuff looks, the apple esque feel of recent bills or the look of tabs?
+- [ ] way to quickly add another bill within tabs after building the group
 
 ---
 

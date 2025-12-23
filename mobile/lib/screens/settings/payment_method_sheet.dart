@@ -82,7 +82,7 @@ class _PaymentMethodSheetState extends State<PaymentMethodSheet>
   @override
   Widget build(BuildContext context) {
     // Calculate theme-aware colors for better appearance in both light/dark modes
-
+final colorScheme = Theme.of(context).colorScheme;
     // Dark text on bright button in dark mode for better contrast
 
     return SafeArea(
@@ -159,9 +159,9 @@ class _PaymentMethodSheetState extends State<PaymentMethodSheet>
                                   children: [
                                     // Edit button
                                     IconButton(
-                                      icon: const Icon(
+                                      icon: Icon(
                                         Icons.edit,
-                                        color: Color(0xFF627D98),
+                                        color: colorScheme.primary,
                                       ),
                                       onPressed: () {
                                         _showIdentifierInput(option);
