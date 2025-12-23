@@ -43,9 +43,12 @@ Transform Billington from a local Flutter app into a Splitwise competitor with g
   - [X] Update Flutter to send all configured payment methods
   - [X] Update Next.js viewer to display all payment methods
   - [X] Test end-to-end: Flutter → Backend → Web viewer
-  - [ ] Verify Venmo deep linking works with multiple payment methods
-  - [ ] Test with real bill creation flow
-  - [ ] Ensure that bill viewer is in decent shape, don't need perfect. ~Good Enough~
+  - [X] Verify Venmo deep linking works with multiple payment methods
+  - [X] Ensure that bill viewer is in decent shape, don't need perfect. ~Good Enough~
+  - [ ] Test with real bill creation flow.
+  1) when sending bill from mobile, NO PAYMENT info gets through. Just says "@username". Even though payment info is set within the settings.
+  2) No way to get the link again later from Recent Bills?
+  3) Offer choice between link/text share
 
 - [ ] **Deploy & Test**
   - [ ] Deploy backend to Railway/Render
@@ -63,7 +66,7 @@ Transform Billington from a local Flutter app into a Splitwise competitor with g
 
 ### Week 5-6: Tab System (4-6 weeks)
 - [ ] **Backend: Tab Model & API**
-  - [ ] Create `Tab` model in `pkg/models/tab.go`
+  - [X] Create `Tab` model in `pkg/models/tab.go`
     ```go
     type Tab struct {
         ID          uint
@@ -75,7 +78,7 @@ Transform Billington from a local Flutter app into a Splitwise competitor with g
         CreatedAt   time.Time
     }
     ```
-  - [ ] Add `TabID *uint` to Bill model (optional foreign key)
+  - [X] Add `TabID *uint` to Bill model (optional foreign key)
   - [ ] Create tab endpoints:
     - `POST /api/tabs` - Create new tab
     - `GET /api/tabs/:id?t=token` - Get tab with all bills
@@ -85,11 +88,11 @@ Transform Billington from a local Flutter app into a Splitwise competitor with g
   - [ ] Test with curl
 
 - [ ] **Flutter: Tab UI**
-  - [ ] Add "New Tab" option on home screen
+  - [X] Add "New Tab" option on home screen
   - [ ] Create tab creation screen (name, description)
-  - [ ] Tab list screen (show all user's tabs)
-  - [ ] Tab detail screen (show all bills in tab + total)
-  - [ ] "Add Bill to Tab" flow
+  - [X] Tab list screen (show all user's tabs)
+  - [X] Tab detail screen (show all bills in tab + total)
+  - [X] "Add Bill to Tab" flow
   - [ ] Save tabs to local database
 
 - [ ] **Web Viewer: Tab Display**
@@ -412,7 +415,9 @@ curl -X POST http://localhost:8080/api/bills \
     ],
     "payment_methods": [
       {"name": "Venmo", "identifier": "@alice"},
-      {"name": "Zelle", "identifier": "555-1234"}
+      {"name": "Zelle", "identifier": "555-1234"},
+      {"name": "Cash App", "identifier": "$alice"},
+      {"name": "Apple Pay", "identifier": "202-3333"}
     ]
   }'
 ```
