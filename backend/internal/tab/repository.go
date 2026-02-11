@@ -17,6 +17,9 @@ type TabRepository interface {
 	GetSettlements(tabID uint) ([]models.TabSettlement, error)
 	CreateSettlements(settlements []models.TabSettlement) error
 	UpdateSettlementPaid(id uint, paid bool) error
+	CreateMember(member *models.TabMember) error
+	GetMemberByToken(token string) (*models.TabMember, error)
+	GetMembersByTabID(tabID uint) ([]models.TabMember, error)
 }
 
 type tabRepository struct {
@@ -33,6 +36,7 @@ func (r *tabRepository) GetById(id uint) (tab *models.Tab, err error) {
 		Preload("Bills.Items.Assignments").
 		Preload("Bills.Participants").
 		Preload("Bills.PersonShares").
+		Preload("Members").
 		First(tab, id).Error
 	return tab, err
 }
@@ -72,6 +76,22 @@ func (r *tabRepository) CreateSettlements(settlements []models.TabSettlement) er
 
 func (r *tabRepository) UpdateSettlementPaid(id uint, paid bool) error {
 	return r.db.Model(&models.TabSettlement{}).Where("id = ?", id).Update("paid", paid).Error
+}
+
+func (r *tabRepository) CreateMember(member *models.TabMember) error {
+	return r.db.Create(member).Error
+}
+
+func (r *tabRepository) GetMemberByToken(token string) (*models.TabMember, error) {
+	member := &models.TabMember{}
+	err := r.db.Where("member_token = ?", token).First(member).Error
+	return member, err
+}
+
+func (r *tabRepository) GetMembersByTabID(tabID uint) ([]models.TabMember, error) {
+	var members []models.TabMember
+	err := r.db.Where("tab_id = ?", tabID).Order("joined_at ASC").Find(&members).Error
+	return members, err
 }
 
 func NewTabRepository(db *gorm.DB) TabRepository {
