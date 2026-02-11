@@ -1157,6 +1157,17 @@ class $RecentBillsTable extends RecentBills
     requiredDuringInsert: false,
     defaultValue: Constant(DateTime.now()),
   );
+  static const VerificationMeta _shareUrlMeta = const VerificationMeta(
+    'shareUrl',
+  );
+  @override
+  late final GeneratedColumn<String> shareUrl = GeneratedColumn<String>(
+    'share_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1172,6 +1183,7 @@ class $RecentBillsTable extends RecentBills
     items,
     colorValue,
     createdAt,
+    shareUrl,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1283,6 +1295,12 @@ class $RecentBillsTable extends RecentBills
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
+    if (data.containsKey('share_url')) {
+      context.handle(
+        _shareUrlMeta,
+        shareUrl.isAcceptableOrUnknown(data['share_url']!, _shareUrlMeta),
+      );
+    }
     return context;
   }
 
@@ -1355,6 +1373,10 @@ class $RecentBillsTable extends RecentBills
             DriftSqlType.dateTime,
             data['${effectivePrefix}created_at'],
           )!,
+      shareUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}share_url'],
+      ),
     );
   }
 
@@ -1378,6 +1400,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
   final String? items;
   final int colorValue;
   final DateTime createdAt;
+  final String? shareUrl;
   const RecentBill({
     required this.id,
     required this.billName,
@@ -1392,6 +1415,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
     this.items,
     required this.colorValue,
     required this.createdAt,
+    this.shareUrl,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1413,6 +1437,9 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
     }
     map['color_value'] = Variable<int>(colorValue);
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || shareUrl != null) {
+      map['share_url'] = Variable<String>(shareUrl);
+    }
     return map;
   }
 
@@ -1435,6 +1462,10 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
           items == null && nullToAbsent ? const Value.absent() : Value(items),
       colorValue: Value(colorValue),
       createdAt: Value(createdAt),
+      shareUrl:
+          shareUrl == null && nullToAbsent
+              ? const Value.absent()
+              : Value(shareUrl),
     );
   }
 
@@ -1457,6 +1488,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
       items: serializer.fromJson<String?>(json['items']),
       colorValue: serializer.fromJson<int>(json['colorValue']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      shareUrl: serializer.fromJson<String?>(json['shareUrl']),
     );
   }
   @override
@@ -1476,6 +1508,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
       'items': serializer.toJson<String?>(items),
       'colorValue': serializer.toJson<int>(colorValue),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'shareUrl': serializer.toJson<String?>(shareUrl),
     };
   }
 
@@ -1493,6 +1526,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
     Value<String?> items = const Value.absent(),
     int? colorValue,
     DateTime? createdAt,
+    Value<String?> shareUrl = const Value.absent(),
   }) => RecentBill(
     id: id ?? this.id,
     billName: billName ?? this.billName,
@@ -1508,6 +1542,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
     items: items.present ? items.value : this.items,
     colorValue: colorValue ?? this.colorValue,
     createdAt: createdAt ?? this.createdAt,
+    shareUrl: shareUrl.present ? shareUrl.value : this.shareUrl,
   );
   RecentBill copyWithCompanion(RecentBillsCompanion data) {
     return RecentBill(
@@ -1534,6 +1569,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
       colorValue:
           data.colorValue.present ? data.colorValue.value : this.colorValue,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      shareUrl: data.shareUrl.present ? data.shareUrl.value : this.shareUrl,
     );
   }
 
@@ -1552,7 +1588,8 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
           ..write('tipPercentage: $tipPercentage, ')
           ..write('items: $items, ')
           ..write('colorValue: $colorValue, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('shareUrl: $shareUrl')
           ..write(')'))
         .toString();
   }
@@ -1572,6 +1609,7 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
     items,
     colorValue,
     createdAt,
+    shareUrl,
   );
   @override
   bool operator ==(Object other) =>
@@ -1589,7 +1627,8 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
           other.tipPercentage == this.tipPercentage &&
           other.items == this.items &&
           other.colorValue == this.colorValue &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.shareUrl == this.shareUrl);
 }
 
 class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
@@ -1606,6 +1645,7 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
   final Value<String?> items;
   final Value<int> colorValue;
   final Value<DateTime> createdAt;
+  final Value<String?> shareUrl;
   const RecentBillsCompanion({
     this.id = const Value.absent(),
     this.billName = const Value.absent(),
@@ -1620,6 +1660,7 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
     this.items = const Value.absent(),
     this.colorValue = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.shareUrl = const Value.absent(),
   });
   RecentBillsCompanion.insert({
     this.id = const Value.absent(),
@@ -1635,6 +1676,7 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
     this.items = const Value.absent(),
     this.colorValue = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.shareUrl = const Value.absent(),
   }) : participants = Value(participants),
        participantCount = Value(participantCount),
        total = Value(total),
@@ -1656,6 +1698,7 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
     Expression<String>? items,
     Expression<int>? colorValue,
     Expression<DateTime>? createdAt,
+    Expression<String>? shareUrl,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1671,6 +1714,7 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
       if (items != null) 'items': items,
       if (colorValue != null) 'color_value': colorValue,
       if (createdAt != null) 'created_at': createdAt,
+      if (shareUrl != null) 'share_url': shareUrl,
     });
   }
 
@@ -1688,6 +1732,7 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
     Value<String?>? items,
     Value<int>? colorValue,
     Value<DateTime>? createdAt,
+    Value<String?>? shareUrl,
   }) {
     return RecentBillsCompanion(
       id: id ?? this.id,
@@ -1703,6 +1748,7 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
       items: items ?? this.items,
       colorValue: colorValue ?? this.colorValue,
       createdAt: createdAt ?? this.createdAt,
+      shareUrl: shareUrl ?? this.shareUrl,
     );
   }
 
@@ -1748,6 +1794,9 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (shareUrl.present) {
+      map['share_url'] = Variable<String>(shareUrl.value);
+    }
     return map;
   }
 
@@ -1766,7 +1815,8 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
           ..write('tipPercentage: $tipPercentage, ')
           ..write('items: $items, ')
           ..write('colorValue: $colorValue, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('shareUrl: $shareUrl')
           ..write(')'))
         .toString();
   }
@@ -2400,6 +2450,7 @@ typedef $$RecentBillsTableCreateCompanionBuilder =
       Value<String?> items,
       Value<int> colorValue,
       Value<DateTime> createdAt,
+      Value<String?> shareUrl,
     });
 typedef $$RecentBillsTableUpdateCompanionBuilder =
     RecentBillsCompanion Function({
@@ -2416,6 +2467,7 @@ typedef $$RecentBillsTableUpdateCompanionBuilder =
       Value<String?> items,
       Value<int> colorValue,
       Value<DateTime> createdAt,
+      Value<String?> shareUrl,
     });
 
 class $$RecentBillsTableFilterComposer
@@ -2489,6 +2541,11 @@ class $$RecentBillsTableFilterComposer
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get shareUrl => $composableBuilder(
+    column: $table.shareUrl,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2566,6 +2623,11 @@ class $$RecentBillsTableOrderingComposer
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get shareUrl => $composableBuilder(
+    column: $table.shareUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$RecentBillsTableAnnotationComposer
@@ -2623,6 +2685,9 @@ class $$RecentBillsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get shareUrl =>
+      $composableBuilder(column: $table.shareUrl, builder: (column) => column);
 }
 
 class $$RecentBillsTableTableManager
@@ -2670,6 +2735,7 @@ class $$RecentBillsTableTableManager
                 Value<String?> items = const Value.absent(),
                 Value<int> colorValue = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> shareUrl = const Value.absent(),
               }) => RecentBillsCompanion(
                 id: id,
                 billName: billName,
@@ -2684,6 +2750,7 @@ class $$RecentBillsTableTableManager
                 items: items,
                 colorValue: colorValue,
                 createdAt: createdAt,
+                shareUrl: shareUrl,
               ),
           createCompanionCallback:
               ({
@@ -2700,6 +2767,7 @@ class $$RecentBillsTableTableManager
                 Value<String?> items = const Value.absent(),
                 Value<int> colorValue = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> shareUrl = const Value.absent(),
               }) => RecentBillsCompanion.insert(
                 id: id,
                 billName: billName,
@@ -2714,6 +2782,7 @@ class $$RecentBillsTableTableManager
                 items: items,
                 colorValue: colorValue,
                 createdAt: createdAt,
+                shareUrl: shareUrl,
               ),
           withReferenceMapper:
               (p0) =>

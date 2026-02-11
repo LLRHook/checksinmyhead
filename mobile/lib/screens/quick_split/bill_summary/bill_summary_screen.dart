@@ -15,7 +15,6 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import 'package:checks_frontend/screens/settings/services/settings_manager.dart';
 import 'package:flutter/material.dart';
 import '/models/person.dart';
 import '/models/bill_item.dart';
@@ -24,8 +23,8 @@ import '/models/bill_item.dart';
 import 'models/bill_summary_data.dart';
 import 'widgets/bill_total_card.dart';
 import 'widgets/bottom_bar.dart';
+import 'widgets/enhanced_share_sheet.dart';
 import 'widgets/person_card.dart';
-import 'utils/share_utils.dart';
 
 /// BillSummaryScreen - Displays a complete bill breakdown with sharing options
 ///
@@ -75,19 +74,12 @@ class BillSummaryScreen extends StatefulWidget {
 }
 
 class _BillSummaryScreenState extends State<BillSummaryScreen> {
-  // Share options
-  late ShareOptions _shareOptions;
-  bool _isLoading = true;
-
   // Bill summary data
   late BillSummaryData _summaryData;
 
   @override
   void initState() {
     super.initState();
-
-    // Initialize with default share options until loaded from storage
-    _shareOptions = ShareOptions();
 
     // Consolidate bill data into a single object for easier passing to widgets
     _summaryData = BillSummaryData(
@@ -102,61 +94,14 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
       tipPercentage: widget.tipPercentage,
       isCustomTipAmount: widget.isCustomTipAmount,
     );
-
-    // Asynchronously load saved share options
-    _loadShareOptions();
   }
 
-  /// Loads share options from persistent storage
-  Future<void> _loadShareOptions() async {
-    final options = await SettingsManager.getShareOptions();
-
-    // Only update state if widget is still mounted
-    if (mounted) {
-      setState(() {
-        _shareOptions = options;
-        _isLoading = false;
-      });
-    }
-  }
-
-  /// Generates and shares the bill summary via platform share sheet
-  void _shareBillSummary() async {
-    // Generate formatted bill summary text with current options
-    final String summary = await ShareUtils.generateShareText(
-      participants: widget.participants,
-      personShares: widget.personShares,
-      items: widget.items,
-      subtotal: widget.subtotal,
-      tax: widget.tax,
-      tipAmount: widget.tipAmount,
-      total: widget.total,
-      birthdayPerson: widget.birthdayPerson,
-      tipPercentage: widget.tipPercentage,
-      isCustomTipAmount: widget.isCustomTipAmount,
-      showAllItems: _shareOptions.showAllItems,
-      showPersonItems: _shareOptions.showPersonItems,
-      showBreakdown: !_shareOptions.showBreakdown,
-      billName: _summaryData.billName,
-    );
-
-    // Trigger platform share sheet with the generated summary
-    ShareUtils.shareBillSummary(summary: summary);
-  }
-
-  /// Shows the share options sheet for customizing share content
+  /// Shows the enhanced share sheet (text-only since bill hasn't been uploaded yet)
   void _promptShareOptions() {
-    ShareOptionsSheet.show(
+    EnhancedShareSheet.show(
       context: context,
-      initialOptions: _shareOptions,
-      onOptionsChanged: (updatedOptions) {
-        setState(() {
-          _shareOptions = updatedOptions;
-        });
-        // Persist the updated options for future sessions
-        SettingsManager.saveShareOptions(updatedOptions);
-      },
-      onShareTap: _shareBillSummary,
+      shareUrl: null,
+      data: _summaryData,
     );
   }
 
@@ -180,16 +125,6 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
         brightness == Brightness.dark
             ? Colors.white
             : null; // Use default for light mode
-
-    // Show loading indicator while initializing
-    if (_isLoading) {
-      return Scaffold(
-        backgroundColor: backgroundColor,
-        body: Center(
-          child: CircularProgressIndicator(color: colorScheme.primary),
-        ),
-      );
-    }
 
     return Scaffold(
       backgroundColor: backgroundColor,

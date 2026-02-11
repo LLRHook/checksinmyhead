@@ -216,6 +216,17 @@ class RecentBillsManager extends ChangeNotifier {
   /// to prevent UI crashes.
   ///
   /// Refreshes the bills list after updating to notify listeners.
+  /// Updates the share URL of a specific bill
+  Future<void> updateBillShareUrl(int id, String shareUrl) async {
+    try {
+      await DatabaseProvider.db.updateBillShareUrl(id, shareUrl);
+      await getRecentBills();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error updating bill share URL: $e');
+    }
+  }
+
   Future<void> updateBillName(int id, String newName) async {
     try {
       // Request update from the database provider

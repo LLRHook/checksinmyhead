@@ -73,6 +73,7 @@ class RecentBills extends Table {
       integer().withDefault(const Constant(0xFF2196F3))();
   DateTimeColumn get createdAt =>
       dateTime().withDefault(Constant(DateTime.now()))();
+  TextColumn get shareUrl => text().nullable()();
 }
 
 // Main database class handling all database operations
@@ -83,7 +84,16 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onUpgrade: (migrator, from, to) async {
+          if (from < 2) {
+            await migrator.addColumn(recentBills, recentBills.shareUrl);
+          }
+        },
+      );
 
   // Converts database person entry to Person model
   Person peopleDataToPerson(PeopleData entry) {
@@ -239,6 +249,7 @@ class AppDatabase extends _$AppDatabase {
     String billName = '',
     double tipPercentage = 0,
     bool isCustomTipAmount = false,
+    String? shareUrl,
   }) async {
     final participantNames = participants.map((p) => p.name).toList();
     final participantsJson = jsonEncode(participantNames);
@@ -291,6 +302,7 @@ class AppDatabase extends _$AppDatabase {
           participants.isNotEmpty
               ? Value(participants.first.color.toARGB32())
               : const Value.absent(),
+      shareUrl: Value(shareUrl),
     );
 
     final count = await select(recentBills).get().then((bills) => bills.length);
@@ -336,6 +348,21 @@ class AppDatabase extends _$AppDatabase {
     await (update(recentBills)..where(
       (t) => t.id.equals(id),
     )).write(RecentBillsCompanion(billName: Value(newName)));
+  }
+
+  /// Gets the most recently created bill
+  Future<RecentBill?> getMostRecentBill() async {
+    final query = select(recentBills)
+      ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
+      ..limit(1);
+    return query.getSingleOrNull();
+  }
+
+  /// Updates the share URL of a bill in the database
+  Future<void> updateBillShareUrl(int id, String shareUrl) async {
+    await (update(recentBills)..where(
+      (t) => t.id.equals(id),
+    )).write(RecentBillsCompanion(shareUrl: Value(shareUrl)));
   }
 
   /// Gets a single bill by its ID
