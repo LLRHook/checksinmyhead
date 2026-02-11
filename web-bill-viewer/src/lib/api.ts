@@ -1,0 +1,112 @@
+export interface ItemDetail {
+  name: string;
+  amount: number;
+  is_shared: boolean;
+}
+
+export interface PersonShare {
+  id: number;
+  person_name: string;
+  items: ItemDetail[];
+  subtotal: number;
+  tax_share: number;
+  tip_share: number;
+  total: number;
+}
+
+export interface BillItem {
+  id: number;
+  name: string;
+  price: number;
+}
+
+export interface PaymentMethod {
+  name: string;
+  identifier: string;
+}
+
+export interface Bill {
+  id: number;
+  name: string;
+  subtotal: number;
+  tax: number;
+  tip_amount: number;
+  tip_percentage: number;
+  total: number;
+  date: string;
+  payment_methods: PaymentMethod[];
+  items: BillItem[];
+  person_shares: PersonShare[];
+}
+
+export interface Tab {
+  id: number;
+  name: string;
+  description: string;
+  bills: Bill[];
+  total_amount: number;
+  created_at: string;
+}
+
+export interface TabPersonTotal {
+  person_name: string;
+  total: number;
+  bill_count: number;
+}
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
+export async function getBill(id: string, token: string): Promise<Bill> {
+  const response = await fetch(`${API_BASE_URL}/api/bills/${id}?t=${token}`);
+
+  if (!response.ok) {
+    if (response.status === 403) {
+      throw new Error("Invalid access token");
+    }
+    if (response.status === 404) {
+      throw new Error("Bill not found");
+    }
+    throw new Error("Failed to fetch bill");
+  }
+
+  return response.json();
+}
+
+export async function getTab(id: string, token: string): Promise<Tab> {
+  const response = await fetch(`${API_BASE_URL}/api/tabs/${id}?t=${token}`);
+
+  if (!response.ok) {
+    if (response.status === 403) {
+      throw new Error("Invalid access token");
+    }
+    if (response.status === 404) {
+      throw new Error("Tab not found");
+    }
+    throw new Error("Failed to fetch tab");
+  }
+
+  return response.json();
+}
+
+export function computeTabPersonTotals(tab: Tab): TabPersonTotal[] {
+  const totals: Record<string, { total: number; bill_count: number }> = {};
+
+  for (const bill of tab.bills) {
+    for (const share of bill.person_shares) {
+      const key = share.person_name.toLowerCase();
+      if (!totals[key]) {
+        totals[key] = { total: 0, bill_count: 0 };
+      }
+      totals[key].total += share.total;
+      totals[key].bill_count += 1;
+    }
+  }
+
+  return Object.entries(totals)
+    .map(([key, val]) => ({
+      person_name: key.charAt(0).toUpperCase() + key.slice(1),
+      total: val.total,
+      bill_count: val.bill_count,
+    }))
+    .sort((a, b) => b.total - a.total);
+}
