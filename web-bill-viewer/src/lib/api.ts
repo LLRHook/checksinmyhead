@@ -45,6 +45,17 @@ export interface Tab {
   description: string;
   bills: Bill[];
   total_amount: number;
+  finalized: boolean;
+  finalized_at: string | null;
+  created_at: string;
+}
+
+export interface TabSettlement {
+  id: number;
+  tab_id: number;
+  person_name: string;
+  amount: number;
+  paid: boolean;
   created_at: string;
 }
 
@@ -108,6 +119,21 @@ export async function getTabImages(
 ): Promise<TabImage[]> {
   const response = await fetch(
     `${API_BASE_URL}/api/tabs/${id}/images?t=${token}`,
+  );
+
+  if (!response.ok) {
+    return [];
+  }
+
+  return response.json();
+}
+
+export async function getSettlements(
+  id: string,
+  token: string,
+): Promise<TabSettlement[]> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/tabs/${id}/settlements?t=${token}`,
   );
 
   if (!response.ok) {

@@ -1,11 +1,13 @@
 import {
   getTab,
   getTabImages,
+  getSettlements,
   computeTabPersonTotals,
   API_BASE_URL,
 } from "@/lib/api";
 import TabHeader from "@/components/TabHeader";
 import TabPersonTotals from "@/components/TabPersonTotals";
+import SettlementCard from "@/components/SettlementCard";
 import TabImageGallery from "@/components/TabImageGallery";
 import CollapsibleSection from "@/components/CollapsibleSection";
 import PersonShare from "@/components/PersonShare";
@@ -61,6 +63,14 @@ export default async function TabPage({
 
   const personTotals = computeTabPersonTotals(tab);
   const images = await getTabImages(id, token);
+  const settlements = tab.finalized ? await getSettlements(id, token) : [];
+
+  // Find venmo payment method from any bill
+  const venmoId =
+    tab.bills
+      .flatMap((b) => b.payment_methods || [])
+      .find((pm) => pm.name?.toLowerCase().includes("venmo"))?.identifier ||
+    null;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[var(--secondary)] to-white dark:from-black dark:to-[var(--card-bg-dark)]">
@@ -70,10 +80,15 @@ export default async function TabPage({
           description={tab.description}
           total={tab.total_amount}
           billCount={tab.bills.length}
+          finalized={tab.finalized}
         />
 
-        {personTotals.length > 0 && (
-          <TabPersonTotals personTotals={personTotals} />
+        {tab.finalized && settlements.length > 0 ? (
+          <SettlementCard settlements={settlements} venmoId={venmoId} />
+        ) : (
+          personTotals.length > 0 && (
+            <TabPersonTotals personTotals={personTotals} venmoId={venmoId} />
+          )
         )}
 
         {images.length > 0 && (

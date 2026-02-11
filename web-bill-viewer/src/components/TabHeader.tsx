@@ -5,6 +5,7 @@ interface TabHeaderProps {
   description: string;
   total: number;
   billCount: number;
+  finalized?: boolean;
 }
 
 export default function TabHeader({
@@ -12,6 +13,7 @@ export default function TabHeader({
   description,
   total,
   billCount,
+  finalized,
 }: TabHeaderProps) {
   return (
     <div className="text-center mb-8">
@@ -30,11 +32,17 @@ export default function TabHeader({
         <span className="text-sm font-medium">Total</span>
         <span className="text-xl font-bold">${total.toFixed(2)}</span>
       </div>
-      <div className="mt-2">
+      <div className="mt-2 flex items-center justify-center gap-2">
         <span className="inline-flex items-center gap-1 text-xs font-medium text-[var(--text-secondary)] bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] px-3 py-1 rounded-full">
           <i className="fas fa-receipt text-[var(--primary)]"></i>
           {billCount} bill{billCount === 1 ? "" : "s"}
         </span>
+        {finalized && (
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1 rounded-full">
+            <i className="fas fa-check-circle"></i>
+            Finalized
+          </span>
+        )}
       </div>
     </div>
   );
