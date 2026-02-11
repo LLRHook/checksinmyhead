@@ -65,6 +65,14 @@ export interface TabPersonTotal {
   bill_count: number;
 }
 
+export interface TabMember {
+  id: number;
+  tab_id: number;
+  display_name: string;
+  role: string;
+  joined_at: string;
+}
+
 export interface TabImage {
   id: number;
   tab_id: number;
@@ -138,6 +146,42 @@ export async function getSettlements(
 
   if (!response.ok) {
     return [];
+  }
+
+  return response.json();
+}
+
+export async function getTabMembers(
+  id: string,
+  token: string,
+): Promise<TabMember[]> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/tabs/${id}/members?t=${token}`,
+  );
+
+  if (!response.ok) {
+    return [];
+  }
+
+  return response.json();
+}
+
+export async function joinTab(
+  id: string,
+  token: string,
+  displayName: string,
+): Promise<{ member_id: number; member_token: string; display_name: string; role: string } | null> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/tabs/${id}/join?t=${token}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ display_name: displayName }),
+    },
+  );
+
+  if (!response.ok) {
+    return null;
   }
 
   return response.json();
