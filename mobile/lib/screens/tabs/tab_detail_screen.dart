@@ -101,8 +101,8 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
 
   void _shareTab() {
     if (_currentTab.shareUrl != null) {
-      Share.share(
-        'Check out "${_currentTab.name}" on Billington: ${_currentTab.shareUrl}',
+      SharePlus.instance.share(
+        ShareParams(text: 'Check out "${_currentTab.name}" on Billington: ${_currentTab.shareUrl}'),
       );
     }
   }
