@@ -10,6 +10,9 @@ class AppTab {
   final String? accessToken;
   final String? shareUrl;
   final bool finalized;
+  final String? memberToken;
+  final String? role;
+  final bool isRemote;
 
   AppTab({
     this.id,
@@ -21,11 +24,18 @@ class AppTab {
     this.accessToken,
     this.shareUrl,
     this.finalized = false,
+    this.memberToken,
+    this.role,
+    this.isRemote = false,
   });
 
   bool get isSynced => backendId != null;
 
   bool get isFinalized => finalized;
+
+  bool get isCreator => role == 'creator';
+
+  bool get isMember => memberToken != null;
 
   double getTotalAmount(List<double> billTotals) {
     return billTotals.fold(0.0, (sum, total) => sum + total);
@@ -49,6 +59,9 @@ class AppTab {
     String? accessToken,
     String? shareUrl,
     bool? finalized,
+    String? memberToken,
+    String? role,
+    bool? isRemote,
   }) {
     return AppTab(
       id: id ?? this.id,
@@ -60,6 +73,9 @@ class AppTab {
       accessToken: accessToken ?? this.accessToken,
       shareUrl: shareUrl ?? this.shareUrl,
       finalized: finalized ?? this.finalized,
+      memberToken: memberToken ?? this.memberToken,
+      role: role ?? this.role,
+      isRemote: isRemote ?? this.isRemote,
     );
   }
 }

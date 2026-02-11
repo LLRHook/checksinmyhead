@@ -66,6 +66,9 @@ class Tabs extends Table {
   TextColumn get accessToken => text().nullable()();
   TextColumn get shareUrl => text().nullable()();
   BoolColumn get finalized => boolean().withDefault(const Constant(false))();
+  TextColumn get memberToken => text().nullable()();
+  TextColumn get role => text().nullable()();
+  BoolColumn get isRemote => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt =>
       dateTime().withDefault(Constant(DateTime.now()))();
 }
@@ -98,7 +101,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -111,6 +114,11 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 4) {
             await migrator.addColumn(tabs, tabs.finalized);
+          }
+          if (from < 5) {
+            await migrator.addColumn(tabs, tabs.memberToken);
+            await migrator.addColumn(tabs, tabs.role);
+            await migrator.addColumn(tabs, tabs.isRemote);
           }
         },
       );

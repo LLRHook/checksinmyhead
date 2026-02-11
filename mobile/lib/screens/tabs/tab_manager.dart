@@ -197,6 +197,9 @@ class TabManager extends ChangeNotifier {
       accessToken: tabData.accessToken,
       shareUrl: tabData.shareUrl,
       finalized: tabData.finalized,
+      memberToken: tabData.memberToken,
+      role: tabData.role,
+      isRemote: tabData.isRemote,
     );
   }
 }
