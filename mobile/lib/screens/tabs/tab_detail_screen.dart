@@ -28,6 +28,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
   List<RecentBillModel> _tabBills = [];
   List<TabImageResponse> _images = [];
   List<SettlementResponse> _settlements = [];
+  List<TabMemberResponse> _members = [];
   bool _isLoading = true;
   bool _isUploading = false;
   bool _isFinalizing = false;
@@ -67,6 +68,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
 
     await _loadImages();
     await _loadSettlements();
+    await _loadMembers();
 
     if (mounted) {
       setState(() {
@@ -74,6 +76,19 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
         _tabBills = tabBills;
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _loadMembers() async {
+    if (_currentTab.backendId == null || _currentTab.accessToken == null) return;
+
+    final members = await _apiService.getTabMembers(
+      _currentTab.backendId!,
+      _currentTab.accessToken!,
+    );
+
+    if (mounted) {
+      setState(() => _members = members);
     }
   }
 
@@ -107,8 +122,10 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
   bool get _canFinalize {
     if (!_currentTab.isSynced) return false;
     if (_currentTab.isFinalized) return false;
-    if (_tabBills.isEmpty) return false;
+    if (_tabBills.isEmpty && !_currentTab.isRemote) return false;
     if (_images.isNotEmpty && !_images.every((i) => i.processed)) return false;
+    // If tab has members, only the creator can finalize
+    if (_members.isNotEmpty && !_currentTab.isCreator) return false;
     return true;
   }
 
@@ -141,6 +158,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
       _currentTab.backendId!,
       _currentTab.accessToken!,
       File(pickedFile.path),
+      memberToken: _currentTab.memberToken,
     );
 
     if (mounted) {
@@ -408,6 +426,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
                         padding: const EdgeInsets.only(bottom: 100),
                         children: [
                           if (_tabBills.isNotEmpty) _buildTotalCard(),
+                          if (_members.isNotEmpty) _buildMembersCard(),
                           if (_currentTab.isFinalized && _settlements.isNotEmpty)
                             _buildSettlementsCard()
                           else if (_calculatePersonTotals().isNotEmpty)
@@ -537,6 +556,89 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
                 fontWeight: FontWeight.w600,
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMembersCard() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+    final cardBgColor = brightness == Brightness.dark ? colorScheme.surface : Colors.white;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardBgColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: brightness == Brightness.dark
+                ? Colors.black.withValues(alpha: 0.2)
+                : Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.group, size: 18, color: colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                'Members',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${_members.length}',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: colorScheme.onSurface.withValues(alpha: 0.5),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _members.map((member) {
+              final isCreator = member.role == 'creator';
+              return Chip(
+                avatar: isCreator
+                    ? Icon(Icons.star, size: 16, color: Colors.amber.shade700)
+                    : CircleAvatar(
+                        radius: 12,
+                        backgroundColor: colorScheme.primary.withValues(alpha: 0.15),
+                        child: Text(
+                          member.displayName.isNotEmpty ? member.displayName[0].toUpperCase() : '?',
+                          style: TextStyle(fontSize: 11, color: colorScheme.primary, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                label: Text(member.displayName),
+                labelStyle: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: colorScheme.onSurface,
+                ),
+                backgroundColor: brightness == Brightness.dark
+                    ? colorScheme.surfaceContainerHighest
+                    : Colors.grey.shade50,
+                side: BorderSide.none,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              );
+            }).toList(),
           ),
         ],
       ),
