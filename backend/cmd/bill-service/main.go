@@ -59,6 +59,8 @@ func main() {
 	r.POST("/api/tabs/:id/finalize", tabHandler.FinalizeTab)
 	r.GET("/api/tabs/:id/settlements", tabHandler.GetSettlements)
 	r.PATCH("/api/tabs/:id/settlements/:settlementId", tabHandler.UpdateSettlement)
+	r.POST("/api/tabs/:id/join", tabHandler.JoinTab)
+	r.GET("/api/tabs/:id/members", tabHandler.GetMembers)
 
 	r.POST("/api/tabs/:id/images", imgHandler.UploadImage)
 	r.GET("/api/tabs/:id/images", imgHandler.ListImages)
