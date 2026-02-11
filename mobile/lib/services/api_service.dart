@@ -237,6 +237,75 @@ required List<Map<String, String>> paymentMethods,
     }
   }
 
+  /// Finalizes a tab, locking it from further edits and creating settlements
+  Future<List<SettlementResponse>> finalizeTab(
+    int tabId,
+    String accessToken,
+  ) async {
+    var logger = Logger();
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/tabs/$tabId/finalize?t=$accessToken'),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => SettlementResponse.fromJson(json)).toList();
+      } else {
+        logger.d('Failed to finalize tab: ${response.statusCode} ${response.body}');
+        return [];
+      }
+    } catch (e) {
+      logger.d('Error finalizing tab: $e');
+      return [];
+    }
+  }
+
+  /// Gets settlements for a finalized tab
+  Future<List<SettlementResponse>> getSettlements(
+    int tabId,
+    String accessToken,
+  ) async {
+    var logger = Logger();
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/tabs/$tabId/settlements?t=$accessToken'),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => SettlementResponse.fromJson(json)).toList();
+      } else {
+        logger.d('Failed to get settlements: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      logger.d('Error getting settlements: $e');
+      return [];
+    }
+  }
+
+  /// Toggles the paid status of a settlement
+  Future<bool> updateSettlement(
+    int tabId,
+    int settlementId,
+    String accessToken,
+    bool paid,
+  ) async {
+    var logger = Logger();
+    try {
+      final response = await http.patch(
+        Uri.parse('$baseUrl/api/tabs/$tabId/settlements/$settlementId?t=$accessToken'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'paid': paid}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      logger.d('Error updating settlement: $e');
+      return false;
+    }
+  }
+
   /// Deletes an image from a tab
   Future<bool> deleteTabImage(
     int tabId,
@@ -363,6 +432,36 @@ class TabImageResponse {
       mimeType: json['mime_type'] ?? '',
       processed: json['processed'] ?? false,
       uploadedBy: json['uploaded_by'] ?? '',
+      createdAt: json['created_at'] ?? '',
+    );
+  }
+}
+
+/// Response object for tab settlements
+class SettlementResponse {
+  final int id;
+  final int tabId;
+  final String personName;
+  final double amount;
+  final bool paid;
+  final String createdAt;
+
+  SettlementResponse({
+    required this.id,
+    required this.tabId,
+    required this.personName,
+    required this.amount,
+    required this.paid,
+    required this.createdAt,
+  });
+
+  factory SettlementResponse.fromJson(Map<String, dynamic> json) {
+    return SettlementResponse(
+      id: json['id'],
+      tabId: json['tab_id'],
+      personName: json['person_name'] ?? '',
+      amount: (json['amount'] ?? 0).toDouble(),
+      paid: json['paid'] ?? false,
       createdAt: json['created_at'] ?? '',
     );
   }
