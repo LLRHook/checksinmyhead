@@ -2,8 +2,10 @@ package tab
 
 import (
 	"backend/pkg/models"
+	"backend/pkg/security"
 	"errors"
 	"strings"
+	"time"
 )
 
 // ImageQuerier provides read access to tab images without importing the image package.
@@ -19,6 +21,10 @@ type TabService interface {
 	FinalizeTab(id uint) ([]models.TabSettlement, error)
 	GetSettlements(tabID uint) ([]models.TabSettlement, error)
 	UpdateSettlementPaid(id uint, paid bool) error
+	JoinTab(tabID uint, displayName string) (*models.TabMember, error)
+	JoinTabAsCreator(tabID uint, displayName string) (*models.TabMember, error)
+	GetMemberByToken(token string) (*models.TabMember, error)
+	GetMembers(tabID uint) ([]models.TabMember, error)
 }
 
 type tabService struct {
@@ -117,6 +123,36 @@ func (s *tabService) GetSettlements(tabID uint) ([]models.TabSettlement, error) 
 
 func (s *tabService) UpdateSettlementPaid(id uint, paid bool) error {
 	return s.repo.UpdateSettlementPaid(id, paid)
+}
+
+func (s *tabService) JoinTab(tabID uint, displayName string) (*models.TabMember, error) {
+	return s.createMember(tabID, displayName, "member")
+}
+
+func (s *tabService) JoinTabAsCreator(tabID uint, displayName string) (*models.TabMember, error) {
+	return s.createMember(tabID, displayName, "creator")
+}
+
+func (s *tabService) createMember(tabID uint, displayName string, role string) (*models.TabMember, error) {
+	member := &models.TabMember{
+		TabID:       tabID,
+		DisplayName: displayName,
+		MemberToken: security.GenerateSecureToken(),
+		Role:        role,
+		JoinedAt:    time.Now(),
+	}
+	if err := s.repo.CreateMember(member); err != nil {
+		return nil, err
+	}
+	return member, nil
+}
+
+func (s *tabService) GetMemberByToken(token string) (*models.TabMember, error) {
+	return s.repo.GetMemberByToken(token)
+}
+
+func (s *tabService) GetMembers(tabID uint) ([]models.TabMember, error) {
+	return s.repo.GetMembersByTabID(tabID)
 }
 
 func NewTabService(repo TabRepository, imgQuerier ImageQuerier) TabService {
