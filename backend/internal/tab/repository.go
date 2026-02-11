@@ -2,6 +2,7 @@ package tab
 
 import (
 	"backend/pkg/models"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -12,6 +13,10 @@ type TabRepository interface {
 	Update(tab *models.Tab) error
 	Delete(id uint) error
 	AddBill(tabID uint, billID uint) error
+	Finalize(id uint) error
+	GetSettlements(tabID uint) ([]models.TabSettlement, error)
+	CreateSettlements(settlements []models.TabSettlement) error
+	UpdateSettlementPaid(id uint, paid bool) error
 }
 
 type tabRepository struct {
@@ -45,6 +50,28 @@ func (r *tabRepository) Delete(id uint) error {
 
 func (r *tabRepository) AddBill(tabID uint, billID uint) error {
 	return r.db.Model(&models.Bill{}).Where("id = ?", billID).Update("tab_id", tabID).Error
+}
+
+func (r *tabRepository) Finalize(id uint) error {
+	now := time.Now()
+	return r.db.Model(&models.Tab{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"finalized":    true,
+		"finalized_at": now,
+	}).Error
+}
+
+func (r *tabRepository) GetSettlements(tabID uint) ([]models.TabSettlement, error) {
+	var settlements []models.TabSettlement
+	err := r.db.Where("tab_id = ?", tabID).Order("amount DESC").Find(&settlements).Error
+	return settlements, err
+}
+
+func (r *tabRepository) CreateSettlements(settlements []models.TabSettlement) error {
+	return r.db.Create(&settlements).Error
+}
+
+func (r *tabRepository) UpdateSettlementPaid(id uint, paid bool) error {
+	return r.db.Model(&models.TabSettlement{}).Where("id = ?", id).Update("paid", paid).Error
 }
 
 func NewTabRepository(db *gorm.DB) TabRepository {

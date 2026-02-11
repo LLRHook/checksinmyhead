@@ -36,43 +36,48 @@ func NewImageHandler(service ImageService, tabService tab.TabService, uploadDir 
 }
 
 // validateTabToken parses the tab ID, fetches the tab, and checks the token.
-// Returns the tab ID on success or writes an error response and returns 0.
-func (h *ImageHandler) validateTabToken(c *gin.Context) uint {
+// Returns the tab on success or writes an error response and returns nil.
+func (h *ImageHandler) validateTabToken(c *gin.Context) *models.Tab {
 	id := c.Param("id")
 	urlToken := c.Query("t")
 
 	idUint, err := strconv.ParseUint(id, 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format"})
-		return 0
+		return nil
 	}
 
 	t, err := h.tabService.GetTab(uint(idUint))
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "tab not found"})
-			return 0
+			return nil
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return 0
+		return nil
 	}
 
 	if urlToken != t.AccessToken {
 		c.JSON(http.StatusForbidden, gin.H{"error": "token mismatch"})
-		return 0
+		return nil
 	}
 
-	return uint(idUint)
+	return t
 }
 
 // UploadImage handles POST /api/tabs/:id/images?t=token
 func (h *ImageHandler) UploadImage(c *gin.Context) {
-	tabID := h.validateTabToken(c)
-	if tabID == 0 {
+	t := h.validateTabToken(c)
+	if t == nil {
 		return
 	}
 
-	if !h.limiter.Allow(tabID) {
+	if t.Finalized {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "tab is finalized"})
+		return
+	}
+
+	if !h.limiter.Allow(t.ID) {
 		c.JSON(http.StatusTooManyRequests, gin.H{"error": "upload rate limit exceeded (20/hour)"})
 		return
 	}
@@ -123,7 +128,7 @@ func (h *ImageHandler) UploadImage(c *gin.Context) {
 	filename := hex.EncodeToString(randBytes) + ext
 
 	// Create directory
-	dir := filepath.Join(h.uploadDir, "tabs", fmt.Sprintf("%d", tabID))
+	dir := filepath.Join(h.uploadDir, "tabs", fmt.Sprintf("%d", t.ID))
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create directory"})
 		return
@@ -142,10 +147,10 @@ func (h *ImageHandler) UploadImage(c *gin.Context) {
 		return
 	}
 
-	url := fmt.Sprintf("/uploads/tabs/%d/%s", tabID, filename)
+	url := fmt.Sprintf("/uploads/tabs/%d/%s", t.ID, filename)
 
 	image := &models.TabImage{
-		TabID:      tabID,
+		TabID:      t.ID,
 		Filename:   filename,
 		URL:        url,
 		Size:       header.Size,
@@ -164,12 +169,12 @@ func (h *ImageHandler) UploadImage(c *gin.Context) {
 
 // ListImages handles GET /api/tabs/:id/images?t=token
 func (h *ImageHandler) ListImages(c *gin.Context) {
-	tabID := h.validateTabToken(c)
-	if tabID == 0 {
+	t := h.validateTabToken(c)
+	if t == nil {
 		return
 	}
 
-	images, err := h.service.GetByTabID(tabID)
+	images, err := h.service.GetByTabID(t.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -180,8 +185,8 @@ func (h *ImageHandler) ListImages(c *gin.Context) {
 
 // UpdateImage handles PATCH /api/tabs/:id/images/:imageId?t=token
 func (h *ImageHandler) UpdateImage(c *gin.Context) {
-	tabID := h.validateTabToken(c)
-	if tabID == 0 {
+	t := h.validateTabToken(c)
+	if t == nil {
 		return
 	}
 
@@ -201,7 +206,7 @@ func (h *ImageHandler) UpdateImage(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	if image.TabID != tabID {
+	if image.TabID != t.ID {
 		c.JSON(http.StatusForbidden, gin.H{"error": "image does not belong to this tab"})
 		return
 	}
@@ -224,8 +229,13 @@ func (h *ImageHandler) UpdateImage(c *gin.Context) {
 
 // DeleteImage handles DELETE /api/tabs/:id/images/:imageId?t=token
 func (h *ImageHandler) DeleteImage(c *gin.Context) {
-	tabID := h.validateTabToken(c)
-	if tabID == 0 {
+	t := h.validateTabToken(c)
+	if t == nil {
+		return
+	}
+
+	if t.Finalized {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "tab is finalized"})
 		return
 	}
 
@@ -245,7 +255,7 @@ func (h *ImageHandler) DeleteImage(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	if image.TabID != tabID {
+	if image.TabID != t.ID {
 		c.JSON(http.StatusForbidden, gin.H{"error": "image does not belong to this tab"})
 		return
 	}
