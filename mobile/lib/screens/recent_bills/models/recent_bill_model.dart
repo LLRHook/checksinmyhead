@@ -75,6 +75,9 @@ class RecentBillModel {
   /// Map of item names to person assignments with percentages
   final Map<String, Map<String, double>>? itemAssignments;
 
+  /// Shareable web URL for this bill (null if never uploaded)
+  final String? shareUrl;
+
   RecentBillModel({
     required this.id,
     this.billName = '',
@@ -89,6 +92,7 @@ class RecentBillModel {
     this.items,
     required this.color,
     this.itemAssignments,
+    this.shareUrl,
   });
 
   /// Creates a RecentBillModel from raw database data
@@ -179,6 +183,7 @@ class RecentBillModel {
       items: itemsList,
       itemAssignments: assignmentsMap,
       color: Color(data.colorValue), // Convert stored integer to Color
+      shareUrl: data.shareUrl,
     );
   }
 
