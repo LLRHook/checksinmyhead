@@ -1921,6 +1921,41 @@ class $TabsTable extends Tabs with TableInfo<$TabsTable, Tab> {
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _memberTokenMeta = const VerificationMeta(
+    'memberToken',
+  );
+  @override
+  late final GeneratedColumn<String> memberToken = GeneratedColumn<String>(
+    'member_token',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _roleMeta = const VerificationMeta('role');
+  @override
+  late final GeneratedColumn<String> role = GeneratedColumn<String>(
+    'role',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isRemoteMeta = const VerificationMeta(
+    'isRemote',
+  );
+  @override
+  late final GeneratedColumn<bool> isRemote = GeneratedColumn<bool>(
+    'is_remote',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_remote" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1943,6 +1978,9 @@ class $TabsTable extends Tabs with TableInfo<$TabsTable, Tab> {
     accessToken,
     shareUrl,
     finalized,
+    memberToken,
+    role,
+    isRemote,
     createdAt,
   ];
   @override
@@ -2010,6 +2048,27 @@ class $TabsTable extends Tabs with TableInfo<$TabsTable, Tab> {
         finalized.isAcceptableOrUnknown(data['finalized']!, _finalizedMeta),
       );
     }
+    if (data.containsKey('member_token')) {
+      context.handle(
+        _memberTokenMeta,
+        memberToken.isAcceptableOrUnknown(
+          data['member_token']!,
+          _memberTokenMeta,
+        ),
+      );
+    }
+    if (data.containsKey('role')) {
+      context.handle(
+        _roleMeta,
+        role.isAcceptableOrUnknown(data['role']!, _roleMeta),
+      );
+    }
+    if (data.containsKey('is_remote')) {
+      context.handle(
+        _isRemoteMeta,
+        isRemote.isAcceptableOrUnknown(data['is_remote']!, _isRemoteMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -2062,6 +2121,19 @@ class $TabsTable extends Tabs with TableInfo<$TabsTable, Tab> {
             DriftSqlType.bool,
             data['${effectivePrefix}finalized'],
           )!,
+      memberToken: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}member_token'],
+      ),
+      role: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}role'],
+      ),
+      isRemote:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.bool,
+            data['${effectivePrefix}is_remote'],
+          )!,
       createdAt:
           attachedDatabase.typeMapping.read(
             DriftSqlType.dateTime,
@@ -2085,6 +2157,9 @@ class Tab extends DataClass implements Insertable<Tab> {
   final String? accessToken;
   final String? shareUrl;
   final bool finalized;
+  final String? memberToken;
+  final String? role;
+  final bool isRemote;
   final DateTime createdAt;
   const Tab({
     required this.id,
@@ -2095,6 +2170,9 @@ class Tab extends DataClass implements Insertable<Tab> {
     this.accessToken,
     this.shareUrl,
     required this.finalized,
+    this.memberToken,
+    this.role,
+    required this.isRemote,
     required this.createdAt,
   });
   @override
@@ -2114,6 +2192,13 @@ class Tab extends DataClass implements Insertable<Tab> {
       map['share_url'] = Variable<String>(shareUrl);
     }
     map['finalized'] = Variable<bool>(finalized);
+    if (!nullToAbsent || memberToken != null) {
+      map['member_token'] = Variable<String>(memberToken);
+    }
+    if (!nullToAbsent || role != null) {
+      map['role'] = Variable<String>(role);
+    }
+    map['is_remote'] = Variable<bool>(isRemote);
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -2137,6 +2222,12 @@ class Tab extends DataClass implements Insertable<Tab> {
               ? const Value.absent()
               : Value(shareUrl),
       finalized: Value(finalized),
+      memberToken:
+          memberToken == null && nullToAbsent
+              ? const Value.absent()
+              : Value(memberToken),
+      role: role == null && nullToAbsent ? const Value.absent() : Value(role),
+      isRemote: Value(isRemote),
       createdAt: Value(createdAt),
     );
   }
@@ -2155,6 +2246,9 @@ class Tab extends DataClass implements Insertable<Tab> {
       accessToken: serializer.fromJson<String?>(json['accessToken']),
       shareUrl: serializer.fromJson<String?>(json['shareUrl']),
       finalized: serializer.fromJson<bool>(json['finalized']),
+      memberToken: serializer.fromJson<String?>(json['memberToken']),
+      role: serializer.fromJson<String?>(json['role']),
+      isRemote: serializer.fromJson<bool>(json['isRemote']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -2170,6 +2264,9 @@ class Tab extends DataClass implements Insertable<Tab> {
       'accessToken': serializer.toJson<String?>(accessToken),
       'shareUrl': serializer.toJson<String?>(shareUrl),
       'finalized': serializer.toJson<bool>(finalized),
+      'memberToken': serializer.toJson<String?>(memberToken),
+      'role': serializer.toJson<String?>(role),
+      'isRemote': serializer.toJson<bool>(isRemote),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -2183,6 +2280,9 @@ class Tab extends DataClass implements Insertable<Tab> {
     Value<String?> accessToken = const Value.absent(),
     Value<String?> shareUrl = const Value.absent(),
     bool? finalized,
+    Value<String?> memberToken = const Value.absent(),
+    Value<String?> role = const Value.absent(),
+    bool? isRemote,
     DateTime? createdAt,
   }) => Tab(
     id: id ?? this.id,
@@ -2193,6 +2293,9 @@ class Tab extends DataClass implements Insertable<Tab> {
     accessToken: accessToken.present ? accessToken.value : this.accessToken,
     shareUrl: shareUrl.present ? shareUrl.value : this.shareUrl,
     finalized: finalized ?? this.finalized,
+    memberToken: memberToken.present ? memberToken.value : this.memberToken,
+    role: role.present ? role.value : this.role,
+    isRemote: isRemote ?? this.isRemote,
     createdAt: createdAt ?? this.createdAt,
   );
   Tab copyWithCompanion(TabsCompanion data) {
@@ -2207,6 +2310,10 @@ class Tab extends DataClass implements Insertable<Tab> {
           data.accessToken.present ? data.accessToken.value : this.accessToken,
       shareUrl: data.shareUrl.present ? data.shareUrl.value : this.shareUrl,
       finalized: data.finalized.present ? data.finalized.value : this.finalized,
+      memberToken:
+          data.memberToken.present ? data.memberToken.value : this.memberToken,
+      role: data.role.present ? data.role.value : this.role,
+      isRemote: data.isRemote.present ? data.isRemote.value : this.isRemote,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -2222,6 +2329,9 @@ class Tab extends DataClass implements Insertable<Tab> {
           ..write('accessToken: $accessToken, ')
           ..write('shareUrl: $shareUrl, ')
           ..write('finalized: $finalized, ')
+          ..write('memberToken: $memberToken, ')
+          ..write('role: $role, ')
+          ..write('isRemote: $isRemote, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -2237,6 +2347,9 @@ class Tab extends DataClass implements Insertable<Tab> {
     accessToken,
     shareUrl,
     finalized,
+    memberToken,
+    role,
+    isRemote,
     createdAt,
   );
   @override
@@ -2251,6 +2364,9 @@ class Tab extends DataClass implements Insertable<Tab> {
           other.accessToken == this.accessToken &&
           other.shareUrl == this.shareUrl &&
           other.finalized == this.finalized &&
+          other.memberToken == this.memberToken &&
+          other.role == this.role &&
+          other.isRemote == this.isRemote &&
           other.createdAt == this.createdAt);
 }
 
@@ -2263,6 +2379,9 @@ class TabsCompanion extends UpdateCompanion<Tab> {
   final Value<String?> accessToken;
   final Value<String?> shareUrl;
   final Value<bool> finalized;
+  final Value<String?> memberToken;
+  final Value<String?> role;
+  final Value<bool> isRemote;
   final Value<DateTime> createdAt;
   const TabsCompanion({
     this.id = const Value.absent(),
@@ -2273,6 +2392,9 @@ class TabsCompanion extends UpdateCompanion<Tab> {
     this.accessToken = const Value.absent(),
     this.shareUrl = const Value.absent(),
     this.finalized = const Value.absent(),
+    this.memberToken = const Value.absent(),
+    this.role = const Value.absent(),
+    this.isRemote = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   TabsCompanion.insert({
@@ -2284,6 +2406,9 @@ class TabsCompanion extends UpdateCompanion<Tab> {
     this.accessToken = const Value.absent(),
     this.shareUrl = const Value.absent(),
     this.finalized = const Value.absent(),
+    this.memberToken = const Value.absent(),
+    this.role = const Value.absent(),
+    this.isRemote = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : name = Value(name);
   static Insertable<Tab> custom({
@@ -2295,6 +2420,9 @@ class TabsCompanion extends UpdateCompanion<Tab> {
     Expression<String>? accessToken,
     Expression<String>? shareUrl,
     Expression<bool>? finalized,
+    Expression<String>? memberToken,
+    Expression<String>? role,
+    Expression<bool>? isRemote,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -2306,6 +2434,9 @@ class TabsCompanion extends UpdateCompanion<Tab> {
       if (accessToken != null) 'access_token': accessToken,
       if (shareUrl != null) 'share_url': shareUrl,
       if (finalized != null) 'finalized': finalized,
+      if (memberToken != null) 'member_token': memberToken,
+      if (role != null) 'role': role,
+      if (isRemote != null) 'is_remote': isRemote,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -2319,6 +2450,9 @@ class TabsCompanion extends UpdateCompanion<Tab> {
     Value<String?>? accessToken,
     Value<String?>? shareUrl,
     Value<bool>? finalized,
+    Value<String?>? memberToken,
+    Value<String?>? role,
+    Value<bool>? isRemote,
     Value<DateTime>? createdAt,
   }) {
     return TabsCompanion(
@@ -2330,6 +2464,9 @@ class TabsCompanion extends UpdateCompanion<Tab> {
       accessToken: accessToken ?? this.accessToken,
       shareUrl: shareUrl ?? this.shareUrl,
       finalized: finalized ?? this.finalized,
+      memberToken: memberToken ?? this.memberToken,
+      role: role ?? this.role,
+      isRemote: isRemote ?? this.isRemote,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -2361,6 +2498,15 @@ class TabsCompanion extends UpdateCompanion<Tab> {
     if (finalized.present) {
       map['finalized'] = Variable<bool>(finalized.value);
     }
+    if (memberToken.present) {
+      map['member_token'] = Variable<String>(memberToken.value);
+    }
+    if (role.present) {
+      map['role'] = Variable<String>(role.value);
+    }
+    if (isRemote.present) {
+      map['is_remote'] = Variable<bool>(isRemote.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2378,6 +2524,9 @@ class TabsCompanion extends UpdateCompanion<Tab> {
           ..write('accessToken: $accessToken, ')
           ..write('shareUrl: $shareUrl, ')
           ..write('finalized: $finalized, ')
+          ..write('memberToken: $memberToken, ')
+          ..write('role: $role, ')
+          ..write('isRemote: $isRemote, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -3390,6 +3539,9 @@ typedef $$TabsTableCreateCompanionBuilder =
       Value<String?> accessToken,
       Value<String?> shareUrl,
       Value<bool> finalized,
+      Value<String?> memberToken,
+      Value<String?> role,
+      Value<bool> isRemote,
       Value<DateTime> createdAt,
     });
 typedef $$TabsTableUpdateCompanionBuilder =
@@ -3402,6 +3554,9 @@ typedef $$TabsTableUpdateCompanionBuilder =
       Value<String?> accessToken,
       Value<String?> shareUrl,
       Value<bool> finalized,
+      Value<String?> memberToken,
+      Value<String?> role,
+      Value<bool> isRemote,
       Value<DateTime> createdAt,
     });
 
@@ -3450,6 +3605,21 @@ class $$TabsTableFilterComposer extends Composer<_$AppDatabase, $TabsTable> {
 
   ColumnFilters<bool> get finalized => $composableBuilder(
     column: $table.finalized,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get memberToken => $composableBuilder(
+    column: $table.memberToken,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isRemote => $composableBuilder(
+    column: $table.isRemote,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3507,6 +3677,21 @@ class $$TabsTableOrderingComposer extends Composer<_$AppDatabase, $TabsTable> {
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get memberToken => $composableBuilder(
+    column: $table.memberToken,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isRemote => $composableBuilder(
+    column: $table.isRemote,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -3550,6 +3735,17 @@ class $$TabsTableAnnotationComposer
   GeneratedColumn<bool> get finalized =>
       $composableBuilder(column: $table.finalized, builder: (column) => column);
 
+  GeneratedColumn<String> get memberToken => $composableBuilder(
+    column: $table.memberToken,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get role =>
+      $composableBuilder(column: $table.role, builder: (column) => column);
+
+  GeneratedColumn<bool> get isRemote =>
+      $composableBuilder(column: $table.isRemote, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 }
@@ -3590,6 +3786,9 @@ class $$TabsTableTableManager
                 Value<String?> accessToken = const Value.absent(),
                 Value<String?> shareUrl = const Value.absent(),
                 Value<bool> finalized = const Value.absent(),
+                Value<String?> memberToken = const Value.absent(),
+                Value<String?> role = const Value.absent(),
+                Value<bool> isRemote = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => TabsCompanion(
                 id: id,
@@ -3600,6 +3799,9 @@ class $$TabsTableTableManager
                 accessToken: accessToken,
                 shareUrl: shareUrl,
                 finalized: finalized,
+                memberToken: memberToken,
+                role: role,
+                isRemote: isRemote,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -3612,6 +3814,9 @@ class $$TabsTableTableManager
                 Value<String?> accessToken = const Value.absent(),
                 Value<String?> shareUrl = const Value.absent(),
                 Value<bool> finalized = const Value.absent(),
+                Value<String?> memberToken = const Value.absent(),
+                Value<String?> role = const Value.absent(),
+                Value<bool> isRemote = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => TabsCompanion.insert(
                 id: id,
@@ -3622,6 +3827,9 @@ class $$TabsTableTableManager
                 accessToken: accessToken,
                 shareUrl: shareUrl,
                 finalized: finalized,
+                memberToken: memberToken,
+                role: role,
+                isRemote: isRemote,
                 createdAt: createdAt,
               ),
           withReferenceMapper:
