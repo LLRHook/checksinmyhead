@@ -1822,6 +1822,518 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
   }
 }
 
+class $TabsTable extends Tabs with TableInfo<$TabsTable, Tab> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TabsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _billIdsMeta = const VerificationMeta(
+    'billIds',
+  );
+  @override
+  late final GeneratedColumn<String> billIds = GeneratedColumn<String>(
+    'bill_ids',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _backendIdMeta = const VerificationMeta(
+    'backendId',
+  );
+  @override
+  late final GeneratedColumn<int> backendId = GeneratedColumn<int>(
+    'backend_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _accessTokenMeta = const VerificationMeta(
+    'accessToken',
+  );
+  @override
+  late final GeneratedColumn<String> accessToken = GeneratedColumn<String>(
+    'access_token',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _shareUrlMeta = const VerificationMeta(
+    'shareUrl',
+  );
+  @override
+  late final GeneratedColumn<String> shareUrl = GeneratedColumn<String>(
+    'share_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: Constant(DateTime.now()),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    description,
+    billIds,
+    backendId,
+    accessToken,
+    shareUrl,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'tabs';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Tab> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('bill_ids')) {
+      context.handle(
+        _billIdsMeta,
+        billIds.isAcceptableOrUnknown(data['bill_ids']!, _billIdsMeta),
+      );
+    }
+    if (data.containsKey('backend_id')) {
+      context.handle(
+        _backendIdMeta,
+        backendId.isAcceptableOrUnknown(data['backend_id']!, _backendIdMeta),
+      );
+    }
+    if (data.containsKey('access_token')) {
+      context.handle(
+        _accessTokenMeta,
+        accessToken.isAcceptableOrUnknown(
+          data['access_token']!,
+          _accessTokenMeta,
+        ),
+      );
+    }
+    if (data.containsKey('share_url')) {
+      context.handle(
+        _shareUrlMeta,
+        shareUrl.isAcceptableOrUnknown(data['share_url']!, _shareUrlMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Tab map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Tab(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}id'],
+          )!,
+      name:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}name'],
+          )!,
+      description:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}description'],
+          )!,
+      billIds:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}bill_ids'],
+          )!,
+      backendId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}backend_id'],
+      ),
+      accessToken: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}access_token'],
+      ),
+      shareUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}share_url'],
+      ),
+      createdAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}created_at'],
+          )!,
+    );
+  }
+
+  @override
+  $TabsTable createAlias(String alias) {
+    return $TabsTable(attachedDatabase, alias);
+  }
+}
+
+class Tab extends DataClass implements Insertable<Tab> {
+  final int id;
+  final String name;
+  final String description;
+  final String billIds;
+  final int? backendId;
+  final String? accessToken;
+  final String? shareUrl;
+  final DateTime createdAt;
+  const Tab({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.billIds,
+    this.backendId,
+    this.accessToken,
+    this.shareUrl,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    map['description'] = Variable<String>(description);
+    map['bill_ids'] = Variable<String>(billIds);
+    if (!nullToAbsent || backendId != null) {
+      map['backend_id'] = Variable<int>(backendId);
+    }
+    if (!nullToAbsent || accessToken != null) {
+      map['access_token'] = Variable<String>(accessToken);
+    }
+    if (!nullToAbsent || shareUrl != null) {
+      map['share_url'] = Variable<String>(shareUrl);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  TabsCompanion toCompanion(bool nullToAbsent) {
+    return TabsCompanion(
+      id: Value(id),
+      name: Value(name),
+      description: Value(description),
+      billIds: Value(billIds),
+      backendId:
+          backendId == null && nullToAbsent
+              ? const Value.absent()
+              : Value(backendId),
+      accessToken:
+          accessToken == null && nullToAbsent
+              ? const Value.absent()
+              : Value(accessToken),
+      shareUrl:
+          shareUrl == null && nullToAbsent
+              ? const Value.absent()
+              : Value(shareUrl),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory Tab.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Tab(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      description: serializer.fromJson<String>(json['description']),
+      billIds: serializer.fromJson<String>(json['billIds']),
+      backendId: serializer.fromJson<int?>(json['backendId']),
+      accessToken: serializer.fromJson<String?>(json['accessToken']),
+      shareUrl: serializer.fromJson<String?>(json['shareUrl']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'description': serializer.toJson<String>(description),
+      'billIds': serializer.toJson<String>(billIds),
+      'backendId': serializer.toJson<int?>(backendId),
+      'accessToken': serializer.toJson<String?>(accessToken),
+      'shareUrl': serializer.toJson<String?>(shareUrl),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  Tab copyWith({
+    int? id,
+    String? name,
+    String? description,
+    String? billIds,
+    Value<int?> backendId = const Value.absent(),
+    Value<String?> accessToken = const Value.absent(),
+    Value<String?> shareUrl = const Value.absent(),
+    DateTime? createdAt,
+  }) => Tab(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    description: description ?? this.description,
+    billIds: billIds ?? this.billIds,
+    backendId: backendId.present ? backendId.value : this.backendId,
+    accessToken: accessToken.present ? accessToken.value : this.accessToken,
+    shareUrl: shareUrl.present ? shareUrl.value : this.shareUrl,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  Tab copyWithCompanion(TabsCompanion data) {
+    return Tab(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      description:
+          data.description.present ? data.description.value : this.description,
+      billIds: data.billIds.present ? data.billIds.value : this.billIds,
+      backendId: data.backendId.present ? data.backendId.value : this.backendId,
+      accessToken:
+          data.accessToken.present ? data.accessToken.value : this.accessToken,
+      shareUrl: data.shareUrl.present ? data.shareUrl.value : this.shareUrl,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Tab(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('billIds: $billIds, ')
+          ..write('backendId: $backendId, ')
+          ..write('accessToken: $accessToken, ')
+          ..write('shareUrl: $shareUrl, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    name,
+    description,
+    billIds,
+    backendId,
+    accessToken,
+    shareUrl,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Tab &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.description == this.description &&
+          other.billIds == this.billIds &&
+          other.backendId == this.backendId &&
+          other.accessToken == this.accessToken &&
+          other.shareUrl == this.shareUrl &&
+          other.createdAt == this.createdAt);
+}
+
+class TabsCompanion extends UpdateCompanion<Tab> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<String> description;
+  final Value<String> billIds;
+  final Value<int?> backendId;
+  final Value<String?> accessToken;
+  final Value<String?> shareUrl;
+  final Value<DateTime> createdAt;
+  const TabsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.description = const Value.absent(),
+    this.billIds = const Value.absent(),
+    this.backendId = const Value.absent(),
+    this.accessToken = const Value.absent(),
+    this.shareUrl = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  TabsCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    this.description = const Value.absent(),
+    this.billIds = const Value.absent(),
+    this.backendId = const Value.absent(),
+    this.accessToken = const Value.absent(),
+    this.shareUrl = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : name = Value(name);
+  static Insertable<Tab> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<String>? description,
+    Expression<String>? billIds,
+    Expression<int>? backendId,
+    Expression<String>? accessToken,
+    Expression<String>? shareUrl,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (description != null) 'description': description,
+      if (billIds != null) 'bill_ids': billIds,
+      if (backendId != null) 'backend_id': backendId,
+      if (accessToken != null) 'access_token': accessToken,
+      if (shareUrl != null) 'share_url': shareUrl,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  TabsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<String>? description,
+    Value<String>? billIds,
+    Value<int?>? backendId,
+    Value<String?>? accessToken,
+    Value<String?>? shareUrl,
+    Value<DateTime>? createdAt,
+  }) {
+    return TabsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      billIds: billIds ?? this.billIds,
+      backendId: backendId ?? this.backendId,
+      accessToken: accessToken ?? this.accessToken,
+      shareUrl: shareUrl ?? this.shareUrl,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (billIds.present) {
+      map['bill_ids'] = Variable<String>(billIds.value);
+    }
+    if (backendId.present) {
+      map['backend_id'] = Variable<int>(backendId.value);
+    }
+    if (accessToken.present) {
+      map['access_token'] = Variable<String>(accessToken.value);
+    }
+    if (shareUrl.present) {
+      map['share_url'] = Variable<String>(shareUrl.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TabsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('billIds: $billIds, ')
+          ..write('backendId: $backendId, ')
+          ..write('accessToken: $accessToken, ')
+          ..write('shareUrl: $shareUrl, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1831,6 +2343,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $RecentBillsTable recentBills = $RecentBillsTable(this);
+  late final $TabsTable tabs = $TabsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1840,6 +2353,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     tutorialStates,
     userPreferences,
     recentBills,
+    tabs,
   ];
 }
 
@@ -2816,6 +3330,260 @@ typedef $$RecentBillsTableProcessedTableManager =
       RecentBill,
       PrefetchHooks Function()
     >;
+typedef $$TabsTableCreateCompanionBuilder =
+    TabsCompanion Function({
+      Value<int> id,
+      required String name,
+      Value<String> description,
+      Value<String> billIds,
+      Value<int?> backendId,
+      Value<String?> accessToken,
+      Value<String?> shareUrl,
+      Value<DateTime> createdAt,
+    });
+typedef $$TabsTableUpdateCompanionBuilder =
+    TabsCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<String> description,
+      Value<String> billIds,
+      Value<int?> backendId,
+      Value<String?> accessToken,
+      Value<String?> shareUrl,
+      Value<DateTime> createdAt,
+    });
+
+class $$TabsTableFilterComposer extends Composer<_$AppDatabase, $TabsTable> {
+  $$TabsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get billIds => $composableBuilder(
+    column: $table.billIds,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get backendId => $composableBuilder(
+    column: $table.backendId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get accessToken => $composableBuilder(
+    column: $table.accessToken,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get shareUrl => $composableBuilder(
+    column: $table.shareUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$TabsTableOrderingComposer extends Composer<_$AppDatabase, $TabsTable> {
+  $$TabsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get billIds => $composableBuilder(
+    column: $table.billIds,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get backendId => $composableBuilder(
+    column: $table.backendId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get accessToken => $composableBuilder(
+    column: $table.accessToken,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get shareUrl => $composableBuilder(
+    column: $table.shareUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TabsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TabsTable> {
+  $$TabsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get billIds =>
+      $composableBuilder(column: $table.billIds, builder: (column) => column);
+
+  GeneratedColumn<int> get backendId =>
+      $composableBuilder(column: $table.backendId, builder: (column) => column);
+
+  GeneratedColumn<String> get accessToken => $composableBuilder(
+    column: $table.accessToken,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get shareUrl =>
+      $composableBuilder(column: $table.shareUrl, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$TabsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TabsTable,
+          Tab,
+          $$TabsTableFilterComposer,
+          $$TabsTableOrderingComposer,
+          $$TabsTableAnnotationComposer,
+          $$TabsTableCreateCompanionBuilder,
+          $$TabsTableUpdateCompanionBuilder,
+          (Tab, BaseReferences<_$AppDatabase, $TabsTable, Tab>),
+          Tab,
+          PrefetchHooks Function()
+        > {
+  $$TabsTableTableManager(_$AppDatabase db, $TabsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$TabsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () => $$TabsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer:
+              () => $$TabsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> description = const Value.absent(),
+                Value<String> billIds = const Value.absent(),
+                Value<int?> backendId = const Value.absent(),
+                Value<String?> accessToken = const Value.absent(),
+                Value<String?> shareUrl = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => TabsCompanion(
+                id: id,
+                name: name,
+                description: description,
+                billIds: billIds,
+                backendId: backendId,
+                accessToken: accessToken,
+                shareUrl: shareUrl,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                Value<String> description = const Value.absent(),
+                Value<String> billIds = const Value.absent(),
+                Value<int?> backendId = const Value.absent(),
+                Value<String?> accessToken = const Value.absent(),
+                Value<String?> shareUrl = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => TabsCompanion.insert(
+                id: id,
+                name: name,
+                description: description,
+                billIds: billIds,
+                backendId: backendId,
+                accessToken: accessToken,
+                shareUrl: shareUrl,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$TabsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TabsTable,
+      Tab,
+      $$TabsTableFilterComposer,
+      $$TabsTableOrderingComposer,
+      $$TabsTableAnnotationComposer,
+      $$TabsTableCreateCompanionBuilder,
+      $$TabsTableUpdateCompanionBuilder,
+      (Tab, BaseReferences<_$AppDatabase, $TabsTable, Tab>),
+      Tab,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2828,4 +3596,5 @@ class $AppDatabaseManager {
       $$UserPreferencesTableTableManager(_db, _db.userPreferences);
   $$RecentBillsTableTableManager get recentBills =>
       $$RecentBillsTableTableManager(_db, _db.recentBills);
+  $$TabsTableTableManager get tabs => $$TabsTableTableManager(_db, _db.tabs);
 }
