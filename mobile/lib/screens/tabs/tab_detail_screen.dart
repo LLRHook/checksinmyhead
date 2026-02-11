@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:checks_frontend/models/tab.dart';
+import 'package:checks_frontend/screens/tabs/tab_manager.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.dart';
 import 'package:checks_frontend/screens/recent_bills/billDetails/bill_details_screen.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import 'package:share_plus/share_plus.dart';
 
 class TabDetailScreen extends StatefulWidget {
   final AppTab tab;
@@ -19,6 +19,7 @@ class TabDetailScreen extends StatefulWidget {
 
 class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProviderStateMixin {
   final _billsManager = RecentBillsManager();
+  final _tabManager = TabManager();
   List<RecentBillModel> _allBills = [];
   List<RecentBillModel> _tabBills = [];
   bool _isLoading = true;
@@ -44,20 +45,30 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
 
   Future<void> _loadBills() async {
     setState(() => _isLoading = true);
-    
+
+    // Refresh tab from DB to get latest data (e.g. shareUrl after sync)
+    if (_currentTab.id != null) {
+      final refreshed = await _tabManager.getTabById(_currentTab.id!);
+      if (refreshed != null) {
+        _currentTab = refreshed;
+      }
+    }
+
     final allBills = await _billsManager.getRecentBills();
     final tabBills = allBills.where((bill) => _currentTab.billIds.contains(bill.id)).toList();
-    
-    setState(() {
-      _allBills = allBills;
-      _tabBills = tabBills;
-      _isLoading = false;
-    });
+
+    if (mounted) {
+      setState(() {
+        _allBills = allBills;
+        _tabBills = tabBills;
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _addBillsToTab() async {
     HapticFeedback.mediumImpact();
-    
+
     final availableBills = _allBills
         .where((bill) => !_currentTab.billIds.contains(bill.id))
         .toList();
@@ -74,59 +85,33 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
       builder: (context) => _BillSelectorSheet(bills: availableBills),
     );
 
-    if (selectedBills != null && selectedBills.isNotEmpty && mounted) {
-      setState(() {
-        _currentTab = AppTab(
-          id: _currentTab.id,
-          name: _currentTab.name,
-          createdAt: _currentTab.createdAt,
-          billIds: [..._currentTab.billIds, ...selectedBills],
-        );
-      });
-      
-      await _saveTab();
+    if (selectedBills != null && selectedBills.isNotEmpty && _currentTab.id != null && mounted) {
+      await _tabManager.addBillsToTab(_currentTab.id!, selectedBills);
       await _loadBills();
-      
+
       _showSnackBar('Added ${selectedBills.length} bill${selectedBills.length == 1 ? '' : 's'}');
     }
   }
 
-  Future<void> _saveTab() async {
-    final prefs = await SharedPreferences.getInstance();
-    final tabsJson = prefs.getString('tabs') ?? '[]';
-    final List<dynamic> tabsList = jsonDecode(tabsJson);
-    
-    final tabIndex = tabsList.indexWhere((t) => t['id'] == _currentTab.id);
-    if (tabIndex != -1) {
-      tabsList[tabIndex] = {
-        'id': _currentTab.id,
-        'name': _currentTab.name,
-        'createdAt': _currentTab.createdAt.toIso8601String(),
-        'billIds': _currentTab.billIdsJson,
-      };
-      await prefs.setString('tabs', jsonEncode(tabsList));
-    }
+  Future<void> _removeBill(int billId) async {
+    if (_currentTab.id == null) return;
+    await _tabManager.removeBillFromTab(_currentTab.id!, billId);
+    await _loadBills();
   }
 
-  Future<void> _removeBill(int billId) async {
-    setState(() {
-      _currentTab = AppTab(
-        id: _currentTab.id,
-        name: _currentTab.name,
-        createdAt: _currentTab.createdAt,
-        billIds: _currentTab.billIds.where((id) => id != billId).toList(),
+  void _shareTab() {
+    if (_currentTab.shareUrl != null) {
+      Share.share(
+        'Check out "${_currentTab.name}" on Billington: ${_currentTab.shareUrl}',
       );
-    });
-    
-    await _saveTab();
-    await _loadBills();
+    }
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
     if (!mounted) return;
-    
+
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -154,22 +139,22 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
   Map<String, double> _calculatePersonTotals() {
     final Map<String, double> personTotals = {};
     final Map<String, String> nameMapping = {};
-    
+
     for (final bill in _tabBills) {
       final billShares = bill.generatePersonShares();
-      
+
       billShares.forEach((person, amount) {
         final nameLower = person.name.toLowerCase();
-        
+
         if (!nameMapping.containsKey(nameLower)) {
           nameMapping[nameLower] = person.name;
         }
-        
+
         final displayName = nameMapping[nameLower]!;
         personTotals[displayName] = (personTotals[displayName] ?? 0.0) + amount;
       });
     }
-    
+
     return personTotals;
   }
 
@@ -195,6 +180,13 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
             Navigator.pop(context, true);
           },
         ),
+        actions: [
+          if (_currentTab.shareUrl != null)
+            IconButton(
+              icon: const Icon(Icons.share_outlined),
+              onPressed: _shareTab,
+            ),
+        ],
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator(color: colorScheme.primary))
@@ -300,7 +292,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
           Text(
             CurrencyFormatter.formatCurrency(total),
             style: TextStyle(
-              color: brightness == Brightness.dark 
+              color: brightness == Brightness.dark
                   ? Colors.black.withValues(alpha: 0.9)
                   : Colors.white,
               fontSize: 36,
@@ -318,7 +310,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
             child: Text(
               '${_tabBills.length} bill${_tabBills.length == 1 ? '' : 's'}',
               style: TextStyle(
-                color: brightness == Brightness.dark 
+                color: brightness == Brightness.dark
                     ? Colors.black.withValues(alpha: 0.8)
                     : Colors.white,
                 fontSize: 14,
@@ -467,13 +459,13 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
           ),
           confirmDismiss: (_) async {
             HapticFeedback.mediumImpact();
-            
+
             final confirmed = await showModalBottomSheet<bool>(
               context: context,
               backgroundColor: Colors.transparent,
               builder: (context) => _RemoveBillSheet(billName: bill.billName),
             );
-            
+
             return confirmed ?? false;
           },
           onDismissed: (_) => _removeBill(bill.id),
@@ -687,7 +679,7 @@ class _BillSelectorSheetState extends State<_BillSelectorSheet> {
                         child: Text(
                           '${_selectedBillIds.length}',
                           style: TextStyle(
-                            color: brightness == Brightness.dark 
+                            color: brightness == Brightness.dark
                                 ? Colors.black.withValues(alpha: 0.9)
                                 : Colors.white,
                             fontWeight: FontWeight.bold,
@@ -712,14 +704,14 @@ class _BillSelectorSheetState extends State<_BillSelectorSheet> {
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    color: isSelected 
+                    color: isSelected
                         ? colorScheme.primaryContainer.withValues(alpha: 0.3)
-                        : (brightness == Brightness.dark 
-                            ? colorScheme.surfaceContainerHighest 
+                        : (brightness == Brightness.dark
+                            ? colorScheme.surfaceContainerHighest
                             : Colors.grey.shade50),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: isSelected 
+                      color: isSelected
                           ? colorScheme.primary
                           : colorScheme.outline.withValues(alpha: 0.2),
                       width: isSelected ? 2 : 1,
@@ -784,7 +776,7 @@ class _BillSelectorSheetState extends State<_BillSelectorSheet> {
                           },
                     style: FilledButton.styleFrom(
                       backgroundColor: colorScheme.primary,
-                      foregroundColor: brightness == Brightness.dark 
+                      foregroundColor: brightness == Brightness.dark
                           ? Colors.black.withValues(alpha: 0.9)
                           : Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),

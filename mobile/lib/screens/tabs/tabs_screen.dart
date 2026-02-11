@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:checks_frontend/models/tab.dart';
 import 'package:checks_frontend/screens/tabs/tab_detail_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import 'package:checks_frontend/screens/tabs/tab_manager.dart';
 
 class TabsScreen extends StatefulWidget {
   const TabsScreen({super.key});
@@ -16,6 +15,7 @@ class _TabsScreenState extends State<TabsScreen> with SingleTickerProviderStateM
   List<AppTab> _tabs = [];
   bool _isLoading = false;
   late AnimationController _animController;
+  final _tabManager = TabManager();
 
   @override
   void initState() {
@@ -35,36 +35,20 @@ class _TabsScreenState extends State<TabsScreen> with SingleTickerProviderStateM
 
   Future<void> _loadTabs() async {
     setState(() => _isLoading = true);
-    
-    final prefs = await SharedPreferences.getInstance();
-    final tabsJson = prefs.getString('tabs') ?? '[]';
-    final List<dynamic> tabsList = jsonDecode(tabsJson);
-    
-    setState(() {
-      _tabs = tabsList.map((json) => AppTab(
-        id: json['id'],
-        name: json['name'],
-        createdAt: DateTime.parse(json['createdAt']),
-        billIds: AppTab.parseBillIds(json['billIds'] ?? ''),
-      )).toList();
-      _isLoading = false;
-    });
-  }
 
-  Future<void> _saveTabs() async {
-    final prefs = await SharedPreferences.getInstance();
-    final tabsJson = jsonEncode(_tabs.map((tab) => {
-      'id': tab.id ?? DateTime.now().millisecondsSinceEpoch,
-      'name': tab.name,
-      'createdAt': tab.createdAt.toIso8601String(),
-      'billIds': tab.billIdsJson,
-    }).toList());
-    await prefs.setString('tabs', tabsJson);
+    final tabs = await _tabManager.getAllTabs();
+
+    if (mounted) {
+      setState(() {
+        _tabs = tabs;
+        _isLoading = false;
+      });
+    }
   }
 
   void _createNewTab() async {
     HapticFeedback.mediumImpact();
-    
+
     final name = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
@@ -73,22 +57,16 @@ class _TabsScreenState extends State<TabsScreen> with SingleTickerProviderStateM
     );
 
     if (name != null && name.trim().isNotEmpty && mounted) {
-      final newTab = AppTab(
-        id: DateTime.now().millisecondsSinceEpoch,
-        name: name.trim(),
-        createdAt: DateTime.now(),
-        billIds: [],
-      );
-      
-      setState(() => _tabs.insert(0, newTab));
-      await _saveTabs();
-      
-      if (mounted) {
+      final newTab = await _tabManager.createTab(name.trim());
+
+      if (newTab != null && mounted) {
+        setState(() => _tabs.insert(0, newTab));
+
         final result = await Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => TabDetailScreen(tab: newTab)),
         );
-        
+
         if (result == true) _loadTabs();
       }
     }
@@ -96,31 +74,33 @@ class _TabsScreenState extends State<TabsScreen> with SingleTickerProviderStateM
 
   Future<void> _deleteTab(AppTab tab) async {
     HapticFeedback.mediumImpact();
-    
+
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => _DeleteConfirmationSheet(tabName: tab.name),
     );
 
-    if (confirmed == true && mounted) {
-      setState(() => _tabs.remove(tab));
-      await _saveTabs();
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle, color: Colors.white, size: 18),
-              const SizedBox(width: 10),
-              Text('Deleted "${tab.name}"'),
-            ],
+    if (confirmed == true && tab.id != null && mounted) {
+      await _tabManager.deleteTab(tab.id!);
+      setState(() => _tabs.removeWhere((t) => t.id == tab.id));
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white, size: 18),
+                const SizedBox(width: 10),
+                Text('Deleted "${tab.name}"'),
+              ],
+            ),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            backgroundColor: Theme.of(context).colorScheme.primary,
           ),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          backgroundColor: Theme.of(context).colorScheme.primary,
-        ),
-      );
+        );
+      }
     }
   }
 
@@ -156,7 +136,7 @@ class _TabsScreenState extends State<TabsScreen> with SingleTickerProviderStateM
   Widget _buildEmptyState() {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
-    
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40),
@@ -273,7 +253,7 @@ class _TabCard extends StatelessWidget {
     final brightness = Theme.of(context).brightness;
 
     final cardBgColor = brightness == Brightness.dark ? colorScheme.surface : Colors.white;
-    final shadowColor = brightness == Brightness.dark 
+    final shadowColor = brightness == Brightness.dark
         ? Colors.black.withValues(alpha: 0.2)
         : Colors.black.withValues(alpha: 0.05);
 
@@ -341,7 +321,7 @@ class _TabCard extends StatelessWidget {
                     ),
                     child: Icon(
                       Icons.folder_special,
-                      color: brightness == Brightness.dark 
+                      color: brightness == Brightness.dark
                           ? Colors.black.withValues(alpha: 0.9)
                           : Colors.white,
                       size: 24,
@@ -489,7 +469,7 @@ class _CreateTabSheetState extends State<_CreateTabSheet> {
                   ),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
                 ),
-                validator: (value) => 
+                validator: (value) =>
                     (value == null || value.trim().isEmpty) ? 'Please enter a name' : null,
                 onFieldSubmitted: (_) {
                   if (_formKey.currentState!.validate()) {
@@ -507,7 +487,7 @@ class _CreateTabSheetState extends State<_CreateTabSheet> {
                 },
                 style: FilledButton.styleFrom(
                   backgroundColor: colorScheme.primary,
-                  foregroundColor: brightness == Brightness.dark 
+                  foregroundColor: brightness == Brightness.dark
                       ? Colors.black.withValues(alpha: 0.9)
                       : Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
