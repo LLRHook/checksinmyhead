@@ -12,7 +12,7 @@ type TabRepository interface {
 	GetById(id uint) (tab *models.Tab, err error)
 	Update(tab *models.Tab) error
 	Delete(id uint) error
-	AddBill(tabID uint, billID uint) error
+	AddBill(tabID uint, billID uint, memberID *uint) error
 	Finalize(id uint) error
 	GetSettlements(tabID uint) ([]models.TabSettlement, error)
 	CreateSettlements(settlements []models.TabSettlement) error
@@ -52,8 +52,12 @@ func (r *tabRepository) Delete(id uint) error {
 	return r.db.Delete(&models.Tab{}, id).Error
 }
 
-func (r *tabRepository) AddBill(tabID uint, billID uint) error {
-	return r.db.Model(&models.Bill{}).Where("id = ?", billID).Update("tab_id", tabID).Error
+func (r *tabRepository) AddBill(tabID uint, billID uint, memberID *uint) error {
+	updates := map[string]interface{}{"tab_id": tabID}
+	if memberID != nil {
+		updates["added_by_member_id"] = *memberID
+	}
+	return r.db.Model(&models.Bill{}).Where("id = ?", billID).Updates(updates).Error
 }
 
 func (r *tabRepository) Finalize(id uint) error {
