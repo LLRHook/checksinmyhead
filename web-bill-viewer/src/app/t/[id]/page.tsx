@@ -1,6 +1,12 @@
-import { getTab, computeTabPersonTotals } from "@/lib/api";
+import {
+  getTab,
+  getTabImages,
+  computeTabPersonTotals,
+  API_BASE_URL,
+} from "@/lib/api";
 import TabHeader from "@/components/TabHeader";
 import TabPersonTotals from "@/components/TabPersonTotals";
+import TabImageGallery from "@/components/TabImageGallery";
 import CollapsibleSection from "@/components/CollapsibleSection";
 import PersonShare from "@/components/PersonShare";
 import { notFound } from "next/navigation";
@@ -54,6 +60,7 @@ export default async function TabPage({
   }
 
   const personTotals = computeTabPersonTotals(tab);
+  const images = await getTabImages(id, token);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[var(--secondary)] to-white dark:from-black dark:to-[var(--card-bg-dark)]">
@@ -67,6 +74,10 @@ export default async function TabPage({
 
         {personTotals.length > 0 && (
           <TabPersonTotals personTotals={personTotals} />
+        )}
+
+        {images.length > 0 && (
+          <TabImageGallery images={images} apiBaseUrl={API_BASE_URL} />
         )}
 
         {tab.bills.map((bill) => {
