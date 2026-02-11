@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -41,6 +42,13 @@ func main() {
 	imgHandler := image.NewImageHandler(imgService, tabService, uploadDir)
 
 	r := gin.Default()
+	r.Use(cors.New(cors.Config{
+		AllowAllOrigins:  true,
+		AllowMethods:     []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: false,
+	}))
 	r.GET("/health", getHealth)
 	r.GET("/api/bills/:id", handler.GetBill)
 	r.POST("/api/bills", handler.CreateBill)
