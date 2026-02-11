@@ -160,6 +160,101 @@ required List<Map<String, String>> paymentMethods,
     }
   }
 
+  /// Uploads an image to a tab
+  Future<TabImageResponse?> uploadTabImage(
+    int tabId,
+    String accessToken,
+    File imageFile,
+  ) async {
+    var logger = Logger();
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/api/tabs/$tabId/images?t=$accessToken'),
+      );
+      request.files.add(
+        await http.MultipartFile.fromPath('image', imageFile.path),
+      );
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return TabImageResponse.fromJson(data);
+      } else {
+        logger.d('Failed to upload image: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      logger.d('Error uploading image: $e');
+      return null;
+    }
+  }
+
+  /// Gets all images for a tab
+  Future<List<TabImageResponse>> getTabImages(
+    int tabId,
+    String accessToken,
+  ) async {
+    var logger = Logger();
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/tabs/$tabId/images?t=$accessToken'),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => TabImageResponse.fromJson(json)).toList();
+      } else {
+        logger.d('Failed to get images: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      logger.d('Error getting images: $e');
+      return [];
+    }
+  }
+
+  /// Toggles the processed status of an image
+  Future<bool> updateTabImage(
+    int tabId,
+    int imageId,
+    String accessToken,
+    bool processed,
+  ) async {
+    var logger = Logger();
+    try {
+      final response = await http.patch(
+        Uri.parse('$baseUrl/api/tabs/$tabId/images/$imageId?t=$accessToken'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'processed': processed}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      logger.d('Error updating image: $e');
+      return false;
+    }
+  }
+
+  /// Deletes an image from a tab
+  Future<bool> deleteTabImage(
+    int tabId,
+    int imageId,
+    String accessToken,
+  ) async {
+    var logger = Logger();
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/api/tabs/$tabId/images/$imageId?t=$accessToken'),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      logger.d('Error deleting image: $e');
+      return false;
+    }
+  }
+
   /// Builds the person_shares JSON structure
   List<Map<String, dynamic>> _buildPersonSharesJson(
     Map<Person, double> personShares,
@@ -232,4 +327,43 @@ class BillUploadResponse {
     required this.accessToken,
     required this.shareUrl,
   });
+}
+
+/// Response object for tab images
+class TabImageResponse {
+  final int id;
+  final int tabId;
+  final String filename;
+  final String url;
+  final int size;
+  final String mimeType;
+  final bool processed;
+  final String uploadedBy;
+  final String createdAt;
+
+  TabImageResponse({
+    required this.id,
+    required this.tabId,
+    required this.filename,
+    required this.url,
+    required this.size,
+    required this.mimeType,
+    required this.processed,
+    required this.uploadedBy,
+    required this.createdAt,
+  });
+
+  factory TabImageResponse.fromJson(Map<String, dynamic> json) {
+    return TabImageResponse(
+      id: json['id'],
+      tabId: json['tab_id'],
+      filename: json['filename'] ?? '',
+      url: json['url'] ?? '',
+      size: json['size'] ?? 0,
+      mimeType: json['mime_type'] ?? '',
+      processed: json['processed'] ?? false,
+      uploadedBy: json['uploaded_by'] ?? '',
+      createdAt: json['created_at'] ?? '',
+    );
+  }
 }
