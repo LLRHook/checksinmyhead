@@ -46,8 +46,9 @@ Transform Billington from a local Flutter app into a Splitwise competitor with g
   - [X] Verify Venmo deep linking works with multiple payment methods
   - [X] Ensure that bill viewer is in decent shape, don't need perfect. ~Good Enough~
   - [X] Test with real bill creation flow.
-  1) No way to get the link again later from Recent Bills?
-  2) Offer choice between link/text share
+
+  1) update shareUtils to use enhanced sheet across the application so that users can get the link again from recent bills page
+  2) transition off of SQL Lite DB? Why do I still have that. our system is using the postgres instance now.
 
 - [ ] **Deploy & Test**
   - [ ] Deploy backend to Railway/Render
@@ -60,47 +61,31 @@ Transform Billington from a local Flutter app into a Splitwise competitor with g
 
 ---
 
-## Phase 3: Tabs & Group Trips (Next Priority)
+## Phase 3: Tabs & Group Trips ✅ COMPLETE
 *Goal: Support multi-bill group trips*
 
-### Week 5-6: Tab System (4-6 weeks)
-- [ ] **Backend: Tab Model & API**
+### Week 5-6: Tab System
+- [X] **Backend: Tab Model & API**
   - [X] Create `Tab` model in `pkg/models/tab.go`
-    ```go
-    type Tab struct {
-        ID          uint
-        Name        string
-        Description string
-        Bills       []Bill
-        TotalAmount float64
-        AccessToken string
-        CreatedAt   time.Time
-    }
-    ```
   - [X] Add `TabID *uint` to Bill model (optional foreign key)
-  - [ ] Create tab endpoints:
-    - `POST /api/tabs` - Create new tab
-    - `GET /api/tabs/:id?t=token` - Get tab with all bills
-    - `POST /api/tabs/:id/bills` - Add bill to existing tab
-    - `PATCH /api/tabs/:id` - Update tab details
-  - [ ] Implement `internal/tab/` (handler, service, repository)
-  - [ ] Test with curl
+  - [X] Create tab endpoints (POST /api/tabs, GET /api/tabs/:id, POST /api/tabs/:id/bills, PATCH /api/tabs/:id)
+  - [X] Implement `internal/tab/` (handler, service, repository)
 
-- [ ] **Flutter: Tab UI**
-  - [X] Add "New Tab" option on home screen
-  - [ ] Create tab creation screen (name, description)
-  - [X] Tab list screen (show all user's tabs)
-  - [X] Tab detail screen (show all bills in tab + total)
+- [X] **Flutter: Tab UI**
+  - [X] Tab creation via bottom sheet
+  - [X] Tab list screen with TabManager (Drift DB)
+  - [X] Tab detail screen with per-person totals
   - [X] "Add Bill to Tab" flow
-  - [ ] Save tabs to local database
-  - [ ] Fix Flutter error when deleting tabs
+  - [X] Migrated from SharedPreferences to Drift DB (schema v3)
+  - [X] Fixed delete bug (was SharedPreferences list sync issue)
+  - [X] Backend sync (fire-and-forget) with share URL support
+  - [X] Tab API service methods (createTab, addBillToTab)
 
-- [ ] **Web Viewer: Tab Display**
-  - [ ] Create `/t/[id]` route for tab viewing
-  - [ ] Display tab name, description, total
-  - [ ] List all bills in tab with expandable details
-  - [ ] Show per-person totals across all bills
-  - [ ] Payment buttons for settling entire tab
+- [X] **Web Viewer: Tab Display**
+  - [X] Create `/t/[id]` route for tab viewing
+  - [X] TabHeader component (name, description, total, bill count)
+  - [X] TabPersonTotals component (per-person cards with Venmo)
+  - [X] Bills as collapsible sections with individual shares
 
 **Milestone**: Users can create group trip tabs and add multiple bills
 
@@ -174,6 +159,19 @@ Transform Billington from a local Flutter app into a Splitwise competitor with g
   - [ ] Payment tracking checkboxes
 
 **Milestone**: Complete group trip workflow from start to settlement
+
+---
+
+## Phase X: Account Workflow
+*Goal: Allow different users to add bills to shared tabs - truly building out the application as a Splitwise competitor*
+
+### Week 10: ACcounts, but privacy first
+- [] Determine a way to create account kinda behavior while following the privacy first principles of the application.
+- If person X creates the bill, they should be able to share it in a groupchat then person Y and Z can click it. Then when they click it, they'er ADDED to the trip instantly. Then they can add bills to the tab as well.
+- If we could do this without accounts, maybe some kinda device identifier that would be amazing. Don't want to store any user data.
+- [] When determined, PLAN and explain the approach to the user before committing to any particular building mechanism.
+
+**Milestone**: Beat Splitwise out of the market, as they're charging users a fee for services and not as in-depth as Billington.
 
 ---
 
@@ -365,7 +363,7 @@ Billington-backend/
 1. **Skip premature optimization**: No Redis/caching until needed
 2. **Ship features first**: Tabs & images > performance tuning
 3. **Monolith is fine**: Don't split into microservices yet
-4. **Privacy-first**: No user accounts required (token-based sharing)
+4. **Privacy-first**: No user accounts required YET (token-based sharing)
 
 ### Technical Insights
 - GORM's `serializer:json` handles JSONB elegantly
