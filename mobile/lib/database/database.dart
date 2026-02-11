@@ -23,7 +23,7 @@ import 'package:drift/drift.dart' hide Column;
 import 'package:drift/native.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
-import 'package:flutter/material.dart' hide Table;
+import 'package:flutter/material.dart' hide Table, Tab;
 
 // Generated with dart run build_runner build --delete-conflicting-outputs
 part 'database.g.dart';
@@ -56,6 +56,19 @@ class UserPreferences extends Table {
       dateTime().withDefault(Constant(DateTime.now()))();
 }
 
+// Database table for storing tabs (group trips)
+class Tabs extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text()();
+  TextColumn get description => text().withDefault(const Constant(''))();
+  TextColumn get billIds => text().withDefault(const Constant(''))();
+  IntColumn get backendId => integer().nullable()();
+  TextColumn get accessToken => text().nullable()();
+  TextColumn get shareUrl => text().nullable()();
+  DateTimeColumn get createdAt =>
+      dateTime().withDefault(Constant(DateTime.now()))();
+}
+
 // Database table for storing bill history
 class RecentBills extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -77,20 +90,23 @@ class RecentBills extends Table {
 }
 
 // Main database class handling all database operations
-@DriftDatabase(tables: [People, TutorialStates, UserPreferences, RecentBills])
+@DriftDatabase(tables: [People, TutorialStates, UserPreferences, RecentBills, Tabs])
 class AppDatabase extends _$AppDatabase {
   static const int maxRecentPeople = 12;
 
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onUpgrade: (migrator, from, to) async {
           if (from < 2) {
             await migrator.addColumn(recentBills, recentBills.shareUrl);
+          }
+          if (from < 3) {
+            await migrator.createTable(tabs);
           }
         },
       );
@@ -376,6 +392,31 @@ class AppDatabase extends _$AppDatabase {
   Future<RecentBill?> getBillById(int id) async {
     final query = select(recentBills)..where((b) => b.id.equals(id));
 
+    return query.getSingleOrNull();
+  }
+
+  // Tab management methods
+
+  Future<List<Tab>> getAllTabs() async {
+    final query = select(tabs)
+      ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]);
+    return query.get();
+  }
+
+  Future<int> insertTab(TabsCompanion tab) async {
+    return into(tabs).insert(tab);
+  }
+
+  Future<void> updateTab(int id, TabsCompanion companion) async {
+    await (update(tabs)..where((t) => t.id.equals(id))).write(companion);
+  }
+
+  Future<void> deleteTab(int id) async {
+    await (delete(tabs)..where((t) => t.id.equals(id))).go();
+  }
+
+  Future<Tab?> getTabById(int id) async {
+    final query = select(tabs)..where((t) => t.id.equals(id));
     return query.getSingleOrNull();
   }
 }
