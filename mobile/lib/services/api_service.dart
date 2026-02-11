@@ -106,6 +106,60 @@ required List<Map<String, String>> paymentMethods,
     }).toList();
   }
 
+  /// Creates a new tab on the backend
+  /// Returns TabCreateResponse if successful, null if failed
+  Future<TabCreateResponse?> createTab(String name, String description) async {
+    var logger = Logger();
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/tabs'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'name': name,
+          'description': description,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return TabCreateResponse(
+          tabId: data['tab_id'],
+          accessToken: data['access_token'],
+          shareUrl: data['share_url'],
+        );
+      } else {
+        logger.d('Failed to create tab: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      logger.d('Error creating tab: $e');
+      return null;
+    }
+  }
+
+  /// Adds a bill to a tab on the backend
+  /// Returns true if successful
+  Future<bool> addBillToTab(int tabId, int billId, String accessToken) async {
+    var logger = Logger();
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/tabs/$tabId/bills?t=$accessToken'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'bill_id': billId}),
+      );
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        logger.d('Failed to add bill to tab: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      logger.d('Error adding bill to tab: $e');
+      return false;
+    }
+  }
+
   /// Builds the person_shares JSON structure
   List<Map<String, dynamic>> _buildPersonSharesJson(
     Map<Person, double> personShares,
@@ -152,6 +206,19 @@ required List<Map<String, String>> paymentMethods,
 
     return personSharesList;
   }
+}
+
+/// Response object from tab creation
+class TabCreateResponse {
+  final int tabId;
+  final String accessToken;
+  final String shareUrl;
+
+  TabCreateResponse({
+    required this.tabId,
+    required this.accessToken,
+    required this.shareUrl,
+  });
 }
 
 /// Response object from bill upload
