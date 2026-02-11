@@ -9,6 +9,7 @@ class AppTab {
   final int? backendId;
   final String? accessToken;
   final String? shareUrl;
+  final bool finalized;
 
   AppTab({
     this.id,
@@ -19,9 +20,12 @@ class AppTab {
     this.backendId,
     this.accessToken,
     this.shareUrl,
+    this.finalized = false,
   });
 
   bool get isSynced => backendId != null;
+
+  bool get isFinalized => finalized;
 
   double getTotalAmount(List<double> billTotals) {
     return billTotals.fold(0.0, (sum, total) => sum + total);
@@ -44,6 +48,7 @@ class AppTab {
     int? backendId,
     String? accessToken,
     String? shareUrl,
+    bool? finalized,
   }) {
     return AppTab(
       id: id ?? this.id,
@@ -54,6 +59,7 @@ class AppTab {
       backendId: backendId ?? this.backendId,
       accessToken: accessToken ?? this.accessToken,
       shareUrl: shareUrl ?? this.shareUrl,
+      finalized: finalized ?? this.finalized,
     );
   }
 }

@@ -1906,6 +1906,21 @@ class $TabsTable extends Tabs with TableInfo<$TabsTable, Tab> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _finalizedMeta = const VerificationMeta(
+    'finalized',
+  );
+  @override
+  late final GeneratedColumn<bool> finalized = GeneratedColumn<bool>(
+    'finalized',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("finalized" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1927,6 +1942,7 @@ class $TabsTable extends Tabs with TableInfo<$TabsTable, Tab> {
     backendId,
     accessToken,
     shareUrl,
+    finalized,
     createdAt,
   ];
   @override
@@ -1988,6 +2004,12 @@ class $TabsTable extends Tabs with TableInfo<$TabsTable, Tab> {
         shareUrl.isAcceptableOrUnknown(data['share_url']!, _shareUrlMeta),
       );
     }
+    if (data.containsKey('finalized')) {
+      context.handle(
+        _finalizedMeta,
+        finalized.isAcceptableOrUnknown(data['finalized']!, _finalizedMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -2035,6 +2057,11 @@ class $TabsTable extends Tabs with TableInfo<$TabsTable, Tab> {
         DriftSqlType.string,
         data['${effectivePrefix}share_url'],
       ),
+      finalized:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.bool,
+            data['${effectivePrefix}finalized'],
+          )!,
       createdAt:
           attachedDatabase.typeMapping.read(
             DriftSqlType.dateTime,
@@ -2057,6 +2084,7 @@ class Tab extends DataClass implements Insertable<Tab> {
   final int? backendId;
   final String? accessToken;
   final String? shareUrl;
+  final bool finalized;
   final DateTime createdAt;
   const Tab({
     required this.id,
@@ -2066,6 +2094,7 @@ class Tab extends DataClass implements Insertable<Tab> {
     this.backendId,
     this.accessToken,
     this.shareUrl,
+    required this.finalized,
     required this.createdAt,
   });
   @override
@@ -2084,6 +2113,7 @@ class Tab extends DataClass implements Insertable<Tab> {
     if (!nullToAbsent || shareUrl != null) {
       map['share_url'] = Variable<String>(shareUrl);
     }
+    map['finalized'] = Variable<bool>(finalized);
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -2106,6 +2136,7 @@ class Tab extends DataClass implements Insertable<Tab> {
           shareUrl == null && nullToAbsent
               ? const Value.absent()
               : Value(shareUrl),
+      finalized: Value(finalized),
       createdAt: Value(createdAt),
     );
   }
@@ -2123,6 +2154,7 @@ class Tab extends DataClass implements Insertable<Tab> {
       backendId: serializer.fromJson<int?>(json['backendId']),
       accessToken: serializer.fromJson<String?>(json['accessToken']),
       shareUrl: serializer.fromJson<String?>(json['shareUrl']),
+      finalized: serializer.fromJson<bool>(json['finalized']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -2137,6 +2169,7 @@ class Tab extends DataClass implements Insertable<Tab> {
       'backendId': serializer.toJson<int?>(backendId),
       'accessToken': serializer.toJson<String?>(accessToken),
       'shareUrl': serializer.toJson<String?>(shareUrl),
+      'finalized': serializer.toJson<bool>(finalized),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -2149,6 +2182,7 @@ class Tab extends DataClass implements Insertable<Tab> {
     Value<int?> backendId = const Value.absent(),
     Value<String?> accessToken = const Value.absent(),
     Value<String?> shareUrl = const Value.absent(),
+    bool? finalized,
     DateTime? createdAt,
   }) => Tab(
     id: id ?? this.id,
@@ -2158,6 +2192,7 @@ class Tab extends DataClass implements Insertable<Tab> {
     backendId: backendId.present ? backendId.value : this.backendId,
     accessToken: accessToken.present ? accessToken.value : this.accessToken,
     shareUrl: shareUrl.present ? shareUrl.value : this.shareUrl,
+    finalized: finalized ?? this.finalized,
     createdAt: createdAt ?? this.createdAt,
   );
   Tab copyWithCompanion(TabsCompanion data) {
@@ -2171,6 +2206,7 @@ class Tab extends DataClass implements Insertable<Tab> {
       accessToken:
           data.accessToken.present ? data.accessToken.value : this.accessToken,
       shareUrl: data.shareUrl.present ? data.shareUrl.value : this.shareUrl,
+      finalized: data.finalized.present ? data.finalized.value : this.finalized,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -2185,6 +2221,7 @@ class Tab extends DataClass implements Insertable<Tab> {
           ..write('backendId: $backendId, ')
           ..write('accessToken: $accessToken, ')
           ..write('shareUrl: $shareUrl, ')
+          ..write('finalized: $finalized, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -2199,6 +2236,7 @@ class Tab extends DataClass implements Insertable<Tab> {
     backendId,
     accessToken,
     shareUrl,
+    finalized,
     createdAt,
   );
   @override
@@ -2212,6 +2250,7 @@ class Tab extends DataClass implements Insertable<Tab> {
           other.backendId == this.backendId &&
           other.accessToken == this.accessToken &&
           other.shareUrl == this.shareUrl &&
+          other.finalized == this.finalized &&
           other.createdAt == this.createdAt);
 }
 
@@ -2223,6 +2262,7 @@ class TabsCompanion extends UpdateCompanion<Tab> {
   final Value<int?> backendId;
   final Value<String?> accessToken;
   final Value<String?> shareUrl;
+  final Value<bool> finalized;
   final Value<DateTime> createdAt;
   const TabsCompanion({
     this.id = const Value.absent(),
@@ -2232,6 +2272,7 @@ class TabsCompanion extends UpdateCompanion<Tab> {
     this.backendId = const Value.absent(),
     this.accessToken = const Value.absent(),
     this.shareUrl = const Value.absent(),
+    this.finalized = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   TabsCompanion.insert({
@@ -2242,6 +2283,7 @@ class TabsCompanion extends UpdateCompanion<Tab> {
     this.backendId = const Value.absent(),
     this.accessToken = const Value.absent(),
     this.shareUrl = const Value.absent(),
+    this.finalized = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : name = Value(name);
   static Insertable<Tab> custom({
@@ -2252,6 +2294,7 @@ class TabsCompanion extends UpdateCompanion<Tab> {
     Expression<int>? backendId,
     Expression<String>? accessToken,
     Expression<String>? shareUrl,
+    Expression<bool>? finalized,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -2262,6 +2305,7 @@ class TabsCompanion extends UpdateCompanion<Tab> {
       if (backendId != null) 'backend_id': backendId,
       if (accessToken != null) 'access_token': accessToken,
       if (shareUrl != null) 'share_url': shareUrl,
+      if (finalized != null) 'finalized': finalized,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -2274,6 +2318,7 @@ class TabsCompanion extends UpdateCompanion<Tab> {
     Value<int?>? backendId,
     Value<String?>? accessToken,
     Value<String?>? shareUrl,
+    Value<bool>? finalized,
     Value<DateTime>? createdAt,
   }) {
     return TabsCompanion(
@@ -2284,6 +2329,7 @@ class TabsCompanion extends UpdateCompanion<Tab> {
       backendId: backendId ?? this.backendId,
       accessToken: accessToken ?? this.accessToken,
       shareUrl: shareUrl ?? this.shareUrl,
+      finalized: finalized ?? this.finalized,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -2312,6 +2358,9 @@ class TabsCompanion extends UpdateCompanion<Tab> {
     if (shareUrl.present) {
       map['share_url'] = Variable<String>(shareUrl.value);
     }
+    if (finalized.present) {
+      map['finalized'] = Variable<bool>(finalized.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2328,6 +2377,7 @@ class TabsCompanion extends UpdateCompanion<Tab> {
           ..write('backendId: $backendId, ')
           ..write('accessToken: $accessToken, ')
           ..write('shareUrl: $shareUrl, ')
+          ..write('finalized: $finalized, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -3339,6 +3389,7 @@ typedef $$TabsTableCreateCompanionBuilder =
       Value<int?> backendId,
       Value<String?> accessToken,
       Value<String?> shareUrl,
+      Value<bool> finalized,
       Value<DateTime> createdAt,
     });
 typedef $$TabsTableUpdateCompanionBuilder =
@@ -3350,6 +3401,7 @@ typedef $$TabsTableUpdateCompanionBuilder =
       Value<int?> backendId,
       Value<String?> accessToken,
       Value<String?> shareUrl,
+      Value<bool> finalized,
       Value<DateTime> createdAt,
     });
 
@@ -3393,6 +3445,11 @@ class $$TabsTableFilterComposer extends Composer<_$AppDatabase, $TabsTable> {
 
   ColumnFilters<String> get shareUrl => $composableBuilder(
     column: $table.shareUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get finalized => $composableBuilder(
+    column: $table.finalized,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3445,6 +3502,11 @@ class $$TabsTableOrderingComposer extends Composer<_$AppDatabase, $TabsTable> {
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get finalized => $composableBuilder(
+    column: $table.finalized,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -3485,6 +3547,9 @@ class $$TabsTableAnnotationComposer
   GeneratedColumn<String> get shareUrl =>
       $composableBuilder(column: $table.shareUrl, builder: (column) => column);
 
+  GeneratedColumn<bool> get finalized =>
+      $composableBuilder(column: $table.finalized, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 }
@@ -3524,6 +3589,7 @@ class $$TabsTableTableManager
                 Value<int?> backendId = const Value.absent(),
                 Value<String?> accessToken = const Value.absent(),
                 Value<String?> shareUrl = const Value.absent(),
+                Value<bool> finalized = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => TabsCompanion(
                 id: id,
@@ -3533,6 +3599,7 @@ class $$TabsTableTableManager
                 backendId: backendId,
                 accessToken: accessToken,
                 shareUrl: shareUrl,
+                finalized: finalized,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -3544,6 +3611,7 @@ class $$TabsTableTableManager
                 Value<int?> backendId = const Value.absent(),
                 Value<String?> accessToken = const Value.absent(),
                 Value<String?> shareUrl = const Value.absent(),
+                Value<bool> finalized = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => TabsCompanion.insert(
                 id: id,
@@ -3553,6 +3621,7 @@ class $$TabsTableTableManager
                 backendId: backendId,
                 accessToken: accessToken,
                 shareUrl: shareUrl,
+                finalized: finalized,
                 createdAt: createdAt,
               ),
           withReferenceMapper:
