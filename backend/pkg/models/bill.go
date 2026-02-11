@@ -60,6 +60,7 @@ type PersonShare struct {
 
 type Bill struct {
 	ID             uint            `gorm:"primaryKey" json:"id"`
+	TabID          *uint           `gorm:"index" json:"tab_id,omitempty"`
 	Name           string          `gorm:"not null" json:"name"`
 	Subtotal       float64         `gorm:"not null" json:"subtotal"`
 	Tax            float64         `gorm:"not null" json:"tax"`
