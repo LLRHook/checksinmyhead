@@ -26,10 +26,6 @@ func main() {
 	service := bill.NewBillService(repo)
 	handler := bill.NewBillHandler(service)
 
-	tabRepo := tab.NewTabRepository(db)
-	tabService := tab.NewTabService(tabRepo)
-	tabHandler := tab.NewTabHandler(tabService)
-
 	uploadDir := os.Getenv("UPLOAD_DIR")
 	if uploadDir == "" {
 		uploadDir = "./uploads"
@@ -37,6 +33,11 @@ func main() {
 
 	imgRepo := image.NewImageRepository(db)
 	imgService := image.NewImageService(imgRepo)
+
+	tabRepo := tab.NewTabRepository(db)
+	tabService := tab.NewTabService(tabRepo, imgService)
+	tabHandler := tab.NewTabHandler(tabService)
+
 	imgHandler := image.NewImageHandler(imgService, tabService, uploadDir)
 
 	r := gin.Default()
@@ -47,6 +48,9 @@ func main() {
 	r.GET("/api/tabs/:id", tabHandler.GetTab)
 	r.POST("/api/tabs/:id/bills", tabHandler.AddBillToTab)
 	r.PATCH("/api/tabs/:id", tabHandler.UpdateTab)
+	r.POST("/api/tabs/:id/finalize", tabHandler.FinalizeTab)
+	r.GET("/api/tabs/:id/settlements", tabHandler.GetSettlements)
+	r.PATCH("/api/tabs/:id/settlements/:settlementId", tabHandler.UpdateSettlement)
 
 	r.POST("/api/tabs/:id/images", imgHandler.UploadImage)
 	r.GET("/api/tabs/:id/images", imgHandler.ListImages)
