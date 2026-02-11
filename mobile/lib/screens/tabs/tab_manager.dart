@@ -36,7 +36,11 @@ class TabManager extends ChangeNotifier {
     }
   }
 
-  Future<AppTab?> createTab(String name, {String description = ''}) async {
+  Future<AppTab?> createTab(
+    String name, {
+    String description = '',
+    String? creatorDisplayName,
+  }) async {
     try {
       final id = await DatabaseProvider.db.insertTab(
         TabsCompanion(
@@ -48,7 +52,7 @@ class TabManager extends ChangeNotifier {
       );
 
       // Fire-and-forget backend sync
-      _syncTabToBackend(id, name, description);
+      _syncTabToBackend(id, name, description, creatorDisplayName: creatorDisplayName);
 
       final tabData = await DatabaseProvider.db.getTabById(id);
       if (tabData == null) return null;
@@ -136,21 +140,26 @@ class TabManager extends ChangeNotifier {
   Future<void> _syncTabToBackend(
     int localId,
     String name,
-    String description,
-  ) async {
+    String description, {
+    String? creatorDisplayName,
+  }) async {
     try {
       final apiService = ApiService();
-      final response = await apiService.createTab(name, description);
+      final response = await apiService.createTab(
+        name,
+        description,
+        creatorDisplayName: creatorDisplayName,
+      );
 
       if (response != null) {
-        await DatabaseProvider.db.updateTab(
-          localId,
-          TabsCompanion(
-            backendId: Value(response.tabId),
-            accessToken: Value(response.accessToken),
-            shareUrl: Value(response.shareUrl),
-          ),
+        final companion = TabsCompanion(
+          backendId: Value(response.tabId),
+          accessToken: Value(response.accessToken),
+          shareUrl: Value(response.shareUrl),
+          memberToken: Value(response.memberToken),
+          role: Value(response.memberToken != null ? 'creator' : null),
         );
+        await DatabaseProvider.db.updateTab(localId, companion);
         notifyListeners();
       }
     } catch (e) {
@@ -168,6 +177,7 @@ class TabManager extends ChangeNotifier {
       final settlements = await apiService.finalizeTab(
         tabData.backendId!,
         tabData.accessToken!,
+        memberToken: tabData.memberToken,
       );
 
       if (settlements.isEmpty) return false;
@@ -182,6 +192,56 @@ class TabManager extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error finalizing tab: $e');
       return false;
+    }
+  }
+
+  /// Joins a remote tab via share URL
+  Future<AppTab?> joinTab(String shareUrl, String displayName) async {
+    try {
+      // Parse URL: https://billington.app/t/{id}?t={token}
+      final uri = Uri.parse(shareUrl);
+      final pathSegments = uri.pathSegments;
+      if (pathSegments.length < 2 || pathSegments[0] != 't') return null;
+
+      final tabId = int.tryParse(pathSegments[1]);
+      final accessToken = uri.queryParameters['t'];
+      if (tabId == null || accessToken == null) return null;
+
+      final apiService = ApiService();
+
+      // Join the tab
+      final joinResponse = await apiService.joinTab(tabId, accessToken, displayName);
+      if (joinResponse == null) return null;
+
+      // Fetch full tab data
+      final tabData = await apiService.getTabData(tabId, accessToken);
+      if (tabData == null) return null;
+
+      // Insert as remote tab in local DB
+      final localId = await DatabaseProvider.db.insertTab(
+        TabsCompanion(
+          name: Value(tabData['name'] ?? 'Joined Tab'),
+          description: Value(tabData['description'] ?? ''),
+          billIds: const Value(''),
+          backendId: Value(tabId),
+          accessToken: Value(accessToken),
+          shareUrl: Value(shareUrl),
+          memberToken: Value(joinResponse.memberToken),
+          role: Value(joinResponse.role),
+          isRemote: const Value(true),
+          createdAt: Value(DateTime.now()),
+        ),
+      );
+
+      final insertedTab = await DatabaseProvider.db.getTabById(localId);
+      if (insertedTab == null) return null;
+
+      final tab = _tabDataToAppTab(insertedTab);
+      notifyListeners();
+      return tab;
+    } catch (e) {
+      debugPrint('Error joining tab: $e');
+      return null;
     }
   }
 
