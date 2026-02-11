@@ -63,6 +63,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// Service for handling preferences
   final _prefsService = PreferencesService();
 
+  /// Display name controller
+  final _displayNameController = TextEditingController();
+
   /// Loading state
   bool _isLoading = true;
 
@@ -82,6 +85,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  @override
+  void dispose() {
+    _displayNameController.dispose();
+    super.dispose();
+  }
+
   /// Loads saved payment preferences from persistent storage
   Future<void> _loadPaymentSettings() async {
     try {
@@ -90,6 +99,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       // Load identifiers for each payment method
       final savedIdentifiers = await _prefsService.getAllPaymentIdentifiers();
+
+      // Load display name
+      final savedName = await _prefsService.getDisplayName();
+      if (savedName != null) {
+        _displayNameController.text = savedName;
+      }
 
       // Update state with retrieved values
       setState(() {
@@ -128,10 +143,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  /// Saves the display name to preferences
+  Future<void> _saveDisplayName() async {
+    final name = _displayNameController.text.trim();
+    if (name.isNotEmpty) {
+      await _prefsService.saveDisplayName(name);
+    }
+  }
+
   /// Completes the onboarding process and navigates to the main app
   Future<void> _completeOnboarding() async {
-    // First, save payment settings
+    // First, save payment settings and display name
     await _savePaymentSettings();
+    await _saveDisplayName();
 
     // Then mark onboarding as complete
     await _prefsService.completeOnboarding();
@@ -256,6 +280,93 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
 
                               const SizedBox(height: 40),
+
+                              // Display name section
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: .15),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Your Name',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      widget.isOnboarding
+                                          ? 'This is how others will see you on shared tabs.'
+                                          : 'Used when creating or joining shared tabs.',
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    TextField(
+                                      controller: _displayNameController,
+                                      textCapitalization:
+                                          TextCapitalization.words,
+                                      style: TextStyle(
+                                        color:
+                                            Theme.of(context).brightness ==
+                                                    Brightness.dark
+                                                ? Colors.white
+                                                : Colors.black87,
+                                        fontSize: 16,
+                                      ),
+                                      decoration: InputDecoration(
+                                        hintText: 'Alice',
+                                        hintStyle: TextStyle(
+                                          color: Theme.of(context).brightness ==
+                                                  Brightness.dark
+                                              ? Colors.white38
+                                              : Colors.black26,
+                                        ),
+                                        filled: true,
+                                        fillColor:
+                                            Theme.of(context).brightness ==
+                                                    Brightness.dark
+                                                ? Colors.white
+                                                    .withValues(alpha: .1)
+                                                : Colors.white,
+                                        prefixIcon: Icon(
+                                          Icons.person_outline,
+                                          color: colorScheme.primary,
+                                        ),
+                                        border: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          borderSide: BorderSide.none,
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          borderSide: const BorderSide(
+                                            color: Color(0xFF627D98),
+                                            width: 2,
+                                          ),
+                                        ),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 14,
+                                        ),
+                                      ),
+                                      onChanged: (_) => _saveDisplayName(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              const SizedBox(height: 16),
 
                               // Payment methods section - card with either add button or list of methods
                               Container(

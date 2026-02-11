@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:checks_frontend/models/tab.dart';
 import 'package:checks_frontend/screens/tabs/tab_detail_screen.dart';
 import 'package:checks_frontend/screens/tabs/tab_manager.dart';
+import 'package:checks_frontend/screens/settings/services/preferences_service.dart';
 
 class TabsScreen extends StatefulWidget {
   const TabsScreen({super.key});
@@ -16,6 +17,7 @@ class _TabsScreenState extends State<TabsScreen> with SingleTickerProviderStateM
   bool _isLoading = false;
   late AnimationController _animController;
   final _tabManager = TabManager();
+  final _prefsService = PreferencesService();
   String? _clipboardUrl;
 
   @override
@@ -62,17 +64,17 @@ class _TabsScreenState extends State<TabsScreen> with SingleTickerProviderStateM
   void _createNewTab() async {
     HapticFeedback.mediumImpact();
 
-    final result = await showModalBottomSheet<Map<String, String>>(
+    final tabName = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => _CreateTabSheet(),
     );
 
-    if (result != null && result['name'] != null && result['name']!.trim().isNotEmpty && mounted) {
-      final displayName = result['display_name']?.trim();
+    if (tabName != null && tabName.trim().isNotEmpty && mounted) {
+      final displayName = await _prefsService.getDisplayName();
       final newTab = await _tabManager.createTab(
-        result['name']!.trim(),
+        tabName.trim(),
         creatorDisplayName: (displayName != null && displayName.isNotEmpty) ? displayName : null,
       );
 
@@ -92,15 +94,28 @@ class _TabsScreenState extends State<TabsScreen> with SingleTickerProviderStateM
   void _showJoinSheet({String? prefillUrl}) async {
     HapticFeedback.mediumImpact();
 
-    final result = await showModalBottomSheet<Map<String, String>>(
+    final url = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => _JoinTabSheet(prefillUrl: prefillUrl),
     );
 
-    if (result != null && result['url'] != null && result['name'] != null && mounted) {
-      final tab = await _tabManager.joinTab(result['url']!, result['name']!);
+    if (url != null && url.isNotEmpty && mounted) {
+      final displayName = await _prefsService.getDisplayName();
+      if (displayName == null || displayName.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please set your name in Settings first.'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+
+      final tab = await _tabManager.joinTab(url, displayName);
 
       if (tab != null && mounted) {
         setState(() {
@@ -486,23 +501,18 @@ class _CreateTabSheet extends StatefulWidget {
 
 class _CreateTabSheetState extends State<_CreateTabSheet> {
   final _nameController = TextEditingController();
-  final _displayNameController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
   @override
   void dispose() {
     _nameController.dispose();
-    _displayNameController.dispose();
     super.dispose();
   }
 
   void _submit() {
     if (_formKey.currentState!.validate()) {
       HapticFeedback.mediumImpact();
-      Navigator.pop(context, {
-        'name': _nameController.text,
-        'display_name': _displayNameController.text,
-      });
+      Navigator.pop(context, _nameController.text);
     }
   }
 
@@ -587,29 +597,6 @@ class _CreateTabSheetState extends State<_CreateTabSheet> {
                     (value == null || value.trim().isEmpty) ? 'Please enter a name' : null,
                 onFieldSubmitted: (_) => _submit(),
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _displayNameController,
-                textCapitalization: TextCapitalization.words,
-                style: TextStyle(fontSize: 18, color: colorScheme.onSurface),
-                decoration: InputDecoration(
-                  hintText: 'Alice',
-                  labelText: 'Your Name (optional)',
-                  prefixIcon: Icon(Icons.person_outline, color: colorScheme.primary),
-                  filled: true,
-                  fillColor: fillColor,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(color: colorScheme.primary, width: 2),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-                ),
-                onFieldSubmitted: (_) => _submit(),
-              ),
               const SizedBox(height: 24),
               FilledButton(
                 onPressed: _submit,
@@ -646,7 +633,6 @@ class _JoinTabSheet extends StatefulWidget {
 
 class _JoinTabSheetState extends State<_JoinTabSheet> {
   late final TextEditingController _urlController;
-  final _nameController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
@@ -659,7 +645,6 @@ class _JoinTabSheetState extends State<_JoinTabSheet> {
   @override
   void dispose() {
     _urlController.dispose();
-    _nameController.dispose();
     super.dispose();
   }
 
@@ -667,10 +652,7 @@ class _JoinTabSheetState extends State<_JoinTabSheet> {
     if (_formKey.currentState!.validate()) {
       HapticFeedback.mediumImpact();
       setState(() => _isLoading = true);
-      Navigator.pop(context, {
-        'url': _urlController.text.trim(),
-        'name': _nameController.text.trim(),
-      });
+      Navigator.pop(context, _urlController.text.trim());
     }
   }
 
@@ -732,7 +714,7 @@ class _JoinTabSheetState extends State<_JoinTabSheet> {
               const SizedBox(height: 24),
               TextFormField(
                 controller: _urlController,
-                autofocus: widget.prefillUrl == null,
+                autofocus: true,
                 style: TextStyle(fontSize: 16, color: colorScheme.onSurface),
                 decoration: InputDecoration(
                   hintText: 'https://billington.app/t/...',
@@ -756,32 +738,6 @@ class _JoinTabSheetState extends State<_JoinTabSheet> {
                   }
                   return null;
                 },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _nameController,
-                autofocus: widget.prefillUrl != null,
-                textCapitalization: TextCapitalization.words,
-                style: TextStyle(fontSize: 18, color: colorScheme.onSurface),
-                decoration: InputDecoration(
-                  hintText: 'Alice',
-                  labelText: 'Your Name',
-                  prefixIcon: Icon(Icons.person_outline, color: colorScheme.primary),
-                  filled: true,
-                  fillColor: fillColor,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(color: colorScheme.primary, width: 2),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-                ),
-                validator: (value) =>
-                    (value == null || value.trim().isEmpty) ? 'Please enter your name' : null,
-                onFieldSubmitted: (_) => _submit(),
               ),
               const SizedBox(height: 24),
               FilledButton(
