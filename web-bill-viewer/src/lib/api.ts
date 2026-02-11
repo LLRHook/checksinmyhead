@@ -54,7 +54,21 @@ export interface TabPersonTotal {
   bill_count: number;
 }
 
+export interface TabImage {
+  id: number;
+  tab_id: number;
+  filename: string;
+  url: string;
+  size: number;
+  mime_type: string;
+  processed: boolean;
+  uploaded_by: string;
+  created_at: string;
+}
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
+export { API_BASE_URL };
 
 export async function getBill(id: string, token: string): Promise<Bill> {
   const response = await fetch(`${API_BASE_URL}/api/bills/${id}?t=${token}`);
@@ -83,6 +97,21 @@ export async function getTab(id: string, token: string): Promise<Tab> {
       throw new Error("Tab not found");
     }
     throw new Error("Failed to fetch tab");
+  }
+
+  return response.json();
+}
+
+export async function getTabImages(
+  id: string,
+  token: string,
+): Promise<TabImage[]> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/tabs/${id}/images?t=${token}`,
+  );
+
+  if (!response.ok) {
+    return [];
   }
 
   return response.json();
