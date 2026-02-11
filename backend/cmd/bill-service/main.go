@@ -2,11 +2,13 @@ package main
 
 import (
 	"backend/internal/bill"
+	"backend/internal/image"
 	"backend/internal/tab"
 	"backend/pkg/database"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -28,6 +30,15 @@ func main() {
 	tabService := tab.NewTabService(tabRepo)
 	tabHandler := tab.NewTabHandler(tabService)
 
+	uploadDir := os.Getenv("UPLOAD_DIR")
+	if uploadDir == "" {
+		uploadDir = "./uploads"
+	}
+
+	imgRepo := image.NewImageRepository(db)
+	imgService := image.NewImageService(imgRepo)
+	imgHandler := image.NewImageHandler(imgService, tabService, uploadDir)
+
 	r := gin.Default()
 	r.GET("/health", getHealth)
 	r.GET("/api/bills/:id", handler.GetBill)
@@ -36,6 +47,13 @@ func main() {
 	r.GET("/api/tabs/:id", tabHandler.GetTab)
 	r.POST("/api/tabs/:id/bills", tabHandler.AddBillToTab)
 	r.PATCH("/api/tabs/:id", tabHandler.UpdateTab)
+
+	r.POST("/api/tabs/:id/images", imgHandler.UploadImage)
+	r.GET("/api/tabs/:id/images", imgHandler.ListImages)
+	r.PATCH("/api/tabs/:id/images/:imageId", imgHandler.UpdateImage)
+	r.DELETE("/api/tabs/:id/images/:imageId", imgHandler.DeleteImage)
+
+	r.Static("/uploads", uploadDir)
 
 	fmt.Println("Bill service starting on :8080")
 	log.Fatal(http.ListenAndServe(":8080", r))
