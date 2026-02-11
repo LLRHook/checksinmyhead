@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:checks_frontend/models/tab.dart';
@@ -6,7 +7,9 @@ import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.dart';
 import 'package:checks_frontend/screens/recent_bills/billDetails/bill_details_screen.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
+import 'package:checks_frontend/services/api_service.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:image_picker/image_picker.dart';
 
 class TabDetailScreen extends StatefulWidget {
   final AppTab tab;
@@ -20,9 +23,12 @@ class TabDetailScreen extends StatefulWidget {
 class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProviderStateMixin {
   final _billsManager = RecentBillsManager();
   final _tabManager = TabManager();
+  final _apiService = ApiService();
   List<RecentBillModel> _allBills = [];
   List<RecentBillModel> _tabBills = [];
+  List<TabImageResponse> _images = [];
   bool _isLoading = true;
+  bool _isUploading = false;
   late AppTab _currentTab;
   late AnimationController _animController;
 
@@ -57,12 +63,108 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
     final allBills = await _billsManager.getRecentBills();
     final tabBills = allBills.where((bill) => _currentTab.billIds.contains(bill.id)).toList();
 
+    await _loadImages();
+
     if (mounted) {
       setState(() {
         _allBills = allBills;
         _tabBills = tabBills;
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _loadImages() async {
+    if (_currentTab.backendId == null || _currentTab.accessToken == null) return;
+
+    final images = await _apiService.getTabImages(
+      _currentTab.backendId!,
+      _currentTab.accessToken!,
+    );
+
+    if (mounted) {
+      setState(() => _images = images);
+    }
+  }
+
+  Future<void> _pickAndUploadImage() async {
+    if (_currentTab.backendId == null || _currentTab.accessToken == null) {
+      _showSnackBar('Tab must be synced to upload images', isError: true);
+      return;
+    }
+
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const _ImageSourceSheet(),
+    );
+
+    if (source == null || !mounted) return;
+
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(
+      source: source,
+      maxWidth: 1920,
+      imageQuality: 70,
+    );
+
+    if (pickedFile == null || !mounted) return;
+
+    setState(() => _isUploading = true);
+
+    final result = await _apiService.uploadTabImage(
+      _currentTab.backendId!,
+      _currentTab.accessToken!,
+      File(pickedFile.path),
+    );
+
+    if (mounted) {
+      setState(() => _isUploading = false);
+
+      if (result != null) {
+        _showSnackBar('Receipt uploaded');
+        await _loadImages();
+      } else {
+        _showSnackBar('Failed to upload image', isError: true);
+      }
+    }
+  }
+
+  Future<void> _toggleProcessed(TabImageResponse image) async {
+    if (_currentTab.backendId == null || _currentTab.accessToken == null) return;
+
+    final success = await _apiService.updateTabImage(
+      _currentTab.backendId!,
+      image.id,
+      _currentTab.accessToken!,
+      !image.processed,
+    );
+
+    if (success && mounted) {
+      await _loadImages();
+    }
+  }
+
+  Future<void> _deleteImage(TabImageResponse image) async {
+    if (_currentTab.backendId == null || _currentTab.accessToken == null) return;
+
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const _DeleteImageSheet(),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final success = await _apiService.deleteTabImage(
+      _currentTab.backendId!,
+      image.id,
+      _currentTab.accessToken!,
+    );
+
+    if (success && mounted) {
+      _showSnackBar('Image deleted');
+      await _loadImages();
     }
   }
 
@@ -181,6 +283,20 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
           },
         ),
         actions: [
+          if (_currentTab.isSynced)
+            IconButton(
+              icon: _isUploading
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: colorScheme.onSurface,
+                      ),
+                    )
+                  : const Icon(Icons.camera_alt_outlined),
+              onPressed: _isUploading ? null : _pickAndUploadImage,
+            ),
           if (_currentTab.shareUrl != null)
             IconButton(
               icon: const Icon(Icons.share_outlined),
@@ -190,13 +306,21 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator(color: colorScheme.primary))
-          : _tabBills.isEmpty
+          : _tabBills.isEmpty && _images.isEmpty
               ? _buildEmptyState()
               : Column(
                   children: [
-                    _buildTotalCard(),
-                    if (_calculatePersonTotals().isNotEmpty) _buildPersonTotalsCard(),
-                    Expanded(child: _buildBillsList()),
+                    Expanded(
+                      child: ListView(
+                        padding: const EdgeInsets.only(bottom: 100),
+                        children: [
+                          if (_tabBills.isNotEmpty) _buildTotalCard(),
+                          if (_calculatePersonTotals().isNotEmpty) _buildPersonTotalsCard(),
+                          if (_images.isNotEmpty) _buildImagesSection(),
+                          if (_tabBills.isNotEmpty) ..._buildBillCards(),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
       floatingActionButton: _buildFAB(),
@@ -432,143 +556,341 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
     );
   }
 
-  Widget _buildBillsList() {
+  Widget _buildImagesSection() {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
+    final cardBgColor = brightness == Brightness.dark ? colorScheme.surface : Colors.white;
+    final processedCount = _images.where((img) => img.processed).length;
 
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-      itemCount: _tabBills.length,
-      itemBuilder: (context, index) {
-        final bill = _tabBills[index];
-
-        return Dismissible(
-          key: Key('bill_${bill.id}'),
-          direction: DismissDirection.endToStart,
-          background: Container(
-            alignment: Alignment.centerRight,
-            padding: const EdgeInsets.only(right: 24),
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.red.shade400, Colors.red.shade600],
-              ),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Icon(Icons.remove_circle_outline, color: Colors.white, size: 28),
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      decoration: BoxDecoration(
+        color: cardBgColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: brightness == Brightness.dark
+                ? Colors.black.withValues(alpha: 0.2)
+                : Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
-          confirmDismiss: (_) async {
-            HapticFeedback.mediumImpact();
-
-            final confirmed = await showModalBottomSheet<bool>(
-              context: context,
-              backgroundColor: Colors.transparent,
-              builder: (context) => _RemoveBillSheet(billName: bill.billName),
-            );
-
-            return confirmed ?? false;
-          },
-          onDismissed: (_) => _removeBill(bill.id),
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              color: brightness == Brightness.dark ? colorScheme.surface : Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: brightness == Brightness.dark
-                      ? Colors.black.withValues(alpha: 0.2)
-                      : Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
+        ],
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.receipt_outlined, color: colorScheme.primary, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Receipts',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onSurface,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '$processedCount/${_images.length} processed',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.primary,
+                    ),
+                  ),
                 ),
               ],
             ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () async {
-                  HapticFeedback.selectionClick();
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => BillDetailsScreen(bill: bill)),
-                  );
-                },
-                borderRadius: BorderRadius.circular(20),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: colorScheme.primaryContainer.withValues(alpha: 0.6),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Icon(
-                          Icons.receipt_long,
-                          color: colorScheme.primary,
-                          size: 22,
-                        ),
+          ),
+          Divider(height: 1, color: colorScheme.outline.withValues(alpha: 0.2)),
+          SizedBox(
+            height: 120,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.all(16),
+              itemCount: _images.length,
+              itemBuilder: (context, index) {
+                final image = _images[index];
+                return GestureDetector(
+                  onTap: () => _showFullScreenImage(image),
+                  onLongPress: () {
+                    HapticFeedback.mediumImpact();
+                    _showImageActions(image);
+                  },
+                  child: Container(
+                    width: 88,
+                    margin: EdgeInsets.only(right: index < _images.length - 1 ? 10 : 0),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: image.processed
+                            ? Colors.green.withValues(alpha: 0.5)
+                            : colorScheme.outline.withValues(alpha: 0.2),
+                        width: image.processed ? 2 : 1,
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              bill.billName,
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: colorScheme.onSurface,
-                                letterSpacing: -0.2,
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(11),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.network(
+                            '${_apiService.baseUrl}${image.url}',
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: colorScheme.surfaceContainerHighest,
+                              child: Icon(
+                                Icons.image_not_supported_outlined,
+                                color: colorScheme.onSurface.withValues(alpha: 0.3),
                               ),
                             ),
-                            const SizedBox(height: 6),
-                            Text(
-                              bill.formattedDate,
-                              style: TextStyle(
-                                color: colorScheme.onSurface.withValues(alpha: 0.6),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              bill.participantSummary,
-                              style: TextStyle(
-                                color: colorScheme.onSurface.withValues(alpha: 0.5),
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: colorScheme.primaryContainer.withValues(alpha: 0.7),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          CurrencyFormatter.formatCurrency(bill.total),
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                            color: colorScheme.primary,
                           ),
+                          if (image.processed)
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: const BoxDecoration(
+                                  color: Colors.green,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.check,
+                                  size: 12,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFullScreenImage(TabImageResponse image) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => _FullScreenImageView(
+          imageUrl: '${_apiService.baseUrl}${image.url}',
+          image: image,
+          onToggleProcessed: () => _toggleProcessed(image),
+          onDelete: () => _deleteImage(image),
+        ),
+      ),
+    );
+  }
+
+  void _showImageActions(TabImageResponse image) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: brightness == Brightness.dark ? colorScheme.surface : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: colorScheme.onSurface.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              ListTile(
+                leading: Icon(
+                  image.processed ? Icons.check_box : Icons.check_box_outline_blank,
+                  color: colorScheme.primary,
+                ),
+                title: Text(image.processed ? 'Mark as unprocessed' : 'Mark as processed'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _toggleProcessed(image);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text('Delete image'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _deleteImage(image);
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildBillCards() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    return _tabBills.map((bill) {
+      return Dismissible(
+        key: Key('bill_${bill.id}'),
+        direction: DismissDirection.endToStart,
+        background: Container(
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.only(right: 24),
+          margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.red.shade400, Colors.red.shade600],
+            ),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Icon(Icons.remove_circle_outline, color: Colors.white, size: 28),
+        ),
+        confirmDismiss: (_) async {
+          HapticFeedback.mediumImpact();
+
+          final confirmed = await showModalBottomSheet<bool>(
+            context: context,
+            backgroundColor: Colors.transparent,
+            builder: (context) => _RemoveBillSheet(billName: bill.billName),
+          );
+
+          return confirmed ?? false;
+        },
+        onDismissed: (_) => _removeBill(bill.id),
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+          decoration: BoxDecoration(
+            color: brightness == Brightness.dark ? colorScheme.surface : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: brightness == Brightness.dark
+                    ? Colors.black.withValues(alpha: 0.2)
+                    : Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () async {
+                HapticFeedback.selectionClick();
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => BillDetailsScreen(bill: bill)),
+                );
+              },
+              borderRadius: BorderRadius.circular(20),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primaryContainer.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(
+                        Icons.receipt_long,
+                        color: colorScheme.primary,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            bill.billName,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: colorScheme.onSurface,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            bill.formattedDate,
+                            style: TextStyle(
+                              color: colorScheme.onSurface.withValues(alpha: 0.6),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            bill.participantSummary,
+                            style: TextStyle(
+                              color: colorScheme.onSurface.withValues(alpha: 0.5),
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primaryContainer.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        CurrencyFormatter.formatCurrency(bill.total),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          color: colorScheme.primary,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
-        );
-      },
-    );
+        ),
+      );
+    }).toList();
   }
 
   Widget _buildFAB() {
@@ -598,6 +920,237 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 0.5),
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ),
+    );
+  }
+}
+
+// Full-screen image viewer
+class _FullScreenImageView extends StatelessWidget {
+  final String imageUrl;
+  final TabImageResponse image;
+  final VoidCallback onToggleProcessed;
+  final VoidCallback onDelete;
+
+  const _FullScreenImageView({
+    required this.imageUrl,
+    required this.image,
+    required this.onToggleProcessed,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (image.processed)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.green,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'Processed',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+              ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              image.processed ? Icons.check_box : Icons.check_box_outline_blank,
+              color: image.processed ? Colors.green : Colors.white,
+            ),
+            onPressed: () {
+              onToggleProcessed();
+              Navigator.pop(context);
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: Colors.red),
+            onPressed: () {
+              Navigator.pop(context);
+              onDelete();
+            },
+          ),
+        ],
+      ),
+      body: Center(
+        child: InteractiveViewer(
+          child: Image.network(
+            imageUrl,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => Icon(
+              Icons.image_not_supported_outlined,
+              size: 64,
+              color: colorScheme.onSurface.withValues(alpha: 0.3),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Image source picker sheet
+class _ImageSourceSheet extends StatelessWidget {
+  const _ImageSourceSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: brightness == Brightness.dark ? colorScheme.surface : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: colorScheme.onSurface.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Add Receipt',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: colorScheme.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.camera_alt, color: colorScheme.primary),
+              ),
+              title: const Text('Camera'),
+              subtitle: const Text('Take a photo of the receipt'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: colorScheme.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.photo_library, color: colorScheme.primary),
+              ),
+              title: const Text('Gallery'),
+              subtitle: const Text('Choose from photo library'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Delete image confirmation sheet
+class _DeleteImageSheet extends StatelessWidget {
+  const _DeleteImageSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: brightness == Brightness.dark ? colorScheme.surface : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.delete_outline, color: Colors.red, size: 28),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Delete Image',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'This will permanently delete the receipt image.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 15,
+                color: colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.5)),
+                    ),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: const Text(
+                      'Delete',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
