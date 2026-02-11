@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:checks_frontend/database/database.dart' hide Tab;
 import 'package:checks_frontend/database/database_provider.dart';
 import 'package:checks_frontend/models/tab.dart';
 import 'package:checks_frontend/services/api_service.dart';
