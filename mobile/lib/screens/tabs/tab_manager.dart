@@ -158,6 +158,33 @@ class TabManager extends ChangeNotifier {
     }
   }
 
+  Future<bool> finalizeTab(int localId) async {
+    try {
+      final tabData = await DatabaseProvider.db.getTabById(localId);
+      if (tabData == null) return false;
+      if (tabData.backendId == null || tabData.accessToken == null) return false;
+
+      final apiService = ApiService();
+      final settlements = await apiService.finalizeTab(
+        tabData.backendId!,
+        tabData.accessToken!,
+      );
+
+      if (settlements.isEmpty) return false;
+
+      await DatabaseProvider.db.updateTab(
+        localId,
+        const TabsCompanion(finalized: Value(true)),
+      );
+
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('Error finalizing tab: $e');
+      return false;
+    }
+  }
+
   // Use the Drift-generated Tab type (not Flutter's Tab widget)
   AppTab _tabDataToAppTab(dynamic tabData) {
     return AppTab(
@@ -169,6 +196,7 @@ class TabManager extends ChangeNotifier {
       backendId: tabData.backendId,
       accessToken: tabData.accessToken,
       shareUrl: tabData.shareUrl,
+      finalized: tabData.finalized,
     );
   }
 }

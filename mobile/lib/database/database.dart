@@ -65,6 +65,7 @@ class Tabs extends Table {
   IntColumn get backendId => integer().nullable()();
   TextColumn get accessToken => text().nullable()();
   TextColumn get shareUrl => text().nullable()();
+  BoolColumn get finalized => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt =>
       dateTime().withDefault(Constant(DateTime.now()))();
 }
@@ -97,7 +98,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -107,6 +108,9 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 3) {
             await migrator.createTable(tabs);
+          }
+          if (from < 4) {
+            await migrator.addColumn(tabs, tabs.finalized);
           }
         },
       );
