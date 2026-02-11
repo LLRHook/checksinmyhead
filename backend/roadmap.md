@@ -94,69 +94,57 @@ Transform Billington from a local Flutter app into a Splitwise competitor with g
 
 ---
 
-## Phase 4: Image Uploads (After Tabs)
+## Phase 4: Image Uploads ✅ COMPLETE
 *Goal: Receipt photos and trip memories*
 
-### Week 7-8: Image Infrastructure (3-4 weeks)
-- [ ] **Backend: Storage Setup**
-  - [ ] Sign up for CloudFlare R2 (free 10GB) OR AWS S3
-  - [ ] Add image model:
-    ```go
-    type TabImage struct {
-        ID          uint
-        TabID       uint
-        URL         string
-        Processed   bool
-        UploadedBy  string
-        CreatedAt   time.Time
-    }
-    ```
-  - [ ] Create image endpoints:
-    - `POST /api/tabs/:id/images` - Upload image
-    - `GET /api/tabs/:id/images` - List tab images
-    - `PATCH /api/tabs/:id/images/:imageId` - Mark as processed
-    - `DELETE /api/tabs/:id/images/:imageId` - Delete image
-  - [ ] Implement image upload handler (multipart/form-data)
-  - [ ] Add abuse prevention (rate limiting, file size limits)
+### Week 7-8: Image Infrastructure
+- [X] **Backend: Storage Setup**
+  - [X] Local file storage with upload directory
+  - [X] TabImage model with processed flag
+  - [X] Image endpoints (POST, GET, PATCH, DELETE)
+  - [X] Multipart upload handler with MIME validation
+  - [X] Rate limiting (20/hour) and file size limits (10MB)
 
-- [ ] **Flutter: Camera & Upload**
-  - [ ] Add `image_picker` package
-  - [ ] Camera/gallery picker UI
-  - [ ] Image compression before upload
-  - [ ] Upload progress indicator
-  - [ ] Display uploaded images in tab
-  - [ ] Mark images as "processed" checkbox
+- [X] **Flutter: Camera & Upload**
+  - [X] `image_picker` package integrated
+  - [X] Camera/gallery picker UI
+  - [X] Image compression before upload
+  - [X] Upload progress indicator
+  - [X] Display uploaded images in tab
+  - [X] Mark images as "processed" checkbox
 
-- [ ] **Web Viewer: Image Gallery**
-  - [ ] Display tab images in grid layout
-  - [ ] Lightbox for full-size viewing
-  - [ ] Show processed/unprocessed status
+- [X] **Web Viewer: Image Gallery**
+  - [X] TabImageGallery component with lightbox
+  - [X] Show processed/unprocessed status
 
 **Milestone**: Users can photograph receipts and attach to tabs
 
 ---
 
-## Phase 5: Processing Workflow (After Images)
+## Phase 5: Processing Workflow ✅ COMPLETE
 *Goal: Mark trip complete and settle up*
 
-### Week 9: Finalization (1-2 weeks)
-- [ ] **Backend: Finalization Logic**
-  - [ ] Add `Finalized bool` to Tab model
-  - [ ] `POST /api/tabs/:id/finalize` endpoint
-  - [ ] Validate all images are processed
-  - [ ] Lock tab from further edits
-  - [ ] Calculate final settlements
+### Week 9: Finalization
+- [X] **Backend: Finalization Logic**
+  - [X] `Finalized` + `FinalizedAt` fields on Tab model
+  - [X] `TabSettlement` model with per-person amounts + paid status
+  - [X] `POST /api/tabs/:id/finalize` — validates images, creates settlements
+  - [X] `GET /api/tabs/:id/settlements` — fetch settlement list
+  - [X] `PATCH /api/tabs/:id/settlements/:id` — toggle paid
+  - [X] Mutation guards on AddBill, UpdateTab, UploadImage, DeleteImage
 
-- [ ] **Flutter: Settlement UI**
-  - [ ] "Finalize Tab" button (only when all images processed)
-  - [ ] Show warning: "This will lock the tab"
-  - [ ] Display final settlement amounts
-  - [ ] "Mark as Paid" buttons per person
+- [X] **Flutter: Settlement UI**
+  - [X] "Finalize" FAB appears when all images processed
+  - [X] Confirmation sheet with settlement preview
+  - [X] Settlement cards with tap-to-toggle paid status
+  - [X] Drift schema v4 with finalized column
+  - [X] Hides camera + Add Bills when finalized
 
-- [ ] **Web Viewer: Settlement Display**
-  - [ ] Show finalized status
-  - [ ] Display who owes whom
-  - [ ] Payment tracking checkboxes
+- [X] **Web Viewer: Settlement Display**
+  - [X] SettlementCard component with paid/unpaid styling
+  - [X] Finalized badge in TabHeader
+  - [X] Venmo pay buttons on unpaid settlements
+  - [X] Replaces PersonTotals when finalized
 
 **Milestone**: Complete group trip workflow from start to settlement
 
@@ -314,24 +302,16 @@ Billington-backend/
 ## Current Status
 
 ### ✅ Completed
-- Basic backend infrastructure (Go + PostgreSQL)
-- Bill CRUD with access tokens
-- Next.js web viewer with beautiful UI
-- Flutter app sends bills to backend
-- Venmo deep linking
+- Phase 1: Foundation (Go + PostgreSQL + Bill CRUD)
+- Phase 2: Bill Sharing & Web Viewer (Next.js + Venmo deep linking)
+- Phase 3: Tabs & Group Trips (Tab model + Flutter UI + Web viewer)
+- Phase 4: Image Uploads (Camera, upload, processed tracking)
+- Phase 5: Processing Workflow (Finalize, settlements, paid tracking)
 
-### 🔄 In Progress (This Week)
-- **Fix multiple payment methods bug**
-  - Backend accepts array
-  - Flutter sends all payment methods
-  - Web viewer displays all methods
-  - Test end-to-end flow
-
-### ⏳ Next Up (After Current Fix)
+### ⏳ Next Up
 1. Deploy to production (backend + frontend)
-2. Test with real bill sharing
-3. Start Tab backend implementation
-4. Build Tab UI in Flutter
+2. Test full workflow with real group trip
+3. Phase X: Account-less collaboration workflow
 
 ---
 
