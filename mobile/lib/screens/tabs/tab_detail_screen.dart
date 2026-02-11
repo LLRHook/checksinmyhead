@@ -27,8 +27,10 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
   List<RecentBillModel> _allBills = [];
   List<RecentBillModel> _tabBills = [];
   List<TabImageResponse> _images = [];
+  List<SettlementResponse> _settlements = [];
   bool _isLoading = true;
   bool _isUploading = false;
+  bool _isFinalizing = false;
   late AppTab _currentTab;
   late AnimationController _animController;
 
@@ -64,6 +66,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
     final tabBills = allBills.where((bill) => _currentTab.billIds.contains(bill.id)).toList();
 
     await _loadImages();
+    await _loadSettlements();
 
     if (mounted) {
       setState(() {
@@ -85,6 +88,28 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
     if (mounted) {
       setState(() => _images = images);
     }
+  }
+
+  Future<void> _loadSettlements() async {
+    if (_currentTab.backendId == null || _currentTab.accessToken == null) return;
+    if (!_currentTab.isFinalized) return;
+
+    final settlements = await _apiService.getSettlements(
+      _currentTab.backendId!,
+      _currentTab.accessToken!,
+    );
+
+    if (mounted) {
+      setState(() => _settlements = settlements);
+    }
+  }
+
+  bool get _canFinalize {
+    if (!_currentTab.isSynced) return false;
+    if (_currentTab.isFinalized) return false;
+    if (_tabBills.isEmpty) return false;
+    if (_images.isNotEmpty && !_images.every((i) => i.processed)) return false;
+    return true;
   }
 
   Future<void> _pickAndUploadImage() async {
@@ -165,6 +190,51 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
     if (success && mounted) {
       _showSnackBar('Image deleted');
       await _loadImages();
+    }
+  }
+
+  Future<void> _finalizeTab() async {
+    if (!_canFinalize || _currentTab.id == null) return;
+
+    // Show settlement preview / confirmation
+    final personTotals = _calculatePersonTotals();
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => _FinalizeConfirmSheet(personTotals: personTotals),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isFinalizing = true);
+
+    final success = await _tabManager.finalizeTab(_currentTab.id!);
+
+    if (mounted) {
+      setState(() => _isFinalizing = false);
+
+      if (success) {
+        _showSnackBar('Tab finalized');
+        await _loadBills();
+      } else {
+        _showSnackBar('Failed to finalize tab', isError: true);
+      }
+    }
+  }
+
+  Future<void> _toggleSettlementPaid(SettlementResponse settlement) async {
+    if (_currentTab.backendId == null || _currentTab.accessToken == null) return;
+
+    final success = await _apiService.updateSettlement(
+      _currentTab.backendId!,
+      settlement.id,
+      _currentTab.accessToken!,
+      !settlement.paid,
+    );
+
+    if (success && mounted) {
+      await _loadSettlements();
     }
   }
 
@@ -268,9 +338,32 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
     return Scaffold(
       backgroundColor: brightness == Brightness.dark ? colorScheme.surface : Colors.grey[50],
       appBar: AppBar(
-        title: Text(
-          _currentTab.name,
-          style: const TextStyle(fontWeight: FontWeight.bold),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _currentTab.name,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            if (_currentTab.isFinalized) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Finalized',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.green.shade700,
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
         centerTitle: true,
         elevation: 0,
@@ -283,7 +376,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
           },
         ),
         actions: [
-          if (_currentTab.isSynced)
+          if (_currentTab.isSynced && !_currentTab.isFinalized)
             IconButton(
               icon: _isUploading
                   ? SizedBox(
@@ -315,7 +408,10 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
                         padding: const EdgeInsets.only(bottom: 100),
                         children: [
                           if (_tabBills.isNotEmpty) _buildTotalCard(),
-                          if (_calculatePersonTotals().isNotEmpty) _buildPersonTotalsCard(),
+                          if (_currentTab.isFinalized && _settlements.isNotEmpty)
+                            _buildSettlementsCard()
+                          else if (_calculatePersonTotals().isNotEmpty)
+                            _buildPersonTotalsCard(),
                           if (_images.isNotEmpty) _buildImagesSection(),
                           if (_tabBills.isNotEmpty) ..._buildBillCards(),
                         ],
@@ -323,7 +419,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
                     ),
                   ],
                 ),
-      floatingActionButton: _buildFAB(),
+      floatingActionButton: _currentTab.isFinalized ? null : _buildFAB(),
     );
   }
 
@@ -441,6 +537,146 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
                 fontWeight: FontWeight.w600,
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettlementsCard() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+    final cardBgColor = brightness == Brightness.dark ? colorScheme.surface : Colors.white;
+    final paidCount = _settlements.where((s) => s.paid).length;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      decoration: BoxDecoration(
+        color: cardBgColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: brightness == Brightness.dark
+                ? Colors.black.withValues(alpha: 0.2)
+                : Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.account_balance_wallet_outlined, color: Colors.green, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Settlements',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onSurface,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '$paidCount/${_settlements.length} paid',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.green.shade700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Divider(height: 1, color: colorScheme.outline.withValues(alpha: 0.2)),
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(20),
+            itemCount: _settlements.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final settlement = _settlements[index];
+              return GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  _toggleSettlementPaid(settlement);
+                },
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 18,
+                      backgroundColor: settlement.paid
+                          ? Colors.green.withValues(alpha: 0.15)
+                          : colorScheme.primaryContainer,
+                      child: settlement.paid
+                          ? Icon(Icons.check, size: 18, color: Colors.green.shade700)
+                          : Text(
+                              settlement.personName[0].toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.primary,
+                              ),
+                            ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        settlement.personName,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: settlement.paid
+                              ? colorScheme.onSurface.withValues(alpha: 0.5)
+                              : colorScheme.onSurface,
+                          decoration: settlement.paid ? TextDecoration.lineThrough : null,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: settlement.paid
+                            ? Colors.green.withValues(alpha: 0.1)
+                            : colorScheme.primaryContainer.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        CurrencyFormatter.formatCurrency(settlement.amount),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: settlement.paid
+                              ? Colors.green.shade700
+                              : colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -632,7 +868,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
                 final image = _images[index];
                 return GestureDetector(
                   onTap: () => _showFullScreenImage(image),
-                  onLongPress: () {
+                  onLongPress: _currentTab.isFinalized ? null : () {
                     HapticFeedback.mediumImpact();
                     _showImageActions(image);
                   },
@@ -701,8 +937,8 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
         builder: (context) => _FullScreenImageView(
           imageUrl: '${_apiService.baseUrl}${image.url}',
           image: image,
-          onToggleProcessed: () => _toggleProcessed(image),
-          onDelete: () => _deleteImage(image),
+          onToggleProcessed: _currentTab.isFinalized ? null : () => _toggleProcessed(image),
+          onDelete: _currentTab.isFinalized ? null : () => _deleteImage(image),
         ),
       ),
     );
@@ -767,7 +1003,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
     return _tabBills.map((bill) {
       return Dismissible(
         key: Key('bill_${bill.id}'),
-        direction: DismissDirection.endToStart,
+        direction: _currentTab.isFinalized ? DismissDirection.none : DismissDirection.endToStart,
         background: Container(
           alignment: Alignment.centerRight,
           padding: const EdgeInsets.only(right: 24),
@@ -897,6 +1133,44 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
+    // Show finalize button when ready
+    if (_canFinalize) {
+      return Container(
+        height: 56,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.green.withValues(alpha: brightness == Brightness.dark ? 0.2 : 0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: FloatingActionButton.extended(
+          onPressed: _isFinalizing ? null : _finalizeTab,
+          elevation: 0,
+          backgroundColor: Colors.green,
+          foregroundColor: Colors.white,
+          icon: _isFinalizing
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Icon(Icons.check_circle_outline, size: 22),
+          label: Text(
+            _isFinalizing ? 'Finalizing...' : 'Finalize',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 0.5),
+          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        ),
+      );
+    }
+
     return Container(
       height: 56,
       decoration: BoxDecoration(
@@ -925,18 +1199,170 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
   }
 }
 
+// Finalize confirmation sheet
+class _FinalizeConfirmSheet extends StatelessWidget {
+  final Map<String, double> personTotals;
+
+  const _FinalizeConfirmSheet({required this.personTotals});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+    final sortedEntries = personTotals.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.7,
+      ),
+      decoration: BoxDecoration(
+        color: brightness == Brightness.dark ? colorScheme.surface : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.check_circle_outline, color: Colors.green, size: 28),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Finalize Tab',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'This will lock the tab from further edits.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 15,
+                color: colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: brightness == Brightness.dark
+                    ? colorScheme.surfaceContainerHighest
+                    : Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    'Settlement Preview',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface.withValues(alpha: 0.6),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ...sortedEntries.map((entry) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 14,
+                          backgroundColor: colorScheme.primaryContainer,
+                          child: Text(
+                            entry.key[0].toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            entry.key,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: colorScheme.onSurface,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          CurrencyFormatter.formatCurrency(entry.value),
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.5)),
+                    ),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: const Text(
+                      'Finalize',
+                      style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // Full-screen image viewer
 class _FullScreenImageView extends StatelessWidget {
   final String imageUrl;
   final TabImageResponse image;
-  final VoidCallback onToggleProcessed;
-  final VoidCallback onDelete;
+  final VoidCallback? onToggleProcessed;
+  final VoidCallback? onDelete;
 
   const _FullScreenImageView({
     required this.imageUrl,
     required this.image,
-    required this.onToggleProcessed,
-    required this.onDelete,
+    this.onToggleProcessed,
+    this.onDelete,
   });
 
   @override
@@ -966,23 +1392,25 @@ class _FullScreenImageView extends StatelessWidget {
           ],
         ),
         actions: [
-          IconButton(
-            icon: Icon(
-              image.processed ? Icons.check_box : Icons.check_box_outline_blank,
-              color: image.processed ? Colors.green : Colors.white,
+          if (onToggleProcessed != null)
+            IconButton(
+              icon: Icon(
+                image.processed ? Icons.check_box : Icons.check_box_outline_blank,
+                color: image.processed ? Colors.green : Colors.white,
+              ),
+              onPressed: () {
+                onToggleProcessed!();
+                Navigator.pop(context);
+              },
             ),
-            onPressed: () {
-              onToggleProcessed();
-              Navigator.pop(context);
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline, color: Colors.red),
-            onPressed: () {
-              Navigator.pop(context);
-              onDelete();
-            },
-          ),
+          if (onDelete != null)
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              onPressed: () {
+                Navigator.pop(context);
+                onDelete!();
+              },
+            ),
         ],
       ),
       body: Center(
