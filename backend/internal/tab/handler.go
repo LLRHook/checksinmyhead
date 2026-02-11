@@ -139,7 +139,12 @@ func (h *TabHandler) AddBillToTab(c *gin.Context) {
 		return
 	}
 
-	err := h.service.AddBillToTab(tab.ID, body.BillID)
+	var memberID *uint
+	if member := h.getMemberFromQuery(c); member != nil {
+		memberID = &member.ID
+	}
+
+	err := h.service.AddBillToTab(tab.ID, body.BillID, memberID)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -189,6 +194,15 @@ func (h *TabHandler) FinalizeTab(c *gin.Context) {
 	tab := h.getTabAndValidate(c)
 	if tab == nil {
 		return
+	}
+
+	// If tab has members, only the creator can finalize
+	if len(tab.Members) > 0 {
+		member := h.getMemberFromQuery(c)
+		if member == nil || member.Role != "creator" {
+			c.JSON(403, gin.H{"error": "only the tab creator can finalize"})
+			return
+		}
 	}
 
 	settlements, err := h.service.FinalizeTab(tab.ID)

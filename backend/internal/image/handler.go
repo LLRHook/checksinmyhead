@@ -149,6 +149,13 @@ func (h *ImageHandler) UploadImage(c *gin.Context) {
 
 	url := fmt.Sprintf("/uploads/tabs/%d/%s", t.ID, filename)
 
+	uploadedBy := c.Query("uploaded_by")
+	if memberToken := c.Query("m"); memberToken != "" {
+		if member, err := h.tabService.GetMemberByToken(memberToken); err == nil {
+			uploadedBy = member.DisplayName
+		}
+	}
+
 	image := &models.TabImage{
 		TabID:      t.ID,
 		Filename:   filename,
@@ -156,7 +163,7 @@ func (h *ImageHandler) UploadImage(c *gin.Context) {
 		Size:       header.Size,
 		MimeType:   mimeType,
 		Processed:  false,
-		UploadedBy: c.Query("uploaded_by"),
+		UploadedBy: uploadedBy,
 	}
 
 	if err := h.service.Create(image); err != nil {
