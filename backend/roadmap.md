@@ -150,18 +150,54 @@ Transform Billington from a local Flutter app into a Splitwise competitor with g
 
 ---
 
-## Phase X: Account Workflow
-*Goal: Allow different users to add bills to shared tabs - truly building out the application as a Splitwise competitor*
+## Phase X: Account-less Collaboration ✅ COMPLETE
+*Goal: Allow different users to add bills to shared tabs without accounts — privacy-first anonymous member tokens*
 
-### Week 10: ACcounts, but privacy first
-- [] Determine a way to create account kinda behavior while following the privacy first principles of the application.
-- If person X creates the bill, they should be able to share it in a groupchat then person Y and Z can click it. Then when they click it, they'er ADDED to the trip instantly. Then they can add bills to the tab as well.
-- If we could do this without accounts, maybe some kinda device identifier that would be amazing. Don't want to store any user data.
-- [] When determined, PLAN and explain the approach to the user before committing to any particular building mechanism.
+### Week 10: Anonymous Member Tokens
+- [X] **Backend: TabMember model + CORS middleware**
+  - [X] TabMember model (display_name, member_token, role)
+  - [X] Members association on Tab, AddedByMemberID on Bill
+  - [X] AutoMigrate + gin-contrib/cors middleware
+- [X] **Backend: Member repository + service**
+  - [X] CreateMember, GetMemberByToken, GetMembersByTabID
+  - [X] JoinTab, JoinTabAsCreator, GetMembers service methods
+- [X] **Backend: Join endpoint + member listing**
+  - [X] POST /api/tabs/:id/join — returns member_token
+  - [X] GET /api/tabs/:id/members — returns member list
+  - [X] CreateTab accepts optional creator_display_name
+- [X] **Backend: Member attribution on write endpoints**
+  - [X] AddBillToTab records added_by_member_id via ?m= param
+  - [X] FinalizeTab requires creator role when members exist
+  - [X] UploadImage resolves ?m= for uploaded_by attribution
+- [X] **Flutter: Drift migration v5 + model update**
+  - [X] memberToken, role, isRemote columns on Tabs table
+  - [X] Tab model fields + isCreator/isMember getters
+- [X] **Flutter: API service updates**
+  - [X] joinTab, getTabMembers, getTabData methods
+  - [X] Member token passed on write endpoints
+- [X] **Flutter: Tab creation with display name + join flow**
+  - [X] Creator display name on tab creation
+  - [X] Join Tab sheet (URL + name)
+  - [X] Clipboard detection for Billington URLs
+- [X] **Flutter: Tab detail for remote tabs + members**
+  - [X] Member list with crown icon for creator
+  - [X] Member token attribution on uploads
+- [X] **Web Viewer: Join flow + member display**
+  - [X] JoinTabButton component (localStorage persistence)
+  - [X] MemberList component with member chips
+  - [X] Integrated into tab page
 
-**Milestone**: Beat Splitwise out of the market, as they're charging users a fee for services and not as in-depth as Billington.
+**Milestone**: Multiple people can join shared tabs via link, add bills, and see who contributed — all without accounts.
 
 ---
+
+## Phase D: Document and Test
+- [] UPdate/revamp all documentation, write explicit steps for testing.
+- [] Revamp entire Docs folder, rewrite all architecture diagrams to reflect the new way the distributed system works.
+- [] update readme to be more inline with current application trends.
+- [] Create comprehensive testing suite and unit tests, to test the API and the actual flutter application, and the web viewer
+- Level of professionalism/polish on this should be in line with the ui_prompt, it should be beautiful and build customer trust. We want to get Splitwise off the market.
+- [] Create a single command I can run that would start everything up so I can test locally. It should spin the backend/docker and run docker stuff AND start the simulator on my Mac and run the app. 
 
 ## Phase 6: Production Deployment & Polish
 *Goal: Live, reliable, production system*
@@ -229,8 +265,9 @@ Billington-backend/
 │   └── web-service/main.go        ✅ Working
 ├── pkg/
 │   ├── models/
-│   │   ├── bill.go                ✅ Updated (PaymentMethods array)
-│   │   └── tab.go                 ⏳ TODO
+│   │   ├── bill.go                ✅ Updated (PaymentMethods, AddedByMemberID)
+│   │   ├── tab.go                 ✅ Complete (Members association)
+│   │   └── tab_member.go          ✅ Complete (anonymous identity)
 │   ├── database/
 │   │   └── postgres.go            ✅ Working
 │   └── security/
@@ -240,10 +277,10 @@ Billington-backend/
 │   │   ├── handler.go             ✅ Complete
 │   │   ├── service.go             ✅ Complete
 │   │   └── repository.go          ✅ Complete
-│   ├── tab/                       ⏳ TODO
-│   │   ├── handler.go
-│   │   ├── service.go
-│   │   └── repository.go
+│   ├── tab/                       ✅ Complete
+│   │   ├── handler.go             ✅ (Join, Members, attribution)
+│   │   ├── service.go             ✅ (JoinTab, GetMembers)
+│   │   └── repository.go         ✅ (Member CRUD)
 │   └── web/
 │       ├── handler.go             ✅ Complete
 │       └── templates/
@@ -307,11 +344,12 @@ Billington-backend/
 - Phase 3: Tabs & Group Trips (Tab model + Flutter UI + Web viewer)
 - Phase 4: Image Uploads (Camera, upload, processed tracking)
 - Phase 5: Processing Workflow (Finalize, settlements, paid tracking)
+- Phase X: Account-less Collaboration (Anonymous member tokens, join flow, attribution)
 
 ### ⏳ Next Up
 1. Deploy to production (backend + frontend)
 2. Test full workflow with real group trip
-3. Phase X: Account-less collaboration workflow
+3. Move display name entry to onboarding flow (SharedPreferences)
 
 ---
 
@@ -322,8 +360,9 @@ Billington-backend/
 - [X] Secure token-based access control
 - [X] Beautiful web interface for bill viewing
 - [X] Flutter integration with backend
-- [ ] Tabs for group trips
-- [ ] Image upload system
+- [X] Tabs for group trips
+- [X] Image upload system
+- [X] Account-less collaboration (anonymous member tokens)
 - [ ] Production deployment
 - [ ] 10+ real users testing
 
