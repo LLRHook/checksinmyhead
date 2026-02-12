@@ -15,6 +15,7 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import 'package:checks_frontend/config/theme.dart';
 import 'package:checks_frontend/screens/quick_split/bill_summary/models/bill_summary_data.dart';
 import 'package:checks_frontend/screens/quick_split/bill_summary/utils/calculation_utils.dart';
 import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_utils.dart';
@@ -274,6 +275,7 @@ class _PersonCardState extends State<PersonCard>
     Color expandIconColor,
   ) {
     final brightness = Theme.of(context).brightness;
+    final textTheme = Theme.of(context).textTheme;
 
     // Calculate color based on person's assigned color or birthday status
     final headerBgColor =
@@ -286,17 +288,7 @@ class _PersonCardState extends State<PersonCard>
             ).withValues(alpha: 0.2)
             : widget.person.color.withValues(alpha: .1);
 
-    final pillBgColor =
-        isBirthdayPerson
-            ? birthdayPillBgColor
-            : brightness == Brightness.dark
-            ? ColorUtils.getLightenedColor(
-              widget.person.color,
-              0.1,
-            ).withValues(alpha: .3)
-            : widget.person.color.withValues(alpha: .2);
-
-    final pillTextColor =
+    final amountTextColor =
         isBirthdayPerson
             ? birthdayPillTextColor
             : brightness == Brightness.dark
@@ -332,9 +324,8 @@ class _PersonCardState extends State<PersonCard>
               children: [
                 Text(
                   widget.person.name,
-                  style: TextStyle(
+                  style: textTheme.bodyLarge?.copyWith(
                     fontWeight: FontWeight.bold,
-                    fontSize: 16,
                     color:
                         brightness == Brightness.dark
                             ? isBirthdayPerson
@@ -349,7 +340,7 @@ class _PersonCardState extends State<PersonCard>
                 if (isBirthdayPerson)
                   Row(
                     children: [
-                      Icon(Icons.cake, size: 14, color: birthdayTextColor),
+                      Icon(Icons.cake, size: 14, color: AppTheme.accentWarm),
                       const SizedBox(width: 4),
                       Text(
                         'Happy Birthday!',
@@ -365,21 +356,13 @@ class _PersonCardState extends State<PersonCard>
           ),
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: pillBgColor,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '\$${totalShare.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: pillTextColor,
-                  ),
+              Text(
+                '\$${totalShare.toStringAsFixed(2)}',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: amountTextColor,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
               if (totalShare > 0) ...[

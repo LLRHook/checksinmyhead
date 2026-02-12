@@ -15,6 +15,7 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import 'package:checks_frontend/config/theme.dart';
 import 'package:checks_frontend/screens/quick_split/bill_summary/models/bill_summary_data.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -168,14 +169,14 @@ class _BillTotalCardState extends State<BillTotalCard>
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.receipt_long, color: titleColor, size: 18),
+                Icon(Icons.receipt_long, color: AppTheme.accentWarm, size: 18),
                 const SizedBox(width: 8),
                 Text(
                   'BILL TOTAL',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: titleColor,
+                    color: AppTheme.accentWarm,
                     letterSpacing: 1,
                   ),
                 ),

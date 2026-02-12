@@ -498,7 +498,7 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
                         style: TextStyle(color: colorScheme.onSurface),
                       ),
                       value: _options.showAllItems,
-                      activeColor: colorScheme.primary,
+                      activeTrackColor: colorScheme.primary,
                       onChanged: (value) {
                         setState(() {
                           _options.showAllItems = value;
@@ -522,7 +522,7 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
                         ),
                       ),
                       value: _options.showBreakdown,
-                      activeColor: colorScheme.primary,
+                      activeTrackColor: colorScheme.primary,
                       onChanged: (value) {
                         setState(() {
                           _options.showBreakdown = value;
@@ -545,7 +545,7 @@ class _ShareOptionsSheetState extends State<ShareOptionsSheet> {
                         ),
                       ),
                       value: _options.showPersonItems,
-                      activeColor: colorScheme.primary,
+                      activeTrackColor: colorScheme.primary,
                       onChanged: (value) {
                         setState(() {
                           _options.showPersonItems = value;

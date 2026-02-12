@@ -15,15 +15,14 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import 'package:checks_frontend/screens/quick_split/bill_summary/utils/share_utils.dart';
+import 'package:checks_frontend/screens/quick_split/bill_summary/models/bill_summary_data.dart';
 import 'package:checks_frontend/screens/quick_split/bill_summary/widgets/bill_name_sheet.dart';
+import 'package:checks_frontend/screens/quick_split/bill_summary/widgets/enhanced_share_sheet.dart';
 import 'package:checks_frontend/screens/recent_bills/components/participants_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
-import 'package:checks_frontend/screens/settings/services/settings_manager.dart';
-import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
 import 'utils/bill_calculations.dart';
 
@@ -53,12 +52,6 @@ class BillDetailsScreen extends StatefulWidget {
 }
 
 class _BillDetailsScreenState extends State<BillDetailsScreen> {
-  // Share options that persist between sessions
-  late ShareOptions _shareOptions;
-
-  // Loading state tracker for async initialization
-  bool _isLoading = true;
-
   // Local copy of the bill to track updates
   late RecentBillModel _bill;
 
@@ -72,18 +65,8 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
   void initState() {
     super.initState();
 
-    // Initialize with default share options until loaded from persistent storage
-    _shareOptions = ShareOptions(
-      showAllItems: true,
-      showPersonItems: true,
-      showBreakdown: true,
-    );
-
     // Initialize local bill copy
     _bill = widget.bill;
-
-    // Load user's previously saved share options
-    _loadShareOptions();
   }
 
   /// Shows the bottom sheet for editing bill name
@@ -112,88 +95,20 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
     return false;
   }
 
-  /// Loads share options from persistent storage
-  ///
-  /// This method retrieves the user's previously saved share preferences.
-  /// If loading fails, it silently keeps using the default options to ensure
-  /// the app can continue functioning.
-  Future<void> _loadShareOptions() async {
-    try {
-      final options = await SettingsManager.getShareOptions();
-      if (mounted) {
-        setState(() {
-          _shareOptions = options;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      // If there's an error loading options, use default values and continue
-      // This ensures the app doesn't crash if settings can't be loaded
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
   // We'll handle the navigation in the back button instead of dispose()
   @override
   void dispose() {
     super.dispose();
   }
 
-  /// Shows the share options bottom sheet
-  ///
-  /// This method displays a modal bottom sheet allowing the user to
-  /// customize their sharing preferences before sharing the bill.
+  /// Shows the enhanced share sheet with link options (if URL exists) and text receipt
   void _promptShareOptions() {
-    ShareOptionsSheet.show(
+    final summaryData = BillSummaryData.fromRecentBill(_bill);
+    EnhancedShareSheet.show(
       context: context,
-      initialOptions: _shareOptions,
-      onOptionsChanged: (updatedOptions) {
-        setState(() {
-          _shareOptions = updatedOptions;
-        });
-        // Save updated options to database for future use
-        SettingsManager.saveShareOptions(updatedOptions);
-      },
-      onShareTap: _shareBillSummary,
+      shareUrl: _bill.shareUrl,
+      data: summaryData,
     );
-  }
-
-  /// Shares the bill summary using the configured options
-  ///
-  /// This method prepares and formats the bill data according to the user's
-  /// sharing preferences, then triggers the system share sheet.
-  Future<void> _shareBillSummary() async {
-    // Use the BillCalculations utility to prepare data
-    final billCalculations = BillCalculations(_bill);
-
-    // Convert the saved bill data back to the format needed for sharing
-    final String summary = await ShareUtils.generateShareText(
-      participants:
-          _bill.participantNames
-              .map((name) => Person(name: name, color: _bill.color))
-              .toList(),
-      personShares: billCalculations.generatePersonShares(),
-      items: billCalculations.generateBillItems(),
-      subtotal: _bill.subtotal,
-      tax: _bill.tax,
-      tipAmount: _bill.tipAmount,
-      total: _bill.total,
-      birthdayPerson:
-          null, // Assuming birthday person isn't stored in recent bills
-      tipPercentage: _bill.tipPercentage,
-      isCustomTipAmount: false, // Assuming this isn't stored
-      showAllItems: _shareOptions.showAllItems,
-      showPersonItems: _shareOptions.showPersonItems,
-      showBreakdown: !_shareOptions.showBreakdown,
-      billName: _bill.billName,
-    );
-
-    // Invoke the system share sheet with the formatted summary
-    ShareUtils.shareBillSummary(summary: summary);
   }
 
   @override
@@ -206,8 +121,6 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
     final scaffoldBgColor =
         brightness == Brightness.dark ? colorScheme.surface : Colors.grey[50];
 
-    final loadingIndicatorColor = colorScheme.primary;
-
     final appBarIconColor = colorScheme.onSurface;
 
     final titleColor = colorScheme.onSurface;
@@ -217,16 +130,6 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
         brightness == Brightness.dark
             ? colorScheme.primary.withValues(alpha: .4)
             : colorScheme.primary.withValues(alpha: .2);
-
-    // Show loading indicator while initializing
-    if (_isLoading) {
-      return Scaffold(
-        backgroundColor: scaffoldBgColor,
-        body: Center(
-          child: CircularProgressIndicator(color: loadingIndicatorColor),
-        ),
-      );
-    }
 
     // Create a single instance of BillCalculations for all child widgets
     // This avoids redundant calculations across different components
@@ -272,6 +175,7 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
                           items: _bill.items,
                           color: _bill.color,
                           itemAssignments: _bill.itemAssignments,
+                          shareUrl: _bill.shareUrl,
                         );
 
                         // Mark that bill name was updated to notify previous screen
@@ -1052,6 +956,7 @@ class SortedParticipantsCard extends StatelessWidget {
       items: bill.items,
       color: bill.color,
       itemAssignments: bill.itemAssignments,
+      shareUrl: bill.shareUrl,
     );
 
     return ParticipantsCard(bill: sortedBill, calculations: calculations);

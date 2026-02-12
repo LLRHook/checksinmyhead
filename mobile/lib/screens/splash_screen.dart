@@ -19,7 +19,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'landing_screen.dart';
-import 'settings/settings_screen.dart';
+import 'onboarding/onboarding_screen.dart';
 
 /// A custom page route that provides a smooth fade transition between screens
 class FadePageRoute<T> extends PageRouteBuilder<T> {
@@ -50,7 +50,7 @@ class FadePageRoute<T> extends PageRouteBuilder<T> {
             child: ScaleTransition(scale: scaleAnimation, child: child),
           );
         },
-        transitionDuration: const Duration(milliseconds: 500),
+        transitionDuration: const Duration(milliseconds: 350),
       );
 }
 
@@ -99,9 +99,9 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
 
-    // Create animation controller with 1300ms total animation duration
+    // Create animation controller with 800ms total animation duration
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 1300),
+      duration: const Duration(milliseconds: 800),
       vsync: this, // The SingleTickerProviderStateMixin provides vsync
     );
 
@@ -157,24 +157,22 @@ class _SplashScreenState extends State<SplashScreen>
     // Check if first launch flag exists, default to true if not found
     final isFirstLaunch = prefs.getBool('is_first_launch') ?? true;
 
-    // After 900ms, trigger exit animations
-    _exitAnimationTimer = Timer(const Duration(milliseconds: 900), () {
+    // After 550ms, trigger exit animations
+    _exitAnimationTimer = Timer(const Duration(milliseconds: 550), () {
       // Check if widget is still mounted before calling setState
       if (mounted) {
         setState(() {
           _startExitAnimation = true;
         });
 
-        // After exit animation starts, wait 400ms before navigating
-        _navigationTimer = Timer(const Duration(milliseconds: 400), () {
+        // After exit animation starts, wait 250ms before navigating
+        _navigationTimer = Timer(const Duration(milliseconds: 250), () {
           // Check again if widget is still mounted before navigating
           if (mounted) {
             if (isFirstLaunch) {
-              // First launch - go to settings/onboarding with fade transition
+              // First launch - go to onboarding with fade transition
               Navigator.of(context).pushReplacement(
-                FadePageRoute(
-                  builder: (context) => SettingsScreen(isOnboarding: true),
-                ),
+                FadePageRoute(builder: (context) => const OnboardingScreen()),
               );
             } else {
               // Returning user - go directly to main landing screen with fade transition

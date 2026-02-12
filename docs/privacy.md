@@ -1,161 +1,72 @@
-# Privacy: A Core Value
+# Privacy
 
-Billington was built with privacy as a foundational principle, not as an afterthought. This document outlines the privacy-focused architecture and the technical decisions that support it.
+Billington is designed to minimize the personal information it collects and stores. This document explains the privacy model and how it compares to alternatives.
 
-## Privacy Architecture
+## How It Works
 
-Billington uses a "zero-network" approach:
+Billington uses **anonymous member tokens** instead of user accounts. No email, phone number, password, or social login is ever collected.
 
-```mermaid
-flowchart TD
-    subgraph "User Device"
-        UI[User Interface]
-        Logic[Business Logic]
-        DB[(Local SQLite Database)]
-        
-        UI <--> Logic
-        Logic <--> DB
-    end
-    
-    subgraph "External Systems"
-        ShareSheet[System Share Sheet]
-        Recipient[Recipient Device]
-    end
-    
-    UI -->|Text-only| ShareSheet
-    ShareSheet -->|Plain Text| Recipient
-    
-    NoCloud[(Cloud Storage)]:::noCloud
-    NoAPI[External APIs]:::noCloud
-    NoTracking[Analytics Tracking]:::noCloud
-    
-    UI -.-x NoCloud
-    UI -.-x NoAPI
-    UI -.-x NoTracking
-    
-    classDef noCloud stroke-dasharray: 5 5, stroke:#FF0000, stroke-width:2px
-    classDef localSystem fill:#ABCDEF,stroke:#333,stroke-width:1px
-    
-    class UI,Logic,DB localSystem
-```
+### What Billington Stores
 
-### Technical Implementation
+- **Display names**: User-chosen names (e.g. "Alice") — not verified, not unique
+- **Bill data**: Item names, prices, split calculations
+- **Access tokens**: Cryptographic strings for link-based sharing
+- **Member tokens**: Per-member tokens for attribution within a tab
+- **Receipt images**: Uploaded photos stored on the server
 
-1. **No Network Permissions**
-   - App never requests internet access permissions
-   - No network libraries or dependencies included
-   - No API endpoints or services to secure
+### What Billington Does Not Store
 
-2. **Local-Only Storage**
-   - All data stored in on-device SQLite database
-   - Limited retention: max 30 bills, 12 recent participants
-   - Automatic pruning of old data to limit storage growth
+- Email addresses
+- Phone numbers
+- Passwords
+- Social media accounts
+- Device identifiers
+- Location data
+- Analytics or tracking data
 
-3. **No Authentication System**
-   - No user accounts or login
-   - No passwords to store or secure
-   - No personal identifiers collected
+## Anonymous Token Model
 
-4. **Limited Data Collection**
-   - Only stores what the user explicitly enters
-   - No device information gathered
-   - No tracking or analytics
+When a user creates a tab, they receive an **access token** (for sharing the tab link) and optionally a **member token** (for attributing their contributions). These tokens are:
 
-5. **Minimal Permissions**
-   - Only permission used: system share sheet
-   - No contact access
-   - No location data
-   - No camera access (until future OCR feature)
+- Generated using Go's `crypto/rand.Text()` (cryptographically secure)
+- 64 characters long
+- Stored locally on the user's device (Flutter: SharedPreferences, Web: localStorage)
+- Not linked to any identity system
 
-## Code Implementation
+Anyone with the access token can view the tab. Member tokens provide write attribution but do not grant additional read access.
 
-```dart
-// Example showing database limitations to respect privacy
-class AppDatabase extends _$AppDatabase {
-  static const int maxRecentPeople = 12;
-  static const int maxRecentBills = 30;
-  
-  // Automatic data pruning for privacy
-  Future<void> addBill(RecentBillsCompanion bill) async {
-    final count = await _getBillCount();
-    if (count >= maxRecentBills) {
-      await _removeOldestBill();
-    }
-    await into(recentBills).insert(bill);
-  }
-  
-  // Clean data export that contains only essential information
-  Future<String> exportBillAsText(int billId, ShareOptions options) async {
-    final bill = await getBill(billId);
-    final buffer = StringBuffer();
-    
-    // Only include the minimal necessary information based on user preferences
-    if (options.includeHeader) {
-      buffer.writeln("Bill from ${bill.date}");
-      buffer.writeln("Total: \$${bill.total.toStringAsFixed(2)}");
-      buffer.writeln();
-    }
-    
-    // No identifying information included in exports
-    // ...
-    
-    return buffer.toString();
-  }
-}
-```
+## Mobile App Privacy
 
-## Privacy-Related Trade-offs
+The Flutter app stores data locally using Drift (SQLite):
 
-### Trade-offs Accepted
+- Recent bills (last 30) stored on-device
+- Recent participants (last 12) for quick selection
+- Tab metadata and member tokens in local database
+- No analytics SDK, no crash reporting that sends PII
+- Network requests only go to the Billington backend
 
-1. **No Direct Payment Integration**
-   - Most payment apps require user accounts and cloud integration
-   - Solution: Text-based sharing that users can copy/paste into payment apps
+## Comparison
 
-2. **Limited History**
-   - Without cloud backup, history is device-limited
-   - Solution: Focused on recent history (last 30 bills) as most valuable
+| | Billington | Splitwise | Venmo |
+|---|---|---|---|
+| Account required | No | Yes (email) | Yes (phone + SSN) |
+| PII collected | Display name only | Name, email, phone | Name, email, phone, SSN, bank |
+| Social graph | None | Friend lists | Friend lists + transactions |
+| Data sold to third parties | No | Privacy policy allows | Privacy policy allows |
+| Works offline | Yes (local bills) | No | No |
+| Open source | Yes (GPL) | No | No |
 
-3. **Manual Entry**
-   - No contact syncing means manual participant entry
-   - Solution: Recent participants feature remembers last 12 people
+## Data Lifecycle
 
-4. **No Multi-Device Sync**
-   - Data cannot sync between user's devices
-   - Solution: Simple share format that works via messaging apps
+- **Bills**: Persist until the tab is deleted or the server is wiped
+- **Images**: Stored on the server filesystem, deleted when removed via API
+- **Tokens**: No expiration — access lasts as long as the data exists
+- **Local data**: Cleared when the user uninstalls the app or clears app data
 
-### Privacy Benefits
+## Security Considerations
 
-1. **No Data Breaches Possible**
-   - No server means no server vulnerabilities
-   - No central database of user information to protect
-
-2. **No Account Management**
-   - No passwords to store securely
-   - No account recovery or identity verification needed
-
-3. **No Compliance Overhead**
-   - Minimal GDPR/CCPA concerns with no data collection
-   - No need for complex privacy policies or cookie notices
-
-4. **User Trust**
-   - Privacy becomes a marketable feature
-   - Users confident their financial data stays private
-
-## Future Privacy Enhancements
-
-1. **Private OCR Processing**
-   - Upcoming receipt scanning will use on-device ML models
-   - No images will be sent to external services
-
-2. **Enhanced Data Export/Deletion**
-   - Tool to export or delete all user data
-   - Full transparency about what is stored
-
-3. **App Privacy Report Integration**
-   - Support for iOS App Privacy Report
-   - Visual confirmation of zero network activity
-
-## Conclusion
-
-Privacy in Billington isn't a marketing feature—it's a fundamental architectural decision that simplified development while creating user trust. By eliminating entire categories of privacy concerns through technical design, the app provides peace of mind alongside its core functionality.
+- All tokens are generated with cryptographic randomness
+- No authentication means no credential stuffing or password reuse risk
+- CORS is open (by design — links are meant to be shared publicly)
+- Image uploads are rate-limited and size-restricted
+- No session cookies or JWT tokens to steal
