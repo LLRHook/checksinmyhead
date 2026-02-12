@@ -9,5 +9,8 @@ down: ## Stop services
 logs: ## View logs
 	docker-compose logs -f
 
-test: ## Test the health endpoint
-	curl localhost:8080/health
+test: ## Run Go unit tests
+	go test -v -race ./internal/... ./pkg/...
+
+dev: ## Start full stack (use root dev.sh instead)
+	@echo "Run ./dev.sh from the project root to start all services."
