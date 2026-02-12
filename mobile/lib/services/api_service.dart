@@ -13,7 +13,7 @@ class ApiService {
   String get baseUrl {
     // Production mode
     if (kReleaseMode) {
-      return 'https://api.billington.app';
+      return 'https://billington-api.onrender.com';
     }
 
     // Development mode - Android emulator uses 10.0.2.2
