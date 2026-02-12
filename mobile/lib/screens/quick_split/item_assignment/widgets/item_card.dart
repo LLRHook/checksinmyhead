@@ -15,6 +15,7 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import 'package:checks_frontend/config/theme.dart';
 import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_utils.dart';
 import 'package:checks_frontend/screens/quick_split/item_assignment/widgets/participant_selector.dart';
 import 'package:flutter/material.dart';
@@ -527,6 +528,7 @@ class _ItemCardState extends State<ItemCard>
     // Get theme info for adaptive styling
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
+    final textTheme = Theme.of(context).textTheme;
 
     // Calculate theme-aware color variables
     // These adapt all UI elements to current theme brightness
@@ -597,13 +599,11 @@ class _ItemCardState extends State<ItemCard>
                 ? dominantColor.withValues(alpha: .1)
                 : Colors.black.withValues(alpha: .03));
 
-    // Highlight shadow color - enhanced for dark mode
+    // Highlight shadow color - uses accentWarm for consistent brand glow
     final highlightShadowColor =
         brightness == Brightness.dark
-            ? dominantColor.withValues(
-              alpha: .7,
-            ) // Stronger highlight in dark mode
-            : dominantColor.withValues(alpha: .3);
+            ? AppTheme.accentWarm.withValues(alpha: .7)
+            : AppTheme.accentWarm.withValues(alpha: .3);
 
     // Icon background color - brighter in dark mode for visibility
     final iconBgColor =
@@ -755,16 +755,17 @@ class _ItemCardState extends State<ItemCard>
                       children: [
                         Text(
                           widget.item.name,
-                          style: TextStyle(
+                          style: textTheme.bodyLarge?.copyWith(
                             fontWeight: FontWeight.w600,
-                            fontSize: 16,
                             color: titleColor,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           '\$${widget.item.price.toStringAsFixed(2)}',
-                          style: TextStyle(fontSize: 14, color: priceColor),
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: priceColor,
+                          ),
                         ),
                       ],
                     ),
@@ -855,9 +856,10 @@ class _ItemCardState extends State<ItemCard>
     );
   }
 
-  /// Build a status tag indicating assignment state (unassigned/partial/full)
+  /// Build a compact progress bar indicating assignment state
   ///
-  /// Shows color-coded pills with status text based on assignment percentage
+  /// Shows a linear progress indicator with percentage text, color-coded:
+  /// orange (0%), blue (partial), green (100%)
   Widget _buildAssignmentStatus(
     bool isAssigned,
     bool isFullyAssigned,
@@ -867,74 +869,46 @@ class _ItemCardState extends State<ItemCard>
     Color themeWarningOrange,
     Brightness brightness,
   ) {
-    // Theme-aware background colors for status tags
-    final unassignedBgColor =
-        brightness == Brightness.dark
-            ? themeWarningOrange.withValues(alpha: .2)
-            : themeWarningOrange.withValues(alpha: .15);
+    final progressColor =
+        !isAssigned
+            ? themeWarningOrange
+            : isFullyAssigned
+            ? themeSuccessGreen
+            : themePrimaryBlue;
 
-    final fullyAssignedBgColor =
+    final trackColor =
         brightness == Brightness.dark
-            ? themeSuccessGreen.withValues(alpha: .2)
-            : themeSuccessGreen.withValues(alpha: .15);
+            ? progressColor.withValues(alpha: .2)
+            : progressColor.withValues(alpha: .15);
 
-    final partiallyAssignedBgColor =
-        brightness == Brightness.dark
-            ? themePrimaryBlue.withValues(alpha: .2)
-            : themePrimaryBlue.withValues(alpha: .15);
+    final progress = widget.assignedPercentage / 100.0;
 
-    if (!isAssigned) {
-      // Unassigned status tag (orange)
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: unassignedBgColor,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          'Unassigned',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: themeWarningOrange,
+    return SizedBox(
+      width: 64,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            '${widget.assignedPercentage.toStringAsFixed(0)}%',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: progressColor,
+            ),
           ),
-        ),
-      );
-    } else if (isFullyAssigned) {
-      // Fully assigned status tag (green)
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: fullyAssignedBgColor,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          'Assigned',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: themeSuccessGreen,
+          const SizedBox(height: 3),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 5,
+              backgroundColor: trackColor,
+              valueColor: AlwaysStoppedAnimation<Color>(progressColor),
+            ),
           ),
-        ),
-      );
-    } else {
-      // Partially assigned status tag (blue with percentage)
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: partiallyAssignedBgColor,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          '${widget.assignedPercentage.toStringAsFixed(0)}%',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: themePrimaryBlue,
-          ),
-        ),
-      );
-    }
+        ],
+      ),
+    );
   }
 
   /// Build the avatar stack showing assigned people
@@ -1242,10 +1216,9 @@ class _ItemCardState extends State<ItemCard>
               child: Center(
                 child: Text(
                   _multiSelectMode ? 'Cancel' : 'Done',
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: cancelButtonTextColor,
-                    fontSize: 14,
                   ),
                 ),
               ),
