@@ -15,12 +15,17 @@ func InitDB() (*gorm.DB, error) {
 	name := os.Getenv("DB_NAME")
 	user := os.Getenv("DB_USER")
 	pw := os.Getenv("DB_PASSWORD")
+	sslmode := os.Getenv("DB_SSLMODE")
 
 	if host == "" || port == "" || name == "" || user == "" || pw == "" {
 		return nil, fmt.Errorf("missing required database environment variables")
 	}
 
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=America/New_York", host, user, pw, name, port)
+	if sslmode == "" {
+		sslmode = "require"
+	}
+
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=America/New_York", host, user, pw, name, port, sslmode)
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
