@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { joinTab } from "@/lib/api";
+import { FaCircleCheck, FaUserPlus } from "react-icons/fa6";
 
 interface JoinTabButtonProps {
   tabId: string;
@@ -58,7 +59,7 @@ export default function JoinTabButton({ tabId, token }: JoinTabButtonProps) {
     return (
       <div className="mb-6 flex justify-center">
         <span className="inline-flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-4 py-2 rounded-full">
-          <i className="fas fa-check-circle"></i>
+          <FaCircleCheck size={14} />
           Joined as {displayName}
         </span>
       </div>
@@ -72,18 +73,18 @@ export default function JoinTabButton({ tabId, token }: JoinTabButtonProps) {
           onClick={() => setShowModal(true)}
           className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-white font-semibold rounded-2xl hover:opacity-90 transition-opacity shadow-md"
         >
-          <i className="fas fa-user-plus"></i>
+          <FaUserPlus size={16} />
           Join this trip
         </button>
       </div>
 
       {showModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
           onClick={() => setShowModal(false)}
         >
           <div
-            className="bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-3xl p-8 shadow-2xl max-w-sm w-full"
+            className="bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-3xl p-8 shadow-2xl max-w-sm w-full animate-[scaleIn_200ms_ease-out]"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-xl font-bold text-[var(--accent)] dark:text-white mb-2">
@@ -98,7 +99,7 @@ export default function JoinTabButton({ tabId, token }: JoinTabButtonProps) {
               value={inputName}
               onChange={(e) => setInputName(e.target.value)}
               maxLength={30}
-              className="w-full px-4 py-3 rounded-xl border border-[var(--border-light)] dark:border-[var(--border-dark)] bg-white dark:bg-black/20 text-[var(--accent)] dark:text-white placeholder-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] mb-4"
+              className="w-full px-4 py-3 rounded-xl border border-[var(--border-light)] dark:border-[var(--border-dark)] bg-white dark:bg-black/20 text-[var(--accent)] dark:text-white placeholder-[var(--text-secondary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] mb-4"
               autoFocus
               onKeyDown={(e) => e.key === "Enter" && handleJoin()}
             />

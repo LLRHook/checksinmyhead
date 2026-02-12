@@ -15,6 +15,7 @@ import PersonShare from "@/components/PersonShare";
 import JoinTabButton from "@/components/JoinTabButton";
 import MemberList from "@/components/MemberList";
 import { notFound } from "next/navigation";
+import { FaLock, FaTriangleExclamation, FaReceipt } from "react-icons/fa6";
 
 export default async function TabPage({
   params,
@@ -28,10 +29,10 @@ export default async function TabPage({
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="text-center bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-3xl p-12 shadow-xl max-w-md">
-          <i className="fas fa-lock text-5xl text-[var(--primary)] mb-6"></i>
-          <h1 className="text-3xl font-bold mb-4 text-[var(--accent)] dark:text-white">
+      <div className="min-h-screen flex items-center justify-center px-4 bg-[var(--secondary)] dark:bg-[var(--dark-bg)]">
+        <div className="text-center bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-3xl p-12 shadow-xl dark:shadow-none dark:border dark:border-[var(--border-dark)] max-w-md">
+          <FaLock className="text-5xl text-[var(--primary)] mb-6 mx-auto" />
+          <h1 className="text-2xl font-bold mb-4 text-[var(--accent)] dark:text-white">
             Access Token Required
           </h1>
           <p className="text-[var(--text-secondary)]">
@@ -48,10 +49,10 @@ export default async function TabPage({
   } catch (error) {
     if (error instanceof Error && error.message === "Invalid access token") {
       return (
-        <div className="min-h-screen flex items-center justify-center px-4">
-          <div className="text-center bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-3xl p-12 shadow-xl max-w-md">
-            <i className="fas fa-exclamation-triangle text-5xl text-red-500 mb-6"></i>
-            <h1 className="text-3xl font-bold mb-4 text-[var(--accent)] dark:text-white">
+        <div className="min-h-screen flex items-center justify-center px-4 bg-[var(--secondary)] dark:bg-[var(--dark-bg)]">
+          <div className="text-center bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-3xl p-12 shadow-xl dark:shadow-none dark:border dark:border-[var(--border-dark)] max-w-md">
+            <FaTriangleExclamation className="text-5xl text-red-500 mb-6 mx-auto" />
+            <h1 className="text-2xl font-bold mb-4 text-[var(--accent)] dark:text-white">
               Invalid Access Token
             </h1>
             <p className="text-[var(--text-secondary)]">
@@ -69,7 +70,6 @@ export default async function TabPage({
   const settlements = tab.finalized ? await getSettlements(id, token) : [];
   const members = await getTabMembers(id, token);
 
-  // Find venmo payment method from any bill
   const venmoId =
     tab.bills
       .flatMap((b) => b.payment_methods || [])
@@ -77,7 +77,7 @@ export default async function TabPage({
     null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[var(--secondary)] to-white dark:from-black dark:to-[var(--card-bg-dark)]">
+    <div className="min-h-screen bg-gradient-to-b from-[var(--secondary)] to-white dark:from-[var(--dark-bg)] dark:to-[var(--card-bg-dark)]">
       <div className="max-w-2xl mx-auto px-4 py-8">
         <TabHeader
           name={tab.name}
@@ -87,10 +87,6 @@ export default async function TabPage({
           finalized={tab.finalized}
         />
 
-        <JoinTabButton tabId={id} token={token} />
-
-        {members.length > 0 && <MemberList members={members} />}
-
         {tab.finalized && settlements.length > 0 ? (
           <SettlementCard settlements={settlements} venmoId={venmoId} />
         ) : (
@@ -99,21 +95,17 @@ export default async function TabPage({
           )
         )}
 
-        {images.length > 0 && (
-          <TabImageGallery images={images} apiBaseUrl={API_BASE_URL} />
-        )}
-
         {tab.bills.map((bill) => {
           const hasVenmo =
             bill.payment_methods?.find((pm) =>
-              pm.name?.toLowerCase().includes("venmo")
+              pm.name?.toLowerCase().includes("venmo"),
             )?.identifier || null;
 
           return (
-            <div key={bill.id} className="mb-4">
+            <div key={bill.id} className="mb-3">
               <CollapsibleSection
                 title={`${bill.name} — $${bill.total.toFixed(2)}`}
-                icon="fas fa-receipt"
+                icon={<FaReceipt size={14} />}
               >
                 <div className="space-y-3 pt-3">
                   {bill.person_shares.map((share) => (
@@ -130,11 +122,13 @@ export default async function TabPage({
           );
         })}
 
-        <div className="text-center mt-8 pt-6">
-          <p className="text-sm text-[var(--text-secondary)]">
-            &copy; Kruski Ko. All rights reserved.
-          </p>
-        </div>
+        {images.length > 0 && (
+          <TabImageGallery images={images} apiBaseUrl={API_BASE_URL} />
+        )}
+
+        {members.length > 0 && <MemberList members={members} />}
+
+        <JoinTabButton tabId={id} token={token} />
       </div>
     </div>
   );

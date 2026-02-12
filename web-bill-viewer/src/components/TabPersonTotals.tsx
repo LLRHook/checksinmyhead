@@ -16,7 +16,7 @@ export default function TabPersonTotals({
     if (venmoId) {
       window.open(
         `venmo://paycharge?txn=pay&recipients=${venmoId}&amount=${total.toFixed(2)}&note=The Billington`,
-        "_blank"
+        "_blank",
       );
     }
   };
@@ -30,14 +30,14 @@ export default function TabPersonTotals({
         {personTotals.map((person) => (
           <div
             key={person.person_name}
-            className="bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-2xl px-6 py-4 shadow-sm border border-[var(--border-light)] dark:border-[var(--border-dark)] flex items-center justify-between"
+            className="bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-2xl px-5 py-4 shadow-sm dark:shadow-none dark:border dark:border-[var(--border-dark)] flex items-center justify-between"
           >
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] flex items-center justify-center text-white font-semibold text-lg">
+              <div className="w-11 h-11 rounded-full bg-[var(--secondary)] dark:bg-white/10 flex items-center justify-center text-[var(--text-secondary)] font-semibold text-base">
                 {person.person_name[0]}
               </div>
               <div>
-                <h3 className="font-semibold text-lg text-[var(--accent)] dark:text-white">
+                <h3 className="font-semibold text-base text-[var(--accent)] dark:text-white">
                   {person.person_name}
                 </h3>
                 <p className="text-xs text-[var(--text-secondary)]">
@@ -46,15 +46,15 @@ export default function TabPersonTotals({
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <div className="text-2xl font-bold text-[var(--primary)]">
+              <div className="text-xl font-bold font-mono text-[var(--accent)] dark:text-white">
                 ${person.total.toFixed(2)}
               </div>
               {venmoId && (
                 <button
                   onClick={() => handleVenmoClick(person.total)}
-                  className="h-10 px-4 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-white font-semibold rounded-xl flex items-center justify-center hover:opacity-90 transition-opacity shadow-sm"
+                  className="h-10 px-4 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-white font-semibold rounded-xl flex items-center justify-center hover:opacity-90 transition-opacity"
                 >
-                  <SiVenmo size={36} />
+                  <SiVenmo size={32} />
                 </button>
               )}
             </div>

@@ -4,6 +4,7 @@ import BillBreakdown from "@/components/BillBreakdown";
 import PersonShare from "@/components/PersonShare";
 import PaymentDetails from "@/components/PaymentDetails";
 import { notFound } from "next/navigation";
+import { FaLock, FaTriangleExclamation } from "react-icons/fa6";
 
 export default async function BillPage({
   params,
@@ -17,10 +18,10 @@ export default async function BillPage({
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="text-center bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-3xl p-12 shadow-xl max-w-md">
-          <i className="fas fa-lock text-5xl text-[var(--primary)] mb-6"></i>
-          <h1 className="text-3xl font-bold mb-4 text-[var(--accent)] dark:text-white">
+      <div className="min-h-screen flex items-center justify-center px-4 bg-[var(--secondary)] dark:bg-[var(--dark-bg)]">
+        <div className="text-center bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-3xl p-12 shadow-xl dark:shadow-none dark:border dark:border-[var(--border-dark)] max-w-md">
+          <FaLock className="text-5xl text-[var(--primary)] mb-6 mx-auto" />
+          <h1 className="text-2xl font-bold mb-4 text-[var(--accent)] dark:text-white">
             Access Token Required
           </h1>
           <p className="text-[var(--text-secondary)]">
@@ -37,10 +38,10 @@ export default async function BillPage({
   } catch (error) {
     if (error instanceof Error && error.message === "Invalid access token") {
       return (
-        <div className="min-h-screen flex items-center justify-center px-4">
-          <div className="text-center bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-3xl p-12 shadow-xl max-w-md">
-            <i className="fas fa-exclamation-triangle text-5xl text-red-500 mb-6"></i>
-            <h1 className="text-3xl font-bold mb-4 text-[var(--accent)] dark:text-white">
+        <div className="min-h-screen flex items-center justify-center px-4 bg-[var(--secondary)] dark:bg-[var(--dark-bg)]">
+          <div className="text-center bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-3xl p-12 shadow-xl dark:shadow-none dark:border dark:border-[var(--border-dark)] max-w-md">
+            <FaTriangleExclamation className="text-5xl text-red-500 mb-6 mx-auto" />
+            <h1 className="text-2xl font-bold mb-4 text-[var(--accent)] dark:text-white">
               Invalid Access Token
             </h1>
             <p className="text-[var(--text-secondary)]">
@@ -58,19 +59,9 @@ export default async function BillPage({
       ?.identifier || null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[var(--secondary)] to-white dark:from-black dark:to-[var(--card-bg-dark)]">
+    <div className="min-h-screen bg-gradient-to-b from-[var(--secondary)] to-white dark:from-[var(--dark-bg)] dark:to-[var(--card-bg-dark)]">
       <div className="max-w-2xl mx-auto px-4 py-8">
         <BillHeader name={bill.name} total={bill.total} />
-
-        <PaymentDetails paymentMethods={bill.payment_methods} />
-
-        <BillBreakdown
-          items={bill.items}
-          subtotal={bill.subtotal}
-          tax={bill.tax}
-          tipAmount={bill.tip_amount}
-          tipPercentage={bill.tip_percentage}
-        />
 
         <div className="mb-6">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)] mb-3 px-1">
@@ -88,11 +79,15 @@ export default async function BillPage({
           </div>
         </div>
 
-        <div className="text-center mt-8 pt-6">
-          <p className="text-sm text-[var(--text-secondary)]">
-            &copy; Kruski Ko. All rights reserved.
-          </p>
-        </div>
+        <PaymentDetails paymentMethods={bill.payment_methods} />
+
+        <BillBreakdown
+          items={bill.items}
+          subtotal={bill.subtotal}
+          tax={bill.tax}
+          tipAmount={bill.tip_amount}
+          tipPercentage={bill.tip_percentage}
+        />
       </div>
     </div>
   );

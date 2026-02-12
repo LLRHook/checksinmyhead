@@ -2,19 +2,20 @@
 
 :root {
   --primary: #328983;
-  --primary-dark: #309a93;
+  --primary-dark: #2A736E;
   --primary-light: #4a9b95;
   --secondary: #f5f5f7;
   --accent: #1d1d1f;
+  --accent-warm: #D4A843;
   --light-bg: #ffffff;
-  --dark-bg: #000000;
+  --dark-bg: #0A0A0A;
   --text-dark: #1d1d1f;
   --text-light: #f5f5f7;
   --text-secondary: #86868b;
   --border-light: #e5e5e7;
   --border-dark: #2d2d2f;
   --card-bg-light: #ffffff;
-  --card-bg-dark: #1d1d1f;
+  --card-bg-dark: #161616;
 
   --background: var(--light-bg);
   --foreground: var(--text-dark);
@@ -28,13 +29,13 @@
 }
 
 body {
-  font-family:
-    "SF Pro Display",
-    -apple-system,
-    BlinkMacSystemFont,
-    sans-serif;
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
   line-height: 1.5;
   letter-spacing: -0.015em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.font-mono {
+  font-family: var(--font-mono), ui-monospace, monospace;
 }

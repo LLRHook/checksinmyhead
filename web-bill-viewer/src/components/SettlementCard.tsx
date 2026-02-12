@@ -2,6 +2,7 @@
 
 import { TabSettlement } from "@/lib/api";
 import { SiVenmo } from "react-icons/si";
+import { FaCheck } from "react-icons/fa6";
 
 interface SettlementCardProps {
   settlements: TabSettlement[];
@@ -18,7 +19,7 @@ export default function SettlementCard({
     if (venmoId) {
       window.open(
         `venmo://paycharge?txn=pay&recipients=${venmoId}&amount=${amount.toFixed(2)}&note=The Billington`,
-        "_blank"
+        "_blank",
       );
     }
   };
@@ -37,29 +38,29 @@ export default function SettlementCard({
         {settlements.map((settlement) => (
           <div
             key={settlement.id}
-            className={`bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-2xl px-6 py-4 shadow-sm border flex items-center justify-between transition-opacity ${
+            className={`bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-2xl px-5 py-4 shadow-sm dark:shadow-none flex items-center justify-between transition-opacity ${
               settlement.paid
-                ? "border-emerald-200 dark:border-emerald-800/50 opacity-75"
-                : "border-[var(--border-light)] dark:border-[var(--border-dark)]"
+                ? "dark:border dark:border-emerald-800/50 opacity-75"
+                : "dark:border dark:border-[var(--border-dark)]"
             }`}
           >
             <div className="flex items-center gap-4">
               <div
-                className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold text-lg ${
+                className={`w-11 h-11 rounded-full flex items-center justify-center font-semibold text-base ${
                   settlement.paid
                     ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400"
-                    : "bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-white"
+                    : "bg-[var(--secondary)] dark:bg-white/10 text-[var(--text-secondary)]"
                 }`}
               >
                 {settlement.paid ? (
-                  <i className="fas fa-check text-lg"></i>
+                  <FaCheck size={16} />
                 ) : (
                   settlement.person_name[0]
                 )}
               </div>
               <div>
                 <h3
-                  className={`font-semibold text-lg ${
+                  className={`font-semibold text-base ${
                     settlement.paid
                       ? "text-[var(--text-secondary)] line-through"
                       : "text-[var(--accent)] dark:text-white"
@@ -71,10 +72,10 @@ export default function SettlementCard({
             </div>
             <div className="flex items-center gap-3">
               <div
-                className={`text-2xl font-bold ${
+                className={`text-xl font-bold font-mono ${
                   settlement.paid
                     ? "text-emerald-600 dark:text-emerald-400"
-                    : "text-[var(--primary)]"
+                    : "text-[var(--accent)] dark:text-white"
                 }`}
               >
                 ${settlement.amount.toFixed(2)}
@@ -82,9 +83,9 @@ export default function SettlementCard({
               {!settlement.paid && venmoId && (
                 <button
                   onClick={() => handleVenmoClick(settlement.amount)}
-                  className="h-10 px-4 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-white font-semibold rounded-xl flex items-center justify-center hover:opacity-90 transition-opacity shadow-sm"
+                  className="h-10 px-4 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-white font-semibold rounded-xl flex items-center justify-center hover:opacity-90 transition-opacity"
                 >
-                  <SiVenmo size={36} />
+                  <SiVenmo size={32} />
                 </button>
               )}
             </div>
