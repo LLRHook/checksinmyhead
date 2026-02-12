@@ -41,10 +41,11 @@ func (s *tabService) GetTab(id uint) (tab *models.Tab, err error) {
 	if err != nil {
 		return nil, err
 	}
-	// Recalculate total from bills
+	// Recalculate total from bills and strip bill access tokens
 	var total float64
-	for _, bill := range tab.Bills {
-		total += bill.Total
+	for i := range tab.Bills {
+		total += tab.Bills[i].Total
+		tab.Bills[i].AccessToken = ""
 	}
 	tab.TotalAmount = total
 	return tab, nil
@@ -85,21 +86,26 @@ func (s *tabService) FinalizeTab(id uint) ([]models.TabSettlement, error) {
 
 	// Compute per-person totals from bill person_shares
 	personTotals := make(map[string]float64)
+	personDisplayNames := make(map[string]string) // preserve original casing
 	for _, bill := range tab.Bills {
 		for _, share := range bill.PersonShares {
 			key := strings.ToLower(share.PersonName)
 			personTotals[key] += share.Total
+			// Prefer a capitalized variant over all-lowercase
+			if existing, ok := personDisplayNames[key]; !ok {
+				personDisplayNames[key] = share.PersonName
+			} else if existing == key && share.PersonName != key {
+				personDisplayNames[key] = share.PersonName
+			}
 		}
 	}
 
 	// Create settlement records
 	var settlements []models.TabSettlement
-	for name, amount := range personTotals {
-		// Capitalize first letter for display
-		displayName := strings.ToUpper(name[:1]) + name[1:]
+	for key, amount := range personTotals {
 		settlements = append(settlements, models.TabSettlement{
 			TabID:      id,
-			PersonName: displayName,
+			PersonName: personDisplayNames[key],
 			Amount:     amount,
 			Paid:       false,
 		})

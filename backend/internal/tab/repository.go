@@ -57,7 +57,14 @@ func (r *tabRepository) AddBill(tabID uint, billID uint, memberID *uint) error {
 	if memberID != nil {
 		updates["added_by_member_id"] = *memberID
 	}
-	return r.db.Model(&models.Bill{}).Where("id = ?", billID).Updates(updates).Error
+	result := r.db.Model(&models.Bill{}).Where("id = ?", billID).Updates(updates)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (r *tabRepository) Finalize(id uint) error {
