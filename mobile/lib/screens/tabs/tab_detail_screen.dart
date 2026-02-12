@@ -381,7 +381,9 @@ class _TabDetailScreenState extends State<TabDetailScreen>
           children: [
             Text(
               _currentTab.name,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             if (_currentTab.isFinalized) ...[
               const SizedBox(width: 8),
@@ -446,18 +448,22 @@ class _TabDetailScreenState extends State<TabDetailScreen>
               : Column(
                 children: [
                   Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.only(bottom: 100),
-                      children: [
-                        if (_tabBills.isNotEmpty) _buildTotalCard(),
-                        if (_members.isNotEmpty) _buildMembersCard(),
-                        if (_currentTab.isFinalized && _settlements.isNotEmpty)
-                          _buildSettlementsCard()
-                        else if (_calculatePersonTotals().isNotEmpty)
-                          _buildPersonTotalsCard(),
-                        if (_images.isNotEmpty) _buildImagesSection(),
-                        if (_tabBills.isNotEmpty) ..._buildBillCards(),
-                      ],
+                    child: RefreshIndicator(
+                      onRefresh: _loadBills,
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.only(bottom: 100),
+                        children: [
+                          if (_tabBills.isNotEmpty) _buildTotalCard(),
+                          if (_members.isNotEmpty) _buildMembersCard(),
+                          if (_currentTab.isFinalized && _settlements.isNotEmpty)
+                            _buildSettlementsCard()
+                          else if (_calculatePersonTotals().isNotEmpty)
+                            _buildPersonTotalsCard(),
+                          if (_images.isNotEmpty) _buildImagesSection(),
+                          if (_tabBills.isNotEmpty) ..._buildBillCards(),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -469,6 +475,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
   Widget _buildEmptyState() {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
+    final textTheme = Theme.of(context).textTheme;
 
     return Center(
       child: Padding(
@@ -493,8 +500,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
             const SizedBox(height: 28),
             Text(
               'No Bills Yet',
-              style: TextStyle(
-                fontSize: 24,
+              style: textTheme.displaySmall?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: colorScheme.onSurface,
                 letterSpacing: -0.5,
@@ -504,10 +510,29 @@ class _TabDetailScreenState extends State<TabDetailScreen>
             Text(
               'Add bills from your recent history\nto track this ${_currentTab.name.toLowerCase()}',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
+              style: textTheme.bodyLarge?.copyWith(
                 height: 1.5,
                 color: colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: _addBillsToTab,
+              icon: const Icon(Icons.add),
+              label: const Text('Add Bills'),
+              style: FilledButton.styleFrom(
+                backgroundColor: colorScheme.primary,
+                foregroundColor:
+                    brightness == Brightness.dark
+                        ? Colors.black.withValues(alpha: 0.9)
+                        : Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 14,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
             ),
           ],
@@ -1596,7 +1621,10 @@ class _FinalizeConfirmSheet extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context, false),
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      Navigator.pop(context, false);
+                    },
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
@@ -1612,7 +1640,10 @@ class _FinalizeConfirmSheet extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
-                    onPressed: () => Navigator.pop(context, true),
+                    onPressed: () {
+                      HapticFeedback.mediumImpact();
+                      Navigator.pop(context, true);
+                    },
                     style: FilledButton.styleFrom(
                       backgroundColor: Colors.green,
                       padding: const EdgeInsets.symmetric(vertical: 14),
@@ -1847,7 +1878,10 @@ class _DeleteImageSheet extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context, false),
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      Navigator.pop(context, false);
+                    },
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
@@ -1863,7 +1897,10 @@ class _DeleteImageSheet extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
-                    onPressed: () => Navigator.pop(context, true),
+                    onPressed: () {
+                      HapticFeedback.mediumImpact();
+                      Navigator.pop(context, true);
+                    },
                     style: FilledButton.styleFrom(
                       backgroundColor: Colors.red,
                       padding: const EdgeInsets.symmetric(vertical: 14),
@@ -2055,7 +2092,10 @@ class _BillSelectorSheetState extends State<_BillSelectorSheet> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      Navigator.pop(context);
+                    },
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
@@ -2161,7 +2201,10 @@ class _RemoveBillSheet extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context, false),
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      Navigator.pop(context, false);
+                    },
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
@@ -2177,7 +2220,10 @@ class _RemoveBillSheet extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
-                    onPressed: () => Navigator.pop(context, true),
+                    onPressed: () {
+                      HapticFeedback.mediumImpact();
+                      Navigator.pop(context, true);
+                    },
                     style: FilledButton.styleFrom(
                       backgroundColor: Colors.orange,
                       padding: const EdgeInsets.symmetric(vertical: 14),

@@ -175,14 +175,15 @@ class _TabsScreenState extends State<TabsScreen>
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
+    final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
       backgroundColor:
           brightness == Brightness.dark ? colorScheme.surface : Colors.grey[50],
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Tabs',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         elevation: 0,
@@ -204,9 +205,7 @@ class _TabsScreenState extends State<TabsScreen>
       ),
       body:
           _isLoading
-              ? Center(
-                child: CircularProgressIndicator(color: colorScheme.primary),
-              )
+              ? _buildLoadingSkeleton(brightness)
               : _tabs.isEmpty
               ? _buildEmptyState()
               : _buildTabsListWithBanner(),
@@ -217,6 +216,7 @@ class _TabsScreenState extends State<TabsScreen>
   Widget _buildEmptyState() {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
+    final textTheme = Theme.of(context).textTheme;
 
     return Center(
       child: Padding(
@@ -241,8 +241,7 @@ class _TabsScreenState extends State<TabsScreen>
             const SizedBox(height: 28),
             Text(
               'No Tabs Yet',
-              style: TextStyle(
-                fontSize: 24,
+              style: textTheme.displaySmall?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: colorScheme.onSurface,
                 letterSpacing: -0.5,
@@ -252,14 +251,85 @@ class _TabsScreenState extends State<TabsScreen>
             Text(
               'Group your bills by trip or event.\nPerfect for weekend getaways!',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
+              style: textTheme.bodyLarge?.copyWith(
                 height: 1.5,
                 color: colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingSkeleton(Brightness brightness) {
+    final shimmerBase =
+        brightness == Brightness.dark ? Colors.grey[800]! : Colors.grey[300]!;
+    final shimmerHighlight =
+        brightness == Brightness.dark ? Colors.grey[700]! : Colors.grey[100]!;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      child: Column(
+        children: List.generate(3, (index) {
+          return Container(
+            height: 88,
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: shimmerBase,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: shimmerHighlight,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          height: 16,
+                          width: 120,
+                          decoration: BoxDecoration(
+                            color: shimmerHighlight,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Container(
+                          height: 12,
+                          width: 80,
+                          decoration: BoxDecoration(
+                            color: shimmerHighlight,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: shimmerHighlight,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
       ),
     );
   }
@@ -302,7 +372,10 @@ class _TabsScreenState extends State<TabsScreen>
           ),
           IconButton(
             icon: const Icon(Icons.close, size: 18),
-            onPressed: () => setState(() => _clipboardUrl = null),
+            onPressed: () {
+              HapticFeedback.selectionClick();
+              setState(() => _clipboardUrl = null);
+            },
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
           ),
@@ -312,26 +385,30 @@ class _TabsScreenState extends State<TabsScreen>
   }
 
   Widget _buildTabsList() {
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
-      itemCount: _tabs.length,
-      itemBuilder: (context, index) {
-        final tab = _tabs[index];
-        return _TabCard(
-          tab: tab,
-          onTap: () async {
-            HapticFeedback.selectionClick();
-            final result = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => TabDetailScreen(tab: tab),
-              ),
-            );
-            if (result == true) _loadTabs();
-          },
-          onDelete: () => _deleteTab(tab),
-        );
-      },
+    return RefreshIndicator(
+      onRefresh: _loadTabs,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+        itemCount: _tabs.length,
+        itemBuilder: (context, index) {
+          final tab = _tabs[index];
+          return _TabCard(
+            tab: tab,
+            onTap: () async {
+              HapticFeedback.selectionClick();
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => TabDetailScreen(tab: tab),
+                ),
+              );
+              if (result == true) _loadTabs();
+            },
+            onDelete: () => _deleteTab(tab),
+          );
+        },
+      ),
     );
   }
 
@@ -903,7 +980,10 @@ class _DeleteConfirmationSheet extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context, false),
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      Navigator.pop(context, false);
+                    },
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
