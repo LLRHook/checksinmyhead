@@ -35,7 +35,7 @@ class _TabsScreenState extends State<TabsScreen>
   Future<void> _checkClipboard() async {
     try {
       final data = await Clipboard.getData(Clipboard.kTextPlain);
-      if (data?.text != null && data!.text!.contains('billington.app/t/')) {
+      if (data?.text != null && data!.text!.contains('billingtonapp.vercel.app/t/')) {
         if (mounted) {
           setState(() => _clipboardUrl = data.text!.trim());
         }
@@ -858,7 +858,7 @@ class _JoinTabSheetState extends State<_JoinTabSheet> {
                 autofocus: true,
                 style: TextStyle(fontSize: 16, color: colorScheme.onSurface),
                 decoration: InputDecoration(
-                  hintText: 'https://billington.app/t/...',
+                  hintText: 'https://billingtonapp.vercel.app/t/...',
                   labelText: 'Tab Link',
                   prefixIcon: Icon(Icons.link, color: colorScheme.primary),
                   filled: true,
@@ -880,7 +880,7 @@ class _JoinTabSheetState extends State<_JoinTabSheet> {
                   ),
                 ),
                 validator: (value) {
-                  if (value == null || !value.contains('billington.app/t/')) {
+                  if (value == null || !value.contains('billingtonapp.vercel.app/t/')) {
                     return 'Please enter a valid Billington link';
                   }
                   return null;
