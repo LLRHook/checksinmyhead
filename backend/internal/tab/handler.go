@@ -4,12 +4,20 @@ import (
 	"backend/pkg/models"
 	"backend/pkg/security"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
+
+func appDomain() string {
+	if d := os.Getenv("APP_DOMAIN"); d != "" {
+		return d
+	}
+	return "https://billingtonapp.vercel.app"
+}
 
 type TabHandler struct {
 	service TabService
@@ -96,7 +104,7 @@ func (h *TabHandler) CreateTab(c *gin.Context) {
 	resp := gin.H{
 		"tab_id":       tab.ID,
 		"access_token": token,
-		"share_url":    fmt.Sprintf("https://billington.app/t/%d?t=%s", tab.ID, token),
+		"share_url":    fmt.Sprintf("%s/t/%d?t=%s", appDomain(), tab.ID, token),
 	}
 
 	creatorName := strings.TrimSpace(body.CreatorDisplayName)

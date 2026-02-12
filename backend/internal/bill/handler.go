@@ -4,11 +4,19 @@ import (
 	"backend/pkg/models"
 	"backend/pkg/security"
 	"fmt"
+	"os"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
+
+func appDomain() string {
+	if d := os.Getenv("APP_DOMAIN"); d != "" {
+		return d
+	}
+	return "https://billingtonapp.vercel.app"
+}
 
 type BillHandler struct {
 	service BillService
@@ -42,7 +50,7 @@ func (h *BillHandler) CreateBill(c *gin.Context) {
 	c.JSON(201, gin.H{
 		"bill_id":      bill.ID,
 		"access_token": token,
-		"share_url":    fmt.Sprintf("https://billington.app/b/%d?t=%s", bill.ID, token),
+		"share_url":    fmt.Sprintf("%s/b/%d?t=%s", appDomain(), bill.ID, token),
 	})
 }
 
