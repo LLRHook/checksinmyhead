@@ -23,7 +23,7 @@ import 'package:drift/drift.dart' hide Column;
 import 'package:drift/native.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
-import 'package:flutter/material.dart' hide Table;
+import 'package:flutter/material.dart' hide Table, Tab;
 
 // Generated with dart run build_runner build --delete-conflicting-outputs
 part 'database.g.dart';
@@ -56,6 +56,23 @@ class UserPreferences extends Table {
       dateTime().withDefault(Constant(DateTime.now()))();
 }
 
+// Database table for storing tabs (group trips)
+class Tabs extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text()();
+  TextColumn get description => text().withDefault(const Constant(''))();
+  TextColumn get billIds => text().withDefault(const Constant(''))();
+  IntColumn get backendId => integer().nullable()();
+  TextColumn get accessToken => text().nullable()();
+  TextColumn get shareUrl => text().nullable()();
+  BoolColumn get finalized => boolean().withDefault(const Constant(false))();
+  TextColumn get memberToken => text().nullable()();
+  TextColumn get role => text().nullable()();
+  BoolColumn get isRemote => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt =>
+      dateTime().withDefault(Constant(DateTime.now()))();
+}
+
 // Database table for storing bill history
 class RecentBills extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -73,17 +90,40 @@ class RecentBills extends Table {
       integer().withDefault(const Constant(0xFF2196F3))();
   DateTimeColumn get createdAt =>
       dateTime().withDefault(Constant(DateTime.now()))();
+  TextColumn get shareUrl => text().nullable()();
 }
 
 // Main database class handling all database operations
-@DriftDatabase(tables: [People, TutorialStates, UserPreferences, RecentBills])
+@DriftDatabase(
+  tables: [People, TutorialStates, UserPreferences, RecentBills, Tabs],
+)
 class AppDatabase extends _$AppDatabase {
   static const int maxRecentPeople = 12;
 
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 5;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (migrator, from, to) async {
+      if (from < 2) {
+        await migrator.addColumn(recentBills, recentBills.shareUrl);
+      }
+      if (from < 3) {
+        await migrator.createTable(tabs);
+      }
+      if (from < 4) {
+        await migrator.addColumn(tabs, tabs.finalized);
+      }
+      if (from < 5) {
+        await migrator.addColumn(tabs, tabs.memberToken);
+        await migrator.addColumn(tabs, tabs.role);
+        await migrator.addColumn(tabs, tabs.isRemote);
+      }
+    },
+  );
 
   // Converts database person entry to Person model
   Person peopleDataToPerson(PeopleData entry) {
@@ -239,6 +279,7 @@ class AppDatabase extends _$AppDatabase {
     String billName = '',
     double tipPercentage = 0,
     bool isCustomTipAmount = false,
+    String? shareUrl,
   }) async {
     final participantNames = participants.map((p) => p.name).toList();
     final participantsJson = jsonEncode(participantNames);
@@ -291,6 +332,7 @@ class AppDatabase extends _$AppDatabase {
           participants.isNotEmpty
               ? Value(participants.first.color.toARGB32())
               : const Value.absent(),
+      shareUrl: Value(shareUrl),
     );
 
     final count = await select(recentBills).get().then((bills) => bills.length);
@@ -338,6 +380,22 @@ class AppDatabase extends _$AppDatabase {
     )).write(RecentBillsCompanion(billName: Value(newName)));
   }
 
+  /// Gets the most recently created bill
+  Future<RecentBill?> getMostRecentBill() async {
+    final query =
+        select(recentBills)
+          ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
+          ..limit(1);
+    return query.getSingleOrNull();
+  }
+
+  /// Updates the share URL of a bill in the database
+  Future<void> updateBillShareUrl(int id, String shareUrl) async {
+    await (update(recentBills)..where(
+      (t) => t.id.equals(id),
+    )).write(RecentBillsCompanion(shareUrl: Value(shareUrl)));
+  }
+
   /// Gets a single bill by its ID
   ///
   /// This method retrieves a specific bill from the database by its ID.
@@ -349,6 +407,31 @@ class AppDatabase extends _$AppDatabase {
   Future<RecentBill?> getBillById(int id) async {
     final query = select(recentBills)..where((b) => b.id.equals(id));
 
+    return query.getSingleOrNull();
+  }
+
+  // Tab management methods
+
+  Future<List<Tab>> getAllTabs() async {
+    final query = select(tabs)
+      ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]);
+    return query.get();
+  }
+
+  Future<int> insertTab(TabsCompanion tab) async {
+    return into(tabs).insert(tab);
+  }
+
+  Future<void> updateTab(int id, TabsCompanion companion) async {
+    await (update(tabs)..where((t) => t.id.equals(id))).write(companion);
+  }
+
+  Future<void> deleteTab(int id) async {
+    await (delete(tabs)..where((t) => t.id.equals(id))).go();
+  }
+
+  Future<Tab?> getTabById(int id) async {
+    final query = select(tabs)..where((t) => t.id.equals(id));
     return query.getSingleOrNull();
   }
 }

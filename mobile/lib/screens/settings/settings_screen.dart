@@ -24,29 +24,18 @@ import 'payment_method_sheet.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 
-/// SettingsScreen
+/// Settings screen for configuring payment methods and app preferences.
 ///
-/// A configurable settings screen that handles both initial onboarding setup and
-/// subsequent configuration of payment methods and app preferences.
-///
-/// This screen provides functionality for:
+/// Provides functionality for:
 /// - Adding, editing, and removing payment methods for receiving money
 /// - Viewing privacy information
 /// - Contacting support
 /// - Rating the app
 /// - Sharing the app with friends
 ///
-/// The screen has two modes controlled by the isOnboarding parameter:
-/// - Onboarding mode: Focused on payment setup with limited navigation options
-/// - Regular mode: Full settings experience with additional support options
-///
 /// All settings are persisted locally using SharedPreferences for privacy.
 class SettingsScreen extends StatefulWidget {
-  /// Controls whether the screen is shown during initial onboarding
-  /// or as a regular settings page
-  final bool isOnboarding;
-
-  const SettingsScreen({super.key, this.isOnboarding = false});
+  const SettingsScreen({super.key});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -63,6 +52,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// Service for handling preferences
   final _prefsService = PreferencesService();
 
+  /// Display name controller
+  final _displayNameController = TextEditingController();
+
   /// Loading state
   bool _isLoading = true;
 
@@ -72,14 +64,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     // Load saved payment preferences when screen initializes
     _loadPaymentSettings();
+  }
 
-    // Automatically show payment selection when in onboarding mode
-    if (widget.isOnboarding) {
-      // Wait for the first frame to be rendered, then show the modal
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showPaymentSelection();
-      });
-    }
+  @override
+  void dispose() {
+    _displayNameController.dispose();
+    super.dispose();
   }
 
   /// Loads saved payment preferences from persistent storage
@@ -90,6 +80,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       // Load identifiers for each payment method
       final savedIdentifiers = await _prefsService.getAllPaymentIdentifiers();
+
+      // Load display name
+      final savedName = await _prefsService.getDisplayName();
+      if (savedName != null) {
+        _displayNameController.text = savedName;
+      }
 
       // Update state with retrieved values
       setState(() {
@@ -128,17 +124,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  /// Completes the onboarding process and navigates to the main app
-  Future<void> _completeOnboarding() async {
-    // First, save payment settings
-    await _savePaymentSettings();
-
-    // Then mark onboarding as complete
-    await _prefsService.completeOnboarding();
-
-    // Finally, navigate to the landing page
-    if (mounted) {
-      Navigator.of(context).pushReplacementNamed('/landing');
+  /// Saves the display name to preferences
+  Future<void> _saveDisplayName() async {
+    final name = _displayNameController.text.trim();
+    if (name.isNotEmpty) {
+      await _prefsService.saveDisplayName(name);
     }
   }
 
@@ -146,7 +136,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _showPaymentSelection() {
     showPaymentMethodSheet(
       context: context,
-      isOnboarding: widget.isOnboarding,
       selectedMethods: _selectedPayments,
       identifiers: _paymentIdentifiers,
       onSave: (selectedMethods, identifiers) {
@@ -195,18 +184,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
-        title:
-            widget.isOnboarding
-                ? null
-                : const Text(
-                  'Settings',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-        automaticallyImplyLeading: !widget.isOnboarding,
+        title: const Text(
+          'Settings',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
       body: SafeArea(
         child:
@@ -256,6 +241,95 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
 
                               const SizedBox(height: 40),
+
+                              // Display name section
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: .15),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Your Name',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    const Text(
+                                      'Used when creating or joining shared tabs.',
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    TextField(
+                                      controller: _displayNameController,
+                                      textCapitalization:
+                                          TextCapitalization.words,
+                                      style: TextStyle(
+                                        color:
+                                            Theme.of(context).brightness ==
+                                                    Brightness.dark
+                                                ? Colors.white
+                                                : Colors.black87,
+                                        fontSize: 16,
+                                      ),
+                                      decoration: InputDecoration(
+                                        hintText: 'Alice',
+                                        hintStyle: TextStyle(
+                                          color:
+                                              Theme.of(context).brightness ==
+                                                      Brightness.dark
+                                                  ? Colors.white38
+                                                  : Colors.black26,
+                                        ),
+                                        filled: true,
+                                        fillColor:
+                                            Theme.of(context).brightness ==
+                                                    Brightness.dark
+                                                ? Colors.white.withValues(
+                                                  alpha: .1,
+                                                )
+                                                : Colors.white,
+                                        prefixIcon: Icon(
+                                          Icons.person_outline,
+                                          color: colorScheme.primary,
+                                        ),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          borderSide: BorderSide.none,
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          borderSide: const BorderSide(
+                                            color: Color(0xFF627D98),
+                                            width: 2,
+                                          ),
+                                        ),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                              horizontal: 16,
+                                              vertical: 14,
+                                            ),
+                                      ),
+                                      onChanged: (_) => _saveDisplayName(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              const SizedBox(height: 16),
 
                               // Payment methods section - card with either add button or list of methods
                               Container(
@@ -478,119 +552,113 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                               const SizedBox(height: 24),
 
-                              // Support options (only visible in regular settings mode)
-                              if (!widget.isOnboarding)
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: .15),
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      ListTile(
-                                        title: const Text(
-                                          'Contact Us',
-                                          style: TextStyle(color: Colors.white),
-                                        ),
-                                        leading: const Icon(
-                                          Icons.email_outlined,
-                                          color: Colors.white,
-                                        ),
-                                        onTap: () {
-                                          final currentContext = context;
-                                          final emailUri = Uri(
-                                            scheme: 'mailto',
-                                            path: 'checkmateapp@duck.com',
-                                          );
-
-                                          canLaunchUrl(emailUri).then((
-                                            canLaunch,
-                                          ) {
-                                            if (canLaunch) {
-                                              launchUrl(
-                                                emailUri,
-                                                mode:
-                                                    LaunchMode.platformDefault,
-                                                webOnlyWindowName: '_blank',
-                                              );
-                                            } else {
-                                              Clipboard.setData(
-                                                const ClipboardData(
-                                                  text: 'checkmateapp@duck.com',
-                                                ),
-                                              ).then((_) {
-                                                if (currentContext.mounted) {
-                                                  ScaffoldMessenger.of(
-                                                    currentContext,
-                                                  ).showSnackBar(
-                                                    const SnackBar(
-                                                      content: Text(
-                                                        'Email copied to clipboard',
-                                                      ),
-                                                      duration: Duration(
-                                                        seconds: 2,
-                                                      ),
-                                                    ),
-                                                  );
-                                                }
-                                              });
-                                            }
-                                          });
-                                        },
-                                      ),
-
-                                      const Divider(
-                                        color: Colors.white24,
-                                        height: 1,
-                                        indent: 16,
-                                        endIndent: 16,
-                                      ),
-
-                                      ListTile(
-                                        title: const Text(
-                                          'Rate Us on App Store',
-                                          style: TextStyle(color: Colors.white),
-                                        ),
-                                        subtitle: const Text(
-                                          'Love Billington? Let us know!',
-                                          style: TextStyle(
-                                            color: Colors.white70,
-                                          ),
-                                        ),
-                                        leading: const Icon(
-                                          Icons.star_border_rounded,
-                                          color: Colors.white,
-                                        ),
-                                        onTap: _openAppStore,
-                                      ),
-
-                                      const Divider(
-                                        color: Colors.white24,
-                                        height: 1,
-                                        indent: 16,
-                                        endIndent: 16,
-                                      ),
-
-                                      ListTile(
-                                        title: const Text(
-                                          'Share with Friends',
-                                          style: TextStyle(color: Colors.white),
-                                        ),
-                                        subtitle: const Text(
-                                          'Spread the word!',
-                                          style: TextStyle(
-                                            color: Colors.white70,
-                                          ),
-                                        ),
-                                        leading: const Icon(
-                                          Icons.ios_share,
-                                          color: Colors.white,
-                                        ),
-                                        onTap: _shareApp,
-                                      ),
-                                    ],
-                                  ),
+                              // Support options
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: .15),
+                                  borderRadius: BorderRadius.circular(16),
                                 ),
+                                child: Column(
+                                  children: [
+                                    ListTile(
+                                      title: const Text(
+                                        'Contact Us',
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                      leading: const Icon(
+                                        Icons.email_outlined,
+                                        color: Colors.white,
+                                      ),
+                                      onTap: () {
+                                        final currentContext = context;
+                                        final emailUri = Uri(
+                                          scheme: 'mailto',
+                                          path: 'checkmateapp@duck.com',
+                                        );
+
+                                        canLaunchUrl(emailUri).then((
+                                          canLaunch,
+                                        ) {
+                                          if (canLaunch) {
+                                            launchUrl(
+                                              emailUri,
+                                              mode: LaunchMode.platformDefault,
+                                              webOnlyWindowName: '_blank',
+                                            );
+                                          } else {
+                                            Clipboard.setData(
+                                              const ClipboardData(
+                                                text: 'checkmateapp@duck.com',
+                                              ),
+                                            ).then((_) {
+                                              if (currentContext.mounted) {
+                                                ScaffoldMessenger.of(
+                                                  currentContext,
+                                                ).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text(
+                                                      'Email copied to clipboard',
+                                                    ),
+                                                    duration: Duration(
+                                                      seconds: 2,
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                            });
+                                          }
+                                        });
+                                      },
+                                    ),
+
+                                    const Divider(
+                                      color: Colors.white24,
+                                      height: 1,
+                                      indent: 16,
+                                      endIndent: 16,
+                                    ),
+
+                                    ListTile(
+                                      title: const Text(
+                                        'Rate Us on App Store',
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                      subtitle: const Text(
+                                        'Love Billington? Let us know!',
+                                        style: TextStyle(color: Colors.white70),
+                                      ),
+                                      leading: const Icon(
+                                        Icons.star_border_rounded,
+                                        color: Colors.white,
+                                      ),
+                                      onTap: _openAppStore,
+                                    ),
+
+                                    const Divider(
+                                      color: Colors.white24,
+                                      height: 1,
+                                      indent: 16,
+                                      endIndent: 16,
+                                    ),
+
+                                    ListTile(
+                                      title: const Text(
+                                        'Share with Friends',
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                      subtitle: const Text(
+                                        'Spread the word!',
+                                        style: TextStyle(color: Colors.white70),
+                                      ),
+                                      leading: const Icon(
+                                        Icons.ios_share,
+                                        color: Colors.white,
+                                      ),
+                                      onTap: _shareApp,
+                                    ),
+                                  ],
+                                ),
+                              ),
 
                               const SizedBox(height: 40),
 
@@ -603,29 +671,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ),
                                 ),
                               ),
-
-                              if (widget.isOnboarding)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 20),
-                                  child: FilledButton(
-                                    onPressed: _completeOnboarding,
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: Colors.white,
-                                      foregroundColor: colorScheme.primary,
-                                      minimumSize: const Size.fromHeight(50),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                    child: const Text(
-                                      'Continue to App',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ),
                             ],
                           ),
                         ),

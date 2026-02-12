@@ -24,6 +24,7 @@ class PreferencesService {
   static const String _firstLaunchKey = 'is_first_launch';
   static const String _selectedPaymentsKey = 'selectedPayments';
   static const String _paymentPrefix = 'payment_';
+  static const String _displayNameKey = 'display_name';
 
   /// Returns a singleton instance
   static final PreferencesService _instance = PreferencesService._internal();
@@ -49,6 +50,18 @@ class PreferencesService {
   Future<void> completeOnboarding() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_firstLaunchKey, false);
+  }
+
+  /// Saves the user's display name
+  Future<void> saveDisplayName(String name) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_displayNameKey, name);
+  }
+
+  /// Gets the user's display name
+  Future<String?> getDisplayName() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_displayNameKey);
   }
 
   /// Saves the list of selected payment methods

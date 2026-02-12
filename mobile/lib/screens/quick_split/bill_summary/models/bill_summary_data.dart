@@ -20,6 +20,7 @@
 
 import 'package:checks_frontend/models/bill_item.dart';
 import 'package:checks_frontend/models/person.dart';
+import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.dart';
 
 /// Consolidated data model for bill summary
 class BillSummaryData {
@@ -34,9 +35,9 @@ class BillSummaryData {
   final double tipPercentage;
   final bool isCustomTipAmount;
   final String billName;
-  
+
   // Payment method fields
- final List<Map<String, String>> paymentMethods;
+  final List<Map<String, String>> paymentMethods;
 
   BillSummaryData({
     required this.participants,
@@ -50,7 +51,7 @@ class BillSummaryData {
     this.tipPercentage = 0,
     this.isCustomTipAmount = false,
     this.billName = '',
- this.paymentMethods = const [],
+    this.paymentMethods = const [],
   });
 
   /// Creates a copy with updated fields
@@ -66,7 +67,7 @@ class BillSummaryData {
     double? tipPercentage,
     bool? isCustomTipAmount,
     String? billName,
- List<Map<String, String>>? paymentMethods,
+    List<Map<String, String>>? paymentMethods,
   }) {
     return BillSummaryData(
       participants: participants ?? this.participants,
@@ -80,7 +81,26 @@ class BillSummaryData {
       tipPercentage: tipPercentage ?? this.tipPercentage,
       isCustomTipAmount: isCustomTipAmount ?? this.isCustomTipAmount,
       billName: billName ?? this.billName,
- paymentMethods: paymentMethods ?? this.paymentMethods,
+      paymentMethods: paymentMethods ?? this.paymentMethods,
+    );
+  }
+
+  /// Creates a BillSummaryData from a RecentBillModel
+  factory BillSummaryData.fromRecentBill(RecentBillModel bill) {
+    final participants = bill.participants;
+    final personShares = bill.generatePersonShares();
+    final items = bill.getBillItems();
+
+    return BillSummaryData(
+      participants: participants,
+      personShares: personShares,
+      items: items,
+      subtotal: bill.subtotal,
+      tax: bill.tax,
+      tipAmount: bill.tipAmount,
+      total: bill.total,
+      tipPercentage: bill.tipPercentage,
+      billName: bill.billName,
     );
   }
 

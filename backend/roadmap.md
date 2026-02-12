@@ -45,10 +45,10 @@ Transform Billington from a local Flutter app into a Splitwise competitor with g
   - [X] Test end-to-end: Flutter → Backend → Web viewer
   - [X] Verify Venmo deep linking works with multiple payment methods
   - [X] Ensure that bill viewer is in decent shape, don't need perfect. ~Good Enough~
-  - [ ] Test with real bill creation flow.
-  1) when sending bill from mobile, NO PAYMENT info gets through. Just says "@username". Even though payment info is set within the settings.
-  2) No way to get the link again later from Recent Bills?
-  3) Offer choice between link/text share
+  - [X] Test with real bill creation flow.
+
+  1) update shareUtils to use enhanced sheet across the application so that users can get the link again from recent bills page
+  2) transition off of SQL Lite DB? Why do I still have that. our system is using the postgres instance now.
 
 - [ ] **Deploy & Test**
   - [ ] Deploy backend to Railway/Render
@@ -61,118 +61,161 @@ Transform Billington from a local Flutter app into a Splitwise competitor with g
 
 ---
 
-## Phase 3: Tabs & Group Trips (Next Priority)
+## Phase 3: Tabs & Group Trips ✅ COMPLETE
 *Goal: Support multi-bill group trips*
 
-### Week 5-6: Tab System (4-6 weeks)
-- [ ] **Backend: Tab Model & API**
+### Week 5-6: Tab System
+- [X] **Backend: Tab Model & API**
   - [X] Create `Tab` model in `pkg/models/tab.go`
-    ```go
-    type Tab struct {
-        ID          uint
-        Name        string
-        Description string
-        Bills       []Bill
-        TotalAmount float64
-        AccessToken string
-        CreatedAt   time.Time
-    }
-    ```
   - [X] Add `TabID *uint` to Bill model (optional foreign key)
-  - [ ] Create tab endpoints:
-    - `POST /api/tabs` - Create new tab
-    - `GET /api/tabs/:id?t=token` - Get tab with all bills
-    - `POST /api/tabs/:id/bills` - Add bill to existing tab
-    - `PATCH /api/tabs/:id` - Update tab details
-  - [ ] Implement `internal/tab/` (handler, service, repository)
-  - [ ] Test with curl
+  - [X] Create tab endpoints (POST /api/tabs, GET /api/tabs/:id, POST /api/tabs/:id/bills, PATCH /api/tabs/:id)
+  - [X] Implement `internal/tab/` (handler, service, repository)
 
-- [ ] **Flutter: Tab UI**
-  - [X] Add "New Tab" option on home screen
-  - [ ] Create tab creation screen (name, description)
-  - [X] Tab list screen (show all user's tabs)
-  - [X] Tab detail screen (show all bills in tab + total)
+- [X] **Flutter: Tab UI**
+  - [X] Tab creation via bottom sheet
+  - [X] Tab list screen with TabManager (Drift DB)
+  - [X] Tab detail screen with per-person totals
   - [X] "Add Bill to Tab" flow
-  - [ ] Save tabs to local database
+  - [X] Migrated from SharedPreferences to Drift DB (schema v3)
+  - [X] Fixed delete bug (was SharedPreferences list sync issue)
+  - [X] Backend sync (fire-and-forget) with share URL support
+  - [X] Tab API service methods (createTab, addBillToTab)
 
-- [ ] **Web Viewer: Tab Display**
-  - [ ] Create `/t/[id]` route for tab viewing
-  - [ ] Display tab name, description, total
-  - [ ] List all bills in tab with expandable details
-  - [ ] Show per-person totals across all bills
-  - [ ] Payment buttons for settling entire tab
+- [X] **Web Viewer: Tab Display**
+  - [X] Create `/t/[id]` route for tab viewing
+  - [X] TabHeader component (name, description, total, bill count)
+  - [X] TabPersonTotals component (per-person cards with Venmo)
+  - [X] Bills as collapsible sections with individual shares
 
 **Milestone**: Users can create group trip tabs and add multiple bills
 
+- [ ] standardize how the deletion stuff looks, the apple esque feel of recent bills or the look of tabs?
+- [ ] way to quickly add another bill within tabs after building the group
+
 ---
 
-## Phase 4: Image Uploads (After Tabs)
+## Phase 4: Image Uploads ✅ COMPLETE
 *Goal: Receipt photos and trip memories*
 
-### Week 7-8: Image Infrastructure (3-4 weeks)
-- [ ] **Backend: Storage Setup**
-  - [ ] Sign up for CloudFlare R2 (free 10GB) OR AWS S3
-  - [ ] Add image model:
-    ```go
-    type TabImage struct {
-        ID          uint
-        TabID       uint
-        URL         string
-        Processed   bool
-        UploadedBy  string
-        CreatedAt   time.Time
-    }
-    ```
-  - [ ] Create image endpoints:
-    - `POST /api/tabs/:id/images` - Upload image
-    - `GET /api/tabs/:id/images` - List tab images
-    - `PATCH /api/tabs/:id/images/:imageId` - Mark as processed
-    - `DELETE /api/tabs/:id/images/:imageId` - Delete image
-  - [ ] Implement image upload handler (multipart/form-data)
-  - [ ] Add abuse prevention (rate limiting, file size limits)
+### Week 7-8: Image Infrastructure
+- [X] **Backend: Storage Setup**
+  - [X] Local file storage with upload directory
+  - [X] TabImage model with processed flag
+  - [X] Image endpoints (POST, GET, PATCH, DELETE)
+  - [X] Multipart upload handler with MIME validation
+  - [X] Rate limiting (20/hour) and file size limits (10MB)
 
-- [ ] **Flutter: Camera & Upload**
-  - [ ] Add `image_picker` package
-  - [ ] Camera/gallery picker UI
-  - [ ] Image compression before upload
-  - [ ] Upload progress indicator
-  - [ ] Display uploaded images in tab
-  - [ ] Mark images as "processed" checkbox
+- [X] **Flutter: Camera & Upload**
+  - [X] `image_picker` package integrated
+  - [X] Camera/gallery picker UI
+  - [X] Image compression before upload
+  - [X] Upload progress indicator
+  - [X] Display uploaded images in tab
+  - [X] Mark images as "processed" checkbox
 
-- [ ] **Web Viewer: Image Gallery**
-  - [ ] Display tab images in grid layout
-  - [ ] Lightbox for full-size viewing
-  - [ ] Show processed/unprocessed status
+- [X] **Web Viewer: Image Gallery**
+  - [X] TabImageGallery component with lightbox
+  - [X] Show processed/unprocessed status
 
 **Milestone**: Users can photograph receipts and attach to tabs
 
 ---
 
-## Phase 5: Processing Workflow (After Images)
+## Phase 5: Processing Workflow ✅ COMPLETE
 *Goal: Mark trip complete and settle up*
 
-### Week 9: Finalization (1-2 weeks)
-- [ ] **Backend: Finalization Logic**
-  - [ ] Add `Finalized bool` to Tab model
-  - [ ] `POST /api/tabs/:id/finalize` endpoint
-  - [ ] Validate all images are processed
-  - [ ] Lock tab from further edits
-  - [ ] Calculate final settlements
+### Week 9: Finalization
+- [X] **Backend: Finalization Logic**
+  - [X] `Finalized` + `FinalizedAt` fields on Tab model
+  - [X] `TabSettlement` model with per-person amounts + paid status
+  - [X] `POST /api/tabs/:id/finalize` — validates images, creates settlements
+  - [X] `GET /api/tabs/:id/settlements` — fetch settlement list
+  - [X] `PATCH /api/tabs/:id/settlements/:id` — toggle paid
+  - [X] Mutation guards on AddBill, UpdateTab, UploadImage, DeleteImage
 
-- [ ] **Flutter: Settlement UI**
-  - [ ] "Finalize Tab" button (only when all images processed)
-  - [ ] Show warning: "This will lock the tab"
-  - [ ] Display final settlement amounts
-  - [ ] "Mark as Paid" buttons per person
+- [X] **Flutter: Settlement UI**
+  - [X] "Finalize" FAB appears when all images processed
+  - [X] Confirmation sheet with settlement preview
+  - [X] Settlement cards with tap-to-toggle paid status
+  - [X] Drift schema v4 with finalized column
+  - [X] Hides camera + Add Bills when finalized
 
-- [ ] **Web Viewer: Settlement Display**
-  - [ ] Show finalized status
-  - [ ] Display who owes whom
-  - [ ] Payment tracking checkboxes
+- [X] **Web Viewer: Settlement Display**
+  - [X] SettlementCard component with paid/unpaid styling
+  - [X] Finalized badge in TabHeader
+  - [X] Venmo pay buttons on unpaid settlements
+  - [X] Replaces PersonTotals when finalized
 
 **Milestone**: Complete group trip workflow from start to settlement
 
 ---
+
+## Phase X: Account-less Collaboration ✅ COMPLETE
+*Goal: Allow different users to add bills to shared tabs without accounts — privacy-first anonymous member tokens*
+
+### Week 10: Anonymous Member Tokens
+- [X] **Backend: TabMember model + CORS middleware**
+  - [X] TabMember model (display_name, member_token, role)
+  - [X] Members association on Tab, AddedByMemberID on Bill
+  - [X] AutoMigrate + gin-contrib/cors middleware
+- [X] **Backend: Member repository + service**
+  - [X] CreateMember, GetMemberByToken, GetMembersByTabID
+  - [X] JoinTab, JoinTabAsCreator, GetMembers service methods
+- [X] **Backend: Join endpoint + member listing**
+  - [X] POST /api/tabs/:id/join — returns member_token
+  - [X] GET /api/tabs/:id/members — returns member list
+  - [X] CreateTab accepts optional creator_display_name
+- [X] **Backend: Member attribution on write endpoints**
+  - [X] AddBillToTab records added_by_member_id via ?m= param
+  - [X] FinalizeTab requires creator role when members exist
+  - [X] UploadImage resolves ?m= for uploaded_by attribution
+- [X] **Flutter: Drift migration v5 + model update**
+  - [X] memberToken, role, isRemote columns on Tabs table
+  - [X] Tab model fields + isCreator/isMember getters
+- [X] **Flutter: API service updates**
+  - [X] joinTab, getTabMembers, getTabData methods
+  - [X] Member token passed on write endpoints
+- [X] **Flutter: Tab creation with display name + join flow**
+  - [X] Creator display name on tab creation
+  - [X] Join Tab sheet (URL + name)
+  - [X] Clipboard detection for Billington URLs
+- [X] **Flutter: Tab detail for remote tabs + members**
+  - [X] Member list with crown icon for creator
+  - [X] Member token attribution on uploads
+- [X] **Web Viewer: Join flow + member display**
+  - [X] JoinTabButton component (localStorage persistence)
+  - [X] MemberList component with member chips
+  - [X] Integrated into tab page
+
+**Milestone**: Multiple people can join shared tabs via link, add bills, and see who contributed — all without accounts.
+
+---
+
+## Phase D: Document and Test ✅ COMPLETE
+*Goal: Comprehensive testing, updated documentation, unified dev startup*
+
+- [X] **Unified dev startup script** (`dev.sh`)
+  - [X] Checks prerequisites (Docker, Node, Flutter)
+  - [X] Creates .env files if missing
+  - [X] Starts backend Docker, waits for health check
+  - [X] Starts Next.js dev server in background
+  - [X] Launches iOS Simulator and runs Flutter app
+  - [X] Cleanup on exit (kill processes, docker-compose down)
+- [X] **Backend Go tests** (`internal/tab/service_test.go`)
+  - [X] Manual mocks for TabRepository and ImageQuerier
+  - [X] 8 test cases: FinalizeTab (success, already finalized, no bills, unprocessed images), JoinTab, JoinTabAsCreator, AddBillToTab, GetMembers
+- [X] **Web viewer tests** (Vitest)
+  - [X] Vitest config + test scripts in package.json
+  - [X] 8 test cases: computeTabPersonTotals (aggregation, case-insensitive, sort, empty), getBill (403, 404, success), getTab (500)
+- [X] **Documentation revamp**
+  - [X] Root README rewritten with architecture diagram, quickstart, project structure, core concepts
+  - [X] docs/technical-overview.md rewritten for distributed architecture
+  - [X] docs/backend-api.md created with full endpoint reference
+  - [X] docs/privacy.md rewritten with anonymous token model and comparison table
+  - [X] backend/README.md rewritten with layered architecture and dev commands
+- [X] **Backend Makefile updated** with `go test -v -race` target
+
+**Milestone**: Full test coverage for core business logic, accurate documentation, one-command dev startup.
 
 ## Phase 6: Production Deployment & Polish
 *Goal: Live, reliable, production system*
@@ -240,8 +283,9 @@ Billington-backend/
 │   └── web-service/main.go        ✅ Working
 ├── pkg/
 │   ├── models/
-│   │   ├── bill.go                ✅ Updated (PaymentMethods array)
-│   │   └── tab.go                 ⏳ TODO
+│   │   ├── bill.go                ✅ Updated (PaymentMethods, AddedByMemberID)
+│   │   ├── tab.go                 ✅ Complete (Members association)
+│   │   └── tab_member.go          ✅ Complete (anonymous identity)
 │   ├── database/
 │   │   └── postgres.go            ✅ Working
 │   └── security/
@@ -251,10 +295,10 @@ Billington-backend/
 │   │   ├── handler.go             ✅ Complete
 │   │   ├── service.go             ✅ Complete
 │   │   └── repository.go          ✅ Complete
-│   ├── tab/                       ⏳ TODO
-│   │   ├── handler.go
-│   │   ├── service.go
-│   │   └── repository.go
+│   ├── tab/                       ✅ Complete
+│   │   ├── handler.go             ✅ (Join, Members, attribution)
+│   │   ├── service.go             ✅ (JoinTab, GetMembers)
+│   │   └── repository.go         ✅ (Member CRUD)
 │   └── web/
 │       ├── handler.go             ✅ Complete
 │       └── templates/
@@ -313,24 +357,18 @@ Billington-backend/
 ## Current Status
 
 ### ✅ Completed
-- Basic backend infrastructure (Go + PostgreSQL)
-- Bill CRUD with access tokens
-- Next.js web viewer with beautiful UI
-- Flutter app sends bills to backend
-- Venmo deep linking
+- Phase 1: Foundation (Go + PostgreSQL + Bill CRUD)
+- Phase 2: Bill Sharing & Web Viewer (Next.js + Venmo deep linking)
+- Phase 3: Tabs & Group Trips (Tab model + Flutter UI + Web viewer)
+- Phase 4: Image Uploads (Camera, upload, processed tracking)
+- Phase 5: Processing Workflow (Finalize, settlements, paid tracking)
+- Phase X: Account-less Collaboration (Anonymous member tokens, join flow, attribution)
+- Phase D: Document and Test (Tests, docs, dev script)
 
-### 🔄 In Progress (This Week)
-- **Fix multiple payment methods bug**
-  - Backend accepts array
-  - Flutter sends all payment methods
-  - Web viewer displays all methods
-  - Test end-to-end flow
-
-### ⏳ Next Up (After Current Fix)
+### ⏳ Next Up
 1. Deploy to production (backend + frontend)
-2. Test with real bill sharing
-3. Start Tab backend implementation
-4. Build Tab UI in Flutter
+2. Test full workflow with real group trip
+3. Move display name entry to onboarding flow (SharedPreferences)
 
 ---
 
@@ -341,8 +379,9 @@ Billington-backend/
 - [X] Secure token-based access control
 - [X] Beautiful web interface for bill viewing
 - [X] Flutter integration with backend
-- [ ] Tabs for group trips
-- [ ] Image upload system
+- [X] Tabs for group trips
+- [X] Image upload system
+- [X] Account-less collaboration (anonymous member tokens)
 - [ ] Production deployment
 - [ ] 10+ real users testing
 
@@ -362,7 +401,7 @@ Billington-backend/
 1. **Skip premature optimization**: No Redis/caching until needed
 2. **Ship features first**: Tabs & images > performance tuning
 3. **Monolith is fine**: Don't split into microservices yet
-4. **Privacy-first**: No user accounts required (token-based sharing)
+4. **Privacy-first**: No user accounts required YET (token-based sharing)
 
 ### Technical Insights
 - GORM's `serializer:json` handles JSONB elegantly

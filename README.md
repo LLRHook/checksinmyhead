@@ -1,133 +1,139 @@
 # Billington
 
-**Privacy-first receipt splitting made simple**
-- [Watch a Demo](https://youtube.com/shorts/T1GHR6JgOX8?feature=share)
-- [Website](https://getspliq.vercel.app/)
+**Privacy-first bill splitting for group trips** — [Demo](https://youtube.com/shorts/T1GHR6JgOX8?feature=share) | [Website](https://getspliq.vercel.app/)
+
+Billington lets groups split bills, track expenses, and settle up — all without creating accounts. Share a link, add bills, and see who owes what.
+
+## Architecture
+
+```
+┌─────────────────┐     ┌─────────────────┐
+│   Flutter App   │     │  Next.js Viewer  │
+│   (iOS mobile)  │     │  (web client)    │
+└────────┬────────┘     └────────┬────────┘
+         │                       │
+         └───────────┬───────────┘
+                     │
+          ┌──────────▼──────────┐
+          │   Go API (Gin)      │
+          │   port 8080         │
+          └──────────┬──────────┘
+                     │
+          ┌──────────▼──────────┐
+          │   PostgreSQL 17     │
+          └─────────────────────┘
+```
+
+## Quickstart
+
+```bash
+# One command — starts backend, web viewer, and iOS simulator
+./dev.sh
+```
+
+Or start each service manually:
+
+```bash
+# Terminal 1: Backend
+cd backend
+cp .env.example .env
+docker-compose up --build
+
+# Terminal 2: Web viewer
+cd web-bill-viewer
+echo "NEXT_PUBLIC_API_URL=http://localhost:8080" > .env.local
+npm install && npm run dev
+
+# Terminal 3: Flutter
+cd mobile
+flutter run -d simulator
+```
+
+## Project Structure
+
+```
+billington/
+├── backend/                  # Go API server
+│   ├── cmd/bill-service/     # Main entrypoint
+│   ├── internal/             # Business logic (bill, tab, image)
+│   │   ├── bill/             #   Bill CRUD (handler/service/repo)
+│   │   ├── tab/              #   Tabs, members, settlements
+│   │   └── image/            #   Image upload + rate limiting
+│   ├── pkg/                  # Shared packages
+│   │   ├── models/           #   GORM data models
+│   │   ├── database/         #   PostgreSQL connection
+│   │   └── security/         #   Token generation
+│   ├── docker-compose.yml    # PostgreSQL + bill-service
+│   └── Makefile
+├── web-bill-viewer/          # Next.js web client
+│   ├── src/app/              # App Router pages
+│   │   ├── b/[id]/           #   Bill viewer (/b/:id?t=token)
+│   │   └── t/[id]/           #   Tab viewer (/t/:id?t=token)
+│   ├── src/components/       # React components
+│   └── src/lib/api.ts        # API client + types
+├── mobile/                   # Flutter iOS app
+│   └── lib/                  # Dart source
+├── docs/                     # Project documentation
+│   ├── technical-overview.md
+│   ├── backend-api.md
+│   └── privacy.md
+├── dev.sh                    # Full-stack dev startup
+└── README.md
+```
+
+## Core Concepts
+
+### Tabs
+A Tab is a group expense tracker (e.g. "Beach Trip 2025"). Multiple bills are added to a tab, and per-person totals are calculated across all bills. When the trip is done, the creator finalizes the tab to lock it and generate settlement amounts.
+
+### Anonymous Member Tokens
+No accounts needed. When someone creates a tab, they get a creator token. Others join via a shared link and receive their own member token. Tokens are stored locally and used to attribute bill additions and image uploads.
+
+### Finalization & Settlements
+Once all receipt images are marked as processed, the tab creator can finalize. This aggregates person shares across all bills (case-insensitive name merge) and creates settlement records showing who owes what. Settlements can be toggled as paid.
+
+## Testing
+
+```bash
+# Backend (Go)
+cd backend && go test -v -race ./internal/... ./pkg/...
+
+# Web viewer (Vitest)
+cd web-bill-viewer && npm test
+
+# Flutter
+cd mobile && flutter test
+```
+
+## Tech Stack
+
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| Mobile | Flutter / Dart | iOS app with Drift DB, Provider state |
+| Web | Next.js 16 / React 19 | Server-rendered bill & tab viewer |
+| API | Go / Gin | REST API with layered architecture |
+| Database | PostgreSQL 17 | Primary data store via GORM |
+| Infra | Docker Compose | Local development environment |
+
+## Roadmap
+
+- [x] Foundation — Go API, PostgreSQL, Bill CRUD
+- [x] Bill Sharing — Web viewer, Venmo deep links
+- [x] Tabs & Group Trips — Multi-bill tabs, per-person totals
+- [x] Image Uploads — Receipt photos with rate limiting
+- [x] Finalization — Settlements, paid tracking
+- [x] Account-less Collaboration — Anonymous member tokens
+- [x] Documentation & Testing — Tests, docs, dev script
+- [ ] Production Deployment — Cloud hosting, CDN, monitoring
 
 ## Documentation
 
-### Core Documentation
-- [Technical Overview](docs/technical-overview.md) - Architecture and key innovations
-- [Market Analysis](docs/market-analysis.md) - Origin story and competitive landscape
-- [Privacy: A Core Value](docs/privacy.md) - Privacy-first approach and implementation
-- [User Experience](docs/user-experience.md) - Insights and lessons from building Billington
-- [Sample Data](docs/sample-data.md) - Real example of bill splitting in action
-- [Scaling Considerations](docs/scaling-considerations.md) - Future architectural evolution
-
-### Development
-- [Contributing Guide](docs/contribution.md) - How to get involved in the project
-- [Code of Conduct](docs/CODE_OF_CONDUCT.md) - Community guidelines
-
-## Project Overview
-
-Billington is a Flutter-based iOS application designed for seamless receipt splitting without compromising user privacy. Our core value proposition is built around **zero data collection** - setting us apart from competitors that collect and store user data in the cloud.
-
-### Key Features
-
-- **Zero Data Collection**: No user data stored on any cloud service
-- **No Permissions Required**: Works without accessing contacts or personal data
-- **Intuitive UI**: Beautiful, seamless user experience
-- **Flexible Splitting**: Supports custom split ratios (20/20/60, 10/10/10/70, etc.)
-- **Local Storage**: Securely saves the last 30 bills on-device using SQLite
-- **Customizable Receipts**: Configurable text receipts that can be shared instantly
-- **Last Dined With**: Remembers the last 12 people you've dined with for quick selection
-
-## Documentation
-
-### Core Documentation
-- [Technical Overview](docs/technical-overview.md) - Architecture and key innovations
-- [Market Analysis](docs/market-analysis.md) - Origin story and competitive landscape
-- [Privacy: A Core Value](docs/privacy.md) - Privacy-first approach and implementation
-- [User Experience](docs/user-experience.md) - Insights and lessons from building Spliq
-- [Sample Data](docs/sample-data.md) - Real example of bill splitting in action
-- [Scaling Considerations](docs/scaling-considerations.md) - Future architectural evolution
-
-### Development
-- [Contributing Guide](docs/contribution.md) - How to get involved in the project
-- [Code of Conduct](docs/CODE_OF_CONDUCT.md) - Community guidelines
-
-### User Flow
-
-1. **Participant Selection**: Choose who's splitting the bill
-2. **Item Entry**: Add items manually or via OCR (future integration)
-3. **Item Assignment**: Assign items to participants
-4. **Split Configuration**: Apply custom split ratios as needed
-5. **Summary & Sharing**: View bill breakdown and share via messaging platforms
-6. **History**: Access past bills stored locally on your device
-
-## Technical Architecture
-
-### Repository Structure
-
-```
-repo-root/
-│
-├── mobile/                # Flutter application
-│   ├── lib/               # Main application code
-│   ├── ios/               # iOS-specific code
-│   ├── pubspec.yaml       # Flutter dependencies
-│   └── README.md          # Development setup instructions
-│
-├── docs/                  # Project documentation
-└── README.md              # Project overview
-```
-
-### Design Principles
-
-#### 1. Privacy by Design
-
-The cornerstone of Billington is its privacy-first approach. Unlike competitors that collect user data for various purposes, Billington operates entirely on-device:
-
-- No cloud storage of personal information
-- No user account requirements
-- No contact access permissions
-- No tracking or analytics that identify users
-
-#### 2. Frontend-Only Architecture
-
-The application is built as a standalone frontend solution:
-
-- Flutter framework for the core application
-- Local SQLite database for bill history storage
-- Future OCR integration planned via Google Vision API (using the `google_vision` package)
-
-#### 3. Cross-Platform Support
-
-While currently focused on iOS deployment:
-
-- Built with Flutter to enable future cross-platform compatibility
-- Codebase structured to support Android with minimal modifications
-- Open-source approach allows forking for other platform adaptations
-
-#### 4. Modular Codebase
-
-The project follows best practices for maintainability and extensibility:
-
-- Separation of concerns through modular architecture
-- Clean interfaces between system components
-- Comprehensive testing framework
-- Consistent code style and documentation
-
-## Development Setup
-
-To set up the development environment and run the project locally:
-
-1. Clone the repository
-2. Follow the detailed instructions in [mobile/README.md](mobile/README.md)
-3. Use Flutter commands to build and run the application
-
-## Future Roadmap
-
-- OCR Integration: Add receipt scanning via Google Vision API
-- Enhanced Splitting Logic: Support more complex division scenarios
-- Dining Groups: Save frequently used groups of people for quick selection
-- UI Refinements: Ongoing improvements to user experience
-- Android Release: Expansion to additional platforms
-
-## Contributing
-
-Billington is open-source and welcomes contributions. See our [contribution guidelines](docs/contribution.md) for more information on how to get involved.
+- [Technical Overview](docs/technical-overview.md) — Architecture, data models, design decisions
+- [Backend API Reference](docs/backend-api.md) — Full endpoint documentation
+- [Privacy](docs/privacy.md) — How Billington protects user privacy
+- [Market Analysis](docs/market-analysis.md) — Competitive landscape
+- [Contributing](docs/contribution.md) — Development guidelines
 
 ## License
 
-This project is licensed under GNU GPL - see the [LICENSE](LICENSE) file for details.
+GNU GPL — see [LICENSE](LICENSE).

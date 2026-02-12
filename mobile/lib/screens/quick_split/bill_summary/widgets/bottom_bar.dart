@@ -15,9 +15,12 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import 'package:checks_frontend/database/database_provider.dart';
 import 'package:checks_frontend/screens/quick_split/bill_summary/models/bill_summary_data.dart';
 import 'package:checks_frontend/screens/quick_split/bill_summary/widgets/bill_name_sheet.dart';
+import 'package:checks_frontend/screens/quick_split/bill_summary/widgets/enhanced_share_sheet.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
+import 'package:checks_frontend/screens/settings/services/preferences_service.dart';
 import 'package:checks_frontend/services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -126,6 +129,7 @@ class BottomBar extends StatelessWidget {
 class DoneButtonHandler {
   static final _billsManager = RecentBillsManager();
   static final _apiService = ApiService();
+  static final _prefsService = PreferencesService();
 
   /// Saves the bill locally and uploads to backend
   static Future<void> handleDone(
@@ -133,13 +137,7 @@ class DoneButtonHandler {
     required BillSummaryData data,
   }) async {
     // Capture ALL context-dependent references FIRST (before any async)
-    final brightness = Theme.of(context).brightness;
-    final snackBarBgColor =
-        brightness == Brightness.dark ? const Color(0xFF2D2D2D) : null;
-    final snackBarTextColor =
-        brightness == Brightness.dark ? Colors.white : null;
     final navigator = Navigator.of(context);
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
 
     // Get bill name
     final billName = await BillNameSheet.show(
@@ -162,7 +160,17 @@ class DoneButtonHandler {
           (dialogContext) => const Center(child: CircularProgressIndicator()),
     );
 
-    // Create updated data with bill name
+    // Load payment methods from preferences
+    final selectedMethods = await _prefsService.getSelectedPaymentMethods();
+    final identifiers = await _prefsService.getAllPaymentIdentifiers();
+
+    // Convert to the format expected by the API
+    final paymentMethods =
+        selectedMethods.map((method) {
+          return {'name': method, 'identifier': identifiers[method] ?? ''};
+        }).toList();
+
+    // Create updated data with bill name and payment methods
     final updatedData = BillSummaryData(
       participants: data.participants,
       personShares: data.personShares,
@@ -175,7 +183,7 @@ class DoneButtonHandler {
       tipPercentage: data.tipPercentage,
       isCustomTipAmount: data.isCustomTipAmount,
       billName: billName,
-      paymentMethods: data.paymentMethods,
+      paymentMethods: paymentMethods,
     );
 
     // Save locally first (always works even if backend fails)
@@ -197,12 +205,13 @@ class DoneButtonHandler {
     String? shareUrl;
     var logger = Logger();
     try {
-      // Use payment methods from data, or provide defaults
-      final paymentMethods = updatedData.paymentMethods.isNotEmpty
-          ? updatedData.paymentMethods
-          : [
-              {'name': 'Venmo', 'identifier': '@username'}
-            ];
+      // Use payment methods from settings, or provide defaults
+      final apiPaymentMethods =
+          paymentMethods.isNotEmpty
+              ? paymentMethods
+              : [
+                {'name': 'Venmo', 'identifier': '@username'},
+              ];
 
       final response = await _apiService.uploadBill(
         billName: billName,
@@ -214,12 +223,18 @@ class DoneButtonHandler {
         tipAmount: updatedData.tipAmount,
         tipPercentage: updatedData.tipPercentage,
         total: updatedData.total,
-        paymentMethods: paymentMethods,
+        paymentMethods: apiPaymentMethods,
       );
 
       if (response != null) {
         shareUrl = response.shareUrl;
         logger.d('Bill uploaded successfully: $shareUrl');
+
+        // Persist the share URL to the most recently saved bill
+        final mostRecent = await DatabaseProvider.db.getMostRecentBill();
+        if (mostRecent != null) {
+          await _billsManager.updateBillShareUrl(mostRecent.id, shareUrl);
+        }
       }
     } catch (e) {
       logger.d('Failed to upload to backend: $e');
@@ -233,35 +248,20 @@ class DoneButtonHandler {
 
     if (!navigator.mounted) return;
 
-    // Show success message with optional share URL
-    final message = shareUrl != null
-        ? 'Bill saved and uploaded successfully'
-        : 'Bill saved locally';
-
-    scaffoldMessenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: TextStyle(color: snackBarTextColor),
-        ),
-        backgroundColor: snackBarBgColor,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        action: shareUrl != null
-            ? SnackBarAction(
-                label: 'Copy Link',
-                textColor: Colors.white,
-                onPressed: () {
-                  Clipboard.setData(ClipboardData(text: shareUrl ?? "Error copying text."));
-                },
-              )
-            : null,
-      ),
-    );
-
     HapticFeedback.mediumImpact();
 
+    // Show EnhancedShareSheet instead of snackbar
+    if (context.mounted) {
+      await EnhancedShareSheet.show(
+        context: context,
+        shareUrl: shareUrl,
+        data: updatedData,
+      );
+    }
+
     // Return to home
-    navigator.popUntil((route) => route.isFirst);
+    if (navigator.mounted) {
+      navigator.popUntil((route) => route.isFirst);
+    }
   }
 }

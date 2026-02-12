@@ -37,7 +37,7 @@ class ApiService {
     required double tipAmount,
     required double tipPercentage,
     required double total,
-required List<Map<String, String>> paymentMethods, 
+    required List<Map<String, String>> paymentMethods,
   }) async {
     var logger = Logger();
     try {
@@ -58,7 +58,7 @@ required List<Map<String, String>> paymentMethods,
           tipAmount,
           total,
         ),
- 'payment_methods': paymentMethods,
+        'payment_methods': paymentMethods,
       };
 
       final response = await http.post(
@@ -104,6 +104,326 @@ required List<Map<String, String>> paymentMethods,
         'assignments': assignments,
       };
     }).toList();
+  }
+
+  /// Creates a new tab on the backend
+  /// Returns TabCreateResponse if successful, null if failed
+  Future<TabCreateResponse?> createTab(
+    String name,
+    String description, {
+    String? creatorDisplayName,
+  }) async {
+    var logger = Logger();
+    try {
+      final body = <String, dynamic>{'name': name, 'description': description};
+      if (creatorDisplayName != null && creatorDisplayName.isNotEmpty) {
+        body['creator_display_name'] = creatorDisplayName;
+      }
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/tabs'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return TabCreateResponse(
+          tabId: data['tab_id'],
+          accessToken: data['access_token'],
+          shareUrl: data['share_url'],
+          memberToken: data['member_token'],
+          memberId: data['member_id'],
+        );
+      } else {
+        logger.d('Failed to create tab: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      logger.d('Error creating tab: $e');
+      return null;
+    }
+  }
+
+  /// Adds a bill to a tab on the backend
+  /// Returns true if successful
+  Future<bool> addBillToTab(
+    int tabId,
+    int billId,
+    String accessToken, {
+    String? memberToken,
+  }) async {
+    var logger = Logger();
+    try {
+      var url = '$baseUrl/api/tabs/$tabId/bills?t=$accessToken';
+      if (memberToken != null) url += '&m=$memberToken';
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'bill_id': billId}),
+      );
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        logger.d('Failed to add bill to tab: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      logger.d('Error adding bill to tab: $e');
+      return false;
+    }
+  }
+
+  /// Uploads an image to a tab
+  Future<TabImageResponse?> uploadTabImage(
+    int tabId,
+    String accessToken,
+    File imageFile, {
+    String? memberToken,
+  }) async {
+    var logger = Logger();
+    try {
+      var url = '$baseUrl/api/tabs/$tabId/images?t=$accessToken';
+      if (memberToken != null) url += '&m=$memberToken';
+
+      final request = http.MultipartRequest('POST', Uri.parse(url));
+      request.files.add(
+        await http.MultipartFile.fromPath('image', imageFile.path),
+      );
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return TabImageResponse.fromJson(data);
+      } else {
+        logger.d('Failed to upload image: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      logger.d('Error uploading image: $e');
+      return null;
+    }
+  }
+
+  /// Gets all images for a tab
+  Future<List<TabImageResponse>> getTabImages(
+    int tabId,
+    String accessToken,
+  ) async {
+    var logger = Logger();
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/tabs/$tabId/images?t=$accessToken'),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => TabImageResponse.fromJson(json)).toList();
+      } else {
+        logger.d('Failed to get images: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      logger.d('Error getting images: $e');
+      return [];
+    }
+  }
+
+  /// Toggles the processed status of an image
+  Future<bool> updateTabImage(
+    int tabId,
+    int imageId,
+    String accessToken,
+    bool processed,
+  ) async {
+    var logger = Logger();
+    try {
+      final response = await http.patch(
+        Uri.parse('$baseUrl/api/tabs/$tabId/images/$imageId?t=$accessToken'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'processed': processed}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      logger.d('Error updating image: $e');
+      return false;
+    }
+  }
+
+  /// Finalizes a tab, locking it from further edits and creating settlements
+  Future<List<SettlementResponse>> finalizeTab(
+    int tabId,
+    String accessToken, {
+    String? memberToken,
+  }) async {
+    var logger = Logger();
+    try {
+      var url = '$baseUrl/api/tabs/$tabId/finalize?t=$accessToken';
+      if (memberToken != null) url += '&m=$memberToken';
+
+      final response = await http.post(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => SettlementResponse.fromJson(json)).toList();
+      } else {
+        logger.d(
+          'Failed to finalize tab: ${response.statusCode} ${response.body}',
+        );
+        return [];
+      }
+    } catch (e) {
+      logger.d('Error finalizing tab: $e');
+      return [];
+    }
+  }
+
+  /// Gets settlements for a finalized tab
+  Future<List<SettlementResponse>> getSettlements(
+    int tabId,
+    String accessToken,
+  ) async {
+    var logger = Logger();
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/tabs/$tabId/settlements?t=$accessToken'),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => SettlementResponse.fromJson(json)).toList();
+      } else {
+        logger.d('Failed to get settlements: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      logger.d('Error getting settlements: $e');
+      return [];
+    }
+  }
+
+  /// Toggles the paid status of a settlement
+  Future<bool> updateSettlement(
+    int tabId,
+    int settlementId,
+    String accessToken,
+    bool paid,
+  ) async {
+    var logger = Logger();
+    try {
+      final response = await http.patch(
+        Uri.parse(
+          '$baseUrl/api/tabs/$tabId/settlements/$settlementId?t=$accessToken',
+        ),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'paid': paid}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      logger.d('Error updating settlement: $e');
+      return false;
+    }
+  }
+
+  /// Deletes an image from a tab
+  Future<bool> deleteTabImage(
+    int tabId,
+    int imageId,
+    String accessToken,
+  ) async {
+    var logger = Logger();
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/api/tabs/$tabId/images/$imageId?t=$accessToken'),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      logger.d('Error deleting image: $e');
+      return false;
+    }
+  }
+
+  /// Joins a tab as a new member
+  Future<TabJoinResponse?> joinTab(
+    int tabId,
+    String accessToken,
+    String displayName,
+  ) async {
+    var logger = Logger();
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/tabs/$tabId/join?t=$accessToken'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'display_name': displayName}),
+      );
+
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return TabJoinResponse(
+          memberId: data['member_id'],
+          memberToken: data['member_token'],
+          displayName: data['display_name'],
+          role: data['role'],
+        );
+      } else {
+        logger.d('Failed to join tab: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      logger.d('Error joining tab: $e');
+      return null;
+    }
+  }
+
+  /// Gets members of a tab
+  Future<List<TabMemberResponse>> getTabMembers(
+    int tabId,
+    String accessToken,
+  ) async {
+    var logger = Logger();
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/tabs/$tabId/members?t=$accessToken'),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => TabMemberResponse.fromJson(json)).toList();
+      } else {
+        logger.d('Failed to get members: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      logger.d('Error getting members: $e');
+      return [];
+    }
+  }
+
+  /// Fetches full tab data from the backend
+  Future<Map<String, dynamic>?> getTabData(
+    int tabId,
+    String accessToken,
+  ) async {
+    var logger = Logger();
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/tabs/$tabId?t=$accessToken'),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        logger.d('Failed to get tab data: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      logger.d('Error getting tab data: $e');
+      return null;
+    }
   }
 
   /// Builds the person_shares JSON structure
@@ -154,6 +474,62 @@ required List<Map<String, String>> paymentMethods,
   }
 }
 
+/// Response object from tab creation
+class TabCreateResponse {
+  final int tabId;
+  final String accessToken;
+  final String shareUrl;
+  final String? memberToken;
+  final int? memberId;
+
+  TabCreateResponse({
+    required this.tabId,
+    required this.accessToken,
+    required this.shareUrl,
+    this.memberToken,
+    this.memberId,
+  });
+}
+
+/// Response object from joining a tab
+class TabJoinResponse {
+  final int memberId;
+  final String memberToken;
+  final String displayName;
+  final String role;
+
+  TabJoinResponse({
+    required this.memberId,
+    required this.memberToken,
+    required this.displayName,
+    required this.role,
+  });
+}
+
+/// Response object for tab members
+class TabMemberResponse {
+  final int id;
+  final String displayName;
+  final String role;
+  final String joinedAt;
+
+  TabMemberResponse({
+    required this.id,
+    required this.displayName,
+    required this.role,
+    required this.joinedAt,
+  });
+
+  factory TabMemberResponse.fromJson(Map<String, dynamic> json) {
+    return TabMemberResponse(
+      id: json['id'],
+      displayName: json['display_name'] ?? '',
+      role: json['role'] ?? 'member',
+      joinedAt: json['joined_at'] ?? '',
+    );
+  }
+}
+
 /// Response object from bill upload
 class BillUploadResponse {
   final int billId;
@@ -165,4 +541,73 @@ class BillUploadResponse {
     required this.accessToken,
     required this.shareUrl,
   });
+}
+
+/// Response object for tab images
+class TabImageResponse {
+  final int id;
+  final int tabId;
+  final String filename;
+  final String url;
+  final int size;
+  final String mimeType;
+  final bool processed;
+  final String uploadedBy;
+  final String createdAt;
+
+  TabImageResponse({
+    required this.id,
+    required this.tabId,
+    required this.filename,
+    required this.url,
+    required this.size,
+    required this.mimeType,
+    required this.processed,
+    required this.uploadedBy,
+    required this.createdAt,
+  });
+
+  factory TabImageResponse.fromJson(Map<String, dynamic> json) {
+    return TabImageResponse(
+      id: json['id'],
+      tabId: json['tab_id'],
+      filename: json['filename'] ?? '',
+      url: json['url'] ?? '',
+      size: json['size'] ?? 0,
+      mimeType: json['mime_type'] ?? '',
+      processed: json['processed'] ?? false,
+      uploadedBy: json['uploaded_by'] ?? '',
+      createdAt: json['created_at'] ?? '',
+    );
+  }
+}
+
+/// Response object for tab settlements
+class SettlementResponse {
+  final int id;
+  final int tabId;
+  final String personName;
+  final double amount;
+  final bool paid;
+  final String createdAt;
+
+  SettlementResponse({
+    required this.id,
+    required this.tabId,
+    required this.personName,
+    required this.amount,
+    required this.paid,
+    required this.createdAt,
+  });
+
+  factory SettlementResponse.fromJson(Map<String, dynamic> json) {
+    return SettlementResponse(
+      id: json['id'],
+      tabId: json['tab_id'],
+      personName: json['person_name'] ?? '',
+      amount: (json['amount'] ?? 0).toDouble(),
+      paid: json['paid'] ?? false,
+      createdAt: json['created_at'] ?? '',
+    );
+  }
 }
