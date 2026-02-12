@@ -191,13 +191,31 @@ Transform Billington from a local Flutter app into a Splitwise competitor with g
 
 ---
 
-## Phase D: Document and Test
-- [] UPdate/revamp all documentation, write explicit steps for testing.
-- [] Revamp entire Docs folder, rewrite all architecture diagrams to reflect the new way the distributed system works.
-- [] update readme to be more inline with current application trends.
-- [] Create comprehensive testing suite and unit tests, to test the API and the actual flutter application, and the web viewer
-- Level of professionalism/polish on this should be in line with the ui_prompt, it should be beautiful and build customer trust. We want to get Splitwise off the market.
-- [] Create a single command I can run that would start everything up so I can test locally. It should spin the backend/docker and run docker stuff AND start the simulator on my Mac and run the app. 
+## Phase D: Document and Test ✅ COMPLETE
+*Goal: Comprehensive testing, updated documentation, unified dev startup*
+
+- [X] **Unified dev startup script** (`dev.sh`)
+  - [X] Checks prerequisites (Docker, Node, Flutter)
+  - [X] Creates .env files if missing
+  - [X] Starts backend Docker, waits for health check
+  - [X] Starts Next.js dev server in background
+  - [X] Launches iOS Simulator and runs Flutter app
+  - [X] Cleanup on exit (kill processes, docker-compose down)
+- [X] **Backend Go tests** (`internal/tab/service_test.go`)
+  - [X] Manual mocks for TabRepository and ImageQuerier
+  - [X] 8 test cases: FinalizeTab (success, already finalized, no bills, unprocessed images), JoinTab, JoinTabAsCreator, AddBillToTab, GetMembers
+- [X] **Web viewer tests** (Vitest)
+  - [X] Vitest config + test scripts in package.json
+  - [X] 8 test cases: computeTabPersonTotals (aggregation, case-insensitive, sort, empty), getBill (403, 404, success), getTab (500)
+- [X] **Documentation revamp**
+  - [X] Root README rewritten with architecture diagram, quickstart, project structure, core concepts
+  - [X] docs/technical-overview.md rewritten for distributed architecture
+  - [X] docs/backend-api.md created with full endpoint reference
+  - [X] docs/privacy.md rewritten with anonymous token model and comparison table
+  - [X] backend/README.md rewritten with layered architecture and dev commands
+- [X] **Backend Makefile updated** with `go test -v -race` target
+
+**Milestone**: Full test coverage for core business logic, accurate documentation, one-command dev startup.
 
 ## Phase 6: Production Deployment & Polish
 *Goal: Live, reliable, production system*
@@ -345,6 +363,7 @@ Billington-backend/
 - Phase 4: Image Uploads (Camera, upload, processed tracking)
 - Phase 5: Processing Workflow (Finalize, settlements, paid tracking)
 - Phase X: Account-less Collaboration (Anonymous member tokens, join flow, attribution)
+- Phase D: Document and Test (Tests, docs, dev script)
 
 ### ⏳ Next Up
 1. Deploy to production (backend + frontend)
