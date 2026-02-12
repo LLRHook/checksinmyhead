@@ -19,39 +19,26 @@ import 'package:flutter/material.dart';
 import 'screens/splash_screen.dart';
 import 'screens/landing_screen.dart';
 import 'screens/settings/settings_screen.dart';
+import 'screens/onboarding/onboarding_screen.dart';
 import 'config/theme.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 // Purpose: Entry point for the Billington bill-splitting application.
-// This file initializes the app, manages first-launch detection, and sets up
-// the global theme and navigation routes.
+// This file initializes the app and sets up the global theme and navigation routes.
 //
 // Features:
-// - Detects if this is the first app launch for onboarding flow
 // - Configures app-wide theming with light/dark mode support
 // - Sets up navigation routes to key screens
-// - Initializes Flutter binding and preferences
+// - Initializes Flutter binding
 
-/// App entry point - initializes first launch detection before creating the app
+/// App entry point
 void main() async {
-  // Ensure Flutter bindings are initialized before accessing platform channels
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Load shared preferences to determine if this is the first app launch
-  final prefs = await SharedPreferences.getInstance();
-  final bool isFirstLaunch = prefs.getBool('is_first_launch') ?? true;
-
-  // Launch the app with first launch state
-  runApp(MyApp(isFirstLaunch: isFirstLaunch));
+  runApp(const MyApp());
 }
 
 /// Root application widget that configures global app settings
 class MyApp extends StatelessWidget {
-  // Tracks whether this is the first time the app has been launched
-  final bool isFirstLaunch;
-
-  // Constructor requiring first launch status
-  const MyApp({super.key, required this.isFirstLaunch});
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -68,7 +55,8 @@ class MyApp extends StatelessWidget {
       // Named routes for navigation throughout the app
       routes: {
         '/landing': (context) => const LandingScreen(),
-        '/settings': (context) => SettingsScreen(isOnboarding: isFirstLaunch),
+        '/settings': (context) => const SettingsScreen(),
+        '/onboarding': (context) => const OnboardingScreen(),
       },
     );
   }

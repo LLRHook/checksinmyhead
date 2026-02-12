@@ -19,7 +19,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'landing_screen.dart';
-import 'settings/settings_screen.dart';
+import 'onboarding/onboarding_screen.dart';
 
 /// A custom page route that provides a smooth fade transition between screens
 class FadePageRoute<T> extends PageRouteBuilder<T> {
@@ -170,11 +170,9 @@ class _SplashScreenState extends State<SplashScreen>
           // Check again if widget is still mounted before navigating
           if (mounted) {
             if (isFirstLaunch) {
-              // First launch - go to settings/onboarding with fade transition
+              // First launch - go to onboarding with fade transition
               Navigator.of(context).pushReplacement(
-                FadePageRoute(
-                  builder: (context) => SettingsScreen(isOnboarding: true),
-                ),
+                FadePageRoute(builder: (context) => const OnboardingScreen()),
               );
             } else {
               // Returning user - go directly to main landing screen with fade transition

@@ -30,11 +30,7 @@ class EnhancedShareSheet extends StatelessWidget {
   final String? shareUrl;
   final BillSummaryData data;
 
-  const EnhancedShareSheet({
-    super.key,
-    this.shareUrl,
-    required this.data,
-  });
+  const EnhancedShareSheet({super.key, this.shareUrl, required this.data});
 
   /// Shows the enhanced share sheet as a modal bottom sheet
   static Future<void> show({
@@ -49,10 +45,7 @@ class EnhancedShareSheet extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      builder: (context) => EnhancedShareSheet(
-        shareUrl: shareUrl,
-        data: data,
-      ),
+      builder: (context) => EnhancedShareSheet(shareUrl: shareUrl, data: data),
     );
   }
 
@@ -173,7 +166,7 @@ class EnhancedShareSheet extends StatelessWidget {
                     HapticFeedback.mediumImpact();
                     Clipboard.setData(ClipboardData(text: shareUrl!));
                     Navigator.pop(context);
-                    
+
                     // Show confirmation snackbar
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -233,14 +226,10 @@ class EnhancedShareSheet extends StatelessWidget {
                   color: iconBgColor,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  icon,
-                  color: colorScheme.primary,
-                  size: 24,
-                ),
+                child: Icon(icon, color: colorScheme.primary, size: 24),
               ),
               const SizedBox(width: 16),
-              
+
               // Text content
               Expanded(
                 child: Column(
@@ -265,7 +254,7 @@ class EnhancedShareSheet extends StatelessWidget {
                   ],
                 ),
               ),
-              
+
               // Arrow icon
               Icon(
                 Icons.arrow_forward_ios,

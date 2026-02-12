@@ -52,7 +52,12 @@ class TabManager extends ChangeNotifier {
       );
 
       // Fire-and-forget backend sync
-      _syncTabToBackend(id, name, description, creatorDisplayName: creatorDisplayName);
+      _syncTabToBackend(
+        id,
+        name,
+        description,
+        creatorDisplayName: creatorDisplayName,
+      );
 
       final tabData = await DatabaseProvider.db.getTabById(id);
       if (tabData == null) return null;
@@ -171,7 +176,8 @@ class TabManager extends ChangeNotifier {
     try {
       final tabData = await DatabaseProvider.db.getTabById(localId);
       if (tabData == null) return false;
-      if (tabData.backendId == null || tabData.accessToken == null) return false;
+      if (tabData.backendId == null || tabData.accessToken == null)
+        return false;
 
       final apiService = ApiService();
       final settlements = await apiService.finalizeTab(
@@ -210,7 +216,11 @@ class TabManager extends ChangeNotifier {
       final apiService = ApiService();
 
       // Join the tab
-      final joinResponse = await apiService.joinTab(tabId, accessToken, displayName);
+      final joinResponse = await apiService.joinTab(
+        tabId,
+        accessToken,
+        displayName,
+      );
       if (joinResponse == null) return null;
 
       // Fetch full tab data

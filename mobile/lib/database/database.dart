@@ -94,7 +94,9 @@ class RecentBills extends Table {
 }
 
 // Main database class handling all database operations
-@DriftDatabase(tables: [People, TutorialStates, UserPreferences, RecentBills, Tabs])
+@DriftDatabase(
+  tables: [People, TutorialStates, UserPreferences, RecentBills, Tabs],
+)
 class AppDatabase extends _$AppDatabase {
   static const int maxRecentPeople = 12;
 
@@ -105,23 +107,23 @@ class AppDatabase extends _$AppDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onUpgrade: (migrator, from, to) async {
-          if (from < 2) {
-            await migrator.addColumn(recentBills, recentBills.shareUrl);
-          }
-          if (from < 3) {
-            await migrator.createTable(tabs);
-          }
-          if (from < 4) {
-            await migrator.addColumn(tabs, tabs.finalized);
-          }
-          if (from < 5) {
-            await migrator.addColumn(tabs, tabs.memberToken);
-            await migrator.addColumn(tabs, tabs.role);
-            await migrator.addColumn(tabs, tabs.isRemote);
-          }
-        },
-      );
+    onUpgrade: (migrator, from, to) async {
+      if (from < 2) {
+        await migrator.addColumn(recentBills, recentBills.shareUrl);
+      }
+      if (from < 3) {
+        await migrator.createTable(tabs);
+      }
+      if (from < 4) {
+        await migrator.addColumn(tabs, tabs.finalized);
+      }
+      if (from < 5) {
+        await migrator.addColumn(tabs, tabs.memberToken);
+        await migrator.addColumn(tabs, tabs.role);
+        await migrator.addColumn(tabs, tabs.isRemote);
+      }
+    },
+  );
 
   // Converts database person entry to Person model
   Person peopleDataToPerson(PeopleData entry) {
@@ -380,9 +382,10 @@ class AppDatabase extends _$AppDatabase {
 
   /// Gets the most recently created bill
   Future<RecentBill?> getMostRecentBill() async {
-    final query = select(recentBills)
-      ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
-      ..limit(1);
+    final query =
+        select(recentBills)
+          ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
+          ..limit(1);
     return query.getSingleOrNull();
   }
 
