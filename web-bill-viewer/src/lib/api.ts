@@ -189,12 +189,20 @@ export async function joinTab(
 
 export function computeTabPersonTotals(tab: Tab): TabPersonTotal[] {
   const totals: Record<string, { total: number; bill_count: number }> = {};
+  const displayNames: Record<string, string> = {};
 
   for (const bill of tab.bills) {
     for (const share of bill.person_shares) {
       const key = share.person_name.toLowerCase();
       if (!totals[key]) {
         totals[key] = { total: 0, bill_count: 0 };
+        displayNames[key] = share.person_name;
+      } else if (
+        displayNames[key] === key &&
+        share.person_name !== key
+      ) {
+        // Prefer a capitalized variant over all-lowercase
+        displayNames[key] = share.person_name;
       }
       totals[key].total += share.total;
       totals[key].bill_count += 1;
@@ -203,7 +211,7 @@ export function computeTabPersonTotals(tab: Tab): TabPersonTotal[] {
 
   return Object.entries(totals)
     .map(([key, val]) => ({
-      person_name: key.charAt(0).toUpperCase() + key.slice(1),
+      person_name: displayNames[key],
       total: val.total,
       bill_count: val.bill_count,
     }))

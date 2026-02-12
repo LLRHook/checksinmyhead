@@ -146,6 +146,10 @@ func (h *TabHandler) AddBillToTab(c *gin.Context) {
 
 	err := h.service.AddBillToTab(tab.ID, body.BillID, memberID)
 	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(404, gin.H{"error": "bill not found"})
+			return
+		}
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}

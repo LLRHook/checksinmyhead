@@ -27,7 +27,8 @@ func InitDB() (*gorm.DB, error) {
 		return nil, err
 	}
 
-	err = db.AutoMigrate(&models.Bill{}, &models.Person{}, &models.BillItem{}, &models.ItemAssignment{}, &models.PersonShare{}, &models.Tab{}, &models.TabImage{}, &models.TabSettlement{}, &models.TabMember{})
+	// Migrate parent tables first (Tab before Bill, since Bill has FK to Tab)
+	err = db.AutoMigrate(&models.Tab{}, &models.TabMember{}, &models.TabImage{}, &models.TabSettlement{}, &models.Bill{}, &models.Person{}, &models.BillItem{}, &models.ItemAssignment{}, &models.PersonShare{})
 	if err != nil {
 		return nil, err
 	}
