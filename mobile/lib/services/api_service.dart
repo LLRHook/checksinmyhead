@@ -37,7 +37,7 @@ class ApiService {
     required double tipAmount,
     required double tipPercentage,
     required double total,
-required List<Map<String, String>> paymentMethods, 
+    required List<Map<String, String>> paymentMethods,
   }) async {
     var logger = Logger();
     try {
@@ -58,7 +58,7 @@ required List<Map<String, String>> paymentMethods,
           tipAmount,
           total,
         ),
- 'payment_methods': paymentMethods,
+        'payment_methods': paymentMethods,
       };
 
       final response = await http.post(
@@ -115,10 +115,7 @@ required List<Map<String, String>> paymentMethods,
   }) async {
     var logger = Logger();
     try {
-      final body = <String, dynamic>{
-        'name': name,
-        'description': description,
-      };
+      final body = <String, dynamic>{'name': name, 'description': description};
       if (creatorDisplayName != null && creatorDisplayName.isNotEmpty) {
         body['creator_display_name'] = creatorDisplayName;
       }
@@ -191,10 +188,7 @@ required List<Map<String, String>> paymentMethods,
       var url = '$baseUrl/api/tabs/$tabId/images?t=$accessToken';
       if (memberToken != null) url += '&m=$memberToken';
 
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse(url),
-      );
+      final request = http.MultipartRequest('POST', Uri.parse(url));
       request.files.add(
         await http.MultipartFile.fromPath('image', imageFile.path),
       );
@@ -271,15 +265,15 @@ required List<Map<String, String>> paymentMethods,
       var url = '$baseUrl/api/tabs/$tabId/finalize?t=$accessToken';
       if (memberToken != null) url += '&m=$memberToken';
 
-      final response = await http.post(
-        Uri.parse(url),
-      );
+      final response = await http.post(Uri.parse(url));
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((json) => SettlementResponse.fromJson(json)).toList();
       } else {
-        logger.d('Failed to finalize tab: ${response.statusCode} ${response.body}');
+        logger.d(
+          'Failed to finalize tab: ${response.statusCode} ${response.body}',
+        );
         return [];
       }
     } catch (e) {
@@ -322,7 +316,9 @@ required List<Map<String, String>> paymentMethods,
     var logger = Logger();
     try {
       final response = await http.patch(
-        Uri.parse('$baseUrl/api/tabs/$tabId/settlements/$settlementId?t=$accessToken'),
+        Uri.parse(
+          '$baseUrl/api/tabs/$tabId/settlements/$settlementId?t=$accessToken',
+        ),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'paid': paid}),
       );

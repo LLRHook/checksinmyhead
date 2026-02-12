@@ -12,7 +12,8 @@ class TabsScreen extends StatefulWidget {
   State<TabsScreen> createState() => _TabsScreenState();
 }
 
-class _TabsScreenState extends State<TabsScreen> with SingleTickerProviderStateMixin {
+class _TabsScreenState extends State<TabsScreen>
+    with SingleTickerProviderStateMixin {
   List<AppTab> _tabs = [];
   bool _isLoading = false;
   late AnimationController _animController;
@@ -75,7 +76,10 @@ class _TabsScreenState extends State<TabsScreen> with SingleTickerProviderStateM
       final displayName = await _prefsService.getDisplayName();
       final newTab = await _tabManager.createTab(
         tabName.trim(),
-        creatorDisplayName: (displayName != null && displayName.isNotEmpty) ? displayName : null,
+        creatorDisplayName:
+            (displayName != null && displayName.isNotEmpty)
+                ? displayName
+                : null,
       );
 
       if (newTab != null && mounted) {
@@ -157,7 +161,9 @@ class _TabsScreenState extends State<TabsScreen> with SingleTickerProviderStateM
               ],
             ),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             backgroundColor: Theme.of(context).colorScheme.primary,
           ),
         );
@@ -171,9 +177,13 @@ class _TabsScreenState extends State<TabsScreen> with SingleTickerProviderStateM
     final brightness = Theme.of(context).brightness;
 
     return Scaffold(
-      backgroundColor: brightness == Brightness.dark ? colorScheme.surface : Colors.grey[50],
+      backgroundColor:
+          brightness == Brightness.dark ? colorScheme.surface : Colors.grey[50],
       appBar: AppBar(
-        title: const Text('Tabs', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Tabs',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -192,9 +202,12 @@ class _TabsScreenState extends State<TabsScreen> with SingleTickerProviderStateM
           ),
         ],
       ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: colorScheme.primary))
-          : _tabs.isEmpty
+      body:
+          _isLoading
+              ? Center(
+                child: CircularProgressIndicator(color: colorScheme.primary),
+              )
+              : _tabs.isEmpty
               ? _buildEmptyState()
               : _buildTabsListWithBanner(),
       floatingActionButton: _buildFAB(),
@@ -214,7 +227,9 @@ class _TabsScreenState extends State<TabsScreen> with SingleTickerProviderStateM
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: colorScheme.primary.withValues(alpha: brightness == Brightness.dark ? 0.15 : 0.08),
+                color: colorScheme.primary.withValues(
+                  alpha: brightness == Brightness.dark ? 0.15 : 0.08,
+                ),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -308,7 +323,9 @@ class _TabsScreenState extends State<TabsScreen> with SingleTickerProviderStateM
             HapticFeedback.selectionClick();
             final result = await Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => TabDetailScreen(tab: tab)),
+              MaterialPageRoute(
+                builder: (context) => TabDetailScreen(tab: tab),
+              ),
             );
             if (result == true) _loadTabs();
           },
@@ -328,7 +345,9 @@ class _TabsScreenState extends State<TabsScreen> with SingleTickerProviderStateM
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: colorScheme.primary.withValues(alpha: brightness == Brightness.dark ? 0.2 : 0.3),
+            color: colorScheme.primary.withValues(
+              alpha: brightness == Brightness.dark ? 0.2 : 0.3,
+            ),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -338,11 +357,18 @@ class _TabsScreenState extends State<TabsScreen> with SingleTickerProviderStateM
         onPressed: _createNewTab,
         elevation: 0,
         backgroundColor: colorScheme.primary,
-        foregroundColor: brightness == Brightness.dark ? Colors.black.withValues(alpha: 0.9) : Colors.white,
+        foregroundColor:
+            brightness == Brightness.dark
+                ? Colors.black.withValues(alpha: 0.9)
+                : Colors.white,
         icon: const Icon(Icons.add, size: 22),
         label: const Text(
           'New Tab',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 0.5),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+          ),
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
@@ -367,10 +393,12 @@ class _TabCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
-    final cardBgColor = brightness == Brightness.dark ? colorScheme.surface : Colors.white;
-    final shadowColor = brightness == Brightness.dark
-        ? Colors.black.withValues(alpha: 0.2)
-        : Colors.black.withValues(alpha: 0.05);
+    final cardBgColor =
+        brightness == Brightness.dark ? colorScheme.surface : Colors.white;
+    final shadowColor =
+        brightness == Brightness.dark
+            ? Colors.black.withValues(alpha: 0.2)
+            : Colors.black.withValues(alpha: 0.05);
 
     return Dismissible(
       key: Key('tab_${tab.id}'),
@@ -436,9 +464,10 @@ class _TabCard extends StatelessWidget {
                     ),
                     child: Icon(
                       Icons.folder_special,
-                      color: brightness == Brightness.dark
-                          ? Colors.black.withValues(alpha: 0.9)
-                          : Colors.white,
+                      color:
+                          brightness == Brightness.dark
+                              ? Colors.black.withValues(alpha: 0.9)
+                              : Colors.white,
                       size: 24,
                     ),
                   ),
@@ -462,14 +491,18 @@ class _TabCard extends StatelessWidget {
                             Icon(
                               Icons.receipt_long_outlined,
                               size: 14,
-                              color: colorScheme.onSurface.withValues(alpha: 0.5),
+                              color: colorScheme.onSurface.withValues(
+                                alpha: 0.5,
+                              ),
                             ),
                             const SizedBox(width: 4),
                             Text(
                               '${tab.billIds.length} bill${tab.billIds.length == 1 ? '' : 's'}',
                               style: TextStyle(
                                 fontSize: 14,
-                                color: colorScheme.onSurface.withValues(alpha: 0.6),
+                                color: colorScheme.onSurface.withValues(
+                                  alpha: 0.6,
+                                ),
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -520,14 +553,18 @@ class _CreateTabSheetState extends State<_CreateTabSheet> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
-    final fillColor = brightness == Brightness.dark
-        ? colorScheme.surfaceContainerHighest
-        : Colors.grey.shade50;
+    final fillColor =
+        brightness == Brightness.dark
+            ? colorScheme.surfaceContainerHighest
+            : Colors.grey.shade50;
 
     return Container(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       decoration: BoxDecoration(
-        color: brightness == Brightness.dark ? colorScheme.surface : Colors.white,
+        color:
+            brightness == Brightness.dark ? colorScheme.surface : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Padding(
@@ -557,7 +594,11 @@ class _CreateTabSheetState extends State<_CreateTabSheet> {
                       color: colorScheme.primary.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.edit_note, color: colorScheme.primary, size: 24),
+                    child: Icon(
+                      Icons.edit_note,
+                      color: colorScheme.primary,
+                      size: 24,
+                    ),
                   ),
                   const SizedBox(width: 16),
                   Text(
@@ -580,7 +621,10 @@ class _CreateTabSheetState extends State<_CreateTabSheet> {
                 decoration: InputDecoration(
                   hintText: 'Banff Trip',
                   labelText: 'Tab Name',
-                  prefixIcon: Icon(Icons.folder_special_outlined, color: colorScheme.primary),
+                  prefixIcon: Icon(
+                    Icons.folder_special_outlined,
+                    color: colorScheme.primary,
+                  ),
                   filled: true,
                   fillColor: fillColor,
                   border: OutlineInputBorder(
@@ -589,12 +633,21 @@ class _CreateTabSheetState extends State<_CreateTabSheet> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(color: colorScheme.primary, width: 2),
+                    borderSide: BorderSide(
+                      color: colorScheme.primary,
+                      width: 2,
+                    ),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 18,
+                  ),
                 ),
-                validator: (value) =>
-                    (value == null || value.trim().isEmpty) ? 'Please enter a name' : null,
+                validator:
+                    (value) =>
+                        (value == null || value.trim().isEmpty)
+                            ? 'Please enter a name'
+                            : null,
                 onFieldSubmitted: (_) => _submit(),
               ),
               const SizedBox(height: 24),
@@ -602,11 +655,14 @@ class _CreateTabSheetState extends State<_CreateTabSheet> {
                 onPressed: _submit,
                 style: FilledButton.styleFrom(
                   backgroundColor: colorScheme.primary,
-                  foregroundColor: brightness == Brightness.dark
-                      ? Colors.black.withValues(alpha: 0.9)
-                      : Colors.white,
+                  foregroundColor:
+                      brightness == Brightness.dark
+                          ? Colors.black.withValues(alpha: 0.9)
+                          : Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
                 child: const Text(
                   'Create Tab',
@@ -660,14 +716,18 @@ class _JoinTabSheetState extends State<_JoinTabSheet> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
-    final fillColor = brightness == Brightness.dark
-        ? colorScheme.surfaceContainerHighest
-        : Colors.grey.shade50;
+    final fillColor =
+        brightness == Brightness.dark
+            ? colorScheme.surfaceContainerHighest
+            : Colors.grey.shade50;
 
     return Container(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       decoration: BoxDecoration(
-        color: brightness == Brightness.dark ? colorScheme.surface : Colors.white,
+        color:
+            brightness == Brightness.dark ? colorScheme.surface : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Padding(
@@ -697,7 +757,11 @@ class _JoinTabSheetState extends State<_JoinTabSheet> {
                       color: colorScheme.primary.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.group_add, color: colorScheme.primary, size: 24),
+                    child: Icon(
+                      Icons.group_add,
+                      color: colorScheme.primary,
+                      size: 24,
+                    ),
                   ),
                   const SizedBox(width: 16),
                   Text(
@@ -728,9 +792,15 @@ class _JoinTabSheetState extends State<_JoinTabSheet> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(color: colorScheme.primary, width: 2),
+                    borderSide: BorderSide(
+                      color: colorScheme.primary,
+                      width: 2,
+                    ),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 18,
+                  ),
                 ),
                 validator: (value) {
                   if (value == null || !value.contains('billington.app/t/')) {
@@ -744,18 +814,29 @@ class _JoinTabSheetState extends State<_JoinTabSheet> {
                 onPressed: _isLoading ? null : _submit,
                 style: FilledButton.styleFrom(
                   backgroundColor: colorScheme.primary,
-                  foregroundColor: brightness == Brightness.dark
-                      ? Colors.black.withValues(alpha: 0.9)
-                      : Colors.white,
+                  foregroundColor:
+                      brightness == Brightness.dark
+                          ? Colors.black.withValues(alpha: 0.9)
+                          : Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
-                child: _isLoading
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text(
-                        'Join Tab',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                      ),
+                child:
+                    _isLoading
+                        ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                        : const Text(
+                          'Join Tab',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
               ),
             ],
           ),
@@ -778,7 +859,8 @@ class _DeleteConfirmationSheet extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: brightness == Brightness.dark ? colorScheme.surface : Colors.white,
+        color:
+            brightness == Brightness.dark ? colorScheme.surface : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Padding(
@@ -792,7 +874,11 @@ class _DeleteConfirmationSheet extends StatelessWidget {
                 color: Colors.red.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.delete_outline, color: Colors.red, size: 28),
+              child: const Icon(
+                Icons.delete_outline,
+                color: Colors.red,
+                size: 28,
+              ),
             ),
             const SizedBox(height: 20),
             Text(
@@ -820,8 +906,12 @@ class _DeleteConfirmationSheet extends StatelessWidget {
                     onPressed: () => Navigator.pop(context, false),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.5)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      side: BorderSide(
+                        color: colorScheme.outline.withValues(alpha: 0.5),
+                      ),
                     ),
                     child: const Text('Cancel'),
                   ),
@@ -836,7 +926,9 @@ class _DeleteConfirmationSheet extends StatelessWidget {
                     style: FilledButton.styleFrom(
                       backgroundColor: Colors.red,
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                     child: const Text(
                       'Delete',

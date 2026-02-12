@@ -165,12 +165,10 @@ class DoneButtonHandler {
     final identifiers = await _prefsService.getAllPaymentIdentifiers();
 
     // Convert to the format expected by the API
-    final paymentMethods = selectedMethods.map((method) {
-      return {
-        'name': method,
-        'identifier': identifiers[method] ?? '',
-      };
-    }).toList();
+    final paymentMethods =
+        selectedMethods.map((method) {
+          return {'name': method, 'identifier': identifiers[method] ?? ''};
+        }).toList();
 
     // Create updated data with bill name and payment methods
     final updatedData = BillSummaryData(
@@ -208,11 +206,12 @@ class DoneButtonHandler {
     var logger = Logger();
     try {
       // Use payment methods from settings, or provide defaults
-      final apiPaymentMethods = paymentMethods.isNotEmpty
-          ? paymentMethods
-          : [
-              {'name': 'Venmo', 'identifier': '@username'}
-            ];
+      final apiPaymentMethods =
+          paymentMethods.isNotEmpty
+              ? paymentMethods
+              : [
+                {'name': 'Venmo', 'identifier': '@username'},
+              ];
 
       final response = await _apiService.uploadBill(
         billName: billName,

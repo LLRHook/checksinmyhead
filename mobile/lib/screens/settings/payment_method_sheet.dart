@@ -82,7 +82,7 @@ class _PaymentMethodSheetState extends State<PaymentMethodSheet>
   @override
   Widget build(BuildContext context) {
     // Calculate theme-aware colors for better appearance in both light/dark modes
-final colorScheme = Theme.of(context).colorScheme;
+    final colorScheme = Theme.of(context).colorScheme;
     // Dark text on bright button in dark mode for better contrast
 
     return SafeArea(
@@ -504,8 +504,7 @@ final colorScheme = Theme.of(context).colorScheme;
                         Navigator.pop(context);
                       },
                       style: FilledButton.styleFrom(
-                        backgroundColor:
-                             Theme.of(context).colorScheme.primary,
+                        backgroundColor: Theme.of(context).colorScheme.primary,
                         foregroundColor: Colors.white,
                         minimumSize: const Size.fromHeight(50),
                         shape: RoundedRectangleBorder(
@@ -587,7 +586,6 @@ Future<void> showPaymentMethodEditor({
   }
 
   return showModalBottomSheet(
-    
     context: context,
     isScrollControlled: true, // Allow modal to resize with keyboard
     builder: (context) {
@@ -762,8 +760,7 @@ Future<void> showPaymentMethodEditor({
                       Navigator.pop(context);
                     },
                     style: FilledButton.styleFrom(
-                      backgroundColor:
-                          Theme.of(context).colorScheme.primary,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
                       foregroundColor: Colors.white,
                       minimumSize: const Size.fromHeight(50),
                       shape: RoundedRectangleBorder(

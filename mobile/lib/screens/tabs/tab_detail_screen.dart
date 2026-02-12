@@ -20,7 +20,8 @@ class TabDetailScreen extends StatefulWidget {
   State<TabDetailScreen> createState() => _TabDetailScreenState();
 }
 
-class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProviderStateMixin {
+class _TabDetailScreenState extends State<TabDetailScreen>
+    with SingleTickerProviderStateMixin {
   final _billsManager = RecentBillsManager();
   final _tabManager = TabManager();
   final _apiService = ApiService();
@@ -64,7 +65,10 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
     }
 
     final allBills = await _billsManager.getRecentBills();
-    final tabBills = allBills.where((bill) => _currentTab.billIds.contains(bill.id)).toList();
+    final tabBills =
+        allBills
+            .where((bill) => _currentTab.billIds.contains(bill.id))
+            .toList();
 
     await _loadImages();
     await _loadSettlements();
@@ -80,7 +84,8 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
   }
 
   Future<void> _loadMembers() async {
-    if (_currentTab.backendId == null || _currentTab.accessToken == null) return;
+    if (_currentTab.backendId == null || _currentTab.accessToken == null)
+      return;
 
     final members = await _apiService.getTabMembers(
       _currentTab.backendId!,
@@ -93,7 +98,8 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
   }
 
   Future<void> _loadImages() async {
-    if (_currentTab.backendId == null || _currentTab.accessToken == null) return;
+    if (_currentTab.backendId == null || _currentTab.accessToken == null)
+      return;
 
     final images = await _apiService.getTabImages(
       _currentTab.backendId!,
@@ -106,7 +112,8 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
   }
 
   Future<void> _loadSettlements() async {
-    if (_currentTab.backendId == null || _currentTab.accessToken == null) return;
+    if (_currentTab.backendId == null || _currentTab.accessToken == null)
+      return;
     if (!_currentTab.isFinalized) return;
 
     final settlements = await _apiService.getSettlements(
@@ -174,7 +181,8 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
   }
 
   Future<void> _toggleProcessed(TabImageResponse image) async {
-    if (_currentTab.backendId == null || _currentTab.accessToken == null) return;
+    if (_currentTab.backendId == null || _currentTab.accessToken == null)
+      return;
 
     final success = await _apiService.updateTabImage(
       _currentTab.backendId!,
@@ -189,7 +197,8 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
   }
 
   Future<void> _deleteImage(TabImageResponse image) async {
-    if (_currentTab.backendId == null || _currentTab.accessToken == null) return;
+    if (_currentTab.backendId == null || _currentTab.accessToken == null)
+      return;
 
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
@@ -242,7 +251,8 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
   }
 
   Future<void> _toggleSettlementPaid(SettlementResponse settlement) async {
-    if (_currentTab.backendId == null || _currentTab.accessToken == null) return;
+    if (_currentTab.backendId == null || _currentTab.accessToken == null)
+      return;
 
     final success = await _apiService.updateSettlement(
       _currentTab.backendId!,
@@ -259,9 +269,10 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
   Future<void> _addBillsToTab() async {
     HapticFeedback.mediumImpact();
 
-    final availableBills = _allBills
-        .where((bill) => !_currentTab.billIds.contains(bill.id))
-        .toList();
+    final availableBills =
+        _allBills
+            .where((bill) => !_currentTab.billIds.contains(bill.id))
+            .toList();
 
     if (availableBills.isEmpty) {
       _showSnackBar('No bills available to add', isError: true);
@@ -275,11 +286,16 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
       builder: (context) => _BillSelectorSheet(bills: availableBills),
     );
 
-    if (selectedBills != null && selectedBills.isNotEmpty && _currentTab.id != null && mounted) {
+    if (selectedBills != null &&
+        selectedBills.isNotEmpty &&
+        _currentTab.id != null &&
+        mounted) {
       await _tabManager.addBillsToTab(_currentTab.id!, selectedBills);
       await _loadBills();
 
-      _showSnackBar('Added ${selectedBills.length} bill${selectedBills.length == 1 ? '' : 's'}');
+      _showSnackBar(
+        'Added ${selectedBills.length} bill${selectedBills.length == 1 ? '' : 's'}',
+      );
     }
   }
 
@@ -292,7 +308,10 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
   void _shareTab() {
     if (_currentTab.shareUrl != null) {
       SharePlus.instance.share(
-        ShareParams(text: 'Check out "${_currentTab.name}" on Billington: ${_currentTab.shareUrl}'),
+        ShareParams(
+          text:
+              'Check out "${_currentTab.name}" on Billington: ${_currentTab.shareUrl}',
+        ),
       );
     }
   }
@@ -354,7 +373,8 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
     final brightness = Theme.of(context).brightness;
 
     return Scaffold(
-      backgroundColor: brightness == Brightness.dark ? colorScheme.surface : Colors.grey[50],
+      backgroundColor:
+          brightness == Brightness.dark ? colorScheme.surface : Colors.grey[50],
       appBar: AppBar(
         title: Row(
           mainAxisSize: MainAxisSize.min,
@@ -396,16 +416,17 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
         actions: [
           if (_currentTab.isSynced && !_currentTab.isFinalized)
             IconButton(
-              icon: _isUploading
-                  ? SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: colorScheme.onSurface,
-                      ),
-                    )
-                  : const Icon(Icons.camera_alt_outlined),
+              icon:
+                  _isUploading
+                      ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: colorScheme.onSurface,
+                        ),
+                      )
+                      : const Icon(Icons.camera_alt_outlined),
               onPressed: _isUploading ? null : _pickAndUploadImage,
             ),
           if (_currentTab.shareUrl != null)
@@ -415,29 +436,32 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
             ),
         ],
       ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: colorScheme.primary))
-          : _tabBills.isEmpty && _images.isEmpty
+      body:
+          _isLoading
+              ? Center(
+                child: CircularProgressIndicator(color: colorScheme.primary),
+              )
+              : _tabBills.isEmpty && _images.isEmpty
               ? _buildEmptyState()
               : Column(
-                  children: [
-                    Expanded(
-                      child: ListView(
-                        padding: const EdgeInsets.only(bottom: 100),
-                        children: [
-                          if (_tabBills.isNotEmpty) _buildTotalCard(),
-                          if (_members.isNotEmpty) _buildMembersCard(),
-                          if (_currentTab.isFinalized && _settlements.isNotEmpty)
-                            _buildSettlementsCard()
-                          else if (_calculatePersonTotals().isNotEmpty)
-                            _buildPersonTotalsCard(),
-                          if (_images.isNotEmpty) _buildImagesSection(),
-                          if (_tabBills.isNotEmpty) ..._buildBillCards(),
-                        ],
-                      ),
+                children: [
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.only(bottom: 100),
+                      children: [
+                        if (_tabBills.isNotEmpty) _buildTotalCard(),
+                        if (_members.isNotEmpty) _buildMembersCard(),
+                        if (_currentTab.isFinalized && _settlements.isNotEmpty)
+                          _buildSettlementsCard()
+                        else if (_calculatePersonTotals().isNotEmpty)
+                          _buildPersonTotalsCard(),
+                        if (_images.isNotEmpty) _buildImagesSection(),
+                        if (_tabBills.isNotEmpty) ..._buildBillCards(),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
+              ),
       floatingActionButton: _currentTab.isFinalized ? null : _buildFAB(),
     );
   }
@@ -455,7 +479,9 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: colorScheme.primary.withValues(alpha: brightness == Brightness.dark ? 0.15 : 0.08),
+                color: colorScheme.primary.withValues(
+                  alpha: brightness == Brightness.dark ? 0.15 : 0.08,
+                ),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -510,7 +536,9 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: colorScheme.primary.withValues(alpha: brightness == Brightness.dark ? 0.2 : 0.3),
+            color: colorScheme.primary.withValues(
+              alpha: brightness == Brightness.dark ? 0.2 : 0.3,
+            ),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -531,9 +559,10 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
           Text(
             CurrencyFormatter.formatCurrency(total),
             style: TextStyle(
-              color: brightness == Brightness.dark
-                  ? Colors.black.withValues(alpha: 0.9)
-                  : Colors.white,
+              color:
+                  brightness == Brightness.dark
+                      ? Colors.black.withValues(alpha: 0.9)
+                      : Colors.white,
               fontSize: 36,
               fontWeight: FontWeight.bold,
               letterSpacing: -1,
@@ -549,9 +578,10 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
             child: Text(
               '${_tabBills.length} bill${_tabBills.length == 1 ? '' : 's'}',
               style: TextStyle(
-                color: brightness == Brightness.dark
-                    ? Colors.black.withValues(alpha: 0.8)
-                    : Colors.white,
+                color:
+                    brightness == Brightness.dark
+                        ? Colors.black.withValues(alpha: 0.8)
+                        : Colors.white,
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
@@ -565,7 +595,8 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
   Widget _buildMembersCard() {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
-    final cardBgColor = brightness == Brightness.dark ? colorScheme.surface : Colors.white;
+    final cardBgColor =
+        brightness == Brightness.dark ? colorScheme.surface : Colors.white;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
@@ -575,9 +606,10 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: brightness == Brightness.dark
-                ? Colors.black.withValues(alpha: 0.2)
-                : Colors.black.withValues(alpha: 0.05),
+            color:
+                brightness == Brightness.dark
+                    ? Colors.black.withValues(alpha: 0.2)
+                    : Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -613,32 +645,49 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: _members.map((member) {
-              final isCreator = member.role == 'creator';
-              return Chip(
-                avatar: isCreator
-                    ? Icon(Icons.star, size: 16, color: Colors.amber.shade700)
-                    : CircleAvatar(
-                        radius: 12,
-                        backgroundColor: colorScheme.primary.withValues(alpha: 0.15),
-                        child: Text(
-                          member.displayName.isNotEmpty ? member.displayName[0].toUpperCase() : '?',
-                          style: TextStyle(fontSize: 11, color: colorScheme.primary, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                label: Text(member.displayName),
-                labelStyle: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: colorScheme.onSurface,
-                ),
-                backgroundColor: brightness == Brightness.dark
-                    ? colorScheme.surfaceContainerHighest
-                    : Colors.grey.shade50,
-                side: BorderSide.none,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              );
-            }).toList(),
+            children:
+                _members.map((member) {
+                  final isCreator = member.role == 'creator';
+                  return Chip(
+                    avatar:
+                        isCreator
+                            ? Icon(
+                              Icons.star,
+                              size: 16,
+                              color: Colors.amber.shade700,
+                            )
+                            : CircleAvatar(
+                              radius: 12,
+                              backgroundColor: colorScheme.primary.withValues(
+                                alpha: 0.15,
+                              ),
+                              child: Text(
+                                member.displayName.isNotEmpty
+                                    ? member.displayName[0].toUpperCase()
+                                    : '?',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                    label: Text(member.displayName),
+                    labelStyle: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: colorScheme.onSurface,
+                    ),
+                    backgroundColor:
+                        brightness == Brightness.dark
+                            ? colorScheme.surfaceContainerHighest
+                            : Colors.grey.shade50,
+                    side: BorderSide.none,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  );
+                }).toList(),
           ),
         ],
       ),
@@ -648,7 +697,8 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
   Widget _buildSettlementsCard() {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
-    final cardBgColor = brightness == Brightness.dark ? colorScheme.surface : Colors.white;
+    final cardBgColor =
+        brightness == Brightness.dark ? colorScheme.surface : Colors.white;
     final paidCount = _settlements.where((s) => s.paid).length;
 
     return Container(
@@ -658,9 +708,10 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: brightness == Brightness.dark
-                ? Colors.black.withValues(alpha: 0.2)
-                : Colors.black.withValues(alpha: 0.05),
+            color:
+                brightness == Brightness.dark
+                    ? Colors.black.withValues(alpha: 0.2)
+                    : Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -678,7 +729,11 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
                     color: Colors.green.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.account_balance_wallet_outlined, color: Colors.green, size: 20),
+                  child: const Icon(
+                    Icons.account_balance_wallet_outlined,
+                    color: Colors.green,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -693,7 +748,10 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.green.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
@@ -728,19 +786,25 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
                   children: [
                     CircleAvatar(
                       radius: 18,
-                      backgroundColor: settlement.paid
-                          ? Colors.green.withValues(alpha: 0.15)
-                          : colorScheme.primaryContainer,
-                      child: settlement.paid
-                          ? Icon(Icons.check, size: 18, color: Colors.green.shade700)
-                          : Text(
-                              settlement.personName[0].toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                                color: colorScheme.primary,
+                      backgroundColor:
+                          settlement.paid
+                              ? Colors.green.withValues(alpha: 0.15)
+                              : colorScheme.primaryContainer,
+                      child:
+                          settlement.paid
+                              ? Icon(
+                                Icons.check,
+                                size: 18,
+                                color: Colors.green.shade700,
+                              )
+                              : Text(
+                                settlement.personName[0].toUpperCase(),
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: colorScheme.primary,
+                                ),
                               ),
-                            ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -749,19 +813,29 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: settlement.paid
-                              ? colorScheme.onSurface.withValues(alpha: 0.5)
-                              : colorScheme.onSurface,
-                          decoration: settlement.paid ? TextDecoration.lineThrough : null,
+                          color:
+                              settlement.paid
+                                  ? colorScheme.onSurface.withValues(alpha: 0.5)
+                                  : colorScheme.onSurface,
+                          decoration:
+                              settlement.paid
+                                  ? TextDecoration.lineThrough
+                                  : null,
                         ),
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
-                        color: settlement.paid
-                            ? Colors.green.withValues(alpha: 0.1)
-                            : colorScheme.primaryContainer.withValues(alpha: 0.6),
+                        color:
+                            settlement.paid
+                                ? Colors.green.withValues(alpha: 0.1)
+                                : colorScheme.primaryContainer.withValues(
+                                  alpha: 0.6,
+                                ),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -769,9 +843,10 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: settlement.paid
-                              ? Colors.green.shade700
-                              : colorScheme.primary,
+                          color:
+                              settlement.paid
+                                  ? Colors.green.shade700
+                                  : colorScheme.primary,
                         ),
                       ),
                     ),
@@ -789,10 +864,12 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
     final personTotals = _calculatePersonTotals();
-    final sortedEntries = personTotals.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final sortedEntries =
+        personTotals.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
 
-    final cardBgColor = brightness == Brightness.dark ? colorScheme.surface : Colors.white;
+    final cardBgColor =
+        brightness == Brightness.dark ? colorScheme.surface : Colors.white;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
@@ -801,9 +878,10 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: brightness == Brightness.dark
-                ? Colors.black.withValues(alpha: 0.2)
-                : Colors.black.withValues(alpha: 0.05),
+            color:
+                brightness == Brightness.dark
+                    ? Colors.black.withValues(alpha: 0.2)
+                    : Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -821,7 +899,11 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
                     color: colorScheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(Icons.people_alt, color: colorScheme.primary, size: 20),
+                  child: Icon(
+                    Icons.people_alt,
+                    color: colorScheme.primary,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Text(
@@ -871,9 +953,14 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
-                      color: colorScheme.primaryContainer.withValues(alpha: 0.6),
+                      color: colorScheme.primaryContainer.withValues(
+                        alpha: 0.6,
+                      ),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -897,7 +984,8 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
   Widget _buildImagesSection() {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
-    final cardBgColor = brightness == Brightness.dark ? colorScheme.surface : Colors.white;
+    final cardBgColor =
+        brightness == Brightness.dark ? colorScheme.surface : Colors.white;
     final processedCount = _images.where((img) => img.processed).length;
 
     return Container(
@@ -907,9 +995,10 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: brightness == Brightness.dark
-                ? Colors.black.withValues(alpha: 0.2)
-                : Colors.black.withValues(alpha: 0.05),
+            color:
+                brightness == Brightness.dark
+                    ? Colors.black.withValues(alpha: 0.2)
+                    : Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -927,7 +1016,11 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
                     color: colorScheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(Icons.receipt_outlined, color: colorScheme.primary, size: 20),
+                  child: Icon(
+                    Icons.receipt_outlined,
+                    color: colorScheme.primary,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -942,7 +1035,10 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: colorScheme.primaryContainer.withValues(alpha: 0.6),
                     borderRadius: BorderRadius.circular(12),
@@ -970,19 +1066,25 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
                 final image = _images[index];
                 return GestureDetector(
                   onTap: () => _showFullScreenImage(image),
-                  onLongPress: _currentTab.isFinalized ? null : () {
-                    HapticFeedback.mediumImpact();
-                    _showImageActions(image);
-                  },
+                  onLongPress:
+                      _currentTab.isFinalized
+                          ? null
+                          : () {
+                            HapticFeedback.mediumImpact();
+                            _showImageActions(image);
+                          },
                   child: Container(
                     width: 88,
-                    margin: EdgeInsets.only(right: index < _images.length - 1 ? 10 : 0),
+                    margin: EdgeInsets.only(
+                      right: index < _images.length - 1 ? 10 : 0,
+                    ),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: image.processed
-                            ? Colors.green.withValues(alpha: 0.5)
-                            : colorScheme.outline.withValues(alpha: 0.2),
+                        color:
+                            image.processed
+                                ? Colors.green.withValues(alpha: 0.5)
+                                : colorScheme.outline.withValues(alpha: 0.2),
                         width: image.processed ? 2 : 1,
                       ),
                     ),
@@ -994,13 +1096,16 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
                           Image.network(
                             '${_apiService.baseUrl}${image.url}',
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              color: colorScheme.surfaceContainerHighest,
-                              child: Icon(
-                                Icons.image_not_supported_outlined,
-                                color: colorScheme.onSurface.withValues(alpha: 0.3),
-                              ),
-                            ),
+                            errorBuilder:
+                                (_, __, ___) => Container(
+                                  color: colorScheme.surfaceContainerHighest,
+                                  child: Icon(
+                                    Icons.image_not_supported_outlined,
+                                    color: colorScheme.onSurface.withValues(
+                                      alpha: 0.3,
+                                    ),
+                                  ),
+                                ),
                           ),
                           if (image.processed)
                             Positioned(
@@ -1036,12 +1141,17 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => _FullScreenImageView(
-          imageUrl: '${_apiService.baseUrl}${image.url}',
-          image: image,
-          onToggleProcessed: _currentTab.isFinalized ? null : () => _toggleProcessed(image),
-          onDelete: _currentTab.isFinalized ? null : () => _deleteImage(image),
-        ),
+        builder:
+            (context) => _FullScreenImageView(
+              imageUrl: '${_apiService.baseUrl}${image.url}',
+              image: image,
+              onToggleProcessed:
+                  _currentTab.isFinalized
+                      ? null
+                      : () => _toggleProcessed(image),
+              onDelete:
+                  _currentTab.isFinalized ? null : () => _deleteImage(image),
+            ),
       ),
     );
   }
@@ -1053,48 +1163,63 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: brightness == Brightness.dark ? colorScheme.surface : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 12),
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: colorScheme.onSurface.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(2),
-                ),
+      builder:
+          (context) => Container(
+            decoration: BoxDecoration(
+              color:
+                  brightness == Brightness.dark
+                      ? colorScheme.surface
+                      : Colors.white,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(28),
               ),
-              ListTile(
-                leading: Icon(
-                  image.processed ? Icons.check_box : Icons.check_box_outline_blank,
-                  color: colorScheme.primary,
-                ),
-                title: Text(image.processed ? 'Mark as unprocessed' : 'Mark as processed'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _toggleProcessed(image);
-                },
+            ),
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: colorScheme.onSurface.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  ListTile(
+                    leading: Icon(
+                      image.processed
+                          ? Icons.check_box
+                          : Icons.check_box_outline_blank,
+                      color: colorScheme.primary,
+                    ),
+                    title: Text(
+                      image.processed
+                          ? 'Mark as unprocessed'
+                          : 'Mark as processed',
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _toggleProcessed(image);
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.delete_outline,
+                      color: Colors.red,
+                    ),
+                    title: const Text('Delete image'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _deleteImage(image);
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                ],
               ),
-              ListTile(
-                leading: const Icon(Icons.delete_outline, color: Colors.red),
-                title: const Text('Delete image'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _deleteImage(image);
-                },
-              ),
-              const SizedBox(height: 8),
-            ],
+            ),
           ),
-        ),
-      ),
     );
   }
 
@@ -1105,7 +1230,10 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
     return _tabBills.map((bill) {
       return Dismissible(
         key: Key('bill_${bill.id}'),
-        direction: _currentTab.isFinalized ? DismissDirection.none : DismissDirection.endToStart,
+        direction:
+            _currentTab.isFinalized
+                ? DismissDirection.none
+                : DismissDirection.endToStart,
         background: Container(
           alignment: Alignment.centerRight,
           padding: const EdgeInsets.only(right: 24),
@@ -1116,7 +1244,11 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
             ),
             borderRadius: BorderRadius.circular(20),
           ),
-          child: const Icon(Icons.remove_circle_outline, color: Colors.white, size: 28),
+          child: const Icon(
+            Icons.remove_circle_outline,
+            color: Colors.white,
+            size: 28,
+          ),
         ),
         confirmDismiss: (_) async {
           HapticFeedback.mediumImpact();
@@ -1133,13 +1265,17 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
         child: Container(
           margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
           decoration: BoxDecoration(
-            color: brightness == Brightness.dark ? colorScheme.surface : Colors.white,
+            color:
+                brightness == Brightness.dark
+                    ? colorScheme.surface
+                    : Colors.white,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: brightness == Brightness.dark
-                    ? Colors.black.withValues(alpha: 0.2)
-                    : Colors.black.withValues(alpha: 0.05),
+                color:
+                    brightness == Brightness.dark
+                        ? Colors.black.withValues(alpha: 0.2)
+                        : Colors.black.withValues(alpha: 0.05),
                 blurRadius: 10,
                 offset: const Offset(0, 2),
               ),
@@ -1152,7 +1288,9 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
                 HapticFeedback.selectionClick();
                 await Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => BillDetailsScreen(bill: bill)),
+                  MaterialPageRoute(
+                    builder: (context) => BillDetailsScreen(bill: bill),
+                  ),
                 );
               },
               borderRadius: BorderRadius.circular(20),
@@ -1163,7 +1301,9 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer.withValues(alpha: 0.6),
+                        color: colorScheme.primaryContainer.withValues(
+                          alpha: 0.6,
+                        ),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Icon(
@@ -1190,7 +1330,9 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
                           Text(
                             bill.formattedDate,
                             style: TextStyle(
-                              color: colorScheme.onSurface.withValues(alpha: 0.6),
+                              color: colorScheme.onSurface.withValues(
+                                alpha: 0.6,
+                              ),
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
                             ),
@@ -1199,7 +1341,9 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
                           Text(
                             bill.participantSummary,
                             style: TextStyle(
-                              color: colorScheme.onSurface.withValues(alpha: 0.5),
+                              color: colorScheme.onSurface.withValues(
+                                alpha: 0.5,
+                              ),
                               fontSize: 13,
                             ),
                           ),
@@ -1207,9 +1351,14 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer.withValues(alpha: 0.7),
+                        color: colorScheme.primaryContainer.withValues(
+                          alpha: 0.7,
+                        ),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -1243,7 +1392,9 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.green.withValues(alpha: brightness == Brightness.dark ? 0.2 : 0.3),
+              color: Colors.green.withValues(
+                alpha: brightness == Brightness.dark ? 0.2 : 0.3,
+              ),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -1254,21 +1405,28 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
           elevation: 0,
           backgroundColor: Colors.green,
           foregroundColor: Colors.white,
-          icon: _isFinalizing
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : const Icon(Icons.check_circle_outline, size: 22),
+          icon:
+              _isFinalizing
+                  ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                  : const Icon(Icons.check_circle_outline, size: 22),
           label: Text(
             _isFinalizing ? 'Finalizing...' : 'Finalize',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 0.5),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+            ),
           ),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
         ),
       );
     }
@@ -1279,7 +1437,9 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: colorScheme.primary.withValues(alpha: brightness == Brightness.dark ? 0.2 : 0.3),
+            color: colorScheme.primary.withValues(
+              alpha: brightness == Brightness.dark ? 0.2 : 0.3,
+            ),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -1289,11 +1449,18 @@ class _TabDetailScreenState extends State<TabDetailScreen> with SingleTickerProv
         onPressed: _addBillsToTab,
         elevation: 0,
         backgroundColor: colorScheme.primary,
-        foregroundColor: brightness == Brightness.dark ? Colors.black.withValues(alpha: 0.9) : Colors.white,
+        foregroundColor:
+            brightness == Brightness.dark
+                ? Colors.black.withValues(alpha: 0.9)
+                : Colors.white,
         icon: const Icon(Icons.add, size: 22),
         label: const Text(
           'Add Bills',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 0.5),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+          ),
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
@@ -1311,15 +1478,17 @@ class _FinalizeConfirmSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
-    final sortedEntries = personTotals.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final sortedEntries =
+        personTotals.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
 
     return Container(
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.7,
       ),
       decoration: BoxDecoration(
-        color: brightness == Brightness.dark ? colorScheme.surface : Colors.white,
+        color:
+            brightness == Brightness.dark ? colorScheme.surface : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Padding(
@@ -1333,7 +1502,11 @@ class _FinalizeConfirmSheet extends StatelessWidget {
                 color: Colors.green.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.check_circle_outline, color: Colors.green, size: 28),
+              child: const Icon(
+                Icons.check_circle_outline,
+                color: Colors.green,
+                size: 28,
+              ),
             ),
             const SizedBox(height: 20),
             Text(
@@ -1357,9 +1530,10 @@ class _FinalizeConfirmSheet extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: brightness == Brightness.dark
-                    ? colorScheme.surfaceContainerHighest
-                    : Colors.grey.shade50,
+                color:
+                    brightness == Brightness.dark
+                        ? colorScheme.surfaceContainerHighest
+                        : Colors.grey.shade50,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
@@ -1374,44 +1548,46 @@ class _FinalizeConfirmSheet extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  ...sortedEntries.map((entry) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 14,
-                          backgroundColor: colorScheme.primaryContainer,
-                          child: Text(
-                            entry.key[0].toUpperCase(),
+                  ...sortedEntries.map(
+                    (entry) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 14,
+                            backgroundColor: colorScheme.primaryContainer,
+                            child: Text(
+                              entry.key[0].toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              entry.key,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                                color: colorScheme.onSurface,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            CurrencyFormatter.formatCurrency(entry.value),
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 15,
                               fontWeight: FontWeight.bold,
                               color: colorScheme.primary,
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            entry.key,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                              color: colorScheme.onSurface,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          CurrencyFormatter.formatCurrency(entry.value),
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: colorScheme.primary,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  )),
+                  ),
                 ],
               ),
             ),
@@ -1423,8 +1599,12 @@ class _FinalizeConfirmSheet extends StatelessWidget {
                     onPressed: () => Navigator.pop(context, false),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.5)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      side: BorderSide(
+                        color: colorScheme.outline.withValues(alpha: 0.5),
+                      ),
                     ),
                     child: const Text('Cancel'),
                   ),
@@ -1436,11 +1616,16 @@ class _FinalizeConfirmSheet extends StatelessWidget {
                     style: FilledButton.styleFrom(
                       backgroundColor: Colors.green,
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                     child: const Text(
                       'Finalize',
-                      style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
@@ -1497,7 +1682,9 @@ class _FullScreenImageView extends StatelessWidget {
           if (onToggleProcessed != null)
             IconButton(
               icon: Icon(
-                image.processed ? Icons.check_box : Icons.check_box_outline_blank,
+                image.processed
+                    ? Icons.check_box
+                    : Icons.check_box_outline_blank,
                 color: image.processed ? Colors.green : Colors.white,
               ),
               onPressed: () {
@@ -1520,11 +1707,12 @@ class _FullScreenImageView extends StatelessWidget {
           child: Image.network(
             imageUrl,
             fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => Icon(
-              Icons.image_not_supported_outlined,
-              size: 64,
-              color: colorScheme.onSurface.withValues(alpha: 0.3),
-            ),
+            errorBuilder:
+                (_, __, ___) => Icon(
+                  Icons.image_not_supported_outlined,
+                  size: 64,
+                  color: colorScheme.onSurface.withValues(alpha: 0.3),
+                ),
           ),
         ),
       ),
@@ -1543,7 +1731,8 @@ class _ImageSourceSheet extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: brightness == Brightness.dark ? colorScheme.surface : Colors.white,
+        color:
+            brightness == Brightness.dark ? colorScheme.surface : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: SafeArea(
@@ -1614,7 +1803,8 @@ class _DeleteImageSheet extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: brightness == Brightness.dark ? colorScheme.surface : Colors.white,
+        color:
+            brightness == Brightness.dark ? colorScheme.surface : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Padding(
@@ -1628,7 +1818,11 @@ class _DeleteImageSheet extends StatelessWidget {
                 color: Colors.red.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.delete_outline, color: Colors.red, size: 28),
+              child: const Icon(
+                Icons.delete_outline,
+                color: Colors.red,
+                size: 28,
+              ),
             ),
             const SizedBox(height: 20),
             Text(
@@ -1656,8 +1850,12 @@ class _DeleteImageSheet extends StatelessWidget {
                     onPressed: () => Navigator.pop(context, false),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.5)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      side: BorderSide(
+                        color: colorScheme.outline.withValues(alpha: 0.5),
+                      ),
                     ),
                     child: const Text('Cancel'),
                   ),
@@ -1669,7 +1867,9 @@ class _DeleteImageSheet extends StatelessWidget {
                     style: FilledButton.styleFrom(
                       backgroundColor: Colors.red,
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                     child: const Text(
                       'Delete',
@@ -1709,7 +1909,8 @@ class _BillSelectorSheetState extends State<_BillSelectorSheet> {
         maxHeight: MediaQuery.of(context).size.height * 0.8,
       ),
       decoration: BoxDecoration(
-        color: brightness == Brightness.dark ? colorScheme.surface : Colors.white,
+        color:
+            brightness == Brightness.dark ? colorScheme.surface : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Column(
@@ -1738,7 +1939,11 @@ class _BillSelectorSheetState extends State<_BillSelectorSheet> {
                         color: colorScheme.primary.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(Icons.library_add, color: colorScheme.primary, size: 24),
+                      child: Icon(
+                        Icons.library_add,
+                        color: colorScheme.primary,
+                        size: 24,
+                      ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -1754,7 +1959,10 @@ class _BillSelectorSheetState extends State<_BillSelectorSheet> {
                     ),
                     if (_selectedBillIds.isNotEmpty)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: colorScheme.primary,
                           borderRadius: BorderRadius.circular(20),
@@ -1762,9 +1970,10 @@ class _BillSelectorSheetState extends State<_BillSelectorSheet> {
                         child: Text(
                           '${_selectedBillIds.length}',
                           style: TextStyle(
-                            color: brightness == Brightness.dark
-                                ? Colors.black.withValues(alpha: 0.9)
-                                : Colors.white,
+                            color:
+                                brightness == Brightness.dark
+                                    ? Colors.black.withValues(alpha: 0.9)
+                                    : Colors.white,
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
                           ),
@@ -1787,16 +1996,20 @@ class _BillSelectorSheetState extends State<_BillSelectorSheet> {
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    color: isSelected
-                        ? colorScheme.primaryContainer.withValues(alpha: 0.3)
-                        : (brightness == Brightness.dark
-                            ? colorScheme.surfaceContainerHighest
-                            : Colors.grey.shade50),
+                    color:
+                        isSelected
+                            ? colorScheme.primaryContainer.withValues(
+                              alpha: 0.3,
+                            )
+                            : (brightness == Brightness.dark
+                                ? colorScheme.surfaceContainerHighest
+                                : Colors.grey.shade50),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: isSelected
-                          ? colorScheme.primary
-                          : colorScheme.outline.withValues(alpha: 0.2),
+                      color:
+                          isSelected
+                              ? colorScheme.primary
+                              : colorScheme.outline.withValues(alpha: 0.2),
                       width: isSelected ? 2 : 1,
                     ),
                   ),
@@ -1827,7 +2040,10 @@ class _BillSelectorSheetState extends State<_BillSelectorSheet> {
                       ),
                     ),
                     activeColor: colorScheme.primary,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                   ),
                 );
               },
@@ -1842,8 +2058,12 @@ class _BillSelectorSheetState extends State<_BillSelectorSheet> {
                     onPressed: () => Navigator.pop(context),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.5)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      side: BorderSide(
+                        color: colorScheme.outline.withValues(alpha: 0.5),
+                      ),
                     ),
                     child: const Text('Cancel'),
                   ),
@@ -1851,19 +2071,23 @@ class _BillSelectorSheetState extends State<_BillSelectorSheet> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
-                    onPressed: _selectedBillIds.isEmpty
-                        ? null
-                        : () {
-                            HapticFeedback.mediumImpact();
-                            Navigator.pop(context, _selectedBillIds.toList());
-                          },
+                    onPressed:
+                        _selectedBillIds.isEmpty
+                            ? null
+                            : () {
+                              HapticFeedback.mediumImpact();
+                              Navigator.pop(context, _selectedBillIds.toList());
+                            },
                     style: FilledButton.styleFrom(
                       backgroundColor: colorScheme.primary,
-                      foregroundColor: brightness == Brightness.dark
-                          ? Colors.black.withValues(alpha: 0.9)
-                          : Colors.white,
+                      foregroundColor:
+                          brightness == Brightness.dark
+                              ? Colors.black.withValues(alpha: 0.9)
+                              : Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                     child: Text(
                       'Add ${_selectedBillIds.length}',
@@ -1893,7 +2117,8 @@ class _RemoveBillSheet extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: brightness == Brightness.dark ? colorScheme.surface : Colors.white,
+        color:
+            brightness == Brightness.dark ? colorScheme.surface : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Padding(
@@ -1907,7 +2132,11 @@ class _RemoveBillSheet extends StatelessWidget {
                 color: Colors.orange.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.remove_circle_outline, color: Colors.orange, size: 28),
+              child: const Icon(
+                Icons.remove_circle_outline,
+                color: Colors.orange,
+                size: 28,
+              ),
             ),
             const SizedBox(height: 20),
             Text(
@@ -1935,8 +2164,12 @@ class _RemoveBillSheet extends StatelessWidget {
                     onPressed: () => Navigator.pop(context, false),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.5)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      side: BorderSide(
+                        color: colorScheme.outline.withValues(alpha: 0.5),
+                      ),
                     ),
                     child: const Text('Cancel'),
                   ),
@@ -1948,7 +2181,9 @@ class _RemoveBillSheet extends StatelessWidget {
                     style: FilledButton.styleFrom(
                       backgroundColor: Colors.orange,
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                     child: const Text(
                       'Remove',

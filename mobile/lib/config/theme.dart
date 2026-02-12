@@ -32,6 +32,10 @@ class AppTheme {
   static const Color _accentColor = Color(0xFF4C5B6B);
   static const Color _errorColor = Color(0xFFDC4C4C);
 
+  // Brand colors matching web viewer
+  static const Color accentWarm = Color(0xFFD4A843);
+  static const Color primaryDark = Color(0xFF2A736E);
+
   /// Light theme configuration
   static final ThemeData lightTheme = ThemeData(
     useMaterial3: true,
@@ -177,9 +181,9 @@ class AppTheme {
       tertiaryContainer: Color(0xFF3B4B59),
       onTertiaryContainer: Color(0xFFFFFFFF),
       error: _errorColor,
-      surface: Color(0xFF1C1C1C),
+      surface: Color(0xFF0A0A0A),
       onSurface: Color(0xFFFFFFFF),
-      surfaceContainerHighest: Color(0xFF2A2A2A),
+      surfaceContainerHighest: Color(0xFF1A1A1A),
       onSurfaceVariant: Color(0xFFB0B0B0),
       outline: Color(0xFF5E5E5E), // Darker outline for dark mode
     ),
@@ -239,13 +243,13 @@ class AppTheme {
       shadowColor: const Color(0x3D000000),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       clipBehavior: Clip.antiAlias,
-      color: Color(0xFF242424), // Slightly lighter than background
+      color: Color(0xFF161616), // Matches web viewer card color
     ),
 
     // Input decoration for dark mode
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: Color(0xFF2A2A2A),
+      fillColor: Color(0xFF161616),
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
@@ -315,7 +319,7 @@ class AppTheme {
     ),
 
     dialogTheme: DialogThemeData(
-      backgroundColor: Color(0xFF1C1C1C),
+      backgroundColor: Color(0xFF161616),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       titleTextStyle: TextStyle(
         color: Colors.white,
@@ -330,7 +334,7 @@ class AppTheme {
 
     // Bottom sheet theme for dark mode
     bottomSheetTheme: BottomSheetThemeData(
-      backgroundColor: Color(0xFF1C1C1C),
+      backgroundColor: Color(0xFF161616),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
