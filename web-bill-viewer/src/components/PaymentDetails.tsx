@@ -2,6 +2,7 @@
 
 import { PaymentMethod } from "@/lib/api";
 import { SiVenmo, SiZelle, SiCashapp, SiApplepay } from "react-icons/si";
+import { FaCreditCard } from "react-icons/fa6";
 
 interface PaymentDetailsProps {
   paymentMethods: PaymentMethod[];
@@ -28,12 +29,12 @@ export default function PaymentDetails({
     if (lowerName.includes("apple pay")) {
       return { Icon: SiApplepay, bg: "bg-black" };
     }
-    return { Icon: null, bg: "bg-[var(--primary)]" };
+    return { Icon: FaCreditCard, bg: "bg-[var(--primary)]" };
   };
 
   return (
     <div className="mb-6">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)] mb-4">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)] mb-3 px-1">
         Payment Methods
       </h3>
       <div className="space-y-3">
@@ -45,19 +46,15 @@ export default function PaymentDetails({
               className="flex items-center gap-3 text-[var(--accent)] dark:text-white"
             >
               <div
-                className={`w-10 h-10 ${bg} rounded-lg flex items-center justify-center`}
+                className={`w-9 h-9 ${bg} rounded-lg flex items-center justify-center`}
               >
-                {Icon ? (
-                  <Icon className="text-white text-xl" />
-                ) : (
-                  <i className="fas fa-credit-card text-white text-lg"></i>
-                )}
+                <Icon className="text-white" size={18} />
               </div>
               <div>
                 <div className="text-xs text-[var(--text-secondary)] uppercase tracking-wide">
                   {method.name}
                 </div>
-                <div className="font-semibold">{method.identifier}</div>
+                <div className="font-semibold text-sm">{method.identifier}</div>
               </div>
             </div>
           );

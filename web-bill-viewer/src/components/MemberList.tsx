@@ -1,6 +1,7 @@
 "use client";
 
 import type { TabMember } from "@/lib/api";
+import { FaCrown } from "react-icons/fa6";
 
 interface MemberListProps {
   members: TabMember[];
@@ -18,12 +19,12 @@ export default function MemberList({ members }: MemberListProps) {
         {members.map((member) => (
           <div
             key={member.id}
-            className="inline-flex items-center gap-2 bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-full px-4 py-2 shadow-sm border border-[var(--border-light)] dark:border-[var(--border-dark)]"
+            className="inline-flex items-center gap-2 bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-full px-4 py-2 shadow-sm dark:shadow-none dark:border dark:border-[var(--border-dark)]"
           >
             {member.role === "creator" ? (
-              <i className="fas fa-crown text-amber-500 text-xs"></i>
+              <FaCrown className="text-[var(--accent-warm)]" size={12} />
             ) : (
-              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] flex items-center justify-center text-white text-xs font-semibold">
+              <div className="w-6 h-6 rounded-full bg-[var(--secondary)] dark:bg-white/10 flex items-center justify-center text-[var(--text-secondary)] text-xs font-semibold">
                 {member.display_name[0]?.toUpperCase()}
               </div>
             )}

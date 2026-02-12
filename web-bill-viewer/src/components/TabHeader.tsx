@@ -1,5 +1,7 @@
 "use client";
 
+import { FaReceipt, FaCircleCheck } from "react-icons/fa6";
+
 interface TabHeaderProps {
   name: string;
   description: string;
@@ -17,8 +19,8 @@ export default function TabHeader({
 }: TabHeaderProps) {
   return (
     <div className="text-center mb-8">
-      <div className="mb-2">
-        <img src="/logo.png" alt="Billington" className="h-20 mx-auto" />
+      <div className="mb-3">
+        <img src="/logo.png" alt="Billington" className="h-16 mx-auto" />
       </div>
       <h1 className="text-2xl font-bold text-[var(--accent)] dark:text-white mb-1">
         {name}
@@ -28,18 +30,20 @@ export default function TabHeader({
           {description}
         </p>
       )}
-      <div className="inline-flex items-center gap-2 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-white px-6 py-2 rounded-full">
-        <span className="text-sm font-medium">Total</span>
-        <span className="text-xl font-bold">${total.toFixed(2)}</span>
+      <div className="inline-flex items-center gap-2 bg-[var(--secondary)] dark:bg-white/10 px-5 py-2 rounded-full">
+        <span className="text-sm text-[var(--text-secondary)]">Total</span>
+        <span className="text-xl font-bold font-mono text-[var(--accent)] dark:text-white">
+          ${total.toFixed(2)}
+        </span>
       </div>
       <div className="mt-2 flex items-center justify-center gap-2">
-        <span className="inline-flex items-center gap-1 text-xs font-medium text-[var(--text-secondary)] bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] px-3 py-1 rounded-full">
-          <i className="fas fa-receipt text-[var(--primary)]"></i>
+        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--text-secondary)] bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] px-3 py-1 rounded-full">
+          <FaReceipt className="text-[var(--primary)]" size={11} />
           {billCount} bill{billCount === 1 ? "" : "s"}
         </span>
         {finalized && (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1 rounded-full">
-            <i className="fas fa-check-circle"></i>
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1 rounded-full">
+            <FaCircleCheck size={11} />
             Finalized
           </span>
         )}

@@ -90,17 +90,34 @@ fi
 # ── iOS Simulator + Flutter ──────────────────────────────────────
 echo -e "${CYAN}Launching iOS Simulator...${NC}"
 if ! xcrun simctl list devices booted 2>/dev/null | grep -q "Booted"; then
-  open -a Simulator
-  sleep 5
+  # Boot the first available iPhone simulator
+  SIM_ID=$(xcrun simctl list devices available -j 2>/dev/null \
+    | python3 -c "import sys,json; devs=[d for r in json.load(sys.stdin)['devices'].values() for d in r if 'iPhone' in d['name'] and d['isAvailable']]; print(devs[0]['udid'] if devs else '')")
+  if [ -n "$SIM_ID" ]; then
+    xcrun simctl boot "$SIM_ID" 2>/dev/null || true
+    open -a Simulator
+    sleep 5
+  else
+    echo -e "${RED}No available iPhone simulator found.${NC}"
+    exit 1
+  fi
 fi
-echo -e "${GREEN}Simulator ready.${NC}"
+
+# Get the booted simulator device ID for Flutter
+BOOTED_SIM=$(xcrun simctl list devices booted -j 2>/dev/null \
+  | python3 -c "import sys,json; devs=[d for r in json.load(sys.stdin)['devices'].values() for d in r if d['state']=='Booted']; print(devs[0]['udid'] if devs else '')")
+if [ -z "$BOOTED_SIM" ]; then
+  echo -e "${RED}No booted simulator found.${NC}"
+  exit 1
+fi
+echo -e "${GREEN}Simulator ready ($BOOTED_SIM).${NC}"
 
 echo -e "${CYAN}Running Flutter app...${NC}"
 echo -e "${YELLOW}──────────────────────────────────────${NC}"
 echo -e "  Backend:  http://localhost:8080/health"
-echo -e "  Web:      http://localhost:3000"
+echo -e "  Web:      http://localhost:3100"
 echo -e "  Web logs: $WEB_LOG"
 echo -e "${YELLOW}──────────────────────────────────────${NC}"
 
-cd "$ROOT_DIR/mobile/ios" && pod install --silent 2>/dev/null; cd "$ROOT_DIR"
-flutter run -d simulator --project "$ROOT_DIR/mobile"
+cd "$ROOT_DIR/mobile/ios" && pod install --silent 2>/dev/null
+cd "$ROOT_DIR/mobile" && flutter run -d "$BOOTED_SIM"
