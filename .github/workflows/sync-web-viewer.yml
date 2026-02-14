@@ -1,0 +1,30 @@
+name: Sync web-bill-viewer to Vercel repo
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web-bill-viewer/**'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure SSH for private repo
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VERCEL_DEPLOY_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          git config core.sshCommand "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no"
+
+      - name: Subtree split and force push
+        run: |
+          SPLIT_SHA=$(git subtree split --prefix=web-bill-viewer)
+          git remote add vercel-deploy git@github.com:dhaliwalg/checksinmyhead.git
+          git push vercel-deploy "$SPLIT_SHA":refs/heads/main --force
