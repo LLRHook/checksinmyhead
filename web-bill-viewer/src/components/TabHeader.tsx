@@ -18,9 +18,9 @@ export default function TabHeader({
   finalized,
 }: TabHeaderProps) {
   return (
-    <div className="text-center mb-8">
+    <div className="text-center lg:text-left mb-8">
       <div className="mb-3">
-        <img src="/logo.png" alt="Billington" className="h-16 mx-auto" />
+        <img src="/logo.png" alt="Billington" className="h-16 mx-auto lg:mx-0" />
       </div>
       <h1 className="text-2xl font-bold text-[var(--accent)] dark:text-white mb-1">
         {name}
@@ -36,7 +36,7 @@ export default function TabHeader({
           ${total.toFixed(2)}
         </span>
       </div>
-      <div className="mt-2 flex items-center justify-center gap-2">
+      <div className="mt-2 flex items-center justify-center lg:justify-start gap-2">
         <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--text-secondary)] bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] px-3 py-1 rounded-full">
           <FaReceipt className="text-[var(--primary)]" size={11} />
           {billCount} bill{billCount === 1 ? "" : "s"}
