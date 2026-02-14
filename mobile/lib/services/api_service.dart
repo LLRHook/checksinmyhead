@@ -1,5 +1,6 @@
 // lib/services/api_service.dart
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -9,6 +10,8 @@ import 'package:checks_frontend/models/person.dart';
 import 'package:logger/web.dart';
 
 class ApiService {
+  static const _timeout = Duration(seconds: 30);
+
   // Dynamic base URL based on platform and build mode
   String get baseUrl {
     // Production mode
@@ -65,20 +68,24 @@ class ApiService {
         Uri.parse('$baseUrl/api/bills'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(requestBody),
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 201) {
-        final data = jsonDecode(response.body);
+        final data = jsonDecode(response.body) as Map<String, dynamic>?;
+        if (data == null) return null;
         return BillUploadResponse(
-          billId: data['bill_id'],
-          accessToken: data['access_token'],
-          shareUrl: data['share_url'],
+          billId: data['bill_id'] as int? ?? 0,
+          accessToken: data['access_token'] as String? ?? '',
+          shareUrl: data['share_url'] as String? ?? '',
         );
       } else {
         logger.d('Failed to upload bill: ${response.statusCode}');
         logger.d('Response: ${response.body}');
         return null;
       }
+    } on TimeoutException {
+      logger.d('Upload bill timed out');
+      return null;
     } catch (e) {
       logger.d('Error uploading bill: $e');
       return null;
@@ -124,21 +131,25 @@ class ApiService {
         Uri.parse('$baseUrl/api/tabs'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(body),
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 201) {
-        final data = jsonDecode(response.body);
+        final data = jsonDecode(response.body) as Map<String, dynamic>?;
+        if (data == null) return null;
         return TabCreateResponse(
-          tabId: data['tab_id'],
-          accessToken: data['access_token'],
-          shareUrl: data['share_url'],
-          memberToken: data['member_token'],
-          memberId: data['member_id'],
+          tabId: data['tab_id'] as int? ?? 0,
+          accessToken: data['access_token'] as String? ?? '',
+          shareUrl: data['share_url'] as String? ?? '',
+          memberToken: data['member_token'] as String?,
+          memberId: data['member_id'] as int?,
         );
       } else {
         logger.d('Failed to create tab: ${response.statusCode}');
         return null;
       }
+    } on TimeoutException {
+      logger.d('Create tab timed out');
+      return null;
     } catch (e) {
       logger.d('Error creating tab: $e');
       return null;
@@ -162,7 +173,7 @@ class ApiService {
         Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'bill_id': billId}),
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         return true;
@@ -170,6 +181,9 @@ class ApiService {
         logger.d('Failed to add bill to tab: ${response.statusCode}');
         return false;
       }
+    } on TimeoutException {
+      logger.d('Add bill to tab timed out');
+      return false;
     } catch (e) {
       logger.d('Error adding bill to tab: $e');
       return false;
@@ -193,16 +207,20 @@ class ApiService {
         await http.MultipartFile.fromPath('image', imageFile.path),
       );
 
-      final streamedResponse = await request.send();
+      final streamedResponse = await request.send().timeout(_timeout);
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 201) {
-        final data = jsonDecode(response.body);
+        final data = jsonDecode(response.body) as Map<String, dynamic>?;
+        if (data == null) return null;
         return TabImageResponse.fromJson(data);
       } else {
         logger.d('Failed to upload image: ${response.statusCode}');
         return null;
       }
+    } on TimeoutException {
+      logger.d('Upload image timed out');
+      return null;
     } catch (e) {
       logger.d('Error uploading image: $e');
       return null;
@@ -218,15 +236,18 @@ class ApiService {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/api/tabs/$tabId/images?t=$accessToken'),
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => TabImageResponse.fromJson(json)).toList();
+        return data.map((json) => TabImageResponse.fromJson(json as Map<String, dynamic>)).toList();
       } else {
         logger.d('Failed to get images: ${response.statusCode}');
         return [];
       }
+    } on TimeoutException {
+      logger.d('Get images timed out');
+      return [];
     } catch (e) {
       logger.d('Error getting images: $e');
       return [];
@@ -246,8 +267,11 @@ class ApiService {
         Uri.parse('$baseUrl/api/tabs/$tabId/images/$imageId?t=$accessToken'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'processed': processed}),
-      );
+      ).timeout(_timeout);
       return response.statusCode == 200;
+    } on TimeoutException {
+      logger.d('Update image timed out');
+      return false;
     } catch (e) {
       logger.d('Error updating image: $e');
       return false;
@@ -265,17 +289,20 @@ class ApiService {
       var url = '$baseUrl/api/tabs/$tabId/finalize?t=$accessToken';
       if (memberToken != null) url += '&m=$memberToken';
 
-      final response = await http.post(Uri.parse(url));
+      final response = await http.post(Uri.parse(url)).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => SettlementResponse.fromJson(json)).toList();
+        return data.map((json) => SettlementResponse.fromJson(json as Map<String, dynamic>)).toList();
       } else {
         logger.d(
           'Failed to finalize tab: ${response.statusCode} ${response.body}',
         );
         return [];
       }
+    } on TimeoutException {
+      logger.d('Finalize tab timed out');
+      return [];
     } catch (e) {
       logger.d('Error finalizing tab: $e');
       return [];
@@ -291,15 +318,18 @@ class ApiService {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/api/tabs/$tabId/settlements?t=$accessToken'),
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => SettlementResponse.fromJson(json)).toList();
+        return data.map((json) => SettlementResponse.fromJson(json as Map<String, dynamic>)).toList();
       } else {
         logger.d('Failed to get settlements: ${response.statusCode}');
         return [];
       }
+    } on TimeoutException {
+      logger.d('Get settlements timed out');
+      return [];
     } catch (e) {
       logger.d('Error getting settlements: $e');
       return [];
@@ -321,8 +351,11 @@ class ApiService {
         ),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'paid': paid}),
-      );
+      ).timeout(_timeout);
       return response.statusCode == 200;
+    } on TimeoutException {
+      logger.d('Update settlement timed out');
+      return false;
     } catch (e) {
       logger.d('Error updating settlement: $e');
       return false;
@@ -339,8 +372,11 @@ class ApiService {
     try {
       final response = await http.delete(
         Uri.parse('$baseUrl/api/tabs/$tabId/images/$imageId?t=$accessToken'),
-      );
+      ).timeout(_timeout);
       return response.statusCode == 200;
+    } on TimeoutException {
+      logger.d('Delete image timed out');
+      return false;
     } catch (e) {
       logger.d('Error deleting image: $e');
       return false;
@@ -359,20 +395,24 @@ class ApiService {
         Uri.parse('$baseUrl/api/tabs/$tabId/join?t=$accessToken'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'display_name': displayName}),
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 201) {
-        final data = jsonDecode(response.body);
+        final data = jsonDecode(response.body) as Map<String, dynamic>?;
+        if (data == null) return null;
         return TabJoinResponse(
-          memberId: data['member_id'],
-          memberToken: data['member_token'],
-          displayName: data['display_name'],
-          role: data['role'],
+          memberId: data['member_id'] as int? ?? 0,
+          memberToken: data['member_token'] as String? ?? '',
+          displayName: data['display_name'] as String? ?? '',
+          role: data['role'] as String? ?? 'member',
         );
       } else {
         logger.d('Failed to join tab: ${response.statusCode}');
         return null;
       }
+    } on TimeoutException {
+      logger.d('Join tab timed out');
+      return null;
     } catch (e) {
       logger.d('Error joining tab: $e');
       return null;
@@ -388,15 +428,18 @@ class ApiService {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/api/tabs/$tabId/members?t=$accessToken'),
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => TabMemberResponse.fromJson(json)).toList();
+        return data.map((json) => TabMemberResponse.fromJson(json as Map<String, dynamic>)).toList();
       } else {
         logger.d('Failed to get members: ${response.statusCode}');
         return [];
       }
+    } on TimeoutException {
+      logger.d('Get members timed out');
+      return [];
     } catch (e) {
       logger.d('Error getting members: $e');
       return [];
@@ -412,14 +455,17 @@ class ApiService {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/api/tabs/$tabId?t=$accessToken'),
-      );
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        return jsonDecode(response.body) as Map<String, dynamic>?;
       } else {
         logger.d('Failed to get tab data: ${response.statusCode}');
         return null;
       }
+    } on TimeoutException {
+      logger.d('Get tab data timed out');
+      return null;
     } catch (e) {
       logger.d('Error getting tab data: $e');
       return null;
@@ -456,7 +502,8 @@ class ApiService {
       }
 
       // Calculate proportional tax and tip
-      final proportion = subtotalForPerson / (total - tax - tipAmount);
+      final denominator = total - tax - tipAmount;
+      final proportion = denominator > 0 ? subtotalForPerson / denominator : 0.0;
       final taxShare = tax * proportion;
       final tipShare = tipAmount * proportion;
 
