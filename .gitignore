@@ -58,3 +58,12 @@ htmlcov/
 .pub/
 build/ 
 **/.claude/settings.local.json
+
+# Node
+node_modules/
+
+# Screenshots (generated artifacts)
+screenshots/
+
+.claude
+CLAUDE.md
