@@ -728,7 +728,7 @@ Widget _buildPersonSlider({
                   overlayShape: const RoundSliderOverlayShape(
                     overlayRadius: 16,
                   ),
-                  showValueIndicator: ShowValueIndicator.onDrag,
+                  showValueIndicator: ShowValueIndicator.always,
                   valueIndicatorShape: const PaddleSliderValueIndicatorShape(),
                   valueIndicatorColor: personColor,
                   valueIndicatorTextStyle: TextStyle(
