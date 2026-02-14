@@ -7,9 +7,9 @@ interface BillHeaderProps {
 
 export default function BillHeader({ name, total }: BillHeaderProps) {
   return (
-    <div className="text-center mb-8">
+    <div className="text-center lg:text-left mb-8">
       <div className="mb-3">
-        <img src="/logo.png" alt="Billington" className="h-16 mx-auto" />
+        <img src="/logo.png" alt="Billington" className="h-16 mx-auto lg:mx-0" />
       </div>
       <h1 className="text-2xl font-bold text-[var(--accent)] dark:text-white mb-2">
         {name}

@@ -10,12 +10,12 @@ import TabHeader from "@/components/TabHeader";
 import TabPersonTotals from "@/components/TabPersonTotals";
 import SettlementCard from "@/components/SettlementCard";
 import TabImageGallery from "@/components/TabImageGallery";
-import CollapsibleSection from "@/components/CollapsibleSection";
-import PersonShare from "@/components/PersonShare";
+import TabBillList from "@/components/TabBillList";
 import JoinTabButton from "@/components/JoinTabButton";
 import MemberList from "@/components/MemberList";
+import DesktopLayout from "@/components/DesktopLayout";
 import { notFound } from "next/navigation";
-import { FaLock, FaTriangleExclamation, FaReceipt } from "react-icons/fa6";
+import { FaLock, FaTriangleExclamation } from "react-icons/fa6";
 
 export default async function TabPage({
   params,
@@ -76,60 +76,37 @@ export default async function TabPage({
       .find((pm) => pm.name?.toLowerCase().includes("venmo"))?.identifier ||
     null;
 
+  const sidebar = (
+    <>
+      <TabHeader
+        name={tab.name}
+        description={tab.description}
+        total={tab.total_amount}
+        billCount={tab.bills.length}
+        finalized={tab.finalized}
+      />
+
+      {members.length > 0 && <MemberList members={members} />}
+
+      <JoinTabButton tabId={id} token={token} />
+
+      {images.length > 0 && (
+        <TabImageGallery images={images} apiBaseUrl={API_BASE_URL} />
+      )}
+    </>
+  );
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[var(--secondary)] to-white dark:from-[var(--dark-bg)] dark:to-[var(--card-bg-dark)]">
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <TabHeader
-          name={tab.name}
-          description={tab.description}
-          total={tab.total_amount}
-          billCount={tab.bills.length}
-          finalized={tab.finalized}
-        />
+    <DesktopLayout sidebar={sidebar}>
+      {tab.finalized && settlements.length > 0 ? (
+        <SettlementCard settlements={settlements} venmoId={venmoId} />
+      ) : (
+        personTotals.length > 0 && (
+          <TabPersonTotals personTotals={personTotals} venmoId={venmoId} />
+        )
+      )}
 
-        {tab.finalized && settlements.length > 0 ? (
-          <SettlementCard settlements={settlements} venmoId={venmoId} />
-        ) : (
-          personTotals.length > 0 && (
-            <TabPersonTotals personTotals={personTotals} venmoId={venmoId} />
-          )
-        )}
-
-        {tab.bills.map((bill) => {
-          const hasVenmo =
-            bill.payment_methods?.find((pm) =>
-              pm.name?.toLowerCase().includes("venmo"),
-            )?.identifier || null;
-
-          return (
-            <div key={bill.id} className="mb-3">
-              <CollapsibleSection
-                title={`${bill.name} — $${bill.total.toFixed(2)}`}
-                icon={<FaReceipt size={14} />}
-              >
-                <div className="space-y-3 pt-3">
-                  {bill.person_shares.map((share) => (
-                    <PersonShare
-                      key={share.id}
-                      personShare={share}
-                      index={0}
-                      hasVenmo={hasVenmo}
-                    />
-                  ))}
-                </div>
-              </CollapsibleSection>
-            </div>
-          );
-        })}
-
-        {images.length > 0 && (
-          <TabImageGallery images={images} apiBaseUrl={API_BASE_URL} />
-        )}
-
-        {members.length > 0 && <MemberList members={members} />}
-
-        <JoinTabButton tabId={id} token={token} />
-      </div>
-    </div>
+      <TabBillList bills={tab.bills} />
+    </DesktopLayout>
   );
 }
