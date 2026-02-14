@@ -16,7 +16,7 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import 'package:flutter/material.dart';
-import '/models/person.dart';
+import 'package:checks_frontend/models/person.dart';
 
 /// A utility class for color operations used throughout the app
 ///

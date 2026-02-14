@@ -21,8 +21,8 @@ import 'package:checks_frontend/screens/quick_split/item_assignment/models/assig
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '/models/person.dart';
-import '/models/bill_item.dart';
+import 'package:checks_frontend/models/person.dart';
+import 'package:checks_frontend/models/bill_item.dart';
 
 // Models
 import 'models/bill_data.dart';
@@ -288,6 +288,7 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_ios_new),
               onPressed: () => Navigator.of(context).pop(),
+              tooltip: 'Back',
             ),
           ),
           body: GestureDetector(

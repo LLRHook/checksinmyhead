@@ -18,7 +18,7 @@
 import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '/models/person.dart';
+import 'package:checks_frontend/models/person.dart';
 
 /// Manages the participant list for bill splitting with animations and deduplication.
 /// Implements ChangeNotifier pattern for reactive UI updates.

@@ -176,22 +176,27 @@ class _ToggleOption extends StatelessWidget {
             ? colorScheme.onSurface.withValues(alpha: .7)
             : colorScheme.onSurfaceVariant;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeInOut,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? colorScheme.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          title,
-          style: TextStyle(
-            color: isSelected ? selectedTextColor : unselectedTextColor,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            fontSize: 13,
+    return Semantics(
+      label: '$title tip mode',
+      button: true,
+      selected: isSelected,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? colorScheme.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            title,
+            style: TextStyle(
+              color: isSelected ? selectedTextColor : unselectedTextColor,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              fontSize: 13,
+            ),
           ),
         ),
       ),
@@ -268,6 +273,8 @@ class _TipPercentageSlider extends StatelessWidget {
                 min: 0,
                 max: 99,
                 divisions: 99, // Allow 1% increments
+                label: '${tipPercentage.toInt()}%',
+                semanticFormatterCallback: (value) => '${value.toInt()} percent tip',
                 onChanged: (value) {
                   // Round to nearest integer to ensure precise selection
                   onChanged(value.roundToDouble());
@@ -327,7 +334,11 @@ class _QuickTipPercentageButtons extends StatelessWidget {
       children:
           [15, 18, 20, 25, 30].map((percentage) {
             final isSelected = tipPercentage == percentage;
-            return GestureDetector(
+            return Semantics(
+              label: '$percentage percent tip',
+              button: true,
+              selected: isSelected,
+              child: GestureDetector(
               onTap: () => onPercentageSelected(percentage.toDouble()),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
@@ -366,6 +377,7 @@ class _QuickTipPercentageButtons extends StatelessWidget {
                   ),
                 ),
               ),
+            ),
             );
           }).toList(),
     );

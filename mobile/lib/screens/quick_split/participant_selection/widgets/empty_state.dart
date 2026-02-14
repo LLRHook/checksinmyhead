@@ -31,37 +31,39 @@ class EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Icon container
-          Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              color: colorScheme.primary.withValues(alpha: 0.08),
-              shape: BoxShape.circle,
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Image.asset('assets/images/billy.png', width: 150, height: 150),
-                Positioned(
-                  bottom: 10,
-                  right: 10,
-                  child: Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: colorScheme.primary,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: colorScheme.surface, width: 3),
-                    ),
-                    child: Icon(
-                      Icons.add,
-                      size: 16,
-                      color: colorScheme.onPrimary,
+          // Icon container (decorative)
+          ExcludeSemantics(
+            child: Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                color: colorScheme.primary.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Image.asset('assets/images/billy.png', width: 150, height: 150),
+                  Positioned(
+                    bottom: 10,
+                    right: 10,
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: colorScheme.surface, width: 3),
+                      ),
+                      child: Icon(
+                        Icons.add,
+                        size: 16,
+                        color: colorScheme.onPrimary,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 24),

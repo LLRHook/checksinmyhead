@@ -16,8 +16,8 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import 'package:flutter/material.dart';
-import '/models/person.dart';
-import '/models/bill_item.dart';
+import 'package:checks_frontend/models/person.dart';
+import 'package:checks_frontend/models/bill_item.dart';
 
 // Import refactored components
 import 'models/bill_summary_data.dart';
@@ -139,6 +139,7 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_new, color: titleColor),
           onPressed: () => Navigator.pop(context),
+          tooltip: 'Back',
         ),
       ),
       body: Stack(
