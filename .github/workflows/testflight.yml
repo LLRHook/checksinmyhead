@@ -13,6 +13,9 @@ on:
         default: 'Bug fixes and improvements'
         type: string
 
+permissions:
+  contents: write
+
 jobs:
   build-and-upload:
     runs-on: macos-latest
