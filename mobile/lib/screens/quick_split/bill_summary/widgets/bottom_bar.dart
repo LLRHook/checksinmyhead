@@ -130,12 +130,15 @@ class DoneButtonHandler {
   static final _billsManager = RecentBillsManager();
   static final _apiService = ApiService();
   static final _prefsService = PreferencesService();
+  static bool _isSaving = false;
 
   /// Saves the bill locally and uploads to backend
   static Future<void> handleDone(
     BuildContext context, {
     required BillSummaryData data,
   }) async {
+    if (_isSaving) return;
+    _isSaving = true;
     // Capture ALL context-dependent references FIRST (before any async)
     final navigator = Navigator.of(context);
 
@@ -146,11 +149,15 @@ class DoneButtonHandler {
     );
 
     if (billName.isEmpty) {
+      _isSaving = false;
       return; // User cancelled
     }
 
     // Check context.mounted before using context
-    if (!context.mounted) return;
+    if (!context.mounted) {
+      _isSaving = false;
+      return;
+    }
 
     // Show loading indicator
     showDialog(
@@ -246,7 +253,10 @@ class DoneButtonHandler {
       navigator.pop(); // Close loading dialog
     }
 
-    if (!navigator.mounted) return;
+    if (!navigator.mounted) {
+      _isSaving = false;
+      return;
+    }
 
     HapticFeedback.mediumImpact();
 
@@ -260,6 +270,7 @@ class DoneButtonHandler {
     }
 
     // Return to home
+    _isSaving = false;
     if (navigator.mounted) {
       navigator.popUntil((route) => route.isFirst);
     }
