@@ -47,9 +47,18 @@ class _AddPersonFieldState extends State<AddPersonField> {
         context,
         listen: false,
       );
-      participantsProvider.addPerson(_nameController.text);
-      _nameController.clear();
-      setState(() => _isAdding = false);
+      final added = participantsProvider.addPerson(_nameController.text);
+      if (added) {
+        _nameController.clear();
+        setState(() => _isAdding = false);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('This person is already in the list'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -92,6 +101,7 @@ class _AddPersonFieldState extends State<AddPersonField> {
   ) {
     return Form(
       key: _formKey,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -121,11 +131,15 @@ class _AddPersonFieldState extends State<AddPersonField> {
               ),
               style: TextStyle(color: colorScheme.onSurface),
               onFieldSubmitted: (_) => _addPerson(context),
-              validator:
-                  (value) =>
-                      (value == null || value.trim().isEmpty)
-                          ? 'Please enter a name'
-                          : null,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please enter a name';
+                }
+                if (!RegExp(r'[a-zA-Z]').hasMatch(value)) {
+                  return 'Name must contain at least one letter';
+                }
+                return null;
+              },
             ),
           ),
           const SizedBox(width: 10),

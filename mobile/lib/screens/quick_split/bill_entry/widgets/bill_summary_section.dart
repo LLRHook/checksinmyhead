@@ -133,32 +133,39 @@ class BillSummarySection extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final defaultTextColor = colorScheme.onSurface;
 
-    return Row(
-      children: [
-        // Label text (left-aligned)
-        Text(
-          label,
-          style: TextStyle(
-            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-            fontSize: fontSize,
-            color: textColor ?? defaultTextColor,
+    return Semantics(
+      label: '$label: ${value.toStringAsFixed(2)} dollars${showPercentage && tipPercentage != null ? ', ${tipPercentage.toInt()} percent' : ''}',
+      child: Row(
+        children: [
+          // Label text (left-aligned)
+          ExcludeSemantics(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+                fontSize: fontSize,
+                color: textColor ?? defaultTextColor,
+              ),
+            ),
           ),
-        ),
 
-        // Flexible space to push amount to right edge
-        const Spacer(),
+          // Flexible space to push amount to right edge
+          const Spacer(),
 
-        // Amount value (right-aligned) with optional percentage
-        Text(
-          '\$${value.toStringAsFixed(2)}${showPercentage && tipPercentage != null ? ' (${tipPercentage.toInt()}%)' : ''}',
-          style: TextStyle(
-            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-            fontSize: fontSize,
-            color: textColor ?? defaultTextColor,
+          // Amount value (right-aligned) with optional percentage
+          ExcludeSemantics(
+            child: Text(
+              '\$${value.toStringAsFixed(2)}${showPercentage && tipPercentage != null ? ' (${tipPercentage.toInt()}%)' : ''}',
+              style: TextStyle(
+                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+                fontSize: fontSize,
+                color: textColor ?? defaultTextColor,
+              ),
+              textAlign: TextAlign.right,
+            ),
           ),
-          textAlign: TextAlign.right,
-        ),
-      ],
+        ],
+      ),
     );
   }
 

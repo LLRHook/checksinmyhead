@@ -45,7 +45,13 @@ class ContinueButton extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
-      child: ElevatedButton(
+      child: Semantics(
+        label: hasParticipants
+            ? 'Continue with $participantsCount ${participantsCount == 1 ? 'person' : 'people'}'
+            : 'Continue, disabled, add participants first',
+        button: true,
+        enabled: hasParticipants,
+        child: ElevatedButton(
         onPressed: hasParticipants ? onContinue : null,
         style: ElevatedButton.styleFrom(
           backgroundColor:
@@ -73,10 +79,11 @@ class ContinueButton extends StatelessWidget {
             ),
             if (hasParticipants) ...[
               const SizedBox(width: 8),
-              _buildCountBadge(participantsCount, colorScheme),
+              ExcludeSemantics(child: _buildCountBadge(participantsCount, colorScheme)),
             ],
           ],
         ),
+      ),
       ),
     );
   }

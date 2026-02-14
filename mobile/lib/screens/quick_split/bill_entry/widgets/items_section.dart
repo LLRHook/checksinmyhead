@@ -350,7 +350,10 @@ class _ItemsSectionState extends State<ItemsSection>
                   elevation: isSubtotalSet ? 2 : 0,
                   padding: const EdgeInsets.all(16),
                 ),
-                child: const Icon(Icons.add),
+                child: Semantics(
+                  label: 'Add item',
+                  child: const Icon(Icons.add),
+                ),
               ),
             ),
           ],
@@ -429,8 +432,9 @@ class _ItemsSectionState extends State<ItemsSection>
           ),
           const SizedBox(height: 8),
 
-          // Animated progress bar
-          Container(
+          // Animated progress bar (decorative, info conveyed by text above)
+          ExcludeSemantics(
+          child: Container(
             height: 8,
             decoration: BoxDecoration(
               color: progressBgColor,
@@ -485,6 +489,7 @@ class _ItemsSectionState extends State<ItemsSection>
                 );
               },
             ),
+          ),
           ),
 
           // Items list section
@@ -560,7 +565,12 @@ class _ItemsSectionState extends State<ItemsSection>
             // Expand/collapse control button
             if (shouldShowCollapseControl) ...[
               const SizedBox(height: 8),
-              GestureDetector(
+              Semantics(
+                label: _isItemsListCollapsed
+                    ? 'Show all ${billData.items.length} items'
+                    : 'Collapse items list',
+                button: true,
+                child: GestureDetector(
                 onTap: _toggleItemsList,
                 child: Container(
                   width: double.infinity,
@@ -592,16 +602,19 @@ class _ItemsSectionState extends State<ItemsSection>
                         ),
                       ),
                       const SizedBox(width: 4),
-                      Icon(
-                        _isItemsListCollapsed
-                            ? Icons.keyboard_arrow_down
-                            : Icons.keyboard_arrow_up,
-                        size: 18,
-                        color: colorScheme.primary,
+                      ExcludeSemantics(
+                        child: Icon(
+                          _isItemsListCollapsed
+                              ? Icons.keyboard_arrow_down
+                              : Icons.keyboard_arrow_up,
+                          size: 18,
+                          color: colorScheme.primary,
+                        ),
                       ),
                     ],
                   ),
                 ),
+              ),
               ),
             ],
             const SizedBox(height: 12),
@@ -645,39 +658,46 @@ class _ItemsSectionState extends State<ItemsSection>
                       children: [
                         // Price pill with theme-colored background
                         Flexible(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: colorScheme.primary.withValues(alpha: .1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              '\$${item.price.toStringAsFixed(2)}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: colorScheme.primary,
+                          child: Semantics(
+                            label: '${item.price.toStringAsFixed(2)} dollars',
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
                               ),
-                              overflow: TextOverflow.ellipsis,
+                              decoration: BoxDecoration(
+                                color: colorScheme.primary.withValues(alpha: .1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '\$${item.price.toStringAsFixed(2)}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: colorScheme.primary,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                           ),
                         ),
                         const SizedBox(width: 8),
                         // Delete button with ripple effect
-                        Material(
-                          color: Colors.transparent,
-                          borderRadius: BorderRadius.circular(20),
-                          child: InkWell(
+                        Semantics(
+                          label: 'Remove ${item.name}',
+                          button: true,
+                          child: Material(
+                            color: Colors.transparent,
                             borderRadius: BorderRadius.circular(20),
-                            onTap: () => _removeItem(billData, originalIndex),
-                            child: Padding(
-                              padding: const EdgeInsets.all(6),
-                              child: Icon(
-                                Icons.delete_outline,
-                                color: colorScheme.error,
-                                size: 22,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () => _removeItem(billData, originalIndex),
+                              child: Padding(
+                                padding: const EdgeInsets.all(6),
+                                child: Icon(
+                                  Icons.delete_outline,
+                                  color: colorScheme.error,
+                                  size: 22,
+                                ),
                               ),
                             ),
                           ),

@@ -17,7 +17,7 @@
 
 import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_utils.dart';
 import 'package:flutter/material.dart';
-import '/models/person.dart';
+import 'package:checks_frontend/models/person.dart';
 
 /// ParticipantAvatars - Horizontal scrollable display of bill participants
 ///

@@ -19,7 +19,7 @@ import 'package:checks_frontend/screens/quick_split/bill_entry/bill_entry_screen
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '/models/person.dart';
+import 'package:checks_frontend/models/person.dart';
 
 // Models and Providers
 import 'models/recent_people_manager.dart';
@@ -66,6 +66,7 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
   /// Loads recently used people from database
   Future<void> _loadRecentPeople() async {
     final recentPeople = await RecentPeopleManager.loadRecentPeople();
+    if (!mounted) return;
     setState(() => _recentPeople = recentPeople);
   }
 
@@ -127,16 +128,18 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Sheet handle
-                Center(
-                  child: Container(
-                    width: 48,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(2),
+                // Sheet handle (decorative)
+                ExcludeSemantics(
+                  child: Center(
+                    child: Container(
+                      width: 48,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
                 ),
@@ -193,6 +196,7 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
                 size: 18,
               ),
               onPressed: () => Navigator.pop(context),
+              tooltip: 'Close',
               padding: EdgeInsets.zero,
               style: IconButton.styleFrom(
                 minimumSize: Size.zero,

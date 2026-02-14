@@ -66,7 +66,7 @@ class BillCalculations {
     for (String name in bill.participantNames) {
       // Use calculated amount or fall back to equal share if calculation failed
       final amount =
-          personTotals[name] ?? (bill.total / bill.participantNames.length);
+          personTotals[name] ?? (bill.participantNames.isNotEmpty ? bill.total / bill.participantNames.length : 0.0);
 
       // Create a Person object with name and the bill's color
       shares[Person(name: name, color: bill.color)] = amount;
@@ -190,7 +190,7 @@ class BillCalculations {
 
     // If no items were assigned or sum is zero, distribute tax and tip equally
     if (assignedItemsTotal <= 0 || personItemTotals.isEmpty) {
-      final equalShare = totalTaxAndTip / bill.participantNames.length;
+      final equalShare = bill.participantNames.isNotEmpty ? totalTaxAndTip / bill.participantNames.length : 0.0;
 
       for (final name in bill.participantNames) {
         results[name] = equalShare;

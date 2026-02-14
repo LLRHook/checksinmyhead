@@ -17,8 +17,8 @@
 
 import 'package:checks_frontend/screens/quick_split/item_assignment/models/assignment_data.dart';
 import 'package:flutter/material.dart';
-import '/models/person.dart';
-import '/models/bill_item.dart';
+import 'package:checks_frontend/models/person.dart';
+import 'package:checks_frontend/models/bill_item.dart';
 
 /// A utility class that handles the logic for bill splitting and item assignment
 /// in a group payment scenario.
@@ -45,7 +45,7 @@ class AssignmentUtils {
   static Color getAssignmentColor(BillItem item, Color defaultColor) {
     // If fully assigned to one person (100%), use their color with transparency
     if (item.assignments.length == 1 &&
-        item.assignments.values.first == 100.0) {
+        (item.assignments.values.first - 100.0).abs() < 0.01) {
       return item.assignments.keys.first.color.withValues(alpha: .2);
     }
     // For partially assigned or unassigned items, use the default color

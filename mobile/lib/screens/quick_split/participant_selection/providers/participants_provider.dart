@@ -18,7 +18,7 @@
 import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '/models/person.dart';
+import 'package:checks_frontend/models/person.dart';
 
 /// Manages the participant list for bill splitting with animations and deduplication.
 /// Implements ChangeNotifier pattern for reactive UI updates.
@@ -32,13 +32,14 @@ class ParticipantsProvider extends ChangeNotifier {
   Map<String, Animation<double>> get listItemAnimations => _listItemAnimations;
   bool get hasParticipants => _participants.isNotEmpty;
 
-  /// Adds a new person with automatic color assignment and duplicate prevention
-  void addPerson(String name, {Color? color}) {
+  /// Adds a new person with automatic color assignment and duplicate prevention.
+  /// Returns true if the person was added, false if rejected (empty or duplicate).
+  bool addPerson(String name, {Color? color}) {
     final trimmedName = name.trim();
-    if (trimmedName.isEmpty) return;
+    if (trimmedName.isEmpty) return false;
 
     // Prevent duplicates (case-insensitive)
-    if (_isNameDuplicate(trimmedName)) return;
+    if (_isNameDuplicate(trimmedName)) return false;
 
     // Cycle through predefined colors when no color is specified
     final colors = ColorUtils.getParticipantColors();
@@ -52,6 +53,7 @@ class ParticipantsProvider extends ChangeNotifier {
 
     HapticFeedback.lightImpact();
     notifyListeners();
+    return true;
   }
 
   /// Adds an existing Person object if not already in the list

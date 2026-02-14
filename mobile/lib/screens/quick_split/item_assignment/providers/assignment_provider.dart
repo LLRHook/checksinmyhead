@@ -19,8 +19,8 @@ import 'package:checks_frontend/screens/quick_split/item_assignment/models/assig
 import 'package:checks_frontend/screens/quick_split/item_assignment/utils/assignment_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '/models/person.dart';
-import '/models/bill_item.dart';
+import 'package:checks_frontend/models/person.dart';
+import 'package:checks_frontend/models/bill_item.dart';
 
 /// AssignmentProvider
 ///

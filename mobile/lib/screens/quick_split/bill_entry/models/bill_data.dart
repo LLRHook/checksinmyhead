@@ -16,8 +16,8 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import 'package:flutter/material.dart';
-import '/models/bill_item.dart';
-import '/models/person.dart';
+import 'package:checks_frontend/models/bill_item.dart';
+import 'package:checks_frontend/models/person.dart';
 
 /// BillData - ChangeNotifier class that manages bill calculation state
 ///
