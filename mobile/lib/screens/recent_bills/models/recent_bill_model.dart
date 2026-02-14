@@ -337,14 +337,14 @@ class RecentBillModel {
             shares[person] = amount + taxTipPortion;
           });
         }
-      } else {
+      } else if (personList.isNotEmpty) {
         // Equal distribution if no specific assignments exist
         final equalShare = total / personList.length;
         for (Person person in personList) {
           shares[person] = equalShare;
         }
       }
-    } else {
+    } else if (personList.isNotEmpty) {
       // Case 2: No items, so divide equally
       final equalShare = total / personList.length;
       for (Person person in personList) {
