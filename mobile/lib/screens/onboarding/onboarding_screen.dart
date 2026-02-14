@@ -48,6 +48,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       selectedMethods: _selectedPayments,
       identifiers: _paymentIdentifiers,
       onSave: (selectedMethods, identifiers) {
+        if (!mounted) return;
         setState(() {
           _selectedPayments = selectedMethods;
           _paymentIdentifiers = identifiers;
@@ -92,10 +93,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               const SizedBox(height: 48),
 
               // Logo
-              Image.asset(
+              Semantics(
+                label: 'Billington app logo',
+                image: true,
+                child: Image.asset(
                 'assets/images/billington.png',
                 width: 180,
                 height: 180,
+                ),
               ),
 
               const SizedBox(height: 24),

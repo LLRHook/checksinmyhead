@@ -54,6 +54,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
   }
 
   Future<void> _loadBills() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
 
     // Refresh tab from DB to get latest data (e.g. shareUrl after sync)
@@ -84,8 +85,9 @@ class _TabDetailScreenState extends State<TabDetailScreen>
   }
 
   Future<void> _loadMembers() async {
-    if (_currentTab.backendId == null || _currentTab.accessToken == null)
+    if (_currentTab.backendId == null || _currentTab.accessToken == null) {
       return;
+    }
 
     final members = await _apiService.getTabMembers(
       _currentTab.backendId!,
@@ -98,8 +100,9 @@ class _TabDetailScreenState extends State<TabDetailScreen>
   }
 
   Future<void> _loadImages() async {
-    if (_currentTab.backendId == null || _currentTab.accessToken == null)
+    if (_currentTab.backendId == null || _currentTab.accessToken == null) {
       return;
+    }
 
     final images = await _apiService.getTabImages(
       _currentTab.backendId!,
@@ -112,8 +115,9 @@ class _TabDetailScreenState extends State<TabDetailScreen>
   }
 
   Future<void> _loadSettlements() async {
-    if (_currentTab.backendId == null || _currentTab.accessToken == null)
+    if (_currentTab.backendId == null || _currentTab.accessToken == null) {
       return;
+    }
     if (!_currentTab.isFinalized) return;
 
     final settlements = await _apiService.getSettlements(
@@ -181,8 +185,9 @@ class _TabDetailScreenState extends State<TabDetailScreen>
   }
 
   Future<void> _toggleProcessed(TabImageResponse image) async {
-    if (_currentTab.backendId == null || _currentTab.accessToken == null)
+    if (_currentTab.backendId == null || _currentTab.accessToken == null) {
       return;
+    }
 
     final success = await _apiService.updateTabImage(
       _currentTab.backendId!,
@@ -197,8 +202,9 @@ class _TabDetailScreenState extends State<TabDetailScreen>
   }
 
   Future<void> _deleteImage(TabImageResponse image) async {
-    if (_currentTab.backendId == null || _currentTab.accessToken == null)
+    if (_currentTab.backendId == null || _currentTab.accessToken == null) {
       return;
+    }
 
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
@@ -251,8 +257,9 @@ class _TabDetailScreenState extends State<TabDetailScreen>
   }
 
   Future<void> _toggleSettlementPaid(SettlementResponse settlement) async {
-    if (_currentTab.backendId == null || _currentTab.accessToken == null)
+    if (_currentTab.backendId == null || _currentTab.accessToken == null) {
       return;
+    }
 
     final success = await _apiService.updateSettlement(
       _currentTab.backendId!,
@@ -345,6 +352,9 @@ class _TabDetailScreenState extends State<TabDetailScreen>
     return _tabBills.fold(0.0, (sum, bill) => sum + bill.total);
   }
 
+  // Known limitation: Person equality uses both name and color, so the same
+  // person with different colors across bills appears as separate entries.
+  // We mitigate this by aggregating on lowercase name below.
   Map<String, double> _calculatePersonTotals() {
     final Map<String, double> personTotals = {};
     final Map<String, String> nameMapping = {};
@@ -410,6 +420,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
         scrolledUnderElevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new),
+          tooltip: 'Go back',
           onPressed: () {
             HapticFeedback.selectionClick();
             Navigator.pop(context, true);
@@ -418,6 +429,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
         actions: [
           if (_currentTab.isSynced && !_currentTab.isFinalized)
             IconButton(
+              tooltip: 'Upload receipt photo',
               icon:
                   _isUploading
                       ? SizedBox(
@@ -434,6 +446,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
           if (_currentTab.shareUrl != null)
             IconButton(
               icon: const Icon(Icons.share_outlined),
+              tooltip: 'Share tab',
               onPressed: _shareTab,
             ),
         ],
@@ -546,7 +559,9 @@ class _TabDetailScreenState extends State<TabDetailScreen>
     final brightness = Theme.of(context).brightness;
     final total = _calculateTotal();
 
-    return Container(
+    return Semantics(
+      label: 'Tab total: ${CurrencyFormatter.formatCurrency(total)}, ${_tabBills.length} bill${_tabBills.length == 1 ? '' : 's'}',
+      child: Container(
       margin: const EdgeInsets.fromLTRB(20, 16, 20, 12),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -614,6 +629,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -673,7 +689,9 @@ class _TabDetailScreenState extends State<TabDetailScreen>
             children:
                 _members.map((member) {
                   final isCreator = member.role == 'creator';
-                  return Chip(
+                  return Semantics(
+                    label: '${member.displayName}${isCreator ? ', creator' : ', member'}',
+                    child: Chip(
                     avatar:
                         isCreator
                             ? Icon(
@@ -710,6 +728,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
                     side: BorderSide.none,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
+                    ),
                     ),
                   );
                 }).toList(),
@@ -802,7 +821,10 @@ class _TabDetailScreenState extends State<TabDetailScreen>
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final settlement = _settlements[index];
-              return GestureDetector(
+              return Semantics(
+                label: '${settlement.personName}, ${CurrencyFormatter.formatCurrency(settlement.amount)}, ${settlement.paid ? 'paid' : 'unpaid'}. Tap to toggle',
+                button: true,
+                child: GestureDetector(
                 onTap: () {
                   HapticFeedback.selectionClick();
                   _toggleSettlementPaid(settlement);
@@ -876,6 +898,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
                       ),
                     ),
                   ],
+                ),
                 ),
               );
             },
@@ -952,7 +975,9 @@ class _TabDetailScreenState extends State<TabDetailScreen>
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final entry = sortedEntries[index];
-              return Row(
+              return Semantics(
+                label: '${entry.key}: ${CurrencyFormatter.formatCurrency(entry.value)}',
+                child: Row(
                 children: [
                   CircleAvatar(
                     radius: 18,
@@ -998,6 +1023,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
                     ),
                   ),
                 ],
+                ),
               );
             },
           ),
@@ -1089,7 +1115,10 @@ class _TabDetailScreenState extends State<TabDetailScreen>
               itemCount: _images.length,
               itemBuilder: (context, index) {
                 final image = _images[index];
-                return GestureDetector(
+                return Semantics(
+                  label: 'Receipt image ${index + 1} of ${_images.length}${image.processed ? ', processed' : ', unprocessed'}. Tap to view full screen${!_currentTab.isFinalized ? '. Long press for options' : ''}',
+                  button: true,
+                  child: GestureDetector(
                   onTap: () => _showFullScreenImage(image),
                   onLongPress:
                       _currentTab.isFinalized
@@ -1153,6 +1182,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
                       ),
                     ),
                   ),
+                  ),
                 );
               },
             ),
@@ -1204,12 +1234,14 @@ class _TabDetailScreenState extends State<TabDetailScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const SizedBox(height: 12),
-                  Container(
+                  ExcludeSemantics(
+                    child: Container(
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
                       color: colorScheme.onSurface.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(2),
+                    ),
                     ),
                   ),
                   ListTile(
@@ -1306,7 +1338,10 @@ class _TabDetailScreenState extends State<TabDetailScreen>
               ),
             ],
           ),
-          child: Material(
+          child: Semantics(
+            label: '${bill.billName}, ${CurrencyFormatter.formatCurrency(bill.total)}, ${bill.formattedDate}${!_currentTab.isFinalized ? '. Swipe left to remove' : ''}',
+            button: true,
+            child: Material(
             color: Colors.transparent,
             child: InkWell(
               onTap: () async {
@@ -1399,6 +1434,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
                 ),
               ),
             ),
+          ),
           ),
         ),
       );
@@ -1712,6 +1748,7 @@ class _FullScreenImageView extends StatelessWidget {
         actions: [
           if (onToggleProcessed != null)
             IconButton(
+              tooltip: image.processed ? 'Mark as unprocessed' : 'Mark as processed',
               icon: Icon(
                 image.processed
                     ? Icons.check_box
@@ -1725,6 +1762,7 @@ class _FullScreenImageView extends StatelessWidget {
             ),
           if (onDelete != null)
             IconButton(
+              tooltip: 'Delete image',
               icon: const Icon(Icons.delete_outline, color: Colors.red),
               onPressed: () {
                 Navigator.pop(context);
@@ -1771,12 +1809,14 @@ class _ImageSourceSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 12),
-            Container(
+            ExcludeSemantics(
+              child: Container(
               width: 40,
               height: 4,
               decoration: BoxDecoration(
                 color: colorScheme.onSurface.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(2),
+              ),
               ),
             ),
             const SizedBox(height: 20),
@@ -1958,12 +1998,14 @@ class _BillSelectorSheetState extends State<_BillSelectorSheet> {
             child: Column(
               children: [
                 Center(
-                  child: Container(
+                  child: ExcludeSemantics(
+                    child: Container(
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
                       color: colorScheme.onSurface.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(2),
+                    ),
                     ),
                   ),
                 ),
