@@ -18,13 +18,19 @@ permissions:
 
 jobs:
   build-and-upload:
-    runs-on: macos-latest
+    runs-on: macos-15
     timeout-minutes: 30
+    env:
+      XCODE_VERSION: '16.4'  # Change to '26.0' when available (required after April 28, 2026)
     defaults:
       run:
         working-directory: mobile
 
     steps:
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_${XCODE_VERSION}.app
+        working-directory: .
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
