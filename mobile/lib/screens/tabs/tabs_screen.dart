@@ -4,6 +4,7 @@ import 'package:checks_frontend/models/tab.dart';
 import 'package:checks_frontend/screens/tabs/tab_detail_screen.dart';
 import 'package:checks_frontend/screens/tabs/tab_manager.dart';
 import 'package:checks_frontend/screens/settings/services/preferences_service.dart';
+import 'package:checks_frontend/services/api_error_helper.dart';
 
 class TabsScreen extends StatefulWidget {
   const TabsScreen({super.key});
@@ -50,6 +51,7 @@ class _TabsScreenState extends State<TabsScreen>
   }
 
   Future<void> _loadTabs() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
 
     final tabs = await _tabManager.getAllTabs();
@@ -91,6 +93,8 @@ class _TabsScreenState extends State<TabsScreen>
         );
 
         if (navResult == true) _loadTabs();
+      } else if (newTab == null && mounted) {
+        ApiErrorHelper.showError(context, 'Failed to create tab. Please try again.');
       }
     }
   }
@@ -133,6 +137,8 @@ class _TabsScreenState extends State<TabsScreen>
         );
 
         if (navResult == true) _loadTabs();
+      } else if (tab == null && mounted) {
+        ApiErrorHelper.showError(context, 'Failed to join tab. Check the link and try again.');
       }
     }
   }
@@ -190,6 +196,7 @@ class _TabsScreenState extends State<TabsScreen>
         scrolledUnderElevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new),
+          tooltip: 'Go back',
           onPressed: () {
             HapticFeedback.selectionClick();
             Navigator.pop(context);
@@ -372,6 +379,7 @@ class _TabsScreenState extends State<TabsScreen>
           ),
           IconButton(
             icon: const Icon(Icons.close, size: 18),
+            tooltip: 'Dismiss',
             onPressed: () {
               HapticFeedback.selectionClick();
               setState(() => _clipboardUrl = null);
@@ -510,7 +518,10 @@ class _TabCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Material(
+        child: Semantics(
+          label: '${tab.name}, ${tab.billIds.length} bill${tab.billIds.length == 1 ? '' : 's'}. Swipe left to delete',
+          button: true,
+          child: Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: onTap,
@@ -519,7 +530,8 @@ class _TabCard extends StatelessWidget {
               padding: const EdgeInsets.all(20),
               child: Row(
                 children: [
-                  Container(
+                  ExcludeSemantics(
+                    child: Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -546,6 +558,7 @@ class _TabCard extends StatelessWidget {
                               ? Colors.black.withValues(alpha: 0.9)
                               : Colors.white,
                       size: 24,
+                    ),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -588,15 +601,18 @@ class _TabCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Icon(
+                  ExcludeSemantics(
+                    child: Icon(
                     Icons.chevron_right_rounded,
                     color: colorScheme.onSurface.withValues(alpha: 0.3),
                     size: 28,
+                    ),
                   ),
                 ],
               ),
             ),
           ),
+        ),
         ),
       ),
     );
@@ -653,12 +669,14 @@ class _CreateTabSheetState extends State<_CreateTabSheet> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Center(
-                child: Container(
+                child: ExcludeSemantics(
+                  child: Container(
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
                     color: colorScheme.onSurface.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(2),
+                  ),
                   ),
                 ),
               ),
@@ -816,12 +834,14 @@ class _JoinTabSheetState extends State<_JoinTabSheet> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Center(
-                child: Container(
+                child: ExcludeSemantics(
+                  child: Container(
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
                     color: colorScheme.onSurface.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(2),
+                  ),
                   ),
                 ),
               ),

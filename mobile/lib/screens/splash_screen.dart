@@ -16,6 +16,7 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'landing_screen.dart';
@@ -143,6 +144,11 @@ class _SplashScreenState extends State<SplashScreen>
     // Start the animation sequence immediately
     _controller.forward(from: 0.0);
 
+    // Announce loading state for screen readers
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SemanticsService.announce('Loading Billington', TextDirection.ltr);
+    });
+
     // Check if this is first app launch and prepare navigation
     _checkFirstLaunch();
   }
@@ -239,10 +245,14 @@ class _SplashScreenState extends State<SplashScreen>
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(32),
-                                child: Image.asset(
-                                  'assets/images/billington.png',
-                                  width: 250,
-                                  height: 250,
+                                child: Semantics(
+                                  label: 'Billington app logo',
+                                  image: true,
+                                  child: Image.asset(
+                                    'assets/images/billington.png',
+                                    width: 250,
+                                    height: 250,
+                                  ),
                                 ),
                               ),
                             ),

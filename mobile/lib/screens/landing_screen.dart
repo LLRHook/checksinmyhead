@@ -144,10 +144,14 @@ class _LandingScreenState extends State<LandingScreen>
               children: [
                 // Logo — prominent brand moment at top
                 SizedBox(height: size.height * 0.04),
-                Image.asset(
-                  'assets/images/billington.png',
-                  width: 120,
-                  height: 120,
+                Semantics(
+                  label: 'Billington app logo',
+                  image: true,
+                  child: Image.asset(
+                    'assets/images/billington.png',
+                    width: 120,
+                    height: 120,
+                  ),
                 ),
 
                 const Spacer(),

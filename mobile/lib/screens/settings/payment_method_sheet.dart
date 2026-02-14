@@ -94,13 +94,15 @@ class _PaymentMethodSheetState extends State<PaymentMethodSheet>
           children: [
             // Drag handle
             Center(
-              child: Container(
+              child: ExcludeSemantics(
+                child: Container(
                 width: 36,
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
                   color: Colors.grey.shade300,
                   borderRadius: BorderRadius.circular(2),
+                ),
                 ),
               ),
             ),
@@ -163,6 +165,7 @@ class _PaymentMethodSheetState extends State<PaymentMethodSheet>
                                         Icons.edit,
                                         color: colorScheme.primary,
                                       ),
+                                      tooltip: 'Edit $option',
                                       onPressed: () {
                                         _showIdentifierInput(option);
                                       },
@@ -173,6 +176,7 @@ class _PaymentMethodSheetState extends State<PaymentMethodSheet>
                                         Icons.delete,
                                         color: Colors.redAccent,
                                       ),
+                                      tooltip: 'Remove $option',
                                       onPressed: () {
                                         setState(() {
                                           _selectedPayments.remove(option);
@@ -266,13 +270,15 @@ class _PaymentMethodSheetState extends State<PaymentMethodSheet>
             children: [
               // Drag handle
               Center(
-                child: Container(
+                child: ExcludeSemantics(
+                  child: Container(
                   width: 36,
                   height: 4,
                   margin: const EdgeInsets.symmetric(vertical: 12),
                   decoration: BoxDecoration(
                     color: Colors.grey.shade300,
                     borderRadius: BorderRadius.circular(2),
+                  ),
                   ),
                 ),
               ),
