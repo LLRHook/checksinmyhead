@@ -82,6 +82,7 @@ class AssignmentAppBar extends StatelessWidget implements PreferredSizeWidget {
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_ios_new),
         onPressed: onBackPressed,
+        tooltip: 'Back',
         color: iconColor, // Ensure icon respects theme
       ),
       actions: [

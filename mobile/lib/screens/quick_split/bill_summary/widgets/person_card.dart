@@ -21,8 +21,8 @@ import 'package:checks_frontend/screens/quick_split/bill_summary/utils/calculati
 import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '/models/person.dart';
-import '/models/bill_item.dart';
+import 'package:checks_frontend/models/person.dart';
+import 'package:checks_frontend/models/bill_item.dart';
 
 /// PersonCard - Displays an individual's payment details with expandable item breakdown
 ///
@@ -178,7 +178,10 @@ class _PersonCardState extends State<PersonCard>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Interactive header with person info and total amount
-          InkWell(
+          Semantics(
+            label: '${widget.person.name}${isBirthdayPerson ? ', birthday person' : ''}, owes ${totalShare.toStringAsFixed(2)} dollars${totalShare > 0 ? ', tap to ${_isExpanded ? 'collapse' : 'expand'} details' : ''}',
+            button: totalShare > 0,
+            child: InkWell(
             onTap: totalShare > 0 ? _toggleExpanded : null,
             borderRadius: BorderRadius.circular(16),
             child: _buildPersonHeader(
@@ -191,6 +194,7 @@ class _PersonCardState extends State<PersonCard>
               birthdayPillTextColor,
               expandIconColor,
             ),
+          ),
           ),
 
           // Animated collapsible content
@@ -396,34 +400,39 @@ class _PersonCardState extends State<PersonCard>
             ? Colors.grey.shade400
             : Colors.grey.shade600;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              item.name,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.normal,
-                color: colorScheme.onSurface,
+    return Semantics(
+      label: '${item.name}${percentage < 100 ? ', ${percentage.toStringAsFixed(0)} percent' : ''}: ${amount.toStringAsFixed(2)} dollars',
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        child: ExcludeSemantics(
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  item.name,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.normal,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
               ),
-            ),
+              if (percentage < 100)
+                Text(
+                  '${percentage.toStringAsFixed(0)}% × ',
+                  style: TextStyle(fontSize: 12, color: secondaryTextColor),
+                ),
+              Text(
+                '\$${amount.toStringAsFixed(2)}',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+            ],
           ),
-          if (percentage < 100)
-            Text(
-              '${percentage.toStringAsFixed(0)}% × ',
-              style: TextStyle(fontSize: 12, color: secondaryTextColor),
-            ),
-          Text(
-            '\$${amount.toStringAsFixed(2)}',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: colorScheme.onSurface,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -445,28 +454,33 @@ class _PersonCardState extends State<PersonCard>
 
     final textColor = color ?? defaultColor;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-              fontSize: isTotal ? 15 : 14,
-              color: textColor,
-            ),
+    return Semantics(
+      label: '$label: ${amount.toStringAsFixed(2)} dollars',
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: ExcludeSemantics(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+                  fontSize: isTotal ? 15 : 14,
+                  color: textColor,
+                ),
+              ),
+              Text(
+                '\$${amount.toStringAsFixed(2)}',
+                style: TextStyle(
+                  fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+                  fontSize: isTotal ? 15 : 14,
+                  color: textColor,
+                ),
+              ),
+            ],
           ),
-          Text(
-            '\$${amount.toStringAsFixed(2)}',
-            style: TextStyle(
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-              fontSize: isTotal ? 15 : 14,
-              color: textColor,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

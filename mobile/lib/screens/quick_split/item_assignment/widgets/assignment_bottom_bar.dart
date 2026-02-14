@@ -106,12 +106,15 @@ class AssignmentBottomBar extends StatelessWidget {
                   'Total Bill',
                   style: TextStyle(fontSize: 12, color: labelColor),
                 ),
-                Text(
-                  '\$${totalBill.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: valueColor, // Theme-aware price color
+                Semantics(
+                  label: 'Total bill: ${totalBill.toStringAsFixed(2)} dollars',
+                  child: Text(
+                    '\$${totalBill.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: valueColor, // Theme-aware price color
+                    ),
                   ),
                 ),
               ],

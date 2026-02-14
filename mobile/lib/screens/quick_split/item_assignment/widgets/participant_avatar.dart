@@ -19,7 +19,7 @@ import 'package:checks_frontend/screens/quick_split/item_assignment/utils/animat
 import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_utils.dart';
 import 'package:flutter/material.dart';
 import 'dart:math';
-import '/models/person.dart';
+import 'package:checks_frontend/models/person.dart';
 
 /// A reusable participant avatar component that displays user information with
 /// various visual states for assignment, selection, and birthday status.

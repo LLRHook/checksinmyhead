@@ -16,8 +16,8 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import 'package:flutter/material.dart';
-import '/models/person.dart';
-import '/screens/quick_split/item_assignment/widgets/participant_avatar.dart';
+import 'package:checks_frontend/models/person.dart';
+import 'package:checks_frontend/screens/quick_split/item_assignment/widgets/participant_avatar.dart';
 
 /// ParticipantSelector
 ///

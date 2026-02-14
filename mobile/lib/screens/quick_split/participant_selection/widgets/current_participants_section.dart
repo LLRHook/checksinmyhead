@@ -21,7 +21,7 @@ import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '/models/person.dart';
+import 'package:checks_frontend/models/person.dart';
 
 /// Displays and manages the list of current participants with animated removal effects
 class CurrentParticipantsSection extends StatefulWidget {
@@ -115,7 +115,7 @@ class _CurrentParticipantsSectionState
   ) {
     return Row(
       children: [
-        Icon(Icons.people, size: 18, color: labelColor),
+        ExcludeSemantics(child: Icon(Icons.people, size: 18, color: labelColor)),
         const SizedBox(width: 8),
         Text(
           "Current Participants",

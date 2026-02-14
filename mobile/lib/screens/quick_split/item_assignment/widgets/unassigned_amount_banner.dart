@@ -85,7 +85,10 @@ class UnassignedAmountBanner extends StatelessWidget {
 
     // Using GestureDetector instead of InkWell for better control over touch behavior
     // and to enable haptic feedback functionality
-    return GestureDetector(
+    return Semantics(
+      label: '${unassignedAmount.toStringAsFixed(2)} dollars not assigned. Tap to split evenly among participants',
+      button: true,
+      child: GestureDetector(
       onTap: () {
         HapticFeedback.mediumImpact(); // Provide tactile feedback when tapped
         onSplitEvenly();
@@ -127,11 +130,12 @@ class UnassignedAmountBanner extends StatelessWidget {
                 ),
               ),
 
-              // Touch icon indicates the banner is interactive
-              Icon(Icons.touch_app, color: iconColor, size: 20),
+              // Touch icon indicates the banner is interactive (decorative)
+              ExcludeSemantics(child: Icon(Icons.touch_app, color: iconColor, size: 20)),
             ],
           ),
         ),
+      ),
       ),
     );
   }
