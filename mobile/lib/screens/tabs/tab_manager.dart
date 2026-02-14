@@ -176,8 +176,9 @@ class TabManager extends ChangeNotifier {
     try {
       final tabData = await DatabaseProvider.db.getTabById(localId);
       if (tabData == null) return false;
-      if (tabData.backendId == null || tabData.accessToken == null)
+      if (tabData.backendId == null || tabData.accessToken == null) {
         return false;
+      }
 
       final apiService = ApiService();
       final settlements = await apiService.finalizeTab(
