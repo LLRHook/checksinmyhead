@@ -32,8 +32,8 @@
 import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '/models/person.dart';
-import '/models/bill_item.dart';
+import 'package:checks_frontend/models/person.dart';
+import 'package:checks_frontend/models/bill_item.dart';
 
 /// Shows a dialog for custom splitting of bill items among participants.
 ///
@@ -177,12 +177,15 @@ void showCustomSplitDialog({
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
-                                    Text(
-                                      '\$${item.price.toStringAsFixed(2)}',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                        color: subtitleColor,
+                                    Semantics(
+                                      label: '${item.price.toStringAsFixed(2)} dollars',
+                                      child: Text(
+                                        '\$${item.price.toStringAsFixed(2)}',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                          color: subtitleColor,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -197,7 +200,9 @@ void showCustomSplitDialog({
                           Row(
                             children: [
                               // Visual indicator that changes color based on total percentage
-                              Container(
+                              Semantics(
+                                label: 'Total: ${totalPercentage.toStringAsFixed(0)} percent${(totalPercentage - 100.0).abs() < 0.01 ? ', ready to apply' : ', must equal 100 percent'}',
+                                child: Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 10,
                                   vertical: 6,
@@ -213,7 +218,7 @@ void showCustomSplitDialog({
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
-                                      totalPercentage == 100.0
+                                      (totalPercentage - 100.0).abs() < 0.01
                                           ? Icons
                                               .check_circle // Check mark when total is valid
                                           : Icons
@@ -238,6 +243,7 @@ void showCustomSplitDialog({
                                     ),
                                   ],
                                 ),
+                              ),
                               ),
 
                               const Spacer(),
@@ -386,7 +392,7 @@ void showCustomSplitDialog({
                           Expanded(
                             child: ElevatedButton(
                               onPressed:
-                                  totalPercentage == 100.0
+                                  (totalPercentage - 100.0).abs() < 0.01
                                       ? () {
                                         // Close dialog and call the assignment callback
                                         Navigator.pop(context);
@@ -496,7 +502,7 @@ void showCustomSplitDialog({
                                     brightness == Brightness.dark
                                         ? Colors.grey.shade400
                                         : Colors.grey.shade600,
-                                elevation: totalPercentage == 100.0 ? 2 : 0,
+                                elevation: (totalPercentage - 100.0).abs() < 0.01 ? 2 : 0,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14),
                                 ),
@@ -657,9 +663,12 @@ Widget _buildPersonSlider({
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  Text(
-                    '\$${individualAmount.toStringAsFixed(2)}',
-                    style: TextStyle(fontSize: 12, color: textColor),
+                  Semantics(
+                    label: '${individualAmount.toStringAsFixed(2)} dollars',
+                    child: Text(
+                      '\$${individualAmount.toStringAsFixed(2)}',
+                      style: TextStyle(fontSize: 12, color: textColor),
+                    ),
                   ),
                 ],
               ),
@@ -700,6 +709,7 @@ Widget _buildPersonSlider({
                       }
                       : null, // Disabled when already at 0%
               icon: const Icon(Icons.remove_circle_outline, size: 18),
+              tooltip: 'Decrease ${person.name} by 1 percent',
               color: percentage > 0 ? personColor : inactiveButtonColor,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
@@ -748,6 +758,7 @@ Widget _buildPersonSlider({
                   max: 100,
                   divisions: 100, // Creates 1% increments (100/100 = 1)
                   label: '${percentage.toStringAsFixed(0)}%',
+                  semanticFormatterCallback: (value) => '${value.toStringAsFixed(0)} percent for ${person.name}',
                   onChanged: onChanged,
                 ),
               ),
@@ -763,6 +774,7 @@ Widget _buildPersonSlider({
                       }
                       : null, // Disabled when already at 100%
               icon: const Icon(Icons.add_circle_outline, size: 18),
+              tooltip: 'Increase ${person.name} by 1 percent',
               color: percentage < 100 ? personColor : inactiveButtonColor,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
@@ -785,7 +797,11 @@ Widget _buildPersonSlider({
 
                   return Padding(
                     padding: const EdgeInsets.only(right: 6),
-                    child: TextButton(
+                    child: Semantics(
+                      label: 'Set ${person.name} to $presetValue percent',
+                      button: true,
+                      selected: isSelected,
+                      child: TextButton(
                       onPressed: () {
                         onChanged(presetValue.toDouble());
                         HapticFeedback.selectionClick();
@@ -829,6 +845,7 @@ Widget _buildPersonSlider({
                         ),
                       ),
                     ),
+                    ),
                   );
                 }).toList(),
           ),
@@ -864,7 +881,7 @@ Color _getStatusColor(double percentage, Brightness brightness) {
           : const Color(0xFFF97316); // Original orange for light mode
 
   // Return color based on percentage
-  if (percentage == 100.0) {
+  if ((percentage - 100.0).abs() < 0.01) {
     return successGreen; // Ready to submit
   } else if (percentage > 0) {
     return primaryBlue; // In progress

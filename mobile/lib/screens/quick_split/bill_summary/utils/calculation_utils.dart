@@ -15,8 +15,8 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import '/models/person.dart';
-import '/models/bill_item.dart';
+import 'package:checks_frontend/models/person.dart';
+import 'package:checks_frontend/models/bill_item.dart';
 
 /// CalculationUtils - Utility for calculating individual bill payments
 ///
@@ -66,7 +66,7 @@ class CalculationUtils {
     }
 
     // Calculate tax and tip proportionally to subtotal
-    final proportion = personSubtotal / subtotal;
+    final proportion = subtotal > 0 ? personSubtotal / subtotal : 0.0;
     final personTax = tax * proportion;
     final personTip = tipAmount * proportion;
 
