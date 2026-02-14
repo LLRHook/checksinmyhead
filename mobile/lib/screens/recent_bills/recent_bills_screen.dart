@@ -201,12 +201,14 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 // Drag handle at the top
-                Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withValues(alpha: .3),
-                    borderRadius: BorderRadius.circular(2),
+                ExcludeSemantics(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: .3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -306,9 +308,11 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
                             HapticFeedback.heavyImpact();
 
                             // Show loading state
-                            setState(() {
-                              _isLoading = true;
-                            });
+                            if (mounted) {
+                              setState(() {
+                                _isLoading = true;
+                              });
+                            }
 
                             // Delete all bills and reload the view
                             _billsManager.clearAllBills().then((_) {
@@ -422,6 +426,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
         iconTheme: IconThemeData(color: appBarIconColor),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+          tooltip: 'Go back',
           onPressed: () {
             HapticFeedback.selectionClick(); // Tactile feedback
             Navigator.pop(context);
@@ -431,6 +436,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
           // Delete all button
           IconButton(
             icon: const Icon(Icons.delete_forever_outlined),
+            tooltip: 'Delete all bills',
             color: colorScheme.error,
             onPressed: () {
               // Only enable if not currently loading and bills exist
@@ -445,6 +451,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
 
           // Refresh button with rotation animation
           IconButton(
+            tooltip: 'Refresh bills',
             icon: AnimatedBuilder(
               animation: _refreshAnimationController,
               builder: (context, child) {
@@ -536,7 +543,11 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
             ) // More visible in dark mode
             : colorScheme.primary.withValues(alpha: .3);
 
-    return Container(
+    return Semantics(
+      label: _isLoading
+          ? 'Recent bills, loading'
+          : '${_bills.length} recent ${_bills.length == 1 ? 'bill' : 'bills'}. Only your 30 latest bills are kept.',
+      child: Container(
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -621,6 +632,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
             ),
           ),
         ],
+      ),
       ),
     );
   }

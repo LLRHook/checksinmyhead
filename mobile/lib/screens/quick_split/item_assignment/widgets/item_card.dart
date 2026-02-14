@@ -20,8 +20,8 @@ import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_
 import 'package:checks_frontend/screens/quick_split/item_assignment/widgets/participant_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '/models/person.dart';
-import '/models/bill_item.dart';
+import 'package:checks_frontend/models/person.dart';
+import 'package:checks_frontend/models/bill_item.dart';
 
 /// An interactive card widget that displays a bill item and allows users to assign
 /// it to one or more participants in different ways.
@@ -683,7 +683,10 @@ class _ItemCardState extends State<ItemCard>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Card header - always visible part with item details
-          InkWell(
+          Semantics(
+            label: '${widget.item.name}, ${widget.item.price.toStringAsFixed(2)} dollars, ${isFullyAssigned ? 'fully assigned' : isAssigned ? '${widget.assignedPercentage.toStringAsFixed(0)} percent assigned' : 'unassigned'}',
+            button: true,
+            child: InkWell(
             onTap: _toggleExpand,
             borderRadius: BorderRadius.circular(16),
             splashColor: dominantColor.withValues(alpha: .05),
@@ -722,23 +725,25 @@ class _ItemCardState extends State<ItemCard>
                         ),
                       ),
 
-                      // Green checkmark dot for fully assigned items
+                      // Green checkmark dot for fully assigned items (decorative)
                       if (isFullyAssigned)
                         Positioned(
                           top: 0,
                           right: 0,
-                          child: Container(
-                            width: 12,
-                            height: 12,
-                            decoration: BoxDecoration(
-                              color: themeSuccessGreen,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color:
-                                    brightness == Brightness.dark
-                                        ? colorScheme.surface
-                                        : Colors.white,
-                                width: 2,
+                          child: ExcludeSemantics(
+                            child: Container(
+                              width: 12,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: themeSuccessGreen,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color:
+                                      brightness == Brightness.dark
+                                          ? colorScheme.surface
+                                          : Colors.white,
+                                  width: 2,
+                                ),
                               ),
                             ),
                           ),
@@ -809,6 +814,7 @@ class _ItemCardState extends State<ItemCard>
               ),
             ),
           ),
+          ),
 
           // Expandable section with participant selector and action buttons
           SizeTransition(
@@ -817,11 +823,13 @@ class _ItemCardState extends State<ItemCard>
               opacity: _fadeAnimation,
               child: Column(
                 children: [
-                  // Divider between header and expanded content
-                  Container(
-                    height: 1,
-                    color: dividerColor,
-                    margin: const EdgeInsets.only(bottom: 6),
+                  // Divider between header and expanded content (decorative)
+                  ExcludeSemantics(
+                    child: Container(
+                      height: 1,
+                      color: dividerColor,
+                      margin: const EdgeInsets.only(bottom: 6),
+                    ),
                   ),
 
                   // Participant selector with action buttons - tighter padding
@@ -1192,7 +1200,10 @@ class _ItemCardState extends State<ItemCard>
         // Done/Cancel button at the bottom
         Padding(
           padding: const EdgeInsets.only(top: 16),
-          child: GestureDetector(
+          child: Semantics(
+            label: _multiSelectMode ? 'Cancel multi-select' : 'Done assigning item',
+            button: true,
+            child: GestureDetector(
             onTap: () {
               // If in multi-select mode, cancel it
               if (_multiSelectMode) {
@@ -1224,6 +1235,7 @@ class _ItemCardState extends State<ItemCard>
               ),
             ),
           ),
+          ),
         ),
       ],
     );
@@ -1241,7 +1253,11 @@ class _ItemCardState extends State<ItemCard>
     required Color textColor,
     required bool isEnabled,
   }) {
-    return GestureDetector(
+    return Semantics(
+      label: label,
+      button: true,
+      enabled: isEnabled,
+      child: GestureDetector(
       onTap: () {
         if (isEnabled) {
           onTap();
@@ -1281,6 +1297,7 @@ class _ItemCardState extends State<ItemCard>
             ),
           ],
         ),
+      ),
       ),
     );
   }

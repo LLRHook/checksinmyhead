@@ -103,7 +103,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -121,6 +121,11 @@ class AppDatabase extends _$AppDatabase {
         await migrator.addColumn(tabs, tabs.memberToken);
         await migrator.addColumn(tabs, tabs.role);
         await migrator.addColumn(tabs, tabs.isRemote);
+      }
+      if (from < 6) {
+        await customStatement('CREATE INDEX IF NOT EXISTS idx_people_last_used ON people(last_used DESC)');
+        await customStatement('CREATE INDEX IF NOT EXISTS idx_recent_bills_created ON recent_bills(created_at DESC)');
+        await customStatement('CREATE INDEX IF NOT EXISTS idx_tabs_created ON tabs(created_at DESC)');
       }
     },
   );
@@ -289,7 +294,7 @@ class AppDatabase extends _$AppDatabase {
     final recentBillsResults =
         await (select(recentBills)
               ..where((b) => b.createdAt.isBiggerThanValue(oneMinuteAgo))
-              ..where((b) => b.total.equals(total))
+              ..where((b) => b.total.isBetweenValues(total - 0.01, total + 0.01))
               ..where((b) => b.participants.equals(participantsJson)))
             .get();
 

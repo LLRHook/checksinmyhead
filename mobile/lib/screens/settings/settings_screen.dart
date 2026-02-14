@@ -88,6 +88,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
 
       // Update state with retrieved values
+      if (!mounted) return;
       setState(() {
         _selectedPayments = savedPayments;
         _paymentIdentifiers = savedIdentifiers;
@@ -95,6 +96,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       });
     } catch (e) {
       // Handle error
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -139,6 +141,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       selectedMethods: _selectedPayments,
       identifiers: _paymentIdentifiers,
       onSave: (selectedMethods, identifiers) {
+        if (!mounted) return;
         setState(() {
           _selectedPayments = selectedMethods;
           _paymentIdentifiers = identifiers;
@@ -213,10 +216,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           child: Transform.translate(
                             offset: Offset(0, -screenHeight * 0.06),
 
-                            child: Image.asset(
+                            child: Semantics(
+                              label: 'Billington mascot',
+                              image: true,
+                              child: Image.asset(
                               'assets/images/billy.png',
                               width: 150,
                               height: 150,
+                              ),
                             ),
                           ),
                         ),
@@ -416,6 +423,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                     selectedMethods,
                                                     identifiers,
                                                   ) {
+                                                    if (!mounted) return;
                                                     setState(() {
                                                       _selectedPayments =
                                                           selectedMethods;
@@ -427,6 +435,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                 );
                                               },
                                               onDelete: () {
+                                                if (!mounted) return;
                                                 setState(() {
                                                   _selectedPayments.remove(
                                                     paymentMethod,
@@ -448,6 +457,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                     selectedMethods,
                                                     identifiers,
                                                   ) {
+                                                    if (!mounted) return;
                                                     setState(() {
                                                       _selectedPayments =
                                                           selectedMethods;

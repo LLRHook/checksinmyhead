@@ -19,8 +19,8 @@ import 'package:checks_frontend/screens/quick_split/item_assignment/dialogs/cust
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '/models/person.dart';
-import '/models/bill_item.dart';
+import 'package:checks_frontend/models/person.dart';
+import 'package:checks_frontend/models/bill_item.dart';
 import 'tutorial/tutorial_manager.dart';
 
 // Widgets
@@ -406,12 +406,15 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    '\$${widget.subtotal.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: valueColor,
+                  Semantics(
+                    label: '${widget.subtotal.toStringAsFixed(2)} dollars',
+                    child: Text(
+                      '\$${widget.subtotal.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: valueColor,
+                      ),
                     ),
                   ),
                 ],
@@ -430,15 +433,18 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    '\$${assignedAmount.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color:
-                          assignedPercentage >= 100
-                              ? successColor
-                              : colorScheme.primary,
+                  Semantics(
+                    label: '${assignedAmount.toStringAsFixed(2)} dollars assigned',
+                    child: Text(
+                      '\$${assignedAmount.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color:
+                            assignedPercentage >= 100
+                                ? successColor
+                                : colorScheme.primary,
+                      ),
                     ),
                   ),
                 ],
@@ -448,37 +454,39 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
 
           const SizedBox(height: 12),
 
-          // Progress bar
-          Stack(
-            children: [
-              // Background track
-              Container(
-                height: 6,
-                decoration: BoxDecoration(
-                  color: trackBgColor,
-                  borderRadius: BorderRadius.circular(3),
+          // Progress bar (decorative, percentage conveyed by text below)
+          ExcludeSemantics(
+            child: Stack(
+              children: [
+                // Background track
+                Container(
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: trackBgColor,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
                 ),
-              ),
 
-              // Progress indicator
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOutCubic,
-                height: 6,
-                width:
-                    MediaQuery.of(context).size.width *
-                    (assignedPercentage / 100) *
-                    ((MediaQuery.of(context).size.width - 40) /
-                        MediaQuery.of(context).size.width),
-                decoration: BoxDecoration(
-                  color:
-                      assignedPercentage >= 100
-                          ? successColor
-                          : colorScheme.primary,
-                  borderRadius: BorderRadius.circular(3),
+                // Progress indicator
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOutCubic,
+                  height: 6,
+                  width:
+                      MediaQuery.of(context).size.width *
+                      (assignedPercentage / 100) *
+                      ((MediaQuery.of(context).size.width - 40) /
+                          MediaQuery.of(context).size.width),
+                  decoration: BoxDecoration(
+                    color:
+                        assignedPercentage >= 100
+                            ? successColor
+                            : colorScheme.primary,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
 
           // Percentage text
@@ -486,15 +494,18 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
             alignment: Alignment.centerRight,
             child: Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                '${assignedPercentage.toStringAsFixed(0)}%',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color:
-                      assignedPercentage >= 100
-                          ? successColor
-                          : colorScheme.primary,
+              child: Semantics(
+                label: '${assignedPercentage.toStringAsFixed(0)} percent assigned',
+                child: Text(
+                  '${assignedPercentage.toStringAsFixed(0)}%',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color:
+                        assignedPercentage >= 100
+                            ? successColor
+                            : colorScheme.primary,
+                  ),
                 ),
               ),
             ),

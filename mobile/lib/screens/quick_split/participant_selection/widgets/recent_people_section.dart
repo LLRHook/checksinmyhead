@@ -19,7 +19,7 @@ import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_
 import 'package:checks_frontend/screens/quick_split/participant_selection/providers/participants_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '/models/person.dart';
+import 'package:checks_frontend/models/person.dart';
 
 /// Displays recently used people as interactive chips that can be quickly selected
 /// Uses a responsive wrap layout to handle variable-width names gracefully
@@ -57,7 +57,7 @@ class RecentPeopleSection extends StatelessWidget {
   ) {
     return Row(
       children: [
-        Icon(Icons.history, size: 18, color: labelColor),
+        ExcludeSemantics(child: Icon(Icons.history, size: 18, color: labelColor)),
         const SizedBox(width: 8),
         Text(
           "Recent People",
@@ -126,7 +126,11 @@ class _RecentPersonChip extends StatelessWidget {
 
     final selectedBgOpacity = isDark ? 0.25 : 0.12;
 
-    return InkWell(
+    return Semantics(
+      label: '${person.name}, ${isSelected ? 'selected' : 'not selected'}',
+      button: true,
+      selected: isSelected,
+      child: InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
       child: AnimatedContainer(
@@ -143,7 +147,7 @@ class _RecentPersonChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildSelectionIndicator(isDark),
+            ExcludeSemantics(child: _buildSelectionIndicator(isDark)),
             _buildChipText(
               isDark: isDark,
               isSelected: isSelected,
@@ -153,6 +157,7 @@ class _RecentPersonChip extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 
