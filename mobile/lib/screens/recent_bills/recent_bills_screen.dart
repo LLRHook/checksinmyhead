@@ -426,6 +426,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
         iconTheme: IconThemeData(color: appBarIconColor),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+          tooltip: 'Go back',
           onPressed: () {
             HapticFeedback.selectionClick(); // Tactile feedback
             Navigator.pop(context);
@@ -545,7 +546,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
     return Semantics(
       label: _isLoading
           ? 'Recent bills, loading'
-          : '${_bills.length} recent bills. Only your 30 latest bills are kept.',
+          : '${_bills.length} recent ${_bills.length == 1 ? 'bill' : 'bills'}. Only your 30 latest bills are kept.',
       child: Container(
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

@@ -20,7 +20,6 @@ class _TabsScreenState extends State<TabsScreen>
   late AnimationController _animController;
   final _tabManager = TabManager();
   final _prefsService = PreferencesService();
-  String? _clipboardUrl;
 
   @override
   void initState() {
@@ -30,18 +29,6 @@ class _TabsScreenState extends State<TabsScreen>
       duration: const Duration(milliseconds: 300),
     );
     _loadTabs();
-    _checkClipboard();
-  }
-
-  Future<void> _checkClipboard() async {
-    try {
-      final data = await Clipboard.getData(Clipboard.kTextPlain);
-      if (data?.text != null && data!.text!.contains('billingtonapp.vercel.app/t/')) {
-        if (mounted) {
-          setState(() => _clipboardUrl = data.text!.trim());
-        }
-      }
-    } catch (_) {}
   }
 
   @override
@@ -126,10 +113,7 @@ class _TabsScreenState extends State<TabsScreen>
       final tab = await _tabManager.joinTab(url, displayName);
 
       if (tab != null && mounted) {
-        setState(() {
-          _tabs.insert(0, tab);
-          _clipboardUrl = null;
-        });
+        setState(() => _tabs.insert(0, tab));
 
         final navResult = await Navigator.push(
           context,
@@ -342,54 +326,7 @@ class _TabsScreenState extends State<TabsScreen>
   }
 
   Widget _buildTabsListWithBanner() {
-    return Column(
-      children: [
-        if (_clipboardUrl != null) _buildClipboardBanner(),
-        Expanded(child: _buildTabsList()),
-      ],
-    );
-  }
-
-  Widget _buildClipboardBanner() {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.link, color: colorScheme.primary, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Billington link detected',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: colorScheme.onPrimaryContainer,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: () => _showJoinSheet(prefillUrl: _clipboardUrl),
-            child: const Text('Join'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.close, size: 18),
-            tooltip: 'Dismiss',
-            onPressed: () {
-              HapticFeedback.selectionClick();
-              setState(() => _clipboardUrl = null);
-            },
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-          ),
-        ],
-      ),
-    );
+    return _buildTabsList();
   }
 
   Widget _buildTabsList() {

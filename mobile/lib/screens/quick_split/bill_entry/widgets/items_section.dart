@@ -350,7 +350,10 @@ class _ItemsSectionState extends State<ItemsSection>
                   elevation: isSubtotalSet ? 2 : 0,
                   padding: const EdgeInsets.all(16),
                 ),
-                child: const Icon(Icons.add),
+                child: Semantics(
+                  label: 'Add item',
+                  child: const Icon(Icons.add),
+                ),
               ),
             ),
           ],
