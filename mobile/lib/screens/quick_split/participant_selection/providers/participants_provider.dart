@@ -32,13 +32,14 @@ class ParticipantsProvider extends ChangeNotifier {
   Map<String, Animation<double>> get listItemAnimations => _listItemAnimations;
   bool get hasParticipants => _participants.isNotEmpty;
 
-  /// Adds a new person with automatic color assignment and duplicate prevention
-  void addPerson(String name, {Color? color}) {
+  /// Adds a new person with automatic color assignment and duplicate prevention.
+  /// Returns true if the person was added, false if rejected (empty or duplicate).
+  bool addPerson(String name, {Color? color}) {
     final trimmedName = name.trim();
-    if (trimmedName.isEmpty) return;
+    if (trimmedName.isEmpty) return false;
 
     // Prevent duplicates (case-insensitive)
-    if (_isNameDuplicate(trimmedName)) return;
+    if (_isNameDuplicate(trimmedName)) return false;
 
     // Cycle through predefined colors when no color is specified
     final colors = ColorUtils.getParticipantColors();
@@ -52,6 +53,7 @@ class ParticipantsProvider extends ChangeNotifier {
 
     HapticFeedback.lightImpact();
     notifyListeners();
+    return true;
   }
 
   /// Adds an existing Person object if not already in the list
