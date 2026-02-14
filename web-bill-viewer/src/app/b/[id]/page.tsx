@@ -3,6 +3,7 @@ import BillHeader from "@/components/BillHeader";
 import BillBreakdown from "@/components/BillBreakdown";
 import PersonShare from "@/components/PersonShare";
 import PaymentDetails from "@/components/PaymentDetails";
+import DesktopLayout from "@/components/DesktopLayout";
 import { notFound } from "next/navigation";
 import { FaLock, FaTriangleExclamation } from "react-icons/fa6";
 
@@ -58,37 +59,38 @@ export default async function BillPage({
     bill.payment_methods?.find((pm) => pm.name?.toLowerCase().includes("venmo"))
       ?.identifier || null;
 
+  const sidebar = (
+    <>
+      <BillHeader name={bill.name} total={bill.total} />
+      <PaymentDetails paymentMethods={bill.payment_methods} />
+    </>
+  );
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[var(--secondary)] to-white dark:from-[var(--dark-bg)] dark:to-[var(--card-bg-dark)]">
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <BillHeader name={bill.name} total={bill.total} />
-
-        <div className="mb-6">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)] mb-3 px-1">
-            Individual Shares
-          </h2>
-          <div className="space-y-3">
-            {bill.person_shares.map((share) => (
-              <PersonShare
-                key={share.id}
-                personShare={share}
-                index={0}
-                hasVenmo={hasVenmo}
-              />
-            ))}
-          </div>
+    <DesktopLayout sidebar={sidebar}>
+      <div className="mb-6">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)] mb-3 px-1">
+          Individual Shares
+        </h2>
+        <div className="space-y-3">
+          {bill.person_shares.map((share) => (
+            <PersonShare
+              key={share.id}
+              personShare={share}
+              index={0}
+              hasVenmo={hasVenmo}
+            />
+          ))}
         </div>
-
-        <PaymentDetails paymentMethods={bill.payment_methods} />
-
-        <BillBreakdown
-          items={bill.items}
-          subtotal={bill.subtotal}
-          tax={bill.tax}
-          tipAmount={bill.tip_amount}
-          tipPercentage={bill.tip_percentage}
-        />
       </div>
-    </div>
+
+      <BillBreakdown
+        items={bill.items}
+        subtotal={bill.subtotal}
+        tax={bill.tax}
+        tipAmount={bill.tip_amount}
+        tipPercentage={bill.tip_percentage}
+      />
+    </DesktopLayout>
   );
 }
