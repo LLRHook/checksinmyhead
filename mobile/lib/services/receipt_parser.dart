@@ -67,26 +67,54 @@ class ParsedReceipt {
 ///
 /// Parsing strategy:
 /// 1. Extract every line of text from the recognized blocks.
-/// 2. For each line, look for a price pattern at the end (e.g. `$12.99` or `12.99`).
-/// 3. Classify lines with keywords (subtotal, tax, tip, total) as summary fields.
-/// 4. Remaining lines with prices are treated as menu items.
-/// 5. Filter noise lines (addresses, dates, card info, thank-you messages).
+/// 2. For each line, try specialized grocery patterns first (qty × unit = total).
+/// 3. Then fall back to price-at-end matching with keyword classification.
+/// 4. Use look-back to associate name-only lines with following price lines.
+/// 5. Stop extracting items once a payment section is detected.
+/// 6. Filter noise lines (addresses, dates, card info, store metadata).
 class ReceiptParser {
-  // Matches a dollar amount at the end of a line: optional $, digits with optional comma grouping, dot, cents
-  static final _priceAtEnd =
-      RegExp(r'\$?\s*(-?\d{1,3}(?:,\d{3})*\.\d{2})\s*$');
+  // ---------------------------------------------------------------------------
+  // Price patterns
+  // ---------------------------------------------------------------------------
 
-  // Matches a standalone price line (just a price, nothing else meaningful)
-  static final _standalonePriceOnly =
-      RegExp(r'^\s*\$?\s*-?\d{1,3}(?:,\d{3})*\.\d{2}\s*$');
+  /// Price at end of line: optional $, optional negative, comma-grouped digits,
+  /// dot, cents. Allows an optional trailing tax-flag letter (A, B, F, T, N, O)
+  /// and/or asterisk — common on grocery receipts.
+  static final _priceAtEnd = RegExp(
+    r'\$?\s*(-?\d{1,3}(?:,\d{3})*\.\d{2})\s*[A-Za-z]?\s*\*?\s*$',
+  );
 
-  // Keywords that indicate summary/total lines (case insensitive)
+  /// Standalone price-only line (just a dollar amount, nothing else).
+  static final _standalonePriceOnly = RegExp(
+    r'^\s*\$?\s*-?\d{1,3}(?:,\d{3})*\.\d{2}\s*[A-Za-z]?\s*\*?\s*$',
+  );
+
+  /// Grocery qty line: "4 @ 4.49  17.96 A *" — qty, unit price, line total.
+  static final _qtyTimesPrice = RegExp(
+    r'^\s*(\d+)\s*[x@]\s*\$?\s*(\d+\.\d{2})\s+\$?\s*(\d+\.\d{2})\s*[A-Za-z]?\s*\*?\s*$',
+  );
+
+  /// Grocery qty line without a printed total: "4 @ 4.49".
+  static final _qtyTimesPriceOnly = RegExp(
+    r'^\s*(\d+)\s*[x@]\s*\$?\s*(\d+\.\d{2})\s*$',
+  );
+
+  /// Combined name + qty + prices on one line:
+  /// "FL PRM ORIG PULP FR W 4 @ 4.49 17.96 A *"
+  static final _nameWithQtyPrice = RegExp(
+    r'^(.+?)\s+(\d+)\s*[x@]\s*\$?\s*\d+\.\d{2}\s+\$?\s*(\d+\.\d{2})\s*[A-Za-z]?\s*\*?\s*$',
+  );
+
+  // ---------------------------------------------------------------------------
+  // Summary-line keywords (case-insensitive)
+  // ---------------------------------------------------------------------------
+
   static final _subtotalKeywords = RegExp(
     r'\b(subtotal|sub\s*total|sub\s*ttl|food\s*total|item\s*total)\b',
     caseSensitive: false,
   );
   static final _taxKeywords = RegExp(
-    r'\b(tax|sales\s*tax|hst|gst|vat)\b',
+    r'\b(tax|sales\s*tax|hst|gst|vat|tx)\b',
     caseSensitive: false,
   );
   static final _tipKeywords = RegExp(
@@ -98,27 +126,81 @@ class ReceiptParser {
     caseSensitive: false,
   );
 
-  // Lines to skip entirely (noise)
+  // ---------------------------------------------------------------------------
+  // Noise patterns — lines to skip entirely
+  // ---------------------------------------------------------------------------
+
   static final _noisePatterns = [
-    RegExp(r'\b(visa|mastercard|amex|discover|debit|credit)\b', caseSensitive: false),
-    RegExp(r'\b(card\s*#|xxxx|approved|auth\s*code|trans\s*id)\b', caseSensitive: false),
+    // Payment cards & processing
+    RegExp(r'\b(visa|mastercard|amex|discover|debit|credit)\b',
+        caseSensitive: false),
+    RegExp(r'\b(card\s*#|xxxx|approved|auth\s*code|trans\s*id)\b',
+        caseSensitive: false),
+    RegExp(r'\bpin\s*(verified|ok|accepted)?\b', caseSensitive: false),
+    RegExp(r'\b(chip|contactless|cntctless|swipe|tap\s+to\s+pay)\b',
+        caseSensitive: false),
+    RegExp(r'\bentry\s*method\b', caseSensitive: false),
+    RegExp(r'\b(mid|aid|tvr|tsi|rrn|arn)\s*:', caseSensitive: false),
+    // Courtesy messages
     RegExp(r'\b(thank\s*you|come\s*again|welcome)\b', caseSensitive: false),
+    // Contact / web / surveys
     RegExp(r'\b(phone|tel|fax|www\.|http)\b', caseSensitive: false),
-    RegExp(r'\d{2}[/-]\d{2}[/-]\d{2,4}'), // dates
-    RegExp(r'\d{1,2}:\d{2}\s*(am|pm)?', caseSensitive: false), // times
-    RegExp(r'^\s*#?\d{3,}[\s-]'), // order/check numbers
+    RegExp(r'\b(survey|opinion|feedback)\b', caseSensitive: false),
+    RegExp(r'\bcustomer\s*service\b', caseSensitive: false),
+    // Dates and times
+    RegExp(r'\d{2}[/-]\d{2}[/-]\d{2,4}'),
+    RegExp(r'\d{1,2}:\d{2}\s*(am|pm)?', caseSensitive: false),
+    // Staff / table / metadata
     RegExp(r'\b(server|cashier|table|guest|check)\b', caseSensitive: false),
-    RegExp(r'\bchange\s*due\b', caseSensitive: false),
+    RegExp(r'\b(store|register|ticket)\s*[:#]', caseSensitive: false),
+    RegExp(r'\binvoice\b', caseSensitive: false),
+    // Order / receipt numbers (3+ digits at start of line)
+    RegExp(r'^\s*#?\d{3,}[\s-]'),
+    // Change / tender / cash
+    RegExp(r'\bchange\b', caseSensitive: false),
     RegExp(r'\btender\b', caseSensitive: false),
     RegExp(r'\bcash\b', caseSensitive: false),
+    // "Tax Paid" is a section header, not a tax line
+    RegExp(r'^\s*tax\s*paid\s*$', caseSensitive: false),
+    // Grocery section headers with slash: "FROZEN/DAIRY", "HEALTH/BEAUTY"
+    RegExp(r'^\s*[A-Z]{3,}/[A-Z]{3,}\s*$'),
+    // Standalone currency codes
+    RegExp(r'^\s*\$?\s*(usd|cad|eur|gbp)\$?\s*$', caseSensitive: false),
+    // Long digit sequences (barcodes, PINs)
+    RegExp(r'^\s*(pin\s*:?\s*)?\d{10,}\s*$', caseSensitive: false),
+    // Non-English common lines
+    RegExp(r'\btambi[eé]n\b', caseSensitive: false),
+    // "SALE" standalone
+    RegExp(r'^\s*sale\s*$', caseSensitive: false),
   ];
 
-  // Quantity prefix pattern: "2 x", "2x", "3 @", or bare "2 Tacos"
-  // Negative lookahead prevents stripping ordinals like "1st", "2nd", "3rd", "4th"
+  // ---------------------------------------------------------------------------
+  // Payment section markers — once seen, stop extracting items
+  // ---------------------------------------------------------------------------
+
+  static final _paymentSectionMarkers = [
+    RegExp(r'\b(visa|mastercard|amex|discover)\s*(credit|debit)?\b',
+        caseSensitive: false),
+    RegExp(r'^\s*sale\s*$', caseSensitive: false),
+    RegExp(r'\bpin\s*verified\b', caseSensitive: false),
+    RegExp(r'\bapproved\b', caseSensitive: false),
+    RegExp(r'\b(mid|aid)\s*:', caseSensitive: false),
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Item-name cleaning
+  // ---------------------------------------------------------------------------
+
+  /// Quantity prefix: "2 x", "2x", "3 @", or bare "2 Tacos".
+  /// Negative lookahead prevents stripping ordinals like "1st", "2nd".
   static final _qtyPrefix = RegExp(
     r'^(\d+)\s*[x@]\s*|^(\d+)\s+(?!st\b|nd\b|rd\b|th\b)',
     caseSensitive: false,
   );
+
+  // ---------------------------------------------------------------------------
+  // Public API
+  // ---------------------------------------------------------------------------
 
   /// Parse [RecognizedText] from ML Kit into a [ParsedReceipt].
   static ParsedReceipt parse(RecognizedText recognizedText) {
@@ -134,47 +216,183 @@ class ReceiptParser {
     double? tax;
     double? tip;
     double? total;
+    bool inPaymentSection = false;
+    // Look-back: stores the previous non-price, non-noise line so we can
+    // associate an item name with a price that appears on the next line.
+    String? pendingName;
 
-    for (final line in lines) {
-      // Skip noise lines
-      if (_isNoise(line)) continue;
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i];
 
-      // Try to extract a price from the end of the line
+      // Detect payment section entry
+      if (!inPaymentSection && _isPaymentSectionMarker(line)) {
+        inPaymentSection = true;
+      }
+
+      // Skip noise
+      if (_isNoise(line)) {
+        pendingName = null;
+        continue;
+      }
+
+      // ---------------------------------------------------------------
+      // 1. Combined name + qty line: "ITEM NAME 4 @ 4.49 17.96 A *"
+      // ---------------------------------------------------------------
+      final nameQtyMatch = _nameWithQtyPrice.firstMatch(line);
+      if (nameQtyMatch != null && !inPaymentSection) {
+        final lineTotal = double.tryParse(nameQtyMatch.group(3)!);
+        if (lineTotal != null && lineTotal > 0) {
+          final name = _cleanItemName(nameQtyMatch.group(1)!.trim());
+          if (name.isNotEmpty && name.length >= 2) {
+            items.add(ParsedItem(name: name, price: lineTotal));
+          }
+          pendingName = null;
+          continue;
+        }
+      }
+
+      // ---------------------------------------------------------------
+      // 2. Qty line with total: "4 @ 4.49  17.96 A *"
+      //    Item name comes from the previous line (look-back).
+      // ---------------------------------------------------------------
+      final qtyMatch = _qtyTimesPrice.firstMatch(line);
+      if (qtyMatch != null) {
+        if (!inPaymentSection) {
+          final lineTotal = double.tryParse(qtyMatch.group(3)!);
+          if (lineTotal != null && lineTotal > 0 && pendingName != null) {
+            final name = _cleanItemName(pendingName);
+            if (name.isNotEmpty && name.length >= 2) {
+              items.add(ParsedItem(name: name, price: lineTotal));
+            }
+          }
+        }
+        pendingName = null;
+        continue;
+      }
+
+      // ---------------------------------------------------------------
+      // 3. Qty line without total: "4 @ 4.49" — calculate total.
+      // ---------------------------------------------------------------
+      final qtyOnlyMatch = _qtyTimesPriceOnly.firstMatch(line);
+      if (qtyOnlyMatch != null) {
+        if (!inPaymentSection) {
+          final qty = int.tryParse(qtyOnlyMatch.group(1)!) ?? 1;
+          final unit = double.tryParse(qtyOnlyMatch.group(2)!);
+          if (unit != null && unit > 0 && pendingName != null) {
+            final lineTotal =
+                double.parse((qty * unit).toStringAsFixed(2));
+            final name = _cleanItemName(pendingName);
+            if (name.isNotEmpty && name.length >= 2) {
+              items.add(ParsedItem(name: name, price: lineTotal));
+            }
+          }
+        }
+        pendingName = null;
+        continue;
+      }
+
+      // ---------------------------------------------------------------
+      // 4. Standard price-at-end matching
+      // ---------------------------------------------------------------
       final priceMatch = _priceAtEnd.firstMatch(line);
-      if (priceMatch == null) continue;
+      if (priceMatch == null) {
+        // No price — store as potential item name for next line
+        final trimmed = line.trim();
+        if (trimmed.isNotEmpty && _looksLikeItemName(trimmed)) {
+          pendingName = trimmed;
+        } else {
+          pendingName = null;
+        }
+        continue;
+      }
 
       final price =
           double.tryParse(priceMatch.group(1)!.replaceAll(',', ''));
-      if (price == null || price == 0) continue;
+      if (price == null || price == 0) {
+        pendingName = null;
+        continue;
+      }
 
-      // Get the text before the price
       final textBefore = line.substring(0, priceMatch.start).trim();
 
-      // Classify by keyword
+      // ---------------------------------------------------------------
+      // 5. Keyword classification (works even in payment section so we
+      //    don't miss a total/tax printed after the card info).
+      // ---------------------------------------------------------------
+
+      // First check if this line itself has keywords
       if (_subtotalKeywords.hasMatch(line)) {
         subtotal = price;
-      } else if (_taxKeywords.hasMatch(line)) {
+        pendingName = null;
+        continue;
+      }
+      if (_taxKeywords.hasMatch(line)) {
         tax = price;
-      } else if (_tipKeywords.hasMatch(line)) {
+        pendingName = null;
+        continue;
+      }
+      if (_tipKeywords.hasMatch(line)) {
         tip = price;
-      } else if (_totalKeywords.hasMatch(line)) {
+        pendingName = null;
+        continue;
+      }
+      if (_totalKeywords.hasMatch(line)) {
         total = price;
-      } else if (textBefore.isNotEmpty && !_standalonePriceOnly.hasMatch(line)) {
-        // It's an item line — clean up the name
-        final name = _cleanItemName(textBefore);
-        if (name.isNotEmpty && name.length >= 2) {
-          items.add(ParsedItem(name: name, price: price));
+        pendingName = null;
+        continue;
+      }
+
+      // Check if pendingName (previous line) had a keyword — this handles
+      // ML Kit splitting "Subtotal" and "$12.99" onto separate lines.
+      if (pendingName != null && _classifyFromPending(pendingName)) {
+        if (_subtotalKeywords.hasMatch(pendingName)) {
+          subtotal = price;
+        } else if (_taxKeywords.hasMatch(pendingName)) {
+          tax = price;
+        } else if (_tipKeywords.hasMatch(pendingName)) {
+          tip = price;
+        } else if (_totalKeywords.hasMatch(pendingName)) {
+          total = price;
+        }
+        pendingName = null;
+        continue;
+      }
+
+      // ---------------------------------------------------------------
+      // 6. Item extraction (only before payment section)
+      // ---------------------------------------------------------------
+      if (!inPaymentSection) {
+        String? itemName;
+
+        // First try: use text before the price on this line
+        if (textBefore.isNotEmpty &&
+            !_standalonePriceOnly.hasMatch(line) &&
+            _looksLikeItemName(textBefore)) {
+          itemName = textBefore;
+        }
+
+        // Second try: look-back to previous line
+        if (itemName == null && pendingName != null) {
+          itemName = pendingName;
+        }
+
+        if (itemName != null) {
+          final name = _cleanItemName(itemName);
+          if (name.isNotEmpty && name.length >= 2) {
+            items.add(ParsedItem(name: name, price: price));
+          }
         }
       }
+
+      pendingName = null;
     }
 
-    // If we found a total but no subtotal, and we have items,
-    // try to infer subtotal from items sum
+    // Infer subtotal from item sum when not explicitly found
     if (subtotal == null && items.isNotEmpty) {
       final itemsSum = items.fold<double>(0, (sum, i) => sum + i.price);
       // Only set if it looks reasonable (total should be >= items sum)
       if (total == null || (total >= itemsSum - 0.02)) {
-        subtotal = itemsSum;
+        subtotal = double.parse(itemsSum.toStringAsFixed(2));
       }
     }
 
@@ -187,7 +405,11 @@ class ReceiptParser {
     );
   }
 
-  /// Extract all text lines from ML Kit's block/line hierarchy.
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+
+  /// Extract all text lines from ML Kit's block → line hierarchy.
   static List<String> _extractLines(RecognizedText recognizedText) {
     final lines = <String>[];
     for (final block in recognizedText.blocks) {
@@ -201,7 +423,7 @@ class ReceiptParser {
     return lines;
   }
 
-  /// Returns true if the line matches common receipt noise patterns.
+  /// Returns `true` if [line] matches any noise pattern.
   static bool _isNoise(String line) {
     for (final pattern in _noisePatterns) {
       if (pattern.hasMatch(line)) return true;
@@ -209,11 +431,43 @@ class ReceiptParser {
     return false;
   }
 
-  /// Clean up an item name by removing quantity prefixes and extra whitespace.
+  /// Returns `true` if [line] signals the start of the payment section.
+  static bool _isPaymentSectionMarker(String line) {
+    for (final marker in _paymentSectionMarkers) {
+      if (marker.hasMatch(line)) return true;
+    }
+    return false;
+  }
+
+  /// Returns `true` if [pendingName] contains a summary keyword.
+  static bool _classifyFromPending(String pending) {
+    return _subtotalKeywords.hasMatch(pending) ||
+        _taxKeywords.hasMatch(pending) ||
+        _tipKeywords.hasMatch(pending) ||
+        _totalKeywords.hasMatch(pending);
+  }
+
+  /// Returns `true` if [text] looks like a plausible item name rather than
+  /// a stray number, currency code, or price fragment.
+  static bool _looksLikeItemName(String text) {
+    // Must contain at least one letter
+    if (!RegExp(r'[a-zA-Z]').hasMatch(text)) return false;
+    // Reject standalone currency codes (USD, CAD, EUR, GBP)
+    if (RegExp(r'^\s*(usd|cad|eur|gbp)\$?\s*$', caseSensitive: false)
+        .hasMatch(text)) {
+      return false;
+    }
+    // Reject if it's just a dollar amount
+    if (RegExp(r'^\s*\$\s*\d+\.?\d*\s*$').hasMatch(text)) return false;
+    return true;
+  }
+
+  /// Clean an item name: strip qty prefixes, special chars, collapse spaces,
+  /// and title-case ALL-CAPS text.
   static String _cleanItemName(String raw) {
     var name = raw;
 
-    // Remove quantity prefix (e.g., "2 x " or "3@ ")
+    // Remove quantity prefix (e.g., "2 x " or "3@ " or bare "2 ")
     name = name.replaceFirst(_qtyPrefix, '');
 
     // Remove leading/trailing special characters
