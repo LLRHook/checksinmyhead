@@ -52,8 +52,8 @@ class _ScanReceiptButtonState extends State<ScanReceiptButton> {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(
       source: source,
-      maxWidth: 2048,
-      imageQuality: 85,
+      maxWidth: 3000,
+      imageQuality: 95,
     );
 
     if (pickedFile == null || !mounted) return;
@@ -64,7 +64,7 @@ class _ScanReceiptButtonState extends State<ScanReceiptButton> {
     try {
       // Run ML Kit text recognition
       final inputImage = InputImage.fromFile(File(pickedFile.path));
-      final textRecognizer = TextRecognizer();
+      final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
       final recognizedText = await textRecognizer.processImage(inputImage);
       await textRecognizer.close();
 
