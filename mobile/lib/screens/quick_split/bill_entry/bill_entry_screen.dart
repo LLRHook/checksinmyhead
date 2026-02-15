@@ -29,6 +29,7 @@ import 'models/bill_data.dart';
 
 // Widgets
 import 'widgets/participant_avatars.dart';
+import 'widgets/scan_receipt_button.dart';
 import 'widgets/bill_total_section.dart';
 import 'widgets/tip_options_section.dart';
 import 'widgets/items_section.dart';
@@ -298,6 +299,11 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
               children: [
                 // Horizontal scrollable list of participant avatars
                 ParticipantAvatars(participants: widget.participants),
+
+                const SizedBox(height: AppSpacing.large),
+
+                // Scan a receipt to auto-fill bill details
+                const ScanReceiptButton(),
 
                 const SizedBox(height: AppSpacing.large),
 
