@@ -15,6 +15,7 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import 'package:checks_frontend/services/receipt_parser.dart';
 import 'package:flutter/material.dart';
 import '/models/bill_item.dart';
 import '/models/person.dart';
@@ -167,5 +168,39 @@ class BillData extends ChangeNotifier {
     // Recalculate totals
     calculateItemsTotal();
     notifyListeners();
+  }
+
+  /// Populates bill fields from a scanned receipt.
+  ///
+  /// Clears existing items and replaces them with the parsed data.
+  /// Sets subtotal, tax, and tip from the scan results.
+  void populateFromScan(ParsedReceipt receipt) {
+    // Clear existing items
+    while (items.isNotEmpty) {
+      items.removeLast();
+    }
+
+    // Set subtotal
+    if (receipt.subtotal != null) {
+      subtotalController.text = receipt.subtotal!.toStringAsFixed(2);
+    }
+
+    // Set tax
+    if (receipt.tax != null) {
+      taxController.text = receipt.tax!.toStringAsFixed(2);
+    }
+
+    // Set tip if detected
+    if (receipt.tip != null) {
+      useCustomTipAmount = true;
+      customTipController.text = receipt.tip!.toStringAsFixed(2);
+    }
+
+    // Add all scanned items
+    for (final item in receipt.items) {
+      addItem(item.name, item.price);
+    }
+
+    calculateBill();
   }
 }
