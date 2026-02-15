@@ -84,7 +84,7 @@ class _ScanReceiptButtonState extends State<ScanReceiptButton> {
       if (!mounted) return;
 
       // Parse the recognized text
-      final parsed = ReceiptParser.parse(recognizedText);
+      final parsed = ReceiptParser.parseSpatial(recognizedText);
 
       setState(() => _isProcessing = false);
 
