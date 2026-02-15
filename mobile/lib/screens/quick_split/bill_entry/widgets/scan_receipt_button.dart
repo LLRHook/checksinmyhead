@@ -19,6 +19,7 @@ import 'dart:io';
 
 import 'package:checks_frontend/screens/quick_split/bill_entry/models/bill_data.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/widgets/receipt_review_sheet.dart';
+import 'package:checks_frontend/services/image_preprocessor.dart';
 import 'package:checks_frontend/services/receipt_parser.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -52,8 +53,8 @@ class _ScanReceiptButtonState extends State<ScanReceiptButton> {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(
       source: source,
-      maxWidth: 2048,
-      imageQuality: 85,
+      maxWidth: 3000,
+      imageQuality: 95,
     );
 
     if (pickedFile == null || !mounted) return;
@@ -61,17 +62,29 @@ class _ScanReceiptButtonState extends State<ScanReceiptButton> {
     setState(() => _isProcessing = true);
     HapticFeedback.mediumImpact();
 
+    String? preprocessedPath;
     try {
-      // Run ML Kit text recognition
-      final inputImage = InputImage.fromFile(File(pickedFile.path));
-      final textRecognizer = TextRecognizer();
-      final recognizedText = await textRecognizer.processImage(inputImage);
+      // Preprocess image for better OCR accuracy
+      preprocessedPath = await ImagePreprocessor.preprocess(pickedFile.path);
+
+      // Run ML Kit text recognition on preprocessed image (fall back to original)
+      final ocrPath = preprocessedPath ?? pickedFile.path;
+      final inputImage = InputImage.fromFile(File(ocrPath));
+      final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
+      var recognizedText = await textRecognizer.processImage(inputImage);
+
+      // If preprocessed image yielded nothing, retry with original
+      if (preprocessedPath != null && recognizedText.blocks.isEmpty) {
+        final originalImage = InputImage.fromFile(File(pickedFile.path));
+        recognizedText = await textRecognizer.processImage(originalImage);
+      }
+
       await textRecognizer.close();
 
       if (!mounted) return;
 
       // Parse the recognized text
-      final parsed = ReceiptParser.parse(recognizedText);
+      final parsed = ReceiptParser.parseSpatial(recognizedText);
 
       setState(() => _isProcessing = false);
 
@@ -100,6 +113,16 @@ class _ScanReceiptButtonState extends State<ScanReceiptButton> {
       if (mounted) {
         setState(() => _isProcessing = false);
         _showError('Failed to process receipt. Please try again.');
+      }
+    } finally {
+      // Clean up preprocessed temp file
+      if (preprocessedPath != null) {
+        try {
+          final tempFile = File(preprocessedPath);
+          if (await tempFile.exists()) {
+            await tempFile.parent.delete(recursive: true);
+          }
+        } catch (_) {}
       }
     }
   }

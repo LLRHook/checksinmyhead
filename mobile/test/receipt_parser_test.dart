@@ -214,6 +214,73 @@ void main() {
       expect(result.total, 37.98);
     });
 
+    test('parses prices with comma separators', () {
+      final lines = [
+        'Wagyu Steak 1,299.00',
+        'Wine Pairing \$2,500.50',
+        'Subtotal 3,799.50',
+        'Tax 323.96',
+        'Total 4,123.46',
+      ];
+
+      final result = ReceiptParser.parseLines(lines);
+
+      expect(result.items.length, 2);
+      expect(result.items[0].name, 'Wagyu Steak');
+      expect(result.items[0].price, 1299.00);
+      expect(result.items[1].name, 'Wine Pairing');
+      expect(result.items[1].price, 2500.50);
+      expect(result.subtotal, 3799.50);
+      expect(result.total, 4123.46);
+    });
+
+    test('handles negative amounts (discounts/refunds)', () {
+      final lines = [
+        'Burger 15.00',
+        'Promo Discount -3.00',
+        'Subtotal 12.00',
+        'Tax 1.02',
+        'Total 13.02',
+      ];
+
+      final result = ReceiptParser.parseLines(lines);
+
+      expect(result.items.length, 2);
+      expect(result.items[1].name, 'Promo Discount');
+      expect(result.items[1].price, -3.00);
+      expect(result.subtotal, 12.00);
+    });
+
+    test('handles bare quantity prefix without x/@', () {
+      final lines = [
+        '2 Tacos 8.00',
+        '3 Beers 18.00',
+        'Subtotal 26.00',
+      ];
+
+      final result = ReceiptParser.parseLines(lines);
+
+      expect(result.items.length, 2);
+      expect(result.items[0].name, 'Tacos');
+      expect(result.items[0].price, 8.00);
+      expect(result.items[1].name, 'Beers');
+      expect(result.items[1].price, 18.00);
+    });
+
+    test('does not strip ordinal numbers as quantity prefix', () {
+      final lines = [
+        '1st Place Trophy 25.00',
+        '2nd Entree Half Off 10.00',
+        'Subtotal 35.00',
+      ];
+
+      final result = ReceiptParser.parseLines(lines);
+
+      expect(result.items.length, 2);
+      expect(result.items[0].name, '1st Place Trophy');
+      expect(result.items[1].name, '2nd Entree Half Off');
+    });
+
     test('rejects items with very short names', () {
       final lines = [
         'A 5.00', // too short — single char
