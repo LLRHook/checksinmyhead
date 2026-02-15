@@ -17,6 +17,26 @@
 
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
+/// Lightweight DTO for text with bounding-box position.
+/// Avoids coupling tests to ML Kit types.
+class SpatialTextElement {
+  final String text;
+  final double left;
+  final double top;
+  final double right;
+  final double bottom;
+
+  const SpatialTextElement({
+    required this.text,
+    required this.left,
+    required this.top,
+    required this.right,
+    required this.bottom,
+  });
+
+  double get centerY => (top + bottom) / 2;
+}
+
 /// A single parsed item from a receipt (name + price).
 class ParsedItem {
   final String name;
@@ -52,11 +72,13 @@ class ParsedReceipt {
 /// 4. Remaining lines with prices are treated as menu items.
 /// 5. Filter noise lines (addresses, dates, card info, thank-you messages).
 class ReceiptParser {
-  // Matches a dollar amount at the end of a line: optional $, digits, dot, cents
-  static final _priceAtEnd = RegExp(r'\$?\s*(\d+\.\d{2})\s*$');
+  // Matches a dollar amount at the end of a line: optional $, digits with optional comma grouping, dot, cents
+  static final _priceAtEnd =
+      RegExp(r'\$?\s*(-?\d{1,3}(?:,\d{3})*\.\d{2})\s*$');
 
   // Matches a standalone price line (just a price, nothing else meaningful)
-  static final _standalonePriceOnly = RegExp(r'^\s*\$?\s*\d+\.\d{2}\s*$');
+  static final _standalonePriceOnly =
+      RegExp(r'^\s*\$?\s*-?\d{1,3}(?:,\d{3})*\.\d{2}\s*$');
 
   // Keywords that indicate summary/total lines (case insensitive)
   static final _subtotalKeywords = RegExp(
@@ -91,8 +113,12 @@ class ReceiptParser {
     RegExp(r'\bcash\b', caseSensitive: false),
   ];
 
-  // Quantity prefix pattern: "2 x", "2x", "3 @"
-  static final _qtyPrefix = RegExp(r'^(\d+)\s*[x@]\s*', caseSensitive: false);
+  // Quantity prefix pattern: "2 x", "2x", "3 @", or bare "2 Tacos"
+  // Negative lookahead prevents stripping ordinals like "1st", "2nd", "3rd", "4th"
+  static final _qtyPrefix = RegExp(
+    r'^(\d+)\s*[x@]\s*|^(\d+)\s+(?!st\b|nd\b|rd\b|th\b)',
+    caseSensitive: false,
+  );
 
   /// Parse [RecognizedText] from ML Kit into a [ParsedReceipt].
   static ParsedReceipt parse(RecognizedText recognizedText) {
@@ -117,8 +143,9 @@ class ReceiptParser {
       final priceMatch = _priceAtEnd.firstMatch(line);
       if (priceMatch == null) continue;
 
-      final price = double.tryParse(priceMatch.group(1)!);
-      if (price == null || price <= 0) continue;
+      final price =
+          double.tryParse(priceMatch.group(1)!.replaceAll(',', ''));
+      if (price == null || price == 0) continue;
 
       // Get the text before the price
       final textBefore = line.substring(0, priceMatch.start).trim();
@@ -206,5 +233,96 @@ class ReceiptParser {
     }
 
     return name.trim();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Spatial (bounding-box) parsing
+  // ---------------------------------------------------------------------------
+
+  /// Parse [RecognizedText] using spatial bounding-box data.
+  ///
+  /// Converts ML Kit TextLines into [SpatialTextElement]s, groups them into
+  /// rows by Y-overlap, reconstructs flat strings per row, and feeds them to
+  /// [parseLines]. Falls back to line-based parsing if spatial yields nothing.
+  static ParsedReceipt parseSpatial(RecognizedText recognizedText) {
+    final elements = <SpatialTextElement>[];
+    for (final block in recognizedText.blocks) {
+      for (final line in block.lines) {
+        final rect = line.boundingBox;
+        final text = line.text.trim();
+        if (text.isEmpty) continue;
+        elements.add(SpatialTextElement(
+          text: text,
+          left: rect.left,
+          top: rect.top,
+          right: rect.right,
+          bottom: rect.bottom,
+        ));
+      }
+    }
+
+    if (elements.isEmpty) {
+      return const ParsedReceipt(items: []);
+    }
+
+    final lines = reconstructLines(elements);
+    final result = parseLines(lines);
+
+    // Fall back to line-based extraction if spatial yielded nothing
+    if (result.items.isEmpty &&
+        result.subtotal == null &&
+        result.tax == null) {
+      final fallbackLines = _extractLines(recognizedText);
+      return parseLines(fallbackLines);
+    }
+
+    return result;
+  }
+
+  /// Group [SpatialTextElement]s into rows based on vertical overlap.
+  ///
+  /// Two elements are on the same row if the absolute difference between their
+  /// Y-centers is within [yTolerance] pixels.
+  static List<List<SpatialTextElement>> groupIntoRows(
+    List<SpatialTextElement> elements, {
+    double yTolerance = 10.0,
+  }) {
+    if (elements.isEmpty) return [];
+
+    // Sort by top position first
+    final sorted = List<SpatialTextElement>.from(elements)
+      ..sort((a, b) => a.top.compareTo(b.top));
+
+    final rows = <List<SpatialTextElement>>[];
+    var currentRow = <SpatialTextElement>[sorted.first];
+
+    for (var i = 1; i < sorted.length; i++) {
+      final current = sorted[i];
+      // Compare against the average centerY of the current row
+      final rowCenterY =
+          currentRow.fold<double>(0, (s, e) => s + e.centerY) /
+              currentRow.length;
+
+      if ((current.centerY - rowCenterY).abs() <= yTolerance) {
+        currentRow.add(current);
+      } else {
+        rows.add(currentRow);
+        currentRow = [current];
+      }
+    }
+    rows.add(currentRow);
+
+    return rows;
+  }
+
+  /// Convert grouped spatial rows into flat text strings.
+  ///
+  /// Within each row, elements are sorted left-to-right and joined with spaces.
+  static List<String> reconstructLines(List<SpatialTextElement> elements) {
+    final rows = groupIntoRows(elements);
+    return rows.map((row) {
+      row.sort((a, b) => a.left.compareTo(b.left));
+      return row.map((e) => e.text).join(' ');
+    }).toList();
   }
 }
