@@ -52,11 +52,13 @@ class ParsedReceipt {
 /// 4. Remaining lines with prices are treated as menu items.
 /// 5. Filter noise lines (addresses, dates, card info, thank-you messages).
 class ReceiptParser {
-  // Matches a dollar amount at the end of a line: optional $, digits, dot, cents
-  static final _priceAtEnd = RegExp(r'\$?\s*(\d+\.\d{2})\s*$');
+  // Matches a dollar amount at the end of a line: optional $, digits with optional comma grouping, dot, cents
+  static final _priceAtEnd =
+      RegExp(r'\$?\s*(-?\d{1,3}(?:,\d{3})*\.\d{2})\s*$');
 
   // Matches a standalone price line (just a price, nothing else meaningful)
-  static final _standalonePriceOnly = RegExp(r'^\s*\$?\s*\d+\.\d{2}\s*$');
+  static final _standalonePriceOnly =
+      RegExp(r'^\s*\$?\s*-?\d{1,3}(?:,\d{3})*\.\d{2}\s*$');
 
   // Keywords that indicate summary/total lines (case insensitive)
   static final _subtotalKeywords = RegExp(
@@ -91,8 +93,12 @@ class ReceiptParser {
     RegExp(r'\bcash\b', caseSensitive: false),
   ];
 
-  // Quantity prefix pattern: "2 x", "2x", "3 @"
-  static final _qtyPrefix = RegExp(r'^(\d+)\s*[x@]\s*', caseSensitive: false);
+  // Quantity prefix pattern: "2 x", "2x", "3 @", or bare "2 Tacos"
+  // Negative lookahead prevents stripping ordinals like "1st", "2nd", "3rd", "4th"
+  static final _qtyPrefix = RegExp(
+    r'^(\d+)\s*[x@]\s*|^(\d+)\s+(?!st\b|nd\b|rd\b|th\b)',
+    caseSensitive: false,
+  );
 
   /// Parse [RecognizedText] from ML Kit into a [ParsedReceipt].
   static ParsedReceipt parse(RecognizedText recognizedText) {
@@ -117,8 +123,9 @@ class ReceiptParser {
       final priceMatch = _priceAtEnd.firstMatch(line);
       if (priceMatch == null) continue;
 
-      final price = double.tryParse(priceMatch.group(1)!);
-      if (price == null || price <= 0) continue;
+      final price =
+          double.tryParse(priceMatch.group(1)!.replaceAll(',', ''));
+      if (price == null || price == 0) continue;
 
       // Get the text before the price
       final textBefore = line.substring(0, priceMatch.start).trim();
