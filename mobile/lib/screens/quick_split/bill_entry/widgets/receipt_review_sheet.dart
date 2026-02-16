@@ -55,6 +55,7 @@ class _ReceiptReviewSheetState extends State<ReceiptReviewSheet> {
               nameController: TextEditingController(text: i.name),
               priceController: TextEditingController(
                   text: i.price.toStringAsFixed(2)),
+              quantity: i.quantity,
             ))
         .toList();
     _subtotalController = TextEditingController(
@@ -114,7 +115,8 @@ class _ReceiptReviewSheetState extends State<ReceiptReviewSheet> {
       final name = item.nameController.text.trim();
       final price = double.tryParse(item.priceController.text.trim());
       if (name.isNotEmpty && price != null && price > 0) {
-        items.add(ParsedItem(name: name, price: price));
+        items.add(ParsedItem(
+            name: name, price: price, quantity: item.quantity));
       }
     }
 
@@ -125,6 +127,7 @@ class _ReceiptReviewSheetState extends State<ReceiptReviewSheet> {
     Navigator.pop(
       context,
       ParsedReceipt(
+        vendor: widget.receipt.vendor,
         items: items,
         subtotal: subtotal,
         tax: (tax != null && tax > 0) ? tax : null,
@@ -541,9 +544,11 @@ class _ReceiptReviewSheetState extends State<ReceiptReviewSheet> {
 class _EditableItem {
   final TextEditingController nameController;
   final TextEditingController priceController;
+  final int quantity;
 
   _EditableItem({
     required this.nameController,
     required this.priceController,
+    this.quantity = 1,
   });
 }
