@@ -3,6 +3,7 @@ package main
 import (
 	"backend/internal/bill"
 	"backend/internal/image"
+	"backend/internal/receipt"
 	"backend/internal/tab"
 	"backend/pkg/database"
 	"fmt"
@@ -41,6 +42,14 @@ func main() {
 
 	imgHandler := image.NewImageHandler(imgService, tabService, uploadDir)
 
+	// Receipt parsing (optional — degrades gracefully if GEMINI_API_KEY is not set)
+	var receiptHandler *receipt.Handler
+	if receiptService, err := receipt.NewService(); err != nil {
+		fmt.Printf("Receipt parsing disabled: %v\n", err)
+	} else {
+		receiptHandler = receipt.NewHandler(receiptService)
+	}
+
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
 		AllowAllOrigins:  true,
@@ -61,6 +70,10 @@ func main() {
 	r.PATCH("/api/tabs/:id/settlements/:settlementId", tabHandler.UpdateSettlement)
 	r.POST("/api/tabs/:id/join", tabHandler.JoinTab)
 	r.GET("/api/tabs/:id/members", tabHandler.GetMembers)
+
+	if receiptHandler != nil {
+		r.POST("/api/receipts/parse", receiptHandler.ParseReceipt)
+	}
 
 	r.POST("/api/tabs/:id/images", imgHandler.UploadImage)
 	r.GET("/api/tabs/:id/images", imgHandler.ListImages)
