@@ -307,6 +307,58 @@ Delete an image. Blocked if tab is finalized.
 
 ---
 
+## Receipt Parsing
+
+### `POST /api/receipts/parse`
+
+Parse a receipt image using Gemini 2.0 Flash Vision API. No authentication required.
+
+**Request**: Multipart form data with `image` field.
+
+- Max file size: 10MB
+- Accepted MIME types: `image/jpeg`, `image/png`, `image/webp`, `image/heic`, `image/heif`
+
+**Response** `200`
+```json
+{
+  "vendor": "Olive Garden",
+  "items": [
+    { "name": "Chicken Alfredo", "price": 18.99, "quantity": 1 },
+    { "name": "Breadsticks", "price": 0.00, "quantity": 1 }
+  ],
+  "subtotal": 18.99,
+  "tax": 1.52,
+  "tip": 0.00,
+  "total": 20.51
+}
+```
+
+**Fields**
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `vendor` | string | No | Store/restaurant name |
+| `items` | array | Yes | Always present (may be empty) |
+| `items[].name` | string | Yes | Cleaned to Title Case |
+| `items[].price` | number | Yes | Can be negative for discounts |
+| `items[].quantity` | number | Yes | Defaults to 1 |
+| `subtotal` | number | No | Omitted if not readable |
+| `tax` | number | No | Omitted if not readable |
+| `tip` | number | No | Omitted if not readable |
+| `total` | number | No | Omitted if not readable |
+
+**Errors**
+| Status | Body | Meaning |
+|--------|------|---------|
+| 400 | `{"error": "image field is required"}` | Missing `image` in form data |
+| 400 | `{"error": "unsupported image type: ..."}` | Invalid MIME type |
+| 400 | `{"error": "receipt parsing is not configured"}` | `GEMINI_API_KEY` not set |
+| 429 | `{"error": "rate limit exceeded"}` | Too many requests |
+| 500 | `{"error": "failed to parse receipt"}` | Gemini API or parsing failure |
+
+**Environment**: Requires `GEMINI_API_KEY` environment variable. Endpoint returns 400 gracefully if the key is not configured.
+
+---
+
 ## Static Files
 
 ### `GET /uploads/:filename`
