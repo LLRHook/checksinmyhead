@@ -138,6 +138,9 @@ internal/
 │   ├── handler.go      # HTTP handlers, request parsing, response formatting
 │   ├── service.go      # Business logic interface + implementation
 │   └── repository.go   # Database queries via GORM
+├── receipt/
+│   ├── handler.go      # Multipart upload, MIME validation
+│   └── service.go      # Gemini 2.0 Flash Vision API integration
 ├── tab/
 │   ├── handler.go      # Tab CRUD, join, finalize, settlements
 │   ├── service.go      # Finalization logic, member management
@@ -181,6 +184,9 @@ Users never create accounts. Access is controlled by 64-character cryptographic 
 
 ### Monolith Over Microservices
 A single `bill-service` binary handles all endpoints. The layered architecture (handler/service/repository) provides separation of concerns without the operational overhead of multiple services.
+
+### Gemini Vision for Receipt OCR
+Receipt scanning uses Google's Gemini 2.0 Flash model via the REST API. The mobile app captures and compresses the image (1500px, 75% quality), sends it to the backend, which base64-encodes it and calls Gemini with a structured JSON prompt. The model returns parsed items, prices, tax, tip, and totals directly as JSON (`responseMimeType: application/json`). This replaced an earlier on-device ML Kit OCR approach that couldn't handle the layout diversity of real receipts.
 
 ### Local-First Mobile
 The Flutter app maintains its own Drift database for offline access and fast reads. Backend sync is fire-and-forget — the app works without network access for local bills.

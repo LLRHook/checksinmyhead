@@ -57,6 +57,7 @@ billington/
 │   ├── cmd/bill-service/     # Main entrypoint
 │   ├── internal/             # Business logic (bill, tab, image)
 │   │   ├── bill/             #   Bill CRUD (handler/service/repo)
+│   │   ├── receipt/          #   Receipt OCR via Gemini Vision API
 │   │   ├── tab/              #   Tabs, members, settlements
 │   │   └── image/            #   Image upload + rate limiting
 │   ├── pkg/                  # Shared packages
@@ -113,6 +114,7 @@ cd mobile && flutter test
 | Web | Next.js 16 / React 19 | Server-rendered bill & tab viewer |
 | API | Go / Gin | REST API with layered architecture |
 | Database | PostgreSQL 17 | Primary data store via GORM |
+| AI/OCR | Gemini 2.0 Flash | Receipt scanning via Vision API |
 | Infra | Docker Compose | Local development environment |
 
 ## Roadmap
@@ -124,6 +126,7 @@ cd mobile && flutter test
 - [x] Finalization — Settlements, paid tracking
 - [x] Account-less Collaboration — Anonymous member tokens
 - [x] Documentation & Testing — Tests, docs, dev script
+- [x] Receipt OCR — Gemini 2.0 Flash Vision API for receipt scanning
 - [ ] Production Deployment — Cloud hosting, CDN, monitoring
 
 ## Documentation
