@@ -123,8 +123,9 @@ func (s *Service) Parse(imageData []byte, mimeType string) (*ParsedReceipt, erro
 			},
 		},
 		GenerationConfig: map[string]interface{}{
-			"temperature": 0.1,
-			"maxOutputTokens": 2048,
+			"temperature":     0.1,
+			"maxOutputTokens": 1024,
+			"responseMimeType": "application/json",
 		},
 	}
 
