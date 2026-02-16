@@ -39,35 +39,65 @@ type Service struct {
 // NewService creates a new receipt parsing service.
 // Reads OPENROUTER_API_KEY from environment.
 func NewService() (*Service, error) {
+	// PROVIDER-SWAP: To switch LLM providers (e.g. OpenRouter → Requesty),
+	// change the env var name and the endpoint URL below. Any OpenAI-compatible
+	// provider works — just swap the key + base URL.
 	apiKey := os.Getenv("OPENROUTER_API_KEY")
 	if apiKey == "" {
 		return nil, fmt.Errorf("OPENROUTER_API_KEY environment variable is required")
 	}
 	return &Service{
 		apiKey:   apiKey,
-		endpoint: "https://openrouter.ai/api/v1/chat/completions",
+		endpoint: "https://openrouter.ai/api/v1/chat/completions", // PROVIDER-SWAP: change this URL
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
 	}, nil
 }
 
-const receiptPrompt = `Parse this receipt image. Return ONLY valid JSON with this exact structure:
+const receiptPrompt = `You are a receipt-parsing expert. Extract EVERY piece of structured data from this receipt image with extreme precision.
+
+Return ONLY valid JSON — no explanation, no markdown, no text outside the JSON object.
+
+Schema (follow EXACTLY):
 {
-  "vendor": "store name",
-  "items": [{"name": "item name", "price": 1.99, "quantity": 1}],
+  "vendor": "Store Name",
+  "items": [
+    {"name": "Item Name", "price": 5.98, "quantity": 2}
+  ],
   "subtotal": 10.00,
   "tax": 0.80,
   "tip": 0.00,
   "total": 10.80
 }
-Rules:
-- Every price must be a number (not string)
-- Include ALL line items, even discounts (negative prices)
-- If quantity > 1, include it; default is 1
-- Omit fields you can't determine (except items, which is required)
-- For item names: clean up ALL-CAPS text to Title Case
-- Do NOT include payment info, card numbers, or non-item lines`
+
+CRITICAL RULES — read carefully:
+
+1. QUANTITIES: Receipts show quantity in many formats. You MUST detect all of them:
+   - "2 @ 2.99" or "2 x 2.99" or "2x2.99" → quantity: 2, price: 5.98 (total line price)
+   - "QTY: 4" or "QTY 4" on a separate line above/below the item
+   - A number before the item name like "3 Bananas  2.67" → quantity: 3
+   - "ORANGE JUICE  4.49" followed by "4 @ 4.49 = 17.96" → quantity: 4, price: 17.96
+   - If the line price is clearly quantity × unit price, set quantity and price = line total
+   - The "price" field must ALWAYS be the total price paid for that line (quantity × unit price), NOT the per-unit price
+
+2. PRICES: Every price must be a JSON number, never a string. Negative prices are valid (discounts, coupons).
+
+3. ITEM NAMES: Convert ALL-CAPS or abbreviated text to readable Title Case.
+   - "FL ORNG JUICE PULP FR" → "Florida Orange Juice Pulp Free"
+   - "GV 2% MILK GAL" → "Great Value 2% Milk Gallon"
+   - "BNLS SKNLS CHKN BRST" → "Boneless Skinless Chicken Breast"
+   Use your best judgment to expand common grocery/retail abbreviations.
+
+4. INCLUDE: Every printed line item — products, weighted items, discounts, coupons, bottle deposits.
+
+5. EXCLUDE: Payment methods, card numbers, change due, cashier info, barcodes, loyalty card numbers, transaction IDs.
+
+6. TOTALS: Extract subtotal, tax, tip, and total if visible. Omit any you cannot find. The "items" array is always required even if empty.
+
+7. VALIDATION: Before responding, verify that your item prices sum close to the subtotal or total. If they don't, re-examine the receipt for missed quantities or items.
+
+Think step by step: first identify the vendor, then read every line item carefully checking for quantity indicators, then extract totals.`
 
 // chatRequest is the OpenAI-compatible request body for OpenRouter.
 type chatRequest struct {
