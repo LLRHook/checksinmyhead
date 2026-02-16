@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestParseGeminiText_CleanJSON(t *testing.T) {
+func TestParseResponseText_CleanJSON(t *testing.T) {
 	input := `{
 		"vendor": "Walmart",
 		"items": [
@@ -19,7 +19,7 @@ func TestParseGeminiText_CleanJSON(t *testing.T) {
 		"total": 9.69
 	}`
 
-	receipt, err := parseGeminiText(input)
+	receipt, err := parseResponseText(input)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -53,10 +53,10 @@ func TestParseGeminiText_CleanJSON(t *testing.T) {
 	}
 }
 
-func TestParseGeminiText_MarkdownFences(t *testing.T) {
+func TestParseResponseText_MarkdownFences(t *testing.T) {
 	input := "```json\n{\"vendor\": \"Target\", \"items\": [{\"name\": \"Socks\", \"price\": 5.99}], \"total\": 6.47}\n```"
 
-	receipt, err := parseGeminiText(input)
+	receipt, err := parseResponseText(input)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -72,10 +72,10 @@ func TestParseGeminiText_MarkdownFences(t *testing.T) {
 	}
 }
 
-func TestParseGeminiText_EmptyItems(t *testing.T) {
+func TestParseResponseText_EmptyItems(t *testing.T) {
 	input := `{"vendor": "Unknown", "total": 5.00}`
 
-	receipt, err := parseGeminiText(input)
+	receipt, err := parseResponseText(input)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -88,16 +88,16 @@ func TestParseGeminiText_EmptyItems(t *testing.T) {
 	}
 }
 
-func TestParseGeminiText_InvalidJSON(t *testing.T) {
+func TestParseResponseText_InvalidJSON(t *testing.T) {
 	input := "This is not JSON at all"
 
-	_, err := parseGeminiText(input)
+	_, err := parseResponseText(input)
 	if err == nil {
 		t.Fatal("expected error for invalid JSON")
 	}
 }
 
-func TestParseGeminiText_NegativePrice(t *testing.T) {
+func TestParseResponseText_NegativePrice(t *testing.T) {
 	input := `{
 		"items": [
 			{"name": "Coffee", "price": 4.50},
@@ -106,7 +106,7 @@ func TestParseGeminiText_NegativePrice(t *testing.T) {
 		"total": 3.50
 	}`
 
-	receipt, err := parseGeminiText(input)
+	receipt, err := parseResponseText(input)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -119,7 +119,7 @@ func TestParseGeminiText_NegativePrice(t *testing.T) {
 	}
 }
 
-func TestServiceParse_MockGemini(t *testing.T) {
+func TestServiceParse_MockOpenRouter(t *testing.T) {
 	mockReceipt := ParsedReceipt{
 		Vendor: "Test Store",
 		Items: []ParsedItem{
@@ -129,28 +129,26 @@ func TestServiceParse_MockGemini(t *testing.T) {
 	total := 10.79
 	mockReceipt.Total = &total
 
-	// Create a mock Gemini server
+	receiptJSON, _ := json.Marshal(mockReceipt)
+
+	// Create a mock OpenRouter server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		receiptJSON, _ := json.Marshal(mockReceipt)
-		resp := geminiResponse{
-			Candidates: []struct {
-				Content struct {
-					Parts []struct {
-						Text string `json:"text"`
-					} `json:"parts"`
-				} `json:"content"`
+		// Verify auth header
+		if r.Header.Get("Authorization") != "Bearer test-key" {
+			t.Errorf("expected Bearer test-key, got %q", r.Header.Get("Authorization"))
+		}
+
+		resp := chatResponse{
+			Choices: []struct {
+				Message struct {
+					Content string `json:"content"`
+				} `json:"message"`
 			}{
 				{
-					Content: struct {
-						Parts []struct {
-							Text string `json:"text"`
-						} `json:"parts"`
+					Message: struct {
+						Content string `json:"content"`
 					}{
-						Parts: []struct {
-							Text string `json:"text"`
-						}{
-							{Text: string(receiptJSON)},
-						},
+						Content: string(receiptJSON),
 					},
 				},
 			},
@@ -160,22 +158,16 @@ func TestServiceParse_MockGemini(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// Create service with mock URL
 	svc := &Service{
 		apiKey:     "test-key",
+		endpoint:   server.URL,
 		httpClient: server.Client(),
 	}
 
-	// Override the URL by using the mock server
-	// We need to test parseGeminiText directly since we can't easily override the URL
-	// The mock server test validates the response parsing logic
-	receiptJSON, _ := json.Marshal(mockReceipt)
-	result, err := parseGeminiText(string(receiptJSON))
+	result, err := svc.Parse([]byte("fake-image-data"), "image/jpeg")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-
-	_ = svc // validate service creation works
 
 	if result.Vendor != "Test Store" {
 		t.Errorf("vendor = %q, want %q", result.Vendor, "Test Store")
@@ -186,9 +178,12 @@ func TestServiceParse_MockGemini(t *testing.T) {
 	if result.Items[0].Name != "Widget" {
 		t.Errorf("items[0].name = %q, want %q", result.Items[0].Name, "Widget")
 	}
+	if result.Total == nil || *result.Total != 10.79 {
+		t.Errorf("total = %v, want 10.79", result.Total)
+	}
 }
 
-func TestParseGeminiText_RestaurantReceipt(t *testing.T) {
+func TestParseResponseText_RestaurantReceipt(t *testing.T) {
 	input := `{
 		"vendor": "Olive Garden",
 		"items": [
@@ -202,7 +197,7 @@ func TestParseGeminiText_RestaurantReceipt(t *testing.T) {
 		"total": 39.38
 	}`
 
-	receipt, err := parseGeminiText(input)
+	receipt, err := parseResponseText(input)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

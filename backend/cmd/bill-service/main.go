@@ -42,7 +42,7 @@ func main() {
 
 	imgHandler := image.NewImageHandler(imgService, tabService, uploadDir)
 
-	// Receipt parsing (optional — degrades gracefully if GEMINI_API_KEY is not set)
+	// Receipt parsing (optional — degrades gracefully if OPENROUTER_API_KEY is not set)
 	var receiptHandler *receipt.Handler
 	if receiptService, err := receipt.NewService(); err != nil {
 		fmt.Printf("Receipt parsing disabled: %v\n", err)
