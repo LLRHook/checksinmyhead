@@ -260,8 +260,8 @@ Transform Billington from a local Flutter app into a Splitwise competitor with g
   - [ ] Unequal splitting (weighted shares)
   - [ ] Settlement optimization (minimize transactions)
 
-- [ ] **AI/Automation**
-  - [ ] OCR for receipt scanning (GPT-4 Vision)
+- [🔄] **AI/Automation**
+  - [X] OCR for receipt scanning (Gemini 2.0 Flash Vision API)
   - [ ] Auto-categorization of expenses
   - [ ] Smart splitting suggestions
 
@@ -295,6 +295,10 @@ Billington-backend/
 │   │   ├── handler.go             ✅ Complete
 │   │   ├── service.go             ✅ Complete
 │   │   └── repository.go          ✅ Complete
+│   ├── receipt/                    ✅ Complete
+│   │   ├── handler.go             ✅ (Multipart upload, MIME validation)
+│   │   ├── service.go             ✅ (Gemini 2.0 Flash Vision API)
+│   │   └── service_test.go        ✅ (9 test cases)
 │   ├── tab/                       ✅ Complete
 │   │   ├── handler.go             ✅ (Join, Members, attribution)
 │   │   ├── service.go             ✅ (JoinTab, GetMembers)
@@ -343,13 +347,13 @@ Billington-backend/
           │                      │
     ┌─────┴──────────────────────┴─────┐
     │      Backend API (bill-service)  │
-    │    /api/bills  /api/tabs         │
+    │  /api/bills  /api/tabs  /api/receipts │
     └─────────┬───────────┬────────────┘
               │           │
-        ┌─────▼─────┐   ┌─▼──────────┐
-        │PostgreSQL │   │CloudFlare  │
-        │ Database  │   │R2 (images) │
-        └───────────┘   └────────────┘
+        ┌─────▼─────┐   ┌─▼──────────┐   ┌──────────────┐
+        │PostgreSQL │   │CloudFlare  │   │Gemini 2.0    │
+        │ Database  │   │R2 (images) │   │Flash (OCR)   │
+        └───────────┘   └────────────┘   └──────────────┘
 ```
 
 ---
