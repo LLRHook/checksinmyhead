@@ -53,6 +53,7 @@ class ItemAssignmentScreen extends StatefulWidget {
   // Whether tip was entered as a custom amount rather than percentage
   final bool isCustomTipAmount;
   final Person? initialBirthdayPerson;
+  final String? scannedVendor;
 
   const ItemAssignmentScreen({
     super.key,
@@ -65,6 +66,7 @@ class ItemAssignmentScreen extends StatefulWidget {
     required this.tipPercentage,
     required this.isCustomTipAmount,
     this.initialBirthdayPerson,
+    this.scannedVendor,
   });
 
   @override
@@ -229,6 +231,7 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
               birthdayPerson: provider.birthdayPerson,
               tipPercentage: widget.tipPercentage,
               isCustomTipAmount: widget.isCustomTipAmount,
+              scannedVendor: widget.scannedVendor,
             ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           const begin = Offset(1.0, 0.0);
