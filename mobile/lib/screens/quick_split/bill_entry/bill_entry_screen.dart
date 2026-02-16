@@ -225,6 +225,7 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
               tipPercentage: _billData.tipPercentage,
               isCustomTipAmount: _billData.useCustomTipAmount,
               initialBirthdayPerson: _billData.birthdayPerson,
+              scannedVendor: _billData.scannedVendor,
             ),
       ),
     );

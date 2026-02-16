@@ -54,6 +54,7 @@ class BillSummaryScreen extends StatefulWidget {
   final Person? birthdayPerson;
   final double tipPercentage;
   final bool isCustomTipAmount;
+  final String? scannedVendor;
 
   const BillSummaryScreen({
     super.key,
@@ -67,6 +68,7 @@ class BillSummaryScreen extends StatefulWidget {
     this.birthdayPerson,
     this.tipPercentage = 0.0,
     this.isCustomTipAmount = false,
+    this.scannedVendor,
   });
 
   @override
@@ -81,6 +83,15 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
   void initState() {
     super.initState();
 
+    // Build bill name from scanned vendor if available
+    String billName = '';
+    if (widget.scannedVendor != null && widget.scannedVendor!.isNotEmpty) {
+      final now = DateTime.now();
+      final date =
+          '${now.month.toString().padLeft(2, '0')}/${now.day.toString().padLeft(2, '0')}';
+      billName = '${widget.scannedVendor} $date';
+    }
+
     // Consolidate bill data into a single object for easier passing to widgets
     _summaryData = BillSummaryData(
       participants: widget.participants,
@@ -93,6 +104,7 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
       birthdayPerson: widget.birthdayPerson,
       tipPercentage: widget.tipPercentage,
       isCustomTipAmount: widget.isCustomTipAmount,
+      billName: billName,
     );
   }
 

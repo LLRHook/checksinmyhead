@@ -56,6 +56,9 @@ class BillData extends ChangeNotifier {
   double itemsTotal = 0.0;
   double animatedItemsTotal = 0.0;
 
+  // Vendor name from receipt scan (used to pre-fill bill name)
+  String? scannedVendor;
+
   // Birthday person tracking
   Person? _birthdayPerson;
   Person? get birthdayPerson => _birthdayPerson;
@@ -196,9 +199,20 @@ class BillData extends ChangeNotifier {
       customTipController.text = receipt.tip!.toStringAsFixed(2);
     }
 
-    // Add all scanned items
+    // Store vendor for bill name pre-fill
+    scannedVendor = receipt.vendor;
+
+    // Add scanned items, expanding quantity > 1 into individual line items
     for (final item in receipt.items) {
-      addItem(item.name, item.price);
+      if (item.quantity > 1) {
+        final perUnit =
+            double.parse((item.price / item.quantity).toStringAsFixed(2));
+        for (int i = 0; i < item.quantity; i++) {
+          addItem(item.name, perUnit);
+        }
+      } else {
+        addItem(item.name, item.price);
+      }
     }
 
     calculateBill();
