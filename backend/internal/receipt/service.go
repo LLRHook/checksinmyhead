@@ -29,103 +29,131 @@ type ParsedReceipt struct {
 	Total    *float64     `json:"total,omitempty"`
 }
 
-// Service handles receipt parsing via the Gemini Vision API.
+// Service handles receipt parsing via the OpenRouter API.
 type Service struct {
 	apiKey     string
+	endpoint   string
 	httpClient *http.Client
 }
 
 // NewService creates a new receipt parsing service.
-// Reads GEMINI_API_KEY from environment.
+// Reads OPENROUTER_API_KEY from environment.
 func NewService() (*Service, error) {
-	apiKey := os.Getenv("GEMINI_API_KEY")
+	// PROVIDER-SWAP: To switch LLM providers (e.g. OpenRouter → Requesty),
+	// change the env var name and the endpoint URL below. Any OpenAI-compatible
+	// provider works — just swap the key + base URL.
+	apiKey := os.Getenv("OPENROUTER_API_KEY")
 	if apiKey == "" {
-		return nil, fmt.Errorf("GEMINI_API_KEY environment variable is required")
+		return nil, fmt.Errorf("OPENROUTER_API_KEY environment variable is required")
 	}
 	return &Service{
-		apiKey: apiKey,
+		apiKey:   apiKey,
+		endpoint: "https://openrouter.ai/api/v1/chat/completions", // PROVIDER-SWAP: change this URL
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
 	}, nil
 }
 
-const geminiPrompt = `Parse this receipt image. Return ONLY valid JSON with this exact structure:
+const receiptPrompt = `You are a receipt-parsing expert. Extract EVERY piece of structured data from this receipt image with extreme precision.
+
+Return ONLY valid JSON — no explanation, no markdown, no text outside the JSON object.
+
+Schema (follow EXACTLY):
 {
-  "vendor": "store name",
-  "items": [{"name": "item name", "price": 1.99, "quantity": 1}],
+  "vendor": "Store Name",
+  "items": [
+    {"name": "Item Name", "price": 5.98, "quantity": 2}
+  ],
   "subtotal": 10.00,
   "tax": 0.80,
   "tip": 0.00,
   "total": 10.80
 }
-Rules:
-- Every price must be a number (not string)
-- Include ALL line items, even discounts (negative prices)
-- If quantity > 1, include it; default is 1
-- Omit fields you can't determine (except items, which is required)
-- For item names: clean up ALL-CAPS text to Title Case
-- Do NOT include payment info, card numbers, or non-item lines`
 
-// geminiRequest is the request body for Gemini's generateContent endpoint.
-type geminiRequest struct {
-	Contents         []geminiContent        `json:"contents"`
-	GenerationConfig map[string]interface{} `json:"generationConfig,omitempty"`
+CRITICAL RULES — read carefully:
+
+1. QUANTITIES: Receipts show quantity in many formats. You MUST detect all of them:
+   - "2 @ 2.99" or "2 x 2.99" or "2x2.99" → quantity: 2, price: 5.98 (total line price)
+   - "QTY: 4" or "QTY 4" on a separate line above/below the item
+   - A number before the item name like "3 Bananas  2.67" → quantity: 3
+   - "ORANGE JUICE  4.49" followed by "4 @ 4.49 = 17.96" → quantity: 4, price: 17.96
+   - If the line price is clearly quantity × unit price, set quantity and price = line total
+   - The "price" field must ALWAYS be the total price paid for that line (quantity × unit price), NOT the per-unit price
+
+2. PRICES: Every price must be a JSON number, never a string. Negative prices are valid (discounts, coupons).
+
+3. ITEM NAMES: Convert ALL-CAPS or abbreviated text to readable Title Case.
+   - "FL ORNG JUICE PULP FR" → "Florida Orange Juice Pulp Free"
+   - "GV 2% MILK GAL" → "Great Value 2% Milk Gallon"
+   - "BNLS SKNLS CHKN BRST" → "Boneless Skinless Chicken Breast"
+   Use your best judgment to expand common grocery/retail abbreviations.
+
+4. INCLUDE: Every printed line item — products, weighted items, discounts, coupons, bottle deposits.
+
+5. EXCLUDE: Payment methods, card numbers, change due, cashier info, barcodes, loyalty card numbers, transaction IDs.
+
+6. TOTALS: Extract subtotal, tax, tip, and total if visible. Omit any you cannot find. The "items" array is always required even if empty.
+
+7. VALIDATION: Before responding, verify that your item prices sum close to the subtotal or total. If they don't, re-examine the receipt for missed quantities or items.
+
+Think step by step: first identify the vendor, then read every line item carefully checking for quantity indicators, then extract totals.`
+
+// chatRequest is the OpenAI-compatible request body for OpenRouter.
+type chatRequest struct {
+	Model    string        `json:"model"`
+	Messages []chatMessage `json:"messages"`
 }
 
-type geminiContent struct {
-	Parts []geminiPart `json:"parts"`
+type chatMessage struct {
+	Role    string        `json:"role"`
+	Content []contentPart `json:"content"`
 }
 
-type geminiPart struct {
-	Text       string          `json:"text,omitempty"`
-	InlineData *geminiInlineData `json:"inlineData,omitempty"`
+type contentPart struct {
+	Type     string    `json:"type"`
+	Text     string    `json:"text,omitempty"`
+	ImageURL *imageURL `json:"image_url,omitempty"`
 }
 
-type geminiInlineData struct {
-	MimeType string `json:"mimeType"`
-	Data     string `json:"data"`
+type imageURL struct {
+	URL string `json:"url"`
 }
 
-// geminiResponse is the response from Gemini's generateContent endpoint.
-type geminiResponse struct {
-	Candidates []struct {
-		Content struct {
-			Parts []struct {
-				Text string `json:"text"`
-			} `json:"parts"`
-		} `json:"content"`
-	} `json:"candidates"`
+// chatResponse is the OpenAI-compatible response from OpenRouter.
+type chatResponse struct {
+	Choices []struct {
+		Message struct {
+			Content string `json:"content"`
+		} `json:"message"`
+	} `json:"choices"`
 	Error *struct {
 		Message string `json:"message"`
 		Code    int    `json:"code"`
 	} `json:"error"`
 }
 
-// Parse sends a receipt image to Gemini Flash and returns structured receipt data.
+// Parse sends a receipt image to OpenRouter and returns structured receipt data.
 func (s *Service) Parse(imageData []byte, mimeType string) (*ParsedReceipt, error) {
 	b64Image := base64.StdEncoding.EncodeToString(imageData)
+	dataURL := fmt.Sprintf("data:%s;base64,%s", mimeType, b64Image)
 
-	reqBody := geminiRequest{
-		Contents: []geminiContent{
+	reqBody := chatRequest{
+		Model: "openrouter/free",
+		Messages: []chatMessage{
 			{
-				Parts: []geminiPart{
+				Role: "user",
+				Content: []contentPart{
 					{
-						InlineData: &geminiInlineData{
-							MimeType: mimeType,
-							Data:     b64Image,
-						},
+						Type:     "image_url",
+						ImageURL: &imageURL{URL: dataURL},
 					},
 					{
-						Text: geminiPrompt,
+						Type: "text",
+						Text: receiptPrompt,
 					},
 				},
 			},
-		},
-		GenerationConfig: map[string]interface{}{
-			"temperature":     0.1,
-			"maxOutputTokens": 1024,
-			"responseMimeType": "application/json",
 		},
 	}
 
@@ -134,14 +162,16 @@ func (s *Service) Parse(imageData []byte, mimeType string) (*ParsedReceipt, erro
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	url := fmt.Sprintf(
-		"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=%s",
-		s.apiKey,
-	)
-
-	resp, err := s.httpClient.Post(url, "application/json", bytes.NewReader(jsonBody))
+	req, err := http.NewRequest("POST", s.endpoint, bytes.NewReader(jsonBody))
 	if err != nil {
-		return nil, fmt.Errorf("gemini API request failed: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+s.apiKey)
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("OpenRouter API request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -150,34 +180,34 @@ func (s *Service) Parse(imageData []byte, mimeType string) (*ParsedReceipt, erro
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 
-	if resp.StatusCode == http.StatusTooManyRequests {
-		return nil, fmt.Errorf("rate_limited")
-	}
-
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("gemini API returned status %d: %s", resp.StatusCode, string(respBody))
+		fmt.Printf("[receipt] OpenRouter returned status %d: %s\n", resp.StatusCode, truncate(string(respBody), 500))
+		if resp.StatusCode == http.StatusTooManyRequests {
+			return nil, fmt.Errorf("rate_limited")
+		}
+		return nil, fmt.Errorf("OpenRouter API returned status %d: %s", resp.StatusCode, string(respBody))
 	}
 
-	var geminiResp geminiResponse
-	if err := json.Unmarshal(respBody, &geminiResp); err != nil {
-		return nil, fmt.Errorf("failed to parse gemini response: %w", err)
+	var chatResp chatResponse
+	if err := json.Unmarshal(respBody, &chatResp); err != nil {
+		return nil, fmt.Errorf("failed to parse OpenRouter response: %w", err)
 	}
 
-	if geminiResp.Error != nil {
-		return nil, fmt.Errorf("gemini error: %s", geminiResp.Error.Message)
+	if chatResp.Error != nil {
+		return nil, fmt.Errorf("OpenRouter error: %s", chatResp.Error.Message)
 	}
 
-	if len(geminiResp.Candidates) == 0 || len(geminiResp.Candidates[0].Content.Parts) == 0 {
-		return nil, fmt.Errorf("gemini returned empty response")
+	if len(chatResp.Choices) == 0 {
+		return nil, fmt.Errorf("OpenRouter returned empty response")
 	}
 
-	rawText := geminiResp.Candidates[0].Content.Parts[0].Text
-	return parseGeminiText(rawText)
+	rawText := chatResp.Choices[0].Message.Content
+	return parseResponseText(rawText)
 }
 
-// parseGeminiText extracts JSON from Gemini's response text, which may
+// parseResponseText extracts JSON from the model's response text, which may
 // include markdown code fences.
-func parseGeminiText(text string) (*ParsedReceipt, error) {
+func parseResponseText(text string) (*ParsedReceipt, error) {
 	cleaned := text
 
 	// Strip markdown code fences if present
