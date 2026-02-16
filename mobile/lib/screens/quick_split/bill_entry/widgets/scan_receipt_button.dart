@@ -15,21 +15,18 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import 'dart:io';
-
 import 'package:checks_frontend/screens/quick_split/bill_entry/models/bill_data.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/widgets/receipt_review_sheet.dart';
-import 'package:checks_frontend/services/image_preprocessor.dart';
+import 'package:checks_frontend/services/receipt_api_service.dart';
 import 'package:checks_frontend/services/receipt_parser.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 /// A button that triggers receipt scanning via camera or gallery,
-/// processes the image with ML Kit on-device OCR, and lets the user
-/// review parsed results before applying to BillData.
+/// uploads the image to the backend for AI-powered parsing, and lets
+/// the user review parsed results before applying to BillData.
 class ScanReceiptButton extends StatefulWidget {
   const ScanReceiptButton({super.key});
 
@@ -39,9 +36,9 @@ class ScanReceiptButton extends StatefulWidget {
 
 class _ScanReceiptButtonState extends State<ScanReceiptButton> {
   bool _isProcessing = false;
+  final _receiptApi = ReceiptApiService();
 
   Future<void> _scanReceipt() async {
-    // Pick image source
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -62,30 +59,10 @@ class _ScanReceiptButtonState extends State<ScanReceiptButton> {
     setState(() => _isProcessing = true);
     HapticFeedback.mediumImpact();
 
-    String? preprocessedPath;
     try {
-      // Preprocess image for better OCR accuracy
-      preprocessedPath = await ImagePreprocessor.preprocess(pickedFile.path);
-
-      // Run ML Kit text recognition on preprocessed image (fall back to original)
-      final ocrPath = preprocessedPath ?? pickedFile.path;
-      final inputImage = InputImage.fromFile(File(ocrPath));
-      final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
-      var recognizedText = await textRecognizer.processImage(inputImage);
-
-      // If preprocessed image yielded nothing, retry with original
-      if (preprocessedPath != null && recognizedText.blocks.isEmpty) {
-        final originalImage = InputImage.fromFile(File(pickedFile.path));
-        recognizedText = await textRecognizer.processImage(originalImage);
-      }
-
-      await textRecognizer.close();
+      final parsed = await _receiptApi.parseReceipt(pickedFile.path);
 
       if (!mounted) return;
-
-      // Parse the recognized text
-      final parsed = ReceiptParser.parseSpatial(recognizedText);
-
       setState(() => _isProcessing = false);
 
       if (parsed.items.isEmpty &&
@@ -95,7 +72,6 @@ class _ScanReceiptButtonState extends State<ScanReceiptButton> {
         return;
       }
 
-      // Show review sheet
       if (!mounted) return;
       final confirmed = await showModalBottomSheet<ParsedReceipt>(
         context: context,
@@ -109,20 +85,15 @@ class _ScanReceiptButtonState extends State<ScanReceiptButton> {
         billData.populateFromScan(confirmed);
         HapticFeedback.heavyImpact();
       }
+    } on ReceiptParseException catch (e) {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        _showError(e.message);
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _isProcessing = false);
         _showError('Failed to process receipt. Please try again.');
-      }
-    } finally {
-      // Clean up preprocessed temp file
-      if (preprocessedPath != null) {
-        try {
-          final tempFile = File(preprocessedPath);
-          if (await tempFile.exists()) {
-            await tempFile.parent.delete(recursive: true);
-          }
-        } catch (_) {}
       }
     }
   }
