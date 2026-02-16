@@ -50,8 +50,9 @@ class _ScanReceiptButtonState extends State<ScanReceiptButton> {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(
       source: source,
-      maxWidth: 3000,
-      imageQuality: 95,
+      maxWidth: 1500,
+      imageQuality: 75,
+      preferredCameraDevice: CameraDevice.rear,
     );
 
     if (pickedFile == null || !mounted) return;
