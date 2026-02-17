@@ -29,26 +29,21 @@ type ParsedReceipt struct {
 	Total    *float64     `json:"total,omitempty"`
 }
 
-// Service handles receipt parsing via the OpenRouter API.
+// Service handles receipt parsing via the Anthropic Messages API.
 type Service struct {
 	apiKey     string
-	endpoint   string
 	httpClient *http.Client
 }
 
 // NewService creates a new receipt parsing service.
-// Reads OPENROUTER_API_KEY from environment.
+// Reads ANTHROPIC_API_KEY from environment.
 func NewService() (*Service, error) {
-	// PROVIDER-SWAP: To switch LLM providers (e.g. OpenRouter → Requesty),
-	// change the env var name and the endpoint URL below. Any OpenAI-compatible
-	// provider works — just swap the key + base URL.
-	apiKey := os.Getenv("OPENROUTER_API_KEY")
+	apiKey := os.Getenv("ANTHROPIC_API_KEY")
 	if apiKey == "" {
-		return nil, fmt.Errorf("OPENROUTER_API_KEY environment variable is required")
+		return nil, fmt.Errorf("ANTHROPIC_API_KEY environment variable is required")
 	}
 	return &Service{
-		apiKey:   apiKey,
-		endpoint: "https://openrouter.ai/api/v1/chat/completions", // PROVIDER-SWAP: change this URL
+		apiKey: apiKey,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -99,54 +94,64 @@ CRITICAL RULES — read carefully:
 
 Think step by step: first identify the vendor, then read every line item carefully checking for quantity indicators, then extract totals.`
 
-// chatRequest is the OpenAI-compatible request body for OpenRouter.
-type chatRequest struct {
-	Model    string        `json:"model"`
-	Messages []chatMessage `json:"messages"`
+const anthropicEndpoint = "https://api.anthropic.com/v1/messages"
+const anthropicModel = "claude-sonnet-4-5-20250929"
+const anthropicVersion = "2023-06-01"
+
+// messagesRequest is the Anthropic Messages API request body.
+type messagesRequest struct {
+	Model     string           `json:"model"`
+	MaxTokens int              `json:"max_tokens"`
+	Messages  []anthropicMsg   `json:"messages"`
 }
 
-type chatMessage struct {
-	Role    string        `json:"role"`
-	Content []contentPart `json:"content"`
+type anthropicMsg struct {
+	Role    string              `json:"role"`
+	Content []anthropicContent  `json:"content"`
 }
 
-type contentPart struct {
-	Type     string    `json:"type"`
-	Text     string    `json:"text,omitempty"`
-	ImageURL *imageURL `json:"image_url,omitempty"`
+type anthropicContent struct {
+	Type      string          `json:"type"`
+	Text      string          `json:"text,omitempty"`
+	Source    *imageSource    `json:"source,omitempty"`
 }
 
-type imageURL struct {
-	URL string `json:"url"`
+type imageSource struct {
+	Type      string `json:"type"`
+	MediaType string `json:"media_type"`
+	Data      string `json:"data"`
 }
 
-// chatResponse is the OpenAI-compatible response from OpenRouter.
-type chatResponse struct {
-	Choices []struct {
-		Message struct {
-			Content string `json:"content"`
-		} `json:"message"`
-	} `json:"choices"`
+// messagesResponse is the Anthropic Messages API response body.
+type messagesResponse struct {
+	Content []struct {
+		Type string `json:"type"`
+		Text string `json:"text"`
+	} `json:"content"`
 	Error *struct {
+		Type    string `json:"type"`
 		Message string `json:"message"`
-		Code    int    `json:"code"`
 	} `json:"error"`
 }
 
-// Parse sends a receipt image to OpenRouter and returns structured receipt data.
+// Parse sends a receipt image to Anthropic and returns structured receipt data.
 func (s *Service) Parse(imageData []byte, mimeType string) (*ParsedReceipt, error) {
 	b64Image := base64.StdEncoding.EncodeToString(imageData)
-	dataURL := fmt.Sprintf("data:%s;base64,%s", mimeType, b64Image)
 
-	reqBody := chatRequest{
-		Model: "openrouter/free",
-		Messages: []chatMessage{
+	reqBody := messagesRequest{
+		Model:     anthropicModel,
+		MaxTokens: 4096,
+		Messages: []anthropicMsg{
 			{
 				Role: "user",
-				Content: []contentPart{
+				Content: []anthropicContent{
 					{
-						Type:     "image_url",
-						ImageURL: &imageURL{URL: dataURL},
+						Type: "image",
+						Source: &imageSource{
+							Type:      "base64",
+							MediaType: mimeType,
+							Data:      b64Image,
+						},
 					},
 					{
 						Type: "text",
@@ -162,16 +167,17 @@ func (s *Service) Parse(imageData []byte, mimeType string) (*ParsedReceipt, erro
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", s.endpoint, bytes.NewReader(jsonBody))
+	req, err := http.NewRequest("POST", anthropicEndpoint, bytes.NewReader(jsonBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+s.apiKey)
+	req.Header.Set("x-api-key", s.apiKey)
+	req.Header.Set("anthropic-version", anthropicVersion)
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("OpenRouter API request failed: %w", err)
+		return nil, fmt.Errorf("Anthropic API request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -181,27 +187,27 @@ func (s *Service) Parse(imageData []byte, mimeType string) (*ParsedReceipt, erro
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		fmt.Printf("[receipt] OpenRouter returned status %d: %s\n", resp.StatusCode, truncate(string(respBody), 500))
+		fmt.Printf("[receipt] Anthropic returned status %d: %s\n", resp.StatusCode, truncate(string(respBody), 500))
 		if resp.StatusCode == http.StatusTooManyRequests {
 			return nil, fmt.Errorf("rate_limited")
 		}
-		return nil, fmt.Errorf("OpenRouter API returned status %d: %s", resp.StatusCode, string(respBody))
+		return nil, fmt.Errorf("Anthropic API returned status %d: %s", resp.StatusCode, string(respBody))
 	}
 
-	var chatResp chatResponse
-	if err := json.Unmarshal(respBody, &chatResp); err != nil {
-		return nil, fmt.Errorf("failed to parse OpenRouter response: %w", err)
+	var msgResp messagesResponse
+	if err := json.Unmarshal(respBody, &msgResp); err != nil {
+		return nil, fmt.Errorf("failed to parse Anthropic response: %w", err)
 	}
 
-	if chatResp.Error != nil {
-		return nil, fmt.Errorf("OpenRouter error: %s", chatResp.Error.Message)
+	if msgResp.Error != nil {
+		return nil, fmt.Errorf("Anthropic error: %s", msgResp.Error.Message)
 	}
 
-	if len(chatResp.Choices) == 0 {
-		return nil, fmt.Errorf("OpenRouter returned empty response")
+	if len(msgResp.Content) == 0 {
+		return nil, fmt.Errorf("Anthropic returned empty response")
 	}
 
-	rawText := chatResp.Choices[0].Message.Content
+	rawText := msgResp.Content[0].Text
 	return parseResponseText(rawText)
 }
 
