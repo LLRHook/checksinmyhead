@@ -99,7 +99,7 @@ class ShareUtils {
       text.writeln('───────────────');
     }
 
-    if (!showBreakdown) {
+    if (showBreakdown) {
       text.writeln('BREAKDOWN:');
       text.writeln('Subtotal: \$${subtotal.toStringAsFixed(2)}');
       text.writeln('Tax: \$${tax.toStringAsFixed(2)}');
@@ -252,7 +252,7 @@ class ShareUtils {
       text.writeln('───────────────');
     }
 
-    if (!showBreakdown) {
+    if (showBreakdown) {
       text.writeln('BREAKDOWN:');
       text.writeln('Subtotal: \$${subtotal.toStringAsFixed(2)}');
       text.writeln('Tax: \$${tax.toStringAsFixed(2)}');

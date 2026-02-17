@@ -198,7 +198,9 @@ class ParticipantSelector extends StatelessWidget {
                       isSelected: isSelected,
                       isBirthdayPerson: isBirthdayPerson,
                       onTap: () => onPersonTap(person),
-                      onLongPress: () => onBirthdayToggle(person),
+                      onLongPress: participants.length > 1
+                          ? () => onBirthdayToggle(person)
+                          : null,
                       assignedPercentage: percentage,
                     ),
                   ),

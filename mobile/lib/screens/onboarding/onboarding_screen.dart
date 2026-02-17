@@ -15,6 +15,9 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import 'package:checks_frontend/database/database_provider.dart';
+import 'package:checks_frontend/models/person.dart';
+import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_utils.dart';
 import 'package:checks_frontend/screens/settings/services/preferences_service.dart';
 import 'package:checks_frontend/screens/settings/payment_method_sheet.dart';
 import 'package:flutter/material.dart';
@@ -63,6 +66,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final name = _displayNameController.text.trim();
     if (name.isNotEmpty) {
       await _prefsService.saveDisplayName(name);
+      await DatabaseProvider.db.addPersonToRecent(
+        Person(name: name, color: ColorUtils.getParticipantColors().first),
+      );
     }
 
     if (_selectedPayments.isNotEmpty) {
