@@ -23,7 +23,7 @@ import 'package:http/http.dart' as http;
 import 'package:logger/web.dart';
 import 'package:checks_frontend/services/receipt_parser.dart';
 
-/// Service that sends receipt images to the backend for parsing via Gemini Vision.
+/// Service that sends receipt images to the backend for parsing via Anthropic Claude.
 class ReceiptApiService {
   static const _timeout = Duration(seconds: 45);
   static final _logger = Logger();
@@ -57,22 +57,49 @@ class ReceiptApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         return ParsedReceipt.fromJson(data);
-      } else if (response.statusCode == 429) {
-        throw ReceiptParseException(
-          'Too many scans right now. Please wait a moment and try again.',
-          isRateLimit: true,
-        );
-      } else {
-        _logger.d('Receipt parse failed: ${response.statusCode} ${response.body}');
-        throw ReceiptParseException(
-          'Could not parse receipt. Try a clearer photo.',
-        );
+      }
+
+      // Parse error message from backend response
+      String serverMessage = '';
+      try {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        serverMessage = body['error'] as String? ?? '';
+      } catch (_) {}
+
+      _logger.d('Receipt parse failed: ${response.statusCode} ${response.body}');
+
+      switch (response.statusCode) {
+        case 429:
+          throw ReceiptParseException(
+            serverMessage.isNotEmpty ? serverMessage : 'Too many scans. Please wait a moment and try again.',
+            isRateLimit: true,
+          );
+        case 413:
+          throw ReceiptParseException(
+            serverMessage.isNotEmpty ? serverMessage : 'Image is too large. Try a lower resolution photo.',
+          );
+        case 503:
+          throw ReceiptParseException(
+            serverMessage.isNotEmpty ? serverMessage : 'Scanner is temporarily unavailable. Please try again later.',
+          );
+        case 422:
+          throw ReceiptParseException(
+            serverMessage.isNotEmpty ? serverMessage : 'Could not read the receipt. Try a clearer photo.',
+          );
+        default:
+          throw ReceiptParseException(
+            serverMessage.isNotEmpty ? serverMessage : 'Something went wrong (${response.statusCode}). Please try again.',
+          );
       }
     } on ReceiptParseException {
       rethrow;
     } on TimeoutException {
       throw ReceiptParseException(
         'Request timed out. Check your connection and try again.',
+      );
+    } on SocketException {
+      throw ReceiptParseException(
+        'Could not connect to server. Check your connection.',
       );
     } catch (e) {
       _logger.d('Receipt parse error: $e');
