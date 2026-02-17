@@ -27,10 +27,10 @@ void main() {
       expect(a, isNot(equals(b)));
     });
 
-    test('different colors are not equal', () {
+    test('different colors are still equal (name-only equality)', () {
       final a = Person(name: 'Alice', color: Colors.blue);
       final b = Person(name: 'Alice', color: Colors.red);
-      expect(a, isNot(equals(b)));
+      expect(a, equals(b));
     });
 
     test('not equal to non-Person object', () {

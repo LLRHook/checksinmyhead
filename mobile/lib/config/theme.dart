@@ -163,6 +163,26 @@ class AppTheme {
         ),
       ),
     ),
+
+    dialogTheme: DialogThemeData(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      titleTextStyle: TextStyle(
+        color: Color(0xFF1A1A1A),
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+      ),
+      contentTextStyle: TextStyle(
+        color: Color(0xFF1A1A1A).withValues(alpha: 0.9),
+        fontSize: 14,
+      ),
+    ),
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+    ),
   );
 
   static final ThemeData darkTheme = ThemeData(

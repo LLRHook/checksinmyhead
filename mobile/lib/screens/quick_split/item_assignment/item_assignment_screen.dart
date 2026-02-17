@@ -290,45 +290,50 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
           ),
       child: Consumer<AssignmentProvider>(
         builder: (context, provider, _) {
-          return Scaffold(
-            appBar: AssignmentAppBar(
-              onBackPressed: () {
-                // Return updated item assignments and birthday person when navigating back
-                Navigator.pop(
-                  context,
-                  AssignmentResult(
-                    items: provider.items,
-                    birthdayPerson: provider.birthdayPerson,
-                  ),
-                );
-              },
-              onHelpPressed:
-                  _tutorialManagerInitialized
-                      ? () => _tutorialManager.showTutorial(context)
-                      : null,
-              showHelpButton: _tutorialManagerInitialized,
-            ),
-            body: Column(
-              children: [
-                // Unassigned amount banner at top when needed
-                if (provider.unassignedAmount > 0.01)
-                  UnassignedAmountBanner(
-                    unassignedAmount: provider.unassignedAmount,
-                    onSplitEvenly: provider.splitUnassignedAmountEvenly,
-                  ),
-
-                // Bill information panel
-                _buildBillInfoPanel(provider),
-
-                // Items list
-                Expanded(child: _buildItemsListView(provider)),
-
-                // Bottom control bar with continue button
-                AssignmentBottomBar(
-                  totalBill: widget.total,
-                  onContinueTap: () => _continueToSummary(provider),
+          return PopScope(
+            canPop: false,
+            onPopInvokedWithResult: (didPop, result) {
+              if (didPop) return;
+              Navigator.pop(
+                context,
+                AssignmentResult(
+                  items: provider.items,
+                  birthdayPerson: provider.birthdayPerson,
                 ),
-              ],
+              );
+            },
+            child: Scaffold(
+              appBar: AssignmentAppBar(
+                onBackPressed: () {
+                  Navigator.pop(
+                    context,
+                    AssignmentResult(
+                      items: provider.items,
+                      birthdayPerson: provider.birthdayPerson,
+                    ),
+                  );
+                },
+                onHelpPressed:
+                    _tutorialManagerInitialized
+                        ? () => _tutorialManager.showTutorial(context)
+                        : null,
+                showHelpButton: _tutorialManagerInitialized,
+              ),
+              body: Column(
+                children: [
+                  if (provider.unassignedAmount > 0.01)
+                    UnassignedAmountBanner(
+                      unassignedAmount: provider.unassignedAmount,
+                      onSplitEvenly: provider.splitUnassignedAmountEvenly,
+                    ),
+                  _buildBillInfoPanel(provider),
+                  Expanded(child: _buildItemsListView(provider)),
+                  AssignmentBottomBar(
+                    totalBill: widget.total,
+                    onContinueTap: () => _continueToSummary(provider),
+                  ),
+                ],
+              ),
             ),
           );
         },

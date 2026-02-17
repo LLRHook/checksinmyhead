@@ -52,7 +52,7 @@ class ParticipantAvatar extends StatelessWidget {
   final VoidCallback onTap;
 
   /// Callback when the avatar is long-pressed
-  final VoidCallback onLongPress;
+  final VoidCallback? onLongPress;
 
   final double? assignedPercentage;
 

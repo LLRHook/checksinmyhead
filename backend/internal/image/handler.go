@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -39,7 +40,15 @@ func NewImageHandler(service ImageService, tabService tab.TabService, uploadDir 
 // Returns the tab on success or writes an error response and returns nil.
 func (h *ImageHandler) validateTabToken(c *gin.Context) *models.Tab {
 	id := c.Param("id")
-	urlToken := c.Query("t")
+
+	// Try Authorization header first, fall back to query param
+	urlToken := ""
+	authHeader := c.GetHeader("Authorization")
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		urlToken = strings.TrimPrefix(authHeader, "Bearer ")
+	} else {
+		urlToken = c.Query("t")
+	}
 
 	idUint, err := strconv.ParseUint(id, 10, 32)
 	if err != nil {
@@ -150,7 +159,11 @@ func (h *ImageHandler) UploadImage(c *gin.Context) {
 	url := fmt.Sprintf("/uploads/tabs/%d/%s", t.ID, filename)
 
 	uploadedBy := c.Query("uploaded_by")
-	if memberToken := c.Query("m"); memberToken != "" {
+	memberToken := c.GetHeader("X-Member-Token")
+	if memberToken == "" {
+		memberToken = c.Query("m")
+	}
+	if memberToken != "" {
 		if member, err := h.tabService.GetMemberByToken(memberToken); err == nil {
 			uploadedBy = member.DisplayName
 		}

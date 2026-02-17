@@ -31,7 +31,16 @@ func NewTabHandler(service TabService) *TabHandler {
 // Returns the tab on success or writes an error and returns nil.
 func (h *TabHandler) getTabAndValidate(c *gin.Context) *models.Tab {
 	id := c.Param("id")
-	urlToken := c.Query("t")
+
+	// Try Authorization header first, fall back to query param
+	token := ""
+	authHeader := c.GetHeader("Authorization")
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		token = strings.TrimPrefix(authHeader, "Bearer ")
+	} else {
+		token = c.Query("t")
+	}
+	urlToken := token
 
 	if id == "" {
 		c.JSON(400, gin.H{"error": "bad id"})
@@ -62,9 +71,12 @@ func (h *TabHandler) getTabAndValidate(c *gin.Context) *models.Tab {
 	return tab
 }
 
-// getMemberFromQuery reads ?m= and returns the member or nil.
+// getMemberFromQuery reads the member token from X-Member-Token header or ?m= query param.
 func (h *TabHandler) getMemberFromQuery(c *gin.Context) *models.TabMember {
-	memberToken := c.Query("m")
+	memberToken := c.GetHeader("X-Member-Token")
+	if memberToken == "" {
+		memberToken = c.Query("m")
+	}
 	if memberToken == "" {
 		return nil
 	}

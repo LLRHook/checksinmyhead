@@ -3,34 +3,36 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:checks_frontend/services/api_config.dart';
 import 'package:checks_frontend/models/bill_item.dart';
 import 'package:checks_frontend/models/person.dart';
-import 'package:logger/web.dart';
+
+/// Exception thrown when an API request fails.
+class ApiException implements Exception {
+  final String message;
+  final int? statusCode;
+  final bool isTimeout;
+  final bool isNetworkError;
+
+  ApiException(
+    this.message, {
+    this.statusCode,
+    this.isTimeout = false,
+    this.isNetworkError = false,
+  });
+
+  @override
+  String toString() => message;
+}
 
 class ApiService {
   static const _timeout = Duration(seconds: 30);
 
-  // Dynamic base URL based on platform and build mode
-  String get baseUrl {
-    // Production mode
-    if (kReleaseMode) {
-      return 'https://billington-api.onrender.com';
-    }
-
-    // Development mode - Android emulator uses 10.0.2.2
-    if (Platform.isAndroid) {
-      return 'http://10.0.2.2:8080';
-    }
-
-    // Development mode - iOS simulator uses localhost
-    return 'http://localhost:8080';
-  }
+  String get baseUrl => ApiConfig.baseUrl;
 
   /// Uploads a completed bill to the backend
-  /// Returns the share URL if successful, null if failed
-  Future<BillUploadResponse?> uploadBill({
+  Future<BillUploadResponse> uploadBill({
     required String billName,
     required List<Person> participants,
     required Map<Person, double> personShares,
@@ -42,7 +44,6 @@ class ApiService {
     required double total,
     required List<Map<String, String>> paymentMethods,
   }) async {
-    var logger = Logger();
     try {
       // Build the request body matching backend's CreateBillRequest
       final requestBody = {
@@ -72,23 +73,28 @@ class ApiService {
 
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body) as Map<String, dynamic>?;
-        if (data == null) return null;
+        if (data == null) {
+          throw ApiException('Failed to parse bill upload response');
+        }
         return BillUploadResponse(
           billId: data['bill_id'] as int? ?? 0,
           accessToken: data['access_token'] as String? ?? '',
           shareUrl: data['share_url'] as String? ?? '',
         );
       } else {
-        logger.d('Failed to upload bill: ${response.statusCode}');
-        logger.d('Response: ${response.body}');
-        return null;
+        throw ApiException(
+          'Failed to upload bill',
+          statusCode: response.statusCode,
+        );
       }
+    } on ApiException {
+      rethrow;
     } on TimeoutException {
-      logger.d('Upload bill timed out');
-      return null;
+      throw ApiException('Request timed out. Check your connection.', isTimeout: true);
+    } on SocketException {
+      throw ApiException('Could not connect to server.', isNetworkError: true);
     } catch (e) {
-      logger.d('Error uploading bill: $e');
-      return null;
+      throw ApiException('An unexpected error occurred.');
     }
   }
 
@@ -114,13 +120,11 @@ class ApiService {
   }
 
   /// Creates a new tab on the backend
-  /// Returns TabCreateResponse if successful, null if failed
-  Future<TabCreateResponse?> createTab(
+  Future<TabCreateResponse> createTab(
     String name,
     String description, {
     String? creatorDisplayName,
   }) async {
-    var logger = Logger();
     try {
       final body = <String, dynamic>{'name': name, 'description': description};
       if (creatorDisplayName != null && creatorDisplayName.isNotEmpty) {
@@ -135,7 +139,9 @@ class ApiService {
 
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body) as Map<String, dynamic>?;
-        if (data == null) return null;
+        if (data == null) {
+          throw ApiException('Failed to parse tab creation response');
+        }
         return TabCreateResponse(
           tabId: data['tab_id'] as int? ?? 0,
           accessToken: data['access_token'] as String? ?? '',
@@ -144,65 +150,79 @@ class ApiService {
           memberId: data['member_id'] as int?,
         );
       } else {
-        logger.d('Failed to create tab: ${response.statusCode}');
-        return null;
+        throw ApiException(
+          'Failed to create tab',
+          statusCode: response.statusCode,
+        );
       }
+    } on ApiException {
+      rethrow;
     } on TimeoutException {
-      logger.d('Create tab timed out');
-      return null;
+      throw ApiException('Request timed out. Check your connection.', isTimeout: true);
+    } on SocketException {
+      throw ApiException('Could not connect to server.', isNetworkError: true);
     } catch (e) {
-      logger.d('Error creating tab: $e');
-      return null;
+      throw ApiException('An unexpected error occurred.');
     }
   }
 
   /// Adds a bill to a tab on the backend
-  /// Returns true if successful
   Future<bool> addBillToTab(
     int tabId,
     int billId,
     String accessToken, {
     String? memberToken,
   }) async {
-    var logger = Logger();
     try {
-      var url = '$baseUrl/api/tabs/$tabId/bills?t=$accessToken';
-      if (memberToken != null) url += '&m=$memberToken';
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $accessToken',
+      };
+      if (memberToken != null) {
+        headers['X-Member-Token'] = memberToken;
+      }
 
       final response = await http.post(
-        Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse('$baseUrl/api/tabs/$tabId/bills'),
+        headers: headers,
         body: jsonEncode({'bill_id': billId}),
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         return true;
       } else {
-        logger.d('Failed to add bill to tab: ${response.statusCode}');
-        return false;
+        throw ApiException(
+          'Failed to add bill to tab',
+          statusCode: response.statusCode,
+        );
       }
+    } on ApiException {
+      rethrow;
     } on TimeoutException {
-      logger.d('Add bill to tab timed out');
-      return false;
+      throw ApiException('Request timed out. Check your connection.', isTimeout: true);
+    } on SocketException {
+      throw ApiException('Could not connect to server.', isNetworkError: true);
     } catch (e) {
-      logger.d('Error adding bill to tab: $e');
-      return false;
+      throw ApiException('An unexpected error occurred.');
     }
   }
 
   /// Uploads an image to a tab
-  Future<TabImageResponse?> uploadTabImage(
+  Future<TabImageResponse> uploadTabImage(
     int tabId,
     String accessToken,
     File imageFile, {
     String? memberToken,
   }) async {
-    var logger = Logger();
     try {
-      var url = '$baseUrl/api/tabs/$tabId/images?t=$accessToken';
-      if (memberToken != null) url += '&m=$memberToken';
-
-      final request = http.MultipartRequest('POST', Uri.parse(url));
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/api/tabs/$tabId/images'),
+      );
+      request.headers['Authorization'] = 'Bearer $accessToken';
+      if (memberToken != null) {
+        request.headers['X-Member-Token'] = memberToken;
+      }
       request.files.add(
         await http.MultipartFile.fromPath('image', imageFile.path),
       );
@@ -212,18 +232,24 @@ class ApiService {
 
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body) as Map<String, dynamic>?;
-        if (data == null) return null;
+        if (data == null) {
+          throw ApiException('Failed to parse image upload response');
+        }
         return TabImageResponse.fromJson(data);
       } else {
-        logger.d('Failed to upload image: ${response.statusCode}');
-        return null;
+        throw ApiException(
+          'Failed to upload image',
+          statusCode: response.statusCode,
+        );
       }
+    } on ApiException {
+      rethrow;
     } on TimeoutException {
-      logger.d('Upload image timed out');
-      return null;
+      throw ApiException('Request timed out. Check your connection.', isTimeout: true);
+    } on SocketException {
+      throw ApiException('Could not connect to server.', isNetworkError: true);
     } catch (e) {
-      logger.d('Error uploading image: $e');
-      return null;
+      throw ApiException('An unexpected error occurred.');
     }
   }
 
@@ -232,25 +258,29 @@ class ApiService {
     int tabId,
     String accessToken,
   ) async {
-    var logger = Logger();
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/api/tabs/$tabId/images?t=$accessToken'),
+        Uri.parse('$baseUrl/api/tabs/$tabId/images'),
+        headers: {'Authorization': 'Bearer $accessToken'},
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((json) => TabImageResponse.fromJson(json as Map<String, dynamic>)).toList();
       } else {
-        logger.d('Failed to get images: ${response.statusCode}');
-        return [];
+        throw ApiException(
+          'Failed to get images',
+          statusCode: response.statusCode,
+        );
       }
+    } on ApiException {
+      rethrow;
     } on TimeoutException {
-      logger.d('Get images timed out');
-      return [];
+      throw ApiException('Request timed out. Check your connection.', isTimeout: true);
+    } on SocketException {
+      throw ApiException('Could not connect to server.', isNetworkError: true);
     } catch (e) {
-      logger.d('Error getting images: $e');
-      return [];
+      throw ApiException('An unexpected error occurred.');
     }
   }
 
@@ -261,20 +291,31 @@ class ApiService {
     String accessToken,
     bool processed,
   ) async {
-    var logger = Logger();
     try {
       final response = await http.patch(
-        Uri.parse('$baseUrl/api/tabs/$tabId/images/$imageId?t=$accessToken'),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse('$baseUrl/api/tabs/$tabId/images/$imageId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
         body: jsonEncode({'processed': processed}),
       ).timeout(_timeout);
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        throw ApiException(
+          'Failed to update image',
+          statusCode: response.statusCode,
+        );
+      }
+    } on ApiException {
+      rethrow;
     } on TimeoutException {
-      logger.d('Update image timed out');
-      return false;
+      throw ApiException('Request timed out. Check your connection.', isTimeout: true);
+    } on SocketException {
+      throw ApiException('Could not connect to server.', isNetworkError: true);
     } catch (e) {
-      logger.d('Error updating image: $e');
-      return false;
+      throw ApiException('An unexpected error occurred.');
     }
   }
 
@@ -284,28 +325,36 @@ class ApiService {
     String accessToken, {
     String? memberToken,
   }) async {
-    var logger = Logger();
     try {
-      var url = '$baseUrl/api/tabs/$tabId/finalize?t=$accessToken';
-      if (memberToken != null) url += '&m=$memberToken';
+      final headers = <String, String>{
+        'Authorization': 'Bearer $accessToken',
+      };
+      if (memberToken != null) {
+        headers['X-Member-Token'] = memberToken;
+      }
 
-      final response = await http.post(Uri.parse(url)).timeout(_timeout);
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/tabs/$tabId/finalize'),
+        headers: headers,
+      ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((json) => SettlementResponse.fromJson(json as Map<String, dynamic>)).toList();
       } else {
-        logger.d(
-          'Failed to finalize tab: ${response.statusCode} ${response.body}',
+        throw ApiException(
+          'Failed to finalize tab',
+          statusCode: response.statusCode,
         );
-        return [];
       }
+    } on ApiException {
+      rethrow;
     } on TimeoutException {
-      logger.d('Finalize tab timed out');
-      return [];
+      throw ApiException('Request timed out. Check your connection.', isTimeout: true);
+    } on SocketException {
+      throw ApiException('Could not connect to server.', isNetworkError: true);
     } catch (e) {
-      logger.d('Error finalizing tab: $e');
-      return [];
+      throw ApiException('An unexpected error occurred.');
     }
   }
 
@@ -314,25 +363,29 @@ class ApiService {
     int tabId,
     String accessToken,
   ) async {
-    var logger = Logger();
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/api/tabs/$tabId/settlements?t=$accessToken'),
+        Uri.parse('$baseUrl/api/tabs/$tabId/settlements'),
+        headers: {'Authorization': 'Bearer $accessToken'},
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((json) => SettlementResponse.fromJson(json as Map<String, dynamic>)).toList();
       } else {
-        logger.d('Failed to get settlements: ${response.statusCode}');
-        return [];
+        throw ApiException(
+          'Failed to get settlements',
+          statusCode: response.statusCode,
+        );
       }
+    } on ApiException {
+      rethrow;
     } on TimeoutException {
-      logger.d('Get settlements timed out');
-      return [];
+      throw ApiException('Request timed out. Check your connection.', isTimeout: true);
+    } on SocketException {
+      throw ApiException('Could not connect to server.', isNetworkError: true);
     } catch (e) {
-      logger.d('Error getting settlements: $e');
-      return [];
+      throw ApiException('An unexpected error occurred.');
     }
   }
 
@@ -343,22 +396,31 @@ class ApiService {
     String accessToken,
     bool paid,
   ) async {
-    var logger = Logger();
     try {
       final response = await http.patch(
-        Uri.parse(
-          '$baseUrl/api/tabs/$tabId/settlements/$settlementId?t=$accessToken',
-        ),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse('$baseUrl/api/tabs/$tabId/settlements/$settlementId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
         body: jsonEncode({'paid': paid}),
       ).timeout(_timeout);
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        throw ApiException(
+          'Failed to update settlement',
+          statusCode: response.statusCode,
+        );
+      }
+    } on ApiException {
+      rethrow;
     } on TimeoutException {
-      logger.d('Update settlement timed out');
-      return false;
+      throw ApiException('Request timed out. Check your connection.', isTimeout: true);
+    } on SocketException {
+      throw ApiException('Could not connect to server.', isNetworkError: true);
     } catch (e) {
-      logger.d('Error updating settlement: $e');
-      return false;
+      throw ApiException('An unexpected error occurred.');
     }
   }
 
@@ -368,38 +430,51 @@ class ApiService {
     int imageId,
     String accessToken,
   ) async {
-    var logger = Logger();
     try {
       final response = await http.delete(
-        Uri.parse('$baseUrl/api/tabs/$tabId/images/$imageId?t=$accessToken'),
+        Uri.parse('$baseUrl/api/tabs/$tabId/images/$imageId'),
+        headers: {'Authorization': 'Bearer $accessToken'},
       ).timeout(_timeout);
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        throw ApiException(
+          'Failed to delete image',
+          statusCode: response.statusCode,
+        );
+      }
+    } on ApiException {
+      rethrow;
     } on TimeoutException {
-      logger.d('Delete image timed out');
-      return false;
+      throw ApiException('Request timed out. Check your connection.', isTimeout: true);
+    } on SocketException {
+      throw ApiException('Could not connect to server.', isNetworkError: true);
     } catch (e) {
-      logger.d('Error deleting image: $e');
-      return false;
+      throw ApiException('An unexpected error occurred.');
     }
   }
 
   /// Joins a tab as a new member
-  Future<TabJoinResponse?> joinTab(
+  Future<TabJoinResponse> joinTab(
     int tabId,
     String accessToken,
     String displayName,
   ) async {
-    var logger = Logger();
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/api/tabs/$tabId/join?t=$accessToken'),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse('$baseUrl/api/tabs/$tabId/join'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
         body: jsonEncode({'display_name': displayName}),
       ).timeout(_timeout);
 
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body) as Map<String, dynamic>?;
-        if (data == null) return null;
+        if (data == null) {
+          throw ApiException('Failed to parse join tab response');
+        }
         return TabJoinResponse(
           memberId: data['member_id'] as int? ?? 0,
           memberToken: data['member_token'] as String? ?? '',
@@ -407,15 +482,19 @@ class ApiService {
           role: data['role'] as String? ?? 'member',
         );
       } else {
-        logger.d('Failed to join tab: ${response.statusCode}');
-        return null;
+        throw ApiException(
+          'Failed to join tab',
+          statusCode: response.statusCode,
+        );
       }
+    } on ApiException {
+      rethrow;
     } on TimeoutException {
-      logger.d('Join tab timed out');
-      return null;
+      throw ApiException('Request timed out. Check your connection.', isTimeout: true);
+    } on SocketException {
+      throw ApiException('Could not connect to server.', isNetworkError: true);
     } catch (e) {
-      logger.d('Error joining tab: $e');
-      return null;
+      throw ApiException('An unexpected error occurred.');
     }
   }
 
@@ -424,51 +503,63 @@ class ApiService {
     int tabId,
     String accessToken,
   ) async {
-    var logger = Logger();
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/api/tabs/$tabId/members?t=$accessToken'),
+        Uri.parse('$baseUrl/api/tabs/$tabId/members'),
+        headers: {'Authorization': 'Bearer $accessToken'},
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((json) => TabMemberResponse.fromJson(json as Map<String, dynamic>)).toList();
       } else {
-        logger.d('Failed to get members: ${response.statusCode}');
-        return [];
+        throw ApiException(
+          'Failed to get members',
+          statusCode: response.statusCode,
+        );
       }
+    } on ApiException {
+      rethrow;
     } on TimeoutException {
-      logger.d('Get members timed out');
-      return [];
+      throw ApiException('Request timed out. Check your connection.', isTimeout: true);
+    } on SocketException {
+      throw ApiException('Could not connect to server.', isNetworkError: true);
     } catch (e) {
-      logger.d('Error getting members: $e');
-      return [];
+      throw ApiException('An unexpected error occurred.');
     }
   }
 
   /// Fetches full tab data from the backend
-  Future<Map<String, dynamic>?> getTabData(
+  Future<Map<String, dynamic>> getTabData(
     int tabId,
     String accessToken,
   ) async {
-    var logger = Logger();
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/api/tabs/$tabId?t=$accessToken'),
+        Uri.parse('$baseUrl/api/tabs/$tabId'),
+        headers: {'Authorization': 'Bearer $accessToken'},
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body) as Map<String, dynamic>?;
+        final data = jsonDecode(response.body) as Map<String, dynamic>?;
+        if (data == null) {
+          throw ApiException('Failed to parse tab data response');
+        }
+        return data;
       } else {
-        logger.d('Failed to get tab data: ${response.statusCode}');
-        return null;
+        throw ApiException(
+          'Failed to get tab data',
+          statusCode: response.statusCode,
+        );
       }
+    } on ApiException {
+      rethrow;
     } on TimeoutException {
-      logger.d('Get tab data timed out');
-      return null;
+      throw ApiException('Request timed out. Check your connection.', isTimeout: true);
+    } on SocketException {
+      throw ApiException('Could not connect to server.', isNetworkError: true);
     } catch (e) {
-      logger.d('Error getting tab data: $e');
-      return null;
+      throw ApiException('An unexpected error occurred.');
     }
   }
 
@@ -569,7 +660,7 @@ class TabMemberResponse {
 
   factory TabMemberResponse.fromJson(Map<String, dynamic> json) {
     return TabMemberResponse(
-      id: json['id'],
+      id: (json['id'] as int?) ?? 0,
       displayName: json['display_name'] ?? '',
       role: json['role'] ?? 'member',
       joinedAt: json['joined_at'] ?? '',
@@ -616,8 +707,8 @@ class TabImageResponse {
 
   factory TabImageResponse.fromJson(Map<String, dynamic> json) {
     return TabImageResponse(
-      id: json['id'],
-      tabId: json['tab_id'],
+      id: (json['id'] as int?) ?? 0,
+      tabId: (json['tab_id'] as int?) ?? 0,
       filename: json['filename'] ?? '',
       url: json['url'] ?? '',
       size: json['size'] ?? 0,
@@ -649,8 +740,8 @@ class SettlementResponse {
 
   factory SettlementResponse.fromJson(Map<String, dynamic> json) {
     return SettlementResponse(
-      id: json['id'],
-      tabId: json['tab_id'],
+      id: (json['id'] as int?) ?? 0,
+      tabId: (json['tab_id'] as int?) ?? 0,
       personName: json['person_name'] ?? '',
       amount: (json['amount'] ?? 0).toDouble(),
       paid: json['paid'] ?? false,

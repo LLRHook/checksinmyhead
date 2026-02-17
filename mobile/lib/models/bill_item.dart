@@ -59,9 +59,6 @@ class BillItem {
     String? name,
     double? price,
     Map<Person, double>? assignments,
-    bool? isAlcohol,
-    double? alcoholTaxPortion,
-    double? alcoholTipPortion,
   }) {
     return BillItem(
       name: name ?? this.name,

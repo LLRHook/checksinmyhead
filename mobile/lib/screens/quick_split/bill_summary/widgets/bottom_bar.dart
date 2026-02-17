@@ -139,101 +139,99 @@ class DoneButtonHandler {
   }) async {
     if (_isSaving) return;
     _isSaving = true;
-    // Capture ALL context-dependent references FIRST (before any async)
-    final navigator = Navigator.of(context);
-
-    // Get bill name
-    final billName = await BillNameSheet.show(
-      context: context,
-      initialName: data.billName,
-    );
-
-    if (billName.isEmpty) {
-      _isSaving = false;
-      return; // User cancelled
-    }
-
-    // Check context.mounted before using context
-    if (!context.mounted) {
-      _isSaving = false;
-      return;
-    }
-
-    // Show loading indicator
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder:
-          (dialogContext) => const Center(child: CircularProgressIndicator()),
-    );
-
-    // Load payment methods from preferences
-    final selectedMethods = await _prefsService.getSelectedPaymentMethods();
-    final identifiers = await _prefsService.getAllPaymentIdentifiers();
-
-    // Convert to the format expected by the API
-    final paymentMethods =
-        selectedMethods.map((method) {
-          return {'name': method, 'identifier': identifiers[method] ?? ''};
-        }).toList();
-
-    // Create updated data with bill name and payment methods
-    final updatedData = BillSummaryData(
-      participants: data.participants,
-      personShares: data.personShares,
-      items: data.items,
-      subtotal: data.subtotal,
-      tax: data.tax,
-      tipAmount: data.tipAmount,
-      total: data.total,
-      birthdayPerson: data.birthdayPerson,
-      tipPercentage: data.tipPercentage,
-      isCustomTipAmount: data.isCustomTipAmount,
-      billName: billName,
-      paymentMethods: paymentMethods,
-    );
-
-    // Save locally first (always works even if backend fails)
-    await _billsManager.saveBill(
-      participants: updatedData.participants,
-      personShares: updatedData.personShares,
-      items: updatedData.items,
-      subtotal: updatedData.subtotal,
-      tax: updatedData.tax,
-      tipAmount: updatedData.tipAmount,
-      total: updatedData.total,
-      birthdayPerson: updatedData.birthdayPerson,
-      tipPercentage: updatedData.tipPercentage,
-      isCustomTipAmount: updatedData.isCustomTipAmount,
-      billName: updatedData.billName,
-    );
-
-    // Try to upload to backend
-    String? shareUrl;
-    var logger = Logger();
     try {
-      // Use payment methods from settings, or provide defaults
-      final apiPaymentMethods =
-          paymentMethods.isNotEmpty
-              ? paymentMethods
-              : [
-                {'name': 'Venmo', 'identifier': '@username'},
-              ];
+      // Capture ALL context-dependent references FIRST (before any async)
+      final navigator = Navigator.of(context);
 
-      final response = await _apiService.uploadBill(
+      // Get bill name
+      final billName = await BillNameSheet.show(
+        context: context,
+        initialName: data.billName,
+      );
+
+      if (billName.isEmpty) {
+        return; // User cancelled
+      }
+
+      // Check context.mounted before using context
+      if (!context.mounted) {
+        return;
+      }
+
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (dialogContext) => const Center(child: CircularProgressIndicator()),
+      );
+
+      // Load payment methods from preferences
+      final selectedMethods = await _prefsService.getSelectedPaymentMethods();
+      final identifiers = await _prefsService.getAllPaymentIdentifiers();
+
+      // Convert to the format expected by the API
+      final paymentMethods =
+          selectedMethods.map((method) {
+            return {'name': method, 'identifier': identifiers[method] ?? ''};
+          }).toList();
+
+      // Create updated data with bill name and payment methods
+      final updatedData = BillSummaryData(
+        participants: data.participants,
+        personShares: data.personShares,
+        items: data.items,
+        subtotal: data.subtotal,
+        tax: data.tax,
+        tipAmount: data.tipAmount,
+        total: data.total,
+        birthdayPerson: data.birthdayPerson,
+        tipPercentage: data.tipPercentage,
+        isCustomTipAmount: data.isCustomTipAmount,
         billName: billName,
+        paymentMethods: paymentMethods,
+      );
+
+      // Save locally first (always works even if backend fails)
+      await _billsManager.saveBill(
         participants: updatedData.participants,
         personShares: updatedData.personShares,
         items: updatedData.items,
         subtotal: updatedData.subtotal,
         tax: updatedData.tax,
         tipAmount: updatedData.tipAmount,
-        tipPercentage: updatedData.tipPercentage,
         total: updatedData.total,
-        paymentMethods: apiPaymentMethods,
+        birthdayPerson: updatedData.birthdayPerson,
+        tipPercentage: updatedData.tipPercentage,
+        isCustomTipAmount: updatedData.isCustomTipAmount,
+        billName: updatedData.billName,
       );
 
-      if (response != null) {
+      // Try to upload to backend
+      String? shareUrl;
+      var logger = Logger();
+      try {
+        // Use payment methods from settings, or provide defaults
+        final apiPaymentMethods =
+            paymentMethods.isNotEmpty
+                ? paymentMethods
+                : [
+                  {'name': 'Venmo', 'identifier': '@username'},
+                ];
+
+        final response = await _apiService.uploadBill(
+          billName: billName,
+          participants: updatedData.participants,
+          personShares: updatedData.personShares,
+          items: updatedData.items,
+          subtotal: updatedData.subtotal,
+          tax: updatedData.tax,
+          tipAmount: updatedData.tipAmount,
+          tipPercentage: updatedData.tipPercentage,
+          total: updatedData.total,
+          paymentMethods: apiPaymentMethods,
+        );
+
         shareUrl = response.shareUrl;
         logger.d('Bill uploaded successfully: $shareUrl');
 
@@ -242,37 +240,40 @@ class DoneButtonHandler {
         if (mostRecent != null) {
           await _billsManager.updateBillShareUrl(mostRecent.id, shareUrl);
         }
+      } on ApiException catch (e) {
+        logger.d('Failed to upload to backend: $e');
+        // Continue anyway - local save succeeded
+      } catch (e) {
+        logger.d('Failed to upload to backend: $e');
+        // Continue anyway - local save succeeded
       }
-    } catch (e) {
-      logger.d('Failed to upload to backend: $e');
-      // Continue anyway - local save succeeded
-    }
 
-    // Close loading dialog
-    if (navigator.mounted) {
-      navigator.pop(); // Close loading dialog
-    }
+      // Close loading dialog
+      if (navigator.mounted) {
+        navigator.pop(); // Close loading dialog
+      }
 
-    if (!navigator.mounted) {
+      if (!navigator.mounted) {
+        return;
+      }
+
+      HapticFeedback.mediumImpact();
+
+      // Show EnhancedShareSheet instead of snackbar
+      if (context.mounted) {
+        await EnhancedShareSheet.show(
+          context: context,
+          shareUrl: shareUrl,
+          data: updatedData,
+        );
+      }
+
+      // Return to home
+      if (navigator.mounted) {
+        navigator.popUntil((route) => route.isFirst);
+      }
+    } finally {
       _isSaving = false;
-      return;
-    }
-
-    HapticFeedback.mediumImpact();
-
-    // Show EnhancedShareSheet instead of snackbar
-    if (context.mounted) {
-      await EnhancedShareSheet.show(
-        context: context,
-        shareUrl: shareUrl,
-        data: updatedData,
-      );
-    }
-
-    // Return to home
-    _isSaving = false;
-    if (navigator.mounted) {
-      navigator.popUntil((route) => route.isFirst);
     }
   }
 }

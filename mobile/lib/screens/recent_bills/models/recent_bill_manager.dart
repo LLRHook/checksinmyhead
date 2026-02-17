@@ -87,7 +87,9 @@ class RecentBillsManager extends ChangeNotifier {
       final bills = recentBillsData.map(RecentBillModel.fromData).toList();
 
       // Emit the bills to the stream to notify listeners
-      _billsStreamController.add(bills);
+      if (!_billsStreamController.isClosed) {
+        _billsStreamController.add(bills);
+      }
 
       return bills;
     } catch (e) {

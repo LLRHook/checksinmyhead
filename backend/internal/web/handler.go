@@ -3,6 +3,7 @@ package web
 import (
 	"backend/internal/bill"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -18,7 +19,15 @@ func NewWebpageHandler(service bill.BillService) *WebpageHandler {
 
 func (h *WebpageHandler) CreateHTML(c *gin.Context) {
 	id := c.Param("id")
-	URLtoken := c.Query("t")
+
+	// Try Authorization header first, fall back to query param
+	URLtoken := ""
+	authHeader := c.GetHeader("Authorization")
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		URLtoken = strings.TrimPrefix(authHeader, "Bearer ")
+	} else {
+		URLtoken = c.Query("t")
+	}
 
 	if id == "" {
 		c.JSON(400, gin.H{"error": "bad id"})
