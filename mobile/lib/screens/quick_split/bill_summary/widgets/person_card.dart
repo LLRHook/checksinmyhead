@@ -32,12 +32,14 @@ class PersonCard extends StatefulWidget {
   final Person person;
   final BillSummaryData data;
   final bool initiallyExpanded;
+  final double? correctedTotal;
 
   const PersonCard({
     super.key,
     required this.person,
     required this.data,
     this.initiallyExpanded = false,
+    this.correctedTotal,
   });
 
   @override
@@ -121,7 +123,8 @@ class _PersonCardState extends State<PersonCard>
       birthdayPerson: widget.data.birthdayPerson,
     );
 
-    final double totalShare = personAmounts['total'] ?? 0.0;
+    final double totalShare =
+        widget.correctedTotal ?? (personAmounts['total'] ?? 0.0);
 
     // Theme-aware colors
     final cardBgColor =

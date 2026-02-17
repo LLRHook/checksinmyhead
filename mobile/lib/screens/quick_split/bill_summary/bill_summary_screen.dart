@@ -21,6 +21,7 @@ import 'package:checks_frontend/models/bill_item.dart';
 
 // Import refactored components
 import 'models/bill_summary_data.dart';
+import 'utils/calculation_utils.dart';
 import 'widgets/bill_total_card.dart';
 import 'widgets/bottom_bar.dart';
 import 'widgets/enhanced_share_sheet.dart';
@@ -182,10 +183,27 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
                       const SizedBox(height: 12),
 
                       // Generate a PersonCard for each participant
-                      ...sortedParticipants.map(
-                        (person) =>
-                            PersonCard(person: person, data: _summaryData),
-                      ),
+                      // Compute batch-corrected amounts so totals sum exactly
+                      ...() {
+                        final corrected =
+                            CalculationUtils.calculateAllPersonAmounts(
+                          participants: sortedParticipants,
+                          personShares: _summaryData.personShares,
+                          items: _summaryData.items,
+                          subtotal: _summaryData.subtotal,
+                          tax: _summaryData.tax,
+                          tipAmount: _summaryData.tipAmount,
+                          total: _summaryData.total,
+                          birthdayPerson: _summaryData.birthdayPerson,
+                        );
+                        return sortedParticipants.map(
+                          (person) => PersonCard(
+                            person: person,
+                            data: _summaryData,
+                            correctedTotal: corrected[person]?['total'],
+                          ),
+                        );
+                      }(),
 
                       // Extra space to ensure content isn't hidden behind the bottom bar
                       const SizedBox(height: 80),
