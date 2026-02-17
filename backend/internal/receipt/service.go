@@ -29,6 +29,29 @@ type ParsedReceipt struct {
 	Total    *float64     `json:"total,omitempty"`
 }
 
+// ParseErrorCode identifies specific receipt parsing failure reasons.
+type ParseErrorCode string
+
+const (
+	ErrRateLimited    ParseErrorCode = "rate_limited"
+	ErrAuthFailed     ParseErrorCode = "auth_failed"
+	ErrInvalidRequest ParseErrorCode = "invalid_request"
+	ErrImageTooLarge  ParseErrorCode = "image_too_large"
+	ErrOverloaded     ParseErrorCode = "overloaded"
+	ErrProviderDown   ParseErrorCode = "provider_down"
+	ErrBadResponse    ParseErrorCode = "bad_response"
+)
+
+// ParseError is a structured error from receipt parsing with a machine-readable code.
+type ParseError struct {
+	Code    ParseErrorCode
+	Message string
+}
+
+func (e *ParseError) Error() string {
+	return e.Message
+}
+
 // Service handles receipt parsing via the Anthropic Messages API.
 type Service struct {
 	apiKey     string
@@ -188,23 +211,47 @@ func (s *Service) Parse(imageData []byte, mimeType string) (*ParsedReceipt, erro
 
 	if resp.StatusCode != http.StatusOK {
 		fmt.Printf("[receipt] Anthropic returned status %d: %s\n", resp.StatusCode, truncate(string(respBody), 500))
-		if resp.StatusCode == http.StatusTooManyRequests {
-			return nil, fmt.Errorf("rate_limited")
+
+		// Parse the error body for details
+		var errResp messagesResponse
+		json.Unmarshal(respBody, &errResp)
+		detail := ""
+		if errResp.Error != nil {
+			detail = errResp.Error.Message
 		}
-		return nil, fmt.Errorf("Anthropic API returned status %d: %s", resp.StatusCode, string(respBody))
+
+		switch resp.StatusCode {
+		case http.StatusUnauthorized: // 401
+			return nil, &ParseError{Code: ErrAuthFailed, Message: "API authentication failed: " + detail}
+		case http.StatusForbidden: // 403
+			return nil, &ParseError{Code: ErrAuthFailed, Message: "API key lacks permission: " + detail}
+		case http.StatusTooManyRequests: // 429
+			return nil, &ParseError{Code: ErrRateLimited, Message: "Rate limited: " + detail}
+		case http.StatusRequestEntityTooLarge: // 413
+			return nil, &ParseError{Code: ErrImageTooLarge, Message: "Image too large for processing"}
+		case http.StatusBadRequest: // 400
+			return nil, &ParseError{Code: ErrInvalidRequest, Message: "Invalid request: " + detail}
+		case 529: // Anthropic overloaded
+			return nil, &ParseError{Code: ErrOverloaded, Message: "AI service is temporarily overloaded"}
+		default:
+			if resp.StatusCode >= 500 {
+				return nil, &ParseError{Code: ErrProviderDown, Message: "AI service error: " + detail}
+			}
+			return nil, &ParseError{Code: ErrInvalidRequest, Message: fmt.Sprintf("Unexpected status %d: %s", resp.StatusCode, detail)}
+		}
 	}
 
 	var msgResp messagesResponse
 	if err := json.Unmarshal(respBody, &msgResp); err != nil {
-		return nil, fmt.Errorf("failed to parse Anthropic response: %w", err)
+		return nil, &ParseError{Code: ErrBadResponse, Message: "Failed to parse AI response"}
 	}
 
 	if msgResp.Error != nil {
-		return nil, fmt.Errorf("Anthropic error: %s", msgResp.Error.Message)
+		return nil, &ParseError{Code: ErrProviderDown, Message: "AI error: " + msgResp.Error.Message}
 	}
 
 	if len(msgResp.Content) == 0 {
-		return nil, fmt.Errorf("Anthropic returned empty response")
+		return nil, &ParseError{Code: ErrBadResponse, Message: "AI returned empty response"}
 	}
 
 	rawText := msgResp.Content[0].Text
