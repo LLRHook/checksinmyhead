@@ -28,7 +28,9 @@ class TabManager extends ChangeNotifier {
     try {
       final tabsData = await DatabaseProvider.db.getAllTabs();
       final tabs = tabsData.map(_tabDataToAppTab).toList();
-      _tabsStreamController.add(tabs);
+      if (!_tabsStreamController.isClosed) {
+        _tabsStreamController.add(tabs);
+      }
       return tabs;
     } catch (e) {
       debugPrint('Error fetching tabs: $e');
@@ -156,17 +158,17 @@ class TabManager extends ChangeNotifier {
         creatorDisplayName: creatorDisplayName,
       );
 
-      if (response != null) {
-        final companion = TabsCompanion(
-          backendId: Value(response.tabId),
-          accessToken: Value(response.accessToken),
-          shareUrl: Value(response.shareUrl),
-          memberToken: Value(response.memberToken),
-          role: Value(response.memberToken != null ? 'creator' : null),
-        );
-        await DatabaseProvider.db.updateTab(localId, companion);
-        notifyListeners();
-      }
+      final companion = TabsCompanion(
+        backendId: Value(response.tabId),
+        accessToken: Value(response.accessToken),
+        shareUrl: Value(response.shareUrl),
+        memberToken: Value(response.memberToken),
+        role: Value(response.memberToken != null ? 'creator' : null),
+      );
+      await DatabaseProvider.db.updateTab(localId, companion);
+      notifyListeners();
+    } on ApiException catch (e) {
+      debugPrint('Error syncing tab to backend: $e');
     } catch (e) {
       debugPrint('Error syncing tab to backend: $e');
     }
@@ -196,6 +198,9 @@ class TabManager extends ChangeNotifier {
 
       notifyListeners();
       return true;
+    } on ApiException catch (e) {
+      debugPrint('Error finalizing tab: $e');
+      return false;
     } catch (e) {
       debugPrint('Error finalizing tab: $e');
       return false;
@@ -222,11 +227,9 @@ class TabManager extends ChangeNotifier {
         accessToken,
         displayName,
       );
-      if (joinResponse == null) return null;
 
       // Fetch full tab data
       final tabData = await apiService.getTabData(tabId, accessToken);
-      if (tabData == null) return null;
 
       // Insert as remote tab in local DB
       final localId = await DatabaseProvider.db.insertTab(
@@ -250,6 +253,9 @@ class TabManager extends ChangeNotifier {
       final tab = _tabDataToAppTab(insertedTab);
       notifyListeners();
       return tab;
+    } on ApiException catch (e) {
+      debugPrint('Error joining tab: $e');
+      return null;
     } catch (e) {
       debugPrint('Error joining tab: $e');
       return null;

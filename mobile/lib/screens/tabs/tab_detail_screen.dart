@@ -89,13 +89,17 @@ class _TabDetailScreenState extends State<TabDetailScreen>
       return;
     }
 
-    final members = await _apiService.getTabMembers(
-      _currentTab.backendId!,
-      _currentTab.accessToken!,
-    );
+    try {
+      final members = await _apiService.getTabMembers(
+        _currentTab.backendId!,
+        _currentTab.accessToken!,
+      );
 
-    if (mounted) {
-      setState(() => _members = members);
+      if (mounted) {
+        setState(() => _members = members);
+      }
+    } on ApiException {
+      // Members are non-critical; silently fail
     }
   }
 
@@ -104,13 +108,17 @@ class _TabDetailScreenState extends State<TabDetailScreen>
       return;
     }
 
-    final images = await _apiService.getTabImages(
-      _currentTab.backendId!,
-      _currentTab.accessToken!,
-    );
+    try {
+      final images = await _apiService.getTabImages(
+        _currentTab.backendId!,
+        _currentTab.accessToken!,
+      );
 
-    if (mounted) {
-      setState(() => _images = images);
+      if (mounted) {
+        setState(() => _images = images);
+      }
+    } on ApiException {
+      // Images are non-critical; silently fail
     }
   }
 
@@ -120,13 +128,17 @@ class _TabDetailScreenState extends State<TabDetailScreen>
     }
     if (!_currentTab.isFinalized) return;
 
-    final settlements = await _apiService.getSettlements(
-      _currentTab.backendId!,
-      _currentTab.accessToken!,
-    );
+    try {
+      final settlements = await _apiService.getSettlements(
+        _currentTab.backendId!,
+        _currentTab.accessToken!,
+      );
 
-    if (mounted) {
-      setState(() => _settlements = settlements);
+      if (mounted) {
+        setState(() => _settlements = settlements);
+      }
+    } on ApiException {
+      // Settlements are non-critical; silently fail
     }
   }
 
@@ -165,20 +177,22 @@ class _TabDetailScreenState extends State<TabDetailScreen>
 
     setState(() => _isUploading = true);
 
-    final result = await _apiService.uploadTabImage(
-      _currentTab.backendId!,
-      _currentTab.accessToken!,
-      File(pickedFile.path),
-      memberToken: _currentTab.memberToken,
-    );
+    try {
+      await _apiService.uploadTabImage(
+        _currentTab.backendId!,
+        _currentTab.accessToken!,
+        File(pickedFile.path),
+        memberToken: _currentTab.memberToken,
+      );
 
-    if (mounted) {
-      setState(() => _isUploading = false);
-
-      if (result != null) {
+      if (mounted) {
+        setState(() => _isUploading = false);
         _showSnackBar('Receipt uploaded');
         await _loadImages();
-      } else {
+      }
+    } on ApiException {
+      if (mounted) {
+        setState(() => _isUploading = false);
         _showSnackBar('Failed to upload image', isError: true);
       }
     }
@@ -189,15 +203,19 @@ class _TabDetailScreenState extends State<TabDetailScreen>
       return;
     }
 
-    final success = await _apiService.updateTabImage(
-      _currentTab.backendId!,
-      image.id,
-      _currentTab.accessToken!,
-      !image.processed,
-    );
+    try {
+      await _apiService.updateTabImage(
+        _currentTab.backendId!,
+        image.id,
+        _currentTab.accessToken!,
+        !image.processed,
+      );
 
-    if (success && mounted) {
-      await _loadImages();
+      if (mounted) {
+        await _loadImages();
+      }
+    } on ApiException {
+      // Toggle failed; silently fail
     }
   }
 
@@ -214,15 +232,21 @@ class _TabDetailScreenState extends State<TabDetailScreen>
 
     if (confirmed != true || !mounted) return;
 
-    final success = await _apiService.deleteTabImage(
-      _currentTab.backendId!,
-      image.id,
-      _currentTab.accessToken!,
-    );
+    try {
+      await _apiService.deleteTabImage(
+        _currentTab.backendId!,
+        image.id,
+        _currentTab.accessToken!,
+      );
 
-    if (success && mounted) {
-      _showSnackBar('Image deleted');
-      await _loadImages();
+      if (mounted) {
+        _showSnackBar('Image deleted');
+        await _loadImages();
+      }
+    } on ApiException {
+      if (mounted) {
+        _showSnackBar('Failed to delete image', isError: true);
+      }
     }
   }
 
@@ -261,15 +285,19 @@ class _TabDetailScreenState extends State<TabDetailScreen>
       return;
     }
 
-    final success = await _apiService.updateSettlement(
-      _currentTab.backendId!,
-      settlement.id,
-      _currentTab.accessToken!,
-      !settlement.paid,
-    );
+    try {
+      await _apiService.updateSettlement(
+        _currentTab.backendId!,
+        settlement.id,
+        _currentTab.accessToken!,
+        !settlement.paid,
+      );
 
-    if (success && mounted) {
-      await _loadSettlements();
+      if (mounted) {
+        await _loadSettlements();
+      }
+    } on ApiException {
+      // Toggle failed; silently fail
     }
   }
 
