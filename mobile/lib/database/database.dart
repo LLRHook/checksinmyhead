@@ -338,6 +338,7 @@ class AppDatabase extends _$AppDatabase {
               ? Value(participants.first.color.toARGB32())
               : const Value.absent(),
       shareUrl: Value(shareUrl),
+      createdAt: Value(DateTime.now()),
     );
 
     final count = await select(recentBills).get().then((bills) => bills.length);
@@ -349,6 +350,7 @@ class AppDatabase extends _$AppDatabase {
                 ..limit(1))
               .getSingle();
 
+      await _cleanBillIdFromTabs(oldest.id);
       await (delete(recentBills)..where((t) => t.id.equals(oldest.id))).go();
     }
 
@@ -362,7 +364,19 @@ class AppDatabase extends _$AppDatabase {
     return query.get();
   }
 
+  Future<void> _cleanBillIdFromTabs(int billId) async {
+    final allTabs = await getAllTabs();
+    for (final tab in allTabs) {
+      final ids = tab.billIds.split(',').where((s) => s.isNotEmpty).toList();
+      if (ids.contains(billId.toString())) {
+        ids.remove(billId.toString());
+        await updateTab(tab.id, TabsCompanion(billIds: Value(ids.join(','))));
+      }
+    }
+  }
+
   Future<void> deleteBill(int id) async {
+    await _cleanBillIdFromTabs(id);
     await (delete(recentBills)..where((t) => t.id.equals(id))).go();
   }
 

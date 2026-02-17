@@ -3,8 +3,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:checks_frontend/services/api_config.dart';
 import 'package:checks_frontend/models/bill_item.dart';
 import 'package:checks_frontend/models/person.dart';
 import 'package:logger/web.dart';
@@ -12,21 +12,7 @@ import 'package:logger/web.dart';
 class ApiService {
   static const _timeout = Duration(seconds: 30);
 
-  // Dynamic base URL based on platform and build mode
-  String get baseUrl {
-    // Production mode
-    if (kReleaseMode) {
-      return 'https://billington-api.onrender.com';
-    }
-
-    // Development mode - Android emulator uses 10.0.2.2
-    if (Platform.isAndroid) {
-      return 'http://10.0.2.2:8080';
-    }
-
-    // Development mode - iOS simulator uses localhost
-    return 'http://localhost:8080';
-  }
+  String get baseUrl => ApiConfig.baseUrl;
 
   /// Uploads a completed bill to the backend
   /// Returns the share URL if successful, null if failed
@@ -569,7 +555,7 @@ class TabMemberResponse {
 
   factory TabMemberResponse.fromJson(Map<String, dynamic> json) {
     return TabMemberResponse(
-      id: json['id'],
+      id: (json['id'] as int?) ?? 0,
       displayName: json['display_name'] ?? '',
       role: json['role'] ?? 'member',
       joinedAt: json['joined_at'] ?? '',
@@ -616,8 +602,8 @@ class TabImageResponse {
 
   factory TabImageResponse.fromJson(Map<String, dynamic> json) {
     return TabImageResponse(
-      id: json['id'],
-      tabId: json['tab_id'],
+      id: (json['id'] as int?) ?? 0,
+      tabId: (json['tab_id'] as int?) ?? 0,
       filename: json['filename'] ?? '',
       url: json['url'] ?? '',
       size: json['size'] ?? 0,
@@ -649,8 +635,8 @@ class SettlementResponse {
 
   factory SettlementResponse.fromJson(Map<String, dynamic> json) {
     return SettlementResponse(
-      id: json['id'],
-      tabId: json['tab_id'],
+      id: (json['id'] as int?) ?? 0,
+      tabId: (json['tab_id'] as int?) ?? 0,
       personName: json['person_name'] ?? '',
       amount: (json['amount'] ?? 0).toDouble(),
       paid: json['paid'] ?? false,

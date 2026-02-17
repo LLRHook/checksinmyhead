@@ -18,8 +18,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:checks_frontend/services/api_config.dart';
 import 'package:logger/web.dart';
 import 'package:checks_frontend/services/receipt_parser.dart';
 
@@ -28,15 +28,7 @@ class ReceiptApiService {
   static const _timeout = Duration(seconds: 45);
   static final _logger = Logger();
 
-  String get _baseUrl {
-    if (kReleaseMode) {
-      return 'https://billington-api.onrender.com';
-    }
-    if (Platform.isAndroid) {
-      return 'http://10.0.2.2:8080';
-    }
-    return 'http://localhost:8080';
-  }
+  String get _baseUrl => ApiConfig.baseUrl;
 
   /// Sends a receipt image to the backend for parsing.
   ///

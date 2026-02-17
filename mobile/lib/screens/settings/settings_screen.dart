@@ -58,6 +58,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// Loading state
   bool _isLoading = true;
 
+  /// Debounce timer for display name saving
+  Timer? _debounceTimer;
+
   @override
   void initState() {
     super.initState();
@@ -68,6 +71,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _displayNameController.dispose();
     super.dispose();
   }
@@ -153,11 +157,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   /// Opens the app store page for leaving a rating
   Future<void> _openAppStore() async {
-    final Uri url = Uri.parse(
-      'https://apps.apple.com/us/app/spliq/id6746379502',
-    );
-    if (!await launchUrl(url)) {
-      throw Exception('Could not launch $url');
+    try {
+      final Uri url = Uri.parse(
+        'https://apps.apple.com/us/app/spliq/id6746379502',
+      );
+      await launchUrl(url);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Could not open App Store'),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
     }
   }
 
@@ -330,7 +344,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                               vertical: 14,
                                             ),
                                       ),
-                                      onChanged: (_) => _saveDisplayName(),
+                                      onChanged: (_) {
+                                        _debounceTimer?.cancel();
+                                        _debounceTimer = Timer(const Duration(milliseconds: 500), _saveDisplayName);
+                                      },
                                     ),
                                   ],
                                 ),

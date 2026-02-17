@@ -340,16 +340,11 @@ class _ItemCardState extends State<ItemCard>
   ///
   /// Restores original assignments if no selections were made
   void _cancelMultiSelectMode() {
-    if (_selectedPeople.isEmpty) {
-      // Only restore if no selections were made
-      _restoreOriginalAssignments();
-    }
-
+    _restoreOriginalAssignments();
     setState(() {
       _multiSelectMode = false;
       _selectedPeople.clear();
     });
-
     HapticFeedback.mediumImpact();
   }
 

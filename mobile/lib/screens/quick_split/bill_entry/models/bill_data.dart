@@ -207,9 +207,12 @@ class BillData extends ChangeNotifier {
       if (item.quantity > 1) {
         final perUnit =
             double.parse((item.price / item.quantity).toStringAsFixed(2));
-        for (int i = 0; i < item.quantity; i++) {
+        final lastUnit = double.parse(
+            (item.price - perUnit * (item.quantity - 1)).toStringAsFixed(2));
+        for (int i = 0; i < item.quantity - 1; i++) {
           addItem(item.name, perUnit);
         }
+        addItem(item.name, lastUnit);
       } else {
         addItem(item.name, item.price);
       }
