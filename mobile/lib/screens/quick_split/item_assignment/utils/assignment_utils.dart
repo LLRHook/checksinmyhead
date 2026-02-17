@@ -98,11 +98,17 @@ class AssignmentUtils {
     if (assignedPeople.isEmpty) return {};
 
     Map<Person, double> newAssignments = {};
-    // Calculate equal percentage for each person (total must equal 100%)
-    double percentage = 100.0 / assignedPeople.length;
+    // Use integer division on basis points to avoid floating-point gaps.
+    // Give the first person the remainder so all percentages sum to exactly 100.
+    double basePercent = (10000 ~/ assignedPeople.length) / 100.0;
 
-    for (var person in assignedPeople) {
-      newAssignments[person] = percentage;
+    for (int i = 0; i < assignedPeople.length; i++) {
+      if (i == 0) {
+        newAssignments[assignedPeople[i]] =
+            100.0 - basePercent * (assignedPeople.length - 1);
+      } else {
+        newAssignments[assignedPeople[i]] = basePercent;
+      }
     }
 
     return newAssignments;
@@ -240,7 +246,53 @@ class AssignmentUtils {
       }
     }
 
-    return newShares;
+    return _applyLargestRemainder(newShares, data.total);
+  }
+
+  /// Applies the largest-remainder method (Hamilton's method) to ensure
+  /// penny-exact totals when splitting bill amounts.
+  ///
+  /// Floating-point arithmetic can cause rounding errors where individual
+  /// shares don't sum to the exact total (e.g., $100 / 3 = $33.33 * 3 = $99.99).
+  /// This method:
+  /// 1. Floors each share to the nearest cent
+  /// 2. Distributes the leftover cents to people with the largest remainders
+  ///
+  /// Parameters:
+  /// - [shares]: Map of Person to their calculated share amount
+  /// - [targetTotal]: The exact total that all shares must sum to
+  ///
+  /// Returns a corrected map where all values sum to [targetTotal] exactly.
+  static Map<Person, double> _applyLargestRemainder(
+    Map<Person, double> shares,
+    double targetTotal,
+  ) {
+    if (shares.isEmpty) return shares;
+
+    final result = <Person, double>{};
+    final remainders = <Person, double>{};
+
+    // Step 1: Floor each share to 2 decimal places
+    int totalCents = (targetTotal * 100).round();
+    int allocatedCents = 0;
+
+    for (final entry in shares.entries) {
+      int floored = (entry.value * 100).floor();
+      result[entry.key] = floored / 100.0;
+      remainders[entry.key] = (entry.value * 100) - floored;
+      allocatedCents += floored;
+    }
+
+    // Step 2: Distribute remaining cents by largest remainder
+    int remainingCents = totalCents - allocatedCents;
+    final sorted = remainders.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    for (int i = 0; i < remainingCents && i < sorted.length; i++) {
+      result[sorted[i].key] = result[sorted[i].key]! + 0.01;
+    }
+
+    return result;
   }
 
   /// Updates a bill item's assignments and recalculates all dependent values.
@@ -314,10 +366,16 @@ class AssignmentUtils {
     if (people.isEmpty) return {};
 
     Map<Person, double> newAssignments = {};
-    double percentage = 100.0 / people.length;
+    // Use integer division on basis points to avoid floating-point gaps.
+    // Give the first person the remainder so all percentages sum to exactly 100.
+    double basePercent = (10000 ~/ people.length) / 100.0;
 
-    for (var person in people) {
-      newAssignments[person] = percentage;
+    for (int i = 0; i < people.length; i++) {
+      if (i == 0) {
+        newAssignments[people[i]] = 100.0 - basePercent * (people.length - 1);
+      } else {
+        newAssignments[people[i]] = basePercent;
+      }
     }
 
     return newAssignments;

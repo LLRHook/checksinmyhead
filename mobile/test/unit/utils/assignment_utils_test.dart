@@ -170,9 +170,13 @@ void main() {
         item,
         [alice, bob, charlie],
       );
-      expect(balanced[alice], closeTo(33.33, 0.01));
-      expect(balanced[bob], closeTo(33.33, 0.01));
-      expect(balanced[charlie], closeTo(33.33, 0.01));
+      // First person absorbs remainder: 100 - 33.33*2 = 33.34
+      expect(balanced[alice], equals(33.34));
+      expect(balanced[bob], equals(33.33));
+      expect(balanced[charlie], equals(33.33));
+      // Verify they sum to exactly 100
+      final sum = balanced.values.reduce((a, b) => a + b);
+      expect(sum, closeTo(100.0, 0.001));
     });
 
     test('returns empty map for empty list', () {

@@ -77,4 +77,90 @@ class CalculationUtils {
       'total': personSubtotal + personTax + personTip,
     };
   }
+
+  /// Calculates amounts for all participants and applies largest-remainder
+  /// correction so that per-person totals sum to the exact bill total.
+  ///
+  /// This wraps [calculatePersonAmounts] for each participant and then
+  /// redistributes fractional cents using Hamilton's method.
+  static Map<Person, Map<String, double>> calculateAllPersonAmounts({
+    required List<Person> participants,
+    required Map<Person, double> personShares,
+    required List<BillItem> items,
+    required double subtotal,
+    required double tax,
+    required double tipAmount,
+    required double total,
+    required Person? birthdayPerson,
+  }) {
+    // First, calculate raw amounts for each person
+    final rawAmounts = <Person, Map<String, double>>{};
+    final rawTotals = <Person, double>{};
+
+    for (final person in participants) {
+      final amounts = calculatePersonAmounts(
+        person: person,
+        participants: participants,
+        personShares: personShares,
+        items: items,
+        subtotal: subtotal,
+        tax: tax,
+        tipAmount: tipAmount,
+        birthdayPerson: birthdayPerson,
+      );
+      rawAmounts[person] = amounts;
+      rawTotals[person] = amounts['total']!;
+    }
+
+    // Apply largest-remainder correction on the totals
+    final correctedTotals = _applyLargestRemainder(rawTotals, total);
+
+    // Merge corrected totals back into per-person maps
+    final result = <Person, Map<String, double>>{};
+    for (final person in participants) {
+      final raw = rawAmounts[person]!;
+      result[person] = {
+        'subtotal': raw['subtotal']!,
+        'tax': raw['tax']!,
+        'tip': raw['tip']!,
+        'total': correctedTotals[person]!,
+      };
+    }
+
+    return result;
+  }
+
+  /// Applies the largest-remainder method (Hamilton's method) to ensure
+  /// penny-exact totals when splitting bill amounts.
+  ///
+  /// See [AssignmentUtils._applyLargestRemainder] for full documentation.
+  static Map<Person, double> _applyLargestRemainder(
+    Map<Person, double> shares,
+    double targetTotal,
+  ) {
+    if (shares.isEmpty) return shares;
+
+    final result = <Person, double>{};
+    final remainders = <Person, double>{};
+
+    int totalCents = (targetTotal * 100).round();
+    int allocatedCents = 0;
+
+    for (final entry in shares.entries) {
+      int floored = (entry.value * 100).floor();
+      result[entry.key] = floored / 100.0;
+      remainders[entry.key] = (entry.value * 100) - floored;
+      allocatedCents += floored;
+    }
+
+    int remainingCents = totalCents - allocatedCents;
+    final sorted = remainders.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    for (int i = 0; i < remainingCents && i < sorted.length; i++) {
+      result[sorted[i].key] = result[sorted[i].key]! + 0.01;
+    }
+
+    return result;
+  }
 }
