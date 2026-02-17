@@ -20,14 +20,15 @@ import 'package:flutter/material.dart';
 /// A model class representing a person with a name, color, and optional icon.
 ///
 /// This class provides a way to uniquely identify and compare people based on their
-/// name and color attributes. The icon property is not considered in equality checks.
+/// name only (case-insensitive). The color property is used for UI representation
+/// but is not considered in equality checks.
 ///
 /// Properties:
-/// * [name] - Unique identifier string for the person
+/// * [name] - Unique identifier string for the person (case-insensitive equality)
 /// * [color] - Associated color, typically used for UI representation
 ///
 /// Notable implementation details:
-/// * Custom equality operator implementation using [Color.toARGB32] for reliable color comparison
+/// * Custom equality operator using case-insensitive name comparison only
 /// * Proper hashCode implementation maintaining the object equality contract
 /// * Immutable design with final fields enforcing proper object state management
 ///
@@ -46,11 +47,10 @@ class Person {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is Person &&
-        name.toLowerCase() == other.name.toLowerCase() &&
-        color.toARGB32() == other.color.toARGB32();
+        name.toLowerCase() == other.name.toLowerCase();
   }
 
   //If you override ==, you must override hashCode
   @override
-  int get hashCode => name.toLowerCase().hashCode ^ color.toARGB32().hashCode;
+  int get hashCode => name.toLowerCase().hashCode;
 }

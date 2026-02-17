@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -56,7 +57,15 @@ func (h *BillHandler) CreateBill(c *gin.Context) {
 
 func (h *BillHandler) GetBill(c *gin.Context) {
 	id := c.Param("id")
-	URLtoken := c.Query("t")
+
+	// Try Authorization header first, fall back to query param
+	URLtoken := ""
+	authHeader := c.GetHeader("Authorization")
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		URLtoken = strings.TrimPrefix(authHeader, "Bearer ")
+	} else {
+		URLtoken = c.Query("t")
+	}
 
 	if id == "" {
 		c.JSON(400, gin.H{"error": "bad id"})

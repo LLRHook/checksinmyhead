@@ -232,16 +232,17 @@ class DoneButtonHandler {
           paymentMethods: apiPaymentMethods,
         );
 
-        if (response != null) {
-          shareUrl = response.shareUrl;
-          logger.d('Bill uploaded successfully: $shareUrl');
+        shareUrl = response.shareUrl;
+        logger.d('Bill uploaded successfully: $shareUrl');
 
-          // Persist the share URL to the most recently saved bill
-          final mostRecent = await DatabaseProvider.db.getMostRecentBill();
-          if (mostRecent != null) {
-            await _billsManager.updateBillShareUrl(mostRecent.id, shareUrl);
-          }
+        // Persist the share URL to the most recently saved bill
+        final mostRecent = await DatabaseProvider.db.getMostRecentBill();
+        if (mostRecent != null) {
+          await _billsManager.updateBillShareUrl(mostRecent.id, shareUrl);
         }
+      } on ApiException catch (e) {
+        logger.d('Failed to upload to backend: $e');
+        // Continue anyway - local save succeeded
       } catch (e) {
         logger.d('Failed to upload to backend: $e');
         // Continue anyway - local save succeeded
