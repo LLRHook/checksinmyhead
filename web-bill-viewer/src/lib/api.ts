@@ -215,5 +215,5 @@ export function computeTabPersonTotals(tab: Tab): TabPersonTotal[] {
       total: val.total,
       bill_count: val.bill_count,
     }))
-    .sort((a, b) => b.total - a.total);
+    .sort((a, b) => a.person_name.localeCompare(b.person_name, undefined, { sensitivity: "base" }));
 }

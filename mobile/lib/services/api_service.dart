@@ -587,7 +587,7 @@ class ApiService {
           personItems.add({
             'name': item.name,
             'amount': itemAmount,
-            'is_shared': item.assignments.length > 1,
+            'is_shared': percentage < 99.99,
           });
         }
       }

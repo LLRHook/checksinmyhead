@@ -50,14 +50,35 @@ class _ReceiptReviewSheetState extends State<ReceiptReviewSheet> {
   @override
   void initState() {
     super.initState();
-    _items = widget.receipt.items
-        .map((i) => _EditableItem(
-              nameController: TextEditingController(text: i.name),
-              priceController: TextEditingController(
-                  text: i.price.toStringAsFixed(2)),
-              quantity: i.quantity,
-            ))
-        .toList();
+    // Expand quantity > 1 items into individual line items so users see
+    // exactly what will be added to the bill (no surprises after Apply).
+    _items = [];
+    for (final i in widget.receipt.items) {
+      if (i.quantity > 1) {
+        final perUnit =
+            double.parse((i.price / i.quantity).toStringAsFixed(2));
+        final lastUnit = double.parse(
+            (i.price - perUnit * (i.quantity - 1)).toStringAsFixed(2));
+        for (int q = 0; q < i.quantity - 1; q++) {
+          _items.add(_EditableItem(
+            nameController: TextEditingController(text: i.name),
+            priceController: TextEditingController(
+                text: perUnit.toStringAsFixed(2)),
+          ));
+        }
+        _items.add(_EditableItem(
+          nameController: TextEditingController(text: i.name),
+          priceController: TextEditingController(
+              text: lastUnit.toStringAsFixed(2)),
+        ));
+      } else {
+        _items.add(_EditableItem(
+          nameController: TextEditingController(text: i.name),
+          priceController: TextEditingController(
+              text: i.price.toStringAsFixed(2)),
+        ));
+      }
+    }
     _subtotalController = TextEditingController(
       text: widget.receipt.subtotal?.toStringAsFixed(2) ?? '',
     );
@@ -116,7 +137,7 @@ class _ReceiptReviewSheetState extends State<ReceiptReviewSheet> {
       final price = double.tryParse(item.priceController.text.trim());
       if (name.isNotEmpty && price != null && price > 0) {
         items.add(ParsedItem(
-            name: name, price: price, quantity: item.quantity));
+            name: name, price: price, quantity: 1));
       }
     }
 
@@ -544,11 +565,9 @@ class _ReceiptReviewSheetState extends State<ReceiptReviewSheet> {
 class _EditableItem {
   final TextEditingController nameController;
   final TextEditingController priceController;
-  final int quantity;
 
   _EditableItem({
     required this.nameController,
     required this.priceController,
-    this.quantity = 1,
   });
 }

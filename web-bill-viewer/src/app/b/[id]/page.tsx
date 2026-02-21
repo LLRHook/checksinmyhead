@@ -1,4 +1,5 @@
 import { getBill } from "@/lib/api";
+import type { Metadata } from "next";
 import BillHeader from "@/components/BillHeader";
 import BillBreakdown from "@/components/BillBreakdown";
 import PersonShare from "@/components/PersonShare";
@@ -6,6 +7,24 @@ import PaymentDetails from "@/components/PaymentDetails";
 import DesktopLayout from "@/components/DesktopLayout";
 import { notFound } from "next/navigation";
 import { FaLock, FaTriangleExclamation } from "react-icons/fa6";
+
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: { id: string };
+  searchParams: { t?: string };
+}): Promise<Metadata> {
+  const { id } = await params;
+  const { t: token } = await searchParams;
+  if (!token) return { title: "Billington" };
+  try {
+    const bill = await getBill(id, token);
+    return { title: `${bill.name} - Billington` };
+  } catch {
+    return { title: "Billington" };
+  }
+}
 
 export default async function BillPage({
   params,
@@ -73,11 +92,10 @@ export default async function BillPage({
           Individual Shares
         </h2>
         <div className="space-y-3">
-          {bill.person_shares.map((share) => (
+          {[...bill.person_shares].sort((a, b) => a.person_name.localeCompare(b.person_name, undefined, { sensitivity: "base" })).map((share) => (
             <PersonShare
               key={share.id}
               personShare={share}
-              index={0}
               hasVenmo={hasVenmo}
             />
           ))}
