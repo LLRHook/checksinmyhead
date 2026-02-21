@@ -96,7 +96,7 @@ describe("computeTabPersonTotals", () => {
     expect(result[0].bill_count).toBe(2);
   });
 
-  it("sorts by total descending", () => {
+  it("sorts alphabetically by name", () => {
     const tab: Tab = {
       id: 1,
       name: "Trip",

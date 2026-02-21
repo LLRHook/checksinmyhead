@@ -15,7 +15,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Bill Summary - Billington",
+  title: "Billington",
   description: "View your shared bill breakdown with Billington",
 };
 

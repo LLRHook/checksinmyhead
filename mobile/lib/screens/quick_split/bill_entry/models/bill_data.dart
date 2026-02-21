@@ -183,9 +183,12 @@ class BillData extends ChangeNotifier {
       items.removeLast();
     }
 
-    // Set subtotal
+    // Set subtotal (compute from items if OCR didn't detect one)
     if (receipt.subtotal != null) {
       subtotalController.text = receipt.subtotal!.toStringAsFixed(2);
+    } else if (receipt.items.isNotEmpty) {
+      final computed = receipt.items.fold(0.0, (sum, item) => sum + item.price);
+      subtotalController.text = computed.toStringAsFixed(2);
     }
 
     // Set tax

@@ -6,6 +6,7 @@ import {
   computeTabPersonTotals,
   API_BASE_URL,
 } from "@/lib/api";
+import type { Metadata } from "next";
 import TabHeader from "@/components/TabHeader";
 import TabPersonTotals from "@/components/TabPersonTotals";
 import SettlementCard from "@/components/SettlementCard";
@@ -16,6 +17,24 @@ import MemberList from "@/components/MemberList";
 import DesktopLayout from "@/components/DesktopLayout";
 import { notFound } from "next/navigation";
 import { FaLock, FaTriangleExclamation } from "react-icons/fa6";
+
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: { id: string };
+  searchParams: { t?: string };
+}): Promise<Metadata> {
+  const { id } = await params;
+  const { t: token } = await searchParams;
+  if (!token) return { title: "Billington" };
+  try {
+    const tab = await getTab(id, token);
+    return { title: `${tab.name} - Billington` };
+  } catch {
+    return { title: "Billington" };
+  }
+}
 
 export default async function TabPage({
   params,
