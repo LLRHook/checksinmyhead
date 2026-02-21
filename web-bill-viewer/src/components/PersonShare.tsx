@@ -22,10 +22,7 @@ export default function PersonShare({
       const cleanUsername = hasVenmo.replace(/^@/, "");
       const amount = personShare.total.toFixed(2);
       const note = encodeURIComponent(`Split bill - ${personShare.person_name}`);
-      window.open(
-        `https://venmo.com/${cleanUsername}?txn=pay&amount=${amount}&note=${note}`,
-        "_blank"
-      );
+      window.location.href = `venmo://paycharge?txn=pay&recipients=${cleanUsername}&amount=${amount}&note=${note}`;
     }
   };
 
