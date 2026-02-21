@@ -20,7 +20,12 @@ export default function PersonShare({
     e.stopPropagation();
     if (hasVenmo) {
       const cleanUsername = hasVenmo.replace(/^@/, "");
-      window.open(`https://venmo.com/u/${cleanUsername}`, "_blank");
+      const amount = personShare.total.toFixed(2);
+      const note = encodeURIComponent(`Split bill - ${personShare.person_name}`);
+      window.open(
+        `https://venmo.com/${cleanUsername}?txn=pay&amount=${amount}&note=${note}`,
+        "_blank"
+      );
     }
   };
 
