@@ -15,12 +15,10 @@ export default function SettlementCard({
 }: SettlementCardProps) {
   const paidCount = settlements.filter((s) => s.paid).length;
 
-  const handleVenmoClick = (amount: number) => {
+  const handleVenmoClick = () => {
     if (venmoId) {
-      window.open(
-        `venmo://paycharge?txn=pay&recipients=${venmoId}&amount=${amount.toFixed(2)}&note=The Billington`,
-        "_blank",
-      );
+      const cleanUsername = venmoId.replace(/^@/, "");
+      window.open(`https://venmo.com/u/${cleanUsername}`, "_blank");
     }
   };
 
@@ -82,7 +80,7 @@ export default function SettlementCard({
               </div>
               {!settlement.paid && venmoId && (
                 <button
-                  onClick={() => handleVenmoClick(settlement.amount)}
+                  onClick={() => handleVenmoClick()}
                   className="h-10 px-4 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-white font-semibold rounded-xl flex items-center justify-center hover:opacity-90 transition-opacity"
                 >
                   <SiVenmo size={32} />
