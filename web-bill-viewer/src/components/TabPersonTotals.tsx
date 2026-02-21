@@ -12,12 +12,10 @@ export default function TabPersonTotals({
   personTotals,
   venmoId,
 }: TabPersonTotalsProps) {
-  const handleVenmoClick = (total: number) => {
+  const handleVenmoClick = () => {
     if (venmoId) {
-      window.open(
-        `venmo://paycharge?txn=pay&recipients=${venmoId}&amount=${total.toFixed(2)}&note=The Billington`,
-        "_blank",
-      );
+      const cleanUsername = venmoId.replace(/^@/, "");
+      window.open(`https://venmo.com/u/${cleanUsername}`, "_blank");
     }
   };
 
@@ -51,7 +49,7 @@ export default function TabPersonTotals({
               </div>
               {venmoId && (
                 <button
-                  onClick={() => handleVenmoClick(person.total)}
+                  onClick={() => handleVenmoClick()}
                   className="h-10 px-4 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-white font-semibold rounded-xl flex items-center justify-center hover:opacity-90 transition-opacity"
                 >
                   <SiVenmo size={32} />

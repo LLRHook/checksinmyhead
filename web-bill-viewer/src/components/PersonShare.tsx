@@ -7,7 +7,6 @@ import { SiVenmo } from "react-icons/si";
 
 interface PersonShareProps {
   personShare: PersonShareType;
-  index: number;
   hasVenmo?: string | null;
 }
 
@@ -20,10 +19,8 @@ export default function PersonShare({
   const handleVenmoClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (hasVenmo) {
-      window.open(
-        `venmo://paycharge?txn=pay&recipients=${hasVenmo}&amount=${personShare.total.toFixed(2)}&note=The Billington`,
-        "_blank",
-      );
+      const cleanUsername = hasVenmo.replace(/^@/, "");
+      window.open(`https://venmo.com/u/${cleanUsername}`, "_blank");
     }
   };
 
