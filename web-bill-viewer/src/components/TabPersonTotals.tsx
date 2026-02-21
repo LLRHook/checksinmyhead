@@ -16,10 +16,7 @@ export default function TabPersonTotals({
     if (venmoId) {
       const cleanUsername = venmoId.replace(/^@/, "");
       const note = encodeURIComponent(`Tab settlement - ${personName}`);
-      window.open(
-        `https://venmo.com/${cleanUsername}?txn=pay&amount=${amount.toFixed(2)}&note=${note}`,
-        "_blank"
-      );
+      window.location.href = `venmo://paycharge?txn=pay&recipients=${cleanUsername}&amount=${amount.toFixed(2)}&note=${note}`;
     }
   };
 
