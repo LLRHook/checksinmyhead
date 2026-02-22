@@ -1,7 +1,26 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 
 /// Dialog utility class for creating consistent iOS-style dialogs
 class AppDialogs {
+  static void showError(BuildContext context, String message) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.cloud_off, color: Colors.white, size: 18),
+            const SizedBox(width: 10),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        backgroundColor: Colors.orange.shade700,
+      ),
+    );
+  }
+
   /// Creates a consistent iOS-styled alert dialog with better native appearance
   ///
   /// This method standardizes the dialog appearance across the app by:
