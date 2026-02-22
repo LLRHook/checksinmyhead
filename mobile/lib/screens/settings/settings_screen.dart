@@ -422,9 +422,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           itemBuilder: (context, index) {
                                             final paymentMethod =
                                                 _selectedPayments[index];
+                                            final rawIdentifier =
+                                                _paymentIdentifiers[paymentMethod];
                                             final identifier =
-                                                _paymentIdentifiers[paymentMethod] ??
-                                                'Not set';
+                                                (rawIdentifier == null || rawIdentifier.isEmpty)
+                                                    ? 'Not set'
+                                                    : rawIdentifier;
 
                                             return PaymentMethodItem(
                                               methodName: paymentMethod,
