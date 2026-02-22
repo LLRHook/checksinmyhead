@@ -246,7 +246,7 @@ class AssignmentUtils {
       }
     }
 
-    return _applyLargestRemainder(newShares, data.total);
+    return applyLargestRemainder(newShares, data.total);
   }
 
   /// Applies the largest-remainder method (Hamilton's method) to ensure
@@ -263,7 +263,7 @@ class AssignmentUtils {
   /// - [targetTotal]: The exact total that all shares must sum to
   ///
   /// Returns a corrected map where all values sum to [targetTotal] exactly.
-  static Map<Person, double> _applyLargestRemainder(
+  static Map<Person, double> applyLargestRemainder(
     Map<Person, double> shares,
     double targetTotal,
   ) {
