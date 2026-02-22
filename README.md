@@ -1,6 +1,6 @@
 # Billington
 
-**Privacy-first bill splitting for group trips** — [Demo](https://youtube.com/shorts/T1GHR6JgOX8?feature=share) | [Website](https://getspliq.vercel.app/)
+**Privacy-first bill splitting for group trips** — [Demo](https://youtube.com/shorts/T1GHR6JgOX8?feature=share) | [Website](https://getbillington.vercel.app/)
 
 Billington lets groups split bills, track expenses, and settle up — all without creating accounts. Share a link, add bills, and see who owes what.
 
