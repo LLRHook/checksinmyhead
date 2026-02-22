@@ -58,6 +58,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// Loading state
   bool _isLoading = true;
 
+  /// Auto-add self to bills toggle
+  bool _autoAddSelf = true;
+
   /// Debounce timer for display name saving
   Timer? _debounceTimer;
 
@@ -91,11 +94,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _displayNameController.text = savedName;
       }
 
+      // Load auto-add self preference
+      final autoAdd = await _prefsService.getAutoAddSelf();
+
       // Update state with retrieved values
       if (!mounted) return;
       setState(() {
         _selectedPayments = savedPayments;
         _paymentIdentifiers = savedIdentifiers;
+        _autoAddSelf = autoAdd;
         _isLoading = false;
       });
     } catch (e) {
@@ -348,6 +355,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         _debounceTimer?.cancel();
                                         _debounceTimer = Timer(const Duration(milliseconds: 500), _saveDisplayName);
                                       },
+                                    ),
+                                    const SizedBox(height: 12),
+                                    const Divider(
+                                      color: Colors.white24,
+                                      height: 1,
+                                    ),
+                                    SwitchListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      title: const Text(
+                                        'Auto-add me to bills',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                      subtitle: const Text(
+                                        'Automatically add yourself as a participant',
+                                        style: TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                      value: _autoAddSelf,
+                                      onChanged: (value) {
+                                        setState(() => _autoAddSelf = value);
+                                        _prefsService.setAutoAddSelf(value);
+                                        HapticFeedback.selectionClick();
+                                      },
+                                      activeThumbColor: Colors.white,
+                                      activeTrackColor: Colors.white.withValues(alpha: .4),
+                                      inactiveThumbColor: Colors.white70,
+                                      inactiveTrackColor: Colors.white.withValues(alpha: .15),
                                     ),
                                   ],
                                 ),

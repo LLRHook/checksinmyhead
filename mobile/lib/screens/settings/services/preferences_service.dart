@@ -25,6 +25,7 @@ class PreferencesService {
   static const String _selectedPaymentsKey = 'selectedPayments';
   static const String _paymentPrefix = 'payment_';
   static const String _displayNameKey = 'display_name';
+  static const String _autoAddSelfKey = 'auto_add_self';
 
   /// Returns a singleton instance
   static final PreferencesService _instance = PreferencesService._internal();
@@ -62,6 +63,18 @@ class PreferencesService {
   Future<String?> getDisplayName() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_displayNameKey);
+  }
+
+  /// Gets the auto-add self preference (defaults to true)
+  Future<bool> getAutoAddSelf() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_autoAddSelfKey) ?? true;
+  }
+
+  /// Saves the auto-add self preference
+  Future<void> setAutoAddSelf(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_autoAddSelfKey, value);
   }
 
   /// Saves the list of selected payment methods
