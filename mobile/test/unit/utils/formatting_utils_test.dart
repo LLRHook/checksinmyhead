@@ -36,28 +36,6 @@ void main() {
     });
   });
 
-  group('FormattingUtils.formatCurrency', () {
-    test('formats whole dollar amount', () {
-      expect(FormattingUtils.formatCurrency(100.0), equals('\$100.00'));
-    });
-
-    test('formats with cents', () {
-      expect(FormattingUtils.formatCurrency(42.5), equals('\$42.50'));
-    });
-
-    test('formats zero', () {
-      expect(FormattingUtils.formatCurrency(0.0), equals('\$0.00'));
-    });
-
-    test('rounds to two decimal places', () {
-      expect(FormattingUtils.formatCurrency(9.999), equals('\$10.00'));
-    });
-
-    test('formats small amount', () {
-      expect(FormattingUtils.formatCurrency(0.01), equals('\$0.01'));
-    });
-  });
-
   group('FormattingUtils.formatVenmoUsername', () {
     test('preserves existing @', () {
       expect(FormattingUtils.formatVenmoUsername('@john'), equals('@john'));

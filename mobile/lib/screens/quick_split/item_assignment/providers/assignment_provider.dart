@@ -36,10 +36,9 @@ import 'package:checks_frontend/models/bill_item.dart';
 class AssignmentProvider extends ChangeNotifier {
   late AssignmentData _data;
 
-  // Icons used for categorizing bill items
+  // Icon used for categorizing bill items
   final IconData universalItemIcon =
       Icons.restaurant_menu; // For general food/drink items
-  final IconData alcoholItemIcon = Icons.local_bar; // For alcohol items
 
   /// Creates an AssignmentProvider with initial bill data.
   ///
