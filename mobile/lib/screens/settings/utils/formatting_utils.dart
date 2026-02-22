@@ -38,11 +38,6 @@ class FormattingUtils {
     return phoneNumber;
   }
 
-  /// Formats a currency amount as USD
-  static String formatCurrency(double amount) {
-    return '\$${amount.toStringAsFixed(2)}';
-  }
-
   /// Ensures a Venmo username starts with @
   static String formatVenmoUsername(String username) {
     if (username.startsWith('@')) {

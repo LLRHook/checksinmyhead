@@ -17,6 +17,7 @@
 
 import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/models/bill_item.dart';
+import 'package:checks_frontend/screens/quick_split/item_assignment/utils/assignment_utils.dart';
 
 /// CalculationUtils - Utility for calculating individual bill payments
 ///
@@ -113,7 +114,7 @@ class CalculationUtils {
     }
 
     // Apply largest-remainder correction on the totals
-    final correctedTotals = _applyLargestRemainder(rawTotals, total);
+    final correctedTotals = AssignmentUtils.applyLargestRemainder(rawTotals, total);
 
     // Merge corrected totals back into per-person maps
     final result = <Person, Map<String, double>>{};
@@ -130,37 +131,4 @@ class CalculationUtils {
     return result;
   }
 
-  /// Applies the largest-remainder method (Hamilton's method) to ensure
-  /// penny-exact totals when splitting bill amounts.
-  ///
-  /// See [AssignmentUtils._applyLargestRemainder] for full documentation.
-  static Map<Person, double> _applyLargestRemainder(
-    Map<Person, double> shares,
-    double targetTotal,
-  ) {
-    if (shares.isEmpty) return shares;
-
-    final result = <Person, double>{};
-    final remainders = <Person, double>{};
-
-    int totalCents = (targetTotal * 100).round();
-    int allocatedCents = 0;
-
-    for (final entry in shares.entries) {
-      int floored = (entry.value * 100).floor();
-      result[entry.key] = floored / 100.0;
-      remainders[entry.key] = (entry.value * 100) - floored;
-      allocatedCents += floored;
-    }
-
-    int remainingCents = totalCents - allocatedCents;
-    final sorted = remainders.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
-    for (int i = 0; i < remainingCents && i < sorted.length; i++) {
-      result[sorted[i].key] = result[sorted[i].key]! + 0.01;
-    }
-
-    return result;
-  }
 }
