@@ -25,6 +25,8 @@ class PreferencesService {
   static const String _selectedPaymentsKey = 'selectedPayments';
   static const String _paymentPrefix = 'payment_';
   static const String _displayNameKey = 'display_name';
+  static const String _autoAddSelfKey = 'auto_add_self';
+  static const String _accentColorKey = 'accent_color';
 
   /// Returns a singleton instance
   static final PreferencesService _instance = PreferencesService._internal();
@@ -62,6 +64,18 @@ class PreferencesService {
   Future<String?> getDisplayName() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_displayNameKey);
+  }
+
+  /// Gets the auto-add self preference (defaults to true)
+  Future<bool> getAutoAddSelf() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_autoAddSelfKey) ?? true;
+  }
+
+  /// Saves the auto-add self preference
+  Future<void> setAutoAddSelf(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_autoAddSelfKey, value);
   }
 
   /// Saves the list of selected payment methods
@@ -152,5 +166,23 @@ class PreferencesService {
     } catch (e) {
       debugPrint('Failed to save all payment settings: $e');
     }
+  }
+
+  /// Gets the custom accent color value (returns null for default)
+  Future<int?> getAccentColor() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_accentColorKey);
+  }
+
+  /// Saves the custom accent color
+  Future<void> setAccentColor(int colorValue) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_accentColorKey, colorValue);
+  }
+
+  /// Resets to default color
+  Future<void> resetAccentColor() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_accentColorKey);
   }
 }

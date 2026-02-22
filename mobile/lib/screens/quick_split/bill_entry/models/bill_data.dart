@@ -222,5 +222,7 @@ class BillData extends ChangeNotifier {
     }
 
     calculateBill();
+    // Sync animated total so items_section shows correct value immediately
+    animatedItemsTotal = itemsTotal;
   }
 }

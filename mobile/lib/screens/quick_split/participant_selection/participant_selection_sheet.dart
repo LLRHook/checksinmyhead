@@ -16,6 +16,7 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import 'package:checks_frontend/screens/quick_split/bill_entry/bill_entry_screen.dart';
+import 'package:checks_frontend/screens/settings/services/preferences_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -51,6 +52,7 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
   void initState() {
     super.initState();
     _loadRecentPeople();
+    _autoAddSelf();
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -68,6 +70,23 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
     final recentPeople = await RecentPeopleManager.loadRecentPeople();
     if (!mounted) return;
     setState(() => _recentPeople = recentPeople);
+  }
+
+  /// Auto-adds the user as a participant if the preference is enabled
+  Future<void> _autoAddSelf() async {
+    final prefsService = PreferencesService();
+    final autoAdd = await prefsService.getAutoAddSelf();
+    if (!autoAdd) return;
+    final displayName = await prefsService.getDisplayName();
+    if (displayName == null || displayName.trim().isEmpty) return;
+    if (!mounted) return;
+
+    // Use post-frame callback to ensure provider is available
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final provider = Provider.of<ParticipantsProvider>(context, listen: false);
+      provider.addPerson(displayName.trim());
+    });
   }
 
   /// Persists participants to recents for future use
