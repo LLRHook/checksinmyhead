@@ -146,7 +146,8 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Announce loading state for screen readers
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      SemanticsService.announce('Loading Billington', TextDirection.ltr);
+      final view = View.of(context);
+      SemanticsService.sendAnnouncement(view, 'Loading Billington', TextDirection.ltr);
     });
 
     // Check if this is first app launch and prepare navigation
