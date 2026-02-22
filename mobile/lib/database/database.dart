@@ -429,6 +429,16 @@ class AppDatabase extends _$AppDatabase {
     return query.getSingleOrNull();
   }
 
+  /// Gets all bills that don't have a share URL yet
+  ///
+  /// These are bills that were saved locally but whose backend upload
+  /// failed (e.g. due to being offline or a timeout).
+  Future<List<RecentBill>> getBillsWithoutShareUrl() async {
+    final query = select(recentBills)
+      ..where((b) => b.shareUrl.isNull());
+    return query.get();
+  }
+
   // Tab management methods
 
   Future<List<Tab>> getAllTabs() async {

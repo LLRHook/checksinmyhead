@@ -705,6 +705,13 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
                   onDeleted: () => _handleBillDeleted(bill.id),
                   onRefreshNeeded:
                       () => _handleBillDeleted(-1), // Special refresh signal
+                  onRetryUpload: bill.shareUrl == null
+                      ? () async {
+                          final url = await _billsManager
+                              .retrySingleBillUpload(bill.id);
+                          return url;
+                        }
+                      : null,
                 ),
               )
               .toList(),
