@@ -493,8 +493,13 @@ class _PaymentMethodSheetState extends State<PaymentMethodSheet>
                             )) {
                               _paymentIdentifiers[paymentMethod] =
                                   FormattingUtils.formatPhoneNumber(value);
+                            } else if (paymentMethod == 'Venmo') {
+                              _paymentIdentifiers[paymentMethod] =
+                                  FormattingUtils.formatVenmoUsername(value);
+                            } else if (paymentMethod == 'Cash App') {
+                              _paymentIdentifiers[paymentMethod] =
+                                  FormattingUtils.formatCashtag(value);
                             } else {
-                              // Save the identifier as-is for other payment methods
                               _paymentIdentifiers[paymentMethod] = value;
                             }
 
@@ -751,8 +756,13 @@ Future<void> showPaymentMethodEditor({
                         if (PaymentMethod.requiresPhoneNumber(paymentMethod)) {
                           updatedIdentifiers[paymentMethod] =
                               FormattingUtils.formatPhoneNumber(value);
+                        } else if (paymentMethod == 'Venmo') {
+                          updatedIdentifiers[paymentMethod] =
+                              FormattingUtils.formatVenmoUsername(value);
+                        } else if (paymentMethod == 'Cash App') {
+                          updatedIdentifiers[paymentMethod] =
+                              FormattingUtils.formatCashtag(value);
                         } else {
-                          // Save the identifier as-is for other payment methods
                           updatedIdentifiers[paymentMethod] = value;
                         }
 
