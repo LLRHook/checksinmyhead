@@ -22,6 +22,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import 'payment_method_sheet.dart';
+import 'package:checks_frontend/screens/settings/widgets/color_picker_sheet.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -252,92 +253,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // ValueNotifier in AppTheme automatically triggers MaterialApp rebuild
   }
 
-  /// Parses a 6-character hex string into a Color, or returns null if invalid
-  Color? _parseHexColor(String hex) {
-    final clean = hex.replaceAll('#', '').trim();
-    if (clean.length != 6) return null;
-    final value = int.tryParse(clean, radix: 16);
-    if (value == null) return null;
-    return Color(0xFF000000 | value);
-  }
-
-  /// Shows a dialog for entering a custom hex color
+  /// Shows the color wheel picker bottom sheet
   void _showHexColorPicker() {
-    final controller = TextEditingController(
-      text: _customHexColor != null
-          ? _customHexColor!.toARGB32().toRadixString(16).substring(2).toUpperCase()
-          : '',
-    );
-    Color? previewColor = _customHexColor;
-
-    showDialog(
+    showColorPickerSheet(
       context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Custom Color'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Live preview circle
-                  Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      color: previewColor ?? Colors.grey.shade300,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Theme.of(context).colorScheme.outline,
-                        width: 1.5,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  // Hex input field
-                  TextField(
-                    controller: controller,
-                    textCapitalization: TextCapitalization.characters,
-                    maxLength: 6,
-                    decoration: InputDecoration(
-                      prefixText: '#  ',
-                      prefixStyle: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      hintText: '328983',
-                      counterText: '',
-                    ),
-                    onChanged: (value) {
-                      setDialogState(() {
-                        previewColor = _parseHexColor(value);
-                      });
-                    },
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: previewColor != null
-                      ? () {
-                          Navigator.of(dialogContext).pop();
-                          setState(() {
-                            _customHexColor = previewColor;
-                          });
-                          _onAccentColorTapped(previewColor!);
-                        }
-                      : null,
-                  child: const Text('Apply'),
-                ),
-              ],
-            );
-          },
-        );
+      initialColor: _customHexColor,
+      onColorSelected: (color) {
+        setState(() {
+          _customHexColor = color;
+        });
+        _onAccentColorTapped(color);
       },
     );
   }
