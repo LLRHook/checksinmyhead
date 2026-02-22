@@ -1,6 +1,7 @@
 "use client";
 
 import { PersonShare as PersonShareType } from "@/lib/api";
+import { buildVenmoDeepLink, startVenmoFallback } from "@/lib/venmo";
 import { useCollapsible } from "@/hooks/useCollapsible";
 import { FaChevronDown } from "react-icons/fa6";
 import { SiVenmo } from "react-icons/si";
@@ -15,16 +16,6 @@ export default function PersonShare({
   hasVenmo,
 }: PersonShareProps) {
   const { isOpen, toggle, contentRef, height } = useCollapsible();
-
-  const handleVenmoClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (hasVenmo) {
-      const cleanUsername = hasVenmo.replace(/^@/, "");
-      const amount = personShare.total.toFixed(2);
-      const note = encodeURIComponent(`Split bill - ${personShare.person_name}`);
-      window.location.href = `venmo://paycharge?txn=pay&recipients=${cleanUsername}&amount=${amount}&note=${note}`;
-    }
-  };
 
   return (
     <div className="bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-2xl overflow-hidden shadow-sm dark:shadow-none dark:border dark:border-[var(--border-dark)] transition-all duration-200">
@@ -91,15 +82,19 @@ export default function PersonShare({
                 </span>
               </div>
               {hasVenmo && (
-                <button
-                  onClick={handleVenmoClick}
-                  className="w-full mt-3 h-11 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-white font-semibold rounded-xl flex items-center justify-center hover:opacity-90 transition-opacity"
+                <a
+                  href={buildVenmoDeepLink(hasVenmo, personShare.total.toFixed(2), "Split bill - " + personShare.person_name)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    startVenmoFallback(hasVenmo, personShare.total.toFixed(2), "Split bill - " + personShare.person_name);
+                  }}
+                  className="w-full mt-3 h-11 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-white font-semibold rounded-xl flex items-center justify-center hover:opacity-90 transition-opacity no-underline"
                 >
                   <span className="flex items-center gap-1.5">
                     Pay with
                     <SiVenmo size={44} className="mt-0.5" />
                   </span>
-                </button>
+                </a>
               )}
             </div>
           </div>

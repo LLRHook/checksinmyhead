@@ -1,6 +1,7 @@
 "use client";
 
 import { TabSettlement } from "@/lib/api";
+import { buildVenmoDeepLink, startVenmoFallback } from "@/lib/venmo";
 import { SiVenmo } from "react-icons/si";
 import { FaCheck } from "react-icons/fa6";
 
@@ -14,14 +15,6 @@ export default function SettlementCard({
   venmoId,
 }: SettlementCardProps) {
   const paidCount = settlements.filter((s) => s.paid).length;
-
-  const handleVenmoClick = (amount: number, personName: string) => {
-    if (venmoId) {
-      const cleanUsername = venmoId.replace(/^@/, "");
-      const note = encodeURIComponent(`Tab settlement - ${personName}`);
-      window.location.href = `venmo://paycharge?txn=pay&recipients=${cleanUsername}&amount=${amount.toFixed(2)}&note=${note}`;
-    }
-  };
 
   return (
     <div className="mb-6">
@@ -80,12 +73,15 @@ export default function SettlementCard({
                 ${settlement.amount.toFixed(2)}
               </div>
               {!settlement.paid && venmoId && (
-                <button
-                  onClick={() => handleVenmoClick(settlement.amount, settlement.person_name)}
-                  className="h-10 px-4 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-white font-semibold rounded-xl flex items-center justify-center hover:opacity-90 transition-opacity"
+                <a
+                  href={buildVenmoDeepLink(venmoId, settlement.amount.toFixed(2), "Tab settlement - " + settlement.person_name)}
+                  onClick={() => {
+                    startVenmoFallback(venmoId, settlement.amount.toFixed(2), "Tab settlement - " + settlement.person_name);
+                  }}
+                  className="h-10 px-4 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-white font-semibold rounded-xl flex items-center justify-center hover:opacity-90 transition-opacity no-underline"
                 >
                   <SiVenmo size={32} />
-                </button>
+                </a>
               )}
             </div>
           </div>
