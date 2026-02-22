@@ -18,7 +18,6 @@
 import 'package:checks_frontend/screens/settings/services/preferences_service.dart';
 import 'package:checks_frontend/screens/settings/widgets/payment_method_item.dart';
 import 'package:checks_frontend/config/theme.dart';
-import 'package:checks_frontend/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
@@ -68,6 +67,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   /// Currently selected accent color
   Color _selectedAccentColor = AppTheme.defaultPrimary;
+
+  /// Custom hex color (non-null when user has set a custom color not in presets)
+  Color? _customHexColor;
 
   /// Available accent color presets
   static const List<Color> _colorPresets = [
@@ -126,6 +128,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _autoAddSelf = autoAdd;
         if (savedAccentColor != null) {
           _selectedAccentColor = Color(savedAccentColor);
+          // Check if saved color is a custom one (not in presets)
+          final isPreset = _colorPresets.any(
+            (c) => c.toARGB32() == savedAccentColor,
+          );
+          if (!isPreset) {
+            _customHexColor = Color(savedAccentColor);
+          }
         }
         _isLoading = false;
       });
@@ -240,8 +249,97 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _selectedAccentColor = color;
     });
 
-    // Trigger full app rebuild to apply the new theme
-    MyApp.restartApp();
+    // ValueNotifier in AppTheme automatically triggers MaterialApp rebuild
+  }
+
+  /// Parses a 6-character hex string into a Color, or returns null if invalid
+  Color? _parseHexColor(String hex) {
+    final clean = hex.replaceAll('#', '').trim();
+    if (clean.length != 6) return null;
+    final value = int.tryParse(clean, radix: 16);
+    if (value == null) return null;
+    return Color(0xFF000000 | value);
+  }
+
+  /// Shows a dialog for entering a custom hex color
+  void _showHexColorPicker() {
+    final controller = TextEditingController(
+      text: _customHexColor != null
+          ? _customHexColor!.toARGB32().toRadixString(16).substring(2).toUpperCase()
+          : '',
+    );
+    Color? previewColor = _customHexColor;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Custom Color'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Live preview circle
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: previewColor ?? Colors.grey.shade300,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outline,
+                        width: 1.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // Hex input field
+                  TextField(
+                    controller: controller,
+                    textCapitalization: TextCapitalization.characters,
+                    maxLength: 6,
+                    decoration: InputDecoration(
+                      prefixText: '#  ',
+                      prefixStyle: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      hintText: '328983',
+                      counterText: '',
+                    ),
+                    onChanged: (value) {
+                      setDialogState(() {
+                        previewColor = _parseHexColor(value);
+                      });
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: previewColor != null
+                      ? () {
+                          Navigator.of(dialogContext).pop();
+                          setState(() {
+                            _customHexColor = previewColor;
+                          });
+                          _onAccentColorTapped(previewColor!);
+                        }
+                      : null,
+                  child: const Text('Apply'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -389,7 +487,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                             12,
                                           ),
                                           borderSide: const BorderSide(
-                                            color: Color(0xFF627D98),
+                                            color: AppTheme.defaultPrimary,
                                             width: 2,
                                           ),
                                         ),
@@ -639,36 +737,86 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       ),
                                     ),
                                     const SizedBox(height: 16),
-                                    Wrap(
-                                      spacing: 12,
-                                      runSpacing: 12,
-                                      children: _colorPresets.map((color) {
-                                        final isSelected = _selectedAccentColor.toARGB32() == color.toARGB32();
-                                        return GestureDetector(
-                                          onTap: () => _onAccentColorTapped(color),
-                                          child: Container(
-                                            width: 44,
-                                            height: 44,
-                                            decoration: BoxDecoration(
-                                              color: color,
-                                              shape: BoxShape.circle,
-                                              border: Border.all(
-                                                color: isSelected
-                                                    ? Colors.white
-                                                    : Colors.white.withValues(alpha: .3),
-                                                width: isSelected ? 3 : 1.5,
+                                    LayoutBuilder(
+                                      builder: (context, constraints) {
+                                        const columns = 5;
+                                        const spacing = 12.0;
+                                        final circleSize = (constraints.maxWidth - spacing * (columns - 1)) / columns;
+                                        final isCustomActive = _customHexColor != null &&
+                                            _selectedAccentColor.toARGB32() == _customHexColor!.toARGB32();
+
+                                        // 9 presets + 1 custom = 10 items, 2 rows of 5
+                                        final allItems = [
+                                          ..._colorPresets.map((color) {
+                                            final isSelected = _selectedAccentColor.toARGB32() == color.toARGB32() && !isCustomActive;
+                                            return GestureDetector(
+                                              onTap: () {
+                                                setState(() => _customHexColor = null);
+                                                _onAccentColorTapped(color);
+                                              },
+                                              child: Container(
+                                                width: circleSize,
+                                                height: circleSize,
+                                                decoration: BoxDecoration(
+                                                  color: color,
+                                                  shape: BoxShape.circle,
+                                                  border: Border.all(
+                                                    color: isSelected
+                                                        ? Colors.white
+                                                        : Colors.white.withValues(alpha: .3),
+                                                    width: isSelected ? 3 : 1.5,
+                                                  ),
+                                                ),
+                                                child: isSelected
+                                                    ? Icon(Icons.check, color: Colors.white, size: circleSize * 0.5)
+                                                    : null,
+                                              ),
+                                            );
+                                          }),
+                                          // Custom hex color circle
+                                          GestureDetector(
+                                            onTap: _showHexColorPicker,
+                                            child: Container(
+                                              width: circleSize,
+                                              height: circleSize,
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                gradient: isCustomActive
+                                                    ? null
+                                                    : const SweepGradient(
+                                                        colors: [
+                                                          Color(0xFFFF0000),
+                                                          Color(0xFFFF8000),
+                                                          Color(0xFFFFFF00),
+                                                          Color(0xFF00FF00),
+                                                          Color(0xFF0080FF),
+                                                          Color(0xFF8000FF),
+                                                          Color(0xFFFF0000),
+                                                        ],
+                                                      ),
+                                                color: isCustomActive ? _customHexColor : null,
+                                                border: Border.all(
+                                                  color: isCustomActive
+                                                      ? Colors.white
+                                                      : Colors.white.withValues(alpha: .3),
+                                                  width: isCustomActive ? 3 : 1.5,
+                                                ),
+                                              ),
+                                              child: Icon(
+                                                isCustomActive ? Icons.check : Icons.tag,
+                                                color: Colors.white,
+                                                size: circleSize * 0.5,
                                               ),
                                             ),
-                                            child: isSelected
-                                                ? const Icon(
-                                                    Icons.check,
-                                                    color: Colors.white,
-                                                    size: 22,
-                                                  )
-                                                : null,
                                           ),
+                                        ];
+
+                                        return Wrap(
+                                          spacing: spacing,
+                                          runSpacing: spacing,
+                                          children: allItems,
                                         );
-                                      }).toList(),
+                                      },
                                     ),
                                   ],
                                 ),

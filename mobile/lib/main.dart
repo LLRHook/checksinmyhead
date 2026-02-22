@@ -47,63 +47,32 @@ void main() async {
 }
 
 /// Root application widget that configures global app settings
-class MyApp extends StatefulWidget {
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
-  /// Static callback for triggering theme rebuilds from anywhere in the app
-  static VoidCallback? _restartCallback;
-
-  /// Triggers a full app rebuild (e.g., after changing the accent color)
-  static void restartApp() {
-    _restartCallback?.call();
-  }
-
-  @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  Key _key = UniqueKey();
-
-  @override
-  void initState() {
-    super.initState();
-    MyApp._restartCallback = _restartApp;
-  }
-
-  @override
-  void dispose() {
-    MyApp._restartCallback = null;
-    super.dispose();
-  }
-
-  void _restartApp() {
-    setState(() {
-      _key = UniqueKey();
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
-    return KeyedSubtree(
-      key: _key,
-      child: MaterialApp(
-        title: 'Billington',
-        // Theme configuration
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.system, // Follow system light/dark preference
-        debugShowCheckedModeBanner: false,
-        // Initial screen is always the splash screen
-        home: const SplashScreen(),
+    return ValueListenableBuilder<Color>(
+      valueListenable: AppTheme.primaryColorNotifier,
+      builder: (context, _, __) {
+        return MaterialApp(
+          title: 'Billington',
+          // Theme configuration
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: ThemeMode.system, // Follow system light/dark preference
+          debugShowCheckedModeBanner: false,
+          // Initial screen is always the splash screen
+          home: const SplashScreen(),
 
-        // Named routes for navigation throughout the app
-        routes: {
-          '/landing': (context) => const LandingScreen(),
-          '/settings': (context) => const SettingsScreen(),
-          '/onboarding': (context) => const OnboardingScreen(),
-        },
-      ),
+          // Named routes for navigation throughout the app
+          routes: {
+            '/landing': (context) => const LandingScreen(),
+            '/settings': (context) => const SettingsScreen(),
+            '/onboarding': (context) => const OnboardingScreen(),
+          },
+        );
+      },
     );
   }
 }

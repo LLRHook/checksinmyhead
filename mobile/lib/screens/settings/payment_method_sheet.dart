@@ -15,6 +15,7 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import 'package:checks_frontend/config/theme.dart';
 import 'package:checks_frontend/screens/settings/models/payment_method.dart';
 import 'package:checks_frontend/screens/settings/utils/formatting_utils.dart';
 import 'package:checks_frontend/screens/settings/utils/validation_utils.dart';
@@ -231,8 +232,8 @@ class _PaymentMethodSheetState extends State<PaymentMethodSheet>
                       style: FilledButton.styleFrom(
                         backgroundColor:
                             Theme.of(context).brightness == Brightness.dark
-                                ? const Color(0xFF627D98)
-                                : Colors.white,
+                                ? AppTheme.defaultPrimary:
+                                 Colors.white,
                         foregroundColor:
                             Theme.of(context).brightness == Brightness.dark
                                 ? Colors.white
@@ -446,7 +447,7 @@ class _PaymentMethodSheetState extends State<PaymentMethodSheet>
                                   width: 2,
                                 )
                                 : const BorderSide(
-                                  color: Color(0xFF627D98),
+                                  color: AppTheme.defaultPrimary,
                                   width: 2,
                                 ),
                       ),
@@ -707,7 +708,7 @@ Future<void> showPaymentMethodEditor({
                                 width: 2,
                               )
                               : const BorderSide(
-                                color: Color(0xFF627D98),
+                                color: AppTheme.defaultPrimary,
                                 width: 2,
                               ),
                     ),

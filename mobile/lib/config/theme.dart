@@ -36,12 +36,16 @@ class AppTheme {
   static const Color accentWarm = Color(0xFFD4A843);
   static const Color primaryDark = Color(0xFF2A736E);
 
-  /// Current primary color (mutable, can be overridden by user preference)
-  static Color _primaryColor = defaultPrimary;
+  /// Notifier for the current primary color — listeners rebuild when it changes
+  static final ValueNotifier<Color> primaryColorNotifier =
+      ValueNotifier<Color>(defaultPrimary);
+
+  /// Current primary color (reads from the notifier so all theme builders stay in sync)
+  static Color get _primaryColor => primaryColorNotifier.value;
 
   /// Updates the primary color used throughout the app theme
   static void setPrimaryColor(Color color) {
-    _primaryColor = color;
+    primaryColorNotifier.value = color;
   }
 
   /// Light theme configuration
