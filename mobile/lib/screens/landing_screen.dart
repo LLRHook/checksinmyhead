@@ -15,6 +15,7 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
 import 'package:checks_frontend/screens/recent_bills/recent_bills_screen.dart';
 import 'package:checks_frontend/screens/settings/settings_screen.dart';
 import 'package:flutter/material.dart';
@@ -67,6 +68,9 @@ class _LandingScreenState extends State<LandingScreen>
 
     // Start the animation immediately when screen loads
     _animationController.forward();
+
+    // Silently retry uploading bills missing share URLs
+    RecentBillsManager().retryPendingUploads();
   }
 
   @override

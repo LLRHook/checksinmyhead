@@ -20,6 +20,8 @@ import 'dart:async';
 import 'package:checks_frontend/database/database_provider.dart';
 import 'package:checks_frontend/models/bill_item.dart';
 import 'package:checks_frontend/models/person.dart';
+import 'package:checks_frontend/services/api_service.dart';
+import 'package:checks_frontend/screens/settings/services/preferences_service.dart';
 import 'package:flutter/material.dart';
 import 'recent_bill_model.dart';
 
@@ -226,6 +228,90 @@ class RecentBillsManager extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('Error updating bill share URL: $e');
+    }
+  }
+
+  /// Builds the payment methods list from user preferences.
+  /// Returns a fallback default if the user has no methods configured.
+  Future<List<Map<String, String>>> _getPaymentMethods() async {
+    final prefsService = PreferencesService();
+    final selectedMethods = await prefsService.getSelectedPaymentMethods();
+    final identifiers = await prefsService.getAllPaymentIdentifiers();
+    final paymentMethods = selectedMethods.map((method) {
+      return {'name': method, 'identifier': identifiers[method] ?? ''};
+    }).toList();
+
+    return paymentMethods.isNotEmpty
+        ? paymentMethods
+        : [{'name': 'Venmo', 'identifier': '@username'}];
+  }
+
+  /// Retries uploading bills that don't have share URLs yet.
+  /// Called silently on app launch and can be triggered manually.
+  Future<void> retryPendingUploads() async {
+    try {
+      final pendingBills =
+          await DatabaseProvider.db.getBillsWithoutShareUrl();
+      if (pendingBills.isEmpty) return;
+
+      final apiService = ApiService();
+      final paymentMethods = await _getPaymentMethods();
+
+      for (final bill in pendingBills) {
+        try {
+          final model = RecentBillModel.fromData(bill);
+          final response = await apiService.uploadBill(
+            billName: model.billName,
+            participants: model.participants,
+            personShares: model.generatePersonShares(),
+            items: model.getBillItems(),
+            subtotal: model.subtotal,
+            tax: model.tax,
+            tipAmount: model.tipAmount,
+            tipPercentage: model.tipPercentage,
+            total: model.total,
+            paymentMethods: paymentMethods,
+          );
+
+          await updateBillShareUrl(bill.id, response.shareUrl);
+        } catch (e) {
+          debugPrint('Failed to retry upload for bill ${bill.id}: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error in retryPendingUploads: $e');
+    }
+  }
+
+  /// Retries upload for a single bill by ID.
+  /// Returns the share URL on success, null on failure.
+  Future<String?> retrySingleBillUpload(int billId) async {
+    try {
+      final bill = await DatabaseProvider.db.getBillById(billId);
+      if (bill == null || bill.shareUrl != null) return bill?.shareUrl;
+
+      final apiService = ApiService();
+      final paymentMethods = await _getPaymentMethods();
+
+      final model = RecentBillModel.fromData(bill);
+      final response = await apiService.uploadBill(
+        billName: model.billName,
+        participants: model.participants,
+        personShares: model.generatePersonShares(),
+        items: model.getBillItems(),
+        subtotal: model.subtotal,
+        tax: model.tax,
+        tipAmount: model.tipAmount,
+        tipPercentage: model.tipPercentage,
+        total: model.total,
+        paymentMethods: paymentMethods,
+      );
+
+      await updateBillShareUrl(bill.id, response.shareUrl);
+      return response.shareUrl;
+    } catch (e) {
+      debugPrint('Failed to retry upload for bill $billId: $e');
+      return null;
     }
   }
 

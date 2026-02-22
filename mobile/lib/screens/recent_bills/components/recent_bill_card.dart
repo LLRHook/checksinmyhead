@@ -39,7 +39,7 @@ import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_fo
 ///
 /// This component is designed to be used within a list of recent bills, providing
 /// a consistent and visually appealing way to browse bill history.
-class RecentBillCard extends StatelessWidget {
+class RecentBillCard extends StatefulWidget {
   /// The bill model containing data to display
   final RecentBillModel bill;
 
@@ -49,12 +49,58 @@ class RecentBillCard extends StatelessWidget {
   /// Callback function to trigger a refresh of the bills list
   final VoidCallback onRefreshNeeded;
 
+  /// Optional callback to retry uploading a bill that has no share URL
+  final Future<String?> Function()? onRetryUpload;
+
   const RecentBillCard({
     super.key,
     required this.bill,
     required this.onDeleted,
     required this.onRefreshNeeded,
+    this.onRetryUpload,
   });
+
+  @override
+  State<RecentBillCard> createState() => _RecentBillCardState();
+}
+
+class _RecentBillCardState extends State<RecentBillCard> {
+  /// Whether a retry upload is currently in progress
+  bool _isRetrying = false;
+
+  /// Handles the retry upload action for the "Get Link" button
+  Future<void> _handleRetryUpload() async {
+    if (_isRetrying || widget.onRetryUpload == null) return;
+
+    HapticFeedback.selectionClick();
+    setState(() => _isRetrying = true);
+
+    try {
+      final shareUrl = await widget.onRetryUpload!();
+      if (mounted) {
+        if (shareUrl != null) {
+          // Upload succeeded — refresh the parent list to show updated card
+          widget.onRefreshNeeded();
+        } else {
+          // Upload failed — show a brief error
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Could not get link. Try again later.'),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          );
+        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isRetrying = false);
+      }
+    }
+  }
 
   /// Navigates to the bill details screen with haptic feedback
   ///
@@ -67,13 +113,15 @@ class RecentBillCard extends StatelessWidget {
     // Navigate to the bill details screen and listen for name changes
     final wasUpdated = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(builder: (context) => BillDetailsScreen(bill: bill)),
+      MaterialPageRoute(
+        builder: (context) => BillDetailsScreen(bill: widget.bill),
+      ),
     );
 
     // If bill name was updated, trigger a refresh instead of deletion
     if (wasUpdated == true) {
       // Use the dedicated refresh callback
-      onRefreshNeeded();
+      widget.onRefreshNeeded();
     }
   }
 
@@ -113,8 +161,8 @@ class RecentBillCard extends StatelessWidget {
     // Adjust bill color for better visibility in dark mode if needed
     final adjustedBillColor =
         brightness == Brightness.dark
-            ? ColorUtils.adjustColorForDarkMode(bill.color)
-            : bill.color;
+            ? ColorUtils.adjustColorForDarkMode(widget.bill.color)
+            : widget.bill.color;
 
     // Dialog background color
     final dialogBgColor =
@@ -171,7 +219,7 @@ class RecentBillCard extends StatelessWidget {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    bill.billName,
+                                    widget.bill.billName,
                                     style: textTheme.titleMedium?.copyWith(
                                       fontWeight: FontWeight.w600,
                                       color: dateColor,
@@ -195,7 +243,7 @@ class RecentBillCard extends StatelessWidget {
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    bill.formattedDate,
+                                    widget.bill.formattedDate,
                                     style: textTheme.bodySmall?.copyWith(
                                       color: participantsTextColor,
                                     ),
@@ -215,7 +263,7 @@ class RecentBillCard extends StatelessWidget {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    bill.participantSummary, // Names or count of participants
+                                    widget.bill.participantSummary, // Names or count of participants
                                     style: textTheme.bodyMedium?.copyWith(
                                       color: participantsTextColor,
                                     ),
@@ -272,7 +320,7 @@ class RecentBillCard extends StatelessWidget {
                               FittedBox(
                                 fit: BoxFit.scaleDown,
                                 child: Text(
-                                  CurrencyFormatter.formatCurrency(bill.total),
+                                  CurrencyFormatter.formatCurrency(widget.bill.total),
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -313,6 +361,35 @@ class RecentBillCard extends StatelessWidget {
 
                       // Vertical divider between buttons
                       Container(width: 1, height: 24, color: dividerColor),
+
+                      // "Get Link" button — shown when bill has no share URL
+                      if (widget.bill.shareUrl == null &&
+                          widget.onRetryUpload != null) ...[
+                        Expanded(
+                          child: _isRetrying
+                              ? const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  child: Center(
+                                    child: SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              : _buildActionButton(
+                                  context,
+                                  icon: Icons.link,
+                                  label: 'Get Link',
+                                  onTap: _handleRetryUpload,
+                                  color: adjustedBillColor,
+                                ),
+                        ),
+                        Container(
+                            width: 1, height: 24, color: dividerColor),
+                      ],
 
                       // "Delete" button
                       Expanded(
@@ -412,13 +489,13 @@ class RecentBillCard extends StatelessWidget {
     // If user confirmed, delete the bill and notify parent
     if (confirmed == true) {
       // Delete from persistent storage
-      await RecentBillsManager().deleteBill(bill.id);
+      await RecentBillsManager().deleteBill(widget.bill.id);
 
       // Provide haptic feedback for successful deletion
       HapticFeedback.mediumImpact();
 
       // Notify parent widget to refresh the list
-      onDeleted();
+      widget.onDeleted();
     }
   }
 }

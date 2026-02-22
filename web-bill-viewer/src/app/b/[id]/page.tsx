@@ -1,12 +1,7 @@
 import { getBill } from "@/lib/api";
 import type { Metadata } from "next";
-import BillHeader from "@/components/BillHeader";
-import BillBreakdown from "@/components/BillBreakdown";
-import PersonShare from "@/components/PersonShare";
-import PaymentDetails from "@/components/PaymentDetails";
-import DesktopLayout from "@/components/DesktopLayout";
-import { notFound } from "next/navigation";
-import { FaLock, FaTriangleExclamation } from "react-icons/fa6";
+import BillPageClient from "@/components/BillPageClient";
+import { FaLock } from "react-icons/fa6";
 
 export async function generateMetadata({
   params,
@@ -52,63 +47,5 @@ export default async function BillPage({
     );
   }
 
-  let bill;
-  try {
-    bill = await getBill(id, token);
-  } catch (error) {
-    if (error instanceof Error && error.message === "Invalid access token") {
-      return (
-        <div className="min-h-screen flex items-center justify-center px-4 bg-[var(--secondary)] dark:bg-[var(--dark-bg)]">
-          <div className="text-center bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-3xl p-12 shadow-xl dark:shadow-none dark:border dark:border-[var(--border-dark)] max-w-md">
-            <FaTriangleExclamation className="text-5xl text-red-500 mb-6 mx-auto" />
-            <h1 className="text-2xl font-bold mb-4 text-[var(--accent)] dark:text-white">
-              Invalid Access Token
-            </h1>
-            <p className="text-[var(--text-secondary)]">
-              The access token provided is not valid for this bill.
-            </p>
-          </div>
-        </div>
-      );
-    }
-    notFound();
-  }
-
-  const hasVenmo =
-    bill.payment_methods?.find((pm) => pm.name?.toLowerCase().includes("venmo"))
-      ?.identifier || null;
-
-  const sidebar = (
-    <>
-      <BillHeader name={bill.name} total={bill.total} />
-      <PaymentDetails paymentMethods={bill.payment_methods} />
-    </>
-  );
-
-  return (
-    <DesktopLayout sidebar={sidebar}>
-      <div className="mb-6">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)] mb-3 px-1">
-          Individual Shares
-        </h2>
-        <div className="space-y-3">
-          {[...bill.person_shares].sort((a, b) => a.person_name.localeCompare(b.person_name, undefined, { sensitivity: "base" })).map((share) => (
-            <PersonShare
-              key={share.id}
-              personShare={share}
-              hasVenmo={hasVenmo}
-            />
-          ))}
-        </div>
-      </div>
-
-      <BillBreakdown
-        items={bill.items}
-        subtotal={bill.subtotal}
-        tax={bill.tax}
-        tipAmount={bill.tip_amount}
-        tipPercentage={bill.tip_percentage}
-      />
-    </DesktopLayout>
-  );
+  return <BillPageClient id={id} token={token} />;
 }

@@ -17,6 +17,8 @@
 
 import 'package:checks_frontend/screens/settings/services/preferences_service.dart';
 import 'package:checks_frontend/screens/settings/widgets/payment_method_item.dart';
+import 'package:checks_frontend/config/theme.dart';
+import 'package:checks_frontend/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
@@ -58,8 +60,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// Loading state
   bool _isLoading = true;
 
+  /// Auto-add self to bills toggle
+  bool _autoAddSelf = true;
+
   /// Debounce timer for display name saving
   Timer? _debounceTimer;
+
+  /// Currently selected accent color
+  Color _selectedAccentColor = AppTheme.defaultPrimary;
+
+  /// Available accent color presets
+  static const List<Color> _colorPresets = [
+    Color(0xFF328983), // Teal (default)
+    Color(0xFF2196F3), // Blue
+    Color(0xFF9C27B0), // Purple
+    Color(0xFFE91E63), // Pink
+    Color(0xFFFF5722), // Deep Orange
+    Color(0xFF4CAF50), // Green
+    Color(0xFF607D8B), // Blue Grey
+    Color(0xFF795548), // Brown
+    Color(0xFF000000), // Black
+  ];
 
   @override
   void initState() {
@@ -91,11 +112,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _displayNameController.text = savedName;
       }
 
+      // Load auto-add self preference
+      final autoAdd = await _prefsService.getAutoAddSelf();
+
+      // Load accent color preference
+      final savedAccentColor = await _prefsService.getAccentColor();
+
       // Update state with retrieved values
       if (!mounted) return;
       setState(() {
         _selectedPayments = savedPayments;
         _paymentIdentifiers = savedIdentifiers;
+        _autoAddSelf = autoAdd;
+        if (savedAccentColor != null) {
+          _selectedAccentColor = Color(savedAccentColor);
+        }
         _isLoading = false;
       });
     } catch (e) {
@@ -187,6 +218,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     // Launch the system share sheet
     SharePlus.instance.share(ShareParams(text: shareText, subject: subject));
+  }
+
+  /// Handles accent color selection from the color picker
+  Future<void> _onAccentColorTapped(Color color) async {
+    // Haptic feedback
+    HapticFeedback.selectionClick();
+
+    // Save to preferences
+    if (color.toARGB32() == AppTheme.defaultPrimary.toARGB32()) {
+      await _prefsService.resetAccentColor();
+    } else {
+      await _prefsService.setAccentColor(color.toARGB32());
+    }
+
+    // Update the theme
+    AppTheme.setPrimaryColor(color);
+
+    // Update local state
+    setState(() {
+      _selectedAccentColor = color;
+    });
+
+    // Trigger full app rebuild to apply the new theme
+    MyApp.restartApp();
   }
 
   @override
@@ -349,6 +404,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         _debounceTimer = Timer(const Duration(milliseconds: 500), _saveDisplayName);
                                       },
                                     ),
+                                    const SizedBox(height: 12),
+                                    const Divider(
+                                      color: Colors.white24,
+                                      height: 1,
+                                    ),
+                                    SwitchListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      title: const Text(
+                                        'Auto-add me to bills',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                      subtitle: const Text(
+                                        'Automatically add yourself as a participant',
+                                        style: TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                      value: _autoAddSelf,
+                                      onChanged: (value) {
+                                        setState(() => _autoAddSelf = value);
+                                        _prefsService.setAutoAddSelf(value);
+                                        HapticFeedback.selectionClick();
+                                      },
+                                      activeThumbColor: Colors.white,
+                                      activeTrackColor: Colors.white.withValues(alpha: .4),
+                                      inactiveThumbColor: Colors.white70,
+                                      inactiveTrackColor: Colors.white.withValues(alpha: .15),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -422,9 +509,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           itemBuilder: (context, index) {
                                             final paymentMethod =
                                                 _selectedPayments[index];
+                                            final rawIdentifier =
+                                                _paymentIdentifiers[paymentMethod];
                                             final identifier =
-                                                _paymentIdentifiers[paymentMethod] ??
-                                                'Not set';
+                                                (rawIdentifier == null || rawIdentifier.isEmpty)
+                                                    ? 'Not set'
+                                                    : rawIdentifier;
 
                                             return PaymentMethodItem(
                                               methodName: paymentMethod,
@@ -516,6 +606,70 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           ),
                                         ),
                                       ),
+                                  ],
+                                ),
+                              ),
+
+                              const SizedBox(height: 16),
+
+                              // App color section
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: .15),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'App Color',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    const Text(
+                                      'Choose an accent color for the app.',
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Wrap(
+                                      spacing: 12,
+                                      runSpacing: 12,
+                                      children: _colorPresets.map((color) {
+                                        final isSelected = _selectedAccentColor.toARGB32() == color.toARGB32();
+                                        return GestureDetector(
+                                          onTap: () => _onAccentColorTapped(color),
+                                          child: Container(
+                                            width: 44,
+                                            height: 44,
+                                            decoration: BoxDecoration(
+                                              color: color,
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: isSelected
+                                                    ? Colors.white
+                                                    : Colors.white.withValues(alpha: .3),
+                                                width: isSelected ? 3 : 1.5,
+                                              ),
+                                            ),
+                                            child: isSelected
+                                                ? const Icon(
+                                                    Icons.check,
+                                                    color: Colors.white,
+                                                    size: 22,
+                                                  )
+                                                : null,
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
                                   ],
                                 ),
                               ),
