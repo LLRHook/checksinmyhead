@@ -15,6 +15,7 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import 'package:checks_frontend/config/theme.dart';
 import 'package:checks_frontend/database/database_provider.dart';
 import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_utils.dart';
@@ -186,7 +187,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: const BorderSide(
-                            color: Color(0xFF627D98),
+                            color: AppTheme.defaultPrimary,
                             width: 2,
                           ),
                         ),
