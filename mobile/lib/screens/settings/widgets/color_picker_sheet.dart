@@ -58,6 +58,10 @@ class _ColorPickerSheetState extends State<ColorPickerSheet>
   late TextEditingController _hexController;
   bool _isUpdatingFromWheel = false;
 
+  // Drag state tracking for smooth interaction
+  bool _isDraggingRing = false;
+  double _lastHapticHue = -1;
+
   // Entrance animation
   late AnimationController _entranceController;
   late Animation<double> _scaleAnimation;
@@ -195,9 +199,10 @@ class _ColorPickerSheetState extends State<ColorPickerSheet>
                     children: [
                       // Hue ring (full size, gesture on ring area)
                       GestureDetector(
-                        onPanStart: (d) => _onRingPan(d.localPosition),
-                        onPanUpdate: (d) => _onRingPan(d.localPosition),
-                        onTapDown: (d) => _onRingPan(d.localPosition),
+                        onPanStart: (d) => _onRingStart(d.localPosition),
+                        onPanUpdate: (d) => _onRingUpdate(d.localPosition),
+                        onPanEnd: (_) => _isDraggingRing = false,
+                        onTapDown: (d) => _onRingTap(d.localPosition),
                         child: CustomPaint(
                           size: Size(_wheelSize, _wheelSize),
                           painter: HueRingPainter(
@@ -353,27 +358,60 @@ class _ColorPickerSheetState extends State<ColorPickerSheet>
     );
   }
 
-  /// Handles pan/tap gestures on the hue ring.
-  void _onRingPan(Offset localPosition) {
+  /// Calculates hue (0–360) from a local position relative to the wheel center.
+  double _hueFromPosition(Offset localPosition) {
+    final center = Offset(_wheelSize / 2, _wheelSize / 2);
+    final dx = localPosition.dx - center.dx;
+    final dy = localPosition.dy - center.dy;
+    var angle = atan2(dy, dx) * 180 / pi + 90;
+    if (angle < 0) angle += 360;
+    return angle.clamp(0, 360).toDouble();
+  }
+
+  /// Checks if a local position is within the hue ring area (with tolerance).
+  bool _isInRing(Offset localPosition) {
     final center = Offset(_wheelSize / 2, _wheelSize / 2);
     final dx = localPosition.dx - center.dx;
     final dy = localPosition.dy - center.dy;
     final distance = sqrt(dx * dx + dy * dy);
+    return distance >= _innerRadius - 10 && distance <= _outerRadius + 10;
+  }
 
-    // Only respond to touches within the ring area (with some tolerance)
-    if (distance < _innerRadius - 10 || distance > _outerRadius + 10) return;
-
-    // Calculate angle and convert to hue (0–360), with 0° at top
-    var angle = atan2(dy, dx) * 180 / pi + 90;
-    if (angle < 0) angle += 360;
-
+  /// Sets the hue from position and optionally fires haptic feedback.
+  void _applyHue(Offset localPosition) {
+    final newHue = _hueFromPosition(localPosition);
     _isUpdatingFromWheel = true;
     setState(() {
-      _hue = angle.clamp(0, 360).toDouble();
+      _hue = newHue;
     });
     _syncHexField();
     _isUpdatingFromWheel = false;
-    HapticFeedback.selectionClick();
+
+    // Only fire haptic when hue changes meaningfully (> 2°)
+    if ((_lastHapticHue - newHue).abs() > 2) {
+      _lastHapticHue = newHue;
+      HapticFeedback.selectionClick();
+    }
+  }
+
+  /// Handles tap on the hue ring.
+  void _onRingTap(Offset localPosition) {
+    if (!_isInRing(localPosition)) return;
+    _applyHue(localPosition);
+  }
+
+  /// Handles pan start on the hue ring — locks drag if within ring area.
+  void _onRingStart(Offset localPosition) {
+    if (!_isInRing(localPosition)) return;
+    _isDraggingRing = true;
+    _lastHapticHue = -1; // reset so first move fires haptic
+    _applyHue(localPosition);
+  }
+
+  /// Handles pan update on the hue ring — keeps tracking once drag is locked.
+  void _onRingUpdate(Offset localPosition) {
+    if (!_isDraggingRing) return;
+    _applyHue(localPosition);
   }
 
   /// Handles pan/tap gestures on the SV square.

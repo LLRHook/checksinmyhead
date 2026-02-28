@@ -41,8 +41,8 @@ class HueRingPainter extends CustomPainter {
     // Draw the hue ring
     final ringRect = Rect.fromCircle(center: center, radius: outerRadius);
     final ringPaint = Paint()
-      ..shader = const SweepGradient(
-        colors: [
+      ..shader = SweepGradient(
+        colors: const [
           Color(0xFFFF0000), // 0°   Red
           Color(0xFFFFFF00), // 60°  Yellow
           Color(0xFF00FF00), // 120° Green
@@ -51,6 +51,7 @@ class HueRingPainter extends CustomPainter {
           Color(0xFFFF00FF), // 300° Magenta
           Color(0xFFFF0000), // 360° Red (wrap)
         ],
+        transform: GradientRotation(-pi / 2), // Rotate so 0° (Red) is at top
       ).createShader(ringRect);
 
     // Clip to annular ring shape
