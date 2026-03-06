@@ -73,20 +73,19 @@ export default function SettlementCard({
                 ${settlement.amount.toFixed(2)}
               </div>
               {!settlement.paid && venmoId && (
-                <a
-                  href={buildVenmoPayUrl(venmoId, settlement.amount.toFixed(2), "Tab settlement - " + settlement.person_name)}
-                  className="h-10 px-4 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-white font-semibold rounded-xl flex items-center justify-center hover:opacity-90 transition-opacity no-underline"
+                <button
+                  onClick={() => {
+                    window.location.href = buildVenmoPayUrl(venmoId, settlement.amount.toFixed(2), "Tab settlement - " + settlement.person_name);
+                  }}
+                  className="h-10 px-4 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-white font-semibold rounded-xl flex items-center justify-center hover:opacity-90 transition-opacity border-none cursor-pointer"
                 >
                   <SiVenmo size={32} />
-                </a>
+                </button>
               )}
             </div>
           </div>
         ))}
       </div>
-      <p className="text-[10px] text-[var(--text-secondary)] opacity-40 text-center mt-3">
-        v3-deeplink
-      </p>
     </div>
   );
 }
