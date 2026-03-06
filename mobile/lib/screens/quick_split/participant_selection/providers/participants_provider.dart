@@ -26,6 +26,7 @@ class ParticipantsProvider extends ChangeNotifier {
   final List<Person> _participants = [];
   final Map<String, Animation<double>> _listItemAnimations = {};
   int _colorIndex = 0;
+  late final List<Color> _shuffledColors = ColorUtils.getParticipantColors()..shuffle();
 
   // Simple getters
   List<Person> get participants => _participants;
@@ -41,12 +42,10 @@ class ParticipantsProvider extends ChangeNotifier {
     // Prevent duplicates (case-insensitive)
     if (_isNameDuplicate(trimmedName)) return false;
 
-    // Cycle through predefined colors when no color is specified
-    final colors = ColorUtils.getParticipantColors();
     _participants.add(
       Person(
         name: trimmedName,
-        color: color ?? colors[_colorIndex % colors.length],
+        color: color ?? _shuffledColors[_colorIndex % _shuffledColors.length],
       ),
     );
     _colorIndex++;
