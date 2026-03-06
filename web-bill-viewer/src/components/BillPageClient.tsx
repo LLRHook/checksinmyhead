@@ -222,6 +222,8 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
                 key={share.id}
                 personShare={share}
                 hasVenmo={hasVenmo}
+                billId={bill.id}
+                token={token}
               />
             ))}
         </div>
