@@ -295,21 +295,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
               ),
 
-              const SizedBox(height: 12),
-
-              // Skip option
-              TextButton(
-                onPressed: _completeOnboarding,
-                child: const Text(
-                  'Skip for now',
-                  style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-              ),
-
               const SizedBox(height: 32),
             ],
           ),
