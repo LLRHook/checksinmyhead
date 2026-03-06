@@ -4,6 +4,7 @@ import (
 	"backend/pkg/models"
 	"backend/pkg/security"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 )
@@ -140,10 +141,14 @@ func (s *tabService) JoinTabAsCreator(tabID uint, displayName string) (*models.T
 }
 
 func (s *tabService) createMember(tabID uint, displayName string, role string) (*models.TabMember, error) {
+	memberToken, err := security.GenerateSecureToken()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate member token: %w", err)
+	}
 	member := &models.TabMember{
 		TabID:       tabID,
 		DisplayName: displayName,
-		MemberToken: security.GenerateSecureToken(),
+		MemberToken: memberToken,
 		Role:        role,
 		JoinedAt:    time.Now(),
 	}

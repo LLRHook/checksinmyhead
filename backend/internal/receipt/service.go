@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -210,7 +211,7 @@ func (s *Service) Parse(imageData []byte, mimeType string) (*ParsedReceipt, erro
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		fmt.Printf("[receipt] Anthropic returned status %d: %s\n", resp.StatusCode, truncate(string(respBody), 500))
+		log.Printf("[receipt] Anthropic returned status %d", resp.StatusCode)
 
 		// Parse the error body for details
 		var errResp messagesResponse
