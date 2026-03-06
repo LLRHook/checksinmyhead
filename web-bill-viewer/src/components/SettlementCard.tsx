@@ -75,8 +75,6 @@ export default function SettlementCard({
               {!settlement.paid && venmoId && (
                 <a
                   href={buildVenmoPayUrl(venmoId, settlement.amount.toFixed(2), "Tab settlement - " + settlement.person_name)}
-                  target="_blank"
-                  rel="noopener noreferrer"
                   className="h-10 px-4 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-white font-semibold rounded-xl flex items-center justify-center hover:opacity-90 transition-opacity no-underline"
                 >
                   <SiVenmo size={32} />
