@@ -1,7 +1,7 @@
 "use client";
 
 import { PersonShare as PersonShareType } from "@/lib/api";
-import { buildVenmoDeepLink, startVenmoFallback } from "@/lib/venmo";
+import { buildVenmoPayUrl } from "@/lib/venmo";
 import { useCollapsible } from "@/hooks/useCollapsible";
 import { FaChevronDown } from "react-icons/fa6";
 import { SiVenmo } from "react-icons/si";
@@ -83,11 +83,10 @@ export default function PersonShare({
               </div>
               {hasVenmo && (
                 <a
-                  href={buildVenmoDeepLink(hasVenmo, personShare.total.toFixed(2), "Split bill - " + personShare.person_name)}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    startVenmoFallback(hasVenmo, personShare.total.toFixed(2), "Split bill - " + personShare.person_name);
-                  }}
+                  href={buildVenmoPayUrl(hasVenmo, personShare.total.toFixed(2), "Split bill - " + personShare.person_name)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
                   className="w-full mt-3 h-11 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-white font-semibold rounded-xl flex items-center justify-center hover:opacity-90 transition-opacity no-underline"
                 >
                   <span className="flex items-center gap-1.5">

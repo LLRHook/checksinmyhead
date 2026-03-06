@@ -1,7 +1,7 @@
 "use client";
 
 import { TabPersonTotal } from "@/lib/api";
-import { buildVenmoDeepLink, startVenmoFallback } from "@/lib/venmo";
+import { buildVenmoPayUrl } from "@/lib/venmo";
 import { SiVenmo } from "react-icons/si";
 
 interface TabPersonTotalsProps {
@@ -43,10 +43,9 @@ export default function TabPersonTotals({
               </div>
               {venmoId && (
                 <a
-                  href={buildVenmoDeepLink(venmoId, person.total.toFixed(2), "Tab settlement - " + person.person_name)}
-                  onClick={() => {
-                    startVenmoFallback(venmoId, person.total.toFixed(2), "Tab settlement - " + person.person_name);
-                  }}
+                  href={buildVenmoPayUrl(venmoId, person.total.toFixed(2), "Tab settlement - " + person.person_name)}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="h-10 px-4 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-white font-semibold rounded-xl flex items-center justify-center hover:opacity-90 transition-opacity no-underline"
                 >
                   <SiVenmo size={32} />
