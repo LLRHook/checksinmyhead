@@ -49,8 +49,8 @@ class RecentBillsScreen extends StatefulWidget {
 
 class _RecentBillsScreenState extends State<RecentBillsScreen>
     with SingleTickerProviderStateMixin {
-  /// Flag indicating whether bills are currently loading
-  bool _isLoading = true;
+  /// Flag indicating whether bills are currently loading (only for manual refresh)
+  bool _isLoading = false;
 
   /// List of bill models retrieved from storage
   List<RecentBillModel> _bills = [];
@@ -87,29 +87,25 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
 
   /// Loads bills from persistent storage
   ///
-  /// This method retrieves the list of saved bills from the database,
-  /// handling loading states and errors. It includes a small artificial
-  /// delay to ensure the loading state is visible for better UX.
-  Future<void> _loadBills() async {
+  /// Bills are stored locally in SQLite, so reads are near-instant.
+  /// Loading state is only shown during manual refresh actions.
+  Future<void> _loadBills({bool showLoading = false}) async {
     try {
-      // Show loading state
-      setState(() {
-        _isLoading = true;
-      });
+      if (showLoading) {
+        setState(() {
+          _isLoading = true;
+        });
+      }
 
-      // Fetch bills from storage via the manager
+      // Fetch bills from local database via the manager
       final bills = await _billsManager.getRecentBills();
-
-      // Add a small delay to make the loading state visible
-      // This improves perceived performance and reduces UI flashing
-      await Future.delayed(const Duration(milliseconds: 800));
 
       // Update state if widget is still mounted
       if (mounted) {
         setState(() {
           _bills = bills;
           _isLoading = false;
-          _isRefreshButtonClicked = false; // Reset refresh button state
+          _isRefreshButtonClicked = false;
         });
 
         // Reset refresh animation
@@ -121,7 +117,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _isRefreshButtonClicked = false; // Reset refresh button state
+          _isRefreshButtonClicked = false;
         });
 
         // Stop refresh animation
