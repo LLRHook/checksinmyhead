@@ -24,6 +24,7 @@ import 'package:checks_frontend/models/person.dart';
 
 // Models and Providers
 import 'models/recent_people_manager.dart';
+import 'models/group_manager.dart';
 import 'providers/participants_provider.dart';
 
 // Widgets
@@ -32,6 +33,7 @@ import 'widgets/recent_people_section.dart';
 import 'widgets/current_participants_section.dart';
 import 'widgets/empty_state.dart';
 import 'widgets/continue_button.dart';
+import 'widgets/groups_section.dart';
 
 /// A bottom sheet allowing users to select or add participants for bill splitting
 /// Provides recent people selection, new person addition, and navigation to bill entry
@@ -48,11 +50,15 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
   List<Person> _recentPeople = [];
   late AnimationController _animationController;
   bool _didAutoAdd = false;
+  int _selectedTab = 0; // 0 = Recents, 1 = Groups
+  List<PeopleGroupWithMembers> _savedGroups = [];
+  List<PeopleGroupWithMembers> _suggestedGroups = [];
 
   @override
   void initState() {
     super.initState();
     _loadRecentPeople();
+    _loadGroups();
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -72,6 +78,17 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
     setState(() => _recentPeople = recentPeople);
   }
 
+  /// Loads saved and suggested groups from database
+  Future<void> _loadGroups() async {
+    final saved = await GroupManager.loadSavedGroups();
+    final suggested = await GroupManager.loadSuggestedGroups();
+    if (!mounted) return;
+    setState(() {
+      _savedGroups = saved;
+      _suggestedGroups = suggested;
+    });
+  }
+
   /// Auto-adds the user as a participant if the preference is enabled
   Future<void> _autoAddSelf(ParticipantsProvider provider) async {
     final prefsService = PreferencesService();
@@ -84,9 +101,45 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
     provider.addPerson(displayName.trim());
   }
 
+  /// Adds all members of a group as participants
+  void _onGroupTapped(PeopleGroupWithMembers group) {
+    final provider = Provider.of<ParticipantsProvider>(context, listen: false);
+    for (final member in group.members) {
+      provider.addRecentPerson(member);
+    }
+    GroupManager.markGroupUsed(group.group.id);
+    HapticFeedback.selectionClick();
+    setState(() => _selectedTab = 0); // Switch back to Recents
+  }
+
+  /// Saves a suggested group with a user-provided name
+  Future<void> _onGroupSaved(int groupId, String name) async {
+    await GroupManager.saveSuggestedGroup(groupId, name);
+    await _loadGroups();
+  }
+
+  /// Deletes a group
+  Future<void> _onGroupDeleted(int groupId) async {
+    await GroupManager.deleteGroup(groupId);
+    await _loadGroups();
+  }
+
+  /// Renames a group
+  Future<void> _onGroupRenamed(int groupId, String newName) async {
+    await GroupManager.renameGroup(groupId, newName);
+    await _loadGroups();
+  }
+
+  /// Creates a new group
+  Future<void> _onCreateGroup(String name, List<Person> members) async {
+    await GroupManager.createGroup(name, members);
+    await _loadGroups();
+  }
+
   /// Persists participants to recents for future use
   Future<void> _saveParticipantsToRecent(List<Person> participants) async {
     await RecentPeopleManager.saveRecentPeople(participants, _recentPeople);
+    GroupManager.refreshSuggestions(); // fire-and-forget
   }
 
   /// Handles continuation to bill entry screen if participants are selected
@@ -228,6 +281,76 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
     );
   }
 
+  /// Builds the segmented control toggle between Recents and Groups
+  Widget _buildSegmentedControl() {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      height: 40,
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      padding: const EdgeInsets.all(3),
+      child: Row(
+        children: [
+          _buildSegmentButton(
+            label: 'Recents',
+            index: 0,
+            colorScheme: colorScheme,
+          ),
+          _buildSegmentButton(
+            label: 'Groups',
+            index: 1,
+            colorScheme: colorScheme,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Builds a single segment button within the segmented control
+  Widget _buildSegmentButton({
+    required String label,
+    required int index,
+    required ColorScheme colorScheme,
+  }) {
+    final isActive = _selectedTab == index;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          if (_selectedTab != index) {
+            HapticFeedback.selectionClick();
+            setState(() => _selectedTab = index);
+          }
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          decoration: BoxDecoration(
+            color: isActive
+                ? colorScheme.primary.withValues(alpha: 0.15)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(17),
+          ),
+          alignment: Alignment.center,
+          child: AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 300),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+              color: isActive
+                  ? colorScheme.primary
+                  : colorScheme.onSurface.withValues(alpha: 0.5),
+            ),
+            child: Text(label),
+          ),
+        ),
+      ),
+    );
+  }
+
   /// Creates the scrollable middle content area
   Widget _buildScrollableContent() {
     return Expanded(
@@ -237,8 +360,26 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const AddPersonField(),
-            const SizedBox(height: 24),
-            RecentPeopleSection(recentPeople: _recentPeople),
+            const SizedBox(height: 16),
+            _buildSegmentedControl(),
+            const SizedBox(height: 16),
+            AnimatedCrossFade(
+              firstChild: RecentPeopleSection(recentPeople: _recentPeople),
+              secondChild: GroupsSection(
+                savedGroups: _savedGroups,
+                suggestedGroups: _suggestedGroups,
+                onGroupTapped: _onGroupTapped,
+                onGroupSaved: _onGroupSaved,
+                onGroupDeleted: _onGroupDeleted,
+                onGroupRenamed: _onGroupRenamed,
+                onCreateGroup: _onCreateGroup,
+                recentPeople: _recentPeople,
+              ),
+              crossFadeState: _selectedTab == 0
+                  ? CrossFadeState.showFirst
+                  : CrossFadeState.showSecond,
+              duration: const Duration(milliseconds: 300),
+            ),
             const SizedBox(height: 24),
             Consumer<ParticipantsProvider>(
               builder:
