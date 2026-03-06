@@ -58,7 +58,7 @@ class ReceiptApiService {
         serverMessage = body['error'] as String? ?? '';
       } catch (_) {}
 
-      _logger.d('Receipt parse failed: ${response.statusCode} ${response.body}');
+      _logger.d('Receipt parse failed: ${response.statusCode}');
 
       switch (response.statusCode) {
         case 429:
@@ -94,7 +94,7 @@ class ReceiptApiService {
         'Could not connect to server. Check your connection.',
       );
     } catch (e) {
-      _logger.d('Receipt parse error: $e');
+      _logger.d('Receipt parse error');
       throw ReceiptParseException(
         'Could not connect to server. Check your connection.',
       );

@@ -2,6 +2,7 @@ package security
 
 import (
 	"crypto/rand"
+	"fmt"
 	"math/big"
 )
 
@@ -27,10 +28,10 @@ func base62Encode(data []byte) string {
 	return string(encoded)
 }
 
-func GenerateSecureToken() string {
+func GenerateSecureToken() (string, error) {
 	b := make([]byte, 8)
 	if _, err := rand.Read(b); err != nil {
-		panic("crypto/rand failed: " + err.Error())
+		return "", fmt.Errorf("crypto/rand failed: %w", err)
 	}
-	return base62Encode(b)
+	return base62Encode(b), nil
 }

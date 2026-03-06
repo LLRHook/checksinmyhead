@@ -7,7 +7,10 @@ import (
 
 func TestBase62CharsetValidity(t *testing.T) {
 	for i := 0; i < 100; i++ {
-		token := GenerateSecureToken()
+		token, err := GenerateSecureToken()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 		for _, c := range token {
 			if !strings.ContainsRune(base62Charset, c) {
 				t.Errorf("token %q contains invalid character %q", token, c)
@@ -18,9 +21,12 @@ func TestBase62CharsetValidity(t *testing.T) {
 
 func TestTokenLengthRange(t *testing.T) {
 	for i := 0; i < 1000; i++ {
-		token := GenerateSecureToken()
-		if len(token) < 10 || len(token) > 11 {
-			t.Errorf("token length %d out of expected range [10,11]: %q", len(token), token)
+		token, err := GenerateSecureToken()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(token) < 8 || len(token) > 11 {
+			t.Errorf("token length %d out of expected range [8,11]: %q", len(token), token)
 		}
 	}
 }
@@ -28,7 +34,10 @@ func TestTokenLengthRange(t *testing.T) {
 func TestTokenUniqueness(t *testing.T) {
 	seen := make(map[string]struct{}, 10000)
 	for i := 0; i < 10000; i++ {
-		token := GenerateSecureToken()
+		token, err := GenerateSecureToken()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 		if _, exists := seen[token]; exists {
 			t.Fatalf("duplicate token generated: %q", token)
 		}

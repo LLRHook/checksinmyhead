@@ -2,6 +2,8 @@ package web
 
 import (
 	"backend/internal/bill"
+	"crypto/subtle"
+	"log"
 	"strconv"
 	"strings"
 
@@ -46,13 +48,15 @@ func (h *WebpageHandler) CreateHTML(c *gin.Context) {
 			c.JSON(404, gin.H{"error": "bill not found"})
 			return
 		}
-		c.JSON(500, gin.H{"error": err.Error()})
+		log.Printf("internal error: %v", err)
+		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return
 	}
-	if URLtoken != bill.AccessToken {
+	if subtle.ConstantTimeCompare([]byte(URLtoken), []byte(bill.AccessToken)) != 1 {
 		c.JSON(403, gin.H{"error": "token mismatch"})
 		return
 	}
 
+	bill.AccessToken = ""
 	c.HTML(200, "bill.html", bill)
 }

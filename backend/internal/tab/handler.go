@@ -3,7 +3,9 @@ package tab
 import (
 	"backend/pkg/models"
 	"backend/pkg/security"
+	"crypto/subtle"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -59,11 +61,12 @@ func (h *TabHandler) getTabAndValidate(c *gin.Context) *models.Tab {
 			c.JSON(404, gin.H{"error": "tab not found"})
 			return nil
 		}
-		c.JSON(500, gin.H{"error": err.Error()})
+		log.Printf("internal error: %v", err)
+		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return nil
 	}
 
-	if urlToken != tab.AccessToken {
+	if subtle.ConstantTimeCompare([]byte(urlToken), []byte(tab.AccessToken)) != 1 {
 		c.JSON(403, gin.H{"error": "token mismatch"})
 		return nil
 	}
@@ -100,16 +103,22 @@ func (h *TabHandler) CreateTab(c *gin.Context) {
 	}
 
 	tab := models.Tab{
-		Name:        body.Name,
-		Description: body.Description,
+		Name:        security.SanitizeString(body.Name),
+		Description: security.SanitizeString(body.Description),
 	}
 
-	token := security.GenerateSecureToken()
+	token, err := security.GenerateSecureToken()
+	if err != nil {
+		log.Printf("internal error: %v", err)
+		c.JSON(500, gin.H{"error": "an internal error occurred"})
+		return
+	}
 	tab.AccessToken = token
 
-	err := h.service.CreateTab(&tab)
+	err = h.service.CreateTab(&tab)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		log.Printf("internal error: %v", err)
+		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return
 	}
 
@@ -119,7 +128,7 @@ func (h *TabHandler) CreateTab(c *gin.Context) {
 		"share_url":    fmt.Sprintf("%s/t/%d?t=%s", appDomain(), tab.ID, token),
 	}
 
-	creatorName := strings.TrimSpace(body.CreatorDisplayName)
+	creatorName := security.SanitizeString(body.CreatorDisplayName)
 	if creatorName != "" {
 		member, err := h.service.JoinTabAsCreator(tab.ID, creatorName)
 		if err == nil {
@@ -137,6 +146,7 @@ func (h *TabHandler) GetTab(c *gin.Context) {
 		return
 	}
 
+	tab.AccessToken = ""
 	c.JSON(200, tab)
 }
 
@@ -170,7 +180,8 @@ func (h *TabHandler) AddBillToTab(c *gin.Context) {
 			c.JSON(404, gin.H{"error": "bill not found"})
 			return
 		}
-		c.JSON(500, gin.H{"error": err.Error()})
+		log.Printf("internal error: %v", err)
+		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return
 	}
 
@@ -199,15 +210,18 @@ func (h *TabHandler) UpdateTab(c *gin.Context) {
 
 	update := &models.Tab{ID: tab.ID}
 	if body.Name != nil {
-		update.Name = *body.Name
+		sanitized := security.SanitizeString(*body.Name)
+		update.Name = sanitized
 	}
 	if body.Description != nil {
-		update.Description = *body.Description
+		sanitized := security.SanitizeString(*body.Description)
+		update.Description = sanitized
 	}
 
 	err := h.service.UpdateTab(update)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		log.Printf("internal error: %v", err)
+		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return
 	}
 
@@ -246,7 +260,8 @@ func (h *TabHandler) GetSettlements(c *gin.Context) {
 
 	settlements, err := h.service.GetSettlements(tab.ID)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		log.Printf("internal error: %v", err)
+		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return
 	}
 
@@ -274,7 +289,8 @@ func (h *TabHandler) UpdateSettlement(c *gin.Context) {
 	}
 
 	if err := h.service.UpdateSettlementPaid(uint(settlementID), *body.Paid); err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		log.Printf("internal error: %v", err)
+		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return
 	}
 
@@ -295,7 +311,7 @@ func (h *TabHandler) JoinTab(c *gin.Context) {
 		return
 	}
 
-	name := strings.TrimSpace(body.DisplayName)
+	name := security.SanitizeString(body.DisplayName)
 	if name == "" || len(name) > 30 {
 		c.JSON(400, gin.H{"error": "display_name must be 1-30 characters"})
 		return
@@ -303,7 +319,8 @@ func (h *TabHandler) JoinTab(c *gin.Context) {
 
 	member, err := h.service.JoinTab(tab.ID, name)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		log.Printf("internal error: %v", err)
+		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return
 	}
 
@@ -323,7 +340,8 @@ func (h *TabHandler) GetMembers(c *gin.Context) {
 
 	members, err := h.service.GetMembers(tab.ID)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		log.Printf("internal error: %v", err)
+		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return
 	}
 
