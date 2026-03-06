@@ -207,9 +207,14 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
   return (
     <DesktopLayout sidebar={sidebar}>
       <div className="mb-6">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)] mb-3 px-1">
-          Individual Shares
-        </h2>
+        <div className="mb-3 px-1">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+            Individual Shares
+          </h2>
+          <p className="text-xs text-[var(--text-secondary)] opacity-60 mt-0.5">
+            Tap a name to mark as paid
+          </p>
+        </div>
         <div className="space-y-3">
           {[...bill.person_shares]
             .sort((a, b) =>
