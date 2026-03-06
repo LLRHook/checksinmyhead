@@ -212,7 +212,7 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
             Individual Shares
           </h2>
           <p className="text-xs text-[var(--text-secondary)] opacity-60 mt-0.5">
-            Tap a name to mark as paid
+            Tap an avatar to mark as paid
           </p>
         </div>
         <div className="space-y-3">
