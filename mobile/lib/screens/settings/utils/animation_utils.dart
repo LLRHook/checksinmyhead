@@ -55,12 +55,15 @@ class ShakeCurve extends Curve {
   }
 }
 
-/// Custom curve for a bouncy entrance
+/// Custom curve for a bouncy entrance (easeOutBack style)
 class BouncyEntranceCurve extends Curve {
   @override
-  double transform(double t) {
-    // Overshoot slightly then settle back
-    return -15.0 * (t - 1.0) * (t - 1.0) * (t - 1.0) * (t - 1.0) + 1.0;
+  double transformInternal(double t) {
+    // easeOutBack: overshoots slightly then settles at 1.0
+    // Maps 0.0 → 0.0 and 1.0 → 1.0 as required by Flutter
+    const s = 1.70158;
+    final p = 1.0 - t;
+    return 1.0 - p * p * ((s + 1) * p - s);
   }
 }
 
