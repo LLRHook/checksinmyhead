@@ -118,7 +118,7 @@ export default async function TabPage({
   return (
     <DesktopLayout sidebar={sidebar}>
       {tab.finalized && settlements.length > 0 ? (
-        <SettlementCard settlements={settlements} venmoId={venmoId} />
+        <SettlementCard settlements={settlements} venmoId={venmoId} tabId={id} token={token} />
       ) : (
         personTotals.length > 0 && (
           <TabPersonTotals personTotals={personTotals} venmoId={venmoId} />

@@ -11,6 +11,7 @@ type BillRepository interface {
 	GetById(id uint) (bill *models.Bill, err error)
 	Update(bill *models.Bill) error
 	Delete(id uint) error
+	UpdatePersonSharePaid(id uint, paid bool) error
 }
 
 type billRepository struct {
@@ -37,6 +38,10 @@ func (b *billRepository) GetById(id uint) (bill *models.Bill, err error) {
 
 func (b *billRepository) Update(bill *models.Bill) error {
 	return b.db.Session(&gorm.Session{FullSaveAssociations: true}).Updates(bill).Error
+}
+
+func (b *billRepository) UpdatePersonSharePaid(id uint, paid bool) error {
+	return b.db.Model(&models.PersonShare{}).Where("id = ?", id).Update("paid", paid).Error
 }
 
 func NewBillRepository(db *gorm.DB) BillRepository {

@@ -56,6 +56,7 @@ type PersonShare struct {
 	TaxShare   float64      `gorm:"not null" json:"tax_share"`
 	TipShare   float64      `gorm:"not null" json:"tip_share"`
 	Total      float64      `gorm:"not null" json:"total"`
+	Paid       bool         `gorm:"default:false" json:"paid"`
 }
 
 type Bill struct {

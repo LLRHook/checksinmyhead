@@ -12,6 +12,7 @@ export interface PersonShare {
   tax_share: number;
   tip_share: number;
   total: number;
+  paid: boolean;
 }
 
 export interface BillItem {
@@ -63,6 +64,7 @@ export interface TabPersonTotal {
   person_name: string;
   total: number;
   bill_count: number;
+  all_paid: boolean;
 }
 
 export interface TabMember {
@@ -197,15 +199,61 @@ export async function joinTab(
   return response.json();
 }
 
+export async function updatePersonSharePaid(
+  billId: number,
+  shareId: number,
+  paid: boolean,
+  token: string,
+): Promise<void> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/bills/${billId}/shares/${shareId}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ paid }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to update share paid status");
+  }
+}
+
+export async function updateSettlementPaid(
+  tabId: string,
+  settlementId: number,
+  paid: boolean,
+  token: string,
+): Promise<void> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/tabs/${tabId}/settlements/${settlementId}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ paid }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to update settlement paid status");
+  }
+}
+
 export function computeTabPersonTotals(tab: Tab): TabPersonTotal[] {
-  const totals: Record<string, { total: number; bill_count: number }> = {};
+  const totals: Record<string, { total: number; bill_count: number; all_paid: boolean }> = {};
   const displayNames: Record<string, string> = {};
 
   for (const bill of tab.bills) {
     for (const share of bill.person_shares) {
       const key = share.person_name.toLowerCase();
       if (!totals[key]) {
-        totals[key] = { total: 0, bill_count: 0 };
+        totals[key] = { total: 0, bill_count: 0, all_paid: true };
         displayNames[key] = share.person_name;
       } else if (
         displayNames[key] === key &&
@@ -216,6 +264,9 @@ export function computeTabPersonTotals(tab: Tab): TabPersonTotal[] {
       }
       totals[key].total += share.total;
       totals[key].bill_count += 1;
+      if (!share.paid) {
+        totals[key].all_paid = false;
+      }
     }
   }
 
@@ -224,6 +275,7 @@ export function computeTabPersonTotals(tab: Tab): TabPersonTotal[] {
       person_name: displayNames[key],
       total: val.total,
       bill_count: val.bill_count,
+      all_paid: val.all_paid,
     }))
     .sort((a, b) => a.person_name.localeCompare(b.person_name, undefined, { sensitivity: "base" }));
 }

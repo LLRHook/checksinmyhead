@@ -80,6 +80,7 @@ func main() {
 	r.GET("/health", getHealth)
 	r.GET("/api/bills/:id", handler.GetBill)
 	r.POST("/api/bills", handler.CreateBill)
+	r.PATCH("/api/bills/:id/shares/:shareId", handler.UpdatePersonSharePaid)
 	r.POST("/api/tabs", tabHandler.CreateTab)
 	r.GET("/api/tabs/:id", tabHandler.GetTab)
 	r.POST("/api/tabs/:id/bills", tabHandler.AddBillToTab)
