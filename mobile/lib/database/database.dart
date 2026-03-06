@@ -120,7 +120,8 @@ class RecentBills extends Table {
   tables: [People, TutorialStates, UserPreferences, RecentBills, Tabs, PeopleGroups, PeopleGroupMembers],
 )
 class AppDatabase extends _$AppDatabase {
-  static const int maxRecentPeople = 20;
+  // Pool size for stored people (larger than display limit to give scoring more data)
+  static const int maxStoredPeople = 20;
 
   AppDatabase() : super(_openConnection());
 
@@ -155,6 +156,9 @@ class AppDatabase extends _$AppDatabase {
         await migrator.createTable(peopleGroupMembers);
         await customStatement('CREATE UNIQUE INDEX IF NOT EXISTS idx_people_group_members_unique ON people_group_members(group_id, person_id)');
       }
+    },
+    beforeOpen: (details) async {
+      await customStatement('PRAGMA foreign_keys = ON');
     },
   );
 
@@ -218,14 +222,24 @@ class AppDatabase extends _$AppDatabase {
     } else {
       final count = await select(people).get().then((people) => people.length);
 
-      if (count >= maxRecentPeople) {
-        final oldest =
-            await (select(people)
-                  ..orderBy([(t) => OrderingTerm.asc(t.lastUsed)])
-                  ..limit(1))
-                .getSingle();
+      if (count >= maxStoredPeople) {
+        // Skip people who are members of any group to protect group integrity
+        final groupMemberIds = await (selectOnly(peopleGroupMembers)
+              ..addColumns([peopleGroupMembers.personId]))
+            .map((row) => row.read(peopleGroupMembers.personId)!)
+            .get();
 
-        await (delete(people)..where((p) => p.id.equals(oldest.id))).go();
+        final query = select(people)
+          ..orderBy([(t) => OrderingTerm.asc(t.lastUsed)])
+          ..limit(1);
+        if (groupMemberIds.isNotEmpty) {
+          query.where((p) => p.id.isNotIn(groupMemberIds));
+        }
+        final oldest = await query.getSingleOrNull();
+
+        if (oldest != null) {
+          await (delete(people)..where((p) => p.id.equals(oldest.id))).go();
+        }
       }
 
       await into(people).insert(
@@ -508,8 +522,6 @@ class AppDatabase extends _$AppDatabase {
 
   // --- Group operations ---
 
-  static const int maxGroups = 10;
-
   Future<int> createGroup(String name, List<int> personIds, int colorValue) async {
     final groupId = await into(peopleGroups).insert(
       PeopleGroupsCompanion(
@@ -630,9 +642,6 @@ class AppDatabase extends _$AppDatabase {
     return query.getSingleOrNull();
   }
 
-  Future<List<PeopleData>> getAllPeople() async {
-    return (select(people)..orderBy([(t) => OrderingTerm.desc(t.lastUsed)])).get();
-  }
 }
 
 // Database connection initialization
