@@ -50,13 +50,18 @@ export default function SettlementCard({
 
   return (
     <div className="mb-6">
-      <div className="flex items-center justify-between mb-3 px-1">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
-          Settlements
-        </h2>
-        <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">
-          {paidCount}/{settlements.length} paid
-        </span>
+      <div className="mb-3 px-1">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+            Settlements
+          </h2>
+          <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">
+            {paidCount}/{settlements.length} paid
+          </span>
+        </div>
+        <p className="text-xs text-[var(--text-secondary)] opacity-60 mt-0.5">
+          Tap a name to mark as paid
+        </p>
       </div>
       <div className="space-y-3">
         {settlements.map((settlement) => (
