@@ -35,6 +35,26 @@ class People extends Table {
   IntColumn get colorValue => integer()();
   DateTimeColumn get lastUsed =>
       dateTime().withDefault(Constant(DateTime.now()))();
+  IntColumn get useCount => integer().withDefault(const Constant(1))();
+}
+
+// Database table for storing people groups
+class PeopleGroups extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text()();
+  IntColumn get colorValue => integer()();
+  BoolColumn get isSuggested => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt =>
+      dateTime().withDefault(Constant(DateTime.now()))();
+  DateTimeColumn get lastUsed =>
+      dateTime().withDefault(Constant(DateTime.now()))();
+}
+
+// Junction table linking people to groups
+class PeopleGroupMembers extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get groupId => integer().references(PeopleGroups, #id)();
+  IntColumn get personId => integer().references(People, #id)();
 }
 
 // Database table for tracking tutorial completion status
@@ -95,7 +115,7 @@ class RecentBills extends Table {
 
 // Main database class handling all database operations
 @DriftDatabase(
-  tables: [People, TutorialStates, UserPreferences, RecentBills, Tabs],
+  tables: [People, TutorialStates, UserPreferences, RecentBills, Tabs, PeopleGroups, PeopleGroupMembers],
 )
 class AppDatabase extends _$AppDatabase {
   static const int maxRecentPeople = 12;
@@ -103,7 +123,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -126,6 +146,12 @@ class AppDatabase extends _$AppDatabase {
         await customStatement('CREATE INDEX IF NOT EXISTS idx_people_last_used ON people(last_used DESC)');
         await customStatement('CREATE INDEX IF NOT EXISTS idx_recent_bills_created ON recent_bills(created_at DESC)');
         await customStatement('CREATE INDEX IF NOT EXISTS idx_tabs_created ON tabs(created_at DESC)');
+      }
+      if (from < 7) {
+        await migrator.addColumn(people, people.useCount);
+        await migrator.createTable(peopleGroups);
+        await migrator.createTable(peopleGroupMembers);
+        await customStatement('CREATE UNIQUE INDEX IF NOT EXISTS idx_people_group_members_unique ON people_group_members(group_id, person_id)');
       }
     },
   );
