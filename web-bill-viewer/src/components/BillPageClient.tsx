@@ -33,7 +33,8 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
     for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
       try {
         const response = await fetch(
-          `${API_BASE_URL}/api/bills/${id}?t=${token}`
+          `${API_BASE_URL}/api/bills/${id}`,
+          { headers: { Authorization: `Bearer ${token}` } }
         );
 
         if (response.status === 403) {
