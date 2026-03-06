@@ -90,7 +90,9 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 export { API_BASE_URL };
 
 export async function getBill(id: string, token: string): Promise<Bill> {
-  const response = await fetch(`${API_BASE_URL}/api/bills/${id}?t=${token}`);
+  const response = await fetch(`${API_BASE_URL}/api/bills/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
 
   if (!response.ok) {
     if (response.status === 403) {
@@ -106,7 +108,9 @@ export async function getBill(id: string, token: string): Promise<Bill> {
 }
 
 export async function getTab(id: string, token: string): Promise<Tab> {
-  const response = await fetch(`${API_BASE_URL}/api/tabs/${id}?t=${token}`);
+  const response = await fetch(`${API_BASE_URL}/api/tabs/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
 
   if (!response.ok) {
     if (response.status === 403) {
@@ -126,7 +130,8 @@ export async function getTabImages(
   token: string,
 ): Promise<TabImage[]> {
   const response = await fetch(
-    `${API_BASE_URL}/api/tabs/${id}/images?t=${token}`,
+    `${API_BASE_URL}/api/tabs/${id}/images`,
+    { headers: { Authorization: `Bearer ${token}` } },
   );
 
   if (!response.ok) {
@@ -141,7 +146,8 @@ export async function getSettlements(
   token: string,
 ): Promise<TabSettlement[]> {
   const response = await fetch(
-    `${API_BASE_URL}/api/tabs/${id}/settlements?t=${token}`,
+    `${API_BASE_URL}/api/tabs/${id}/settlements`,
+    { headers: { Authorization: `Bearer ${token}` } },
   );
 
   if (!response.ok) {
@@ -156,7 +162,8 @@ export async function getTabMembers(
   token: string,
 ): Promise<TabMember[]> {
   const response = await fetch(
-    `${API_BASE_URL}/api/tabs/${id}/members?t=${token}`,
+    `${API_BASE_URL}/api/tabs/${id}/members`,
+    { headers: { Authorization: `Bearer ${token}` } },
   );
 
   if (!response.ok) {
@@ -172,10 +179,13 @@ export async function joinTab(
   displayName: string,
 ): Promise<{ member_id: number; member_token: string; display_name: string; role: string } | null> {
   const response = await fetch(
-    `${API_BASE_URL}/api/tabs/${id}/join?t=${token}`,
+    `${API_BASE_URL}/api/tabs/${id}/join`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({ display_name: displayName }),
     },
   );

@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -42,7 +43,7 @@ func main() {
 
 	imgHandler := image.NewImageHandler(imgService, tabService, uploadDir)
 
-	// Receipt parsing (optional — degrades gracefully if OPENROUTER_API_KEY is not set)
+	// Receipt parsing (optional — degrades gracefully if ANTHROPIC_API_KEY is not set)
 	var receiptHandler *receipt.Handler
 	if receiptService, err := receipt.NewService(); err != nil {
 		fmt.Printf("Receipt parsing disabled: %v\n", err)
@@ -51,12 +52,30 @@ func main() {
 	}
 
 	r := gin.Default()
+
+	// Security headers
+	r.Use(func(c *gin.Context) {
+		c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.Header("X-Frame-Options", "DENY")
+		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
+		c.Next()
+	})
+
+	// CORS — restrict to allowed origins
+	origins := []string{"https://billingtonapp.vercel.app"}
+	if extra := os.Getenv("CORS_ORIGINS"); extra != "" {
+		for _, o := range strings.Split(extra, ",") {
+			if trimmed := strings.TrimSpace(o); trimmed != "" {
+				origins = append(origins, trimmed)
+			}
+		}
+	}
 	r.Use(cors.New(cors.Config{
-		AllowAllOrigins:  true,
-		AllowMethods:     []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: false,
+		AllowOrigins: origins,
+		AllowMethods: []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Member-Token"},
+		ExposeHeaders: []string{"Content-Length"},
 	}))
 	r.GET("/health", getHealth)
 	r.GET("/api/bills/:id", handler.GetBill)

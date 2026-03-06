@@ -33,7 +33,7 @@ class TabManager extends ChangeNotifier {
       }
       return tabs;
     } catch (e) {
-      debugPrint('Error fetching tabs: $e');
+      debugPrint('Error fetching tabs');
       return [];
     }
   }
@@ -68,7 +68,7 @@ class TabManager extends ChangeNotifier {
       notifyListeners();
       return tab;
     } catch (e) {
-      debugPrint('Error creating tab: $e');
+      debugPrint('Error creating tab');
       return null;
     }
   }
@@ -79,7 +79,7 @@ class TabManager extends ChangeNotifier {
       await getAllTabs();
       notifyListeners();
     } catch (e) {
-      debugPrint('Error deleting tab: $e');
+      debugPrint('Error deleting tab');
     }
   }
 
@@ -110,7 +110,7 @@ class TabManager extends ChangeNotifier {
 
       notifyListeners();
     } catch (e) {
-      debugPrint('Error adding bills to tab: $e');
+      debugPrint('Error adding bills to tab');
     }
   }
 
@@ -129,7 +129,7 @@ class TabManager extends ChangeNotifier {
 
       notifyListeners();
     } catch (e) {
-      debugPrint('Error removing bill from tab: $e');
+      debugPrint('Error removing bill from tab');
     }
   }
 
@@ -139,7 +139,7 @@ class TabManager extends ChangeNotifier {
       if (tabData == null) return null;
       return _tabDataToAppTab(tabData);
     } catch (e) {
-      debugPrint('Error fetching tab: $e');
+      debugPrint('Error fetching tab');
       return null;
     }
   }
@@ -168,9 +168,9 @@ class TabManager extends ChangeNotifier {
       await DatabaseProvider.db.updateTab(localId, companion);
       notifyListeners();
     } on ApiException catch (e) {
-      debugPrint('Error syncing tab to backend: $e');
+      debugPrint('Error syncing tab to backend');
     } catch (e) {
-      debugPrint('Error syncing tab to backend: $e');
+      debugPrint('Error syncing tab to backend');
     }
   }
 
@@ -199,10 +199,10 @@ class TabManager extends ChangeNotifier {
       notifyListeners();
       return true;
     } on ApiException catch (e) {
-      debugPrint('Error finalizing tab: $e');
+      debugPrint('Error finalizing tab');
       return false;
     } catch (e) {
-      debugPrint('Error finalizing tab: $e');
+      debugPrint('Error finalizing tab');
       return false;
     }
   }
@@ -210,8 +210,14 @@ class TabManager extends ChangeNotifier {
   /// Joins a remote tab via share URL
   Future<AppTab?> joinTab(String shareUrl, String displayName) async {
     try {
-      // Parse URL: https://billington.app/t/{id}?t={token}
+      // Parse and validate URL: https://billingtonapp.vercel.app/t/{id}?t={token}
       final uri = Uri.parse(shareUrl);
+
+      const allowedHosts = {'billingtonapp.vercel.app', 'billington.app'};
+      if (uri.scheme != 'https' || !allowedHosts.contains(uri.host)) {
+        return null;
+      }
+
       final pathSegments = uri.pathSegments;
       if (pathSegments.length < 2 || pathSegments[0] != 't') return null;
 
@@ -254,10 +260,10 @@ class TabManager extends ChangeNotifier {
       notifyListeners();
       return tab;
     } on ApiException catch (e) {
-      debugPrint('Error joining tab: $e');
+      debugPrint('Error joining tab');
       return null;
     } catch (e) {
-      debugPrint('Error joining tab: $e');
+      debugPrint('Error joining tab');
       return null;
     }
   }

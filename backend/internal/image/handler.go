@@ -4,9 +4,11 @@ import (
 	"backend/internal/tab"
 	"backend/pkg/models"
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -62,11 +64,12 @@ func (h *ImageHandler) validateTabToken(c *gin.Context) *models.Tab {
 			c.JSON(http.StatusNotFound, gin.H{"error": "tab not found"})
 			return nil
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("internal error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "an internal error occurred"})
 		return nil
 	}
 
-	if urlToken != t.AccessToken {
+	if subtle.ConstantTimeCompare([]byte(urlToken), []byte(t.AccessToken)) != 1 {
 		c.JSON(http.StatusForbidden, gin.H{"error": "token mismatch"})
 		return nil
 	}
@@ -127,9 +130,10 @@ func (h *ImageHandler) UploadImage(c *gin.Context) {
 		return
 	}
 
-	// Generate random filename with original extension
-	ext := filepath.Ext(header.Filename)
-	if ext == "" {
+	// Generate random filename with validated extension
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	validExts := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".webp": true, ".heic": true, ".heif": true}
+	if !validExts[ext] {
 		ext = ".jpg"
 	}
 	randBytes := make([]byte, 16)
@@ -196,7 +200,8 @@ func (h *ImageHandler) ListImages(c *gin.Context) {
 
 	images, err := h.service.GetByTabID(t.ID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("internal error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "an internal error occurred"})
 		return
 	}
 
@@ -223,7 +228,8 @@ func (h *ImageHandler) UpdateImage(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "image not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("internal error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "an internal error occurred"})
 		return
 	}
 	if image.TabID != t.ID {
@@ -240,7 +246,8 @@ func (h *ImageHandler) UpdateImage(c *gin.Context) {
 	}
 
 	if err := h.service.UpdateProcessed(uint(imageID), *body.Processed); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("internal error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "an internal error occurred"})
 		return
 	}
 
@@ -272,7 +279,8 @@ func (h *ImageHandler) DeleteImage(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "image not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("internal error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "an internal error occurred"})
 		return
 	}
 	if image.TabID != t.ID {
@@ -281,7 +289,8 @@ func (h *ImageHandler) DeleteImage(c *gin.Context) {
 	}
 
 	if err := h.service.Delete(uint(imageID), h.uploadDir); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("internal error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "an internal error occurred"})
 		return
 	}
 

@@ -3,7 +3,9 @@ package bill
 import (
 	"backend/pkg/models"
 	"backend/pkg/security"
+	"crypto/subtle"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -36,14 +38,29 @@ func (h *BillHandler) CreateBill(c *gin.Context) {
 		return
 	}
 
-	token := security.GenerateSecureToken()
+	// Sanitize user-provided strings
+	bill.Name = security.SanitizeString(bill.Name)
+	for i := range bill.Items {
+		bill.Items[i].Name = security.SanitizeString(bill.Items[i].Name)
+	}
+	for i := range bill.PersonShares {
+		bill.PersonShares[i].PersonName = security.SanitizeString(bill.PersonShares[i].PersonName)
+	}
+
+	token, err := security.GenerateSecureToken()
+	if err != nil {
+		log.Printf("internal error: %v", err)
+		c.JSON(500, gin.H{"error": "an internal error occurred"})
+		return
+	}
 	bill.AccessToken = token
 	//Call service
-	err := h.service.CreateBill(&bill)
+	err = h.service.CreateBill(&bill)
 
 	//Return response based on result
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		log.Printf("internal error: %v", err)
+		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return
 	}
 
@@ -84,13 +101,15 @@ func (h *BillHandler) GetBill(c *gin.Context) {
 			c.JSON(404, gin.H{"error": "bill not found"})
 			return
 		}
-		c.JSON(500, gin.H{"error": err.Error()})
+		log.Printf("internal error: %v", err)
+		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return
 	}
-	if URLtoken != bill.AccessToken {
+	if subtle.ConstantTimeCompare([]byte(URLtoken), []byte(bill.AccessToken)) != 1 {
 		c.JSON(403, gin.H{"error": "token mismatch"})
 		return
 	}
 
+	bill.AccessToken = ""
 	c.JSON(200, bill)
 }

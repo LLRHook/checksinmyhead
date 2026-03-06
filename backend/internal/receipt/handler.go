@@ -4,25 +4,75 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 const maxReceiptSize = 10 << 20 // 10 MB
 
+type ipLimiter struct {
+	mu      sync.Mutex
+	buckets map[string][]time.Time
+	limit   int
+	window  time.Duration
+}
+
+func newIPLimiter(limit int, window time.Duration) *ipLimiter {
+	return &ipLimiter{
+		buckets: make(map[string][]time.Time),
+		limit:   limit,
+		window:  window,
+	}
+}
+
+func (rl *ipLimiter) Allow(ip string) bool {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	now := time.Now()
+	cutoff := now.Add(-rl.window)
+
+	timestamps := rl.buckets[ip]
+	valid := timestamps[:0]
+	for _, ts := range timestamps {
+		if ts.After(cutoff) {
+			valid = append(valid, ts)
+		}
+	}
+
+	if len(valid) >= rl.limit {
+		rl.buckets[ip] = valid
+		return false
+	}
+
+	rl.buckets[ip] = append(valid, now)
+	return true
+}
+
 // Handler handles HTTP requests for receipt parsing.
 type Handler struct {
 	service *Service
+	limiter *ipLimiter
 }
 
 // NewHandler creates a new receipt handler.
 func NewHandler(service *Service) *Handler {
-	return &Handler{service: service}
+	return &Handler{
+		service: service,
+		limiter: newIPLimiter(10, time.Minute),
+	}
 }
 
 // ParseReceipt handles POST /api/receipts/parse
 // Accepts a multipart image and returns structured receipt data.
 func (h *Handler) ParseReceipt(c *gin.Context) {
+	if !h.limiter.Allow(c.ClientIP()) {
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": "Too many scans. Please wait a moment and try again.", "code": "rate_limited"})
+		return
+	}
+
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxReceiptSize)
 
 	file, header, err := c.Request.FormFile("image")
