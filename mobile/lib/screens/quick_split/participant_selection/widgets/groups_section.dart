@@ -708,23 +708,22 @@ class _CreateGroupSheetState extends State<_CreateGroupSheet> {
     final name = _nameController.text.trim();
     final members = _selectedPeople.toList();
 
+    final messenger = ScaffoldMessenger.of(context);
     Navigator.pop(context);
 
     await widget.onCreateGroup(name, members);
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Group "$name" created'),
-          behavior: SnackBarBehavior.floating,
-          width: 280,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          duration: const Duration(seconds: 2),
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('Group "$name" created'),
+        behavior: SnackBarBehavior.floating,
+        width: 280,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
         ),
-      );
-    }
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   @override

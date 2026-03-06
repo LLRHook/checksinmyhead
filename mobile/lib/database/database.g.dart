@@ -3020,7 +3020,7 @@ class $PeopleGroupMembersTable extends PeopleGroupMembers
     type: DriftSqlType.int,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES people_groups (id)',
+      'REFERENCES people_groups (id) ON DELETE CASCADE',
     ),
   );
   static const VerificationMeta _personIdMeta = const VerificationMeta(
@@ -3034,7 +3034,7 @@ class $PeopleGroupMembersTable extends PeopleGroupMembers
     type: DriftSqlType.int,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES people (id)',
+      'REFERENCES people (id) ON DELETE CASCADE',
     ),
   );
   @override
@@ -3277,6 +3277,23 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     peopleGroups,
     peopleGroupMembers,
   ];
+  @override
+  StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'people_groups',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('people_group_members', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'people',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('people_group_members', kind: UpdateKind.delete)],
+    ),
+  ]);
 }
 
 typedef $$PeopleTableCreateCompanionBuilder =

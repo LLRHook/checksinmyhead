@@ -53,8 +53,10 @@ class PeopleGroups extends Table {
 // Junction table linking people to groups
 class PeopleGroupMembers extends Table {
   IntColumn get id => integer().autoIncrement()();
-  IntColumn get groupId => integer().references(PeopleGroups, #id)();
-  IntColumn get personId => integer().references(People, #id)();
+  IntColumn get groupId =>
+      integer().references(PeopleGroups, #id, onDelete: KeyAction.cascade)();
+  IntColumn get personId =>
+      integer().references(People, #id, onDelete: KeyAction.cascade)();
 }
 
 // Database table for tracking tutorial completion status
@@ -177,7 +179,8 @@ class AppDatabase extends _$AppDatabase {
   // Fetches recently used people, ranked by smart score (frequency * recency)
   Future<List<Person>> getRecentPeople({int limit = 12}) async {
     final allPeople = await (select(people)
-          ..orderBy([(t) => OrderingTerm.desc(t.lastUsed)]))
+          ..orderBy([(t) => OrderingTerm.desc(t.lastUsed)])
+          ..limit(100))
         .get();
 
     final now = DateTime.now();
