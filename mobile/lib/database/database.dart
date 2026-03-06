@@ -118,7 +118,7 @@ class RecentBills extends Table {
   tables: [People, TutorialStates, UserPreferences, RecentBills, Tabs, PeopleGroups, PeopleGroupMembers],
 )
 class AppDatabase extends _$AppDatabase {
-  static const int maxRecentPeople = 12;
+  static const int maxRecentPeople = 20;
 
   AppDatabase() : super(_openConnection());
 
@@ -174,15 +174,26 @@ class AppDatabase extends _$AppDatabase {
     return Person(name: displayName, color: Color(entry.colorValue));
   }
 
-  // Fetches recently used people
+  // Fetches recently used people, ranked by smart score (frequency * recency)
   Future<List<Person>> getRecentPeople({int limit = 12}) async {
-    final query =
-        select(people)
-          ..orderBy([(t) => OrderingTerm.desc(t.lastUsed)])
-          ..limit(limit);
+    final allPeople = await (select(people)
+          ..orderBy([(t) => OrderingTerm.desc(t.lastUsed)]))
+        .get();
 
-    final results = await query.get();
-    return results.map(peopleDataToPerson).toList();
+    final now = DateTime.now();
+    final scored = allPeople.map((p) {
+      final daysSince = now.difference(p.lastUsed).inDays.toDouble();
+      final recencyFactor = 1.0 / (1.0 + daysSince * 0.1);
+      final score = p.useCount * recencyFactor;
+      return (person: p, score: score);
+    }).toList();
+
+    scored.sort((a, b) => b.score.compareTo(a.score));
+
+    return scored
+        .take(limit)
+        .map((s) => peopleDataToPerson(s.person))
+        .toList();
   }
 
   Future<void> addPersonToRecent(Person person) async {
@@ -198,6 +209,7 @@ class AppDatabase extends _$AppDatabase {
         PeopleCompanion(
           colorValue: Value(person.color.toARGB32()),
           lastUsed: Value(DateTime.now()),
+          useCount: Value(existing.useCount + 1),
         ),
       );
     } else {
@@ -218,6 +230,7 @@ class AppDatabase extends _$AppDatabase {
           name: Value(lowercaseName),
           colorValue: Value(person.color.toARGB32()),
           lastUsed: Value(DateTime.now()),
+          useCount: const Value(1),
         ),
       );
     }
@@ -488,6 +501,134 @@ class AppDatabase extends _$AppDatabase {
   Future<Tab?> getTabById(int id) async {
     final query = select(tabs)..where((t) => t.id.equals(id));
     return query.getSingleOrNull();
+  }
+
+  // --- Group operations ---
+
+  static const int maxGroups = 10;
+
+  Future<int> createGroup(String name, List<int> personIds, int colorValue) async {
+    final groupId = await into(peopleGroups).insert(
+      PeopleGroupsCompanion(
+        name: Value(name),
+        colorValue: Value(colorValue),
+        isSuggested: const Value(false),
+        createdAt: Value(DateTime.now()),
+        lastUsed: Value(DateTime.now()),
+      ),
+    );
+    for (final personId in personIds) {
+      await into(peopleGroupMembers).insert(
+        PeopleGroupMembersCompanion(
+          groupId: Value(groupId),
+          personId: Value(personId),
+        ),
+      );
+    }
+    return groupId;
+  }
+
+  Future<List<PeopleGroup>> getSavedGroups() async {
+    final query = select(peopleGroups)
+      ..where((g) => g.isSuggested.equals(false))
+      ..orderBy([(g) => OrderingTerm.desc(g.lastUsed)]);
+    return query.get();
+  }
+
+  Future<List<PeopleGroup>> getSuggestedGroups() async {
+    final query = select(peopleGroups)
+      ..where((g) => g.isSuggested.equals(true))
+      ..orderBy([(g) => OrderingTerm.desc(g.lastUsed)])
+      ..limit(3);
+    return query.get();
+  }
+
+  Future<List<Person>> getGroupMembers(int groupId) async {
+    final query = select(peopleGroupMembers).join([
+      innerJoin(people, people.id.equalsExp(peopleGroupMembers.personId)),
+    ])..where(peopleGroupMembers.groupId.equals(groupId));
+    final results = await query.get();
+    return results.map((row) {
+      final personData = row.readTable(people);
+      return peopleDataToPerson(personData);
+    }).toList();
+  }
+
+  Future<void> updateGroupLastUsed(int groupId) async {
+    await (update(peopleGroups)..where((g) => g.id.equals(groupId))).write(
+      PeopleGroupsCompanion(lastUsed: Value(DateTime.now())),
+    );
+  }
+
+  Future<void> renameGroup(int groupId, String newName) async {
+    await (update(peopleGroups)..where((g) => g.id.equals(groupId))).write(
+      PeopleGroupsCompanion(name: Value(newName)),
+    );
+  }
+
+  Future<void> updateGroupMembers(int groupId, List<int> personIds) async {
+    await (delete(peopleGroupMembers)..where((m) => m.groupId.equals(groupId))).go();
+    for (final personId in personIds) {
+      await into(peopleGroupMembers).insert(
+        PeopleGroupMembersCompanion(
+          groupId: Value(groupId),
+          personId: Value(personId),
+        ),
+      );
+    }
+  }
+
+  Future<void> deleteGroup(int groupId) async {
+    await (delete(peopleGroupMembers)..where((m) => m.groupId.equals(groupId))).go();
+    await (delete(peopleGroups)..where((g) => g.id.equals(groupId))).go();
+  }
+
+  Future<void> saveSuggestedGroup(int groupId, String name) async {
+    await (update(peopleGroups)..where((g) => g.id.equals(groupId))).write(
+      PeopleGroupsCompanion(
+        name: Value(name),
+        isSuggested: const Value(false),
+      ),
+    );
+  }
+
+  Future<void> clearSuggestedGroups() async {
+    final suggested = await (select(peopleGroups)
+          ..where((g) => g.isSuggested.equals(true)))
+        .get();
+    for (final group in suggested) {
+      await deleteGroup(group.id);
+    }
+  }
+
+  Future<int> createSuggestedGroup(List<int> personIds, int colorValue) async {
+    final groupId = await into(peopleGroups).insert(
+      PeopleGroupsCompanion(
+        name: const Value(''),
+        colorValue: Value(colorValue),
+        isSuggested: const Value(true),
+        createdAt: Value(DateTime.now()),
+        lastUsed: Value(DateTime.now()),
+      ),
+    );
+    for (final personId in personIds) {
+      await into(peopleGroupMembers).insert(
+        PeopleGroupMembersCompanion(
+          groupId: Value(groupId),
+          personId: Value(personId),
+        ),
+      );
+    }
+    return groupId;
+  }
+
+  Future<PeopleData?> getPersonByName(String name) async {
+    final query = select(people)..where((p) => p.name.equals(name.toLowerCase()));
+    return query.getSingleOrNull();
+  }
+
+  Future<List<PeopleData>> getAllPeople() async {
+    return (select(people)..orderBy([(t) => OrderingTerm.desc(t.lastUsed)])).get();
   }
 }
 
