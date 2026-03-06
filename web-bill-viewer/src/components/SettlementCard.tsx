@@ -84,6 +84,9 @@ export default function SettlementCard({
           </div>
         ))}
       </div>
+      <p className="text-[10px] text-[var(--text-secondary)] opacity-40 text-center mt-3">
+        v3-deeplink
+      </p>
     </div>
   );
 }
