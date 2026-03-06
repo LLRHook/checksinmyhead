@@ -102,8 +102,7 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
   }
 
   /// Adds all members of a group as participants
-  void _onGroupTapped(PeopleGroupWithMembers group) {
-    final provider = Provider.of<ParticipantsProvider>(context, listen: false);
+  void _onGroupTapped(PeopleGroupWithMembers group, ParticipantsProvider provider) {
     for (final member in group.members) {
       provider.addRecentPerson(member);
     }
@@ -218,7 +217,7 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
                 const SizedBox(height: 20),
                 _buildSheetHeader(context),
                 const SizedBox(height: 20),
-                _buildScrollableContent(),
+                _buildScrollableContent(context),
                 _buildContinueButton(context),
               ],
             ),
@@ -352,7 +351,7 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
   }
 
   /// Creates the scrollable middle content area
-  Widget _buildScrollableContent() {
+  Widget _buildScrollableContent(BuildContext context) {
     return Expanded(
       child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
@@ -368,7 +367,10 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
               secondChild: GroupsSection(
                 savedGroups: _savedGroups,
                 suggestedGroups: _suggestedGroups,
-                onGroupTapped: _onGroupTapped,
+                onGroupTapped: (group) => _onGroupTapped(
+                  group,
+                  Provider.of<ParticipantsProvider>(context, listen: false),
+                ),
                 onGroupSaved: _onGroupSaved,
                 onGroupDeleted: _onGroupDeleted,
                 onGroupRenamed: _onGroupRenamed,
