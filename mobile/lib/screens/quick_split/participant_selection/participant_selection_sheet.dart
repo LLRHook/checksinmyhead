@@ -47,12 +47,12 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
     with SingleTickerProviderStateMixin {
   List<Person> _recentPeople = [];
   late AnimationController _animationController;
+  bool _didAutoAdd = false;
 
   @override
   void initState() {
     super.initState();
     _loadRecentPeople();
-    _autoAddSelf();
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -73,7 +73,7 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
   }
 
   /// Auto-adds the user as a participant if the preference is enabled
-  Future<void> _autoAddSelf() async {
+  Future<void> _autoAddSelf(ParticipantsProvider provider) async {
     final prefsService = PreferencesService();
     final autoAdd = await prefsService.getAutoAddSelf();
     if (!autoAdd) return;
@@ -81,12 +81,7 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
     if (displayName == null || displayName.trim().isEmpty) return;
     if (!mounted) return;
 
-    // Use post-frame callback to ensure provider is available
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final provider = Provider.of<ParticipantsProvider>(context, listen: false);
-      provider.addPerson(displayName.trim());
-    });
+    provider.addPerson(displayName.trim());
   }
 
   /// Persists participants to recents for future use
@@ -130,6 +125,11 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
       create: (_) => ParticipantsProvider(),
       child: Builder(
         builder: (context) {
+          if (!_didAutoAdd) {
+            _didAutoAdd = true;
+            final provider = Provider.of<ParticipantsProvider>(context, listen: false);
+            _autoAddSelf(provider);
+          }
           return Container(
             padding: const EdgeInsets.only(
               top: 16,
