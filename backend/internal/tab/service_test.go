@@ -30,8 +30,9 @@ type mockTabRepository struct {
 	// Capture calls
 	addBillTabID    uint
 	addBillBillID   uint
-	addBillMemberID *uint
-	finalizedID     uint
+	addBillMemberID     *uint
+	addBillPaidByMemberID *uint
+	finalizedID         uint
 	createdSettlements []models.TabSettlement
 }
 
@@ -68,6 +69,7 @@ func (m *mockTabRepository) AddBill(tabID uint, billID uint, memberID *uint) err
 	m.addBillTabID = tabID
 	m.addBillBillID = billID
 	m.addBillMemberID = memberID
+	m.addBillPaidByMemberID = memberID
 	return m.addBillErr
 }
 
@@ -332,6 +334,24 @@ func TestAddBillToTab_WithMember(t *testing.T) {
 	}
 	if repo.addBillMemberID == nil || *repo.addBillMemberID != 42 {
 		t.Error("expected memberID 42 to be passed through")
+	}
+}
+
+func TestAddBillToTab_SetsPaidByMemberID(t *testing.T) {
+	repo := newMockRepo()
+	imgQ := &mockImageQuerier{}
+
+	repo.tabs[1] = &models.Tab{ID: 1}
+
+	svc := NewTabService(repo, imgQ)
+	memberID := uint(42)
+	err := svc.AddBillToTab(1, 99, &memberID)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if repo.addBillPaidByMemberID == nil || *repo.addBillPaidByMemberID != 42 {
+		t.Error("expected PaidByMemberID 42 to be set when adding bill with member")
 	}
 }
 
