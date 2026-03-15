@@ -51,6 +51,7 @@ func (s *tabService) GetTab(id uint) (tab *models.Tab, err error) {
 		tab.Bills[i].AccessToken = ""
 	}
 	tab.TotalAmount = total
+	tab.NetBalances = ComputeNetBalances(tab)
 	return tab, nil
 }
 
@@ -217,9 +218,9 @@ func ComputeNetBalances(tab *models.Tab) []models.NetBalance {
 	var creditors, debtors []entry
 	for key, net := range nets {
 		rounded := math.Round(net*100) / 100
-		if rounded > 0.01 {
+		if rounded >= 0.01 {
 			creditors = append(creditors, entry{displayNames[key], rounded})
-		} else if rounded < -0.01 {
+		} else if rounded <= -0.01 {
 			debtors = append(debtors, entry{displayNames[key], -rounded})
 		}
 	}
