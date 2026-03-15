@@ -381,3 +381,179 @@ func TestGetMembers_Success(t *testing.T) {
 		t.Errorf("expected second member Bob, got %s", members[1].DisplayName)
 	}
 }
+
+// ── ComputeNetBalances Tests ────────────────────────────────────
+
+func TestComputeNetBalances_SingleBill(t *testing.T) {
+	// Alice pays a $100 bill. Bob owes $40, Alice owes $30, Charlie owes $30.
+	tab := &models.Tab{
+		ID: 1,
+		Members: []models.TabMember{
+			{ID: 1, TabID: 1, DisplayName: "Alice"},
+			{ID: 2, TabID: 1, DisplayName: "Bob"},
+		},
+		Bills: []models.Bill{
+			{
+				ID: 1, Total: 100,
+				PaidByMemberID: ptrUint(1),
+				PersonShares: []models.PersonShare{
+					{PersonName: "Alice", Total: 30},
+					{PersonName: "Bob", Total: 40},
+					{PersonName: "Charlie", Total: 30},
+				},
+			},
+		},
+	}
+
+	balances := ComputeNetBalances(tab)
+
+	// Alice paid 100, owes 30 → net +70 (owed 70)
+	// Bob paid 0, owes 40 → net -40 (owes 40)
+	// Charlie paid 0, owes 30 → net -30 (owes 30)
+	// Simplified: Bob→Alice $40, Charlie→Alice $30
+	if len(balances) != 2 {
+		t.Fatalf("expected 2 balances, got %d: %+v", len(balances), balances)
+	}
+
+	balanceMap := make(map[string]float64)
+	for _, b := range balances {
+		balanceMap[b.From+"→"+b.To] = b.Amount
+	}
+
+	if balanceMap["Bob→Alice"] != 40 {
+		t.Errorf("expected Bob→Alice 40, got %f", balanceMap["Bob→Alice"])
+	}
+	if balanceMap["Charlie→Alice"] != 30 {
+		t.Errorf("expected Charlie→Alice 30, got %f", balanceMap["Charlie→Alice"])
+	}
+}
+
+func TestComputeNetBalances_MultipleBills(t *testing.T) {
+	// Alice pays $100 dinner (Bob $40, Alice $30, Charlie $30)
+	// Bob pays $60 drinks (Alice $20, Bob $20, Charlie $20)
+	tab := &models.Tab{
+		ID: 1,
+		Members: []models.TabMember{
+			{ID: 1, TabID: 1, DisplayName: "Alice"},
+			{ID: 2, TabID: 1, DisplayName: "Bob"},
+		},
+		Bills: []models.Bill{
+			{
+				ID: 1, Total: 100,
+				PaidByMemberID: ptrUint(1),
+				PersonShares: []models.PersonShare{
+					{PersonName: "Alice", Total: 30},
+					{PersonName: "Bob", Total: 40},
+					{PersonName: "Charlie", Total: 30},
+				},
+			},
+			{
+				ID: 2, Total: 60,
+				PaidByMemberID: ptrUint(2),
+				PersonShares: []models.PersonShare{
+					{PersonName: "Alice", Total: 20},
+					{PersonName: "Bob", Total: 20},
+					{PersonName: "Charlie", Total: 20},
+				},
+			},
+		},
+	}
+
+	balances := ComputeNetBalances(tab)
+
+	// Alice: paid 100, owes 50 → net +50
+	// Bob: paid 60, owes 60 → net 0
+	// Charlie: paid 0, owes 50 → net -50
+	// Simplified: Charlie→Alice $50
+	if len(balances) != 1 {
+		t.Fatalf("expected 1 balance, got %d: %+v", len(balances), balances)
+	}
+	if balances[0].From != "Charlie" || balances[0].To != "Alice" {
+		t.Errorf("expected Charlie→Alice, got %s→%s", balances[0].From, balances[0].To)
+	}
+	if balances[0].Amount != 50 {
+		t.Errorf("expected amount 50, got %f", balances[0].Amount)
+	}
+}
+
+func TestComputeNetBalances_AllEven(t *testing.T) {
+	tab := &models.Tab{
+		ID: 1,
+		Members: []models.TabMember{
+			{ID: 1, TabID: 1, DisplayName: "Alice"},
+		},
+		Bills: []models.Bill{
+			{
+				ID: 1, Total: 50,
+				PaidByMemberID: ptrUint(1),
+				PersonShares: []models.PersonShare{
+					{PersonName: "Alice", Total: 50},
+				},
+			},
+		},
+	}
+
+	balances := ComputeNetBalances(tab)
+	if len(balances) != 0 {
+		t.Errorf("expected 0 balances when even, got %d: %+v", len(balances), balances)
+	}
+}
+
+func TestComputeNetBalances_NoPaidByMember(t *testing.T) {
+	tab := &models.Tab{
+		ID: 1,
+		Bills: []models.Bill{
+			{
+				ID: 1, Total: 100,
+				PaidByMemberID: nil,
+				PersonShares: []models.PersonShare{
+					{PersonName: "Alice", Total: 60},
+					{PersonName: "Bob", Total: 40},
+				},
+			},
+		},
+	}
+
+	balances := ComputeNetBalances(tab)
+	if len(balances) != 0 {
+		t.Errorf("expected 0 balances for unattributed bills, got %d", len(balances))
+	}
+}
+
+func TestComputeNetBalances_CaseInsensitive(t *testing.T) {
+	tab := &models.Tab{
+		ID: 1,
+		Members: []models.TabMember{
+			{ID: 1, TabID: 1, DisplayName: "Alice"},
+			{ID: 2, TabID: 1, DisplayName: "Bob"},
+		},
+		Bills: []models.Bill{
+			{
+				ID: 1, Total: 100,
+				PaidByMemberID: ptrUint(1),
+				PersonShares: []models.PersonShare{
+					{PersonName: "alice", Total: 30},
+					{PersonName: "bob", Total: 70},
+				},
+			},
+		},
+	}
+
+	balances := ComputeNetBalances(tab)
+	if len(balances) != 1 {
+		t.Fatalf("expected 1 balance, got %d: %+v", len(balances), balances)
+	}
+	if balances[0].From != "Bob" {
+		t.Errorf("expected From='Bob' (capitalized), got '%s'", balances[0].From)
+	}
+	if balances[0].To != "Alice" {
+		t.Errorf("expected To='Alice', got '%s'", balances[0].To)
+	}
+	if balances[0].Amount != 70 {
+		t.Errorf("expected amount 70, got %f", balances[0].Amount)
+	}
+}
+
+func ptrUint(v uint) *uint {
+	return &v
+}

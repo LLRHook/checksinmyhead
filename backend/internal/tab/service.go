@@ -5,6 +5,8 @@ import (
 	"backend/pkg/security"
 	"errors"
 	"fmt"
+	"math"
+	"sort"
 	"strings"
 	"time"
 )
@@ -168,4 +170,84 @@ func (s *tabService) GetMembers(tabID uint) ([]models.TabMember, error) {
 
 func NewTabService(repo TabRepository, imgQuerier ImageQuerier) TabService {
 	return &tabService{repo: repo, imgQuerier: imgQuerier}
+}
+
+// ComputeNetBalances takes a Tab (with Members, Bills, PersonShares preloaded)
+// and returns simplified "who owes whom" transactions using greedy settlement.
+func ComputeNetBalances(tab *models.Tab) []models.NetBalance {
+	memberNames := make(map[uint]string)
+	for _, m := range tab.Members {
+		memberNames[m.ID] = m.DisplayName
+	}
+
+	displayNames := make(map[string]string)
+	for _, m := range tab.Members {
+		key := strings.ToLower(m.DisplayName)
+		displayNames[key] = m.DisplayName
+	}
+
+	nets := make(map[string]float64)
+
+	for _, bill := range tab.Bills {
+		if bill.PaidByMemberID == nil {
+			continue
+		}
+		payerName, ok := memberNames[*bill.PaidByMemberID]
+		if !ok {
+			continue
+		}
+		payerKey := strings.ToLower(payerName)
+		displayNames[payerKey] = payerName
+		nets[payerKey] += bill.Total
+
+		for _, share := range bill.PersonShares {
+			key := strings.ToLower(share.PersonName)
+			nets[key] -= share.Total
+			if _, exists := displayNames[key]; !exists {
+				displayNames[key] = share.PersonName
+			}
+		}
+	}
+
+	type entry struct {
+		name   string
+		amount float64
+	}
+
+	var creditors, debtors []entry
+	for key, net := range nets {
+		rounded := math.Round(net*100) / 100
+		if rounded > 0.01 {
+			creditors = append(creditors, entry{displayNames[key], rounded})
+		} else if rounded < -0.01 {
+			debtors = append(debtors, entry{displayNames[key], -rounded})
+		}
+	}
+
+	sort.Slice(creditors, func(i, j int) bool { return creditors[i].amount > creditors[j].amount })
+	sort.Slice(debtors, func(i, j int) bool { return debtors[i].amount > debtors[j].amount })
+
+	var balances []models.NetBalance
+	ci, di := 0, 0
+	for ci < len(creditors) && di < len(debtors) {
+		amt := math.Min(creditors[ci].amount, debtors[di].amount)
+		amt = math.Round(amt*100) / 100
+		if amt > 0 {
+			balances = append(balances, models.NetBalance{
+				From:   debtors[di].name,
+				To:     creditors[ci].name,
+				Amount: amt,
+			})
+		}
+		creditors[ci].amount -= amt
+		debtors[di].amount -= amt
+		if creditors[ci].amount < 0.01 {
+			ci++
+		}
+		if debtors[di].amount < 0.01 {
+			di++
+		}
+	}
+
+	return balances
 }
