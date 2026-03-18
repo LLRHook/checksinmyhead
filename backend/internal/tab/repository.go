@@ -56,6 +56,7 @@ func (r *tabRepository) AddBill(tabID uint, billID uint, memberID *uint) error {
 	updates := map[string]interface{}{"tab_id": tabID}
 	if memberID != nil {
 		updates["added_by_member_id"] = *memberID
+		updates["paid_by_member_id"] = *memberID
 	}
 	result := r.db.Model(&models.Bill{}).Where("id = ?", billID).Updates(updates)
 	if result.Error != nil {
