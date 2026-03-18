@@ -11,6 +11,7 @@ type Tab struct {
 	Bills       []Bill      `gorm:"foreignKey:TabID" json:"bills"`
 	Members     []TabMember `gorm:"foreignKey:TabID" json:"members,omitempty"`
 	TotalAmount float64    `gorm:"-" json:"total_amount"`
+	NetBalances []NetBalance `gorm:"-" json:"net_balances"`
 	Finalized   bool       `gorm:"default:false" json:"finalized"`
 	FinalizedAt *time.Time `json:"finalized_at"`
 	AccessToken string     `gorm:"type:varchar(64);uniqueIndex" json:"access_token,omitempty"`

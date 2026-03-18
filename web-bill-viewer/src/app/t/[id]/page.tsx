@@ -14,6 +14,7 @@ import TabImageGallery from "@/components/TabImageGallery";
 import TabBillList from "@/components/TabBillList";
 import JoinTabButton from "@/components/JoinTabButton";
 import MemberList from "@/components/MemberList";
+import NetBalances from "@/components/NetBalances";
 import DesktopLayout from "@/components/DesktopLayout";
 import { notFound } from "next/navigation";
 import { FaLock, FaTriangleExclamation } from "react-icons/fa6";
@@ -117,6 +118,15 @@ export default async function TabPage({
 
   return (
     <DesktopLayout sidebar={sidebar}>
+      {(tab.net_balances ?? []).length > 0 && (
+        <NetBalances
+          balances={tab.net_balances ?? []}
+          finalized={tab.finalized}
+          venmoId={venmoId}
+          currentMemberName={null}
+        />
+      )}
+
       {tab.finalized && settlements.length > 0 ? (
         <SettlementCard settlements={settlements} venmoId={venmoId} tabId={id} token={token} />
       ) : (

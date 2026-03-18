@@ -14,6 +14,7 @@ describe("computeTabPersonTotals", () => {
       finalized: false,
       finalized_at: null,
       created_at: "2025-01-01",
+      net_balances: [],
       bills: [
         {
           id: 1,
@@ -69,6 +70,7 @@ describe("computeTabPersonTotals", () => {
       finalized: false,
       finalized_at: null,
       created_at: "2025-01-01",
+      net_balances: [],
       bills: [
         {
           id: 1,
@@ -105,6 +107,7 @@ describe("computeTabPersonTotals", () => {
       finalized: false,
       finalized_at: null,
       created_at: "2025-01-01",
+      net_balances: [],
       bills: [
         {
           id: 1,
@@ -141,6 +144,7 @@ describe("computeTabPersonTotals", () => {
       finalized: false,
       finalized_at: null,
       created_at: "2025-01-01",
+      net_balances: [],
       bills: [],
     };
 
@@ -151,7 +155,7 @@ describe("computeTabPersonTotals", () => {
   it("all_paid is true when all shares for a person are paid", () => {
     const tab: Tab = {
       id: 1, name: "Trip", description: "", total_amount: 100,
-      finalized: false, finalized_at: null, created_at: "2025-01-01",
+      finalized: false, finalized_at: null, created_at: "2025-01-01", net_balances: [],
       bills: [
         {
           id: 1, name: "Dinner", subtotal: 50, tax: 0, tip_amount: 0,
@@ -179,7 +183,7 @@ describe("computeTabPersonTotals", () => {
   it("all_paid is false when any share for a person is unpaid", () => {
     const tab: Tab = {
       id: 1, name: "Trip", description: "", total_amount: 100,
-      finalized: false, finalized_at: null, created_at: "2025-01-01",
+      finalized: false, finalized_at: null, created_at: "2025-01-01", net_balances: [],
       bills: [
         {
           id: 1, name: "Dinner", subtotal: 50, tax: 0, tip_amount: 0,
@@ -207,7 +211,7 @@ describe("computeTabPersonTotals", () => {
   it("all_paid is false when no shares are paid", () => {
     const tab: Tab = {
       id: 1, name: "Trip", description: "", total_amount: 50,
-      finalized: false, finalized_at: null, created_at: "2025-01-01",
+      finalized: false, finalized_at: null, created_at: "2025-01-01", net_balances: [],
       bills: [
         {
           id: 1, name: "Dinner", subtotal: 50, tax: 0, tip_amount: 0,

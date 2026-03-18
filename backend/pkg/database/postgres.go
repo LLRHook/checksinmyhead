@@ -38,5 +38,8 @@ func InitDB() (*gorm.DB, error) {
 		return nil, err
 	}
 
+	// Backfill: set paid_by_member_id = added_by_member_id for existing tab bills
+	db.Exec("UPDATE bills SET paid_by_member_id = added_by_member_id WHERE tab_id IS NOT NULL AND added_by_member_id IS NOT NULL AND paid_by_member_id IS NULL")
+
 	return db, nil
 }

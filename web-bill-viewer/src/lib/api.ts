@@ -38,6 +38,7 @@ export interface Bill {
   payment_methods: PaymentMethod[];
   items: BillItem[];
   person_shares: PersonShare[];
+  paid_by_member_id?: number;
 }
 
 export interface Tab {
@@ -49,6 +50,7 @@ export interface Tab {
   finalized: boolean;
   finalized_at: string | null;
   created_at: string;
+  net_balances: NetBalance[];
 }
 
 export interface TabSettlement {
@@ -73,6 +75,12 @@ export interface TabMember {
   display_name: string;
   role: string;
   joined_at: string;
+}
+
+export interface NetBalance {
+  from: string;
+  to: string;
+  amount: number;
 }
 
 export interface TabImage {
