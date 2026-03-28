@@ -203,10 +203,11 @@ class _ReceiptScanningAnimationState extends State<ReceiptScanningAnimation>
   Widget _buildReceiptWithOverlays(ColorScheme colorScheme) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final imageRect = _computeImageRect(
-          constraints.maxWidth,
-          constraints.maxHeight,
-        );
+        // Only compute image rect when we know the real image dimensions
+        final hasImageSize = widget.imageSize != null;
+        final imageRect = hasImageSize
+            ? _computeImageRect(constraints.maxWidth, constraints.maxHeight)
+            : null;
 
         return Stack(
           children: [
@@ -226,32 +227,34 @@ class _ReceiptScanningAnimationState extends State<ReceiptScanningAnimation>
                 ),
               ),
             ),
-            // Progressive OCR boxes
-            if (widget.ocrLines != null && widget.imageSize != null)
-              ..._buildOcrBoxes(colorScheme, imageRect),
-            // Scan line (only during scan, constrained to image)
-            if (!_scanComplete)
-              AnimatedBuilder(
-                animation: _scanController,
-                builder: (context, _) {
-                  return Positioned(
-                    left: imageRect.left,
-                    top: imageRect.top,
-                    width: imageRect.width,
-                    height: imageRect.height,
-                    child: CustomPaint(
-                      painter: _ScanLinePainter(
-                        position: _scanController.value,
-                        color: colorScheme.primary,
+            // Everything below requires known image dimensions
+            if (imageRect != null) ...[
+              // Progressive OCR boxes
+              if (widget.ocrLines != null)
+                ..._buildOcrBoxes(colorScheme, imageRect),
+              // Scan line (only during scan, constrained to image)
+              if (!_scanComplete)
+                AnimatedBuilder(
+                  animation: _scanController,
+                  builder: (context, _) {
+                    return Positioned(
+                      left: imageRect.left,
+                      top: imageRect.top,
+                      width: imageRect.width,
+                      height: imageRect.height,
+                      child: CustomPaint(
+                        painter: _ScanLinePainter(
+                          position: _scanController.value,
+                          color: colorScheme.primary,
+                        ),
                       ),
-                    ),
-                  );
-                },
-              ),
-            // Corner brackets (around image)
-            AnimatedBuilder(
-              animation: Listenable.merge(
-                  [_bracketController, _bracketPulseController]),
+                    );
+                  },
+                ),
+              // Corner brackets (around image)
+              AnimatedBuilder(
+                animation: Listenable.merge(
+                    [_bracketController, _bracketPulseController]),
               builder: (context, _) {
                 final bracketEntry = CurvedAnimation(
                   parent: _bracketController,
@@ -281,6 +284,7 @@ class _ReceiptScanningAnimationState extends State<ReceiptScanningAnimation>
                 );
               },
             ),
+            ], // end imageRect != null
           ],
         );
       },

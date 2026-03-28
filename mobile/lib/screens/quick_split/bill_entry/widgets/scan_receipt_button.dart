@@ -247,9 +247,12 @@ class _ReceiptScanFlowState extends State<_ReceiptScanFlow> {
   }
 
   Future<void> _startParsing() async {
-    final animationStart = DateTime.now();
+    // Timer starts after OCR completes (when the scan animation begins).
+    // Declared here so catch blocks can access it.
+    DateTime? animationStart;
     Future<void> ensureMinDuration() async {
-      final elapsed = DateTime.now().difference(animationStart);
+      if (animationStart == null) return;
+      final elapsed = DateTime.now().difference(animationStart!);
       final remaining = const Duration(milliseconds: 4500) - elapsed;
       if (remaining > Duration.zero) {
         await Future<void>.delayed(remaining);
@@ -260,11 +263,11 @@ class _ReceiptScanFlowState extends State<_ReceiptScanFlow> {
       // STEP 1: Run ML Kit OCR on-device (fast, ~200ms)
       final ocrResult = await _mlkitOcr.recognizeText(widget.imagePath);
 
-      // Feed OCR results to animation immediately — boxes will appear
-      // progressively as the scan line passes each text region
+      // Feed OCR results to animation — scan line starts now
       if (mounted) {
         setState(() => _ocrResult = ocrResult);
       }
+      animationStart = DateTime.now();
 
       ParsedReceipt parsed;
       Size? imageSize = ocrResult.imageSize;
@@ -272,7 +275,7 @@ class _ReceiptScanFlowState extends State<_ReceiptScanFlow> {
       if (ocrResult.fullText.trim().length < 20) {
         parsed = await widget.receiptApi.parseReceipt(widget.imagePath);
       } else {
-        // STEP 2: Send text to backend for structuring (runs while boxes animate)
+        // STEP 2: Send text to backend (runs while scan animation plays)
         final (textParsed, rawOcrNames) =
             await widget.receiptApi.parseReceiptText(ocrResult.fullText);
 
