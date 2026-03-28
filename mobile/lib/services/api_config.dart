@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 class ApiConfig {
   static String get baseUrl {
     if (kReleaseMode) {
-      return 'https://billington-api.onrender.com';
+      return 'https://backend-production-d77a8.up.railway.app';
     }
     if (Platform.isAndroid) {
       return 'http://10.0.2.2:8080';
