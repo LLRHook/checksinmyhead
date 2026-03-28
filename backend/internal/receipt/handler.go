@@ -119,29 +119,69 @@ func (h *Handler) ParseReceipt(c *gin.Context) {
 
 	receipt, err := h.service.Parse(imageData, mimeType)
 	if err != nil {
-		var parseErr *ParseError
-		if errors.As(err, &parseErr) {
-			switch parseErr.Code {
-			case ErrRateLimited:
-				c.JSON(http.StatusTooManyRequests, gin.H{"error": "Too many scans. Please wait a moment and try again.", "code": string(parseErr.Code)})
-			case ErrAuthFailed:
-				c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Receipt scanning is temporarily unavailable. Please try again later.", "code": string(parseErr.Code)})
-			case ErrImageTooLarge:
-				c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "Image is too large. Try a lower resolution photo.", "code": string(parseErr.Code)})
-			case ErrOverloaded:
-				c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Scanner is busy right now. Please try again in a moment.", "code": string(parseErr.Code)})
-			case ErrProviderDown:
-				c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Scanner is temporarily unavailable. Please try again later.", "code": string(parseErr.Code)})
-			case ErrBadResponse:
-				c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "Could not read the receipt. Try a clearer photo.", "code": string(parseErr.Code)})
-			default:
-				c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "Could not parse receipt. Try a clearer photo.", "code": string(parseErr.Code)})
-			}
-		} else {
-			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "Could not parse receipt. Try a clearer photo."})
-		}
+		handleParseError(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, receipt)
+}
+
+const maxReceiptTextSize = 50 << 10 // 50 KB
+
+// ParseReceiptTextRequest is the JSON body for the text-based receipt parsing endpoint.
+type ParseReceiptTextRequest struct {
+	Text string `json:"text" binding:"required"`
+}
+
+// ParseReceiptText handles POST /api/receipts/parse-text
+// Accepts raw OCR text and returns structured receipt data.
+func (h *Handler) ParseReceiptText(c *gin.Context) {
+	if !h.limiter.Allow(c.ClientIP()) {
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": "Too many scans. Please wait a moment and try again.", "code": "rate_limited"})
+		return
+	}
+
+	var req ParseReceiptTextRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "JSON body with 'text' field required"})
+		return
+	}
+
+	if len(req.Text) > maxReceiptTextSize {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Text too large. Maximum 50KB allowed."})
+		return
+	}
+
+	receipt, err := h.service.ParseText(req.Text)
+	if err != nil {
+		handleParseError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, receipt)
+}
+
+// handleParseError maps a service-layer error to the appropriate HTTP response.
+func handleParseError(c *gin.Context, err error) {
+	var parseErr *ParseError
+	if errors.As(err, &parseErr) {
+		switch parseErr.Code {
+		case ErrRateLimited:
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "Too many scans. Please wait a moment and try again.", "code": string(parseErr.Code)})
+		case ErrAuthFailed:
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Receipt scanning is temporarily unavailable. Please try again later.", "code": string(parseErr.Code)})
+		case ErrImageTooLarge:
+			c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "Image is too large. Try a lower resolution photo.", "code": string(parseErr.Code)})
+		case ErrOverloaded:
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Scanner is busy right now. Please try again in a moment.", "code": string(parseErr.Code)})
+		case ErrProviderDown:
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Scanner is temporarily unavailable. Please try again later.", "code": string(parseErr.Code)})
+		case ErrBadResponse:
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "Could not read the receipt. Try a clearer photo.", "code": string(parseErr.Code)})
+		default:
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "Could not parse receipt. Try a clearer photo.", "code": string(parseErr.Code)})
+		}
+	} else {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "Could not parse receipt. Try a clearer photo."})
+	}
 }

@@ -71,5 +71,10 @@ prompt.md
 ui_prompt.md
 deployment.md
 
+.agents
+
 mobile/.thymus
 .worktrees/
+skills/
+skills-lock.json
+backend/bill-service
