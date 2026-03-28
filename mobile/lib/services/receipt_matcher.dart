@@ -1,4 +1,4 @@
-// Billington: Privacy-first receipt spliting
+// Billington: Privacy-first receipt splitting
 //     Copyright (C) 2025  Kruski Ko.
 //     Email us: checkmateapp@duck.com
 

@@ -1,4 +1,4 @@
-// Billington: Privacy-first receipt spliting
+// Billington: Privacy-first receipt splitting
 //     Copyright (C) 2025  Kruski Ko.
 //     Email us: checkmateapp@duck.com
 
@@ -141,8 +141,8 @@ class ReceiptApiService {
       throw ReceiptParseException(
         'Could not connect to server. Check your connection.',
       );
-    } catch (e) {
-      _logger.d('$label error');
+    } catch (e, stackTrace) {
+      _logger.d('$label error: $e', error: e, stackTrace: stackTrace);
       throw ReceiptParseException(
         'Could not connect to server. Check your connection.',
       );

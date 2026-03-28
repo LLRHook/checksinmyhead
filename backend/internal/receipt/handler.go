@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -144,6 +145,12 @@ func (h *Handler) ParseReceiptText(c *gin.Context) {
 	var req ParseReceiptTextRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "JSON body with 'text' field required"})
+		return
+	}
+
+	req.Text = strings.TrimSpace(req.Text)
+	if req.Text == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "text field must not be empty"})
 		return
 	}
 

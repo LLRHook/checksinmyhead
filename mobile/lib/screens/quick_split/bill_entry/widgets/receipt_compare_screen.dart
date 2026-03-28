@@ -1,4 +1,4 @@
-// Billington: Privacy-first receipt spliting
+// Billington: Privacy-first receipt splitting
 //     Copyright (C) 2025  Kruski Ko.
 //     Email us: checkmateapp@duck.com
 
@@ -71,6 +71,8 @@ class _ReceiptCompareScreenState extends State<ReceiptCompareScreen>
 
   // Resolved image dimensions (for bounding box coordinate mapping)
   Size? _imageSize;
+  ImageStream? _imageStream;
+  ImageStreamListener? _imageStreamListener;
 
   @override
   void initState() {
@@ -134,18 +136,18 @@ class _ReceiptCompareScreenState extends State<ReceiptCompareScreen>
     if (!file.existsSync()) return;
 
     final imageProvider = FileImage(file);
-    imageProvider.resolve(const ImageConfiguration()).addListener(
-      ImageStreamListener((ImageInfo info, bool _) {
-        if (mounted) {
-          setState(() {
-            _imageSize = Size(
-              info.image.width.toDouble(),
-              info.image.height.toDouble(),
-            );
-          });
-        }
-      }),
-    );
+    _imageStreamListener = ImageStreamListener((ImageInfo info, bool _) {
+      if (mounted) {
+        setState(() {
+          _imageSize = Size(
+            info.image.width.toDouble(),
+            info.image.height.toDouble(),
+          );
+        });
+      }
+    });
+    _imageStream = imageProvider.resolve(const ImageConfiguration());
+    _imageStream!.addListener(_imageStreamListener!);
   }
 
   /// Compute the actual rendered rect of an image with [BoxFit.contain]
@@ -225,6 +227,9 @@ class _ReceiptCompareScreenState extends State<ReceiptCompareScreen>
 
   @override
   void dispose() {
+    if (_imageStream != null && _imageStreamListener != null) {
+      _imageStream!.removeListener(_imageStreamListener!);
+    }
     for (final item in _items) {
       item.nameController.dispose();
       item.priceController.dispose();
