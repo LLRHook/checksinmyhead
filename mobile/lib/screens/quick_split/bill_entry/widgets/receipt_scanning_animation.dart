@@ -16,27 +16,30 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import 'dart:io';
-import 'dart:math';
-import 'dart:ui';
+import 'dart:ui' as ui;
 
+import 'package:checks_frontend/services/mlkit_ocr_service.dart';
 import 'package:flutter/material.dart';
 
-/// Full-screen scanning animation shown while the receipt API processes.
+/// Scanner animation with progressive OCR box reveal.
 ///
-/// Displays the receipt photo inside a frosted glass bubble with pulsing glow,
-/// floating particles, a gentle bobbing motion, and a scanning shimmer line.
-/// When [isComplete] transitions to true, plays a dismiss animation and
-/// calls [onDismissed].
+/// Scan line sweeps once from top to bottom. As it passes each detected
+/// text region, a bounding box fades in. After the scan completes, the
+/// status bar switches to a loading state while the API processes.
 class ReceiptScanningAnimation extends StatefulWidget {
   final String imagePath;
   final bool isComplete;
   final VoidCallback? onDismissed;
+  final List<OcrTextLine>? ocrLines;
+  final Size? imageSize;
 
   const ReceiptScanningAnimation({
     super.key,
     required this.imagePath,
     this.isComplete = false,
     this.onDismissed,
+    this.ocrLines,
+    this.imageSize,
   });
 
   @override
@@ -46,56 +49,53 @@ class ReceiptScanningAnimation extends StatefulWidget {
 
 class _ReceiptScanningAnimationState extends State<ReceiptScanningAnimation>
     with TickerProviderStateMixin {
-  // Pulse glow breathing (repeating, 2.5s)
-  late AnimationController _pulseController;
-  // Scanning line sweep (repeating, 3s)
+  // Single scan pass (4s, does NOT repeat)
   late AnimationController _scanController;
-  // Particle drift (continuous, 6s)
-  late AnimationController _particleController;
-  // Gentle float/bob (repeating, 3.5s)
-  late AnimationController _floatController;
-  // Entry (one-shot, 800ms)
+  late AnimationController _bracketController;
+  late AnimationController _bracketPulseController;
   late AnimationController _entryController;
-  // Dismiss pop (one-shot, 400ms)
   late AnimationController _dismissController;
 
-  late List<_Particle> _particles;
   late FileImage _fileImage;
   bool _dismissed = false;
+  bool _scanComplete = false;
+
+  final Set<int> _revealedLines = {};
 
   @override
   void initState() {
-    _fileImage = FileImage(File(widget.imagePath));
     super.initState();
-
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2500),
-    )..repeat(reverse: true);
+    _fileImage = FileImage(File(widget.imagePath));
 
     _scanController = AnimationController(
       vsync: this,
+      duration: const Duration(milliseconds: 4000),
+    );
+    _scanController.addListener(_checkScanLineReveal);
+    _scanController.addStatusListener((status) {
+      if (status == AnimationStatus.completed && !_scanComplete) {
+        setState(() => _scanComplete = true);
+      }
+    });
+
+    _bracketController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+
+    _bracketPulseController = AnimationController(
+      vsync: this,
       duration: const Duration(milliseconds: 3000),
-    )..repeat();
-
-    _particleController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 6000),
-    )..repeat();
-
-    _floatController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 3500),
     )..repeat(reverse: true);
 
     _entryController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 400),
     );
 
     _dismissController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 300),
     );
     _dismissController.addStatusListener((status) {
       if (status == AnimationStatus.completed && !_dismissed) {
@@ -104,23 +104,32 @@ class _ReceiptScanningAnimationState extends State<ReceiptScanningAnimation>
       }
     });
 
-    // Generate particles — mix of small ambient + larger glowing ones
-    final rng = Random(42);
-    _particles = List.generate(30, (i) {
-      final isLarge = i < 6; // first 6 are larger accent particles
-      return _Particle(
-        x: rng.nextDouble(),
-        speed: isLarge ? 0.2 + rng.nextDouble() * 0.3 : 0.3 + rng.nextDouble() * 0.7,
-        size: isLarge ? 4.0 + rng.nextDouble() * 5.0 : 1.5 + rng.nextDouble() * 2.5,
-        opacity: isLarge ? 0.25 + rng.nextDouble() * 0.2 : 0.1 + rng.nextDouble() * 0.25,
-        phase: rng.nextDouble(),
-        isGlowing: isLarge,
-      );
-    });
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _entryController.forward();
+      Future.delayed(const Duration(milliseconds: 250), () {
+        if (mounted) _bracketController.forward();
+      });
     });
+  }
+
+  void _checkScanLineReveal() {
+    final lines = widget.ocrLines;
+    final imgSize = widget.imageSize;
+    if (lines == null || imgSize == null || imgSize.height == 0) return;
+
+    final scanY = _scanController.value;
+
+    bool changed = false;
+    for (int i = 0; i < lines.length; i++) {
+      if (_revealedLines.contains(i)) continue;
+      final lineCenter =
+          (lines[i].boundingBox.center.dy / imgSize.height).clamp(0.0, 1.0);
+      if (scanY >= lineCenter) {
+        _revealedLines.add(i);
+        changed = true;
+      }
+    }
+    if (changed) setState(() {});
   }
 
   @override
@@ -129,14 +138,19 @@ class _ReceiptScanningAnimationState extends State<ReceiptScanningAnimation>
     if (widget.isComplete && !oldWidget.isComplete && !_dismissed) {
       _dismissController.forward();
     }
+    // OCR results just arrived — start the scan pass
+    if (widget.ocrLines != null && oldWidget.ocrLines == null) {
+      _revealedLines.clear();
+      _scanController.forward(from: 0.0);
+    }
   }
 
   @override
   void dispose() {
-    _pulseController.dispose();
+    _scanController.removeListener(_checkScanLineReveal);
     _scanController.dispose();
-    _particleController.dispose();
-    _floatController.dispose();
+    _bracketController.dispose();
+    _bracketPulseController.dispose();
     _entryController.dispose();
     _dismissController.dispose();
     super.dispose();
@@ -145,90 +159,38 @@ class _ReceiptScanningAnimationState extends State<ReceiptScanningAnimation>
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final screenSize = MediaQuery.of(context).size;
-
-    final bubbleWidth = screenSize.width * 0.62;
-    final bubbleHeight = bubbleWidth * 1.38;
+    final safePadding = MediaQuery.of(context).padding;
 
     return AnimatedBuilder(
       animation: Listenable.merge([_entryController, _dismissController]),
       builder: (context, child) {
-        final entryValue =
-            CurvedAnimation(parent: _entryController, curve: Curves.easeOutCubic)
-                .value;
-        final dismissValue =
-            CurvedAnimation(parent: _dismissController, curve: Curves.easeInBack)
-                .value;
-
-        final scale = entryValue * (1.0 - dismissValue);
-        final opacity = entryValue * (1.0 - dismissValue);
+        final entry = CurvedAnimation(
+          parent: _entryController,
+          curve: Curves.easeOut,
+        ).value;
+        final dismiss = CurvedAnimation(
+          parent: _dismissController,
+          curve: Curves.easeIn,
+        ).value;
+        final opacity = entry * (1.0 - dismiss);
 
         if (opacity <= 0) return const SizedBox.shrink();
 
         return Opacity(
           opacity: opacity.clamp(0.0, 1.0),
           child: Scaffold(
-            backgroundColor: Colors.transparent,
-            body: _buildBackground(
-              colorScheme,
-              screenSize,
+            backgroundColor: const Color(0xFF0E0E0E),
+            body: SafeArea(
+              bottom: false,
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Floating bubble
-                  AnimatedBuilder(
-                    animation: _floatController,
-                    builder: (context, child) {
-                      final floatValue = CurvedAnimation(
-                        parent: _floatController,
-                        curve: Curves.easeInOut,
-                      ).value;
-                      // Gentle vertical bob: -6 to +6 px
-                      final yOffset = (floatValue - 0.5) * 12.0;
-                      return Transform.translate(
-                        offset: Offset(0, yOffset),
-                        child: Transform.scale(
-                          scale: scale.clamp(0.0, 1.1),
-                          child: _buildGlassBubble(
-                            colorScheme,
-                            bubbleWidth,
-                            bubbleHeight,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 36),
-                  // Status text with subtle glow
-                  AnimatedOpacity(
-                    opacity: _dismissController.isAnimating ? 0.0 : 1.0,
-                    duration: const Duration(milliseconds: 200),
-                    child: AnimatedBuilder(
-                      animation: _pulseController,
-                      builder: (context, child) {
-                        final textGlow = CurvedAnimation(
-                          parent: _pulseController,
-                          curve: Curves.easeInOut,
-                        ).value;
-                        return Text(
-                          'Scanning receipt…',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.85),
-                            fontSize: 17,
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: 0.5,
-                            shadows: [
-                              Shadow(
-                                color: colorScheme.primary.withValues(
-                                    alpha: 0.3 + textGlow * 0.3),
-                                blurRadius: 12 + textGlow * 8,
-                              ),
-                            ],
-                          ),
-                        );
-                      },
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                      child: _buildReceiptWithOverlays(colorScheme),
                     ),
                   ),
+                  _buildStatusBar(colorScheme, safePadding.bottom),
                 ],
               ),
             ),
@@ -238,210 +200,86 @@ class _ReceiptScanningAnimationState extends State<ReceiptScanningAnimation>
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Dark gradient background with subtle teal radial glow
-  // ---------------------------------------------------------------------------
-  Widget _buildBackground(
-    ColorScheme colorScheme,
-    Size screenSize, {
-    required Widget child,
-  }) {
-    return AnimatedBuilder(
-      animation: _pulseController,
-      builder: (context, _) {
-        final pulse = CurvedAnimation(
-          parent: _pulseController,
-          curve: Curves.easeInOut,
-        ).value;
-        final bgGlowOpacity = 0.06 + pulse * 0.04;
-
-        return Container(
-          width: double.infinity,
-          height: double.infinity,
-          decoration: BoxDecoration(
-            gradient: RadialGradient(
-              center: const Alignment(0.0, -0.15),
-              radius: 0.9,
-              colors: [
-                colorScheme.primary.withValues(alpha: bgGlowOpacity),
-                const Color(0xFF050808),
-                Colors.black,
-              ],
-              stops: const [0.0, 0.55, 1.0],
-            ),
-          ),
-          child: child,
+  Widget _buildReceiptWithOverlays(ColorScheme colorScheme) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final imageRect = _computeImageRect(
+          constraints.maxWidth,
+          constraints.maxHeight,
         );
-      },
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Glass bubble: image + frost layers + glow + particles + shimmer
-  // ---------------------------------------------------------------------------
-  Widget _buildGlassBubble(
-    ColorScheme colorScheme,
-    double width,
-    double height,
-  ) {
-    return AnimatedBuilder(
-      animation: _pulseController,
-      builder: (context, child) {
-        final pulseValue =
-            CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut)
-                .value;
-        final glowRadius = 14.0 + pulseValue * 18.0;
 
         return Stack(
-          alignment: Alignment.center,
           children: [
-            // Particles (behind bubble)
-            SizedBox(
-              width: width + 80,
-              height: height + 80,
-              child: AnimatedBuilder(
-                animation: _particleController,
+            // Receipt image
+            Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image(
+                  image: _fileImage,
+                  fit: BoxFit.contain,
+                  width: constraints.maxWidth,
+                  height: constraints.maxHeight,
+                  errorBuilder: (_, __, ___) => const Center(
+                    child: Icon(Icons.receipt_long,
+                        size: 48, color: Colors.white24),
+                  ),
+                ),
+              ),
+            ),
+            // Progressive OCR boxes
+            if (widget.ocrLines != null && widget.imageSize != null)
+              ..._buildOcrBoxes(colorScheme, imageRect),
+            // Scan line (only during scan, constrained to image)
+            if (!_scanComplete)
+              AnimatedBuilder(
+                animation: _scanController,
                 builder: (context, _) {
-                  return CustomPaint(
-                    painter: _BubbleParticlePainter(
-                      progress: _particleController.value,
-                      color: colorScheme.primary,
-                      particles: _particles,
+                  return Positioned(
+                    left: imageRect.left,
+                    top: imageRect.top,
+                    width: imageRect.width,
+                    height: imageRect.height,
+                    child: CustomPaint(
+                      painter: _ScanLinePainter(
+                        position: _scanController.value,
+                        color: colorScheme.primary,
+                      ),
                     ),
                   );
                 },
               ),
-            ),
-            // Outer glow — two layers for depth
-            Container(
-              width: width + 4,
-              height: height + 4,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(30),
-                boxShadow: [
-                  // Broad diffuse glow
-                  BoxShadow(
-                    color: colorScheme.primary
-                        .withValues(alpha: 0.12 + pulseValue * 0.12),
-                    blurRadius: glowRadius * 3,
-                    spreadRadius: glowRadius * 0.5,
+            // Corner brackets (around image)
+            AnimatedBuilder(
+              animation: Listenable.merge(
+                  [_bracketController, _bracketPulseController]),
+              builder: (context, _) {
+                final bracketEntry = CurvedAnimation(
+                  parent: _bracketController,
+                  curve: Curves.easeOutCubic,
+                ).value;
+                final pulse = CurvedAnimation(
+                  parent: _bracketPulseController,
+                  curve: Curves.easeInOut,
+                ).value;
+                final bracketOpacity =
+                    (bracketEntry * (0.6 + pulse * 0.4)).clamp(0.0, 1.0);
+
+                return Positioned(
+                  left: imageRect.left,
+                  top: imageRect.top,
+                  width: imageRect.width,
+                  height: imageRect.height,
+                  child: CustomPaint(
+                    painter: _CornerBracketPainter(
+                      color: colorScheme.primary
+                          .withValues(alpha: bracketOpacity),
+                      inset: (1.0 - bracketEntry) * 12,
+                      bracketLength: 28,
+                      strokeWidth: 2.0,
+                    ),
                   ),
-                  // Tighter bright glow
-                  BoxShadow(
-                    color: colorScheme.primary
-                        .withValues(alpha: 0.08 + pulseValue * 0.08),
-                    blurRadius: glowRadius,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-            ),
-            // Glass bubble
-            ClipRRect(
-              borderRadius: BorderRadius.circular(28),
-              child: SizedBox(
-                width: width,
-                height: height,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    // Receipt image
-                    Image(
-                      image: _fileImage,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: const Color(0xFF1A2A2A),
-                        child: Icon(
-                          Icons.receipt_long,
-                          size: 48,
-                          color: colorScheme.primary.withValues(alpha: 0.5),
-                        ),
-                      ),
-                    ),
-                    // Heavy frosted glass blur
-                    BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 6.0, sigmaY: 6.0),
-                      child: Container(color: Colors.transparent),
-                    ),
-                    // Glass tint layers — creates depth
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Colors.white.withValues(alpha: 0.12),
-                            Colors.white.withValues(alpha: 0.04),
-                            colorScheme.primary.withValues(alpha: 0.06),
-                          ],
-                        ),
-                      ),
-                    ),
-                    // Subtle inner image showing through (reduced blur center)
-                    Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Image(
-                          image: _fileImage,
-                          fit: BoxFit.cover,
-                          opacity: AlwaysStoppedAnimation(0.35 + pulseValue * 0.1),
-                          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                        ),
-                      ),
-                    ),
-                    // Scanning shimmer line
-                    _buildScanningLine(colorScheme),
-                    // Glass edge highlight — top/left bright, bottom/right dark
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(28),
-                        border: Border(
-                          top: BorderSide(
-                            color: Colors.white.withValues(
-                                alpha: 0.25 + pulseValue * 0.1),
-                            width: 1.0,
-                          ),
-                          left: BorderSide(
-                            color: Colors.white.withValues(
-                                alpha: 0.15 + pulseValue * 0.05),
-                            width: 1.0,
-                          ),
-                          bottom: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.05),
-                            width: 1.0,
-                          ),
-                          right: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.05),
-                            width: 1.0,
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Top specular highlight
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      height: height * 0.35,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(28)),
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.white.withValues(alpha: 0.08),
-                              Colors.transparent,
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+                );
+              },
             ),
           ],
         );
@@ -449,110 +287,203 @@ class _ReceiptScanningAnimationState extends State<ReceiptScanningAnimation>
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Shimmer scanning line — wider and more dramatic
-  // ---------------------------------------------------------------------------
-  Widget _buildScanningLine(ColorScheme colorScheme) {
-    return AnimatedBuilder(
-      animation: _scanController,
-      builder: (context, child) {
-        final position = _scanController.value;
-        return Positioned.fill(
-          child: ShaderMask(
-            blendMode: BlendMode.srcOver,
-            shaderCallback: (Rect bounds) {
-              return LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.transparent,
-                  colorScheme.primary.withValues(alpha: 0.15),
-                  Colors.white.withValues(alpha: 0.25),
-                  colorScheme.primary.withValues(alpha: 0.15),
-                  Colors.transparent,
-                ],
-                stops: [
-                  (position - 0.10).clamp(0.0, 1.0),
-                  (position - 0.03).clamp(0.0, 1.0),
-                  position,
-                  (position + 0.03).clamp(0.0, 1.0),
-                  (position + 0.10).clamp(0.0, 1.0),
-                ],
-              ).createShader(bounds);
-            },
-            child: Container(color: Colors.transparent),
+  Rect _computeImageRect(double containerW, double containerH) {
+    final imgSize = widget.imageSize;
+    if (imgSize == null || imgSize.width == 0 || imgSize.height == 0) {
+      return Rect.fromLTWH(0, 0, containerW, containerH);
+    }
+
+    final imageAspect = imgSize.width / imgSize.height;
+    final containerAspect = containerW / containerH;
+
+    double renderW, renderH;
+    if (imageAspect > containerAspect) {
+      renderW = containerW;
+      renderH = containerW / imageAspect;
+    } else {
+      renderH = containerH;
+      renderW = containerH * imageAspect;
+    }
+
+    return Rect.fromLTWH(
+      (containerW - renderW) / 2,
+      (containerH - renderH) / 2,
+      renderW,
+      renderH,
+    );
+  }
+
+  List<Widget> _buildOcrBoxes(ColorScheme colorScheme, Rect imageRect) {
+    final lines = widget.ocrLines!;
+    final imgSize = widget.imageSize!;
+
+    return List.generate(lines.length, (i) {
+      if (!_revealedLines.contains(i)) return const SizedBox.shrink();
+
+      final bbox = lines[i].boundingBox;
+      final left =
+          imageRect.left + (bbox.left / imgSize.width) * imageRect.width;
+      final top =
+          imageRect.top + (bbox.top / imgSize.height) * imageRect.height;
+      final width = (bbox.width / imgSize.width) * imageRect.width;
+      final height = (bbox.height / imgSize.height) * imageRect.height;
+
+      return Positioned(
+        left: left,
+        top: top,
+        width: width,
+        height: height,
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+          builder: (context, value, _) {
+            return Opacity(
+              opacity: value,
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: colorScheme.primary.withValues(alpha: 0.6),
+                    width: 1.5,
+                  ),
+                  borderRadius: BorderRadius.circular(3),
+                  color: colorScheme.primary.withValues(alpha: 0.08),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    });
+  }
+
+  Widget _buildStatusBar(ColorScheme colorScheme, double bottomPadding) {
+    String statusText;
+    if (_scanComplete) {
+      statusText = 'Processing items…';
+    } else if (widget.ocrLines != null) {
+      statusText =
+          'Found ${_revealedLines.length} of ${widget.ocrLines!.length} text regions…';
+    } else {
+      statusText = 'Analyzing receipt…';
+    }
+
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          padding: EdgeInsets.fromLTRB(24, 14, 24, 14 + bottomPadding),
+          color: const Color(0xFF0E0E0E).withValues(alpha: 0.7),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                statusText,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.8),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: 0.1,
+                ),
+              ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
 
-// ---------------------------------------------------------------------------
-// Particle system — small ambient + larger glowing orbs
-// ---------------------------------------------------------------------------
+class _ScanLinePainter extends CustomPainter {
+  final double position;
+  final Color color;
 
-class _Particle {
-  final double x;
-  final double speed;
-  final double size;
-  final double opacity;
-  final double phase;
-  final bool isGlowing;
+  _ScanLinePainter({required this.position, required this.color});
 
-  const _Particle({
-    required this.x,
-    required this.speed,
-    required this.size,
-    required this.opacity,
-    required this.phase,
-    this.isGlowing = false,
-  });
+  @override
+  void paint(Canvas canvas, Size size) {
+    final y = size.height * position;
+
+    final linePaint = Paint()
+      ..shader = LinearGradient(
+        colors: [
+          Colors.transparent,
+          color.withValues(alpha: 0.5),
+          Colors.white.withValues(alpha: 0.7),
+          color.withValues(alpha: 0.5),
+          Colors.transparent,
+        ],
+        stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+      ).createShader(Rect.fromLTWH(0, y - 0.5, size.width, 1));
+
+    canvas.drawRect(Rect.fromLTWH(0, y - 0.5, size.width, 1.0), linePaint);
+
+    final glowPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.bottomCenter,
+        end: Alignment.topCenter,
+        colors: [
+          color.withValues(alpha: 0.06),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromLTWH(0, y - 30, size.width, 30));
+
+    canvas.drawRect(Rect.fromLTWH(0, y - 30, size.width, 30), glowPaint);
+  }
+
+  @override
+  bool shouldRepaint(_ScanLinePainter old) => position != old.position;
 }
 
-class _BubbleParticlePainter extends CustomPainter {
-  final double progress;
+class _CornerBracketPainter extends CustomPainter {
   final Color color;
-  final List<_Particle> particles;
+  final double inset;
+  final double bracketLength;
+  final double strokeWidth;
 
-  _BubbleParticlePainter({
-    required this.progress,
+  _CornerBracketPainter({
     required this.color,
-    required this.particles,
+    required this.inset,
+    required this.bracketLength,
+    required this.strokeWidth,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    for (final p in particles) {
-      final t = (progress * p.speed + p.phase) % 1.0;
-      final y = size.height * (1.0 - t);
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
 
-      // Horizontal wobble — larger for glowing particles
-      final wobble = p.isGlowing ? 14.0 : 6.0;
-      final x = size.width * p.x +
-          sin(t * 2 * pi + p.phase * pi) * wobble;
+    final l = bracketLength;
+    final left = inset;
+    final top = inset;
+    final right = size.width - inset;
+    final bottom = size.height - inset;
 
-      // Fade envelope
-      final fadeIn = (t * 3.0).clamp(0.0, 1.0);
-      final fadeOut = ((1.0 - t) * 3.0).clamp(0.0, 1.0);
-      final alpha = p.opacity * fadeIn * fadeOut;
+    canvas.drawLine(Offset(left, top + l), Offset(left, top), paint);
+    canvas.drawLine(Offset(left, top), Offset(left + l, top), paint);
 
-      if (p.isGlowing) {
-        // Draw a soft glow halo behind larger particles
-        final glowPaint = Paint()
-          ..color = color.withValues(alpha: alpha * 0.3)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
-        canvas.drawCircle(Offset(x, y), p.size * 2.0, glowPaint);
-      }
+    canvas.drawLine(Offset(right - l, top), Offset(right, top), paint);
+    canvas.drawLine(Offset(right, top), Offset(right, top + l), paint);
 
-      final paint = Paint()
-        ..color = color.withValues(alpha: alpha)
-        ..style = PaintingStyle.fill;
-      canvas.drawCircle(Offset(x, y), p.size, paint);
-    }
+    canvas.drawLine(Offset(left, bottom - l), Offset(left, bottom), paint);
+    canvas.drawLine(Offset(left, bottom), Offset(left + l, bottom), paint);
+
+    canvas.drawLine(Offset(right - l, bottom), Offset(right, bottom), paint);
+    canvas.drawLine(Offset(right, bottom - l), Offset(right, bottom), paint);
   }
 
   @override
-  bool shouldRepaint(_BubbleParticlePainter oldDelegate) =>
-      progress != oldDelegate.progress;
+  bool shouldRepaint(_CornerBracketPainter old) =>
+      color != old.color || inset != old.inset;
 }

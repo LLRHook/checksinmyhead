@@ -231,6 +231,9 @@ class _ReceiptScanFlowState extends State<_ReceiptScanFlow> {
   final _dismissCompleter = Completer<void>();
   final _mlkitOcr = MlkitOcrService();
 
+  // OCR results fed to the animation for progressive box reveal
+  OcrResult? _ocrResult;
+
   @override
   void dispose() {
     _mlkitOcr.dispose();
@@ -244,14 +247,10 @@ class _ReceiptScanFlowState extends State<_ReceiptScanFlow> {
   }
 
   Future<void> _startParsing() async {
-    // Ensure the scanning animation plays for at least 2 seconds
-    // so the user always sees the glass bubble effect.
-    // The timer starts when this method runs (after the image picker returns),
-    // which is also when the animation widget mounts.
     final animationStart = DateTime.now();
     Future<void> ensureMinDuration() async {
       final elapsed = DateTime.now().difference(animationStart);
-      final remaining = const Duration(seconds: 2) - elapsed;
+      final remaining = const Duration(milliseconds: 4500) - elapsed;
       if (remaining > Duration.zero) {
         await Future<void>.delayed(remaining);
       }
@@ -261,14 +260,19 @@ class _ReceiptScanFlowState extends State<_ReceiptScanFlow> {
       // STEP 1: Run ML Kit OCR on-device (fast, ~200ms)
       final ocrResult = await _mlkitOcr.recognizeText(widget.imagePath);
 
+      // Feed OCR results to animation immediately — boxes will appear
+      // progressively as the scan line passes each text region
+      if (mounted) {
+        setState(() => _ocrResult = ocrResult);
+      }
+
       ParsedReceipt parsed;
       Size? imageSize = ocrResult.imageSize;
 
       if (ocrResult.fullText.trim().length < 20) {
-        // ML Kit found too little text — fall back to image upload
         parsed = await widget.receiptApi.parseReceipt(widget.imagePath);
       } else {
-        // STEP 2: Send text to backend for structuring
+        // STEP 2: Send text to backend for structuring (runs while boxes animate)
         final (textParsed, rawOcrNames) =
             await widget.receiptApi.parseReceiptText(ocrResult.fullText);
 
@@ -350,6 +354,8 @@ class _ReceiptScanFlowState extends State<_ReceiptScanFlow> {
     return ReceiptScanningAnimation(
       imagePath: widget.imagePath,
       isComplete: !_isScanning,
+      ocrLines: _ocrResult?.lines,
+      imageSize: _ocrResult?.imageSize,
       onDismissed: () {
         if (!_dismissCompleter.isCompleted) {
           _dismissCompleter.complete();
