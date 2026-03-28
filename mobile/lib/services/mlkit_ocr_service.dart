@@ -1,4 +1,4 @@
-// Billington: Privacy-first receipt spliting
+// Billington: Privacy-first receipt splitting
 //     Copyright (C) 2025  Kruski Ko.
 //     Email us: checkmateapp@duck.com
 
@@ -40,27 +40,26 @@ class MlkitOcrService {
   final _recognizer = TextRecognizer();
 
   Future<OcrResult> recognizeText(String imagePath) async {
-    final inputImage = InputImage.fromFilePath(imagePath);
+    try {
+      final inputImage = InputImage.fromFilePath(imagePath);
+      final imageSize = await _resolveImageSize(imagePath);
+      final recognized = await _recognizer.processImage(inputImage);
 
-    // Get image dimensions for normalization
-    final imageSize = await _resolveImageSize(imagePath);
-
-    final recognized = await _recognizer.processImage(inputImage);
-
-    // Flatten blocks -> lines (receipt items are individual lines)
-    final lines = <OcrTextLine>[];
-    for (final block in recognized.blocks) {
-      for (final line in block.lines) {
-        lines.add(OcrTextLine(
-          text: line.text,
-          boundingBox: line.boundingBox,
-        ));
+      final lines = <OcrTextLine>[];
+      for (final block in recognized.blocks) {
+        for (final line in block.lines) {
+          lines.add(OcrTextLine(
+            text: line.text,
+            boundingBox: line.boundingBox,
+          ));
+        }
       }
+
+      final fullText = recognized.blocks.map((b) => b.text).join('\n');
+      return OcrResult(fullText: fullText, lines: lines, imageSize: imageSize);
+    } catch (e) {
+      throw OcrException('OCR failed for $imagePath: $e');
     }
-
-    final fullText = recognized.blocks.map((b) => b.text).join('\n');
-
-    return OcrResult(fullText: fullText, lines: lines, imageSize: imageSize);
   }
 
   Future<ui.Size> _resolveImageSize(String imagePath) async {
@@ -77,4 +76,13 @@ class MlkitOcrService {
   void dispose() {
     _recognizer.close();
   }
+}
+
+/// Exception thrown when on-device OCR fails.
+class OcrException implements Exception {
+  final String message;
+  OcrException(this.message);
+
+  @override
+  String toString() => message;
 }

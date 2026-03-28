@@ -249,6 +249,11 @@ func (s *Service) Parse(imageData []byte, mimeType string) (*ParsedReceipt, erro
 
 // ParseText sends raw OCR text to Anthropic and returns structured receipt data.
 func (s *Service) ParseText(ocrText string) (*ParsedReceipt, error) {
+	ocrText = strings.TrimSpace(ocrText)
+	if ocrText == "" {
+		return nil, &ParseError{Code: ErrInvalidRequest, Message: "OCR text is empty"}
+	}
+
 	reqBody := messagesRequest{
 		Model:     anthropicModel,
 		MaxTokens: 4096,

@@ -1,4 +1,4 @@
-// Billington: Privacy-first receipt spliting
+// Billington: Privacy-first receipt splitting
 //     Copyright (C) 2025  Kruski Ko.
 //     Email us: checkmateapp@duck.com
 
@@ -60,10 +60,12 @@ class _ReceiptScanningAnimationState extends State<ReceiptScanningAnimation>
   late AnimationController _dismissController;
 
   late List<_Particle> _particles;
+  late FileImage _fileImage;
   bool _dismissed = false;
 
   @override
   void initState() {
+    _fileImage = FileImage(File(widget.imagePath));
     super.initState();
 
     _pulseController = AnimationController(
@@ -344,8 +346,8 @@ class _ReceiptScanningAnimationState extends State<ReceiptScanningAnimation>
                   fit: StackFit.expand,
                   children: [
                     // Receipt image
-                    Image.file(
-                      File(widget.imagePath),
+                    Image(
+                      image: _fileImage,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Container(
                         color: const Color(0xFF1A2A2A),
@@ -380,8 +382,8 @@ class _ReceiptScanningAnimationState extends State<ReceiptScanningAnimation>
                       padding: const EdgeInsets.all(20),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(16),
-                        child: Image.file(
-                          File(widget.imagePath),
+                        child: Image(
+                          image: _fileImage,
                           fit: BoxFit.cover,
                           opacity: AlwaysStoppedAnimation(0.35 + pulseValue * 0.1),
                           errorBuilder: (_, __, ___) => const SizedBox.shrink(),
