@@ -1,4 +1,4 @@
-// Billington: Privacy-first receipt spliting
+// Billington: Privacy-first receipt splitting
 //     Copyright (C) 2025  Kruski Ko.
 //     Email us: checkmateapp@duck.com
 
@@ -15,16 +15,42 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+/// Normalized bounding box for a receipt line item (coordinates 0.0–1.0).
+class BoundingBox {
+  final double x;
+  final double y;
+  final double width;
+  final double height;
+
+  const BoundingBox({
+    required this.x,
+    required this.y,
+    required this.width,
+    required this.height,
+  });
+
+  factory BoundingBox.fromJson(Map<String, dynamic> json) {
+    return BoundingBox(
+      x: (json['x'] as num?)?.toDouble() ?? 0.0,
+      y: (json['y'] as num?)?.toDouble() ?? 0.0,
+      width: (json['width'] as num?)?.toDouble() ?? 0.0,
+      height: (json['height'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
 /// A single parsed item from a receipt (name + price).
 class ParsedItem {
   final String name;
   final double price;
   final int quantity;
+  final BoundingBox? boundingBox;
 
   const ParsedItem({
     required this.name,
     required this.price,
     this.quantity = 1,
+    this.boundingBox,
   });
 
   factory ParsedItem.fromJson(Map<String, dynamic> json) {
@@ -32,6 +58,9 @@ class ParsedItem {
       name: json['name'] as String? ?? '',
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       quantity: json['quantity'] as int? ?? 1,
+      boundingBox: json['bounding_box'] != null
+          ? BoundingBox.fromJson(json['bounding_box'] as Map<String, dynamic>)
+          : null,
     );
   }
 }
