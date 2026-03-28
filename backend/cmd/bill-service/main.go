@@ -93,6 +93,7 @@ func main() {
 
 	if receiptHandler != nil {
 		r.POST("/api/receipts/parse", receiptHandler.ParseReceipt)
+		r.POST("/api/receipts/parse-text", receiptHandler.ParseReceiptText)
 	}
 
 	r.POST("/api/tabs/:id/images", imgHandler.UploadImage)

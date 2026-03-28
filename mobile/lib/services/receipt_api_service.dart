@@ -1,4 +1,4 @@
-// Billington: Privacy-first receipt spliting
+// Billington: Privacy-first receipt splitting
 //     Copyright (C) 2025  Kruski Ko.
 //     Email us: checkmateapp@duck.com
 
@@ -34,7 +34,7 @@ class ReceiptApiService {
   ///
   /// Returns a [ParsedReceipt] on success, or throws a [ReceiptParseException].
   Future<ParsedReceipt> parseReceipt(String imagePath) async {
-    try {
+    return _wrapRequest('Receipt parse', () async {
       final request = http.MultipartRequest(
         'POST',
         Uri.parse('$_baseUrl/api/receipts/parse'),
@@ -51,38 +51,86 @@ class ReceiptApiService {
         return ParsedReceipt.fromJson(data);
       }
 
-      // Parse error message from backend response
-      String serverMessage = '';
-      try {
-        final body = jsonDecode(response.body) as Map<String, dynamic>;
-        serverMessage = body['error'] as String? ?? '';
-      } catch (_) {}
+      _handleErrorResponse(response);
+    });
+  }
 
-      _logger.d('Receipt parse failed: ${response.statusCode}');
+  /// Sends raw OCR text to the backend for structuring (no image upload).
+  /// Returns a tuple of (ParsedReceipt, rawOcrNames) for fuzzy matching.
+  Future<(ParsedReceipt, List<String>)> parseReceiptText(String ocrText) async {
+    return _wrapRequest('Receipt text parse', () async {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/receipts/parse-text'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'text': ocrText}),
+      ).timeout(_timeout);
 
-      switch (response.statusCode) {
-        case 429:
-          throw ReceiptParseException(
-            serverMessage.isNotEmpty ? serverMessage : 'Too many scans. Please wait a moment and try again.',
-            isRateLimit: true,
-          );
-        case 413:
-          throw ReceiptParseException(
-            serverMessage.isNotEmpty ? serverMessage : 'Image is too large. Try a lower resolution photo.',
-          );
-        case 503:
-          throw ReceiptParseException(
-            serverMessage.isNotEmpty ? serverMessage : 'Scanner is temporarily unavailable. Please try again later.',
-          );
-        case 422:
-          throw ReceiptParseException(
-            serverMessage.isNotEmpty ? serverMessage : 'Could not read the receipt. Try a clearer photo.',
-          );
-        default:
-          throw ReceiptParseException(
-            serverMessage.isNotEmpty ? serverMessage : 'Something went wrong (${response.statusCode}). Please try again.',
-          );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final receipt = ParsedReceipt.fromJson(data);
+
+        final itemsList = (data['items'] as List<dynamic>?) ?? [];
+        final rawNames = itemsList
+            .map((e) =>
+                (e as Map<String, dynamic>)['raw_ocr_name'] as String? ?? '')
+            .toList();
+
+        return (receipt, rawNames);
       }
+
+      _handleErrorResponse(response);
+    });
+  }
+
+  /// Throws a [ReceiptParseException] based on the HTTP status code.
+  Never _handleErrorResponse(http.Response response) {
+    String serverMessage = '';
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      serverMessage = body['error'] as String? ?? '';
+    } catch (_) {}
+
+    _logger.d('Receipt request failed: ${response.statusCode}');
+
+    switch (response.statusCode) {
+      case 429:
+        throw ReceiptParseException(
+          serverMessage.isNotEmpty
+              ? serverMessage
+              : 'Too many scans. Please wait a moment and try again.',
+          isRateLimit: true,
+        );
+      case 413:
+        throw ReceiptParseException(
+          serverMessage.isNotEmpty
+              ? serverMessage
+              : 'Image is too large. Try a lower resolution photo.',
+        );
+      case 503:
+        throw ReceiptParseException(
+          serverMessage.isNotEmpty
+              ? serverMessage
+              : 'Scanner is temporarily unavailable. Please try again later.',
+        );
+      case 422:
+        throw ReceiptParseException(
+          serverMessage.isNotEmpty
+              ? serverMessage
+              : 'Could not read the receipt. Try a clearer photo.',
+        );
+      default:
+        throw ReceiptParseException(
+          serverMessage.isNotEmpty
+              ? serverMessage
+              : 'Something went wrong (${response.statusCode}). Please try again.',
+        );
+    }
+  }
+
+  /// Wraps an async request with shared error handling (rethrow, timeout, socket).
+  Future<T> _wrapRequest<T>(String label, Future<T> Function() action) async {
+    try {
+      return await action();
     } on ReceiptParseException {
       rethrow;
     } on TimeoutException {
@@ -93,8 +141,8 @@ class ReceiptApiService {
       throw ReceiptParseException(
         'Could not connect to server. Check your connection.',
       );
-    } catch (e) {
-      _logger.d('Receipt parse error');
+    } catch (e, stackTrace) {
+      _logger.d('$label error: $e', error: e, stackTrace: stackTrace);
       throw ReceiptParseException(
         'Could not connect to server. Check your connection.',
       );
