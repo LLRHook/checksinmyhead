@@ -77,3 +77,4 @@ mobile/.thymus
 .worktrees/
 skills/
 skills-lock.json
+backend/bill-service
