@@ -1,4 +1,4 @@
-// Billington: Privacy-first receipt splitting
+// Billington: Privacy-first receipt spliting
 //     Copyright (C) 2025  Kruski Ko.
 //     Email us: checkmateapp@duck.com
 
@@ -15,17 +15,10 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import 'dart:async';
-import 'dart:io';
-
 import 'package:checks_frontend/screens/quick_split/bill_entry/models/bill_data.dart';
-import 'package:checks_frontend/screens/quick_split/bill_entry/widgets/receipt_compare_screen.dart';
-import 'package:checks_frontend/screens/quick_split/bill_entry/widgets/receipt_scanning_animation.dart';
-import 'package:checks_frontend/services/mlkit_ocr_service.dart';
+import 'package:checks_frontend/screens/quick_split/bill_entry/widgets/receipt_review_sheet.dart';
 import 'package:checks_frontend/services/receipt_api_service.dart';
-import 'package:checks_frontend/services/receipt_matcher.dart';
 import 'package:checks_frontend/services/receipt_parser.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -44,20 +37,6 @@ class ScanReceiptButton extends StatefulWidget {
 class _ScanReceiptButtonState extends State<ScanReceiptButton> {
   bool _isProcessing = false;
   final _receiptApi = ReceiptApiService();
-
-  // TODO: Remove after testing — dev shortcut to bypass photo picker
-  Future<void> _devTestWithReceipt() async {
-    final testPath = '${Directory.systemTemp.path}/test_receipt.jpg';
-    if (!File(testPath).existsSync()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No test receipt found in tmp/')),
-      );
-      return;
-    }
-    setState(() => _isProcessing = true);
-    HapticFeedback.mediumImpact();
-    await _launchScanFlow(testPath);
-  }
 
   Future<void> _scanReceipt() async {
     final source = await showModalBottomSheet<ImageSource>(
@@ -80,37 +59,63 @@ class _ScanReceiptButtonState extends State<ScanReceiptButton> {
 
     setState(() => _isProcessing = true);
     HapticFeedback.mediumImpact();
-    await _launchScanFlow(pickedFile.path);
+
+    try {
+      final parsed = await _receiptApi.parseReceipt(pickedFile.path);
+
+      if (!mounted) return;
+      setState(() => _isProcessing = false);
+
+      if (parsed.items.isEmpty &&
+          parsed.subtotal == null &&
+          parsed.tax == null) {
+        _showError('Could not detect receipt items. Try a clearer photo.');
+        return;
+      }
+
+      if (!mounted) return;
+      final confirmed = await showModalBottomSheet<ParsedReceipt>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => ReceiptReviewSheet(receipt: parsed),
+      );
+
+      if (confirmed != null && mounted) {
+        final billData = Provider.of<BillData>(context, listen: false);
+        billData.populateFromScan(confirmed);
+        HapticFeedback.heavyImpact();
+      }
+    } on ReceiptParseException catch (e) {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        _showError(e.message);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        _showError('Failed to process receipt. Please try again.');
+      }
+    }
   }
 
-  Future<void> _launchScanFlow(String imagePath) async {
-
-    // Push the full-screen scan flow (scanning animation → compare view)
-    final confirmed = await Navigator.of(context).push<ParsedReceipt>(
-      PageRouteBuilder(
-        opaque: true,
-        pageBuilder: (context, animation, secondaryAnimation) {
-          return _ReceiptScanFlow(
-            imagePath: imagePath,
-            receiptApi: _receiptApi,
-          );
-        },
-        transitionsBuilder: (context, animation, _, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-        transitionDuration: const Duration(milliseconds: 300),
-        reverseTransitionDuration: const Duration(milliseconds: 200),
+  void _showError(String message) {
+    HapticFeedback.vibrate();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white, size: 18),
+            const SizedBox(width: 10),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        behavior: SnackBarBehavior.floating,
+        width: MediaQuery.of(context).size.width * 0.9,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(seconds: 3),
       ),
     );
-
-    if (!mounted) return;
-    setState(() => _isProcessing = false);
-
-    if (confirmed != null) {
-      final billData = Provider.of<BillData>(context, listen: false);
-      billData.populateFromScan(confirmed);
-      HapticFeedback.heavyImpact();
-    }
   }
 
   @override
@@ -143,8 +148,6 @@ class _ScanReceiptButtonState extends State<ScanReceiptButton> {
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
           onTap: _isProcessing ? null : _scanReceipt,
-          // Dev: long-press to test with /tmp/test_receipt.jpg (bypass photo picker)
-          onLongPress: kDebugMode && !_isProcessing ? _devTestWithReceipt : null,
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
             child: Row(
@@ -197,194 +200,6 @@ class _ScanReceiptButtonState extends State<ScanReceiptButton> {
                 Icon(
                   Icons.chevron_right,
                   color: colorScheme.onSurfaceVariant,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Orchestrates the scanning animation → compare screen flow.
-///
-/// Shows [ReceiptScanningAnimation] while the API processes, then
-/// pushes [ReceiptCompareScreen] when results arrive. Returns the
-/// confirmed [ParsedReceipt] or null via Navigator.pop.
-class _ReceiptScanFlow extends StatefulWidget {
-  final String imagePath;
-  final ReceiptApiService receiptApi;
-
-  const _ReceiptScanFlow({
-    required this.imagePath,
-    required this.receiptApi,
-  });
-
-  @override
-  State<_ReceiptScanFlow> createState() => _ReceiptScanFlowState();
-}
-
-class _ReceiptScanFlowState extends State<_ReceiptScanFlow> {
-  bool _isScanning = true;
-  String? _errorMessage;
-  final _dismissCompleter = Completer<void>();
-  final _mlkitOcr = MlkitOcrService();
-
-  @override
-  void dispose() {
-    _mlkitOcr.dispose();
-    super.dispose();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _startParsing();
-  }
-
-  Future<void> _startParsing() async {
-    // Ensure the scanning animation plays for at least 2 seconds
-    // so the user always sees the glass bubble effect.
-    // The timer starts when this method runs (after the image picker returns),
-    // which is also when the animation widget mounts.
-    final animationStart = DateTime.now();
-    Future<void> ensureMinDuration() async {
-      final elapsed = DateTime.now().difference(animationStart);
-      final remaining = const Duration(seconds: 2) - elapsed;
-      if (remaining > Duration.zero) {
-        await Future<void>.delayed(remaining);
-      }
-    }
-
-    try {
-      // STEP 1: Run ML Kit OCR on-device (fast, ~200ms)
-      final ocrResult = await _mlkitOcr.recognizeText(widget.imagePath);
-
-      ParsedReceipt parsed;
-      Size? imageSize = ocrResult.imageSize;
-
-      if (ocrResult.fullText.trim().length < 20) {
-        // ML Kit found too little text — fall back to image upload
-        parsed = await widget.receiptApi.parseReceipt(widget.imagePath);
-      } else {
-        // STEP 2: Send text to backend for structuring
-        final (textParsed, rawOcrNames) =
-            await widget.receiptApi.parseReceiptText(ocrResult.fullText);
-
-        // STEP 3: Fuzzy-match to recover bounding boxes
-        final matchedItems = ReceiptMatcher.matchBoundingBoxes(
-          parsedItems: textParsed.items,
-          ocrResult: ocrResult,
-          rawOcrNames: rawOcrNames,
-        );
-
-        parsed = ParsedReceipt(
-          vendor: textParsed.vendor,
-          items: matchedItems,
-          subtotal: textParsed.subtotal,
-          tax: textParsed.tax,
-          tip: textParsed.tip,
-          total: textParsed.total,
-        );
-      }
-
-      if (!mounted) return;
-
-      await ensureMinDuration();
-      if (!mounted) return;
-
-      if (parsed.items.isEmpty &&
-          parsed.subtotal == null &&
-          parsed.tax == null) {
-        setState(() {
-          _errorMessage = 'Could not detect receipt items. Try a clearer photo.';
-          _isScanning = false;
-        });
-        return;
-      }
-
-      // Trigger dismiss animation and wait for it to complete
-      setState(() => _isScanning = false);
-      await _dismissCompleter.future;
-      if (!mounted) return;
-
-      final confirmed = await Navigator.of(context).push<ParsedReceipt>(
-        MaterialPageRoute(
-          builder: (context) => ReceiptCompareScreen(
-            receipt: parsed,
-            imagePath: widget.imagePath,
-            imageSize: imageSize,
-          ),
-        ),
-      );
-
-      if (mounted) {
-        Navigator.of(context).pop(confirmed);
-      }
-    } on ReceiptParseException catch (e) {
-      await ensureMinDuration();
-      if (mounted) {
-        setState(() {
-          _errorMessage = e.message;
-          _isScanning = false;
-        });
-      }
-    } catch (e) {
-      await ensureMinDuration();
-      if (mounted) {
-        setState(() {
-          _errorMessage = 'Failed to process receipt. Please try again.';
-          _isScanning = false;
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_errorMessage != null) {
-      return _buildErrorState(context);
-    }
-
-    return ReceiptScanningAnimation(
-      imagePath: widget.imagePath,
-      isComplete: !_isScanning,
-      onDismissed: () {
-        if (!_dismissCompleter.isCompleted) {
-          _dismissCompleter.complete();
-        }
-      },
-    );
-  }
-
-  Widget _buildErrorState(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.error_outline,
-                    color: colorScheme.error, size: 56),
-                const SizedBox(height: 20),
-                Text(
-                  _errorMessage!,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    fontSize: 16,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 28),
-                FilledButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Go Back'),
                 ),
               ],
             ),
