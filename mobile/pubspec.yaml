@@ -1,7 +1,7 @@
 name: checks_frontend
 description: "Billington — privacy-first receipt splitting"
 publish_to: 'none'
-version: 1.2.0+6
+version: 1.2.0+7
 
 environment:
   sdk: ^3.7.2
@@ -22,7 +22,6 @@ dependencies:
   http: ^1.5.0
   logger: ^2.6.2
   image_picker: ^1.1.2
-  google_mlkit_text_recognition: ^0.15.1
 
 dev_dependencies:
   flutter_test:
