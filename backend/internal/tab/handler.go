@@ -74,6 +74,48 @@ func (h *TabHandler) getTabAndValidate(c *gin.Context) *models.Tab {
 	return tab
 }
 
+// getTabAuthAndValidate validates access using a lightweight tab lookup.
+func (h *TabHandler) getTabAuthAndValidate(c *gin.Context) *models.Tab {
+	id := c.Param("id")
+
+	token := ""
+	authHeader := c.GetHeader("Authorization")
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		token = strings.TrimPrefix(authHeader, "Bearer ")
+	} else {
+		token = c.Query("t")
+	}
+
+	if id == "" {
+		c.JSON(400, gin.H{"error": "bad id"})
+		return nil
+	}
+
+	idUint, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid id format"})
+		return nil
+	}
+
+	tab, err := h.service.GetTabAuth(uint(idUint))
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(404, gin.H{"error": "tab not found"})
+			return nil
+		}
+		log.Printf("internal error: %v", err)
+		c.JSON(500, gin.H{"error": "an internal error occurred"})
+		return nil
+	}
+
+	if subtle.ConstantTimeCompare([]byte(token), []byte(tab.AccessToken)) != 1 {
+		c.JSON(403, gin.H{"error": "token mismatch"})
+		return nil
+	}
+
+	return tab
+}
+
 // getMemberFromQuery reads the member token from X-Member-Token header or ?m= query param.
 func (h *TabHandler) getMemberFromQuery(c *gin.Context, tabID uint) *models.TabMember {
 	memberToken := c.GetHeader("X-Member-Token")
@@ -154,7 +196,7 @@ func (h *TabHandler) GetTab(c *gin.Context) {
 }
 
 func (h *TabHandler) AddBillToTab(c *gin.Context) {
-	tab := h.getTabAndValidate(c)
+	tab := h.getTabAuthAndValidate(c)
 	if tab == nil {
 		return
 	}
@@ -193,7 +235,7 @@ func (h *TabHandler) AddBillToTab(c *gin.Context) {
 }
 
 func (h *TabHandler) UpdateTab(c *gin.Context) {
-	tab := h.getTabAndValidate(c)
+	tab := h.getTabAuthAndValidate(c)
 	if tab == nil {
 		return
 	}
@@ -233,13 +275,19 @@ func (h *TabHandler) UpdateTab(c *gin.Context) {
 }
 
 func (h *TabHandler) FinalizeTab(c *gin.Context) {
-	tab := h.getTabAndValidate(c)
+	tab := h.getTabAuthAndValidate(c)
 	if tab == nil {
 		return
 	}
 
 	// If tab has members, only the creator can finalize
-	if len(tab.Members) > 0 {
+	members, err := h.service.GetMembers(tab.ID)
+	if err != nil {
+		log.Printf("internal error: %v", err)
+		c.JSON(500, gin.H{"error": "an internal error occurred"})
+		return
+	}
+	if len(members) > 0 {
 		member := h.getMemberFromQuery(c, tab.ID)
 		if member == nil || member.Role != "creator" {
 			c.JSON(403, gin.H{"error": "only the tab creator can finalize"})
@@ -257,7 +305,7 @@ func (h *TabHandler) FinalizeTab(c *gin.Context) {
 }
 
 func (h *TabHandler) GetSettlements(c *gin.Context) {
-	tab := h.getTabAndValidate(c)
+	tab := h.getTabAuthAndValidate(c)
 	if tab == nil {
 		return
 	}
@@ -273,7 +321,7 @@ func (h *TabHandler) GetSettlements(c *gin.Context) {
 }
 
 func (h *TabHandler) UpdateSettlement(c *gin.Context) {
-	tab := h.getTabAndValidate(c)
+	tab := h.getTabAuthAndValidate(c)
 	if tab == nil {
 		return
 	}
@@ -302,7 +350,7 @@ func (h *TabHandler) UpdateSettlement(c *gin.Context) {
 }
 
 func (h *TabHandler) JoinTab(c *gin.Context) {
-	tab := h.getTabAndValidate(c)
+	tab := h.getTabAuthAndValidate(c)
 	if tab == nil {
 		return
 	}
@@ -337,7 +385,7 @@ func (h *TabHandler) JoinTab(c *gin.Context) {
 }
 
 func (h *TabHandler) GetMembers(c *gin.Context) {
-	tab := h.getTabAndValidate(c)
+	tab := h.getTabAuthAndValidate(c)
 	if tab == nil {
 		return
 	}
