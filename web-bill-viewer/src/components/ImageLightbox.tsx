@@ -82,7 +82,6 @@ export default function ImageLightbox({
             sizes="100vw"
             className="object-contain rounded-lg select-none"
             draggable={false}
-            unoptimized
           />
         </div>
 
