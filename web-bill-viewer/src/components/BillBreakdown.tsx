@@ -1,8 +1,8 @@
 "use client";
 
-import { BillItem } from "@/lib/api";
+import { FaCalculator, FaReceipt } from "react-icons/fa6";
+import type { BillItem } from "@/lib/api";
 import CollapsibleSection from "./CollapsibleSection";
-import { FaReceipt, FaCalculator } from "react-icons/fa6";
 
 interface BillBreakdownProps {
   items: BillItem[];

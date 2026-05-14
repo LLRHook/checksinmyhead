@@ -1,8 +1,8 @@
 "use client";
 
-import { PaymentMethod } from "@/lib/api";
-import { SiVenmo, SiZelle, SiCashapp, SiApplepay } from "react-icons/si";
 import { FaCreditCard } from "react-icons/fa6";
+import { SiApplepay, SiCashapp, SiVenmo, SiZelle } from "react-icons/si";
+import type { PaymentMethod } from "@/lib/api";
 
 interface PaymentDetailsProps {
   paymentMethods: PaymentMethod[];
@@ -38,11 +38,11 @@ export default function PaymentDetails({
         Payment Methods
       </h3>
       <div className="space-y-3">
-        {paymentMethods.map((method, idx) => {
+        {paymentMethods.map((method) => {
           const { Icon, bg } = getIcon(method.name);
           return (
             <div
-              key={idx}
+              key={`${method.name}-${method.identifier}`}
               className="flex items-center gap-3 text-[var(--accent)] dark:text-white"
             >
               <div

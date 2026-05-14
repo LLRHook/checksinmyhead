@@ -1,6 +1,7 @@
 "use client";
 
-import { FaReceipt, FaCircleCheck } from "react-icons/fa6";
+import Image from "next/image";
+import { FaCircleCheck, FaReceipt } from "react-icons/fa6";
 
 interface TabHeaderProps {
   name: string;
@@ -20,7 +21,14 @@ export default function TabHeader({
   return (
     <div className="text-center lg:text-left mb-8">
       <div className="mb-3">
-        <img src="/logo.png" alt="Billington" className="h-16 mx-auto lg:mx-0" />
+        <Image
+          src="/logo.png"
+          alt="Billington"
+          width={192}
+          height={64}
+          className="h-16 mx-auto lg:mx-0"
+          priority
+        />
       </div>
       <h1 className="text-2xl font-bold text-[var(--accent)] dark:text-white mb-1">
         {name}

@@ -1,9 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
+import { FaCamera, FaCheck } from "react-icons/fa6";
 import type { TabImage } from "@/lib/api";
 import ImageLightbox from "./ImageLightbox";
-import { FaCamera } from "react-icons/fa6";
 
 interface TabImageGalleryProps {
   images: TabImage[];
@@ -34,31 +35,23 @@ export default function TabImageGallery({
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {images.map((image, index) => (
               <button
+                type="button"
                 key={image.id}
                 onClick={() => setLightboxIndex(index)}
                 className="relative aspect-square rounded-xl overflow-hidden group focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
               >
-                <img
+                <Image
                   src={`${apiBaseUrl}${image.url}`}
                   alt={`Receipt ${index + 1}`}
-                  className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                  fill
+                  sizes="(min-width: 640px) 33vw, 50vw"
+                  className="object-cover transition-transform duration-200 group-hover:scale-105"
+                  unoptimized
                 />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200" />
                 {image.processed && (
                   <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center shadow-sm">
-                    <svg
-                      className="w-3.5 h-3.5 text-white"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={3}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
+                    <FaCheck className="w-3.5 h-3.5 text-white" />
                   </div>
                 )}
               </button>

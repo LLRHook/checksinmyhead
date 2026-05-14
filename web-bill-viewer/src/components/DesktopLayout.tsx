@@ -1,11 +1,14 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 
 interface DesktopLayoutProps {
   sidebar: ReactNode;
   children: ReactNode;
 }
 
-export default function DesktopLayout({ sidebar, children }: DesktopLayoutProps) {
+export default function DesktopLayout({
+  sidebar,
+  children,
+}: DesktopLayoutProps) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[var(--secondary)] to-white dark:from-[var(--dark-bg)] dark:to-[var(--card-bg-dark)]">
       <div className="max-w-6xl mx-auto px-4 py-8 lg:px-8">

@@ -1,9 +1,9 @@
 "use client";
 
-import { TabPersonTotal } from "@/lib/api";
-import { buildVenmoPayUrl } from "@/lib/venmo";
-import { SiVenmo } from "react-icons/si";
 import { FaCheck } from "react-icons/fa6";
+import { SiVenmo } from "react-icons/si";
+import type { TabPersonTotal } from "@/lib/api";
+import { buildVenmoPayUrl } from "@/lib/venmo";
 
 interface TabPersonTotalsProps {
   personTotals: TabPersonTotal[];
@@ -79,7 +79,11 @@ export default function TabPersonTotals({
               </div>
               {!person.all_paid && venmoId && (
                 <a
-                  href={buildVenmoPayUrl(venmoId, person.total.toFixed(2), "Tab settlement - " + person.person_name)}
+                  href={buildVenmoPayUrl(
+                    venmoId,
+                    person.total.toFixed(2),
+                    `Tab settlement - ${person.person_name}`,
+                  )}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="h-10 px-4 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-white font-semibold rounded-xl flex items-center justify-center hover:opacity-90 transition-opacity no-underline"

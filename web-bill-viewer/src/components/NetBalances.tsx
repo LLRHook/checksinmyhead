@@ -1,9 +1,9 @@
 "use client";
 
-import { NetBalance } from "@/lib/api";
-import { buildVenmoPayUrl } from "@/lib/venmo";
-import { SiVenmo } from "react-icons/si";
 import { FaArrowRight } from "react-icons/fa6";
+import { SiVenmo } from "react-icons/si";
+import type { NetBalance } from "@/lib/api";
+import { buildVenmoPayUrl } from "@/lib/venmo";
 
 interface NetBalancesProps {
   balances: NetBalance[];
@@ -27,14 +27,14 @@ export default function NetBalances({
     ? balances.filter(
         (b) =>
           b.from.toLowerCase() === currentKey ||
-          b.to.toLowerCase() === currentKey
+          b.to.toLowerCase() === currentKey,
       )
     : [];
   const otherBalances = currentKey
     ? balances.filter(
         (b) =>
           b.from.toLowerCase() !== currentKey &&
-          b.to.toLowerCase() !== currentKey
+          b.to.toLowerCase() !== currentKey,
       )
     : balances;
 
@@ -71,11 +71,12 @@ export default function NetBalances({
           </div>
           {showVenmo && venmoId && isYouFrom && (
             <button
+              type="button"
               onClick={() => {
                 window.location.href = buildVenmoPayUrl(
                   venmoId,
                   balance.amount.toFixed(2),
-                  "Tab settlement - " + balance.to
+                  `Tab settlement - ${balance.to}`,
                 );
               }}
               className="h-10 px-4 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-white font-semibold rounded-xl flex items-center justify-center hover:opacity-90 transition-opacity border-none cursor-pointer"
