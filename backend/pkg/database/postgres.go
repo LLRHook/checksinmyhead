@@ -4,6 +4,8 @@ import (
 	"backend/pkg/models"
 	"fmt"
 	"os"
+	"strconv"
+	"time"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -27,10 +29,21 @@ func InitDB() (*gorm.DB, error) {
 
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=America/New_York", host, user, pw, name, port, sslmode)
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: NewSQLLogger(),
+	})
 	if err != nil {
 		return nil, err
 	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, err
+	}
+	sqlDB.SetMaxOpenConns(envInt("DB_MAX_OPEN_CONNS", 10))
+	sqlDB.SetMaxIdleConns(envInt("DB_MAX_IDLE_CONNS", 5))
+	sqlDB.SetConnMaxLifetime(time.Duration(envInt("DB_CONN_MAX_LIFETIME_MINUTES", 30)) * time.Minute)
+	sqlDB.SetConnMaxIdleTime(time.Duration(envInt("DB_CONN_MAX_IDLE_MINUTES", 5)) * time.Minute)
 
 	// Migrate parent tables first (Tab before Bill, since Bill has FK to Tab)
 	err = db.AutoMigrate(&models.Tab{}, &models.TabMember{}, &models.TabImage{}, &models.TabSettlement{}, &models.Bill{}, &models.Person{}, &models.BillItem{}, &models.ItemAssignment{}, &models.PersonShare{})
@@ -42,4 +55,17 @@ func InitDB() (*gorm.DB, error) {
 	db.Exec("UPDATE bills SET paid_by_member_id = added_by_member_id WHERE tab_id IS NOT NULL AND added_by_member_id IS NOT NULL AND paid_by_member_id IS NULL")
 
 	return db, nil
+}
+
+func envInt(name string, fallback int) int {
+	value := os.Getenv(name)
+	if value == "" {
+		return fallback
+	}
+
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed <= 0 {
+		return fallback
+	}
+	return parsed
 }

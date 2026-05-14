@@ -63,6 +63,14 @@ func (m *mockTabRepository) GetById(id uint) (*models.Tab, error) {
 	return tab, nil
 }
 
+func (m *mockTabRepository) GetAuthById(id uint) (*models.Tab, error) {
+	return m.GetById(id)
+}
+
+func (m *mockTabRepository) GetForFinalization(id uint) (*models.Tab, error) {
+	return m.GetById(id)
+}
+
 func (m *mockTabRepository) Update(tab *models.Tab) error { return m.updateErr }
 func (m *mockTabRepository) Delete(id uint) error         { return m.deleteErr }
 

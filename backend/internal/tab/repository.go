@@ -10,6 +10,8 @@ import (
 type TabRepository interface {
 	Create(tab *models.Tab) error
 	GetById(id uint) (tab *models.Tab, err error)
+	GetAuthById(id uint) (tab *models.Tab, err error)
+	GetForFinalization(id uint) (tab *models.Tab, err error)
 	Update(tab *models.Tab) error
 	Delete(id uint) error
 	AddBill(tabID uint, billID uint, billToken string, memberID *uint) error
@@ -37,6 +39,22 @@ func (r *tabRepository) GetById(id uint) (tab *models.Tab, err error) {
 		Preload("Bills.Participants").
 		Preload("Bills.PersonShares").
 		Preload("Members").
+		First(tab, id).Error
+	return tab, err
+}
+
+func (r *tabRepository) GetAuthById(id uint) (tab *models.Tab, err error) {
+	tab = &models.Tab{}
+	err = r.db.
+		Select("id", "access_token", "finalized").
+		First(tab, id).Error
+	return tab, err
+}
+
+func (r *tabRepository) GetForFinalization(id uint) (tab *models.Tab, err error) {
+	tab = &models.Tab{}
+	err = r.db.
+		Preload("Bills.PersonShares").
 		First(tab, id).Error
 	return tab, err
 }

@@ -58,7 +58,7 @@ func (h *ImageHandler) validateTabToken(c *gin.Context) *models.Tab {
 		return nil
 	}
 
-	t, err := h.tabService.GetTab(uint(idUint))
+	t, err := h.tabService.GetTabAuth(uint(idUint))
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "tab not found"})
