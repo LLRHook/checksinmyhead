@@ -75,7 +75,7 @@ func (h *TabHandler) getTabAndValidate(c *gin.Context) *models.Tab {
 }
 
 // getMemberFromQuery reads the member token from X-Member-Token header or ?m= query param.
-func (h *TabHandler) getMemberFromQuery(c *gin.Context) *models.TabMember {
+func (h *TabHandler) getMemberFromQuery(c *gin.Context, tabID uint) *models.TabMember {
 	memberToken := c.GetHeader("X-Member-Token")
 	if memberToken == "" {
 		memberToken = c.Query("m")
@@ -87,14 +87,17 @@ func (h *TabHandler) getMemberFromQuery(c *gin.Context) *models.TabMember {
 	if err != nil {
 		return nil
 	}
+	if member.TabID != tabID {
+		return nil
+	}
 	return member
 }
 
 func (h *TabHandler) CreateTab(c *gin.Context) {
 	var body struct {
-		Name                string `json:"name"`
-		Description         string `json:"description"`
-		CreatorDisplayName  string `json:"creator_display_name"`
+		Name               string `json:"name"`
+		Description        string `json:"description"`
+		CreatorDisplayName string `json:"creator_display_name"`
 	}
 
 	if err := c.ShouldBindJSON(&body); err != nil {
@@ -162,7 +165,8 @@ func (h *TabHandler) AddBillToTab(c *gin.Context) {
 	}
 
 	var body struct {
-		BillID uint `json:"bill_id"`
+		BillID    uint   `json:"bill_id"`
+		BillToken string `json:"bill_token"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(400, gin.H{"error": "bad request"})
@@ -170,11 +174,11 @@ func (h *TabHandler) AddBillToTab(c *gin.Context) {
 	}
 
 	var memberID *uint
-	if member := h.getMemberFromQuery(c); member != nil {
+	if member := h.getMemberFromQuery(c, tab.ID); member != nil {
 		memberID = &member.ID
 	}
 
-	err := h.service.AddBillToTab(tab.ID, body.BillID, memberID)
+	err := h.service.AddBillToTab(tab.ID, body.BillID, body.BillToken, memberID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(404, gin.H{"error": "bill not found"})
@@ -236,7 +240,7 @@ func (h *TabHandler) FinalizeTab(c *gin.Context) {
 
 	// If tab has members, only the creator can finalize
 	if len(tab.Members) > 0 {
-		member := h.getMemberFromQuery(c)
+		member := h.getMemberFromQuery(c, tab.ID)
 		if member == nil || member.Role != "creator" {
 			c.JSON(403, gin.H{"error": "only the tab creator can finalize"})
 			return
