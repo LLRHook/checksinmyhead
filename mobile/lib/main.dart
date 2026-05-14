@@ -54,7 +54,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ValueListenableBuilder<Color>(
       valueListenable: AppTheme.primaryColorNotifier,
-      builder: (context, _, __) {
+      builder: (context, _, child) {
         return MaterialApp(
           title: 'Billington',
           // Theme configuration

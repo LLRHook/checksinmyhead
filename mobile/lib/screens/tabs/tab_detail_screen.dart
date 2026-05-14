@@ -419,9 +419,9 @@ class _TabDetailScreenState extends State<TabDetailScreen>
           children: [
             Text(
               _currentTab.name,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             if (_currentTab.isFinalized) ...[
               const SizedBox(width: 8),
@@ -497,7 +497,8 @@ class _TabDetailScreenState extends State<TabDetailScreen>
                         children: [
                           if (_tabBills.isNotEmpty) _buildTotalCard(),
                           if (_members.isNotEmpty) _buildMembersCard(),
-                          if (_currentTab.isFinalized && _settlements.isNotEmpty)
+                          if (_currentTab.isFinalized &&
+                              _settlements.isNotEmpty)
                             _buildSettlementsCard()
                           else if (_calculatePersonTotals().isNotEmpty)
                             _buildPersonTotalsCard(),
@@ -588,75 +589,76 @@ class _TabDetailScreenState extends State<TabDetailScreen>
     final total = _calculateTotal();
 
     return Semantics(
-      label: 'Tab total: ${CurrencyFormatter.formatCurrency(total)}, ${_tabBills.length} bill${_tabBills.length == 1 ? '' : 's'}',
+      label:
+          'Tab total: ${CurrencyFormatter.formatCurrency(total)}, ${_tabBills.length} bill${_tabBills.length == 1 ? '' : 's'}',
       child: Container(
-      margin: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            colorScheme.primary,
-            colorScheme.primary.withValues(alpha: 0.85),
+        margin: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              colorScheme.primary,
+              colorScheme.primary.withValues(alpha: 0.85),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: colorScheme.primary.withValues(
+                alpha: brightness == Brightness.dark ? 0.2 : 0.3,
+              ),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
           ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: colorScheme.primary.withValues(
-              alpha: brightness == Brightness.dark ? 0.2 : 0.3,
+        child: Column(
+          children: [
+            Text(
+              'Total',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.9),
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1.2,
+              ),
             ),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Text(
-            'Total',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.9),
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1.2,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            CurrencyFormatter.formatCurrency(total),
-            style: TextStyle(
-              color:
-                  brightness == Brightness.dark
-                      ? Colors.black.withValues(alpha: 0.9)
-                      : Colors.white,
-              fontSize: 36,
-              fontWeight: FontWeight.bold,
-              letterSpacing: -1,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              '${_tabBills.length} bill${_tabBills.length == 1 ? '' : 's'}',
+            const SizedBox(height: 8),
+            Text(
+              CurrencyFormatter.formatCurrency(total),
               style: TextStyle(
                 color:
                     brightness == Brightness.dark
-                        ? Colors.black.withValues(alpha: 0.8)
+                        ? Colors.black.withValues(alpha: 0.9)
                         : Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+                fontSize: 36,
+                fontWeight: FontWeight.bold,
+                letterSpacing: -1,
               ),
             ),
-          ),
-        ],
-      ),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '${_tabBills.length} bill${_tabBills.length == 1 ? '' : 's'}',
+                style: TextStyle(
+                  color:
+                      brightness == Brightness.dark
+                          ? Colors.black.withValues(alpha: 0.8)
+                          : Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -718,45 +720,46 @@ class _TabDetailScreenState extends State<TabDetailScreen>
                 _members.map((member) {
                   final isCreator = member.role == 'creator';
                   return Semantics(
-                    label: '${member.displayName}${isCreator ? ', creator' : ', member'}',
+                    label:
+                        '${member.displayName}${isCreator ? ', creator' : ', member'}',
                     child: Chip(
-                    avatar:
-                        isCreator
-                            ? Icon(
-                              Icons.star,
-                              size: 16,
-                              color: Colors.amber.shade700,
-                            )
-                            : CircleAvatar(
-                              radius: 12,
-                              backgroundColor: colorScheme.primary.withValues(
-                                alpha: 0.15,
-                              ),
-                              child: Text(
-                                member.displayName.isNotEmpty
-                                    ? member.displayName[0].toUpperCase()
-                                    : '?',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: colorScheme.primary,
-                                  fontWeight: FontWeight.bold,
+                      avatar:
+                          isCreator
+                              ? Icon(
+                                Icons.star,
+                                size: 16,
+                                color: Colors.amber.shade700,
+                              )
+                              : CircleAvatar(
+                                radius: 12,
+                                backgroundColor: colorScheme.primary.withValues(
+                                  alpha: 0.15,
+                                ),
+                                child: Text(
+                                  member.displayName.isNotEmpty
+                                      ? member.displayName[0].toUpperCase()
+                                      : '?',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: colorScheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
-                            ),
-                    label: Text(member.displayName),
-                    labelStyle: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: colorScheme.onSurface,
-                    ),
-                    backgroundColor:
-                        brightness == Brightness.dark
-                            ? colorScheme.surfaceContainerHighest
-                            : Colors.grey.shade50,
-                    side: BorderSide.none,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
+                      label: Text(member.displayName),
+                      labelStyle: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: colorScheme.onSurface,
+                      ),
+                      backgroundColor:
+                          brightness == Brightness.dark
+                              ? colorScheme.surfaceContainerHighest
+                              : Colors.grey.shade50,
+                      side: BorderSide.none,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
                     ),
                   );
                 }).toList(),
@@ -846,87 +849,90 @@ class _TabDetailScreenState extends State<TabDetailScreen>
             physics: const NeverScrollableScrollPhysics(),
             padding: const EdgeInsets.all(20),
             itemCount: _settlements.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final settlement = _settlements[index];
               return Semantics(
-                label: '${settlement.personName}, ${CurrencyFormatter.formatCurrency(settlement.amount)}, ${settlement.paid ? 'paid' : 'unpaid'}. Tap to toggle',
+                label:
+                    '${settlement.personName}, ${CurrencyFormatter.formatCurrency(settlement.amount)}, ${settlement.paid ? 'paid' : 'unpaid'}. Tap to toggle',
                 button: true,
                 child: GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  _toggleSettlementPaid(settlement);
-                },
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 18,
-                      backgroundColor:
-                          settlement.paid
-                              ? Colors.green.withValues(alpha: 0.15)
-                              : colorScheme.primaryContainer,
-                      child:
-                          settlement.paid
-                              ? Icon(
-                                Icons.check,
-                                size: 18,
-                                color: Colors.green.shade700,
-                              )
-                              : Text(
-                                settlement.personName[0].toUpperCase(),
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: colorScheme.primary,
-                                ),
-                              ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Text(
-                        settlement.personName,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color:
-                              settlement.paid
-                                  ? colorScheme.onSurface.withValues(alpha: 0.5)
-                                  : colorScheme.onSurface,
-                          decoration:
-                              settlement.paid
-                                  ? TextDecoration.lineThrough
-                                  : null,
-                        ),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color:
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    _toggleSettlementPaid(settlement);
+                  },
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor:
                             settlement.paid
-                                ? Colors.green.withValues(alpha: 0.1)
-                                : colorScheme.primaryContainer.withValues(
-                                  alpha: 0.6,
+                                ? Colors.green.withValues(alpha: 0.15)
+                                : colorScheme.primaryContainer,
+                        child:
+                            settlement.paid
+                                ? Icon(
+                                  Icons.check,
+                                  size: 18,
+                                  color: Colors.green.shade700,
+                                )
+                                : Text(
+                                  settlement.personName[0].toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: colorScheme.primary,
+                                  ),
                                 ),
-                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Text(
-                        CurrencyFormatter.formatCurrency(settlement.amount),
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color:
-                              settlement.paid
-                                  ? Colors.green.shade700
-                                  : colorScheme.primary,
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          settlement.personName,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color:
+                                settlement.paid
+                                    ? colorScheme.onSurface.withValues(
+                                      alpha: 0.5,
+                                    )
+                                    : colorScheme.onSurface,
+                            decoration:
+                                settlement.paid
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              settlement.paid
+                                  ? Colors.green.withValues(alpha: 0.1)
+                                  : colorScheme.primaryContainer.withValues(
+                                    alpha: 0.6,
+                                  ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          CurrencyFormatter.formatCurrency(settlement.amount),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color:
+                                settlement.paid
+                                    ? Colors.green.shade700
+                                    : colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
@@ -1000,57 +1006,58 @@ class _TabDetailScreenState extends State<TabDetailScreen>
             physics: const NeverScrollableScrollPhysics(),
             padding: const EdgeInsets.all(20),
             itemCount: sortedEntries.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final entry = sortedEntries[index];
               return Semantics(
-                label: '${entry.key}: ${CurrencyFormatter.formatCurrency(entry.value)}',
+                label:
+                    '${entry.key}: ${CurrencyFormatter.formatCurrency(entry.value)}',
                 child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 18,
-                    backgroundColor: colorScheme.primaryContainer,
-                    child: Text(
-                      entry.key[0].toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: colorScheme.primary,
+                  children: [
+                    CircleAvatar(
+                      radius: 18,
+                      backgroundColor: colorScheme.primaryContainer,
+                      child: Text(
+                        entry.key[0].toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.primary,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      entry.key,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: colorScheme.onSurface,
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        entry.key,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.onSurface,
+                        ),
                       ),
                     ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colorScheme.primaryContainer.withValues(
-                        alpha: 0.6,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
                       ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      CurrencyFormatter.formatCurrency(entry.value),
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: colorScheme.primary,
+                      decoration: BoxDecoration(
+                        color: colorScheme.primaryContainer.withValues(
+                          alpha: 0.6,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        CurrencyFormatter.formatCurrency(entry.value),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.primary,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
                 ),
               );
             },
@@ -1144,72 +1151,73 @@ class _TabDetailScreenState extends State<TabDetailScreen>
               itemBuilder: (context, index) {
                 final image = _images[index];
                 return Semantics(
-                  label: 'Receipt image ${index + 1} of ${_images.length}${image.processed ? ', processed' : ', unprocessed'}. Tap to view full screen${!_currentTab.isFinalized ? '. Long press for options' : ''}',
+                  label:
+                      'Receipt image ${index + 1} of ${_images.length}${image.processed ? ', processed' : ', unprocessed'}. Tap to view full screen${!_currentTab.isFinalized ? '. Long press for options' : ''}',
                   button: true,
                   child: GestureDetector(
-                  onTap: () => _showFullScreenImage(image),
-                  onLongPress:
-                      _currentTab.isFinalized
-                          ? null
-                          : () {
-                            HapticFeedback.mediumImpact();
-                            _showImageActions(image);
-                          },
-                  child: Container(
-                    width: 88,
-                    margin: EdgeInsets.only(
-                      right: index < _images.length - 1 ? 10 : 0,
-                    ),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color:
-                            image.processed
-                                ? Colors.green.withValues(alpha: 0.5)
-                                : colorScheme.outline.withValues(alpha: 0.2),
-                        width: image.processed ? 2 : 1,
+                    onTap: () => _showFullScreenImage(image),
+                    onLongPress:
+                        _currentTab.isFinalized
+                            ? null
+                            : () {
+                              HapticFeedback.mediumImpact();
+                              _showImageActions(image);
+                            },
+                    child: Container(
+                      width: 88,
+                      margin: EdgeInsets.only(
+                        right: index < _images.length - 1 ? 10 : 0,
                       ),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(11),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          Image.network(
-                            '${_apiService.baseUrl}${image.url}',
-                            fit: BoxFit.cover,
-                            errorBuilder:
-                                (_, __, ___) => Container(
-                                  color: colorScheme.surfaceContainerHighest,
-                                  child: Icon(
-                                    Icons.image_not_supported_outlined,
-                                    color: colorScheme.onSurface.withValues(
-                                      alpha: 0.3,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color:
+                              image.processed
+                                  ? Colors.green.withValues(alpha: 0.5)
+                                  : colorScheme.outline.withValues(alpha: 0.2),
+                          width: image.processed ? 2 : 1,
+                        ),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(11),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Image.network(
+                              '${_apiService.baseUrl}${image.url}',
+                              fit: BoxFit.cover,
+                              errorBuilder:
+                                  (context, error, stackTrace) => Container(
+                                    color: colorScheme.surfaceContainerHighest,
+                                    child: Icon(
+                                      Icons.image_not_supported_outlined,
+                                      color: colorScheme.onSurface.withValues(
+                                        alpha: 0.3,
+                                      ),
                                     ),
                                   ),
-                                ),
-                          ),
-                          if (image.processed)
-                            Positioned(
-                              top: 4,
-                              right: 4,
-                              child: Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: const BoxDecoration(
-                                  color: Colors.green,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.check,
-                                  size: 12,
-                                  color: Colors.white,
+                            ),
+                            if (image.processed)
+                              Positioned(
+                                top: 4,
+                                right: 4,
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.green,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.check,
+                                    size: 12,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
                   ),
                 );
               },
@@ -1264,12 +1272,12 @@ class _TabDetailScreenState extends State<TabDetailScreen>
                   const SizedBox(height: 12),
                   ExcludeSemantics(
                     child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: colorScheme.onSurface.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: colorScheme.onSurface.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
                   ListTile(
@@ -1367,102 +1375,103 @@ class _TabDetailScreenState extends State<TabDetailScreen>
             ],
           ),
           child: Semantics(
-            label: '${bill.billName}, ${CurrencyFormatter.formatCurrency(bill.total)}, ${bill.formattedDate}${!_currentTab.isFinalized ? '. Swipe left to remove' : ''}',
+            label:
+                '${bill.billName}, ${CurrencyFormatter.formatCurrency(bill.total)}, ${bill.formattedDate}${!_currentTab.isFinalized ? '. Swipe left to remove' : ''}',
             button: true,
             child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () async {
-                HapticFeedback.selectionClick();
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => BillDetailsScreen(bill: bill),
-                  ),
-                );
-              },
-              borderRadius: BorderRadius.circular(20),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer.withValues(
-                          alpha: 0.6,
-                        ),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(
-                        Icons.receipt_long,
-                        color: colorScheme.primary,
-                        size: 22,
-                      ),
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () async {
+                  HapticFeedback.selectionClick();
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => BillDetailsScreen(bill: bill),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            bill.billName,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: colorScheme.onSurface,
-                              letterSpacing: -0.2,
-                            ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primaryContainer.withValues(
+                            alpha: 0.6,
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            bill.formattedDate,
-                            style: TextStyle(
-                              color: colorScheme.onSurface.withValues(
-                                alpha: 0.6,
-                              ),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            bill.participantSummary,
-                            style: TextStyle(
-                              color: colorScheme.onSurface.withValues(
-                                alpha: 0.5,
-                              ),
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer.withValues(
-                          alpha: 0.7,
+                          borderRadius: BorderRadius.circular(14),
                         ),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        CurrencyFormatter.formatCurrency(bill.total),
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
+                        child: Icon(
+                          Icons.receipt_long,
                           color: colorScheme.primary,
+                          size: 22,
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              bill.billName,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: colorScheme.onSurface,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              bill.formattedDate,
+                              style: TextStyle(
+                                color: colorScheme.onSurface.withValues(
+                                  alpha: 0.6,
+                                ),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              bill.participantSummary,
+                              style: TextStyle(
+                                color: colorScheme.onSurface.withValues(
+                                  alpha: 0.5,
+                                ),
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primaryContainer.withValues(
+                            alpha: 0.7,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          CurrencyFormatter.formatCurrency(bill.total),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
           ),
         ),
       );
@@ -1776,7 +1785,8 @@ class _FullScreenImageView extends StatelessWidget {
         actions: [
           if (onToggleProcessed != null)
             IconButton(
-              tooltip: image.processed ? 'Mark as unprocessed' : 'Mark as processed',
+              tooltip:
+                  image.processed ? 'Mark as unprocessed' : 'Mark as processed',
               icon: Icon(
                 image.processed
                     ? Icons.check_box
@@ -1805,7 +1815,7 @@ class _FullScreenImageView extends StatelessWidget {
             imageUrl,
             fit: BoxFit.contain,
             errorBuilder:
-                (_, __, ___) => Icon(
+                (context, error, stackTrace) => Icon(
                   Icons.image_not_supported_outlined,
                   size: 64,
                   color: colorScheme.onSurface.withValues(alpha: 0.3),
@@ -1839,12 +1849,12 @@ class _ImageSourceSheet extends StatelessWidget {
             const SizedBox(height: 12),
             ExcludeSemantics(
               child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: colorScheme.onSurface.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(2),
-              ),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: colorScheme.onSurface.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
             const SizedBox(height: 20),
@@ -2028,12 +2038,12 @@ class _BillSelectorSheetState extends State<_BillSelectorSheet> {
                 Center(
                   child: ExcludeSemantics(
                     child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: colorScheme.onSurface.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: colorScheme.onSurface.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
                 ),
