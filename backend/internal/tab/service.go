@@ -19,6 +19,7 @@ type ImageQuerier interface {
 type TabService interface {
 	CreateTab(tab *models.Tab) error
 	GetTab(id uint) (tab *models.Tab, err error)
+	GetTabAuth(id uint) (tab *models.Tab, err error)
 	UpdateTab(tab *models.Tab) error
 	AddBillToTab(tabID uint, billID uint, billToken string, memberID *uint) error
 	FinalizeTab(id uint) ([]models.TabSettlement, error)
@@ -55,6 +56,10 @@ func (s *tabService) GetTab(id uint) (tab *models.Tab, err error) {
 	return tab, nil
 }
 
+func (s *tabService) GetTabAuth(id uint) (tab *models.Tab, err error) {
+	return s.repo.GetAuthById(id)
+}
+
 func (s *tabService) UpdateTab(tab *models.Tab) error {
 	return s.repo.Update(tab)
 }
@@ -64,7 +69,7 @@ func (s *tabService) AddBillToTab(tabID uint, billID uint, billToken string, mem
 }
 
 func (s *tabService) FinalizeTab(id uint) ([]models.TabSettlement, error) {
-	tab, err := s.GetTab(id)
+	tab, err := s.repo.GetForFinalization(id)
 	if err != nil {
 		return nil, err
 	}
