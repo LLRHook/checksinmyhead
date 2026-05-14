@@ -58,9 +58,11 @@ func (r *tabRepository) AddBill(tabID uint, billID uint, billToken string, membe
 		updates["added_by_member_id"] = *memberID
 		updates["paid_by_member_id"] = *memberID
 	}
-	result := r.db.Model(&models.Bill{}).
-		Where("id = ? AND access_token = ? AND (tab_id IS NULL OR tab_id = ?)", billID, billToken, tabID).
-		Updates(updates)
+	query := r.db.Model(&models.Bill{}).Where("id = ? AND (tab_id IS NULL OR tab_id = ?)", billID, tabID)
+	if billToken != "" {
+		query = query.Where("access_token = ?", billToken)
+	}
+	result := query.Updates(updates)
 	if result.Error != nil {
 		return result.Error
 	}

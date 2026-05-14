@@ -360,17 +360,20 @@ func TestAddBillToTab_SetsPaidByMemberID(t *testing.T) {
 	}
 }
 
-func TestAddBillToTab_RequiresBillToken(t *testing.T) {
+func TestAddBillToTab_AllowsMissingBillTokenForLegacyClients(t *testing.T) {
 	repo := newMockRepo()
 	imgQ := &mockImageQuerier{}
 	svc := NewTabService(repo, imgQ)
 
 	err := svc.AddBillToTab(1, 99, "", nil)
-	if err == nil {
-		t.Fatal("expected error for missing bill token")
+	if err != nil {
+		t.Fatalf("expected no error for legacy request, got %v", err)
 	}
-	if repo.addBillBillID != 0 {
-		t.Fatalf("expected repository not to be called, got bill id %d", repo.addBillBillID)
+	if repo.addBillBillID != 99 {
+		t.Fatalf("expected repository to receive bill id 99, got %d", repo.addBillBillID)
+	}
+	if repo.addBillBillToken != "" {
+		t.Fatalf("expected empty bill token, got %q", repo.addBillBillToken)
 	}
 }
 
