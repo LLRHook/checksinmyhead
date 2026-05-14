@@ -9,6 +9,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // ImageQuerier provides read access to tab images without importing the image package.
@@ -20,7 +22,7 @@ type TabService interface {
 	CreateTab(tab *models.Tab) error
 	GetTab(id uint) (tab *models.Tab, err error)
 	UpdateTab(tab *models.Tab) error
-	AddBillToTab(tabID uint, billID uint, memberID *uint) error
+	AddBillToTab(tabID uint, billID uint, billToken string, memberID *uint) error
 	FinalizeTab(id uint) ([]models.TabSettlement, error)
 	GetSettlements(tabID uint) ([]models.TabSettlement, error)
 	UpdateSettlementPaid(id uint, paid bool) error
@@ -59,8 +61,11 @@ func (s *tabService) UpdateTab(tab *models.Tab) error {
 	return s.repo.Update(tab)
 }
 
-func (s *tabService) AddBillToTab(tabID uint, billID uint, memberID *uint) error {
-	return s.repo.AddBill(tabID, billID, memberID)
+func (s *tabService) AddBillToTab(tabID uint, billID uint, billToken string, memberID *uint) error {
+	if strings.TrimSpace(billToken) == "" {
+		return gorm.ErrRecordNotFound
+	}
+	return s.repo.AddBill(tabID, billID, billToken, memberID)
 }
 
 func (s *tabService) FinalizeTab(id uint) ([]models.TabSettlement, error) {

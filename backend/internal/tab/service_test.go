@@ -28,12 +28,13 @@ type mockTabRepository struct {
 	getMembersByTabIDErr error
 
 	// Capture calls
-	addBillTabID    uint
-	addBillBillID   uint
-	addBillMemberID     *uint
+	addBillTabID          uint
+	addBillBillID         uint
+	addBillBillToken      string
+	addBillMemberID       *uint
 	addBillPaidByMemberID *uint
-	finalizedID         uint
-	createdSettlements []models.TabSettlement
+	finalizedID           uint
+	createdSettlements    []models.TabSettlement
 }
 
 func newMockRepo() *mockTabRepository {
@@ -62,12 +63,13 @@ func (m *mockTabRepository) GetById(id uint) (*models.Tab, error) {
 	return tab, nil
 }
 
-func (m *mockTabRepository) Update(tab *models.Tab) error  { return m.updateErr }
-func (m *mockTabRepository) Delete(id uint) error          { return m.deleteErr }
+func (m *mockTabRepository) Update(tab *models.Tab) error { return m.updateErr }
+func (m *mockTabRepository) Delete(id uint) error         { return m.deleteErr }
 
-func (m *mockTabRepository) AddBill(tabID uint, billID uint, memberID *uint) error {
+func (m *mockTabRepository) AddBill(tabID uint, billID uint, billToken string, memberID *uint) error {
 	m.addBillTabID = tabID
 	m.addBillBillID = billID
+	m.addBillBillToken = billToken
 	m.addBillMemberID = memberID
 	m.addBillPaidByMemberID = memberID
 	return m.addBillErr
@@ -321,7 +323,7 @@ func TestAddBillToTab_WithMember(t *testing.T) {
 
 	svc := NewTabService(repo, imgQ)
 	memberID := uint(42)
-	err := svc.AddBillToTab(1, 99, &memberID)
+	err := svc.AddBillToTab(1, 99, "bill-token", &memberID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -331,6 +333,9 @@ func TestAddBillToTab_WithMember(t *testing.T) {
 	}
 	if repo.addBillBillID != 99 {
 		t.Errorf("expected billID 99, got %d", repo.addBillBillID)
+	}
+	if repo.addBillBillToken != "bill-token" {
+		t.Errorf("expected bill token to be passed through, got %q", repo.addBillBillToken)
 	}
 	if repo.addBillMemberID == nil || *repo.addBillMemberID != 42 {
 		t.Error("expected memberID 42 to be passed through")
@@ -345,13 +350,27 @@ func TestAddBillToTab_SetsPaidByMemberID(t *testing.T) {
 
 	svc := NewTabService(repo, imgQ)
 	memberID := uint(42)
-	err := svc.AddBillToTab(1, 99, &memberID)
+	err := svc.AddBillToTab(1, 99, "bill-token", &memberID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
 	if repo.addBillPaidByMemberID == nil || *repo.addBillPaidByMemberID != 42 {
 		t.Error("expected PaidByMemberID 42 to be set when adding bill with member")
+	}
+}
+
+func TestAddBillToTab_RequiresBillToken(t *testing.T) {
+	repo := newMockRepo()
+	imgQ := &mockImageQuerier{}
+	svc := NewTabService(repo, imgQ)
+
+	err := svc.AddBillToTab(1, 99, "", nil)
+	if err == nil {
+		t.Fatal("expected error for missing bill token")
+	}
+	if repo.addBillBillID != 0 {
+		t.Fatalf("expected repository not to be called, got bill id %d", repo.addBillBillID)
 	}
 }
 
