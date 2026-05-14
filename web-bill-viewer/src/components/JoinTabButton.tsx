@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { joinTab } from "@/lib/api";
+import { useEffect, useState } from "react";
 import { FaCircleCheck, FaUserPlus } from "react-icons/fa6";
+import { joinTab } from "@/lib/api";
 
 interface JoinTabButtonProps {
   tabId: string;
@@ -70,6 +70,7 @@ export default function JoinTabButton({ tabId, token }: JoinTabButtonProps) {
     <>
       <div className="mb-6 flex justify-center">
         <button
+          type="button"
           onClick={() => setShowModal(true)}
           className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-white font-semibold rounded-2xl hover:opacity-90 transition-opacity shadow-md"
         >
@@ -79,14 +80,14 @@ export default function JoinTabButton({ tabId, token }: JoinTabButtonProps) {
       </div>
 
       {showModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
-          onClick={() => setShowModal(false)}
-        >
-          <div
-            className="bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-3xl p-8 shadow-2xl max-w-sm w-full animate-[scaleIn_200ms_ease-out]"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <button
+            type="button"
+            aria-label="Close dialog"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowModal(false)}
+          />
+          <div className="relative bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-3xl p-8 shadow-2xl max-w-sm w-full animate-[scaleIn_200ms_ease-out]">
             <h2 className="text-xl font-bold text-[var(--accent)] dark:text-white mb-2">
               Join this tab
             </h2>
@@ -100,20 +101,19 @@ export default function JoinTabButton({ tabId, token }: JoinTabButtonProps) {
               onChange={(e) => setInputName(e.target.value)}
               maxLength={30}
               className="w-full px-4 py-3 rounded-xl border border-[var(--border-light)] dark:border-[var(--border-dark)] bg-white dark:bg-black/20 text-[var(--accent)] dark:text-white placeholder-[var(--text-secondary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] mb-4"
-              autoFocus
               onKeyDown={(e) => e.key === "Enter" && handleJoin()}
             />
-            {error && (
-              <p className="text-sm text-red-500 mb-4">{error}</p>
-            )}
+            {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
             <div className="flex gap-3">
               <button
+                type="button"
                 onClick={() => setShowModal(false)}
                 className="flex-1 px-4 py-3 rounded-xl border border-[var(--border-light)] dark:border-[var(--border-dark)] text-[var(--text-secondary)] font-medium hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleJoin}
                 disabled={isLoading || !inputName.trim()}
                 className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"

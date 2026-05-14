@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Bill, API_BASE_URL } from "@/lib/api";
-import BillHeader from "@/components/BillHeader";
-import BillBreakdown from "@/components/BillBreakdown";
-import PersonShare from "@/components/PersonShare";
-import PaymentDetails from "@/components/PaymentDetails";
-import DesktopLayout from "@/components/DesktopLayout";
+import { useCallback, useEffect, useState } from "react";
 import { FaTriangleExclamation } from "react-icons/fa6";
+import BillBreakdown from "@/components/BillBreakdown";
+import BillHeader from "@/components/BillHeader";
+import DesktopLayout from "@/components/DesktopLayout";
+import PaymentDetails from "@/components/PaymentDetails";
+import PersonShare from "@/components/PersonShare";
+import { API_BASE_URL, type Bill } from "@/lib/api";
 
 interface BillPageClientProps {
   id: string;
@@ -32,10 +32,9 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
 
     for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
       try {
-        const response = await fetch(
-          `${API_BASE_URL}/api/bills/${id}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        const response = await fetch(`${API_BASE_URL}/api/bills/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
         if (response.status === 403) {
           setState({ status: "error", errorType: "invalid_token" });
@@ -182,6 +181,7 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
             may be temporarily unavailable.
           </p>
           <button
+            type="button"
             onClick={fetchBill}
             className="px-6 py-3 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-white font-semibold rounded-xl hover:opacity-90 transition-opacity"
           >
@@ -196,9 +196,8 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
   const { bill } = state;
 
   const hasVenmo =
-    bill.payment_methods?.find((pm) =>
-      pm.name?.toLowerCase().includes("venmo")
-    )?.identifier || null;
+    bill.payment_methods?.find((pm) => pm.name?.toLowerCase().includes("venmo"))
+      ?.identifier || null;
 
   const sidebar = (
     <>
@@ -223,7 +222,7 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
             .sort((a, b) =>
               a.person_name.localeCompare(b.person_name, undefined, {
                 sensitivity: "base",
-              })
+              }),
             )
             .map((share) => (
               <PersonShare

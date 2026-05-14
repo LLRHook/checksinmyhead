@@ -1,8 +1,8 @@
 "use client";
 
-import { type ReactNode } from "react";
-import { useCollapsible } from "@/hooks/useCollapsible";
+import type { ReactNode } from "react";
 import { FaChevronDown } from "react-icons/fa6";
+import { useCollapsible } from "@/hooks/useCollapsible";
 
 interface CollapsibleSectionProps {
   title: string;
@@ -22,6 +22,7 @@ export default function CollapsibleSection({
   return (
     <div className="bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-2xl overflow-hidden shadow-sm dark:shadow-none dark:border dark:border-[var(--border-dark)]">
       <button
+        type="button"
         onClick={toggle}
         aria-expanded={isOpen}
         className="w-full px-5 py-4 flex items-center justify-between transition-colors"

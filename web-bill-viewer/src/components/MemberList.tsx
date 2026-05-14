@@ -1,7 +1,7 @@
 "use client";
 
-import type { TabMember } from "@/lib/api";
 import { FaCrown } from "react-icons/fa6";
+import type { TabMember } from "@/lib/api";
 
 interface MemberListProps {
   members: TabMember[];

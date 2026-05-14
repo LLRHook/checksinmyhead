@@ -174,9 +174,9 @@ class TabManager extends ChangeNotifier {
       );
       await DatabaseProvider.db.updateTab(localId, companion);
       notifyListeners();
-    } on ApiException catch (e) {
+    } on ApiException {
       debugPrint('Error syncing tab to backend');
-    } catch (e) {
+    } catch (_) {
       debugPrint('Error syncing tab to backend');
     }
   }
@@ -205,10 +205,10 @@ class TabManager extends ChangeNotifier {
 
       notifyListeners();
       return true;
-    } on ApiException catch (e) {
+    } on ApiException {
       debugPrint('Error finalizing tab');
       return false;
-    } catch (e) {
+    } catch (_) {
       debugPrint('Error finalizing tab');
       return false;
     }
@@ -266,10 +266,10 @@ class TabManager extends ChangeNotifier {
       final tab = _tabDataToAppTab(insertedTab);
       notifyListeners();
       return tab;
-    } on ApiException catch (e) {
+    } on ApiException {
       debugPrint('Error joining tab');
       return null;
-    } catch (e) {
+    } catch (_) {
       debugPrint('Error joining tab');
       return null;
     }

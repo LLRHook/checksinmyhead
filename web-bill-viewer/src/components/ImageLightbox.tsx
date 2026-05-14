@@ -1,6 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useEffect } from "react";
+import { FaChevronLeft, FaChevronRight, FaXmark } from "react-icons/fa6";
 import type { TabImage } from "@/lib/api";
 
 interface ImageLightboxProps {
@@ -41,14 +43,14 @@ export default function ImageLightbox({
   }, [handleKeyDown]);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
-      onClick={onClose}
-    >
-      <div
-        className="relative max-w-5xl w-full h-full flex flex-col items-center justify-center px-4"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <button
+        type="button"
+        aria-label="Close image viewer"
+        className="absolute inset-0 bg-black/90"
+        onClick={onClose}
+      />
+      <div className="relative z-10 max-w-5xl w-full h-full flex flex-col items-center justify-center px-4">
         {/* Header */}
         <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 z-10">
           <div className="flex items-center gap-3">
@@ -62,72 +64,47 @@ export default function ImageLightbox({
             )}
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            aria-label="Close image viewer"
           >
-            <svg
-              className="w-5 h-5 text-white"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+            <FaXmark className="w-5 h-5 text-white" />
           </button>
         </div>
 
         {/* Image */}
-        <img
-          src={`${apiBaseUrl}${image.url}`}
-          alt={`Receipt ${currentIndex + 1}`}
-          className="max-h-[80vh] max-w-full object-contain rounded-lg select-none"
-          draggable={false}
-        />
+        <div className="relative h-[80vh] w-full">
+          <Image
+            src={`${apiBaseUrl}${image.url}`}
+            alt={`Receipt ${currentIndex + 1}`}
+            fill
+            sizes="100vw"
+            className="object-contain rounded-lg select-none"
+            draggable={false}
+            unoptimized
+          />
+        </div>
 
         {/* Navigation arrows */}
         {currentIndex > 0 && (
           <button
+            type="button"
             onClick={() => onNavigate(currentIndex - 1)}
             className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            aria-label="Previous image"
           >
-            <svg
-              className="w-6 h-6 text-white"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
+            <FaChevronLeft className="w-6 h-6 text-white" />
           </button>
         )}
         {currentIndex < images.length - 1 && (
           <button
+            type="button"
             onClick={() => onNavigate(currentIndex + 1)}
             className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            aria-label="Next image"
           >
-            <svg
-              className="w-6 h-6 text-white"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
+            <FaChevronRight className="w-6 h-6 text-white" />
           </button>
         )}
       </div>

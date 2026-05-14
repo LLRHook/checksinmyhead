@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { PersonShare as PersonShareType, updatePersonSharePaid } from "@/lib/api";
-import { buildVenmoPayUrl } from "@/lib/venmo";
-import { useCollapsible } from "@/hooks/useCollapsible";
-import { FaChevronDown, FaCheck } from "react-icons/fa6";
+import { FaCheck, FaChevronDown } from "react-icons/fa6";
 import { SiVenmo } from "react-icons/si";
+import { useCollapsible } from "@/hooks/useCollapsible";
+import {
+  type PersonShare as PersonShareType,
+  updatePersonSharePaid,
+} from "@/lib/api";
+import { buildVenmoPayUrl } from "@/lib/venmo";
 
 interface PersonShareProps {
   personShare: PersonShareType;
@@ -51,6 +54,7 @@ export default function PersonShare({
       <div className="w-full px-5 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
+            type="button"
             onClick={togglePaid}
             disabled={toggling}
             className={`w-11 h-11 rounded-full flex items-center justify-center font-semibold text-base transition-colors cursor-pointer border-none ${
@@ -84,6 +88,7 @@ export default function PersonShare({
           </div>
         </div>
         <button
+          type="button"
           onClick={toggle}
           aria-expanded={isOpen}
           className="p-2 cursor-pointer bg-transparent border-none"
@@ -102,9 +107,9 @@ export default function PersonShare({
       >
         <div className="px-5 pb-5 pt-2 border-t border-[var(--border-light)] dark:border-[var(--border-dark)]">
           <div className="space-y-3">
-            {personShare.items.map((item, idx) => (
+            {personShare.items.map((item) => (
               <div
-                key={idx}
+                key={`${item.name}-${item.amount}-${item.is_shared}`}
                 className="flex justify-between items-center text-sm"
               >
                 <span className="text-[var(--accent)] dark:text-gray-300">
@@ -135,7 +140,11 @@ export default function PersonShare({
               </div>
               {hasVenmo && (
                 <a
-                  href={buildVenmoPayUrl(hasVenmo, personShare.total.toFixed(2), "Split bill - " + personShare.person_name)}
+                  href={buildVenmoPayUrl(
+                    hasVenmo,
+                    personShare.total.toFixed(2),
+                    `Split bill - ${personShare.person_name}`,
+                  )}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
