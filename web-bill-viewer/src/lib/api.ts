@@ -139,10 +139,9 @@ export async function getTabImages(
   id: string,
   token: string,
 ): Promise<TabImage[]> {
-  const response = await fetch(
-    `${API_BASE_URL}/api/tabs/${id}/images`,
-    { headers: { Authorization: `Bearer ${token}` } },
-  );
+  const response = await fetch(`${API_BASE_URL}/api/tabs/${id}/images`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
 
   if (!response.ok) {
     return [];
@@ -155,10 +154,9 @@ export async function getSettlements(
   id: string,
   token: string,
 ): Promise<TabSettlement[]> {
-  const response = await fetch(
-    `${API_BASE_URL}/api/tabs/${id}/settlements`,
-    { headers: { Authorization: `Bearer ${token}` } },
-  );
+  const response = await fetch(`${API_BASE_URL}/api/tabs/${id}/settlements`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
 
   if (!response.ok) {
     return [];
@@ -171,10 +169,9 @@ export async function getTabMembers(
   id: string,
   token: string,
 ): Promise<TabMember[]> {
-  const response = await fetch(
-    `${API_BASE_URL}/api/tabs/${id}/members`,
-    { headers: { Authorization: `Bearer ${token}` } },
-  );
+  const response = await fetch(`${API_BASE_URL}/api/tabs/${id}/members`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
 
   if (!response.ok) {
     return [];
@@ -187,18 +184,20 @@ export async function joinTab(
   id: string,
   token: string,
   displayName: string,
-): Promise<{ member_id: number; member_token: string; display_name: string; role: string } | null> {
-  const response = await fetch(
-    `${API_BASE_URL}/api/tabs/${id}/join`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ display_name: displayName }),
+): Promise<{
+  member_id: number;
+  member_token: string;
+  display_name: string;
+  role: string;
+} | null> {
+  const response = await fetch(`${API_BASE_URL}/api/tabs/${id}/join`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
     },
-  );
+    body: JSON.stringify({ display_name: displayName }),
+  });
 
   if (!response.ok) {
     return null;
@@ -254,7 +253,10 @@ export async function updateSettlementPaid(
 }
 
 export function computeTabPersonTotals(tab: Tab): TabPersonTotal[] {
-  const totals: Record<string, { total: number; bill_count: number; all_paid: boolean }> = {};
+  const totals: Record<
+    string,
+    { total: number; bill_count: number; all_paid: boolean }
+  > = {};
   const displayNames: Record<string, string> = {};
 
   for (const bill of tab.bills) {
@@ -263,10 +265,7 @@ export function computeTabPersonTotals(tab: Tab): TabPersonTotal[] {
       if (!totals[key]) {
         totals[key] = { total: 0, bill_count: 0, all_paid: true };
         displayNames[key] = share.person_name;
-      } else if (
-        displayNames[key] === key &&
-        share.person_name !== key
-      ) {
+      } else if (displayNames[key] === key && share.person_name !== key) {
         // Prefer a capitalized variant over all-lowercase
         displayNames[key] = share.person_name;
       }
@@ -285,5 +284,9 @@ export function computeTabPersonTotals(tab: Tab): TabPersonTotal[] {
       bill_count: val.bill_count,
       all_paid: val.all_paid,
     }))
-    .sort((a, b) => a.person_name.localeCompare(b.person_name, undefined, { sensitivity: "base" }));
+    .sort((a, b) =>
+      a.person_name.localeCompare(b.person_name, undefined, {
+        sensitivity: "base",
+      }),
+    );
 }

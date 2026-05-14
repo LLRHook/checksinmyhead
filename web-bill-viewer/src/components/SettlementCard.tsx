@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { TabSettlement, updateSettlementPaid } from "@/lib/api";
-import { buildVenmoPayUrl } from "@/lib/venmo";
-import { SiVenmo } from "react-icons/si";
 import { FaCheck } from "react-icons/fa6";
+import { SiVenmo } from "react-icons/si";
+import { type TabSettlement, updateSettlementPaid } from "@/lib/api";
+import { buildVenmoPayUrl } from "@/lib/venmo";
 
 interface SettlementCardProps {
   settlements: TabSettlement[];
@@ -31,7 +31,7 @@ export default function SettlementCard({
 
     // Optimistic update
     setSettlements((prev) =>
-      prev.map((s) => (s.id === settlement.id ? { ...s, paid: newPaid } : s))
+      prev.map((s) => (s.id === settlement.id ? { ...s, paid: newPaid } : s)),
     );
 
     try {
@@ -40,8 +40,8 @@ export default function SettlementCard({
       // Revert on error
       setSettlements((prev) =>
         prev.map((s) =>
-          s.id === settlement.id ? { ...s, paid: !newPaid } : s
-        )
+          s.id === settlement.id ? { ...s, paid: !newPaid } : s,
+        ),
       );
     } finally {
       setTogglingId(null);
@@ -75,6 +75,7 @@ export default function SettlementCard({
           >
             <div className="flex items-center gap-4">
               <button
+                type="button"
                 onClick={() => togglePaid(settlement)}
                 disabled={togglingId !== null}
                 className={`w-11 h-11 rounded-full flex items-center justify-center font-semibold text-base transition-colors cursor-pointer border-none ${
@@ -114,8 +115,13 @@ export default function SettlementCard({
               </div>
               {!settlement.paid && venmoId && (
                 <button
+                  type="button"
                   onClick={() => {
-                    window.location.href = buildVenmoPayUrl(venmoId, settlement.amount.toFixed(2), "Tab settlement - " + settlement.person_name);
+                    window.location.href = buildVenmoPayUrl(
+                      venmoId,
+                      settlement.amount.toFixed(2),
+                      `Tab settlement - ${settlement.person_name}`,
+                    );
                   }}
                   className="h-10 px-4 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-white font-semibold rounded-xl flex items-center justify-center hover:opacity-90 transition-opacity border-none cursor-pointer"
                 >
