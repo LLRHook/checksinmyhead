@@ -9,8 +9,6 @@ import (
 	"sort"
 	"strings"
 	"time"
-
-	"gorm.io/gorm"
 )
 
 // ImageQuerier provides read access to tab images without importing the image package.
@@ -62,9 +60,6 @@ func (s *tabService) UpdateTab(tab *models.Tab) error {
 }
 
 func (s *tabService) AddBillToTab(tabID uint, billID uint, billToken string, memberID *uint) error {
-	if strings.TrimSpace(billToken) == "" {
-		return gorm.ErrRecordNotFound
-	}
 	return s.repo.AddBill(tabID, billID, billToken, memberID)
 }
 
