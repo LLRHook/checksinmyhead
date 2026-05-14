@@ -99,11 +99,18 @@ class TabManager extends ChangeNotifier {
       // Fire-and-forget backend sync for each bill
       if (tabData.accessToken != null && tabData.backendId != null) {
         final apiService = ApiService();
-        for (final billId in billIds) {
+        for (final localBillId in billIds) {
+          final billData = await DatabaseProvider.db.getBillById(localBillId);
+          final backendBill = _parseBillShareUrl(billData?.shareUrl);
+          if (backendBill == null) {
+            debugPrint('Skipping backend tab sync for bill without share URL');
+            continue;
+          }
           apiService.addBillToTab(
             tabData.backendId!,
-            billId,
+            backendBill.id,
             tabData.accessToken!,
+            billToken: backendBill.token,
           );
         }
       }
@@ -285,4 +292,25 @@ class TabManager extends ChangeNotifier {
       isRemote: tabData.isRemote,
     );
   }
+
+  _BackendBillRef? _parseBillShareUrl(String? shareUrl) {
+    if (shareUrl == null || shareUrl.isEmpty) return null;
+
+    final uri = Uri.tryParse(shareUrl);
+    if (uri == null || uri.pathSegments.length < 2) return null;
+    if (uri.pathSegments[uri.pathSegments.length - 2] != 'b') return null;
+
+    final billId = int.tryParse(uri.pathSegments.last);
+    final token = uri.queryParameters['t'];
+    if (billId == null || token == null || token.isEmpty) return null;
+
+    return _BackendBillRef(billId, token);
+  }
+}
+
+class _BackendBillRef {
+  final int id;
+  final String token;
+
+  const _BackendBillRef(this.id, this.token);
 }

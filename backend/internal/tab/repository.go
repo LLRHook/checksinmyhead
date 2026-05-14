@@ -12,7 +12,7 @@ type TabRepository interface {
 	GetById(id uint) (tab *models.Tab, err error)
 	Update(tab *models.Tab) error
 	Delete(id uint) error
-	AddBill(tabID uint, billID uint, memberID *uint) error
+	AddBill(tabID uint, billID uint, billToken string, memberID *uint) error
 	Finalize(id uint) error
 	GetSettlements(tabID uint) ([]models.TabSettlement, error)
 	CreateSettlements(settlements []models.TabSettlement) error
@@ -52,13 +52,15 @@ func (r *tabRepository) Delete(id uint) error {
 	return r.db.Delete(&models.Tab{}, id).Error
 }
 
-func (r *tabRepository) AddBill(tabID uint, billID uint, memberID *uint) error {
+func (r *tabRepository) AddBill(tabID uint, billID uint, billToken string, memberID *uint) error {
 	updates := map[string]interface{}{"tab_id": tabID}
 	if memberID != nil {
 		updates["added_by_member_id"] = *memberID
 		updates["paid_by_member_id"] = *memberID
 	}
-	result := r.db.Model(&models.Bill{}).Where("id = ?", billID).Updates(updates)
+	result := r.db.Model(&models.Bill{}).
+		Where("id = ? AND access_token = ? AND (tab_id IS NULL OR tab_id = ?)", billID, billToken, tabID).
+		Updates(updates)
 	if result.Error != nil {
 		return result.Error
 	}

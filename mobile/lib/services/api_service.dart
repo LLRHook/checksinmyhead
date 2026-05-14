@@ -171,6 +171,7 @@ class ApiService {
     int tabId,
     int billId,
     String accessToken, {
+    required String billToken,
     String? memberToken,
   }) async {
     try {
@@ -185,7 +186,7 @@ class ApiService {
       final response = await http.post(
         Uri.parse('$baseUrl/api/tabs/$tabId/bills'),
         headers: headers,
-        body: jsonEncode({'bill_id': billId}),
+        body: jsonEncode({'bill_id': billId, 'bill_token': billToken}),
       ).timeout(_timeout);
 
       if (response.statusCode == 200) {
