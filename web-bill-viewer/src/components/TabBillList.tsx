@@ -1,8 +1,8 @@
 "use client";
 
-import { Bill } from "@/lib/api";
+import { FaChevronDown, FaReceipt } from "react-icons/fa6";
 import { useCollapsible } from "@/hooks/useCollapsible";
-import { FaReceipt, FaChevronDown } from "react-icons/fa6";
+import type { Bill } from "@/lib/api";
 
 interface TabBillListProps {
   bills: Bill[];
@@ -14,6 +14,7 @@ function BillCard({ bill }: { bill: Bill }) {
   return (
     <div className="bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-2xl overflow-hidden shadow-sm dark:shadow-none dark:border dark:border-[var(--border-dark)] transition-all duration-200">
       <button
+        type="button"
         onClick={toggle}
         aria-expanded={isOpen}
         className="w-full px-5 py-4 flex items-center justify-between transition-colors"
@@ -27,7 +28,8 @@ function BillCard({ bill }: { bill: Bill }) {
               {bill.name}
             </h3>
             <span className="text-xs text-[var(--text-secondary)]">
-              {bill.person_shares.length} {bill.person_shares.length === 1 ? "person" : "people"}
+              {bill.person_shares.length}{" "}
+              {bill.person_shares.length === 1 ? "person" : "people"}
             </span>
           </div>
         </div>

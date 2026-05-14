@@ -1,7 +1,7 @@
-import { getBill } from "@/lib/api";
 import type { Metadata } from "next";
-import BillPageClient from "@/components/BillPageClient";
 import { FaLock } from "react-icons/fa6";
+import BillPageClient from "@/components/BillPageClient";
+import { getBill } from "@/lib/api";
 
 export async function generateMetadata({
   params,

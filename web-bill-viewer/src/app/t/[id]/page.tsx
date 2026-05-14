@@ -1,23 +1,24 @@
-import {
-  getTab,
-  getTabImages,
-  getSettlements,
-  getTabMembers,
-  computeTabPersonTotals,
-  API_BASE_URL,
-} from "@/lib/api";
 import type { Metadata } from "next";
-import TabHeader from "@/components/TabHeader";
-import TabPersonTotals from "@/components/TabPersonTotals";
-import SettlementCard from "@/components/SettlementCard";
-import TabImageGallery from "@/components/TabImageGallery";
-import TabBillList from "@/components/TabBillList";
+import { notFound } from "next/navigation";
+import { FaLock, FaTriangleExclamation } from "react-icons/fa6";
+import DesktopLayout from "@/components/DesktopLayout";
 import JoinTabButton from "@/components/JoinTabButton";
 import MemberList from "@/components/MemberList";
 import NetBalances from "@/components/NetBalances";
-import DesktopLayout from "@/components/DesktopLayout";
-import { notFound } from "next/navigation";
-import { FaLock, FaTriangleExclamation } from "react-icons/fa6";
+import SettlementCard from "@/components/SettlementCard";
+import TabBillList from "@/components/TabBillList";
+import TabHeader from "@/components/TabHeader";
+import TabImageGallery from "@/components/TabImageGallery";
+import TabPersonTotals from "@/components/TabPersonTotals";
+import {
+  API_BASE_URL,
+  computeTabPersonTotals,
+  getSettlements,
+  getTab,
+  getTabImages,
+  getTabMembers,
+  type Tab,
+} from "@/lib/api";
 
 export async function generateMetadata({
   params,
@@ -63,7 +64,7 @@ export default async function TabPage({
     );
   }
 
-  let tab;
+  let tab: Tab;
   try {
     tab = await getTab(id, token);
   } catch (error) {
@@ -128,7 +129,12 @@ export default async function TabPage({
       )}
 
       {tab.finalized && settlements.length > 0 ? (
-        <SettlementCard settlements={settlements} venmoId={venmoId} tabId={id} token={token} />
+        <SettlementCard
+          settlements={settlements}
+          venmoId={venmoId}
+          tabId={id}
+          token={token}
+        />
       ) : (
         personTotals.length > 0 && (
           <TabPersonTotals personTotals={personTotals} venmoId={venmoId} />

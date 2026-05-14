@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 interface BillHeaderProps {
   name: string;
   total: number;
@@ -9,7 +11,14 @@ export default function BillHeader({ name, total }: BillHeaderProps) {
   return (
     <div className="text-center lg:text-left mb-8">
       <div className="mb-3">
-        <img src="/logo.png" alt="Billington" className="h-16 mx-auto lg:mx-0" />
+        <Image
+          src="/logo.png"
+          alt="Billington"
+          width={192}
+          height={64}
+          className="h-16 mx-auto lg:mx-0"
+          priority
+        />
       </div>
       <h1 className="text-2xl font-bold text-[var(--accent)] dark:text-white mb-2">
         {name}
