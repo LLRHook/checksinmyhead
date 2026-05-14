@@ -99,6 +99,9 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
           <p className="text-sm text-[var(--text-secondary)]">
             Loading your bill...
           </p>
+          <p className="mt-1 max-w-xs text-xs text-[var(--text-secondary)]">
+            If this takes a moment, the backend is probably waking up.
+          </p>
         </div>
       </div>
     );
