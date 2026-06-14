@@ -34,12 +34,14 @@ class BottomBar extends StatelessWidget {
   final VoidCallback onShareTap;
   final Function onDoneTap;
   final BillSummaryData data;
+  final bool lazyMode;
 
   const BottomBar({
     super.key,
     required this.onShareTap,
     required this.onDoneTap,
     required this.data,
+    this.lazyMode = false,
   });
 
   @override
@@ -80,43 +82,60 @@ class BottomBar extends StatelessWidget {
         ],
       ),
       child: SafeArea(
-        child: Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: onShareTap,
-                icon: const Icon(Icons.ios_share, size: 18),
-                label: const Text('Share'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: outlineButtonColor,
-                  side: BorderSide(color: outlineButtonColor),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+        child:
+            lazyMode
+                ? FilledButton.icon(
+                  onPressed: () {
+                    onDoneTap();
+                  },
+                  icon: const Icon(Icons.check_circle_outline, size: 18),
+                  label: const Text('Create Link'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colorScheme.primary,
+                    foregroundColor: buttonTextColor,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
+                )
+                : Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: onShareTap,
+                        icon: const Icon(Icons.ios_share, size: 18),
+                        label: const Text('Share'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: outlineButtonColor,
+                          side: BorderSide(color: outlineButtonColor),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: () {
+                          onDoneTap();
+                        },
+                        icon: const Icon(Icons.check_circle_outline, size: 18),
+                        label: const Text('Done'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: colorScheme.primary,
+                          foregroundColor: buttonTextColor,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: FilledButton.icon(
-                onPressed: () {
-                  onDoneTap();
-                },
-                icon: const Icon(Icons.check_circle_outline, size: 18),
-                label: const Text('Done'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: colorScheme.primary,
-                  foregroundColor: buttonTextColor,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -136,6 +155,7 @@ class DoneButtonHandler {
   static Future<void> handleDone(
     BuildContext context, {
     required BillSummaryData data,
+    bool lazyMode = false,
   }) async {
     if (_isSaving) return;
     _isSaving = true;
@@ -219,26 +239,68 @@ class DoneButtonHandler {
                   {'name': 'Venmo', 'identifier': '@username'},
                 ];
 
-        final response = await _apiService.uploadBill(
-          billName: billName,
-          participants: updatedData.participants,
-          personShares: updatedData.personShares,
-          items: updatedData.items,
-          subtotal: updatedData.subtotal,
-          tax: updatedData.tax,
-          tipAmount: updatedData.tipAmount,
-          tipPercentage: updatedData.tipPercentage,
-          total: updatedData.total,
-          paymentMethods: apiPaymentMethods,
-        );
+        if (lazyMode) {
+          final creatorDisplayName = await _prefsService.getDisplayName();
+          final tabResponse = await _apiService.createTab(
+            billName,
+            'Lazy split created from the receipt parser',
+            creatorDisplayName:
+                creatorDisplayName != null &&
+                        creatorDisplayName.trim().isNotEmpty
+                    ? creatorDisplayName.trim()
+                    : null,
+          );
 
-        shareUrl = response.shareUrl;
-        logger.d('Bill uploaded successfully: $shareUrl');
+          final response = await _apiService.uploadBill(
+            billName: billName,
+            participants: const [],
+            personShares: const {},
+            items: updatedData.items,
+            subtotal: updatedData.subtotal,
+            tax: updatedData.tax,
+            tipAmount: updatedData.tipAmount,
+            tipPercentage: updatedData.tipPercentage,
+            total: updatedData.total,
+            paymentMethods: apiPaymentMethods,
+          );
 
-        // Persist the share URL to the most recently saved bill
-        final mostRecent = await DatabaseProvider.db.getMostRecentBill();
-        if (mostRecent != null) {
-          await _billsManager.updateBillShareUrl(mostRecent.id, shareUrl);
+          await _apiService.addBillToTab(
+            tabResponse.tabId,
+            response.billId,
+            tabResponse.accessToken,
+            billToken: response.accessToken,
+            memberToken: tabResponse.memberToken,
+          );
+
+          shareUrl = tabResponse.shareUrl;
+          logger.d('Lazy bill uploaded successfully: $shareUrl');
+
+          final mostRecent = await DatabaseProvider.db.getMostRecentBill();
+          if (mostRecent != null) {
+            await _billsManager.updateBillShareUrl(mostRecent.id, shareUrl);
+          }
+        } else {
+          final response = await _apiService.uploadBill(
+            billName: billName,
+            participants: updatedData.participants,
+            personShares: updatedData.personShares,
+            items: updatedData.items,
+            subtotal: updatedData.subtotal,
+            tax: updatedData.tax,
+            tipAmount: updatedData.tipAmount,
+            tipPercentage: updatedData.tipPercentage,
+            total: updatedData.total,
+            paymentMethods: apiPaymentMethods,
+          );
+
+          shareUrl = response.shareUrl;
+          logger.d('Bill uploaded successfully: $shareUrl');
+
+          // Persist the share URL to the most recently saved bill
+          final mostRecent = await DatabaseProvider.db.getMostRecentBill();
+          if (mostRecent != null) {
+            await _billsManager.updateBillShareUrl(mostRecent.id, shareUrl);
+          }
         }
       } on ApiException catch (e) {
         logger.d('Failed to upload to backend: $e');

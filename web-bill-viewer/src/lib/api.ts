@@ -4,6 +4,11 @@ export interface ItemDetail {
   is_shared: boolean;
 }
 
+export interface ItemAssignment {
+  person_name: string;
+  percentage: number;
+}
+
 export interface PersonShare {
   id: number;
   person_name: string;
@@ -19,6 +24,7 @@ export interface BillItem {
   id: number;
   name: string;
   price: number;
+  assignments?: ItemAssignment[];
 }
 
 export interface PaymentMethod {
@@ -249,6 +255,30 @@ export async function updateSettlementPaid(
 
   if (!response.ok) {
     throw new Error("Failed to update settlement paid status");
+  }
+}
+
+export async function updateTabBillItemAssignments(
+  tabId: string,
+  billId: number,
+  itemId: number,
+  assignments: ItemAssignment[],
+  token: string,
+): Promise<void> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/tabs/${tabId}/bills/${billId}/items/${itemId}/assignments`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ assignments }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to update item assignments");
   }
 }
 
