@@ -72,9 +72,9 @@ func main() {
 		}
 	}
 	r.Use(cors.New(cors.Config{
-		AllowOrigins: origins,
-		AllowMethods: []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Member-Token"},
+		AllowOrigins:  origins,
+		AllowMethods:  []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:  []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Member-Token"},
 		ExposeHeaders: []string{"Content-Length"},
 	}))
 	r.GET("/health", getHealth)
@@ -84,6 +84,7 @@ func main() {
 	r.POST("/api/tabs", tabHandler.CreateTab)
 	r.GET("/api/tabs/:id", tabHandler.GetTab)
 	r.POST("/api/tabs/:id/bills", tabHandler.AddBillToTab)
+	r.PATCH("/api/tabs/:id/bills/:billId/items/:itemId/assignments", tabHandler.UpdateBillItemAssignments)
 	r.PATCH("/api/tabs/:id", tabHandler.UpdateTab)
 	r.POST("/api/tabs/:id/finalize", tabHandler.FinalizeTab)
 	r.GET("/api/tabs/:id/settlements", tabHandler.GetSettlements)
