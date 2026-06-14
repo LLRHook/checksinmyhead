@@ -26,6 +26,7 @@ type mockTabRepository struct {
 	createMemberErr      error
 	getMemberByTokenErr  error
 	getMembersByTabIDErr error
+	updateAssignmentsErr error
 
 	// Capture calls
 	addBillTabID          uint
@@ -35,6 +36,7 @@ type mockTabRepository struct {
 	addBillPaidByMemberID *uint
 	finalizedID           uint
 	createdSettlements    []models.TabSettlement
+	updatedAssignments    []models.ItemAssignment
 }
 
 func newMockRepo() *mockTabRepository {
@@ -81,6 +83,11 @@ func (m *mockTabRepository) AddBill(tabID uint, billID uint, billToken string, m
 	m.addBillMemberID = memberID
 	m.addBillPaidByMemberID = memberID
 	return m.addBillErr
+}
+
+func (m *mockTabRepository) UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment) error {
+	m.updatedAssignments = assignments
+	return m.updateAssignmentsErr
 }
 
 func (m *mockTabRepository) Finalize(id uint) error {
@@ -247,6 +254,67 @@ func TestFinalizeTab_NoBills(t *testing.T) {
 	}
 	if err.Error() != "tab has no bills" {
 		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestUpdateBillItemAssignments_ForwardsToRepository(t *testing.T) {
+	repo := newMockRepo()
+	svc := NewTabService(repo, &mockImageQuerier{})
+
+	assignments := []models.ItemAssignment{
+		{PersonName: "Alice", Percentage: 100},
+	}
+
+	err := svc.UpdateBillItemAssignments(3, 9, 12, assignments)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(repo.updatedAssignments) != 1 {
+		t.Fatalf("expected 1 assignment, got %d", len(repo.updatedAssignments))
+	}
+	if repo.updatedAssignments[0].PersonName != "Alice" {
+		t.Fatalf("expected assignment name Alice, got %q", repo.updatedAssignments[0].PersonName)
+	}
+}
+
+func TestBuildPersonShares_FromAssignments(t *testing.T) {
+	bill := &models.Bill{
+		ID:        7,
+		Subtotal:  80,
+		Tax:       8,
+		TipAmount: 12,
+		Items: []models.BillItem{
+			{
+				ID:    1,
+				Name:  "Pizza",
+				Price: 40,
+				Assignments: []models.ItemAssignment{
+					{PersonName: "Alice", Percentage: 100},
+				},
+			},
+			{
+				ID:    2,
+				Name:  "Wings",
+				Price: 40,
+				Assignments: []models.ItemAssignment{
+					{PersonName: "Bob", Percentage: 50},
+					{PersonName: "Alice", Percentage: 50},
+				},
+			},
+		},
+	}
+
+	shares := buildPersonShares(bill)
+	if len(shares) != 2 {
+		t.Fatalf("expected 2 shares, got %d", len(shares))
+	}
+
+	if shares[0].PersonName != "Alice" || shares[0].Subtotal != 60 {
+		t.Fatalf("expected Alice subtotal 60, got %+v", shares[0])
+	}
+	if shares[1].PersonName != "Bob" || shares[1].Subtotal != 20 {
+		t.Fatalf("expected Bob subtotal 20, got %+v", shares[1])
 	}
 }
 

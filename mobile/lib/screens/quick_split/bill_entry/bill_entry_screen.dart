@@ -17,6 +17,7 @@
 
 import 'package:checks_frontend/config/theme.dart';
 import 'package:checks_frontend/screens/quick_split/item_assignment/item_assignment_screen.dart';
+import 'package:checks_frontend/screens/quick_split/bill_summary/bill_summary_screen.dart';
 import 'package:checks_frontend/screens/quick_split/item_assignment/models/assignment_result.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -57,8 +58,13 @@ import 'widgets/continue_button.dart';
 ///   - Navigates to ItemAssignmentScreen when valid data is entered
 class BillEntryScreen extends StatefulWidget {
   final List<Person> participants;
+  final bool lazyMode;
 
-  const BillEntryScreen({super.key, required this.participants});
+  const BillEntryScreen({
+    super.key,
+    required this.participants,
+    this.lazyMode = false,
+  });
 
   @override
   State<BillEntryScreen> createState() => _BillEntryScreenState();
@@ -199,6 +205,28 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
   /// Passes all necessary bill information to the next screen for
   /// assigning items to participants.
   void _navigateToItemAssignment() async {
+    if (widget.lazyMode) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder:
+              (context) => BillSummaryScreen(
+                participants: const <Person>[],
+                personShares: const <Person, double>{},
+                items: _billData.items,
+                subtotal: _billData.subtotal,
+                tax: _billData.tax,
+                tipAmount: _billData.tipAmount,
+                total: _billData.total,
+                tipPercentage: _billData.tipPercentage,
+                isCustomTipAmount: _billData.useCustomTipAmount,
+                scannedVendor: _billData.scannedVendor,
+                lazyMode: true,
+              ),
+        ),
+      );
+      return;
+    }
+
     // Create a deep copy of the original items with their assignments
     final originalItems =
         _billData.items
@@ -299,10 +327,12 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               children: [
-                // Horizontal scrollable list of participant avatars
-                ParticipantAvatars(participants: widget.participants),
+                if (!widget.lazyMode) ...[
+                  // Horizontal scrollable list of participant avatars
+                  ParticipantAvatars(participants: widget.participants),
 
-                const SizedBox(height: AppSpacing.large),
+                  const SizedBox(height: AppSpacing.large),
+                ],
 
                 // Scan a receipt to auto-fill bill details
                 const ScanReceiptButton(),

@@ -21,6 +21,7 @@ import 'package:checks_frontend/screens/settings/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:checks_frontend/screens/tabs/tabs_screen.dart';
+import 'quick_split/bill_entry/bill_entry_screen.dart';
 import 'quick_split/participant_selection/participant_selection_sheet.dart';
 
 // Purpose: Serves as the main entry point/home screen for the Billington bill-splitting app.
@@ -84,6 +85,19 @@ class _LandingScreenState extends State<LandingScreen>
   void _showQuickSplitSheet() {
     HapticFeedback.mediumImpact();
     showParticipantSelectionSheet(context);
+  }
+
+  /// Opens the lazy split flow without participant setup.
+  void _showLazySplitFlow() {
+    HapticFeedback.mediumImpact();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (context) =>
+                const BillEntryScreen(participants: [], lazyMode: true),
+      ),
+    );
   }
 
   /// Navigates to the tabs screen
@@ -203,6 +217,55 @@ class _LandingScreenState extends State<LandingScreen>
                 ),
 
                 const SizedBox(height: 20),
+
+                // Lazy mode shortcut
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: _showLazySplitFlow,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.22),
+                      ),
+                      backgroundColor: Colors.white.withValues(alpha: 0.08),
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                    child: const Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.north_east, size: 24),
+                            SizedBox(width: 10),
+                            Text(
+                              "I'm Lazy",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 6),
+                        Text(
+                          'Parse once. Let friends claim later.',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
 
                 // Secondary row: Tabs and Recent Bills in glass container
                 Container(
