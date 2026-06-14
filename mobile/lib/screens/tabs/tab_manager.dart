@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:checks_frontend/database/database.dart' hide Tab;
 import 'package:checks_frontend/database/database_provider.dart';
 import 'package:checks_frontend/models/tab.dart';
-import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
 import 'package:checks_frontend/services/api_service.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/material.dart' hide Tab;
@@ -45,25 +44,20 @@ class TabManager extends ChangeNotifier {
     String? creatorDisplayName,
   }) async {
     try {
-      final apiService = ApiService();
-      final response = await apiService.createTab(
-        name,
-        description,
-        creatorDisplayName: creatorDisplayName,
-      );
-
       final id = await DatabaseProvider.db.insertTab(
         TabsCompanion(
           name: Value(name),
           description: Value(description),
           billIds: const Value(''),
-          backendId: Value(response.tabId),
-          accessToken: Value(response.accessToken),
-          shareUrl: Value(response.shareUrl),
-          memberToken: Value(response.memberToken),
-          role: Value(response.memberToken != null ? 'creator' : null),
           createdAt: Value(DateTime.now()),
         ),
+      );
+
+      _syncTabToBackend(
+        id,
+        name,
+        description,
+        creatorDisplayName: creatorDisplayName,
       );
 
       final tabData = await DatabaseProvider.db.getTabById(id);
@@ -88,34 +82,10 @@ class TabManager extends ChangeNotifier {
     }
   }
 
-  Future<bool> addBillsToTab(int tabId, List<int> billIds) async {
+  Future<void> addBillsToTab(int tabId, List<int> billIds) async {
     try {
       final tabData = await DatabaseProvider.db.getTabById(tabId);
-      if (tabData == null) return false;
-
-      if (tabData.accessToken != null && tabData.backendId != null) {
-        final apiService = ApiService();
-        final recentBillsManager = RecentBillsManager();
-
-        for (final localBillId in billIds) {
-          final billData = await DatabaseProvider.db.getBillById(localBillId);
-          final shareUrl =
-              billData?.shareUrl ??
-              await recentBillsManager.retrySingleBillUpload(localBillId);
-          final backendBill = _parseBillShareUrl(shareUrl);
-          if (backendBill == null) {
-            debugPrint('Error syncing bill $localBillId to backend tab');
-            return false;
-          }
-
-          await apiService.addBillToTab(
-            tabData.backendId!,
-            backendBill.id,
-            tabData.accessToken!,
-            billToken: backendBill.token,
-          );
-        }
-      }
+      if (tabData == null) return;
 
       final existingIds = AppTab.parseBillIds(tabData.billIds);
       final updatedIds = [...existingIds, ...billIds];
@@ -125,11 +95,60 @@ class TabManager extends ChangeNotifier {
         TabsCompanion(billIds: Value(updatedIds.join(','))),
       );
 
+      if (tabData.accessToken != null && tabData.backendId != null) {
+        final apiService = ApiService();
+
+        for (final localBillId in billIds) {
+          final billData = await DatabaseProvider.db.getBillById(localBillId);
+          final shareUrl = billData?.shareUrl;
+          final backendBill = _parseBillShareUrl(shareUrl);
+          if (backendBill == null) {
+            debugPrint('Skipping backend tab sync for bill without share URL');
+            continue;
+          }
+
+          apiService.addBillToTab(
+            tabData.backendId!,
+            backendBill.id,
+            tabData.accessToken!,
+            billToken: backendBill.token,
+          );
+        }
+      }
+
       notifyListeners();
-      return true;
     } catch (e) {
       debugPrint('Error adding bills to tab');
-      return false;
+    }
+  }
+
+  Future<void> _syncTabToBackend(
+    int localId,
+    String name,
+    String description, {
+    String? creatorDisplayName,
+  }) async {
+    try {
+      final apiService = ApiService();
+      final response = await apiService.createTab(
+        name,
+        description,
+        creatorDisplayName: creatorDisplayName,
+      );
+
+      final companion = TabsCompanion(
+        backendId: Value(response.tabId),
+        accessToken: Value(response.accessToken),
+        shareUrl: Value(response.shareUrl),
+        memberToken: Value(response.memberToken),
+        role: Value(response.memberToken != null ? 'creator' : null),
+      );
+      await DatabaseProvider.db.updateTab(localId, companion);
+      notifyListeners();
+    } on ApiException {
+      debugPrint('Error syncing tab to backend');
+    } catch (_) {
+      debugPrint('Error syncing tab to backend');
     }
   }
 
