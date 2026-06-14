@@ -325,12 +325,21 @@ class _TabDetailScreenState extends State<TabDetailScreen>
         selectedBills.isNotEmpty &&
         _currentTab.id != null &&
         mounted) {
-      await _tabManager.addBillsToTab(_currentTab.id!, selectedBills);
-      await _loadBills();
-
-      _showSnackBar(
-        'Added ${selectedBills.length} bill${selectedBills.length == 1 ? '' : 's'}',
+      final success = await _tabManager.addBillsToTab(
+        _currentTab.id!,
+        selectedBills,
       );
+
+      if (!mounted) return;
+
+      if (success) {
+        await _loadBills();
+        _showSnackBar(
+          'Added ${selectedBills.length} bill${selectedBills.length == 1 ? '' : 's'}',
+        );
+      } else {
+        _showSnackBar('Failed to add bills to tab', isError: true);
+      }
     }
   }
 
