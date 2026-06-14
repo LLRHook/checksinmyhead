@@ -95,21 +95,17 @@ func (r *tabRepository) UpdateBillItemAssignments(tabID uint, billID uint, itemI
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		var bill models.Bill
 		if err := tx.
-			Preload("Items.Assignments").
 			Where("id = ? AND tab_id = ?", billID, tabID).
 			First(&bill).Error; err != nil {
 			return err
 		}
 
-		targetFound := false
-		for _, item := range bill.Items {
-			if item.ID == itemID {
-				targetFound = true
-				break
+		var item models.BillItem
+		if err := tx.Where("id = ? AND bill_id = ?", itemID, billID).First(&item).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return err
 			}
-		}
-		if !targetFound {
-			return gorm.ErrRecordNotFound
+			return err
 		}
 
 		if err := tx.Where("bill_item_id = ?", itemID).Delete(&models.ItemAssignment{}).Error; err != nil {
