@@ -4,6 +4,8 @@ import { FaLock, FaTriangleExclamation } from "react-icons/fa6";
 import DesktopLayout from "@/components/DesktopLayout";
 import JoinTabButton from "@/components/JoinTabButton";
 import MemberList from "@/components/MemberList";
+import PaymentDetails from "@/components/PaymentDetails";
+import LazyBillBoard from "@/components/LazyBillBoard";
 import NetBalances from "@/components/NetBalances";
 import SettlementCard from "@/components/SettlementCard";
 import TabBillList from "@/components/TabBillList";
@@ -90,6 +92,26 @@ export default async function TabPage({
   const images = await getTabImages(id, token);
   const settlements = tab.finalized ? await getSettlements(id, token) : [];
   const members = await getTabMembers(id, token);
+  const primaryBill = tab.bills[0] ?? null;
+  const paymentMethods = Array.from(
+    new Map(
+      tab.bills
+        .flatMap((bill) => bill.payment_methods || [])
+        .map(
+          (method) => [`${method.name}-${method.identifier}`, method] as const,
+        ),
+    ).values(),
+  );
+  const isLazyMode =
+    !!primaryBill &&
+    primaryBill.items.length > 0 &&
+    primaryBill.items.some(
+      (item) =>
+        (item.assignments ?? []).reduce(
+          (sum, assignment) => sum + assignment.percentage,
+          0,
+        ) < 99.99,
+    );
 
   const venmoId =
     tab.bills
@@ -111,6 +133,10 @@ export default async function TabPage({
 
       <JoinTabButton tabId={id} token={token} />
 
+      {paymentMethods.length > 0 && (
+        <PaymentDetails paymentMethods={paymentMethods} />
+      )}
+
       {images.length > 0 && (
         <TabImageGallery images={images} apiBaseUrl={API_BASE_URL} />
       )}
@@ -119,29 +145,35 @@ export default async function TabPage({
 
   return (
     <DesktopLayout sidebar={sidebar}>
-      {(tab.net_balances ?? []).length > 0 && (
-        <NetBalances
-          balances={tab.net_balances ?? []}
-          finalized={tab.finalized}
-          venmoId={venmoId}
-          currentMemberName={null}
-        />
-      )}
-
-      {tab.finalized && settlements.length > 0 ? (
-        <SettlementCard
-          settlements={settlements}
-          venmoId={venmoId}
-          tabId={id}
-          token={token}
-        />
+      {isLazyMode && primaryBill ? (
+        <LazyBillBoard tabId={id} token={token} bill={primaryBill} />
       ) : (
-        personTotals.length > 0 && (
-          <TabPersonTotals personTotals={personTotals} venmoId={venmoId} />
-        )
-      )}
+        <>
+          {(tab.net_balances ?? []).length > 0 && (
+            <NetBalances
+              balances={tab.net_balances ?? []}
+              finalized={tab.finalized}
+              venmoId={venmoId}
+              currentMemberName={null}
+            />
+          )}
 
-      <TabBillList bills={tab.bills} />
+          {tab.finalized && settlements.length > 0 ? (
+            <SettlementCard
+              settlements={settlements}
+              venmoId={venmoId}
+              tabId={id}
+              token={token}
+            />
+          ) : (
+            personTotals.length > 0 && (
+              <TabPersonTotals personTotals={personTotals} venmoId={venmoId} />
+            )
+          )}
+
+          <TabBillList bills={tab.bills} />
+        </>
+      )}
     </DesktopLayout>
   );
 }

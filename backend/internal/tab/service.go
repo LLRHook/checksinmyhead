@@ -22,6 +22,7 @@ type TabService interface {
 	GetTabAuth(id uint) (tab *models.Tab, err error)
 	UpdateTab(tab *models.Tab) error
 	AddBillToTab(tabID uint, billID uint, billToken string, memberID *uint) error
+	UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment) error
 	FinalizeTab(id uint) ([]models.TabSettlement, error)
 	GetSettlements(tabID uint) ([]models.TabSettlement, error)
 	UpdateSettlementPaid(id uint, paid bool) error
@@ -66,6 +67,10 @@ func (s *tabService) UpdateTab(tab *models.Tab) error {
 
 func (s *tabService) AddBillToTab(tabID uint, billID uint, billToken string, memberID *uint) error {
 	return s.repo.AddBill(tabID, billID, billToken, memberID)
+}
+
+func (s *tabService) UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment) error {
+	return s.repo.UpdateBillItemAssignments(tabID, billID, itemID, assignments)
 }
 
 func (s *tabService) FinalizeTab(id uint) ([]models.TabSettlement, error) {

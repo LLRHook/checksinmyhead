@@ -56,6 +56,7 @@ class BillSummaryScreen extends StatefulWidget {
   final double tipPercentage;
   final bool isCustomTipAmount;
   final String? scannedVendor;
+  final bool lazyMode;
 
   const BillSummaryScreen({
     super.key,
@@ -70,6 +71,7 @@ class BillSummaryScreen extends StatefulWidget {
     this.tipPercentage = 0.0,
     this.isCustomTipAmount = false,
     this.scannedVendor,
+    this.lazyMode = false,
   });
 
   @override
@@ -106,6 +108,7 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
       tipPercentage: widget.tipPercentage,
       isCustomTipAmount: widget.isCustomTipAmount,
       billName: billName,
+      paymentMethods: const <Map<String, String>>[],
     );
   }
 
@@ -170,40 +173,82 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
 
                       const SizedBox(height: 16),
 
-                      // Individual shares section
-                      Text(
-                        'Individual Shares',
-                        style: Theme.of(
-                          context,
-                        ).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: sectionTitleColor,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Generate a PersonCard for each participant
-                      // Compute batch-corrected amounts so totals sum exactly
-                      ...() {
-                        final corrected =
-                            CalculationUtils.calculateAllPersonAmounts(
-                          participants: sortedParticipants,
-                          personShares: _summaryData.personShares,
-                          items: _summaryData.items,
-                          subtotal: _summaryData.subtotal,
-                          tax: _summaryData.tax,
-                          tipAmount: _summaryData.tipAmount,
-                          total: _summaryData.total,
-                          birthdayPerson: _summaryData.birthdayPerson,
-                        );
-                        return sortedParticipants.map(
-                          (person) => PersonCard(
-                            person: person,
-                            data: _summaryData,
-                            correctedTotal: corrected[person]?['total'],
+                      if (widget.lazyMode && widget.participants.isEmpty) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color:
+                                brightness == Brightness.dark
+                                    ? colorScheme.surfaceContainerHighest
+                                    : colorScheme.secondary.withValues(
+                                      alpha: 0.2,
+                                    ),
+                            borderRadius: BorderRadius.circular(20),
                           ),
-                        );
-                      }(),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Your friends will finish this on the web',
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: sectionTitleColor,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'We parsed the receipt. Share the link and let everyone claim what they had.',
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.bodyMedium?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      // Individual shares section
+                      if (sortedParticipants.isNotEmpty) ...[
+                        Text(
+                          'Individual Shares',
+                          style: Theme.of(
+                            context,
+                          ).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: sectionTitleColor,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Generate a PersonCard for each participant
+                        // Compute batch-corrected amounts so totals sum exactly
+                        ...() {
+                          final corrected =
+                              CalculationUtils.calculateAllPersonAmounts(
+                                participants: sortedParticipants,
+                                personShares: _summaryData.personShares,
+                                items: _summaryData.items,
+                                subtotal: _summaryData.subtotal,
+                                tax: _summaryData.tax,
+                                tipAmount: _summaryData.tipAmount,
+                                total: _summaryData.total,
+                                birthdayPerson: _summaryData.birthdayPerson,
+                              );
+                          return sortedParticipants.map(
+                            (person) => PersonCard(
+                              person: person,
+                              data: _summaryData,
+                              correctedTotal: corrected[person]?['total'],
+                            ),
+                          );
+                        }(),
+                      ],
 
                       // Extra space to ensure content isn't hidden behind the bottom bar
                       const SizedBox(height: 80),
@@ -221,7 +266,11 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
             child: BottomBar(
               onShareTap: _promptShareOptions,
               onDoneTap: () async {
-                await DoneButtonHandler.handleDone(context, data: _summaryData);
+                await DoneButtonHandler.handleDone(
+                  context,
+                  data: _summaryData,
+                  lazyMode: widget.lazyMode,
+                );
               },
               data:
                   _summaryData, // Pass the entire data object instead of individual props

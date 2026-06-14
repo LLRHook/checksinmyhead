@@ -234,6 +234,65 @@ func (h *TabHandler) AddBillToTab(c *gin.Context) {
 	c.JSON(200, gin.H{"status": "ok"})
 }
 
+func (h *TabHandler) UpdateBillItemAssignments(c *gin.Context) {
+	tab := h.getTabAuthAndValidate(c)
+	if tab == nil {
+		return
+	}
+
+	if tab.Finalized {
+		c.JSON(400, gin.H{"error": "tab is finalized"})
+		return
+	}
+
+	billID, err := strconv.ParseUint(c.Param("billId"), 10, 32)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid bill id"})
+		return
+	}
+
+	itemID, err := strconv.ParseUint(c.Param("itemId"), 10, 32)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid item id"})
+		return
+	}
+
+	var body struct {
+		Assignments []struct {
+			PersonName string  `json:"person_name"`
+			Percentage float64 `json:"percentage"`
+		} `json:"assignments"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(400, gin.H{"error": "bad request"})
+		return
+	}
+
+	assignments := make([]models.ItemAssignment, 0, len(body.Assignments))
+	for _, assignment := range body.Assignments {
+		name := security.SanitizeString(assignment.PersonName)
+		if name == "" || assignment.Percentage <= 0 {
+			continue
+		}
+		assignments = append(assignments, models.ItemAssignment{
+			PersonName: name,
+			Percentage: assignment.Percentage,
+		})
+	}
+
+	if err := h.service.UpdateBillItemAssignments(tab.ID, uint(billID), uint(itemID), assignments); err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(404, gin.H{"error": "bill item not found"})
+			return
+		}
+		log.Printf("internal error: %v", err)
+		c.JSON(500, gin.H{"error": "an internal error occurred"})
+		return
+	}
+
+	c.JSON(200, gin.H{"status": "ok"})
+}
+
 func (h *TabHandler) UpdateTab(c *gin.Context) {
 	tab := h.getTabAuthAndValidate(c)
 	if tab == nil {

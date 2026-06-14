@@ -6,6 +6,7 @@ import {
   getTab,
   updatePersonSharePaid,
   updateSettlementPaid,
+  updateTabBillItemAssignments,
 } from "../api";
 
 // ── computeTabPersonTotals ──────────────────────────────────────
@@ -542,5 +543,34 @@ describe("updateSettlementPaid", () => {
     );
 
     await expect(updateSettlementPaid("1", 3, true, "token")).rejects.toThrow();
+  });
+});
+
+describe("updateTabBillItemAssignments", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("sends PATCH with assignments payload", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal("fetch", mockFetch);
+
+    await updateTabBillItemAssignments(
+      "1",
+      2,
+      3,
+      [{ person_name: "Alice", percentage: 100 }],
+      "tab-token",
+    );
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/api/tabs/1/bills/2/items/3/assignments"),
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({
+          assignments: [{ person_name: "Alice", percentage: 100 }],
+        }),
+      }),
+    );
   });
 });

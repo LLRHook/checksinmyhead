@@ -15,6 +15,7 @@ type TabRepository interface {
 	Update(tab *models.Tab) error
 	Delete(id uint) error
 	AddBill(tabID uint, billID uint, billToken string, memberID *uint) error
+	UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment) error
 	Finalize(id uint) error
 	GetSettlements(tabID uint) ([]models.TabSettlement, error)
 	CreateSettlements(settlements []models.TabSettlement) error
@@ -88,6 +89,60 @@ func (r *tabRepository) AddBill(tabID uint, billID uint, billToken string, membe
 		return gorm.ErrRecordNotFound
 	}
 	return nil
+}
+
+func (r *tabRepository) UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		var bill models.Bill
+		if err := tx.
+			Preload("Items.Assignments").
+			Where("id = ? AND tab_id = ?", billID, tabID).
+			First(&bill).Error; err != nil {
+			return err
+		}
+
+		targetFound := false
+		for _, item := range bill.Items {
+			if item.ID == itemID {
+				targetFound = true
+				break
+			}
+		}
+		if !targetFound {
+			return gorm.ErrRecordNotFound
+		}
+
+		if err := tx.Where("bill_item_id = ?", itemID).Delete(&models.ItemAssignment{}).Error; err != nil {
+			return err
+		}
+
+		for i := range assignments {
+			assignments[i].BillItemID = itemID
+		}
+		if len(assignments) > 0 {
+			if err := tx.Create(&assignments).Error; err != nil {
+				return err
+			}
+		}
+
+		if err := tx.Where("bill_id = ?", billID).Delete(&models.PersonShare{}).Error; err != nil {
+			return err
+		}
+
+		var refreshed models.Bill
+		if err := tx.
+			Preload("Items.Assignments").
+			Where("id = ?", billID).
+			First(&refreshed).Error; err != nil {
+			return err
+		}
+
+		shares := buildPersonShares(&refreshed)
+		if len(shares) == 0 {
+			return nil
+		}
+		return tx.Create(&shares).Error
+	})
 }
 
 func (r *tabRepository) Finalize(id uint) error {
