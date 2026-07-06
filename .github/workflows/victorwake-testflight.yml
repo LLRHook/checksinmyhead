@@ -158,6 +158,7 @@ jobs:
             --apiIssuer "$ASC_ISSUER_ID"
 
       - name: Upload to TestFlight
+        id: upload
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
@@ -171,17 +172,17 @@ jobs:
             --apiIssuer "$ASC_ISSUER_ID" \
             --output-format json | tee "$RUNNER_TEMP/upload.json"
 
+          DELIVERY_ID="$(sed -n 's/.*"delivery-uuid" : "\([^"]*\)".*/\1/p' "$RUNNER_TEMP/upload.json" | tail -1)"
+          test -n "$DELIVERY_ID"
+          echo "delivery_id=$DELIVERY_ID" >> "$GITHUB_OUTPUT"
+
       - name: Wait for TestFlight processing
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: |
-          BUILD_NUMBER="${{ github.run_number }}"
           xcrun altool --build-status \
-            --apple-id "${{ steps.asc.outputs.apple_id }}" \
-            --bundle-version "$BUILD_NUMBER" \
-            --bundle-short-version-string "$VERSION" \
-            --platform ios \
+            --delivery-id "${{ steps.upload.outputs.delivery_id }}" \
             --wait \
             --apiKey "$ASC_KEY_ID" \
             --apiIssuer "$ASC_ISSUER_ID" \
