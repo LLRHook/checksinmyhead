@@ -1,0 +1,543 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0D10E91A35F3242BA068B105 /* WakeOnLanClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1704B1329A7675F2FC490A54 /* WakeOnLanClientTests.swift */; };
+		4E60936A099A0AB1360090A6 /* WakeOnLanClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FD22E50083E92C8278892A5 /* WakeOnLanClient.swift */; };
+		568018066839254C34616A79 /* VictorWakeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9944FCF1A034383498808E4 /* VictorWakeApp.swift */; };
+		A708B198BA0D4040CCCC69A9 /* WakeRemoteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8A26452EF97355CB6CFDA7D /* WakeRemoteView.swift */; };
+		DAFE0CAF1724099241E68247 /* WakeSettingsKeys.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE1389EEEF229F70D3E8220A /* WakeSettingsKeys.swift */; };
+		F1B2B79196AE3F9609D22C86 /* WakeRemoteUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3CC8A798960E06D169AB114 /* WakeRemoteUITests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A9873348ED8357C30118C4FA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 82FDD39D65F52C8DFDFD91F2 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4C1D6E5D85643369D8DD14BE;
+			remoteInfo = VictorWake;
+		};
+		E0628146C549B47718F546C2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 82FDD39D65F52C8DFDFD91F2 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4C1D6E5D85643369D8DD14BE;
+			remoteInfo = VictorWake;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		1704B1329A7675F2FC490A54 /* WakeOnLanClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WakeOnLanClientTests.swift; sourceTree = "<group>"; };
+		344FECB9C74E9495E2BB06F7 /* VictorWakeTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = VictorWakeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		3FD22E50083E92C8278892A5 /* WakeOnLanClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WakeOnLanClient.swift; sourceTree = "<group>"; };
+		6740FB630A9FDB87B6C1EBA5 /* VictorWake.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = VictorWake.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9D9D3ECF0E89286349B230FF /* VictorWakeUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = VictorWakeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		AE1389EEEF229F70D3E8220A /* WakeSettingsKeys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WakeSettingsKeys.swift; sourceTree = "<group>"; };
+		C9944FCF1A034383498808E4 /* VictorWakeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VictorWakeApp.swift; sourceTree = "<group>"; };
+		D8A26452EF97355CB6CFDA7D /* WakeRemoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WakeRemoteView.swift; sourceTree = "<group>"; };
+		F3CC8A798960E06D169AB114 /* WakeRemoteUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WakeRemoteUITests.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		2875FD36D7F42B5E3938BD2B /* VictorWakeUITests */ = {
+			isa = PBXGroup;
+			children = (
+				F3CC8A798960E06D169AB114 /* WakeRemoteUITests.swift */,
+			);
+			path = VictorWakeUITests;
+			sourceTree = "<group>";
+		};
+		3269BD9315255DAC23F494C9 /* VictorWakeTests */ = {
+			isa = PBXGroup;
+			children = (
+				1704B1329A7675F2FC490A54 /* WakeOnLanClientTests.swift */,
+			);
+			path = VictorWakeTests;
+			sourceTree = "<group>";
+		};
+		327F96DB9BFA9177C952A2D4 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				D8A26452EF97355CB6CFDA7D /* WakeRemoteView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		611B470AD26C3ACC014F43B9 /* Wake */ = {
+			isa = PBXGroup;
+			children = (
+				3FD22E50083E92C8278892A5 /* WakeOnLanClient.swift */,
+				AE1389EEEF229F70D3E8220A /* WakeSettingsKeys.swift */,
+			);
+			path = Wake;
+			sourceTree = "<group>";
+		};
+		63170ACB03108D316683C747 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				C9944FCF1A034383498808E4 /* VictorWakeApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		859D4C17D86CF1DC9EB6FE68 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				6740FB630A9FDB87B6C1EBA5 /* VictorWake.app */,
+				344FECB9C74E9495E2BB06F7 /* VictorWakeTests.xctest */,
+				9D9D3ECF0E89286349B230FF /* VictorWakeUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		E24C2056FEFCBA1ABDD7B156 /* VictorWake */ = {
+			isa = PBXGroup;
+			children = (
+				63170ACB03108D316683C747 /* App */,
+				327F96DB9BFA9177C952A2D4 /* Views */,
+				611B470AD26C3ACC014F43B9 /* Wake */,
+			);
+			path = VictorWake;
+			sourceTree = "<group>";
+		};
+		EC36A3074483401999A77989 = {
+			isa = PBXGroup;
+			children = (
+				E24C2056FEFCBA1ABDD7B156 /* VictorWake */,
+				3269BD9315255DAC23F494C9 /* VictorWakeTests */,
+				2875FD36D7F42B5E3938BD2B /* VictorWakeUITests */,
+				859D4C17D86CF1DC9EB6FE68 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		15541DB5AC96E983B8642BDD /* VictorWakeTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 30200A0C8F2CC2DF01C6DA6D /* Build configuration list for PBXNativeTarget "VictorWakeTests" */;
+			buildPhases = (
+				2939CF91BA68BB5DE08CC063 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				5C7F42C3BB7BD0D973209575 /* PBXTargetDependency */,
+			);
+			name = VictorWakeTests;
+			packageProductDependencies = (
+			);
+			productName = VictorWakeTests;
+			productReference = 344FECB9C74E9495E2BB06F7 /* VictorWakeTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		4C1D6E5D85643369D8DD14BE /* VictorWake */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 68E09505E55FC6B6F0E279DC /* Build configuration list for PBXNativeTarget "VictorWake" */;
+			buildPhases = (
+				2C1BAB244C2C837C2D344BED /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = VictorWake;
+			packageProductDependencies = (
+			);
+			productName = VictorWake;
+			productReference = 6740FB630A9FDB87B6C1EBA5 /* VictorWake.app */;
+			productType = "com.apple.product-type.application";
+		};
+		E7E625CF9E3B6CC5A76B2766 /* VictorWakeUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B6B4764204B4FE9D0AA6A194 /* Build configuration list for PBXNativeTarget "VictorWakeUITests" */;
+			buildPhases = (
+				08385CAD7A25EF3B09E6BAC1 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				54B34F9227A9102C9789F97D /* PBXTargetDependency */,
+			);
+			name = VictorWakeUITests;
+			packageProductDependencies = (
+			);
+			productName = VictorWakeUITests;
+			productReference = 9D9D3ECF0E89286349B230FF /* VictorWakeUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		82FDD39D65F52C8DFDFD91F2 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					4C1D6E5D85643369D8DD14BE = {
+						DevelopmentTeam = D9QD5DUKNC;
+						ProvisioningStyle = Automatic;
+					};
+					E7E625CF9E3B6CC5A76B2766 = {
+						TestTargetID = 4C1D6E5D85643369D8DD14BE;
+					};
+				};
+			};
+			buildConfigurationList = 9DEFF02FBE1F76677C24AF82 /* Build configuration list for PBXProject "VictorWake" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = EC36A3074483401999A77989;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				4C1D6E5D85643369D8DD14BE /* VictorWake */,
+				15541DB5AC96E983B8642BDD /* VictorWakeTests */,
+				E7E625CF9E3B6CC5A76B2766 /* VictorWakeUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		08385CAD7A25EF3B09E6BAC1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F1B2B79196AE3F9609D22C86 /* WakeRemoteUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2939CF91BA68BB5DE08CC063 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0D10E91A35F3242BA068B105 /* WakeOnLanClientTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2C1BAB244C2C837C2D344BED /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				568018066839254C34616A79 /* VictorWakeApp.swift in Sources */,
+				4E60936A099A0AB1360090A6 /* WakeOnLanClient.swift in Sources */,
+				A708B198BA0D4040CCCC69A9 /* WakeRemoteView.swift in Sources */,
+				DAFE0CAF1724099241E68247 /* WakeSettingsKeys.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		54B34F9227A9102C9789F97D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4C1D6E5D85643369D8DD14BE /* VictorWake */;
+			targetProxy = E0628146C549B47718F546C2 /* PBXContainerItemProxy */;
+		};
+		5C7F42C3BB7BD0D973209575 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4C1D6E5D85643369D8DD14BE /* VictorWake */;
+			targetProxy = A9873348ED8357C30118C4FA /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		7D7B0FD5260934D9FDD9E936 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D9QD5DUKNC;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Victor Wake";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Victor Wake sends Wake-on-LAN packets to wake your PC.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.victorivanov.victorwake;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		80EED2DF278706E34AC019CA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.victorivanov.VictorWakeUITests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = VictorWake;
+			};
+			name = Release;
+		};
+		9257DB623918D66177346234 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.victorivanov.VictorWakeUITests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = VictorWake;
+			};
+			name = Debug;
+		};
+		A30752219E83E407837FA145 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.victorivanov.VictorWakeTests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/VictorWake.app/VictorWake";
+			};
+			name = Debug;
+		};
+		C88ACB0D606D027EF5A303F7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		CF4961DDB3C467A645866345 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.victorivanov.VictorWakeTests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/VictorWake.app/VictorWake";
+			};
+			name = Release;
+		};
+		EC54C2829B936CE95B10A8CF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D9QD5DUKNC;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Victor Wake";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Victor Wake sends Wake-on-LAN packets to wake your PC.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.victorivanov.victorwake;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		FCE283717CDF63979570D2A7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		30200A0C8F2CC2DF01C6DA6D /* Build configuration list for PBXNativeTarget "VictorWakeTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A30752219E83E407837FA145 /* Debug */,
+				CF4961DDB3C467A645866345 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		68E09505E55FC6B6F0E279DC /* Build configuration list for PBXNativeTarget "VictorWake" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7D7B0FD5260934D9FDD9E936 /* Debug */,
+				EC54C2829B936CE95B10A8CF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		9DEFF02FBE1F76677C24AF82 /* Build configuration list for PBXProject "VictorWake" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C88ACB0D606D027EF5A303F7 /* Debug */,
+				FCE283717CDF63979570D2A7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		B6B4764204B4FE9D0AA6A194 /* Build configuration list for PBXNativeTarget "VictorWakeUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9257DB623918D66177346234 /* Debug */,
+				80EED2DF278706E34AC019CA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 82FDD39D65F52C8DFDFD91F2 /* Project object */;
+}
