@@ -212,6 +212,22 @@ def add_tester_to_group(beta_tester_id, group_id)
   asc_request(:post, "/v1/betaTesters/#{beta_tester_id}/relationships/betaGroups", body: group_body, allow_failure: true)
 end
 
+def add_individual_tester_to_build(beta_tester_id, build_id)
+  body = {
+    data: [{ type: "betaTesters", id: beta_tester_id }]
+  }
+
+  asc_request(:post, "/v1/builds/#{build_id}/relationships/individualTesters", body: body, allow_failure: true)
+end
+
+def build_individual_testers(build_id)
+  response = asc_request(:get, query("/v1/builds/#{build_id}/relationships/individualTesters", {
+    "limit" => "200"
+  }), allow_failure: true)
+
+  response&.fetch("data", []) || []
+end
+
 build = latest_build
 abort "Unable to find processed build #{BUILD_NUMBER} for App Store Connect app #{APP_ID}" unless build
 
@@ -243,6 +259,7 @@ abort "Build #{BUILD_NUMBER} was not attached to beta group #{group_id}" unless 
 puts "Build #{BUILD_NUMBER} is attached to beta group #{group_attributes["name"]}"
 
 testers = group_beta_testers(group_id)
+individual_testers = []
 if testers.empty?
   puts "No testers found in #{group_attributes["name"]}; adding App Store Connect user Victor Ivanov"
   user = find_victor_user
@@ -251,9 +268,18 @@ if testers.empty?
   beta_tester = create_beta_tester(user, group_id)
   add_tester_to_group(beta_tester.fetch("id"), group_id)
   testers = group_beta_testers(group_id)
+
+  if testers.empty?
+    puts "Group tester assignment is unavailable; assigning Victor Ivanov directly to build #{BUILD_NUMBER}"
+    add_individual_tester_to_build(beta_tester.fetch("id"), build_id)
+    individual_testers = build_individual_testers(build_id)
+  end
 end
 
-abort "No testers are attached to TestFlight group #{group_id}" if testers.empty?
+if testers.empty? && individual_testers.none? { |item| item.fetch("id") == beta_tester.fetch("id") }
+  abort "No testers are attached to TestFlight group #{group_id} or individually assigned to build #{BUILD_NUMBER}"
+end
 
 puts "TestFlight group #{group_attributes["name"]} has #{testers.count} tester(s)"
+puts "Build #{BUILD_NUMBER} has #{individual_testers.count} individually assigned tester(s)" unless individual_testers.empty?
 puts "TESTFLIGHT_GROUP_ID=#{group_id}"
