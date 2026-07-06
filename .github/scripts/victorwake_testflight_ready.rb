@@ -137,6 +137,76 @@ def group_builds(group_id)
   response.fetch("data")
 end
 
+def group_beta_testers(group_id)
+  response = asc_request(:get, query("/v1/betaGroups/#{group_id}/betaTesters", {
+    "fields[betaTesters]" => "firstName,lastName,email,inviteType",
+    "limit" => "200"
+  }))
+  response.fetch("data")
+end
+
+def app_store_connect_users
+  response = asc_request(:get, query("/v1/users", {
+    "limit" => "200"
+  }), allow_failure: true)
+
+  response&.fetch("data", []) || []
+end
+
+def find_victor_user
+  app_store_connect_users.find do |user|
+    attributes = user.fetch("attributes", {})
+    first_name = attributes["firstName"].to_s.downcase
+    last_name = attributes["lastName"].to_s.downcase
+
+    first_name == "victor" && last_name == "ivanov"
+  end
+end
+
+def find_beta_tester(email)
+  response = asc_request(:get, query("/v1/betaTesters", {
+    "filter[email]" => email,
+    "limit" => "1"
+  }), allow_failure: true)
+
+  response&.fetch("data", [])&.first
+end
+
+def create_beta_tester(user, group_id)
+  attributes = user.fetch("attributes", {})
+  email = attributes["email"] || attributes["username"]
+  abort "App Store Connect user Victor Ivanov does not expose an email/username for TestFlight" if email.to_s.empty?
+
+  existing = find_beta_tester(email)
+  return existing if existing
+
+  body = {
+    data: {
+      type: "betaTesters",
+      attributes: {
+        firstName: attributes["firstName"],
+        lastName: attributes["lastName"],
+        email: email
+      },
+      relationships: {
+        betaGroups: {
+          data: [{ type: "betaGroups", id: group_id }]
+        }
+      }
+    }
+  }
+
+  asc_request(:post, "/v1/betaTesters", body: body).fetch("data")
+end
+
+def add_tester_to_group(beta_tester_id, group_id)
+  body = {
+    data: [{ type: "betaGroups", id: group_id }]
+  }
+
+  asc_request(:post, "/v1/betaTesters/#{beta_tester_id}/relationships/betaGroups", body: body, allow_failure: true)
+end
+
 build = latest_build
 abort "Unable to find processed build #{BUILD_NUMBER} for App Store Connect app #{APP_ID}" unless build
 
@@ -166,4 +236,19 @@ matching = attached.find { |item| item.fetch("id") == build_id }
 abort "Build #{BUILD_NUMBER} was not attached to beta group #{group_id}" unless matching
 
 puts "Build #{BUILD_NUMBER} is attached to beta group #{group_attributes["name"]}"
+
+testers = group_beta_testers(group_id)
+if testers.empty?
+  puts "No testers found in #{group_attributes["name"]}; adding App Store Connect user Victor Ivanov"
+  user = find_victor_user
+  abort "Unable to find App Store Connect user Victor Ivanov to add as an internal tester" unless user
+
+  beta_tester = create_beta_tester(user, group_id)
+  add_tester_to_group(beta_tester.fetch("id"), group_id)
+  testers = group_beta_testers(group_id)
+end
+
+abort "No testers are attached to TestFlight group #{group_id}" if testers.empty?
+
+puts "TestFlight group #{group_attributes["name"]} has #{testers.count} tester(s)"
 puts "TESTFLIGHT_GROUP_ID=#{group_id}"
