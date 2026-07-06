@@ -200,11 +200,16 @@ def create_beta_tester(user, group_id)
 end
 
 def add_tester_to_group(beta_tester_id, group_id)
-  body = {
+  tester_body = {
+    data: [{ type: "betaTesters", id: beta_tester_id }]
+  }
+
+  group_body = {
     data: [{ type: "betaGroups", id: group_id }]
   }
 
-  asc_request(:post, "/v1/betaTesters/#{beta_tester_id}/relationships/betaGroups", body: body, allow_failure: true)
+  asc_request(:post, "/v1/betaGroups/#{group_id}/relationships/betaTesters", body: tester_body, allow_failure: true)
+  asc_request(:post, "/v1/betaTesters/#{beta_tester_id}/relationships/betaGroups", body: group_body, allow_failure: true)
 end
 
 build = latest_build
