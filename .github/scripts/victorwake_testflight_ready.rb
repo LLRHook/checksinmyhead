@@ -19,7 +19,7 @@ ISSUER_ID = require_env("ASC_ISSUER_ID")
 KEY_PATH = require_env("ASC_KEY_PATH")
 APP_ID = require_env("ASC_APP_ID")
 BUILD_NUMBER = require_env("BUILD_NUMBER")
-GROUP_NAME = ENV.fetch("TESTFLIGHT_GROUP_NAME", "Victor Internal")
+GROUP_NAME = ENV.fetch("TESTFLIGHT_GROUP_NAME", "Victor Internal Users")
 
 def b64url(value)
   Base64.urlsafe_encode64(value).delete("=")
@@ -104,6 +104,7 @@ def create_beta_group(build_id)
       type: "betaGroups",
       attributes: {
         name: GROUP_NAME,
+        isInternalGroup: true,
         publicLinkEnabled: false
       },
       relationships: {
@@ -147,7 +148,6 @@ puts "Build processingState=#{build_attributes["processingState"]} expired=#{bui
 groups = beta_groups
 group = groups.find { |item| item.dig("attributes", "isInternalGroup") && item.dig("attributes", "name") == GROUP_NAME }
 group ||= groups.find { |item| item.dig("attributes", "isInternalGroup") }
-group ||= groups.find { |item| item.dig("attributes", "name") == GROUP_NAME }
 
 unless group
   puts "No beta group found; creating #{GROUP_NAME}"
@@ -157,6 +157,7 @@ end
 group_id = group.fetch("id")
 group_attributes = group.fetch("attributes")
 puts "Using beta group #{group_attributes["name"]} (#{group_id}) internal=#{group_attributes["isInternalGroup"]} publicLinkEnabled=#{group_attributes["publicLinkEnabled"]}"
+abort "Beta group #{group_id} is not internal; refusing to use an external TestFlight group for personal install" unless group_attributes["isInternalGroup"]
 
 attach_build_to_group(group_id, build_id)
 
