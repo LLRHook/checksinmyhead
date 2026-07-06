@@ -1,0 +1,53 @@
+name: VictorWake
+options:
+  bundleIdPrefix: com.victorivanov
+  deploymentTarget:
+    iOS: "17.0"
+  generateEmptyDirectories: true
+
+targets:
+  VictorWake:
+    type: application
+    platform: iOS
+    sources: [VictorWake]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.victorivanov.victorwake
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "6.0"
+        DEVELOPMENT_TEAM: D9QD5DUKNC
+        CODE_SIGN_STYLE: Automatic
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: "Victor Wake"
+        INFOPLIST_KEY_NSLocalNetworkUsageDescription: "Victor Wake sends Wake-on-LAN packets to wake your PC."
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait"
+    scheme:
+      testTargets:
+        - VictorWakeTests
+        - VictorWakeUITests
+
+  VictorWakeTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [VictorWakeTests]
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "6.0"
+    dependencies:
+      - target: VictorWake
+
+  VictorWakeUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [VictorWakeUITests]
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "6.0"
+    dependencies:
+      - target: VictorWake
