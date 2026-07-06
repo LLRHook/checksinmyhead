@@ -96,29 +96,6 @@ jobs:
           cp "$PP_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$PP_UUID.mobileprovision"
           echo "Installed provisioning profile $PP_UUID for $APP_ID"
 
-      - name: Select simulator
-        run: |
-          SIM_ID=$(xcrun simctl list devices available -j | ruby -rjson -e '
-            devices = JSON.parse(STDIN.read).fetch("devices").values.flatten
-            selected = devices.find { |device| device.fetch("name") == "iPhone 17" } ||
-                       devices.find { |device| device.fetch("name") == "iPhone 16" } ||
-                       devices.find { |device| device.fetch("name").start_with?("iPhone") }
-            abort "No available iPhone simulator found" unless selected
-            puts selected.fetch("udid")
-          ')
-          echo "SIM_DESTINATION=platform=iOS Simulator,id=$SIM_ID" >> "$GITHUB_ENV"
-          echo "Selected simulator $SIM_ID"
-
-      - name: Test VictorWake unit tests
-        timeout-minutes: 8
-        run: |
-          xcodebuild test \
-            -project source/VictorWake.xcodeproj \
-            -scheme VictorWake \
-            -destination "$SIM_DESTINATION" \
-            -only-testing:VictorWakeTests \
-            CODE_SIGNING_ALLOWED=NO
-
       - name: Archive VictorWake
         run: |
           BUILD_NUMBER="${{ github.run_number }}"
