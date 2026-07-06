@@ -82,9 +82,7 @@ end
 def latest_build
   response = asc_request(:get, query("/v1/apps/#{APP_ID}/builds", {
     "fields[builds]" => "version,processingState,expired,uploadedDate,usesNonExemptEncryption",
-    "filter[version]" => BUILD_NUMBER,
-    "limit" => "10",
-    "sort" => "-uploadedDate"
+    "limit" => "200"
   }))
 
   response.fetch("data").find do |build|
@@ -133,8 +131,7 @@ end
 def group_builds(group_id)
   response = asc_request(:get, query("/v1/betaGroups/#{group_id}/builds", {
     "fields[builds]" => "version,processingState,expired,uploadedDate,usesNonExemptEncryption",
-    "limit" => "200",
-    "sort" => "-uploadedDate"
+    "limit" => "200"
   }))
   response.fetch("data")
 end
