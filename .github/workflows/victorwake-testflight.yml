@@ -187,3 +187,11 @@ jobs:
             --apiKey "$ASC_KEY_ID" \
             --apiIssuer "$ASC_ISSUER_ID" \
             --output-format json
+
+      - name: Configure internal TestFlight access
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_APP_ID: ${{ steps.asc.outputs.apple_id }}
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: ruby .github/scripts/victorwake_testflight_ready.rb
