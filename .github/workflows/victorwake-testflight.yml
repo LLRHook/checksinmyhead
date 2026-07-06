@@ -10,18 +10,36 @@ permissions:
 
 jobs:
   build-and-upload:
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 45
     env:
       APP_NAME: Victor Wake Remote
       APP_SKU: victorwake-remote
-      BUNDLE_ID: com.checksinmyhead-vng.app
+      BUNDLE_ID: com.victorivanov.victorwake
       TEAM_ID: D9QD5DUKNC
       VERSION: 1.0.0
 
     steps:
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_16.4.app
+        run: |
+          for candidate in \
+            /Applications/Xcode_26.5.app \
+            /Applications/Xcode_26.4.1.app \
+            /Applications/Xcode_26.4.app \
+            /Applications/Xcode_26.3.app \
+            /Applications/Xcode_26.2.app \
+            /Applications/Xcode_26.1.1.app \
+            /Applications/Xcode_26.0.1.app \
+            /Applications/Xcode.app
+          do
+            if [ -d "$candidate" ]; then
+              sudo xcode-select -s "$candidate"
+              break
+            fi
+          done
+
+          xcodebuild -version
+          xcodebuild -showsdks | grep -E 'iphone(os|simulator)'
 
       - name: Checkout VictorWake source
         uses: actions/checkout@v4
@@ -30,8 +48,13 @@ jobs:
         env:
           ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
         run: |
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${{ secrets.ASC_KEY_ID }}.p8"
+          printf '%s' "$ASC_API_KEY_P8" > "$KEY_PATH"
+
           mkdir -p "$HOME/.private_keys"
-          printf '%s' "$ASC_API_KEY_P8" > "$HOME/.private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8"
+          cp "$KEY_PATH" "$HOME/.private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8"
+
+          echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
 
       - name: Install signing certificate
         env:
@@ -52,13 +75,17 @@ jobs:
           security list-keychain -d user -s "$KEYCHAIN_PATH"
           security find-identity -v -p codesigning "$KEYCHAIN_PATH"
 
+      - name: Prepare App Store Connect app and profile
+        id: asc
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: ruby .github/scripts/victorwake_asc_setup.rb
+
       - name: Install provisioning profile
         id: provisioning
-        env:
-          PROVISIONING_PROFILE_BASE64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
         run: |
-          PP_PATH="$RUNNER_TEMP/build_pp.mobileprovision"
-          printf '%s' "$PROVISIONING_PROFILE_BASE64" | base64 --decode -o "$PP_PATH"
+          PP_PATH="${{ steps.asc.outputs.profile_path }}"
           PP_UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" /dev/stdin <<< "$(security cms -D -i "$PP_PATH")")
           APP_ID=$(/usr/libexec/PlistBuddy -c "Print Entitlements:application-identifier" /dev/stdin <<< "$(security cms -D -i "$PP_PATH")")
 
@@ -69,12 +96,25 @@ jobs:
           cp "$PP_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$PP_UUID.mobileprovision"
           echo "Installed provisioning profile $PP_UUID for $APP_ID"
 
+      - name: Select simulator
+        run: |
+          SIM_ID=$(xcrun simctl list devices available -j | ruby -rjson -e '
+            devices = JSON.parse(STDIN.read).fetch("devices").values.flatten
+            selected = devices.find { |device| device.fetch("name") == "iPhone 17" } ||
+                       devices.find { |device| device.fetch("name") == "iPhone 16" } ||
+                       devices.find { |device| device.fetch("name").start_with?("iPhone") }
+            abort "No available iPhone simulator found" unless selected
+            puts selected.fetch("udid")
+          ')
+          echo "SIM_DESTINATION=platform=iOS Simulator,id=$SIM_ID" >> "$GITHUB_ENV"
+          echo "Selected simulator $SIM_ID"
+
       - name: Test VictorWake
         run: |
           xcodebuild test \
             -project source/VictorWake.xcodeproj \
             -scheme VictorWake \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -destination "$SIM_DESTINATION" \
             CODE_SIGNING_ALLOWED=NO
 
       - name: Archive VictorWake
@@ -90,6 +130,7 @@ jobs:
             CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
             MARKETING_VERSION="$VERSION" \
             PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
+            TARGETED_DEVICE_FAMILY="1,2" \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
             DEVELOPMENT_TEAM="$TEAM_ID" \
@@ -147,6 +188,22 @@ jobs:
           xcrun altool --upload-app \
             --type ios \
             -f "$IPA_PATH" \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID" \
+            --output-format json | tee "$RUNNER_TEMP/upload.json"
+
+      - name: Wait for TestFlight processing
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          BUILD_NUMBER="${{ github.run_number }}"
+          xcrun altool --build-status \
+            --apple-id "${{ steps.asc.outputs.apple_id }}" \
+            --bundle-version "$BUILD_NUMBER" \
+            --bundle-short-version-string "$VERSION" \
+            --platform ios \
+            --wait \
             --apiKey "$ASC_KEY_ID" \
             --apiIssuer "$ASC_ISSUER_ID" \
             --output-format json
