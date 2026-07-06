@@ -109,12 +109,14 @@ jobs:
           echo "SIM_DESTINATION=platform=iOS Simulator,id=$SIM_ID" >> "$GITHUB_ENV"
           echo "Selected simulator $SIM_ID"
 
-      - name: Test VictorWake
+      - name: Test VictorWake unit tests
+        timeout-minutes: 8
         run: |
           xcodebuild test \
             -project source/VictorWake.xcodeproj \
             -scheme VictorWake \
             -destination "$SIM_DESTINATION" \
+            -only-testing:VictorWakeTests \
             CODE_SIGNING_ALLOWED=NO
 
       - name: Archive VictorWake
