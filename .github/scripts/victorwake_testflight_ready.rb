@@ -145,89 +145,6 @@ def group_beta_testers(group_id)
   response.fetch("data")
 end
 
-def app_store_connect_users
-  response = asc_request(:get, query("/v1/users", {
-    "limit" => "200"
-  }), allow_failure: true)
-
-  response&.fetch("data", []) || []
-end
-
-def find_victor_user
-  app_store_connect_users.find do |user|
-    attributes = user.fetch("attributes", {})
-    first_name = attributes["firstName"].to_s.downcase
-    last_name = attributes["lastName"].to_s.downcase
-
-    first_name == "victor" && last_name == "ivanov"
-  end
-end
-
-def find_beta_tester(email)
-  response = asc_request(:get, query("/v1/betaTesters", {
-    "filter[email]" => email,
-    "limit" => "1"
-  }), allow_failure: true)
-
-  response&.fetch("data", [])&.first
-end
-
-def create_beta_tester(user, group_id)
-  attributes = user.fetch("attributes", {})
-  email = attributes["email"] || attributes["username"]
-  abort "App Store Connect user Victor Ivanov does not expose an email/username for TestFlight" if email.to_s.empty?
-
-  existing = find_beta_tester(email)
-  return existing if existing
-
-  body = {
-    data: {
-      type: "betaTesters",
-      attributes: {
-        firstName: attributes["firstName"],
-        lastName: attributes["lastName"],
-        email: email
-      },
-      relationships: {
-        betaGroups: {
-          data: [{ type: "betaGroups", id: group_id }]
-        }
-      }
-    }
-  }
-
-  asc_request(:post, "/v1/betaTesters", body: body).fetch("data")
-end
-
-def add_tester_to_group(beta_tester_id, group_id)
-  tester_body = {
-    data: [{ type: "betaTesters", id: beta_tester_id }]
-  }
-
-  group_body = {
-    data: [{ type: "betaGroups", id: group_id }]
-  }
-
-  asc_request(:post, "/v1/betaGroups/#{group_id}/relationships/betaTesters", body: tester_body, allow_failure: true)
-  asc_request(:post, "/v1/betaTesters/#{beta_tester_id}/relationships/betaGroups", body: group_body, allow_failure: true)
-end
-
-def add_individual_tester_to_build(beta_tester_id, build_id)
-  body = {
-    data: [{ type: "betaTesters", id: beta_tester_id }]
-  }
-
-  asc_request(:post, "/v1/builds/#{build_id}/relationships/individualTesters", body: body, allow_failure: true)
-end
-
-def build_individual_testers(build_id)
-  response = asc_request(:get, query("/v1/builds/#{build_id}/relationships/individualTesters", {
-    "limit" => "200"
-  }), allow_failure: true)
-
-  response&.fetch("data", []) || []
-end
-
 build = latest_build
 abort "Unable to find processed build #{BUILD_NUMBER} for App Store Connect app #{APP_ID}" unless build
 
@@ -259,27 +176,10 @@ abort "Build #{BUILD_NUMBER} was not attached to beta group #{group_id}" unless 
 puts "Build #{BUILD_NUMBER} is attached to beta group #{group_attributes["name"]}"
 
 testers = group_beta_testers(group_id)
-individual_testers = []
 if testers.empty?
-  puts "No testers found in #{group_attributes["name"]}; adding App Store Connect user Victor Ivanov"
-  user = find_victor_user
-  abort "Unable to find App Store Connect user Victor Ivanov to add as an internal tester" unless user
-
-  beta_tester = create_beta_tester(user, group_id)
-  add_tester_to_group(beta_tester.fetch("id"), group_id)
-  testers = group_beta_testers(group_id)
-
-  if testers.empty?
-    puts "Group tester assignment is unavailable; assigning Victor Ivanov directly to build #{BUILD_NUMBER}"
-    add_individual_tester_to_build(beta_tester.fetch("id"), build_id)
-    individual_testers = build_individual_testers(build_id)
-  end
-end
-
-if testers.empty? && individual_testers.none? { |item| item.fetch("id") == beta_tester.fetch("id") }
-  abort "No testers are attached to TestFlight group #{group_id} or individually assigned to build #{BUILD_NUMBER}"
+  puts "No API-visible beta testers are attached to #{group_attributes["name"]}."
+  puts "Eligible builds are still available to App Store Connect users through Apple's built-in App Store Connect Users group."
 end
 
 puts "TestFlight group #{group_attributes["name"]} has #{testers.count} tester(s)"
-puts "Build #{BUILD_NUMBER} has #{individual_testers.count} individually assigned tester(s)" unless individual_testers.empty?
 puts "TESTFLIGHT_GROUP_ID=#{group_id}"
