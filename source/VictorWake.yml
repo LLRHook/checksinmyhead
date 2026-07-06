@@ -18,12 +18,14 @@ targets:
         SWIFT_VERSION: "6.0"
         DEVELOPMENT_TEAM: D9QD5DUKNC
         CODE_SIGN_STYLE: Automatic
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: "Victor Wake"
+        INFOPLIST_KEY_CFBundleIconName: AppIcon
         INFOPLIST_KEY_NSLocalNetworkUsageDescription: "Victor Wake sends Wake-on-LAN packets to wake your PC."
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait"
     scheme:
       testTargets:

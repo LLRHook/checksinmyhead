@@ -11,6 +11,7 @@
 		4E60936A099A0AB1360090A6 /* WakeOnLanClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FD22E50083E92C8278892A5 /* WakeOnLanClient.swift */; };
 		568018066839254C34616A79 /* VictorWakeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9944FCF1A034383498808E4 /* VictorWakeApp.swift */; };
 		A708B198BA0D4040CCCC69A9 /* WakeRemoteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8A26452EF97355CB6CFDA7D /* WakeRemoteView.swift */; };
+		CD1780546648541ED9B6385B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB545ECD0654600999F166AD /* Assets.xcassets */; };
 		DAFE0CAF1724099241E68247 /* WakeSettingsKeys.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE1389EEEF229F70D3E8220A /* WakeSettingsKeys.swift */; };
 		F1B2B79196AE3F9609D22C86 /* WakeRemoteUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3CC8A798960E06D169AB114 /* WakeRemoteUITests.swift */; };
 /* End PBXBuildFile section */
@@ -38,6 +39,7 @@
 		3FD22E50083E92C8278892A5 /* WakeOnLanClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WakeOnLanClient.swift; sourceTree = "<group>"; };
 		6740FB630A9FDB87B6C1EBA5 /* VictorWake.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = VictorWake.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D9D3ECF0E89286349B230FF /* VictorWakeUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = VictorWakeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		AB545ECD0654600999F166AD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AE1389EEEF229F70D3E8220A /* WakeSettingsKeys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WakeSettingsKeys.swift; sourceTree = "<group>"; };
 		C9944FCF1A034383498808E4 /* VictorWakeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VictorWakeApp.swift; sourceTree = "<group>"; };
 		D8A26452EF97355CB6CFDA7D /* WakeRemoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WakeRemoteView.swift; sourceTree = "<group>"; };
@@ -99,6 +101,7 @@
 		E24C2056FEFCBA1ABDD7B156 /* VictorWake */ = {
 			isa = PBXGroup;
 			children = (
+				AB545ECD0654600999F166AD /* Assets.xcassets */,
 				63170ACB03108D316683C747 /* App */,
 				327F96DB9BFA9177C952A2D4 /* Views */,
 				611B470AD26C3ACC014F43B9 /* Wake */,
@@ -142,6 +145,7 @@
 			buildConfigurationList = 68E09505E55FC6B6F0E279DC /* Build configuration list for PBXNativeTarget "VictorWake" */;
 			buildPhases = (
 				2C1BAB244C2C837C2D344BED /* Sources */,
+				4B6C18978A1AFAE44A85ED38 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -211,6 +215,17 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		4B6C18978A1AFAE44A85ED38 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CD1780546648541ED9B6385B /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		08385CAD7A25EF3B09E6BAC1 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -265,9 +280,11 @@
 				DEVELOPMENT_TEAM = D9QD5DUKNC;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Victor Wake";
+				INFOPLIST_KEY_CFBundleIconName = AppIcon;
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Victor Wake sends Wake-on-LAN packets to wake your PC.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -277,7 +294,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.victorivanov.victorwake;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -426,9 +443,11 @@
 				DEVELOPMENT_TEAM = D9QD5DUKNC;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Victor Wake";
+				INFOPLIST_KEY_CFBundleIconName = AppIcon;
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Victor Wake sends Wake-on-LAN packets to wake your PC.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -438,7 +457,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.victorivanov.victorwake;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
