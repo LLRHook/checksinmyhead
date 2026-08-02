@@ -155,9 +155,17 @@ end
 # a swallowed error there would read as "no open submission" and create a
 # duplicate. Fetch and filter locally instead, and let real errors raise.
 def open_submission(app_id)
+  # Sparse fieldsets keep the payload small, but this is the only lookup whose
+  # failure would abort a release that has already uploaded a build. Fall back
+  # to an unfiltered read rather than dying on a rejected fields[] parameter.
   response = ASC.get("/v1/reviewSubmissions", {
     "filter[app]" => app_id,
     "fields[reviewSubmissions]" => "state,platform,submittedDate",
+    "limit" => "50"
+  }, allow_failure: true)
+
+  response ||= ASC.get("/v1/reviewSubmissions", {
+    "filter[app]" => app_id,
     "limit" => "50"
   })
 
