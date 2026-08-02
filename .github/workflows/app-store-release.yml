@@ -90,8 +90,21 @@ jobs:
           else
             TAG="${GITHUB_REF#refs/tags/}"
             VERSION="${TAG#release-v}"
-            # Annotated tags carry a message; lightweight ones do not.
-            NOTES="$(git for-each-ref "refs/tags/$TAG" --format='%(contents:subject)%0a%0a%(contents:body)' | sed -e 's/[[:space:]]*$//')"
+
+            # actions/checkout leaves refs/tags/<tag> pointing at the COMMIT,
+            # not the annotation object, so %(contents:...) silently falls
+            # through to the commit message. That shipped a merge-commit
+            # subject as App Store release notes once. Re-fetch the tag object
+            # and refuse to use anything that is not a real annotation.
+            git fetch --force --no-tags origin "refs/tags/${TAG}:refs/tags/${TAG}" 2>/dev/null || true
+
+            if [ "$(git cat-file -t "refs/tags/${TAG}" 2>/dev/null || true)" = "tag" ]; then
+              NOTES="$(git for-each-ref "refs/tags/${TAG}" \
+                --format='%(contents:subject)%0a%0a%(contents:body)' | sed -e 's/[[:space:]]*$//')"
+            else
+              NOTES=""
+              echo "::warning::${TAG} is a lightweight tag (no annotation). Leaving the existing What's New text untouched. Use 'git tag -a' to supply release notes."
+            fi
             RELEASE_TYPE=AFTER_APPROVAL
             SUBMIT=true
           fi
@@ -137,7 +150,9 @@ jobs:
           xcodebuild -version
           IOS_SDK_VERSION="$(xcrun --sdk iphoneos --show-sdk-version)"
           echo "iOS SDK: ${IOS_SDK_VERSION}"
-          if [[ "${IOS_SDK_VERSION}" != 26.* ]]; then
+          # Numeric compare, not a 26.* glob: the glob would reject iOS 27+
+          # and fail every release with an error claiming "26 or later".
+          if [[ "${IOS_SDK_VERSION%%.*}" -lt 26 ]]; then
             echo "::error::App Store submissions require the iOS 26 SDK or later. Found ${IOS_SDK_VERSION}."
             exit 1
           fi
