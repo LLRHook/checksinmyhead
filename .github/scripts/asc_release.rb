@@ -32,6 +32,7 @@ BUILD_NUMBER = ASC.require_env("BUILD_NUMBER")
 RELEASE_NOTES = ENV["RELEASE_NOTES"].to_s.strip
 RELEASE_TYPE = ENV.fetch("RELEASE_TYPE", "AFTER_APPROVAL")
 SUBMIT = ENV.fetch("SUBMIT_FOR_REVIEW", "true") == "true"
+DEFAULT_LOCALE = ENV.fetch("DEFAULT_LOCALE", "en-US")
 
 # Versions in these states can still be edited and resubmitted. Anything else
 # (WAITING_FOR_REVIEW, IN_REVIEW, READY_FOR_SALE, ...) must not be touched.
@@ -113,8 +114,24 @@ def update_release_notes(version_id, notes)
   })
 
   localizations = response.fetch("data", [])
+
+  # A freshly created version is not always seeded with localizations, in which
+  # case the notes would be silently dropped. Create one for the primary locale
+  # instead. This is allow_failure on purpose: shipping the binary matters more
+  # than the notes, so a metadata hiccup must never abort the release.
   if localizations.empty?
-    warn "No existing localizations found; skipping release notes."
+    puts "Version has no localizations; creating #{DEFAULT_LOCALE} to carry the release notes"
+    created = ASC.post("/v1/appStoreVersionLocalizations", {
+      data: {
+        type: "appStoreVersionLocalizations",
+        attributes: { locale: DEFAULT_LOCALE, whatsNew: notes },
+        relationships: {
+          appStoreVersion: { data: { type: "appStoreVersions", id: version_id } }
+        }
+      }
+    }, allow_failure: true)
+
+    warn "::warning::Could not set release notes; submitting without them." if created.nil?
     return
   end
 
