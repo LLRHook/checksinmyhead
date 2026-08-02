@@ -1,0 +1,74 @@
+name: Update App Store release notes
+
+# Fixes the "What's New" text on an App Store version without rebuilding or
+# reuploading anything. Touches whatsNew only — never screenshots, previews,
+# description, keywords or the icon.
+#
+# If the version is already awaiting review Apple locks it, and editing means
+# cancelling the submission first. That forfeits your place in the review
+# queue, so it only happens when you tick allow_cancel.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'App Store version to edit, e.g. 1.3.0'
+        required: true
+        type: string
+      release_notes:
+        description: "New What's New text"
+        required: true
+        type: string
+      allow_cancel:
+        description: 'If the version is locked, cancel the pending review submission to edit it (forfeits queue position)'
+        required: false
+        default: false
+        type: boolean
+      resubmit:
+        description: 'After a cancel + edit, resubmit for review'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-upload
+  cancel-in-progress: false
+
+env:
+  BUNDLE_ID: com.checksinmyhead-vng.app
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Write App Store Connect API key
+        env:
+          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+        run: |
+          set -euo pipefail
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_API_KEY_P8" > "$KEY_PATH"
+          echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+
+      - name: Update release notes
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          BUNDLE_ID: ${{ env.BUNDLE_ID }}
+          VERSION_STRING: ${{ inputs.version }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+          ALLOW_CANCEL: ${{ inputs.allow_cancel }}
+          RESUBMIT: ${{ inputs.resubmit }}
+        run: ruby .github/scripts/asc_update_notes.rb
+
+      - name: Clean up
+        if: always()
+        run: rm -f "$RUNNER_TEMP"/AuthKey_*.p8
