@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 )
@@ -30,5 +31,8 @@ func main() {
 }
 
 func getHealth(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"status": "web service - ok"})
+	c.JSON(http.StatusOK, gin.H{
+		"status": "web service - ok",
+		"commit": os.Getenv("RENDER_GIT_COMMIT"),
+	})
 }

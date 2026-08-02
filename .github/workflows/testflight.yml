@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       build_number:
-        description: 'Build number (leave blank to auto-increment)'
+        description: 'Build number (blank = next available from App Store Connect)'
         required: false
         type: string
       release_notes:
@@ -12,14 +12,29 @@ on:
         required: false
         default: 'Bug fixes and improvements'
         type: string
+      skip_tests:
+        description: 'Skip analyze/test (emergency builds only)'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
 
+concurrency:
+  # Two concurrent uploads race for the same build number.
+  group: ios-upload
+  cancel-in-progress: false
+
+env:
+  BUNDLE_ID: com.checksinmyhead-vng.app
+  TEAM_ID: D9QD5DUKNC
+  FLUTTER_VERSION: 3.41.5
+
 jobs:
   build-and-upload:
     runs-on: macos-26
-    timeout-minutes: 30
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: mobile
@@ -30,8 +45,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Verify Apple toolchain
+      - name: Select Xcode and verify SDK
+        working-directory: .
         run: |
+          set -euo pipefail
+          # Prefer the newest installed Xcode 26.x; App Store uploads require
+          # the iOS 26 SDK and the runner image ships several side by side.
+          for candidate in $(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -Vr) /Applications/Xcode.app; do
+            if [ -d "$candidate" ]; then
+              sudo xcode-select -s "$candidate"
+              break
+            fi
+          done
+
           xcodebuild -version
           IOS_SDK_VERSION="$(xcrun --sdk iphoneos --show-sdk-version)"
           echo "iOS SDK: ${IOS_SDK_VERSION}"
@@ -39,119 +65,168 @@ jobs:
             echo "::error::App Store uploads require the iOS 26 SDK or later. Found iOS SDK ${IOS_SDK_VERSION}."
             exit 1
           fi
-        working-directory: .
-
-      - name: Determine build number
-        id: build_number
-        run: |
-          if [ -n "${{ inputs.build_number }}" ]; then
-            echo "number=${{ inputs.build_number }}" >> $GITHUB_OUTPUT
-          else
-            LAST=$(git tag --list 'v*+*' --sort=-v:refname | head -1 | grep -oE '\+[0-9]+' | tr -d '+')
-            echo "number=$(( ${LAST:-0} + 1 ))" >> $GITHUB_OUTPUT
-          fi
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
 
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Analyze
+        if: ${{ !inputs.skip_tests }}
+        run: flutter analyze
+
+      - name: Test
+        if: ${{ !inputs.skip_tests }}
+        run: flutter test
+
       - name: Install CocoaPods
         run: cd ios && pod install
 
-      - name: Install signing certificate
-        env:
-          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
-          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
-        run: |
-          CERT_PATH=$RUNNER_TEMP/build_certificate.p12
-          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-          KEYCHAIN_PASSWORD=$(openssl rand -hex 16)
-
-          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERT_PATH
-
-          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security import $CERT_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security list-keychain -d user -s $KEYCHAIN_PATH
-
-      - name: Install provisioning profile
-        id: provisioning
-        env:
-          PROVISIONING_PROFILE_BASE64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
-        run: |
-          PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
-          echo -n "$PROVISIONING_PROFILE_BASE64" | base64 --decode -o $PP_PATH
-
-          PP_UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" /dev/stdin <<< $(security cms -D -i $PP_PATH))
-          echo "uuid=$PP_UUID" >> $GITHUB_OUTPUT
-
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/$PP_UUID.mobileprovision
-
-      - name: Configure manual code signing
-        run: |
-          # Switch from automatic to manual signing for CI
-          sed -i '' 's/CODE_SIGN_STYLE = Automatic/CODE_SIGN_STYLE = Manual/g' ios/Runner.xcodeproj/project.pbxproj
-          sed -i '' 's/CODE_SIGN_IDENTITY = "Apple Development"/CODE_SIGN_IDENTITY = "Apple Distribution"/g' ios/Runner.xcodeproj/project.pbxproj
-          sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = ""/PROVISIONING_PROFILE_SPECIFIER = "${{ steps.provisioning.outputs.uuid }}"/g' ios/Runner.xcodeproj/project.pbxproj
-
-      - name: Create export options
-        run: |
-          cat > ios/ExportOptions.plist << EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>method</key>
-              <string>app-store</string>
-              <key>teamID</key>
-              <string>D9QD5DUKNC</string>
-              <key>signingStyle</key>
-              <string>manual</string>
-              <key>provisioningProfiles</key>
-              <dict>
-                  <key>com.checksinmyhead-vng.app</key>
-                  <string>${{ steps.provisioning.outputs.uuid }}</string>
-              </dict>
-          </dict>
-          </plist>
-          EOF
-
-      - name: Build IPA
-        run: |
-          flutter build ipa \
-            --release \
-            --build-number=${{ steps.build_number.outputs.number }} \
-            --export-options-plist=ios/ExportOptions.plist
-
-      - name: Upload to TestFlight
+      - name: Write App Store Connect API key
         env:
           ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
         run: |
-          mkdir -p ~/.private_keys
-          echo "$ASC_API_KEY_P8" > ~/.private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
+          set -euo pipefail
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_API_KEY_P8" > "$KEY_PATH"
+          # altool discovers keys here by convention.
+          mkdir -p "$HOME/.private_keys"
+          cp "$KEY_PATH" "$HOME/.private_keys/AuthKey_${ASC_KEY_ID}.p8"
+          echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
 
+      - name: Resolve version and build number
+        id: version
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          VERSION="$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f1 | tr -d '[:space:]')"
+
+          if [ -n "${{ inputs.build_number }}" ]; then
+            BUILD="${{ inputs.build_number }}"
+            echo "Using operator-supplied build number $BUILD"
+          else
+            BUILD="$(ruby ../.github/scripts/asc_next_build.rb)"
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+          echo "Building $VERSION ($BUILD)"
+
+      - name: Build signed IPA
+        id: ipa
+        uses: ./.github/actions/build-signed-ipa
+        with:
+          build-number: ${{ steps.version.outputs.build }}
+          build-name: ${{ steps.version.outputs.version }}
+          certificate-base64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          p12-password: ${{ secrets.P12_PASSWORD }}
+          provisioning-profile-base64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
+          team-id: ${{ env.TEAM_ID }}
+          bundle-id: ${{ env.BUNDLE_ID }}
+
+      # Catches entitlement/asset problems locally instead of via a rejection
+      # email twenty minutes after a "successful" upload.
+      - name: Validate IPA
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          xcrun altool --validate-app \
+            --type ios \
+            -f "${{ steps.ipa.outputs.ipa-path }}" \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID"
+
+      - name: Upload to TestFlight
+        id: upload
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
           xcrun altool --upload-app \
             --type ios \
-            -f build/ios/ipa/*.ipa \
-            --apiKey ${{ secrets.ASC_KEY_ID }} \
-            --apiIssuer ${{ secrets.ASC_ISSUER_ID }}
+            -f "${{ steps.ipa.outputs.ipa-path }}" \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID" \
+            --output-format json | tee "$RUNNER_TEMP/upload.json"
 
+          DELIVERY_ID="$(sed -n 's/.*"delivery-uuid" : "\([^"]*\)".*/\1/p' "$RUNNER_TEMP/upload.json" | tail -1)"
+          if [ -z "$DELIVERY_ID" ]; then
+            echo "::warning::Could not parse delivery UUID; skipping the processing wait."
+          fi
+          echo "delivery_id=$DELIVERY_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for TestFlight processing
+        if: steps.upload.outputs.delivery_id != ''
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          xcrun altool --build-status \
+            --delivery-id "${{ steps.upload.outputs.delivery_id }}" \
+            --wait \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID" \
+            --output-format json
+
+      # Tagged only after a confirmed upload, so tags never claim a build that
+      # does not exist in App Store Connect.
       - name: Tag build
+        working-directory: .
         run: |
-          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f1)
-          BUILD=${{ steps.build_number.outputs.number }}
-          git tag "v${VERSION}+${BUILD}"
-          git push origin "v${VERSION}+${BUILD}"
+          set -euo pipefail
+          TAG="v${{ steps.version.outputs.version }}+${{ steps.version.outputs.build }}"
+          git config user.name 'Victor Ivanov'
+          git config user.email 'vivanov@paradigmtesting.com'
 
-      - name: Clean up
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "::warning::Tag $TAG already exists; leaving it untouched."
+          else
+            git tag "$TAG"
+            git push origin "$TAG"
+            echo "Tagged $TAG"
+          fi
+
+      - name: Summary
         if: always()
+        working-directory: .
+        env:
+          # Passed as an env var rather than interpolated into the script: a
+          # note containing backticks or $(...) would otherwise be executed.
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+          VERSION: ${{ steps.version.outputs.version }}
+          BUILD: ${{ steps.version.outputs.build }}
         run: |
-          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db || true
-          rm -f $RUNNER_TEMP/build_certificate.p12 $RUNNER_TEMP/build_pp.mobileprovision
+          # Escape pipes so a note cannot break out of the table cell.
+          SAFE_NOTES="${RELEASE_NOTES//|/\\|}"
+          SAFE_NOTES="${SAFE_NOTES//$'\n'/ }"
+          {
+            echo "### TestFlight build"
+            echo
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| Version | \`${VERSION}\` |"
+            echo "| Build | \`${BUILD}\` |"
+            echo "| Notes | ${SAFE_NOTES} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Clean up signing material
+        if: always()
+        working-directory: .
+        run: |
+          security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" || true
+          rm -f "$RUNNER_TEMP/build_certificate.p12" \
+                "$RUNNER_TEMP/build_pp.mobileprovision" \
+                "$RUNNER_TEMP"/AuthKey_*.p8
+          rm -rf "$HOME/.private_keys"
