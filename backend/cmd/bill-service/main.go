@@ -108,5 +108,11 @@ func main() {
 }
 
 func getHealth(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"status": "bill service - ok"})
+	// RENDER_GIT_COMMIT is injected by Render at runtime. Surfacing it lets a
+	// deploy pipeline tell "the new revision is serving" apart from "the old
+	// one is still up", which a bare status string cannot express.
+	c.JSON(http.StatusOK, gin.H{
+		"status": "bill service - ok",
+		"commit": os.Getenv("RENDER_GIT_COMMIT"),
+	})
 }

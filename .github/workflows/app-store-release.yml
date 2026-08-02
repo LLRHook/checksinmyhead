@@ -1,0 +1,247 @@
+name: Release to App Store
+
+# Promotes a fresh build all the way to App Review.
+#
+# Trigger: push a tag shaped `release-v<version>`, e.g. `release-v1.3.1`.
+# The `release-` prefix keeps this workflow from firing on the `v1.3.0+10`
+# tags that the TestFlight workflow creates on every beta upload.
+#
+#   git tag -a release-v1.3.1 -m "Fix tab sync; faster bill loading"
+#   git push origin release-v1.3.1
+#
+# The annotation message becomes the "What's New" text. Without one, the
+# existing App Store Connect text is left alone.
+#
+# SCOPE: this pipeline updates the app package (binary + version) and, if you
+# provide them, the release notes. It never touches screenshots, previews, the
+# description, keywords, or the icon — those stay managed by hand.
+
+on:
+  push:
+    tags:
+      - 'release-v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Marketing version to release, e.g. 1.3.1'
+        required: true
+        type: string
+      release_notes:
+        description: "What's New text (blank = leave existing text unchanged)"
+        required: false
+        type: string
+      release_type:
+        description: 'When to release once approved'
+        required: false
+        default: AFTER_APPROVAL
+        type: choice
+        options: [AFTER_APPROVAL, MANUAL]
+      submit_for_review:
+        description: 'Submit to App Review (uncheck to stage the version only)'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-upload
+  cancel-in-progress: false
+
+env:
+  BUNDLE_ID: com.checksinmyhead-vng.app
+  TEAM_ID: D9QD5DUKNC
+  FLUTTER_VERSION: 3.41.5
+
+jobs:
+  release:
+    runs-on: macos-26
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: mobile
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release version
+        id: release
+        working-directory: .
+        env:
+          # Inputs arrive as env vars, never interpolated into the script body.
+          # A release note containing a quote or $(...) must not become code.
+          EVENT_NAME: ${{ github.event_name }}
+          IN_VERSION: ${{ inputs.version }}
+          IN_NOTES: ${{ inputs.release_notes }}
+          IN_RELEASE_TYPE: ${{ inputs.release_type }}
+          IN_SUBMIT: ${{ inputs.submit_for_review }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            VERSION="$IN_VERSION"
+            NOTES="$IN_NOTES"
+            RELEASE_TYPE="$IN_RELEASE_TYPE"
+            SUBMIT="$IN_SUBMIT"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+            VERSION="${TAG#release-v}"
+            # Annotated tags carry a message; lightweight ones do not.
+            NOTES="$(git for-each-ref "refs/tags/$TAG" --format='%(contents:subject)%0a%0a%(contents:body)' | sed -e 's/[[:space:]]*$//')"
+            RELEASE_TYPE=AFTER_APPROVAL
+            SUBMIT=true
+          fi
+
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Version '$VERSION' is not MAJOR.MINOR.PATCH. Tag as release-v1.2.3."
+            exit 1
+          fi
+
+          # A tag that disagrees with pubspec.yaml would ship a binary whose
+          # CFBundleShortVersionString does not match the App Store version.
+          PUBSPEC_VERSION="$(grep '^version:' mobile/pubspec.yaml | sed 's/version: //' | cut -d'+' -f1 | tr -d '[:space:]')"
+          if [ "$VERSION" != "$PUBSPEC_VERSION" ]; then
+            echo "::error::Tag says $VERSION but mobile/pubspec.yaml says $PUBSPEC_VERSION. Bump pubspec.yaml and re-tag."
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "release_type=$RELEASE_TYPE" >> "$GITHUB_OUTPUT"
+          echo "submit=$SUBMIT" >> "$GITHUB_OUTPUT"
+          # Random delimiter: a tag message containing the literal delimiter
+          # would otherwise close the block early and inject further outputs.
+          DELIM="RELEASE_NOTES_$(openssl rand -hex 12)"
+          {
+            echo "notes<<$DELIM"
+            echo "$NOTES"
+            echo "$DELIM"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Releasing $VERSION (releaseType=$RELEASE_TYPE, submit=$SUBMIT)"
+
+      - name: Select Xcode and verify SDK
+        working-directory: .
+        run: |
+          set -euo pipefail
+          for candidate in $(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -Vr) /Applications/Xcode.app; do
+            if [ -d "$candidate" ]; then
+              sudo xcode-select -s "$candidate"
+              break
+            fi
+          done
+
+          xcodebuild -version
+          IOS_SDK_VERSION="$(xcrun --sdk iphoneos --show-sdk-version)"
+          echo "iOS SDK: ${IOS_SDK_VERSION}"
+          if [[ "${IOS_SDK_VERSION}" != 26.* ]]; then
+            echo "::error::App Store submissions require the iOS 26 SDK or later. Found ${IOS_SDK_VERSION}."
+            exit 1
+          fi
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # A production release is the one build that must never skip its gates.
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
+
+      - name: Install CocoaPods
+        run: cd ios && pod install
+
+      - name: Write App Store Connect API key
+        env:
+          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+        run: |
+          set -euo pipefail
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_API_KEY_P8" > "$KEY_PATH"
+          mkdir -p "$HOME/.private_keys"
+          cp "$KEY_PATH" "$HOME/.private_keys/AuthKey_${ASC_KEY_ID}.p8"
+          echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+
+      - name: Resolve build number
+        id: build
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          BUILD="$(ruby ../.github/scripts/asc_next_build.rb)"
+          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+
+      - name: Build signed IPA
+        id: ipa
+        uses: ./.github/actions/build-signed-ipa
+        with:
+          build-number: ${{ steps.build.outputs.build }}
+          build-name: ${{ steps.release.outputs.version }}
+          certificate-base64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          p12-password: ${{ secrets.P12_PASSWORD }}
+          provisioning-profile-base64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
+          team-id: ${{ env.TEAM_ID }}
+          bundle-id: ${{ env.BUNDLE_ID }}
+
+      - name: Validate IPA
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          xcrun altool --validate-app \
+            --type ios \
+            -f "${{ steps.ipa.outputs.ipa-path }}" \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID"
+
+      - name: Upload build
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          xcrun altool --upload-app \
+            --type ios \
+            -f "${{ steps.ipa.outputs.ipa-path }}" \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID" \
+            --output-format json | tee "$RUNNER_TEMP/upload.json"
+
+      # Waits for processing, attaches the build to the version, optionally
+      # sets What's New, then runs Apple's three-step review submission.
+      - name: Create App Store version and submit for review
+        working-directory: .
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          BUNDLE_ID: ${{ env.BUNDLE_ID }}
+          VERSION_STRING: ${{ steps.release.outputs.version }}
+          BUILD_NUMBER: ${{ steps.build.outputs.build }}
+          RELEASE_NOTES: ${{ steps.release.outputs.notes }}
+          RELEASE_TYPE: ${{ steps.release.outputs.release_type }}
+          SUBMIT_FOR_REVIEW: ${{ steps.release.outputs.submit }}
+        run: ruby .github/scripts/asc_release.rb
+
+      - name: Clean up signing material
+        if: always()
+        working-directory: .
+        run: |
+          security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" || true
+          rm -f "$RUNNER_TEMP/build_certificate.p12" \
+                "$RUNNER_TEMP/build_pp.mobileprovision" \
+                "$RUNNER_TEMP"/AuthKey_*.p8
+          rm -rf "$HOME/.private_keys"

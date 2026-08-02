@@ -8,7 +8,47 @@ on:
 permissions:
   contents: read
 
+env:
+  # Must match the pin in testflight.yml and app-store-release.yml. Unpinned
+  # `channel: stable` meant CI validated a different Flutter than the one that
+  # actually ships: CI drifted to 3.44.8 and failed on an `axisAlignment`
+  # deprecation that does not exist in the version being released.
+  FLUTTER_VERSION: 3.41.5
+
 jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Format check
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; echo "::error::Run 'gofmt -w .' in backend/"; exit 1; }
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test -race ./...
+
+      # Dependabot only sees module manifests, so it reported none of the 16
+      # reachable Go standard-library vulnerabilities. govulncheck also filters
+      # to what the code actually calls, so it does not drown in noise.
+      - name: Vulnerability scan
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
   mobile:
     runs-on: ubuntu-latest
     defaults:
@@ -22,6 +62,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
       - name: Install dependencies

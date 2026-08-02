@@ -1,0 +1,184 @@
+name: Build signed IPA
+description: >-
+  Installs Apple signing material into a throwaway keychain, archives the
+  Flutter iOS app with manual signing, and exports an App Store IPA.
+
+inputs:
+  build-number:
+    description: CFBundleVersion for this build
+    required: true
+  build-name:
+    description: CFBundleShortVersionString (marketing version)
+    required: true
+  certificate-base64:
+    description: Base64-encoded Apple Distribution .p12
+    required: true
+  p12-password:
+    description: Password for the .p12
+    required: true
+  provisioning-profile-base64:
+    description: Base64-encoded App Store .mobileprovision
+    required: true
+  team-id:
+    description: Apple Developer team ID
+    required: true
+  bundle-id:
+    description: Bundle identifier being signed
+    required: true
+
+outputs:
+  ipa-path:
+    description: Absolute path to the exported .ipa
+    value: ${{ steps.export.outputs.ipa_path }}
+
+runs:
+  using: composite
+  steps:
+    # The keychain is created fresh per run and deleted by the caller's
+    # cleanup step, so signing material never persists on the runner.
+    - name: Install signing certificate
+      shell: bash
+      env:
+        BUILD_CERTIFICATE_BASE64: ${{ inputs.certificate-base64 }}
+        P12_PASSWORD: ${{ inputs.p12-password }}
+      run: |
+        set -euo pipefail
+        CERT_PATH="$RUNNER_TEMP/build_certificate.p12"
+        KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+        KEYCHAIN_PASSWORD="$(openssl rand -hex 16)"
+
+        printf '%s' "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o "$CERT_PATH"
+
+        security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+        security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+        security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+        security import "$CERT_PATH" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+        security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+        security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+        echo "Codesigning identities available:"
+        security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+
+    - name: Install provisioning profile
+      id: provisioning
+      shell: bash
+      env:
+        PROVISIONING_PROFILE_BASE64: ${{ inputs.provisioning-profile-base64 }}
+      run: |
+        set -euo pipefail
+        PP_PATH="$RUNNER_TEMP/build_pp.mobileprovision"
+        printf '%s' "$PROVISIONING_PROFILE_BASE64" | base64 --decode -o "$PP_PATH"
+
+        DECODED="$(security cms -D -i "$PP_PATH")"
+        PP_UUID="$(/usr/libexec/PlistBuddy -c 'Print UUID' /dev/stdin <<< "$DECODED")"
+        PP_NAME="$(/usr/libexec/PlistBuddy -c 'Print Name' /dev/stdin <<< "$DECODED")"
+        PP_APP_ID="$(/usr/libexec/PlistBuddy -c 'Print Entitlements:application-identifier' /dev/stdin <<< "$DECODED")"
+        PP_EXPIRY="$(/usr/libexec/PlistBuddy -c 'Print ExpirationDate' /dev/stdin <<< "$DECODED")"
+
+        # Fail loudly on a mismatched profile rather than producing an IPA that
+        # App Store Connect rejects minutes later.
+        if [[ "$PP_APP_ID" != *".${{ inputs.bundle-id }}" ]]; then
+          echo "::error::Provisioning profile is for '$PP_APP_ID' but this build signs '${{ inputs.bundle-id }}'."
+          exit 1
+        fi
+
+        # PlistBuddy prints a regional zone abbreviation ("Mon May 25 08:07:33
+        # EST 2026"). BSD date rejects those in -u mode, so parse in local mode
+        # and compare epochs. An unparseable date must not read as "expired".
+        if PP_EPOCH="$(date -j -f '%a %b %d %T %Z %Y' "$PP_EXPIRY" +%s 2>/dev/null)"; then
+          NOW="$(date +%s)"
+          if [ "$NOW" -ge "$PP_EPOCH" ]; then
+            echo "::error::Provisioning profile expired on $PP_EXPIRY. Renew it before releasing."
+            exit 1
+          fi
+          DAYS_LEFT=$(( (PP_EPOCH - NOW) / 86400 ))
+          echo "Profile valid for $DAYS_LEFT more day(s)."
+          if [ "$DAYS_LEFT" -lt 14 ]; then
+            echo "::warning::Provisioning profile expires in $DAYS_LEFT day(s) ($PP_EXPIRY)."
+          fi
+        else
+          echo "::notice::Could not parse profile expiry '$PP_EXPIRY'; skipping the expiry check."
+        fi
+
+        echo "Profile: $PP_NAME ($PP_UUID), expires $PP_EXPIRY"
+
+        mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+        cp "$PP_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$PP_UUID.mobileprovision"
+        echo "uuid=$PP_UUID" >> "$GITHUB_OUTPUT"
+
+    # --config-only regenerates ios/Flutter/Generated.xcconfig (which is where
+    # FLUTTER_BUILD_NAME / FLUTTER_BUILD_NUMBER come from, and what Info.plist
+    # interpolates) without doing a build we are about to redo under xcodebuild.
+    - name: Configure Flutter build
+      shell: bash
+      working-directory: mobile
+      run: |
+        set -euo pipefail
+        flutter build ios \
+          --release \
+          --config-only \
+          --build-name='${{ inputs.build-name }}' \
+          --build-number='${{ inputs.build-number }}'
+
+        echo "--- Generated.xcconfig ---"
+        grep -E 'FLUTTER_BUILD_(NAME|NUMBER)' ios/Flutter/Generated.xcconfig
+
+    # Signing is passed as build settings rather than rewriting project.pbxproj
+    # in place, so the checkout stays pristine and nothing can leak into a diff.
+    - name: Archive
+      shell: bash
+      working-directory: mobile
+      run: |
+        set -euo pipefail
+        xcodebuild archive \
+          -workspace ios/Runner.xcworkspace \
+          -scheme Runner \
+          -configuration Release \
+          -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
+          -destination 'generic/platform=iOS' \
+          -allowProvisioningUpdates \
+          CODE_SIGN_STYLE=Manual \
+          CODE_SIGN_IDENTITY="Apple Distribution" \
+          DEVELOPMENT_TEAM='${{ inputs.team-id }}' \
+          PROVISIONING_PROFILE_SPECIFIER='${{ steps.provisioning.outputs.uuid }}'
+
+    - name: Export IPA
+      id: export
+      shell: bash
+      working-directory: mobile
+      run: |
+        set -euo pipefail
+        cat > "$RUNNER_TEMP/ExportOptions.plist" << EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>teamID</key>
+            <string>${{ inputs.team-id }}</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>uploadSymbols</key>
+            <true/>
+            <key>provisioningProfiles</key>
+            <dict>
+                <key>${{ inputs.bundle-id }}</key>
+                <string>${{ steps.provisioning.outputs.uuid }}</string>
+            </dict>
+        </dict>
+        </plist>
+        EOF
+
+        xcodebuild -exportArchive \
+          -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
+          -exportPath "$RUNNER_TEMP/export" \
+          -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
+
+        IPA_PATH="$(find "$RUNNER_TEMP/export" -name '*.ipa' -print -quit)"
+        if [ -z "$IPA_PATH" ]; then
+          echo "::error::No .ipa produced by xcodebuild -exportArchive"
+          exit 1
+        fi
+        echo "Exported $IPA_PATH ($(du -h "$IPA_PATH" | cut -f1))"
+        echo "ipa_path=$IPA_PATH" >> "$GITHUB_OUTPUT"
