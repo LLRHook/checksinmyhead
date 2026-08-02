@@ -1,7 +1,7 @@
 name: Build signed IPA
 description: >-
-  Installs Apple signing material into a throwaway keychain, archives the
-  Flutter iOS app with manual signing, and exports an App Store IPA.
+  Installs Apple signing material into a throwaway keychain, configures manual
+  signing on the Runner target, and builds an App Store IPA.
 
 inputs:
   build-number:
@@ -29,7 +29,7 @@ inputs:
 outputs:
   ipa-path:
     description: Absolute path to the exported .ipa
-    value: ${{ steps.export.outputs.ipa_path }}
+    value: ${{ steps.build.outputs.ipa_path }}
 
 runs:
   using: composite
@@ -83,8 +83,8 @@ runs:
         fi
 
         # PlistBuddy prints a regional zone abbreviation ("Mon May 25 08:07:33
-        # EST 2026"). BSD date rejects those in -u mode, so parse in local mode
-        # and compare epochs. An unparseable date must not read as "expired".
+        # EST 2026"). BSD date rejects those in -u mode, so parse in local mode.
+        # An unparseable date must not read as "expired".
         if PP_EPOCH="$(date -j -f '%a %b %d %T %Z %Y' "$PP_EXPIRY" +%s 2>/dev/null)"; then
           NOW="$(date +%s)"
           if [ "$NOW" -ge "$PP_EPOCH" ]; then
@@ -106,49 +106,55 @@ runs:
         cp "$PP_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$PP_UUID.mobileprovision"
         echo "uuid=$PP_UUID" >> "$GITHUB_OUTPUT"
 
-    # --config-only regenerates ios/Flutter/Generated.xcconfig (which is where
-    # FLUTTER_BUILD_NAME / FLUTTER_BUILD_NUMBER come from, and what Info.plist
-    # interpolates) without doing a build we are about to redo under xcodebuild.
-    - name: Configure Flutter build
+    # Signing has to be set on the Runner target itself. Two tempting
+    # alternatives do not work:
+    #   * xcodebuild command-line build settings apply to EVERY target in the
+    #     workspace, so the Pods framework targets fail with "does not support
+    #     provisioning profiles".
+    #   * an xcconfig is outranked by the target-level CODE_SIGN_* values that
+    #     Runner.xcodeproj sets explicitly.
+    # Editing the Runner project is the only correctly-scoped lever, and it
+    # leaves Pods.xcodeproj untouched.
+    - name: Configure manual signing on the Runner target
+      shell: bash
+      working-directory: mobile
+      env:
+        PP_UUID: ${{ steps.provisioning.outputs.uuid }}
+        TEAM_ID: ${{ inputs.team-id }}
+      run: |
+        set -euo pipefail
+        PBXPROJ=ios/Runner.xcodeproj/project.pbxproj
+
+        sed -i '' \
+          -e 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' \
+          -e 's/CODE_SIGN_IDENTITY = "Apple Development";/CODE_SIGN_IDENTITY = "Apple Distribution";/g' \
+          -e "s#PROVISIONING_PROFILE_SPECIFIER = \"\";#PROVISIONING_PROFILE_SPECIFIER = \"${PP_UUID}\";#g" \
+          "$PBXPROJ"
+
+        # These substitutions used to run blind. If Xcode ever rewrites the
+        # file, a silent no-op would yield a wrongly-signed archive that only
+        # fails at upload, so assert each one landed.
+        fail=0
+        grep -q 'CODE_SIGN_STYLE = Manual;' "$PBXPROJ" \
+          || { echo "::error::CODE_SIGN_STYLE rewrite did not apply."; fail=1; }
+        grep -q 'CODE_SIGN_IDENTITY = "Apple Distribution";' "$PBXPROJ" \
+          || { echo "::error::CODE_SIGN_IDENTITY rewrite did not apply."; fail=1; }
+        grep -q "PROVISIONING_PROFILE_SPECIFIER = \"${PP_UUID}\";" "$PBXPROJ" \
+          || { echo "::error::PROVISIONING_PROFILE_SPECIFIER rewrite did not apply."; fail=1; }
+        if grep -q 'CODE_SIGN_STYLE = Automatic;' "$PBXPROJ"; then
+          echo "::error::Some targets still use automatic signing."
+          fail=1
+        fi
+        [ "$fail" -eq 0 ] || exit 1
+
+        echo "Runner target configured for manual signing with profile ${PP_UUID}."
+
+    - name: Create export options
       shell: bash
       working-directory: mobile
       run: |
         set -euo pipefail
-        flutter build ios \
-          --release \
-          --config-only \
-          --build-name='${{ inputs.build-name }}' \
-          --build-number='${{ inputs.build-number }}'
-
-        echo "--- Generated.xcconfig ---"
-        grep -E 'FLUTTER_BUILD_(NAME|NUMBER)' ios/Flutter/Generated.xcconfig
-
-    # Signing is passed as build settings rather than rewriting project.pbxproj
-    # in place, so the checkout stays pristine and nothing can leak into a diff.
-    - name: Archive
-      shell: bash
-      working-directory: mobile
-      run: |
-        set -euo pipefail
-        xcodebuild archive \
-          -workspace ios/Runner.xcworkspace \
-          -scheme Runner \
-          -configuration Release \
-          -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
-          -destination 'generic/platform=iOS' \
-          -allowProvisioningUpdates \
-          CODE_SIGN_STYLE=Manual \
-          CODE_SIGN_IDENTITY="Apple Distribution" \
-          DEVELOPMENT_TEAM='${{ inputs.team-id }}' \
-          PROVISIONING_PROFILE_SPECIFIER='${{ steps.provisioning.outputs.uuid }}'
-
-    - name: Export IPA
-      id: export
-      shell: bash
-      working-directory: mobile
-      run: |
-        set -euo pipefail
-        cat > "$RUNNER_TEMP/ExportOptions.plist" << EOF
+        cat > ios/ExportOptions.plist << EOF
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
         <plist version="1.0">
@@ -170,15 +176,27 @@ runs:
         </plist>
         EOF
 
-        xcodebuild -exportArchive \
-          -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
-          -exportPath "$RUNNER_TEMP/export" \
-          -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
+    # flutter build ipa drives archive + export itself and knows how to handle
+    # the Flutter build phases, which is why it is preferred here over calling
+    # xcodebuild directly.
+    - name: Build IPA
+      id: build
+      shell: bash
+      working-directory: mobile
+      run: |
+        set -euo pipefail
+        flutter build ipa \
+          --release \
+          --build-name='${{ inputs.build-name }}' \
+          --build-number='${{ inputs.build-number }}' \
+          --export-options-plist=ios/ExportOptions.plist
 
-        IPA_PATH="$(find "$RUNNER_TEMP/export" -name '*.ipa' -print -quit)"
+        IPA_PATH="$(find build/ios/ipa -name '*.ipa' -print -quit)"
         if [ -z "$IPA_PATH" ]; then
-          echo "::error::No .ipa produced by xcodebuild -exportArchive"
+          echo "::error::No .ipa produced by flutter build ipa"
+          ls -R build/ios/ipa || true
           exit 1
         fi
+        IPA_PATH="$(cd "$(dirname "$IPA_PATH")" && pwd)/$(basename "$IPA_PATH")"
         echo "Exported $IPA_PATH ($(du -h "$IPA_PATH" | cut -f1))"
         echo "ipa_path=$IPA_PATH" >> "$GITHUB_OUTPUT"
