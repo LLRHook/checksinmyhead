@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import {
   FaCircleCheck,
   FaPenToSquare,
@@ -11,9 +11,9 @@ import {
   FaXmark,
 } from "react-icons/fa6";
 import {
-  updateTabBillItemAssignments,
   type Bill,
   type ItemAssignment,
+  updateTabBillItemAssignments,
 } from "@/lib/api";
 
 interface LazyBillBoardProps {
@@ -319,9 +319,9 @@ export default function LazyBillBoard({
 
                   {assignments.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {assignments.map((assignment, index) => (
+                      {assignments.map((assignment) => (
                         <span
-                          key={`${item.id}-${assignment.person_name}-${index}`}
+                          key={`${item.id}-${assignment.person_name}`}
                           className="inline-flex items-center gap-2 rounded-full bg-[var(--secondary)] dark:bg-white/10 px-3 py-1 text-xs font-medium text-[var(--accent)] dark:text-white"
                         >
                           {assignment.person_name}
