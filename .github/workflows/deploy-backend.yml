@@ -1,0 +1,168 @@
+name: Deploy backend to production
+
+# Ships the Go backend to Render.
+#
+# Trigger: push a tag shaped `backend-v<version>`, e.g. `backend-v1.4.0`.
+#
+#   git tag backend-v1.4.0
+#   git push origin backend-v1.4.0
+#
+# Setup: add a repository secret RENDER_DEPLOY_HOOK_URL
+#   Render dashboard -> service -> Settings -> Deploy Hook -> copy URL
+#
+# If that secret is absent the workflow assumes Render auto-deploy is handling
+# the rollout and only verifies the result, so it is useful either way.
+
+on:
+  push:
+    tags:
+      - 'backend-v*'
+  workflow_dispatch:
+    inputs:
+      skip_deploy:
+        description: 'Only run the health verification, do not trigger a deploy'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-deploy
+  cancel-in-progress: false
+
+env:
+  # Override by setting a repository variable named BACKEND_URL.
+  BACKEND_URL: ${{ vars.BACKEND_URL || 'https://billington-api.onrender.com' }}
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test -race ./...
+
+  deploy:
+    name: Deploy
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Trigger Render deploy
+        id: trigger
+        if: ${{ !inputs.skip_deploy }}
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${RENDER_DEPLOY_HOOK_URL:-}" ]; then
+            echo "::notice::RENDER_DEPLOY_HOOK_URL is not set - assuming Render auto-deploy. Skipping trigger."
+            echo "triggered=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          RESPONSE="$(curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL")"
+          echo "Render accepted the deploy request: $RESPONSE"
+          echo "triggered=true" >> "$GITHUB_OUTPUT"
+
+      # Render free instances spin down when idle, so the first request after a
+      # deploy can take ~30s to answer. Poll patiently rather than failing fast.
+      - name: Wait for the new revision to serve traffic
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -uo pipefail
+          DEADLINE=$(( $(date -u +%s) + 900 ))
+          MATCHED=0
+          LAST_STATUS=""
+          LAST_COMMIT=""
+
+          while [ "$(date -u +%s)" -lt "$DEADLINE" ]; do
+            BODY="$(curl -fsS --max-time 60 "$BACKEND_URL/health" 2>/dev/null || true)"
+
+            if [ -n "$BODY" ]; then
+              LAST_STATUS="$(printf '%s' "$BODY" | sed -n 's/.*"status"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+              LAST_COMMIT="$(printf '%s' "$BODY" | sed -n 's/.*"commit"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+
+              if [ "$LAST_COMMIT" = "$EXPECTED_SHA" ]; then
+                echo "Live revision matches $EXPECTED_SHA"
+                MATCHED=1
+                break
+              fi
+
+              echo "health=${LAST_STATUS:-?} commit=${LAST_COMMIT:-unset} (waiting for ${EXPECTED_SHA:0:12})"
+            else
+              echo "no response yet..."
+            fi
+
+            sleep 15
+          done
+
+          if [ "$MATCHED" -eq 1 ]; then
+            echo "DEPLOY_VERIFIED=exact" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          if [ -z "$LAST_STATUS" ]; then
+            echo "::error::Backend never returned a healthy /health response within 15 minutes."
+            exit 1
+          fi
+
+          # The commit field only exists once this change itself is deployed,
+          # so the very first run through this pipeline cannot match on SHA.
+          if [ -z "$LAST_COMMIT" ]; then
+            echo "::warning::Backend is healthy but /health reports no commit. Expected on the first deploy of this change, or if RENDER_GIT_COMMIT is unavailable."
+            echo "DEPLOY_VERIFIED=health-only" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          echo "::error::Backend is healthy but still serving commit $LAST_COMMIT, expected $EXPECTED_SHA."
+          exit 1
+
+      - name: Smoke test
+        run: |
+          set -euo pipefail
+          # A 404 on an unknown bill proves routing and the DB layer are alive,
+          # without needing a real token or mutating anything.
+          CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "$BACKEND_URL/api/bills/0?t=smoketest")"
+          echo "GET /api/bills/0 -> HTTP $CODE"
+          case "$CODE" in
+            200|400|401|403|404) echo "Backend is routing requests correctly." ;;
+            *) echo "::error::Unexpected status $CODE from the bills endpoint."; exit 1 ;;
+          esac
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Backend deploy"
+            echo
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| Target | \`$BACKEND_URL\` |"
+            echo "| Commit | \`${{ github.sha }}\` |"
+            echo "| Deploy triggered | \`${{ steps.trigger.outputs.triggered || 'skipped' }}\` |"
+            echo "| Verification | \`${DEPLOY_VERIFIED:-failed}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
