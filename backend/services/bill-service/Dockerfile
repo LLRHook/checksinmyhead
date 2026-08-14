@@ -1,6 +1,6 @@
-# Pinned: 1.25.12 carries the crypto/tls, crypto/x509, net/http and
-# html/template fixes govulncheck flags against earlier 1.25.x patches.
-FROM golang:1.25.12 AS build
+# Keep the image toolchain aligned with backend/go.mod. Go 1.25.13 includes
+# the standard-library security fixes required by govulncheck.
+FROM golang:1.25.13 AS build
 
 WORKDIR /app
 COPY . .
