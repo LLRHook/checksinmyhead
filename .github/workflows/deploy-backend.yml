@@ -7,11 +7,11 @@ name: Deploy backend to production
 #   git tag backend-v1.4.0
 #   git push origin backend-v1.4.0
 #
-# Setup: add a repository secret RENDER_DEPLOY_HOOK_URL
+# Setup (optional): add a repository secret RENDER_DEPLOY_HOOK_URL
 #   Render dashboard -> service -> Settings -> Deploy Hook -> copy URL
 #
-# If that secret is absent the workflow assumes Render auto-deploy is handling
-# the rollout and only verifies the result, so it is useful either way.
+# If that secret is absent, Render's Git auto-deploy is used and the workflow
+# waits for the configured production URL to become healthy.
 
 on:
   push:
@@ -86,6 +86,10 @@ jobs:
           RESPONSE="$(curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL")"
           echo "Render accepted the deploy request: $RESPONSE"
           echo "triggered=true" >> "$GITHUB_OUTPUT"
+
+      - name: Report Render deployment mode
+        if: ${{ steps.trigger.outputs.triggered != 'true' }}
+        run: echo "::notice::No Render deploy hook configured; waiting for Render Git auto-deploy at $BACKEND_URL."
 
       # Render free instances spin down when idle, so the first request after a
       # deploy can take ~30s to answer. Poll patiently rather than failing fast.
