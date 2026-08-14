@@ -199,9 +199,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// Opens the app store page for leaving a rating
   Future<void> _openAppStore() async {
     try {
-      final Uri url = Uri.parse(
-        'https://apps.apple.com/us/app/spliq/id6746379502',
-      );
+      final Uri url = Uri.parse('https://apps.apple.com/app/id6746379502');
       await launchUrl(url);
     } catch (e) {
       if (mounted) {
@@ -209,7 +207,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SnackBar(
             content: const Text('Could not open App Store'),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
       }
@@ -218,8 +218,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   /// Opens the device's share sheet to share the app
   Future<void> _shareApp() async {
-    const String appStoreLink =
-        'https://apps.apple.com/us/app/spliq/id6746379502';
+    const String appStoreLink = 'https://apps.apple.com/app/id6746379502';
 
     const String shareText =
         'Check out Billington, the easiest way to split bills with friends! $appStoreLink';
@@ -312,9 +311,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               label: 'Billington mascot',
                               image: true,
                               child: Image.asset(
-                              'assets/images/billy.png',
-                              width: 150,
-                              height: 150,
+                                'assets/images/billy.png',
+                                width: 150,
+                                height: 150,
                               ),
                             ),
                           ),
@@ -424,7 +423,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       ),
                                       onChanged: (_) {
                                         _debounceTimer?.cancel();
-                                        _debounceTimer = Timer(const Duration(milliseconds: 500), _saveDisplayName);
+                                        _debounceTimer = Timer(
+                                          const Duration(milliseconds: 500),
+                                          _saveDisplayName,
+                                        );
                                       },
                                     ),
                                     const SizedBox(height: 12),
@@ -455,9 +457,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         HapticFeedback.selectionClick();
                                       },
                                       activeThumbColor: Colors.white,
-                                      activeTrackColor: Colors.white.withValues(alpha: .4),
+                                      activeTrackColor: Colors.white.withValues(
+                                        alpha: .4,
+                                      ),
                                       inactiveThumbColor: Colors.white70,
-                                      inactiveTrackColor: Colors.white.withValues(alpha: .15),
+                                      inactiveTrackColor: Colors.white
+                                          .withValues(alpha: .15),
                                     ),
                                   ],
                                 ),
@@ -535,7 +540,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                             final rawIdentifier =
                                                 _paymentIdentifiers[paymentMethod];
                                             final identifier =
-                                                (rawIdentifier == null || rawIdentifier.isEmpty)
+                                                (rawIdentifier == null ||
+                                                        rawIdentifier.isEmpty)
                                                     ? 'Not set'
                                                     : rawIdentifier;
 
@@ -666,17 +672,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       builder: (context, constraints) {
                                         const columns = 5;
                                         const spacing = 12.0;
-                                        final circleSize = (constraints.maxWidth - spacing * (columns - 1)) / columns;
-                                        final isCustomActive = _customHexColor != null &&
-                                            _selectedAccentColor.toARGB32() == _customHexColor!.toARGB32();
+                                        final circleSize =
+                                            (constraints.maxWidth -
+                                                spacing * (columns - 1)) /
+                                            columns;
+                                        final isCustomActive =
+                                            _customHexColor != null &&
+                                            _selectedAccentColor.toARGB32() ==
+                                                _customHexColor!.toARGB32();
 
                                         // 9 presets + 1 custom = 10 items, 2 rows of 5
                                         final allItems = [
                                           ..._colorPresets.map((color) {
-                                            final isSelected = _selectedAccentColor.toARGB32() == color.toARGB32() && !isCustomActive;
+                                            final isSelected =
+                                                _selectedAccentColor
+                                                        .toARGB32() ==
+                                                    color.toARGB32() &&
+                                                !isCustomActive;
                                             return GestureDetector(
                                               onTap: () {
-                                                setState(() => _customHexColor = null);
+                                                setState(
+                                                  () => _customHexColor = null,
+                                                );
                                                 _onAccentColorTapped(color);
                                               },
                                               child: Container(
@@ -686,15 +703,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                   color: color,
                                                   shape: BoxShape.circle,
                                                   border: Border.all(
-                                                    color: isSelected
-                                                        ? Colors.white
-                                                        : Colors.white.withValues(alpha: .3),
+                                                    color:
+                                                        isSelected
+                                                            ? Colors.white
+                                                            : Colors.white
+                                                                .withValues(
+                                                                  alpha: .3,
+                                                                ),
                                                     width: isSelected ? 3 : 1.5,
                                                   ),
                                                 ),
-                                                child: isSelected
-                                                    ? Icon(Icons.check, color: Colors.white, size: circleSize * 0.5)
-                                                    : null,
+                                                child:
+                                                    isSelected
+                                                        ? Icon(
+                                                          Icons.check,
+                                                          color: Colors.white,
+                                                          size:
+                                                              circleSize * 0.5,
+                                                        )
+                                                        : null,
                                               ),
                                             );
                                           }),
@@ -706,29 +733,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                               height: circleSize,
                                               decoration: BoxDecoration(
                                                 shape: BoxShape.circle,
-                                                gradient: isCustomActive
-                                                    ? null
-                                                    : const SweepGradient(
-                                                        colors: [
-                                                          Color(0xFFFF0000),
-                                                          Color(0xFFFF8000),
-                                                          Color(0xFFFFFF00),
-                                                          Color(0xFF00FF00),
-                                                          Color(0xFF0080FF),
-                                                          Color(0xFF8000FF),
-                                                          Color(0xFFFF0000),
-                                                        ],
-                                                      ),
-                                                color: isCustomActive ? _customHexColor : null,
+                                                gradient:
+                                                    isCustomActive
+                                                        ? null
+                                                        : const SweepGradient(
+                                                          colors: [
+                                                            Color(0xFFFF0000),
+                                                            Color(0xFFFF8000),
+                                                            Color(0xFFFFFF00),
+                                                            Color(0xFF00FF00),
+                                                            Color(0xFF0080FF),
+                                                            Color(0xFF8000FF),
+                                                            Color(0xFFFF0000),
+                                                          ],
+                                                        ),
+                                                color:
+                                                    isCustomActive
+                                                        ? _customHexColor
+                                                        : null,
                                                 border: Border.all(
-                                                  color: isCustomActive
-                                                      ? Colors.white
-                                                      : Colors.white.withValues(alpha: .3),
-                                                  width: isCustomActive ? 3 : 1.5,
+                                                  color:
+                                                      isCustomActive
+                                                          ? Colors.white
+                                                          : Colors.white
+                                                              .withValues(
+                                                                alpha: .3,
+                                                              ),
+                                                  width:
+                                                      isCustomActive ? 3 : 1.5,
                                                 ),
                                               ),
                                               child: Icon(
-                                                isCustomActive ? Icons.check : Icons.tag,
+                                                isCustomActive
+                                                    ? Icons.check
+                                                    : Icons.tag,
                                                 color: Colors.white,
                                                 size: circleSize * 0.5,
                                               ),

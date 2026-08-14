@@ -3,18 +3,20 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
-  FaCircleCheck,
-  FaPenToSquare,
-  FaTrash,
-  FaUser,
-  FaUsers,
-  FaXmark,
+  FaArrowRight,
+  FaCheck,
+  FaChevronLeft,
+  FaCodeBranch,
+  FaReceipt,
 } from "react-icons/fa6";
 import {
   type Bill,
   type ItemAssignment,
+  joinTab,
   updateTabBillItemAssignments,
+  updateTabPersonSharePaid,
 } from "@/lib/api";
+import { buildVenmoPayUrl } from "@/lib/venmo";
 
 interface LazyBillBoardProps {
   tabId: string;
@@ -22,93 +24,113 @@ interface LazyBillBoardProps {
   bill: Bill;
 }
 
-type StoredMember = {
-  display_name: string;
-  member_token?: string;
-};
+type StoredMember = { display_name: string; member_token?: string };
+type Stage = "landing" | "picker" | "pay";
 
-type Totals = {
-  person_name: string;
-  subtotal: number;
-  tax_share: number;
-  tip_share: number;
-  total: number;
-};
+function money(value: number) {
+  return `$${value.toFixed(2)}`;
+}
 
-function roundToCents(value: number): number {
+function round(value: number) {
   return Math.round(value * 100) / 100;
 }
 
-function computeTotals(bill: Bill): {
-  people: Totals[];
-  claimedSubtotal: number;
-  unclaimedSubtotal: number;
-} {
-  const subtotalByPerson = new Map<string, Totals>();
-  let claimedSubtotal = 0;
-  let unclaimedSubtotal = 0;
+function currentTotals(bill: Bill, name: string) {
+  const share = bill.person_shares.find(
+    (entry) => entry.person_name.toLowerCase() === name.toLowerCase(),
+  );
+  if (share) return share;
 
-  for (const item of bill.items) {
-    const assignments = item.assignments ?? [];
-    const assignedPercent = assignments.reduce(
-      (sum, assignment) => sum + Math.max(assignment.percentage, 0),
-      0,
+  const subtotal = bill.items.reduce((sum, item) => {
+    const assignment = (item.assignments ?? []).find(
+      (entry) => entry.person_name.toLowerCase() === name.toLowerCase(),
     );
-    const clampedPercent = Math.min(assignedPercent, 100);
-    const assignedAmount = roundToCents((item.price * clampedPercent) / 100);
-
-    claimedSubtotal += assignedAmount;
-    unclaimedSubtotal += roundToCents(item.price - assignedAmount);
-
-    for (const assignment of assignments) {
-      const name = assignment.person_name.trim();
-      if (!name || assignment.percentage <= 0) continue;
-
-      const key = name.toLowerCase();
-      const current = subtotalByPerson.get(key) ?? {
-        person_name: name,
-        subtotal: 0,
-        tax_share: 0,
-        tip_share: 0,
-        total: 0,
-      };
-
-      if (current.person_name === key && name !== key) {
-        current.person_name = name;
-      }
-      current.subtotal += roundToCents(
-        (item.price * assignment.percentage) / 100,
-      );
-      subtotalByPerson.set(key, current);
-    }
-  }
-
-  const assignedSubtotal = Array.from(subtotalByPerson.values()).reduce(
-    (sum, entry) => sum + entry.subtotal,
+    return sum + (assignment ? (item.price * assignment.percentage) / 100 : 0);
+  }, 0);
+  const assignedSubtotal = bill.items.reduce(
+    (sum, item) =>
+      sum +
+      (item.assignments ?? []).reduce(
+        (itemSum, entry) => itemSum + (item.price * entry.percentage) / 100,
+        0,
+      ),
     0,
   );
+  const proportion = assignedSubtotal > 0 ? subtotal / assignedSubtotal : 0;
+  const tax = round(bill.tax * proportion);
+  const tip = round(bill.tip_amount * proportion);
+  return {
+    id: 0,
+    person_name: name,
+    items: [],
+    subtotal: round(subtotal),
+    tax_share: tax,
+    tip_share: tip,
+    total: round(subtotal + tax + tip),
+    paid: false,
+  };
+}
 
-  const people = Array.from(subtotalByPerson.entries())
-    .map(([key, entry]) => {
-      const proportion =
-        assignedSubtotal > 0 ? entry.subtotal / assignedSubtotal : 0;
-      const taxShare = roundToCents(bill.tax * proportion);
-      const tipShare = roundToCents(bill.tip_amount * proportion);
-      return {
-        person_name: entry.person_name || key,
-        subtotal: roundToCents(entry.subtotal),
-        tax_share: taxShare,
-        tip_share: tipShare,
-        total: roundToCents(entry.subtotal + taxShare + tipShare),
-      };
-    })
-    .sort((a, b) =>
-      a.person_name.localeCompare(b.person_name, undefined, {
-        sensitivity: "base",
-      }),
-    );
+function ReceiptSummary({ bill }: { bill: Bill }) {
+  return (
+    <div className="rounded-3xl bg-[var(--card-bg-light)] p-5 shadow-sm dark:bg-[var(--card-bg-dark)] dark:border dark:border-[var(--border-dark)] sm:p-7">
+      <div className="mb-5 flex items-center gap-3">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--secondary)] text-[var(--primary)] dark:bg-white/10">
+          <FaReceipt />
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-secondary)]">
+            Receipt
+          </p>
+          <h2 className="text-xl font-bold text-[var(--accent)] dark:text-white">
+            {bill.name}
+          </h2>
+        </div>
+      </div>
+      <div className="divide-y divide-[var(--border-light)] dark:divide-[var(--border-dark)]">
+        {bill.items.map((item) => (
+          <div className="flex justify-between py-3 text-sm" key={item.id}>
+            <span className="text-[var(--accent)] dark:text-white">
+              {item.name}
+            </span>
+            <span className="font-mono font-medium text-[var(--accent)] dark:text-white">
+              {money(item.price)}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 space-y-2 border-t border-[var(--border-light)] pt-4 text-sm dark:border-[var(--border-dark)]">
+        <SummaryRow label="Subtotal" value={bill.subtotal} />
+        <SummaryRow label="Tax" value={bill.tax} />
+        <SummaryRow
+          label={`Tip${bill.tip_percentage ? ` (${bill.tip_percentage}%)` : ""}`}
+          value={bill.tip_amount}
+        />
+        <SummaryRow label="Total" value={bill.total} strong />
+      </div>
+    </div>
+  );
+}
 
-  return { people, claimedSubtotal, unclaimedSubtotal };
+function SummaryRow({
+  label,
+  value,
+  strong = false,
+}: {
+  label: string;
+  value: number;
+  strong?: boolean;
+}) {
+  return (
+    <div
+      className={`flex justify-between ${strong ? "pt-2 text-base font-bold" : "text-[var(--text-secondary)]"}`}
+    >
+      <span>{label}</span>
+      <span className="font-mono text-[var(--accent)] dark:text-white">
+        {money(value)}
+      </span>
+    </div>
+  );
 }
 
 export default function LazyBillBoard({
@@ -117,34 +139,40 @@ export default function LazyBillBoard({
   bill,
 }: LazyBillBoardProps) {
   const router = useRouter();
+  const [stage, setStage] = useState<Stage>("landing");
   const [member, setMember] = useState<StoredMember | null>(null);
-  const [savingItemId, setSavingItemId] = useState<number | null>(null);
-  const [activeItemId, setActiveItemId] = useState<number | null>(null);
+  const [nameInput, setNameInput] = useState("");
+  const [showJoin, setShowJoin] = useState(false);
+  const [splitItemId, setSplitItemId] = useState<number | null>(null);
   const [splitNames, setSplitNames] = useState("");
+  const [savingItemId, setSavingItemId] = useState<number | null>(null);
+  const [isPaying, setIsPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const storageKey = `billington_member_${tabId}`;
-    const stored = localStorage.getItem(storageKey);
+    const stored = localStorage.getItem(`billington_member_${tabId}`);
     if (!stored) return;
-
     try {
-      const parsed = JSON.parse(stored) as StoredMember;
-      if (parsed?.display_name) {
-        setMember(parsed);
-      }
+      setMember(JSON.parse(stored) as StoredMember);
     } catch {
-      // Ignore malformed local storage and fall back to anonymous mode.
+      /* ignore malformed local state */
     }
   }, [tabId]);
 
-  const summary = useMemo(() => computeTotals(bill), [bill]);
-  const currentName = member?.display_name?.trim() ?? "";
+  const name = member?.display_name?.trim() ?? "";
+  const totals = useMemo(() => currentTotals(bill, name), [bill, name]);
+  const currentShare = bill.person_shares.find(
+    (share) => share.person_name.toLowerCase() === name.toLowerCase(),
+  );
+  const venmo = bill.payment_methods.find((method) =>
+    method.name.toLowerCase().includes("venmo"),
+  );
 
-  const persistAssignments = async (
+  const saveAssignments = async (
     itemId: number,
     assignments: ItemAssignment[],
   ) => {
+    const item = bill.items.find((entry) => entry.id === itemId);
     setSavingItemId(itemId);
     setError(null);
     try {
@@ -154,285 +182,390 @@ export default function LazyBillBoard({
         itemId,
         assignments,
         token,
+        item?.updated_at,
       );
       router.refresh();
-    } catch {
-      setError("Could not save that claim. Please try again.");
+    } catch (caught) {
+      setError(
+        caught instanceof Error && caught.message.includes("item changed")
+          ? "Someone updated that item. The receipt has been refreshed."
+          : "Could not save that selection. Try again.",
+      );
+      router.refresh();
     } finally {
       setSavingItemId(null);
     }
   };
 
-  const claimForMe = async (itemId: number) => {
-    if (!currentName) {
-      setError("Join the tab first so we know who you are.");
+  const joinAndContinue = async () => {
+    const displayName = nameInput.trim();
+    if (!displayName || displayName.length > 30) {
+      setError("Use a name between 1 and 30 characters.");
       return;
     }
-
-    await persistAssignments(itemId, [
-      { person_name: currentName, percentage: 100 },
-    ]);
+    setError(null);
+    const result = await joinTab(tabId, token, displayName);
+    if (!result) {
+      setError("Could not join this bill. Try again.");
+      return;
+    }
+    localStorage.setItem(`billington_member_${tabId}`, JSON.stringify(result));
+    setMember(result);
+    setShowJoin(false);
+    setStage("picker");
   };
 
-  const clearMyClaim = async (itemId: number) => {
-    if (!currentName) return;
+  const startPicking = () => {
+    setError(null);
+    if (!name) setShowJoin(true);
+    else setStage("picker");
+  };
 
+  const claimItem = (itemId: number) => {
+    if (!name) return setShowJoin(true);
     const item = bill.items.find((entry) => entry.id === itemId);
-    if (!item) return;
-
-    const remaining = (item.assignments ?? []).filter(
-      (assignment) =>
-        assignment.person_name.toLowerCase() !== currentName.toLowerCase(),
-    );
-
-    await persistAssignments(itemId, remaining);
+    if (!item || (item.assignments ?? []).length > 0) return;
+    void saveAssignments(itemId, [{ person_name: name, percentage: 100 }]);
   };
 
-  const saveSplit = async () => {
-    const item = bill.items.find((entry) => entry.id === activeItemId);
+  const saveSplit = () => {
+    const item = bill.items.find((entry) => entry.id === splitItemId);
     if (!item) return;
-
-    const names = splitNames
-      .split(",")
-      .map((name) => name.trim())
-      .filter(Boolean);
-
-    const uniqueNames = Array.from(
-      new Map(names.map((name) => [name.toLowerCase(), name])).values(),
+    const names = Array.from(
+      new Map(
+        splitNames
+          .split(",")
+          .map((entry) => entry.trim())
+          .filter(Boolean)
+          .map((entry) => [entry.toLowerCase(), entry]),
+      ).values(),
     );
-    if (uniqueNames.length === 0) {
-      setError("Add at least one name to split this item.");
+    if (!names.length) {
+      setError("Add at least one person.");
       return;
     }
-
-    const percentage = roundToCents(100 / uniqueNames.length);
-    await persistAssignments(
+    const percentage = round(100 / names.length);
+    void saveAssignments(
       item.id,
-      uniqueNames.map((name, index) => ({
-        person_name: name,
+      names.map((person, index) => ({
+        person_name: person,
         percentage:
-          index === uniqueNames.length - 1
-            ? roundToCents(100 - percentage * (uniqueNames.length - 1))
+          index === names.length - 1
+            ? round(100 - percentage * (names.length - 1))
             : percentage,
       })),
     );
-
-    setActiveItemId(null);
+    setSplitItemId(null);
     setSplitNames("");
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="rounded-3xl bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] shadow-xl dark:shadow-none dark:border dark:border-[var(--border-dark)] p-5 sm:p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-secondary)] mb-2">
-              Lazy mode
-            </p>
-            <h2 className="text-2xl sm:text-3xl font-bold text-[var(--accent)] dark:text-white tracking-tight">
-              Claim your items
-            </h2>
-            <p className="mt-2 text-sm text-[var(--text-secondary)] max-w-2xl">
-              Join the tab, tap the items you had, and we&apos;ll keep the
-              totals synced until everything is claimed.
-            </p>
-          </div>
+  const markPaid = async () => {
+    if (!currentShare?.id) {
+      setError("Select an item first so we can calculate your share.");
+      return;
+    }
+    setIsPaying(true);
+    try {
+      await updateTabPersonSharePaid(
+        tabId,
+        bill.id,
+        currentShare.id,
+        true,
+        token,
+        member?.member_token,
+      );
+      setStage("landing");
+      router.refresh();
+    } catch {
+      setError("We could not save that payment yet.");
+    } finally {
+      setIsPaying(false);
+    }
+  };
 
-          <div className="flex flex-wrap gap-2">
-            <div className="inline-flex items-center gap-2 rounded-full bg-[var(--secondary)] dark:bg-white/10 px-4 py-2">
-              <FaUsers className="text-[var(--primary)]" size={13} />
-              <span className="text-sm font-medium text-[var(--accent)] dark:text-white">
-                {summary.people.length} people
-              </span>
-            </div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-[var(--secondary)] dark:bg-white/10 px-4 py-2">
-              <FaCircleCheck className="text-emerald-600" size={13} />
-              <span className="text-sm font-medium text-[var(--accent)] dark:text-white">
-                {summary.claimedSubtotal.toFixed(2)} claimed
-              </span>
-            </div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-[var(--secondary)] dark:bg-white/10 px-4 py-2">
-              <FaUser className="text-[var(--primary)]" size={13} />
-              <span className="text-sm font-medium text-[var(--accent)] dark:text-white">
-                {summary.unclaimedSubtotal.toFixed(2)} left
-              </span>
-            </div>
-          </div>
+  if (stage === "landing") {
+    return (
+      <div className="space-y-5">
+        <ReceiptSummary bill={bill} />
+        <div className="rounded-3xl bg-[var(--primary)] p-5 text-white shadow-lg sm:p-7">
+          <p className="text-sm text-white/75">
+            Everyone picks their own line items. We’ll handle the math.
+          </p>
+          <button
+            type="button"
+            onClick={startPicking}
+            className="mt-4 inline-flex w-full items-center justify-center gap-3 rounded-2xl bg-white px-5 py-4 text-base font-bold text-[var(--primary-dark)] transition-transform hover:-translate-y-0.5"
+          >
+            {name ? "Pick my share" : "What was yours?"}
+            <FaArrowRight size={14} />
+          </button>
         </div>
-
-        {currentName ? (
-          <div className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-emerald-50 dark:bg-emerald-900/25 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">
-            <FaCircleCheck size={14} />
-            Claiming as <span className="font-semibold">{currentName}</span>
-          </div>
-        ) : (
-          <div className="mt-5 rounded-2xl border border-dashed border-[var(--border-light)] dark:border-[var(--border-dark)] px-4 py-3 text-sm text-[var(--text-secondary)]">
-            Join the tab in the sidebar first, then come back here to claim
-            items.
-          </div>
-        )}
-
-        {error && (
-          <div className="mt-4 rounded-2xl bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-600 dark:text-red-300">
-            {error}
-          </div>
+        {error && <ErrorMessage message={error} />}
+        {showJoin && (
+          <JoinDialog
+            name={nameInput}
+            setName={setNameInput}
+            onClose={() => setShowJoin(false)}
+            onJoin={joinAndContinue}
+          />
         )}
       </div>
+    );
+  }
 
-      <div className="space-y-3">
+  if (stage === "pay") {
+    return (
+      <div className="space-y-5">
+        <button
+          type="button"
+          onClick={() => setStage("picker")}
+          className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--text-secondary)]"
+        >
+          <FaChevronLeft size={12} /> Back to items
+        </button>
+        <div className="rounded-3xl bg-[var(--card-bg-light)] p-6 shadow-sm dark:bg-[var(--card-bg-dark)] dark:border dark:border-[var(--border-dark)]">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--text-secondary)]">
+            Your total
+          </p>
+          <p className="mt-2 text-5xl font-bold tracking-tight text-[var(--accent)] dark:text-white">
+            {money(totals.total)}
+          </p>
+          <div className="mt-6 space-y-2 border-t border-[var(--border-light)] pt-4 text-sm dark:border-[var(--border-dark)]">
+            <SummaryRow label="Your items" value={totals.subtotal} />
+            <SummaryRow label="Tax" value={totals.tax_share} />
+            <SummaryRow label="Tip" value={totals.tip_share} />
+          </div>
+        </div>
+        <div className="rounded-3xl bg-[var(--card-bg-light)] p-5 shadow-sm dark:bg-[var(--card-bg-dark)] dark:border dark:border-[var(--border-dark)]">
+          <h2 className="font-bold text-[var(--accent)] dark:text-white">
+            Pay {name}
+          </h2>
+          {venmo && (
+            <a
+              href={buildVenmoPayUrl(
+                venmo.identifier,
+                totals.total.toFixed(2),
+                bill.name,
+              )}
+              className="mt-4 flex items-center justify-center rounded-2xl bg-[#4b938d] px-4 py-4 font-bold text-white"
+            >
+              Pay with Venmo
+            </a>
+          )}
+          <p className="mt-4 text-sm text-[var(--text-secondary)]">
+            {venmo
+              ? `${venmo.name}: ${venmo.identifier}`
+              : "Use one of the payment methods shown with the bill."}
+          </p>
+          <button
+            type="button"
+            disabled={isPaying}
+            onClick={markPaid}
+            className="mt-5 w-full rounded-2xl border border-[var(--border-light)] px-4 py-3 text-sm font-semibold text-[var(--accent)] dark:border-[var(--border-dark)] dark:text-white"
+          >
+            {isPaying ? "Saving…" : "Mark as paid"}
+          </button>
+        </div>
+        {error && <ErrorMessage message={error} />}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <button
+        type="button"
+        onClick={() => setStage("landing")}
+        className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--text-secondary)]"
+      >
+        <FaChevronLeft size={12} /> Receipt overview
+      </button>
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-secondary)]">
+          Your items
+        </p>
+        <h2 className="mt-1 text-2xl font-bold text-[var(--accent)] dark:text-white">
+          Tap what you had
+        </h2>
+        <p className="mt-2 text-sm text-[var(--text-secondary)]">
+          Select a line, or split it with someone else.
+        </p>
+      </div>
+      <div className="overflow-hidden rounded-3xl bg-[var(--card-bg-light)] shadow-sm dark:bg-[var(--card-bg-dark)] dark:border dark:border-[var(--border-dark)]">
         {bill.items.map((item) => {
           const assignments = item.assignments ?? [];
-          const assignedPercent = assignments.reduce(
-            (sum, assignment) => sum + assignment.percentage,
-            0,
+          const mine = assignments.some(
+            (entry) => entry.person_name.toLowerCase() === name.toLowerCase(),
           );
-          const clampedPercent = Math.min(assignedPercent, 100);
-          const claimed = clampedPercent > 0;
-          const currentAssigned = currentName
-            ? assignments.some(
-                (assignment) =>
-                  assignment.person_name.toLowerCase() ===
-                  currentName.toLowerCase(),
-              )
-            : false;
-
+          const unavailable = assignments.length > 0 && !mine;
+          const locked = Boolean(currentShare?.paid && mine);
           return (
             <div
               key={item.id}
-              className="rounded-3xl bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] shadow-lg dark:shadow-none dark:border dark:border-[var(--border-dark)] p-5 sm:p-6"
+              className={`flex items-center gap-3 border-b border-[var(--border-light)] px-4 py-4 last:border-0 dark:border-[var(--border-dark)] ${locked ? "opacity-50" : ""}`}
             >
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-lg font-semibold text-[var(--accent)] dark:text-white">
-                      {item.name}
-                    </h3>
-                    <span className="rounded-full bg-[var(--secondary)] dark:bg-white/10 px-3 py-1 text-xs font-semibold text-[var(--text-secondary)]">
-                      ${item.price.toFixed(2)}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-sm text-[var(--text-secondary)]">
-                    {claimed
-                      ? `${clampedPercent.toFixed(0)}% claimed`
-                      : "Not claimed yet"}
-                  </p>
-
-                  {assignments.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {assignments.map((assignment) => (
-                        <span
-                          key={`${item.id}-${assignment.person_name}`}
-                          className="inline-flex items-center gap-2 rounded-full bg-[var(--secondary)] dark:bg-white/10 px-3 py-1 text-xs font-medium text-[var(--accent)] dark:text-white"
-                        >
-                          {assignment.person_name}
-                          <span className="text-[var(--text-secondary)]">
-                            {assignment.percentage.toFixed(0)}%
-                          </span>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => claimForMe(item.id)}
-                    disabled={!currentName || savingItemId === item.id}
-                    className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] px-4 py-3 text-sm font-semibold text-white shadow-md transition-opacity hover:opacity-90 disabled:opacity-50"
-                  >
-                    <FaCircleCheck size={14} />
-                    Claim
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveItemId(item.id);
-                      setSplitNames(currentName ?? "");
-                      setError(null);
-                    }}
-                    className="inline-flex items-center gap-2 rounded-2xl border border-[var(--border-light)] dark:border-[var(--border-dark)] px-4 py-3 text-sm font-semibold text-[var(--accent)] dark:text-white transition-colors hover:bg-[var(--secondary)]/70 dark:hover:bg-white/5"
-                  >
-                    <FaPenToSquare size={14} />
-                    Split
-                  </button>
-                  {currentAssigned && (
-                    <button
-                      type="button"
-                      onClick={() => clearMyClaim(item.id)}
-                      disabled={savingItemId === item.id}
-                      className="inline-flex items-center gap-2 rounded-2xl border border-[var(--border-light)] dark:border-[var(--border-dark)] px-4 py-3 text-sm font-semibold text-[var(--text-secondary)] transition-colors hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-600 disabled:opacity-50"
-                    >
-                      <FaTrash size={13} />
-                      Clear
-                    </button>
-                  )}
-                </div>
+              <button
+                type="button"
+                aria-label={`${mine ? "Unselect" : "Select"} ${item.name}`}
+                disabled={unavailable || locked || savingItemId === item.id}
+                onClick={() =>
+                  mine ? void saveAssignments(item.id, []) : claimItem(item.id)
+                }
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 ${mine ? "border-[var(--primary)] bg-[var(--primary)] text-white" : "border-[var(--border-light)] dark:border-[var(--border-dark)]"}`}
+              >
+                {mine && <FaCheck size={12} />}
+              </button>
+              <div className={`min-w-0 flex-1 ${locked ? "line-through" : ""}`}>
+                <p className="font-medium text-[var(--accent)] dark:text-white">
+                  {item.name}
+                </p>
+                <p className="text-xs text-[var(--text-secondary)]">
+                  {locked
+                    ? "Paid"
+                    : unavailable
+                      ? `Taken by ${assignments[0]?.person_name ?? "someone"}`
+                      : money(item.price)}
+                </p>
               </div>
+              <button
+                type="button"
+                disabled={unavailable || locked}
+                onClick={() => {
+                  setSplitItemId(item.id);
+                  setSplitNames(
+                    [name, ...assignments.map((entry) => entry.person_name)]
+                      .filter(Boolean)
+                      .join(", "),
+                  );
+                }}
+                className="rounded-xl p-3 text-[var(--text-secondary)] hover:bg-[var(--secondary)] disabled:opacity-30"
+                aria-label={`Split ${item.name}`}
+              >
+                <FaCodeBranch size={14} />
+              </button>
             </div>
           );
         })}
       </div>
+      {totals.total > 0 && (
+        <button
+          type="button"
+          onClick={() => setStage("pay")}
+          className="flex w-full items-center justify-center gap-3 rounded-2xl bg-[var(--primary)] px-5 py-4 font-bold text-white shadow-md"
+        >
+          Review my total <FaArrowRight size={14} />
+        </button>
+      )}
+      {error && <ErrorMessage message={error} />}
+      {splitItemId !== null && (
+        <SplitDialog
+          value={splitNames}
+          setValue={setSplitNames}
+          onClose={() => setSplitItemId(null)}
+          onSave={saveSplit}
+        />
+      )}
+    </div>
+  );
+}
 
-      {activeItemId !== null && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4">
+function ErrorMessage({ message }: { message: string }) {
+  return (
+    <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-300">
+      {message}
+    </p>
+  );
+}
+function JoinDialog({
+  name,
+  setName,
+  onClose,
+  onJoin,
+}: {
+  name: string;
+  setName: (value: string) => void;
+  onClose: () => void;
+  onJoin: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
+      <div className="w-full max-w-md rounded-3xl bg-[var(--card-bg-light)] p-6 shadow-2xl dark:bg-[var(--card-bg-dark)]">
+        <h2 className="text-xl font-bold text-[var(--accent)] dark:text-white">
+          Who are you?
+        </h2>
+        <p className="mt-2 text-sm text-[var(--text-secondary)]">
+          Use a name your friends will recognize.
+        </p>
+        <input
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          onKeyDown={(event) => event.key === "Enter" && onJoin()}
+          placeholder="Your name"
+          className="mt-5 w-full rounded-2xl border border-[var(--border-light)] bg-white px-4 py-3 dark:border-[var(--border-dark)] dark:bg-black/20 dark:text-white"
+        />
+        <div className="mt-5 flex gap-3">
           <button
             type="button"
-            aria-label="Close split editor"
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => setActiveItemId(null)}
-          />
-          <div className="relative w-full max-w-md rounded-t-3xl sm:rounded-3xl bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] shadow-2xl dark:shadow-none dark:border dark:border-[var(--border-dark)] p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-secondary)] mb-2">
-                  Split item
-                </p>
-                <h3 className="text-xl font-bold text-[var(--accent)] dark:text-white">
-                  {bill.items.find((item) => item.id === activeItemId)?.name}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveItemId(null)}
-                className="rounded-full p-2 text-[var(--text-secondary)] transition-colors hover:bg-[var(--secondary)] dark:hover:bg-white/5"
-              >
-                <FaXmark size={14} />
-              </button>
-            </div>
-
-            <p className="mt-3 text-sm text-[var(--text-secondary)]">
-              Enter names separated by commas. The item will be split evenly.
-            </p>
-
-            <input
-              type="text"
-              value={splitNames}
-              onChange={(e) => setSplitNames(e.target.value)}
-              placeholder="Alex, Jamie, Sam"
-              className="mt-4 w-full rounded-2xl border border-[var(--border-light)] dark:border-[var(--border-dark)] bg-white dark:bg-black/20 px-4 py-3 text-[var(--accent)] dark:text-white placeholder:text-[var(--text-secondary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
-            />
-
-            <div className="mt-5 flex gap-3">
-              <button
-                type="button"
-                onClick={() => setActiveItemId(null)}
-                className="flex-1 rounded-2xl border border-[var(--border-light)] dark:border-[var(--border-dark)] px-4 py-3 text-sm font-semibold text-[var(--text-secondary)] transition-colors hover:bg-[var(--secondary)] dark:hover:bg-white/5"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={saveSplit}
-                disabled={savingItemId !== null}
-                className="flex-1 rounded-2xl bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] px-4 py-3 text-sm font-semibold text-white shadow-md transition-opacity hover:opacity-90 disabled:opacity-50"
-              >
-                Save split
-              </button>
-            </div>
-          </div>
+            onClick={onClose}
+            className="flex-1 rounded-2xl border border-[var(--border-light)] px-4 py-3 text-sm font-semibold text-[var(--text-secondary)] dark:border-[var(--border-dark)]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onJoin}
+            className="flex-1 rounded-2xl bg-[var(--primary)] px-4 py-3 text-sm font-semibold text-white"
+          >
+            Continue
+          </button>
         </div>
-      )}
+      </div>
+    </div>
+  );
+}
+function SplitDialog({
+  value,
+  setValue,
+  onClose,
+  onSave,
+}: {
+  value: string;
+  setValue: (value: string) => void;
+  onClose: () => void;
+  onSave: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
+      <div className="w-full max-w-md rounded-3xl bg-[var(--card-bg-light)] p-6 shadow-2xl dark:bg-[var(--card-bg-dark)]">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-secondary)]">
+          Split item
+        </p>
+        <h2 className="mt-2 text-xl font-bold text-[var(--accent)] dark:text-white">
+          Who had this?
+        </h2>
+        <input
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          placeholder="You, Alex"
+          className="mt-5 w-full rounded-2xl border border-[var(--border-light)] bg-white px-4 py-3 dark:border-[var(--border-dark)] dark:bg-black/20 dark:text-white"
+        />
+        <div className="mt-5 flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded-2xl border border-[var(--border-light)] px-4 py-3 text-sm font-semibold text-[var(--text-secondary)] dark:border-[var(--border-dark)]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            className="flex-1 rounded-2xl bg-[var(--primary)] px-4 py-3 text-sm font-semibold text-white"
+          >
+            Split evenly
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
