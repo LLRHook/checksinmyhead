@@ -24,6 +24,7 @@ export interface BillItem {
   id: number;
   name: string;
   price: number;
+  updated_at?: string;
   assignments?: ItemAssignment[];
 }
 
@@ -235,6 +236,33 @@ export async function updatePersonSharePaid(
   }
 }
 
+export async function updateTabPersonSharePaid(
+  tabId: string,
+  billId: number,
+  shareId: number,
+  paid: boolean,
+  token: string,
+  memberToken?: string,
+): Promise<void> {
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+  if (memberToken) headers["X-Member-Token"] = memberToken;
+  const response = await fetch(
+    `${API_BASE_URL}/api/tabs/${tabId}/bills/${billId}/shares/${shareId}/paid`,
+    {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ paid }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to update lazy payment status");
+  }
+}
+
 export async function updateSettlementPaid(
   tabId: string,
   settlementId: number,
@@ -264,6 +292,7 @@ export async function updateTabBillItemAssignments(
   itemId: number,
   assignments: ItemAssignment[],
   token: string,
+  expectedUpdatedAt?: string,
 ): Promise<void> {
   const response = await fetch(
     `${API_BASE_URL}/api/tabs/${tabId}/bills/${billId}/items/${itemId}/assignments`,
@@ -273,11 +302,17 @@ export async function updateTabBillItemAssignments(
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ assignments }),
+      body: JSON.stringify({
+        assignments,
+        expected_updated_at: expectedUpdatedAt,
+      }),
     },
   );
 
   if (!response.ok) {
+    if (response.status === 409) {
+      throw new Error("item changed; refresh and try again");
+    }
     throw new Error("Failed to update item assignments");
   }
 }

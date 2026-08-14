@@ -85,6 +85,7 @@ func main() {
 	r.GET("/api/tabs/:id", tabHandler.GetTab)
 	r.POST("/api/tabs/:id/bills", tabHandler.AddBillToTab)
 	r.PATCH("/api/tabs/:id/bills/:billId/items/:itemId/assignments", tabHandler.UpdateBillItemAssignments)
+	r.PATCH("/api/tabs/:id/bills/:billId/shares/:shareId/paid", tabHandler.UpdateBillPersonSharePaid)
 	r.PATCH("/api/tabs/:id", tabHandler.UpdateTab)
 	r.POST("/api/tabs/:id/finalize", tabHandler.FinalizeTab)
 	r.GET("/api/tabs/:id/settlements", tabHandler.GetSettlements)

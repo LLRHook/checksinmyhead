@@ -22,7 +22,8 @@ type TabService interface {
 	GetTabAuth(id uint) (tab *models.Tab, err error)
 	UpdateTab(tab *models.Tab) error
 	AddBillToTab(tabID uint, billID uint, billToken string, memberID *uint) error
-	UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment) error
+	UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error
+	UpdateBillPersonSharePaid(tabID uint, billID uint, shareID uint, paid bool) error
 	FinalizeTab(id uint) ([]models.TabSettlement, error)
 	GetSettlements(tabID uint) ([]models.TabSettlement, error)
 	UpdateSettlementPaid(id uint, paid bool) error
@@ -69,8 +70,12 @@ func (s *tabService) AddBillToTab(tabID uint, billID uint, billToken string, mem
 	return s.repo.AddBill(tabID, billID, billToken, memberID)
 }
 
-func (s *tabService) UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment) error {
-	return s.repo.UpdateBillItemAssignments(tabID, billID, itemID, assignments)
+func (s *tabService) UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error {
+	return s.repo.UpdateBillItemAssignments(tabID, billID, itemID, assignments, expectedUpdatedAt)
+}
+
+func (s *tabService) UpdateBillPersonSharePaid(tabID uint, billID uint, shareID uint, paid bool) error {
+	return s.repo.UpdateBillPersonSharePaid(tabID, billID, shareID, paid)
 }
 
 func (s *tabService) FinalizeTab(id uint) ([]models.TabSettlement, error) {

@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -258,7 +259,8 @@ func (h *TabHandler) UpdateBillItemAssignments(c *gin.Context) {
 	}
 
 	var body struct {
-		Assignments []struct {
+		ExpectedUpdatedAt *string `json:"expected_updated_at"`
+		Assignments       []struct {
 			PersonName string  `json:"person_name"`
 			Percentage float64 `json:"percentage"`
 		} `json:"assignments"`
@@ -269,6 +271,15 @@ func (h *TabHandler) UpdateBillItemAssignments(c *gin.Context) {
 	}
 
 	assignments := make([]models.ItemAssignment, 0, len(body.Assignments))
+	var expectedUpdatedAt *time.Time
+	if body.ExpectedUpdatedAt != nil && *body.ExpectedUpdatedAt != "" {
+		parsed, parseErr := time.Parse(time.RFC3339Nano, *body.ExpectedUpdatedAt)
+		if parseErr != nil {
+			c.JSON(400, gin.H{"error": "invalid expected_updated_at"})
+			return
+		}
+		expectedUpdatedAt = &parsed
+	}
 	for _, assignment := range body.Assignments {
 		name := security.SanitizeString(assignment.PersonName)
 		if name == "" || assignment.Percentage <= 0 {
@@ -280,7 +291,11 @@ func (h *TabHandler) UpdateBillItemAssignments(c *gin.Context) {
 		})
 	}
 
-	if err := h.service.UpdateBillItemAssignments(tab.ID, uint(billID), uint(itemID), assignments); err != nil {
+	if err := h.service.UpdateBillItemAssignments(tab.ID, uint(billID), uint(itemID), assignments, expectedUpdatedAt); err != nil {
+		if err == ErrAssignmentConflict {
+			c.JSON(409, gin.H{"error": "item changed; refresh and try again"})
+			return
+		}
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(404, gin.H{"error": "bill item not found"})
 			return
@@ -290,6 +305,62 @@ func (h *TabHandler) UpdateBillItemAssignments(c *gin.Context) {
 		return
 	}
 
+	c.JSON(200, gin.H{"status": "ok"})
+}
+
+func (h *TabHandler) UpdateBillPersonSharePaid(c *gin.Context) {
+	tab := h.getTabAndValidate(c)
+	if tab == nil {
+		return
+	}
+
+	billID, err := strconv.ParseUint(c.Param("billId"), 10, 32)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid bill id"})
+		return
+	}
+	shareID, err := strconv.ParseUint(c.Param("shareId"), 10, 32)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid share id"})
+		return
+	}
+	var body struct {
+		Paid *bool `json:"paid"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil || body.Paid == nil {
+		c.JSON(400, gin.H{"error": "paid field required"})
+		return
+	}
+	member := h.getMemberFromQuery(c, tab.ID)
+	if member == nil {
+		c.JSON(403, gin.H{"error": "member token required"})
+		return
+	}
+	var matchingShare *models.PersonShare
+	for i := range tab.Bills {
+		if tab.Bills[i].ID != uint(billID) {
+			continue
+		}
+		for j := range tab.Bills[i].PersonShares {
+			if tab.Bills[i].PersonShares[j].ID == uint(shareID) {
+				matchingShare = &tab.Bills[i].PersonShares[j]
+				break
+			}
+		}
+	}
+	if matchingShare == nil || !strings.EqualFold(matchingShare.PersonName, member.DisplayName) {
+		c.JSON(403, gin.H{"error": "share does not belong to member"})
+		return
+	}
+	if err := h.service.UpdateBillPersonSharePaid(tab.ID, uint(billID), uint(shareID), *body.Paid); err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(404, gin.H{"error": "share not found"})
+			return
+		}
+		log.Printf("internal error: %v", err)
+		c.JSON(500, gin.H{"error": "an internal error occurred"})
+		return
+	}
 	c.JSON(200, gin.H{"status": "ok"})
 }
 
