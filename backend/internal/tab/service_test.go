@@ -85,9 +85,13 @@ func (m *mockTabRepository) AddBill(tabID uint, billID uint, billToken string, m
 	return m.addBillErr
 }
 
-func (m *mockTabRepository) UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment) error {
+func (m *mockTabRepository) UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment, _ *time.Time) error {
 	m.updatedAssignments = assignments
 	return m.updateAssignmentsErr
+}
+
+func (m *mockTabRepository) UpdateBillPersonSharePaid(tabID uint, billID uint, shareID uint, paid bool) error {
+	return nil
 }
 
 func (m *mockTabRepository) Finalize(id uint) error {
@@ -265,7 +269,7 @@ func TestUpdateBillItemAssignments_ForwardsToRepository(t *testing.T) {
 		{PersonName: "Alice", Percentage: 100},
 	}
 
-	err := svc.UpdateBillItemAssignments(3, 9, 12, assignments)
+	err := svc.UpdateBillItemAssignments(3, 9, 12, assignments, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
