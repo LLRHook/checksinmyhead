@@ -76,3 +76,9 @@
 - [x] Make TestFlight notes describe the visible Lazy Mode workflow and payment behavior.
 - [x] Make the App Store release workflow fall back to repository release notes when an annotated tag has no message.
 - [x] Add reviewer-facing walkthrough and clarify that there are no hidden/reviewer-only features.
+
+# Backend Production Deployment Repair
+
+- [ ] Align Render Docker build images with the Go version required by `backend/go.mod`.
+- [ ] Verify the production health endpoint and Render rollout after merging the fix.
+- [ ] Confirm whether a Render deploy hook secret is needed or Git auto-deploy is the intended path.
