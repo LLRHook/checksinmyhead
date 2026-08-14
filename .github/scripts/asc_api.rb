@@ -109,10 +109,6 @@ module ASC
     request(:patch, path, body: body, allow_failure: allow_failure)
   end
 
-  def delete(path, allow_failure: false)
-    request(:delete, path, allow_failure: allow_failure)
-  end
-
   # --- Convenience lookups -------------------------------------------------
 
   def find_app(bundle_id)
