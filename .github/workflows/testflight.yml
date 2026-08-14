@@ -175,12 +175,14 @@ jobs:
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: |
           set -euo pipefail
+          # Xcode 26 altool can abort while serializing an NSError with
+          # --output-format json. Plain output preserves the processing wait
+          # without turning an Apple-side status response into a crash.
           xcrun altool --build-status \
             --delivery-id "${{ steps.upload.outputs.delivery_id }}" \
             --wait \
             --apiKey "$ASC_KEY_ID" \
-            --apiIssuer "$ASC_ISSUER_ID" \
-            --output-format json
+            --apiIssuer "$ASC_ISSUER_ID"
 
       # Tagged only after a confirmed upload, so tags never claim a build that
       # does not exist in App Store Connect.
