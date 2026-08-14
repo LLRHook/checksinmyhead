@@ -243,7 +243,7 @@ class DoneButtonHandler {
           final creatorDisplayName = await _prefsService.getDisplayName();
           final tabResponse = await _apiService.createTab(
             billName,
-            'Lazy split created from the receipt parser',
+            'Created w/ Lazy Mode',
             creatorDisplayName:
                 creatorDisplayName != null &&
                         creatorDisplayName.trim().isNotEmpty

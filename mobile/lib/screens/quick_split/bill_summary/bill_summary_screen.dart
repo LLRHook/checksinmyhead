@@ -81,6 +81,7 @@ class BillSummaryScreen extends StatefulWidget {
 class _BillSummaryScreenState extends State<BillSummaryScreen> {
   // Bill summary data
   late BillSummaryData _summaryData;
+  final Set<String> _ownerClaimedItems = <String>{};
 
   @override
   void initState() {
@@ -110,6 +111,39 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
       billName: billName,
       paymentMethods: const <Map<String, String>>[],
     );
+  }
+
+  void _toggleOwnerItem(BillItem item, bool selected) {
+    setState(() {
+      if (selected) {
+        _ownerClaimedItems.add(item.name);
+      } else {
+        _ownerClaimedItems.remove(item.name);
+      }
+
+      final remaining =
+          widget.items
+              .where((entry) => !_ownerClaimedItems.contains(entry.name))
+              .toList();
+      final remainingSubtotal = remaining.fold<double>(
+        0,
+        (sum, entry) => sum + entry.price,
+      );
+      final proportion =
+          widget.subtotal > 0
+              ? (remainingSubtotal / widget.subtotal).clamp(0.0, 1.0)
+              : 0.0;
+      final remainingTax = widget.tax * proportion;
+      final remainingTip = widget.tipAmount * proportion;
+
+      _summaryData = _summaryData.copyWith(
+        items: remaining,
+        subtotal: remainingSubtotal,
+        tax: remainingTax,
+        tipAmount: remainingTip,
+        total: remainingSubtotal + remainingTax + remainingTip,
+      );
+    });
   }
 
   /// Shows the enhanced share sheet (text-only since bill hasn't been uploaded yet)
@@ -174,40 +208,34 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
                       const SizedBox(height: 16),
 
                       if (widget.lazyMode && widget.participants.isEmpty) ...[
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color:
-                                brightness == Brightness.dark
-                                    ? colorScheme.surfaceContainerHighest
-                                    : colorScheme.secondary.withValues(
-                                      alpha: 0.2,
-                                    ),
-                            borderRadius: BorderRadius.circular(20),
+                        Text(
+                          'What did you have?',
+                          style: Theme.of(
+                            context,
+                          ).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: sectionTitleColor,
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Your friends will finish this on the web',
-                                style: Theme.of(
-                                  context,
-                                ).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: sectionTitleColor,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'We parsed the receipt. Share the link and let everyone claim what they had.',
-                                style: Theme.of(
-                                  context,
-                                ).textTheme.bodyMedium?.copyWith(
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Select your items now. Only the rest will be shared with your friends.',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: colorScheme.onSurfaceVariant),
+                        ),
+                        const SizedBox(height: 10),
+                        ...widget.items.map(
+                          (item) => CheckboxListTile(
+                            value: _ownerClaimedItems.contains(item.name),
+                            onChanged:
+                                (value) =>
+                                    _toggleOwnerItem(item, value ?? false),
+                            title: Text(item.name),
+                            subtitle: Text(
+                              '\$${item.price.toStringAsFixed(2)}',
+                            ),
+                            contentPadding: EdgeInsets.zero,
+                            controlAffinity: ListTileControlAffinity.leading,
                           ),
                         ),
                         const SizedBox(height: 16),

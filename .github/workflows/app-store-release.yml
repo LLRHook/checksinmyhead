@@ -109,6 +109,13 @@ jobs:
             SUBMIT=true
           fi
 
+          # Keep the reviewer-facing summary in the repository as a fallback
+          # so a release cannot accidentally ship with an empty or generic
+          # What's New field when a tag is created without an annotation.
+          if [ -z "$NOTES" ] && [ -f "docs/release-notes/${VERSION}.md" ]; then
+            NOTES="$(sed -e 's/[[:space:]]*$//' "docs/release-notes/${VERSION}.md")"
+          fi
+
           if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::Version '$VERSION' is not MAJOR.MINOR.PATCH. Tag as release-v1.2.3."
             exit 1

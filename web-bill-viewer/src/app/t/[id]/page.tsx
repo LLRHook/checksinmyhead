@@ -102,16 +102,7 @@ export default async function TabPage({
         ),
     ).values(),
   );
-  const isLazyMode =
-    !!primaryBill &&
-    primaryBill.items.length > 0 &&
-    primaryBill.items.some(
-      (item) =>
-        (item.assignments ?? []).reduce(
-          (sum, assignment) => sum + assignment.percentage,
-          0,
-        ) < 99.99,
-    );
+  const isLazyMode = tab.description.toLowerCase().includes("lazy mode");
 
   const venmoId =
     tab.bills
@@ -131,7 +122,7 @@ export default async function TabPage({
 
       {members.length > 0 && <MemberList members={members} />}
 
-      <JoinTabButton tabId={id} token={token} />
+      {!isLazyMode && <JoinTabButton tabId={id} token={token} />}
 
       {paymentMethods.length > 0 && (
         <PaymentDetails paymentMethods={paymentMethods} />

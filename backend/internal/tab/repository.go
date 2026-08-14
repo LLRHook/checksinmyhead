@@ -2,10 +2,14 @@ package tab
 
 import (
 	"backend/pkg/models"
+	"errors"
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
+
+var ErrAssignmentConflict = errors.New("bill item changed since it was loaded")
 
 type TabRepository interface {
 	Create(tab *models.Tab) error
@@ -15,7 +19,8 @@ type TabRepository interface {
 	Update(tab *models.Tab) error
 	Delete(id uint) error
 	AddBill(tabID uint, billID uint, billToken string, memberID *uint) error
-	UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment) error
+	UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error
+	UpdateBillPersonSharePaid(tabID uint, billID uint, shareID uint, paid bool) error
 	Finalize(id uint) error
 	GetSettlements(tabID uint) ([]models.TabSettlement, error)
 	CreateSettlements(settlements []models.TabSettlement) error
@@ -91,7 +96,7 @@ func (r *tabRepository) AddBill(tabID uint, billID uint, billToken string, membe
 	return nil
 }
 
-func (r *tabRepository) UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment) error {
+func (r *tabRepository) UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		var bill models.Bill
 		if err := tx.
@@ -101,11 +106,14 @@ func (r *tabRepository) UpdateBillItemAssignments(tabID uint, billID uint, itemI
 		}
 
 		var item models.BillItem
-		if err := tx.Where("id = ? AND bill_id = ?", itemID, billID).First(&item).Error; err != nil {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND bill_id = ?", itemID, billID).First(&item).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				return err
 			}
 			return err
+		}
+		if expectedUpdatedAt != nil && !item.UpdatedAt.Equal(*expectedUpdatedAt) {
+			return ErrAssignmentConflict
 		}
 
 		if err := tx.Where("bill_item_id = ?", itemID).Delete(&models.ItemAssignment{}).Error; err != nil {
@@ -135,9 +143,22 @@ func (r *tabRepository) UpdateBillItemAssignments(tabID uint, billID uint, itemI
 
 		shares := buildPersonShares(&refreshed)
 		if len(shares) == 0 {
-			return nil
+			return tx.Model(&models.BillItem{}).Where("id = ?", itemID).Update("updated_at", time.Now()).Error
 		}
-		return tx.Create(&shares).Error
+		if err := tx.Create(&shares).Error; err != nil {
+			return err
+		}
+		return tx.Model(&models.BillItem{}).Where("id = ?", itemID).Update("updated_at", time.Now()).Error
+	})
+}
+
+func (r *tabRepository) UpdateBillPersonSharePaid(tabID uint, billID uint, shareID uint, paid bool) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		var share models.PersonShare
+		if err := tx.Joins("JOIN bills ON bills.id = person_shares.bill_id").Where("person_shares.id = ? AND person_shares.bill_id = ? AND bills.tab_id = ?", shareID, billID, tabID).First(&share).Error; err != nil {
+			return err
+		}
+		return tx.Model(&models.PersonShare{}).Where("id = ?", shareID).Update("paid", paid).Error
 	})
 }
 

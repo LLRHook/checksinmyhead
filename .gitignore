@@ -67,6 +67,7 @@ screenshots/
 
 .claude
 CLAUDE.md
+AGENTS.MD
 prompt.md
 ui_prompt.md
 deployment.md
