@@ -44,6 +44,16 @@ EDITABLE_STATES = %w[
   INVALID_BINARY
 ].freeze
 
+# Apple leaves rejected versions in an editable state that blocks creation of
+# the next version. These states are safe to remove before a new release; an
+# ordinary PREPARE_FOR_SUBMISSION version is retained and reported instead.
+REMOVABLE_STATES = %w[
+  DEVELOPER_REJECTED
+  REJECTED
+  METADATA_REJECTED
+  INVALID_BINARY
+].freeze
+
 def find_editable_version(app_id, version_string)
   response = ASC.get("/v1/apps/#{app_id}/appStoreVersions", {
     "filter[platform]" => "IOS",
@@ -71,6 +81,14 @@ def find_editable_version(app_id, version_string)
     EDITABLE_STATES.include?(state)
   end
   if open
+    open_state = open.dig("attributes", "appStoreState") || open.dig("attributes", "appVersionState")
+    if REMOVABLE_STATES.include?(open_state)
+      open_version = open.dig("attributes", "versionString")
+      puts "Deleting stale rejected App Store version #{open_version} (state #{open_state})"
+      ASC.delete("/v1/appStoreVersions/#{open.fetch('id')}")
+      return nil
+    end
+
     raise ASC::Error, "Version #{open.dig('attributes', 'versionString')} is already open for editing " \
                       "(state #{open.dig('attributes', 'appStoreState')}). Release or delete it before " \
                       "creating #{version_string}."
