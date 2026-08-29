@@ -10,7 +10,7 @@ on:
       release_notes:
         description: 'What to test (TestFlight notes)'
         required: false
-        default: 'New in this build: receipt-based Lazy Mode lets the bill creator claim their own items in the app before sharing. Friends can select or split remaining items from a receipt-style web view, review tax and tip transparently, pay via Venmo or another listed method, and mark their share as paid. Also includes safer collaborative item updates and refreshed bill summaries.'
+        default: 'New in 1.4.1: active shared tabs now let invited guests join and edit every receipt, while finalized tabs stay read-only. Receipts can also be entered in supported non-USD currencies using a daily reference rate that is frozen when the receipt is saved; tab totals, shares, balances, and settlements remain stable in USD.'
         type: string
       skip_tests:
         description: 'Skip analyze/test (emergency builds only)'
