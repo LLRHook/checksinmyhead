@@ -30,6 +30,7 @@
 // - Normalize function to fix percentages when total is not 100%
 
 import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_utils.dart';
+import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:checks_frontend/models/person.dart';
@@ -53,6 +54,7 @@ void showCustomSplitDialog({
   required Function(BillItem, Map<Person, double>) onAssign,
   List<Person>? preselectedPeople,
   Person? birthdayPerson,
+  String currencyCode = 'USD',
 }) {
   // Initialize working assignments map that will track percentage allocations
   Map<Person, double> workingAssignments = {};
@@ -178,9 +180,15 @@ void showCustomSplitDialog({
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                     Semantics(
-                                      label: '${item.price.toStringAsFixed(2)} dollars',
+                                      label: CurrencyFormatter.formatCurrency(
+                                        item.price,
+                                        currencyCode: currencyCode,
+                                      ),
                                       child: Text(
-                                        '\$${item.price.toStringAsFixed(2)}',
+                                        CurrencyFormatter.formatCurrency(
+                                          item.price,
+                                          currencyCode: currencyCode,
+                                        ),
                                         style: TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w500,
@@ -201,49 +209,50 @@ void showCustomSplitDialog({
                             children: [
                               // Visual indicator that changes color based on total percentage
                               Semantics(
-                                label: 'Total: ${totalPercentage.toStringAsFixed(0)} percent${(totalPercentage - 100.0).abs() < 0.01 ? ', ready to apply' : ', must equal 100 percent'}',
+                                label:
+                                    'Total: ${totalPercentage.toStringAsFixed(0)} percent${(totalPercentage - 100.0).abs() < 0.01 ? ', ready to apply' : ', must equal 100 percent'}',
                                 child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: _getStatusColor(
-                                    totalPercentage,
-                                    brightness,
-                                  ).withValues(alpha: .1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      (totalPercentage - 100.0).abs() < 0.01
-                                          ? Icons
-                                              .check_circle // Check mark when total is valid
-                                          : Icons
-                                              .pie_chart, // Pie chart when adjustments needed
-                                      size: 16,
-                                      color: _getStatusColor(
-                                        totalPercentage,
-                                        brightness,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      '${totalPercentage.toStringAsFixed(0)}%',
-                                      style: TextStyle(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _getStatusColor(
+                                      totalPercentage,
+                                      brightness,
+                                    ).withValues(alpha: .1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        (totalPercentage - 100.0).abs() < 0.01
+                                            ? Icons
+                                                .check_circle // Check mark when total is valid
+                                            : Icons
+                                                .pie_chart, // Pie chart when adjustments needed
+                                        size: 16,
                                         color: _getStatusColor(
                                           totalPercentage,
                                           brightness,
                                         ),
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        '${totalPercentage.toStringAsFixed(0)}%',
+                                        style: TextStyle(
+                                          color: _getStatusColor(
+                                            totalPercentage,
+                                            brightness,
+                                          ),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
                               ),
 
                               const Spacer(),
@@ -338,6 +347,7 @@ void showCustomSplitDialog({
                             personColor: personColor,
                             isBirthdayPerson: isBirthdayPerson,
                             brightness: brightness,
+                            currencyCode: currencyCode,
                             onChanged: (value) {
                               setStateDialog(() {
                                 // Update this person's percentage
@@ -502,7 +512,10 @@ void showCustomSplitDialog({
                                     brightness == Brightness.dark
                                         ? Colors.grey.shade400
                                         : Colors.grey.shade600,
-                                elevation: (totalPercentage - 100.0).abs() < 0.01 ? 2 : 0,
+                                elevation:
+                                    (totalPercentage - 100.0).abs() < 0.01
+                                        ? 2
+                                        : 0,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14),
                                 ),
@@ -550,6 +563,7 @@ Widget _buildPersonSlider({
   required Color personColor,
   required bool isBirthdayPerson,
   required Brightness brightness,
+  required String currencyCode,
   required ValueChanged<double> onChanged,
 }) {
   final isActive = percentage > 0;
@@ -664,9 +678,15 @@ Widget _buildPersonSlider({
                     overflow: TextOverflow.ellipsis,
                   ),
                   Semantics(
-                    label: '${individualAmount.toStringAsFixed(2)} dollars',
+                    label: CurrencyFormatter.formatCurrency(
+                      individualAmount,
+                      currencyCode: currencyCode,
+                    ),
                     child: Text(
-                      '\$${individualAmount.toStringAsFixed(2)}',
+                      CurrencyFormatter.formatCurrency(
+                        individualAmount,
+                        currencyCode: currencyCode,
+                      ),
                       style: TextStyle(fontSize: 12, color: textColor),
                     ),
                   ),
@@ -758,7 +778,9 @@ Widget _buildPersonSlider({
                   max: 100,
                   divisions: 100, // Creates 1% increments (100/100 = 1)
                   label: '${percentage.toStringAsFixed(0)}%',
-                  semanticFormatterCallback: (value) => '${value.toStringAsFixed(0)} percent for ${person.name}',
+                  semanticFormatterCallback:
+                      (value) =>
+                          '${value.toStringAsFixed(0)} percent for ${person.name}',
                   onChanged: onChanged,
                 ),
               ),
@@ -802,49 +824,49 @@ Widget _buildPersonSlider({
                       button: true,
                       selected: isSelected,
                       child: TextButton(
-                      onPressed: () {
-                        onChanged(presetValue.toDouble());
-                        HapticFeedback.selectionClick();
-                      },
-                      style: TextButton.styleFrom(
-                        foregroundColor:
-                            isSelected
-                                ? (brightness == Brightness.dark
-                                    ? Colors.black.withValues(alpha: .9)
-                                    : Colors.white)
-                                : personColor,
-                        backgroundColor:
-                            isSelected ? personColor : Colors.transparent,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
+                        onPressed: () {
+                          onChanged(presetValue.toDouble());
+                          HapticFeedback.selectionClick();
+                        },
+                        style: TextButton.styleFrom(
+                          foregroundColor:
+                              isSelected
+                                  ? (brightness == Brightness.dark
+                                      ? Colors.black.withValues(alpha: .9)
+                                      : Colors.white)
+                                  : personColor,
+                          backgroundColor:
+                              isSelected ? personColor : Colors.transparent,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: BorderSide(
+                              color:
+                                  isSelected
+                                      ? Colors.transparent
+                                      : personColor.withValues(
+                                        alpha:
+                                            brightness == Brightness.dark
+                                                ? 0.5
+                                                : 0.3,
+                                      ),
+                              width: 1,
+                            ),
+                          ),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          side: BorderSide(
-                            color:
-                                isSelected
-                                    ? Colors.transparent
-                                    : personColor.withValues(
-                                      alpha:
-                                          brightness == Brightness.dark
-                                              ? 0.5
-                                              : 0.3,
-                                    ),
-                            width: 1,
+                        child: Text(
+                          '$presetValue%',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
                           ),
                         ),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      child: Text(
-                        '$presetValue%',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
                     ),
                   );
                 }).toList(),

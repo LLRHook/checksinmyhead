@@ -1219,6 +1219,53 @@ class $RecentBillsTable extends RecentBills
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _currencyCodeMeta = const VerificationMeta(
+    'currencyCode',
+  );
+  @override
+  late final GeneratedColumn<String> currencyCode = GeneratedColumn<String>(
+    'currency_code',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('USD'),
+  );
+  static const VerificationMeta _usdExchangeRateMeta = const VerificationMeta(
+    'usdExchangeRate',
+  );
+  @override
+  late final GeneratedColumn<double> usdExchangeRate = GeneratedColumn<double>(
+    'usd_exchange_rate',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _exchangeRateDateMeta = const VerificationMeta(
+    'exchangeRateDate',
+  );
+  @override
+  late final GeneratedColumn<String> exchangeRateDate = GeneratedColumn<String>(
+    'exchange_rate_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _exchangeRateSourceMeta =
+      const VerificationMeta('exchangeRateSource');
+  @override
+  late final GeneratedColumn<String> exchangeRateSource =
+      GeneratedColumn<String>(
+        'exchange_rate_source',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('native-usd'),
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1235,6 +1282,10 @@ class $RecentBillsTable extends RecentBills
     colorValue,
     createdAt,
     shareUrl,
+    currencyCode,
+    usdExchangeRate,
+    exchangeRateDate,
+    exchangeRateSource,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1352,6 +1403,42 @@ class $RecentBillsTable extends RecentBills
         shareUrl.isAcceptableOrUnknown(data['share_url']!, _shareUrlMeta),
       );
     }
+    if (data.containsKey('currency_code')) {
+      context.handle(
+        _currencyCodeMeta,
+        currencyCode.isAcceptableOrUnknown(
+          data['currency_code']!,
+          _currencyCodeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('usd_exchange_rate')) {
+      context.handle(
+        _usdExchangeRateMeta,
+        usdExchangeRate.isAcceptableOrUnknown(
+          data['usd_exchange_rate']!,
+          _usdExchangeRateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('exchange_rate_date')) {
+      context.handle(
+        _exchangeRateDateMeta,
+        exchangeRateDate.isAcceptableOrUnknown(
+          data['exchange_rate_date']!,
+          _exchangeRateDateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('exchange_rate_source')) {
+      context.handle(
+        _exchangeRateSourceMeta,
+        exchangeRateSource.isAcceptableOrUnknown(
+          data['exchange_rate_source']!,
+          _exchangeRateSourceMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1428,6 +1515,25 @@ class $RecentBillsTable extends RecentBills
         DriftSqlType.string,
         data['${effectivePrefix}share_url'],
       ),
+      currencyCode:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}currency_code'],
+          )!,
+      usdExchangeRate:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.double,
+            data['${effectivePrefix}usd_exchange_rate'],
+          )!,
+      exchangeRateDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}exchange_rate_date'],
+      ),
+      exchangeRateSource:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}exchange_rate_source'],
+          )!,
     );
   }
 
@@ -1452,6 +1558,10 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
   final int colorValue;
   final DateTime createdAt;
   final String? shareUrl;
+  final String currencyCode;
+  final double usdExchangeRate;
+  final String? exchangeRateDate;
+  final String exchangeRateSource;
   const RecentBill({
     required this.id,
     required this.billName,
@@ -1467,6 +1577,10 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
     required this.colorValue,
     required this.createdAt,
     this.shareUrl,
+    required this.currencyCode,
+    required this.usdExchangeRate,
+    this.exchangeRateDate,
+    required this.exchangeRateSource,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1491,6 +1605,12 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
     if (!nullToAbsent || shareUrl != null) {
       map['share_url'] = Variable<String>(shareUrl);
     }
+    map['currency_code'] = Variable<String>(currencyCode);
+    map['usd_exchange_rate'] = Variable<double>(usdExchangeRate);
+    if (!nullToAbsent || exchangeRateDate != null) {
+      map['exchange_rate_date'] = Variable<String>(exchangeRateDate);
+    }
+    map['exchange_rate_source'] = Variable<String>(exchangeRateSource);
     return map;
   }
 
@@ -1517,6 +1637,13 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
           shareUrl == null && nullToAbsent
               ? const Value.absent()
               : Value(shareUrl),
+      currencyCode: Value(currencyCode),
+      usdExchangeRate: Value(usdExchangeRate),
+      exchangeRateDate:
+          exchangeRateDate == null && nullToAbsent
+              ? const Value.absent()
+              : Value(exchangeRateDate),
+      exchangeRateSource: Value(exchangeRateSource),
     );
   }
 
@@ -1540,6 +1667,12 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
       colorValue: serializer.fromJson<int>(json['colorValue']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       shareUrl: serializer.fromJson<String?>(json['shareUrl']),
+      currencyCode: serializer.fromJson<String>(json['currencyCode']),
+      usdExchangeRate: serializer.fromJson<double>(json['usdExchangeRate']),
+      exchangeRateDate: serializer.fromJson<String?>(json['exchangeRateDate']),
+      exchangeRateSource: serializer.fromJson<String>(
+        json['exchangeRateSource'],
+      ),
     );
   }
   @override
@@ -1560,6 +1693,10 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
       'colorValue': serializer.toJson<int>(colorValue),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'shareUrl': serializer.toJson<String?>(shareUrl),
+      'currencyCode': serializer.toJson<String>(currencyCode),
+      'usdExchangeRate': serializer.toJson<double>(usdExchangeRate),
+      'exchangeRateDate': serializer.toJson<String?>(exchangeRateDate),
+      'exchangeRateSource': serializer.toJson<String>(exchangeRateSource),
     };
   }
 
@@ -1578,6 +1715,10 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
     int? colorValue,
     DateTime? createdAt,
     Value<String?> shareUrl = const Value.absent(),
+    String? currencyCode,
+    double? usdExchangeRate,
+    Value<String?> exchangeRateDate = const Value.absent(),
+    String? exchangeRateSource,
   }) => RecentBill(
     id: id ?? this.id,
     billName: billName ?? this.billName,
@@ -1594,6 +1735,13 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
     colorValue: colorValue ?? this.colorValue,
     createdAt: createdAt ?? this.createdAt,
     shareUrl: shareUrl.present ? shareUrl.value : this.shareUrl,
+    currencyCode: currencyCode ?? this.currencyCode,
+    usdExchangeRate: usdExchangeRate ?? this.usdExchangeRate,
+    exchangeRateDate:
+        exchangeRateDate.present
+            ? exchangeRateDate.value
+            : this.exchangeRateDate,
+    exchangeRateSource: exchangeRateSource ?? this.exchangeRateSource,
   );
   RecentBill copyWithCompanion(RecentBillsCompanion data) {
     return RecentBill(
@@ -1621,6 +1769,22 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
           data.colorValue.present ? data.colorValue.value : this.colorValue,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       shareUrl: data.shareUrl.present ? data.shareUrl.value : this.shareUrl,
+      currencyCode:
+          data.currencyCode.present
+              ? data.currencyCode.value
+              : this.currencyCode,
+      usdExchangeRate:
+          data.usdExchangeRate.present
+              ? data.usdExchangeRate.value
+              : this.usdExchangeRate,
+      exchangeRateDate:
+          data.exchangeRateDate.present
+              ? data.exchangeRateDate.value
+              : this.exchangeRateDate,
+      exchangeRateSource:
+          data.exchangeRateSource.present
+              ? data.exchangeRateSource.value
+              : this.exchangeRateSource,
     );
   }
 
@@ -1640,7 +1804,11 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
           ..write('items: $items, ')
           ..write('colorValue: $colorValue, ')
           ..write('createdAt: $createdAt, ')
-          ..write('shareUrl: $shareUrl')
+          ..write('shareUrl: $shareUrl, ')
+          ..write('currencyCode: $currencyCode, ')
+          ..write('usdExchangeRate: $usdExchangeRate, ')
+          ..write('exchangeRateDate: $exchangeRateDate, ')
+          ..write('exchangeRateSource: $exchangeRateSource')
           ..write(')'))
         .toString();
   }
@@ -1661,6 +1829,10 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
     colorValue,
     createdAt,
     shareUrl,
+    currencyCode,
+    usdExchangeRate,
+    exchangeRateDate,
+    exchangeRateSource,
   );
   @override
   bool operator ==(Object other) =>
@@ -1679,7 +1851,11 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
           other.items == this.items &&
           other.colorValue == this.colorValue &&
           other.createdAt == this.createdAt &&
-          other.shareUrl == this.shareUrl);
+          other.shareUrl == this.shareUrl &&
+          other.currencyCode == this.currencyCode &&
+          other.usdExchangeRate == this.usdExchangeRate &&
+          other.exchangeRateDate == this.exchangeRateDate &&
+          other.exchangeRateSource == this.exchangeRateSource);
 }
 
 class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
@@ -1697,6 +1873,10 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
   final Value<int> colorValue;
   final Value<DateTime> createdAt;
   final Value<String?> shareUrl;
+  final Value<String> currencyCode;
+  final Value<double> usdExchangeRate;
+  final Value<String?> exchangeRateDate;
+  final Value<String> exchangeRateSource;
   const RecentBillsCompanion({
     this.id = const Value.absent(),
     this.billName = const Value.absent(),
@@ -1712,6 +1892,10 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
     this.colorValue = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.shareUrl = const Value.absent(),
+    this.currencyCode = const Value.absent(),
+    this.usdExchangeRate = const Value.absent(),
+    this.exchangeRateDate = const Value.absent(),
+    this.exchangeRateSource = const Value.absent(),
   });
   RecentBillsCompanion.insert({
     this.id = const Value.absent(),
@@ -1728,6 +1912,10 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
     this.colorValue = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.shareUrl = const Value.absent(),
+    this.currencyCode = const Value.absent(),
+    this.usdExchangeRate = const Value.absent(),
+    this.exchangeRateDate = const Value.absent(),
+    this.exchangeRateSource = const Value.absent(),
   }) : participants = Value(participants),
        participantCount = Value(participantCount),
        total = Value(total),
@@ -1750,6 +1938,10 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
     Expression<int>? colorValue,
     Expression<DateTime>? createdAt,
     Expression<String>? shareUrl,
+    Expression<String>? currencyCode,
+    Expression<double>? usdExchangeRate,
+    Expression<String>? exchangeRateDate,
+    Expression<String>? exchangeRateSource,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1766,6 +1958,11 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
       if (colorValue != null) 'color_value': colorValue,
       if (createdAt != null) 'created_at': createdAt,
       if (shareUrl != null) 'share_url': shareUrl,
+      if (currencyCode != null) 'currency_code': currencyCode,
+      if (usdExchangeRate != null) 'usd_exchange_rate': usdExchangeRate,
+      if (exchangeRateDate != null) 'exchange_rate_date': exchangeRateDate,
+      if (exchangeRateSource != null)
+        'exchange_rate_source': exchangeRateSource,
     });
   }
 
@@ -1784,6 +1981,10 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
     Value<int>? colorValue,
     Value<DateTime>? createdAt,
     Value<String?>? shareUrl,
+    Value<String>? currencyCode,
+    Value<double>? usdExchangeRate,
+    Value<String?>? exchangeRateDate,
+    Value<String>? exchangeRateSource,
   }) {
     return RecentBillsCompanion(
       id: id ?? this.id,
@@ -1800,6 +2001,10 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
       colorValue: colorValue ?? this.colorValue,
       createdAt: createdAt ?? this.createdAt,
       shareUrl: shareUrl ?? this.shareUrl,
+      currencyCode: currencyCode ?? this.currencyCode,
+      usdExchangeRate: usdExchangeRate ?? this.usdExchangeRate,
+      exchangeRateDate: exchangeRateDate ?? this.exchangeRateDate,
+      exchangeRateSource: exchangeRateSource ?? this.exchangeRateSource,
     );
   }
 
@@ -1848,6 +2053,18 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
     if (shareUrl.present) {
       map['share_url'] = Variable<String>(shareUrl.value);
     }
+    if (currencyCode.present) {
+      map['currency_code'] = Variable<String>(currencyCode.value);
+    }
+    if (usdExchangeRate.present) {
+      map['usd_exchange_rate'] = Variable<double>(usdExchangeRate.value);
+    }
+    if (exchangeRateDate.present) {
+      map['exchange_rate_date'] = Variable<String>(exchangeRateDate.value);
+    }
+    if (exchangeRateSource.present) {
+      map['exchange_rate_source'] = Variable<String>(exchangeRateSource.value);
+    }
     return map;
   }
 
@@ -1867,7 +2084,11 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
           ..write('items: $items, ')
           ..write('colorValue: $colorValue, ')
           ..write('createdAt: $createdAt, ')
-          ..write('shareUrl: $shareUrl')
+          ..write('shareUrl: $shareUrl, ')
+          ..write('currencyCode: $currencyCode, ')
+          ..write('usdExchangeRate: $usdExchangeRate, ')
+          ..write('exchangeRateDate: $exchangeRateDate, ')
+          ..write('exchangeRateSource: $exchangeRateSource')
           ..write(')'))
         .toString();
   }
@@ -4037,6 +4258,10 @@ typedef $$RecentBillsTableCreateCompanionBuilder =
       Value<int> colorValue,
       Value<DateTime> createdAt,
       Value<String?> shareUrl,
+      Value<String> currencyCode,
+      Value<double> usdExchangeRate,
+      Value<String?> exchangeRateDate,
+      Value<String> exchangeRateSource,
     });
 typedef $$RecentBillsTableUpdateCompanionBuilder =
     RecentBillsCompanion Function({
@@ -4054,6 +4279,10 @@ typedef $$RecentBillsTableUpdateCompanionBuilder =
       Value<int> colorValue,
       Value<DateTime> createdAt,
       Value<String?> shareUrl,
+      Value<String> currencyCode,
+      Value<double> usdExchangeRate,
+      Value<String?> exchangeRateDate,
+      Value<String> exchangeRateSource,
     });
 
 class $$RecentBillsTableFilterComposer
@@ -4132,6 +4361,26 @@ class $$RecentBillsTableFilterComposer
 
   ColumnFilters<String> get shareUrl => $composableBuilder(
     column: $table.shareUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get usdExchangeRate => $composableBuilder(
+    column: $table.usdExchangeRate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get exchangeRateDate => $composableBuilder(
+    column: $table.exchangeRateDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get exchangeRateSource => $composableBuilder(
+    column: $table.exchangeRateSource,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -4214,6 +4463,26 @@ class $$RecentBillsTableOrderingComposer
     column: $table.shareUrl,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get usdExchangeRate => $composableBuilder(
+    column: $table.usdExchangeRate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get exchangeRateDate => $composableBuilder(
+    column: $table.exchangeRateDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get exchangeRateSource => $composableBuilder(
+    column: $table.exchangeRateSource,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$RecentBillsTableAnnotationComposer
@@ -4274,6 +4543,26 @@ class $$RecentBillsTableAnnotationComposer
 
   GeneratedColumn<String> get shareUrl =>
       $composableBuilder(column: $table.shareUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get usdExchangeRate => $composableBuilder(
+    column: $table.usdExchangeRate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get exchangeRateDate => $composableBuilder(
+    column: $table.exchangeRateDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get exchangeRateSource => $composableBuilder(
+    column: $table.exchangeRateSource,
+    builder: (column) => column,
+  );
 }
 
 class $$RecentBillsTableTableManager
@@ -4322,6 +4611,10 @@ class $$RecentBillsTableTableManager
                 Value<int> colorValue = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<String?> shareUrl = const Value.absent(),
+                Value<String> currencyCode = const Value.absent(),
+                Value<double> usdExchangeRate = const Value.absent(),
+                Value<String?> exchangeRateDate = const Value.absent(),
+                Value<String> exchangeRateSource = const Value.absent(),
               }) => RecentBillsCompanion(
                 id: id,
                 billName: billName,
@@ -4337,6 +4630,10 @@ class $$RecentBillsTableTableManager
                 colorValue: colorValue,
                 createdAt: createdAt,
                 shareUrl: shareUrl,
+                currencyCode: currencyCode,
+                usdExchangeRate: usdExchangeRate,
+                exchangeRateDate: exchangeRateDate,
+                exchangeRateSource: exchangeRateSource,
               ),
           createCompanionCallback:
               ({
@@ -4354,6 +4651,10 @@ class $$RecentBillsTableTableManager
                 Value<int> colorValue = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<String?> shareUrl = const Value.absent(),
+                Value<String> currencyCode = const Value.absent(),
+                Value<double> usdExchangeRate = const Value.absent(),
+                Value<String?> exchangeRateDate = const Value.absent(),
+                Value<String> exchangeRateSource = const Value.absent(),
               }) => RecentBillsCompanion.insert(
                 id: id,
                 billName: billName,
@@ -4369,6 +4670,10 @@ class $$RecentBillsTableTableManager
                 colorValue: colorValue,
                 createdAt: createdAt,
                 shareUrl: shareUrl,
+                currencyCode: currencyCode,
+                usdExchangeRate: usdExchangeRate,
+                exchangeRateDate: exchangeRateDate,
+                exchangeRateSource: exchangeRateSource,
               ),
           withReferenceMapper:
               (p0) =>

@@ -17,6 +17,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 
 /// UnassignedAmountBanner
 ///
@@ -43,11 +44,13 @@ import 'package:flutter/services.dart';
 /// - Triggers medium haptic feedback on tap for better user experience
 class UnassignedAmountBanner extends StatelessWidget {
   final double unassignedAmount;
+  final String currencyCode;
   final VoidCallback onSplitEvenly;
 
   const UnassignedAmountBanner({
     super.key,
     required this.unassignedAmount,
+    this.currencyCode = 'USD',
     required this.onSplitEvenly,
   });
 
@@ -86,56 +89,59 @@ class UnassignedAmountBanner extends StatelessWidget {
     // Using GestureDetector instead of InkWell for better control over touch behavior
     // and to enable haptic feedback functionality
     return Semantics(
-      label: '${unassignedAmount.toStringAsFixed(2)} dollars not assigned. Tap to split evenly among participants',
+      label:
+          '${CurrencyFormatter.formatCurrency(unassignedAmount, currencyCode: currencyCode)} not assigned. Tap to split evenly among participants',
       button: true,
       child: GestureDetector(
-      onTap: () {
-        HapticFeedback.mediumImpact(); // Provide tactile feedback when tapped
-        onSplitEvenly();
-      },
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: borderColor, width: 1),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              // Warning icon to draw attention to the unassigned amount
-              Icon(Icons.warning_amber_rounded, color: iconColor, size: 24),
-              const SizedBox(width: 12),
+        onTap: () {
+          HapticFeedback.mediumImpact(); // Provide tactile feedback when tapped
+          onSplitEvenly();
+        },
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: borderColor, width: 1),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                // Warning icon to draw attention to the unassigned amount
+                Icon(Icons.warning_amber_rounded, color: iconColor, size: 24),
+                const SizedBox(width: 12),
 
-              // Text content with amount and action suggestion
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Format currency with 2 decimal places for consistency
-                    Text(
-                      "\$${unassignedAmount.toStringAsFixed(2)} not assigned",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: titleColor,
-                        fontSize: 15,
+                // Text content with amount and action suggestion
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Format currency with 2 decimal places for consistency
+                      Text(
+                        '${CurrencyFormatter.formatCurrency(unassignedAmount, currencyCode: currencyCode)} not assigned',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: titleColor,
+                          fontSize: 15,
+                        ),
                       ),
-                    ),
-                    Text(
-                      'Tap to split evenly among participants',
-                      style: TextStyle(fontSize: 12, color: subtitleColor),
-                    ),
-                  ],
+                      Text(
+                        'Tap to split evenly among participants',
+                        style: TextStyle(fontSize: 12, color: subtitleColor),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
 
-              // Touch icon indicates the banner is interactive (decorative)
-              ExcludeSemantics(child: Icon(Icons.touch_app, color: iconColor, size: 20)),
-            ],
+                // Touch icon indicates the banner is interactive (decorative)
+                ExcludeSemantics(
+                  child: Icon(Icons.touch_app, color: iconColor, size: 20),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }

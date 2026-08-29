@@ -133,6 +133,11 @@ class RecentBillsManager extends ChangeNotifier {
     double tipPercentage = 0, // Tip percentage with default value of 0
     bool isCustomTipAmount = false,
     required String billName, // Flag for custom tip amount with default value
+    String? shareUrl,
+    String currencyCode = 'USD',
+    double usdExchangeRate = 1,
+    String? exchangeRateDate,
+    String exchangeRateSource = 'native-usd',
   }) async {
     try {
       // Forward all data to the database provider
@@ -146,6 +151,11 @@ class RecentBillsManager extends ChangeNotifier {
         total: total,
         tipPercentage: tipPercentage, // Pass tip percentage to database
         billName: billName, // Pass bill name to database
+        shareUrl: shareUrl,
+        currencyCode: currencyCode,
+        usdExchangeRate: usdExchangeRate,
+        exchangeRateDate: exchangeRateDate,
+        exchangeRateSource: exchangeRateSource,
       );
 
       // Refresh the bills list to update listeners
@@ -237,21 +247,23 @@ class RecentBillsManager extends ChangeNotifier {
     final prefsService = PreferencesService();
     final selectedMethods = await prefsService.getSelectedPaymentMethods();
     final identifiers = await prefsService.getAllPaymentIdentifiers();
-    final paymentMethods = selectedMethods.map((method) {
-      return {'name': method, 'identifier': identifiers[method] ?? ''};
-    }).toList();
+    final paymentMethods =
+        selectedMethods.map((method) {
+          return {'name': method, 'identifier': identifiers[method] ?? ''};
+        }).toList();
 
     return paymentMethods.isNotEmpty
         ? paymentMethods
-        : [{'name': 'Venmo', 'identifier': '@username'}];
+        : [
+          {'name': 'Venmo', 'identifier': '@username'},
+        ];
   }
 
   /// Retries uploading bills that don't have share URLs yet.
   /// Called silently on app launch and can be triggered manually.
   Future<void> retryPendingUploads() async {
     try {
-      final pendingBills =
-          await DatabaseProvider.db.getBillsWithoutShareUrl();
+      final pendingBills = await DatabaseProvider.db.getBillsWithoutShareUrl();
       if (pendingBills.isEmpty) return;
 
       final apiService = ApiService();
@@ -271,6 +283,10 @@ class RecentBillsManager extends ChangeNotifier {
             tipPercentage: model.tipPercentage,
             total: model.total,
             paymentMethods: paymentMethods,
+            currencyCode: model.currencyCode,
+            usdExchangeRate: model.usdExchangeRate,
+            exchangeRateDate: model.exchangeRateDate ?? '',
+            exchangeRateSource: model.exchangeRateSource,
           );
 
           await updateBillShareUrl(bill.id, response.shareUrl);
@@ -305,6 +321,10 @@ class RecentBillsManager extends ChangeNotifier {
         tipPercentage: model.tipPercentage,
         total: model.total,
         paymentMethods: paymentMethods,
+        currencyCode: model.currencyCode,
+        usdExchangeRate: model.usdExchangeRate,
+        exchangeRateDate: model.exchangeRateDate ?? '',
+        exchangeRateSource: model.exchangeRateSource,
       );
 
       await updateBillShareUrl(bill.id, response.shareUrl);

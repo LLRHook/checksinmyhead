@@ -18,6 +18,7 @@
 import 'package:flutter/material.dart';
 import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/models/bill_item.dart';
+import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 
 // Import refactored components
 import 'models/bill_summary_data.dart';
@@ -57,6 +58,10 @@ class BillSummaryScreen extends StatefulWidget {
   final bool isCustomTipAmount;
   final String? scannedVendor;
   final bool lazyMode;
+  final String currencyCode;
+  final double usdExchangeRate;
+  final String exchangeRateDate;
+  final String exchangeRateSource;
 
   const BillSummaryScreen({
     super.key,
@@ -72,6 +77,10 @@ class BillSummaryScreen extends StatefulWidget {
     this.isCustomTipAmount = false,
     this.scannedVendor,
     this.lazyMode = false,
+    this.currencyCode = 'USD',
+    this.usdExchangeRate = 1,
+    this.exchangeRateDate = '',
+    this.exchangeRateSource = 'native-usd',
   });
 
   @override
@@ -110,6 +119,10 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
       isCustomTipAmount: widget.isCustomTipAmount,
       billName: billName,
       paymentMethods: const <Map<String, String>>[],
+      currencyCode: widget.currencyCode,
+      usdExchangeRate: widget.usdExchangeRate,
+      exchangeRateDate: widget.exchangeRateDate,
+      exchangeRateSource: widget.exchangeRateSource,
     );
   }
 
@@ -232,7 +245,10 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
                                     _toggleOwnerItem(item, value ?? false),
                             title: Text(item.name),
                             subtitle: Text(
-                              '\$${item.price.toStringAsFixed(2)}',
+                              CurrencyFormatter.formatCurrency(
+                                item.price,
+                                currencyCode: widget.currencyCode,
+                              ),
                             ),
                             contentPadding: EdgeInsets.zero,
                             controlAffinity: ListTileControlAffinity.leading,

@@ -78,6 +78,12 @@ class RecentBillModel {
   /// Shareable web URL for this bill (null if never uploaded)
   final String? shareUrl;
 
+  /// Original receipt currency and the immutable daily conversion audit.
+  final String currencyCode;
+  final double usdExchangeRate;
+  final String? exchangeRateDate;
+  final String exchangeRateSource;
+
   RecentBillModel({
     required this.id,
     this.billName = '',
@@ -93,6 +99,10 @@ class RecentBillModel {
     required this.color,
     this.itemAssignments,
     this.shareUrl,
+    this.currencyCode = 'USD',
+    this.usdExchangeRate = 1,
+    this.exchangeRateDate,
+    this.exchangeRateSource = 'native-usd',
   });
 
   /// Creates a RecentBillModel from raw database data
@@ -184,6 +194,21 @@ class RecentBillModel {
       itemAssignments: assignmentsMap,
       color: Color(data.colorValue), // Convert stored integer to Color
       shareUrl: data.shareUrl,
+      currencyCode: data.currencyCode,
+      usdExchangeRate: data.usdExchangeRate,
+      exchangeRateDate: data.exchangeRateDate,
+      exchangeRateSource: data.exchangeRateSource,
+    );
+  }
+
+  double get usdTotal => (total * usdExchangeRate * 100).roundToDouble() / 100;
+
+  Map<Person, double> generateUSDPersonShares() {
+    return generatePersonShares().map(
+      (person, amount) => MapEntry(
+        person,
+        (amount * usdExchangeRate * 100).roundToDouble() / 100,
+      ),
     );
   }
 

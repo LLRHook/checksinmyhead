@@ -360,26 +360,26 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
               label: 'Go back',
               button: true,
               child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(20),
-                onTap: () {
-                  // Add haptic feedback for better tactile response
-                  HapticFeedback.selectionClick();
-                  if (mounted) {
-                    // Return whether the bill name was updated
-                    Navigator.pop(context, _wasNameUpdated);
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  child: Icon(
-                    Icons.arrow_back_ios_new,
-                    size: 20,
-                    color: iconColor,
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: () {
+                    // Add haptic feedback for better tactile response
+                    HapticFeedback.selectionClick();
+                    if (mounted) {
+                      // Return whether the bill name was updated
+                      Navigator.pop(context, _wasNameUpdated);
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    child: Icon(
+                      Icons.arrow_back_ios_new,
+                      size: 20,
+                      color: iconColor,
+                    ),
                   ),
                 ),
-              ),
               ),
             ),
           ),
@@ -477,67 +477,72 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
             // Bill name and date with shimmer effect
             ShimmerEffect(
               child: Semantics(
-                label: 'Bill name: ${_bill.billName}. Date: ${_bill.formattedDate}. Tap to edit name',
+                label:
+                    'Bill name: ${_bill.billName}. Date: ${_bill.formattedDate}. Tap to edit name',
                 button: true,
                 child: GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  _showBillNameEditSheet(_bill.billName, onNameUpdated);
-                },
-                child: Column(
-                  children: [
-                    // Combined name and date section
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Name display or prompt
-                        Flexible(
-                          child: Text(
-                            _bill.billName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 20,
-                            ),
-                            textAlign: TextAlign.center,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const ExcludeSemantics(
-                          child: Icon(Icons.edit, color: Colors.white, size: 16),
-                        ),
-                      ],
-                    ),
-
-                    // Date display always shown below the name
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Row(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    _showBillNameEditSheet(_bill.billName, onNameUpdated);
+                  },
+                  child: Column(
+                    children: [
+                      // Combined name and date section
+                      Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const ExcludeSemantics(
-                            child: Icon(
-                            Icons.calendar_today,
-                            color: Colors.white,
-                            size: 14,
+                          // Name display or prompt
+                          Flexible(
+                            child: Text(
+                              _bill.billName,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 20,
+                              ),
+                              textAlign: TextAlign.center,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          Text(
-                            _bill.formattedDate,
-                            style: const TextStyle(
+                          const SizedBox(width: 8),
+                          const ExcludeSemantics(
+                            child: Icon(
+                              Icons.edit,
                               color: Colors.white,
-                              fontWeight: FontWeight.w500,
-                              fontSize: 14,
+                              size: 16,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
+
+                      // Date display always shown below the name
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const ExcludeSemantics(
+                              child: Icon(
+                                Icons.calendar_today,
+                                color: Colors.white,
+                                size: 14,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              _bill.formattedDate,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
               ),
             ),
             const SizedBox(height: 12),
@@ -551,15 +556,19 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
                 return Transform.scale(scale: value, child: child);
               },
               child: Semantics(
-                label: 'Bill total: ${CurrencyFormatter.formatCurrency(_bill.total)}',
+                label:
+                    'Bill total: ${CurrencyFormatter.formatCurrency(_bill.total, currencyCode: _bill.currencyCode)}',
                 child: Text(
-                CurrencyFormatter.formatCurrency(_bill.total),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 32,
-                  letterSpacing: 0.5, // Slight spacing for better readability
-                ),
+                  CurrencyFormatter.formatCurrency(
+                    _bill.total,
+                    currencyCode: _bill.currencyCode,
+                  ),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 32,
+                    letterSpacing: 0.5, // Slight spacing for better readability
+                  ),
                 ),
               ),
             ),
@@ -812,47 +821,49 @@ class CombinedBillDetailsCard extends StatelessWidget {
                       if (bill.tipAmount > 0) ...[
                         const SizedBox(height: 12),
                         Semantics(
-                          label: 'Tip: ${CurrencyFormatter.formatCurrency(bill.tipAmount)}, ${bill.tipPercentage.toStringAsFixed(0)} percent',
+                          label:
+                              'Tip: ${CurrencyFormatter.formatCurrency(bill.tipAmount, currencyCode: bill.currencyCode)}, ${bill.tipPercentage.toStringAsFixed(0)} percent',
                           child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('Tip', style: TextStyle(color: textColor)),
-                            Row(
-                              children: [
-                                // Tip amount in currency format
-                                Text(
-                                  CurrencyFormatter.formatCurrency(
-                                    bill.tipAmount,
-                                  ),
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w500,
-                                    color: textColor,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                // Tip percentage badge
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: tipBadgeBgColor,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    '${bill.tipPercentage.toStringAsFixed(0)}%',
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('Tip', style: TextStyle(color: textColor)),
+                              Row(
+                                children: [
+                                  // Tip amount in currency format
+                                  Text(
+                                    CurrencyFormatter.formatCurrency(
+                                      bill.tipAmount,
+                                      currencyCode: bill.currencyCode,
+                                    ),
                                     style: TextStyle(
-                                      fontSize: 12,
                                       fontWeight: FontWeight.w500,
-                                      color: colorScheme.primary,
+                                      color: textColor,
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                                  const SizedBox(width: 6),
+                                  // Tip percentage badge
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: tipBadgeBgColor,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      '${bill.tipPercentage.toStringAsFixed(0)}%',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: colorScheme.primary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ],
@@ -873,28 +884,32 @@ class CombinedBillDetailsCard extends StatelessWidget {
     ColorScheme colorScheme,
   ) {
     return Semantics(
-      label: '$name, ${CurrencyFormatter.formatCurrency(price)}',
+      label:
+          '$name, ${CurrencyFormatter.formatCurrency(price, currencyCode: bill.currencyCode)}',
       child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Text(
-              name,
-              style: TextStyle(fontSize: 14, color: colorScheme.onSurface),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                name,
+                style: TextStyle(fontSize: 14, color: colorScheme.onSurface),
+              ),
             ),
-          ),
-          Text(
-            CurrencyFormatter.formatCurrency(price),
-            style: TextStyle(
-              fontWeight: FontWeight.w500,
-              fontSize: 14,
-              color: colorScheme.onSurface,
+            Text(
+              CurrencyFormatter.formatCurrency(
+                price,
+                currencyCode: bill.currencyCode,
+              ),
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+                color: colorScheme.onSurface,
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
@@ -907,27 +922,31 @@ class CombinedBillDetailsCard extends StatelessWidget {
     Color? textColor,
   }) {
     return Semantics(
-      label: '$label: ${CurrencyFormatter.formatCurrency(value)}',
+      label:
+          '$label: ${CurrencyFormatter.formatCurrency(value, currencyCode: bill.currencyCode)}',
       child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-            fontSize: isTotal ? 16 : 14,
-            color: textColor,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+              fontSize: isTotal ? 16 : 14,
+              color: textColor,
+            ),
           ),
-        ),
-        Text(
-          CurrencyFormatter.formatCurrency(value),
-          style: TextStyle(
-            fontWeight: isTotal ? FontWeight.bold : FontWeight.w500,
-            fontSize: isTotal ? 18 : 14,
-            color: textColor,
+          Text(
+            CurrencyFormatter.formatCurrency(
+              value,
+              currencyCode: bill.currencyCode,
+            ),
+            style: TextStyle(
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.w500,
+              fontSize: isTotal ? 18 : 14,
+              color: textColor,
+            ),
           ),
-        ),
-      ],
+        ],
       ),
     );
   }

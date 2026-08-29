@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:checks_frontend/services/api_config.dart';
 import 'package:checks_frontend/models/bill_item.dart';
 import 'package:checks_frontend/models/person.dart';
+import 'package:checks_frontend/models/exchange_rate_quote.dart';
 
 /// Exception thrown when an API request fails.
 class ApiException implements Exception {
@@ -43,44 +44,44 @@ class ApiService {
     required double tipPercentage,
     required double total,
     required List<Map<String, String>> paymentMethods,
+    String currencyCode = 'USD',
+    double usdExchangeRate = 1,
+    String exchangeRateDate = '',
+    String exchangeRateSource = 'native-usd',
   }) async {
     try {
       // Build the request body matching backend's CreateBillRequest
-      final requestBody = {
-        'name': billName,
-        'subtotal': subtotal,
-        'tax': tax,
-        'tip_amount': tipAmount,
-        'tip_percentage': tipPercentage,
-        'total': total,
-        'participants': participants.map((p) => {'name': p.name}).toList(),
-        'items': _buildItemsJson(items, participants),
-        'person_shares': _buildPersonSharesJson(
-          personShares,
-          items,
-          tax,
-          tipAmount,
-          total,
-        ),
-        'payment_methods': paymentMethods,
-      };
+      final requestBody = buildBillRequest(
+        billName: billName,
+        participants: participants,
+        personShares: personShares,
+        items: items,
+        subtotal: subtotal,
+        tax: tax,
+        tipAmount: tipAmount,
+        tipPercentage: tipPercentage,
+        total: total,
+        paymentMethods: paymentMethods,
+        currencyCode: currencyCode,
+        usdExchangeRate: usdExchangeRate,
+        exchangeRateDate: exchangeRateDate,
+        exchangeRateSource: exchangeRateSource,
+      );
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/bills'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(requestBody),
-      ).timeout(_timeout);
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/bills'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(requestBody),
+          )
+          .timeout(_timeout);
 
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body) as Map<String, dynamic>?;
         if (data == null) {
           throw ApiException('Failed to parse bill upload response');
         }
-        return BillUploadResponse(
-          billId: data['bill_id'] as int? ?? 0,
-          accessToken: data['access_token'] as String? ?? '',
-          shareUrl: data['share_url'] as String? ?? '',
-        );
+        return BillUploadResponse.fromJson(data);
       } else {
         throw ApiException(
           'Failed to upload bill',
@@ -90,12 +91,92 @@ class ApiService {
     } on ApiException {
       rethrow;
     } on TimeoutException {
-      throw ApiException('Request timed out. Check your connection.', isTimeout: true);
+      throw ApiException(
+        'Request timed out. Check your connection.',
+        isTimeout: true,
+      );
     } on SocketException {
       throw ApiException('Could not connect to server.', isNetworkError: true);
     } catch (e) {
       throw ApiException('An unexpected error occurred.');
     }
+  }
+
+  Future<ExchangeRateQuote> getExchangeRate(String currencyCode) async {
+    final normalized = currencyCode.toUpperCase();
+    if (normalized == 'USD') return const ExchangeRateQuote.usd();
+    try {
+      final response = await http
+          .get(Uri.parse('$baseUrl/api/exchange-rates/$normalized'))
+          .timeout(_timeout);
+      if (response.statusCode != 200) {
+        throw ApiException(
+          'Daily exchange rate unavailable. Retry or use USD.',
+          statusCode: response.statusCode,
+        );
+      }
+      final data = jsonDecode(response.body) as Map<String, dynamic>?;
+      if (data == null) throw ApiException('Invalid exchange rate response.');
+      final quote = ExchangeRateQuote.fromJson(data);
+      if (!quote.isValid || quote.currencyCode != normalized) {
+        throw ApiException('Invalid exchange rate response.');
+      }
+      return quote;
+    } on ApiException {
+      rethrow;
+    } on TimeoutException {
+      throw ApiException(
+        'Daily exchange rate timed out. Retry or use USD.',
+        isTimeout: true,
+      );
+    } on SocketException {
+      throw ApiException(
+        'Could not load the daily rate. Retry or use USD.',
+        isNetworkError: true,
+      );
+    } catch (_) {
+      throw ApiException('Invalid exchange rate response.');
+    }
+  }
+
+  Map<String, dynamic> buildBillRequest({
+    required String billName,
+    required List<Person> participants,
+    required Map<Person, double> personShares,
+    required List<BillItem> items,
+    required double subtotal,
+    required double tax,
+    required double tipAmount,
+    required double tipPercentage,
+    required double total,
+    required List<Map<String, String>> paymentMethods,
+    required String currencyCode,
+    required double usdExchangeRate,
+    required String exchangeRateDate,
+    required String exchangeRateSource,
+  }) {
+    return {
+      'name': billName,
+      'subtotal': subtotal,
+      'tax': tax,
+      'tip_amount': tipAmount,
+      'tip_percentage': tipPercentage,
+      'total': total,
+      'currency_code': currencyCode,
+      'usd_exchange_rate': usdExchangeRate,
+      'exchange_rate_date': exchangeRateDate,
+      'exchange_rate_source': exchangeRateSource,
+      'participants': participants.map((p) => {'name': p.name}).toList(),
+      'items': _buildItemsJson(items, participants),
+      'person_shares': _buildPersonSharesJson(
+        personShares,
+        items,
+        tax,
+        tipAmount,
+        total,
+      ),
+      'payment_methods': paymentMethods,
+    };
   }
 
   /// Builds the items JSON structure with assignments
@@ -131,11 +212,13 @@ class ApiService {
         body['creator_display_name'] = creatorDisplayName;
       }
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/tabs'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(body),
-      ).timeout(_timeout);
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/tabs'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(body),
+          )
+          .timeout(_timeout);
 
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body) as Map<String, dynamic>?;
@@ -158,7 +241,10 @@ class ApiService {
     } on ApiException {
       rethrow;
     } on TimeoutException {
-      throw ApiException('Request timed out. Check your connection.', isTimeout: true);
+      throw ApiException(
+        'Request timed out. Check your connection.',
+        isTimeout: true,
+      );
     } on SocketException {
       throw ApiException('Could not connect to server.', isNetworkError: true);
     } catch (e) {
@@ -183,11 +269,13 @@ class ApiService {
         headers['X-Member-Token'] = memberToken;
       }
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/tabs/$tabId/bills'),
-        headers: headers,
-        body: jsonEncode({'bill_id': billId, 'bill_token': billToken}),
-      ).timeout(_timeout);
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/tabs/$tabId/bills'),
+            headers: headers,
+            body: jsonEncode({'bill_id': billId, 'bill_token': billToken}),
+          )
+          .timeout(_timeout);
 
       if (response.statusCode == 200) {
         return true;
@@ -200,7 +288,10 @@ class ApiService {
     } on ApiException {
       rethrow;
     } on TimeoutException {
-      throw ApiException('Request timed out. Check your connection.', isTimeout: true);
+      throw ApiException(
+        'Request timed out. Check your connection.',
+        isTimeout: true,
+      );
     } on SocketException {
       throw ApiException('Could not connect to server.', isNetworkError: true);
     } catch (e) {
@@ -246,7 +337,10 @@ class ApiService {
     } on ApiException {
       rethrow;
     } on TimeoutException {
-      throw ApiException('Request timed out. Check your connection.', isTimeout: true);
+      throw ApiException(
+        'Request timed out. Check your connection.',
+        isTimeout: true,
+      );
     } on SocketException {
       throw ApiException('Could not connect to server.', isNetworkError: true);
     } catch (e) {
@@ -260,14 +354,20 @@ class ApiService {
     String accessToken,
   ) async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/tabs/$tabId/images'),
-        headers: {'Authorization': 'Bearer $accessToken'},
-      ).timeout(_timeout);
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/tabs/$tabId/images'),
+            headers: {'Authorization': 'Bearer $accessToken'},
+          )
+          .timeout(_timeout);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => TabImageResponse.fromJson(json as Map<String, dynamic>)).toList();
+        return data
+            .map(
+              (json) => TabImageResponse.fromJson(json as Map<String, dynamic>),
+            )
+            .toList();
       } else {
         throw ApiException(
           'Failed to get images',
@@ -277,7 +377,10 @@ class ApiService {
     } on ApiException {
       rethrow;
     } on TimeoutException {
-      throw ApiException('Request timed out. Check your connection.', isTimeout: true);
+      throw ApiException(
+        'Request timed out. Check your connection.',
+        isTimeout: true,
+      );
     } on SocketException {
       throw ApiException('Could not connect to server.', isNetworkError: true);
     } catch (e) {
@@ -293,14 +396,16 @@ class ApiService {
     bool processed,
   ) async {
     try {
-      final response = await http.patch(
-        Uri.parse('$baseUrl/api/tabs/$tabId/images/$imageId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken',
-        },
-        body: jsonEncode({'processed': processed}),
-      ).timeout(_timeout);
+      final response = await http
+          .patch(
+            Uri.parse('$baseUrl/api/tabs/$tabId/images/$imageId'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $accessToken',
+            },
+            body: jsonEncode({'processed': processed}),
+          )
+          .timeout(_timeout);
       if (response.statusCode == 200) {
         return true;
       } else {
@@ -312,7 +417,10 @@ class ApiService {
     } on ApiException {
       rethrow;
     } on TimeoutException {
-      throw ApiException('Request timed out. Check your connection.', isTimeout: true);
+      throw ApiException(
+        'Request timed out. Check your connection.',
+        isTimeout: true,
+      );
     } on SocketException {
       throw ApiException('Could not connect to server.', isNetworkError: true);
     } catch (e) {
@@ -327,21 +435,26 @@ class ApiService {
     String? memberToken,
   }) async {
     try {
-      final headers = <String, String>{
-        'Authorization': 'Bearer $accessToken',
-      };
+      final headers = <String, String>{'Authorization': 'Bearer $accessToken'};
       if (memberToken != null) {
         headers['X-Member-Token'] = memberToken;
       }
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/tabs/$tabId/finalize'),
-        headers: headers,
-      ).timeout(_timeout);
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/tabs/$tabId/finalize'),
+            headers: headers,
+          )
+          .timeout(_timeout);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => SettlementResponse.fromJson(json as Map<String, dynamic>)).toList();
+        return data
+            .map(
+              (json) =>
+                  SettlementResponse.fromJson(json as Map<String, dynamic>),
+            )
+            .toList();
       } else {
         throw ApiException(
           'Failed to finalize tab',
@@ -351,7 +464,10 @@ class ApiService {
     } on ApiException {
       rethrow;
     } on TimeoutException {
-      throw ApiException('Request timed out. Check your connection.', isTimeout: true);
+      throw ApiException(
+        'Request timed out. Check your connection.',
+        isTimeout: true,
+      );
     } on SocketException {
       throw ApiException('Could not connect to server.', isNetworkError: true);
     } catch (e) {
@@ -365,14 +481,21 @@ class ApiService {
     String accessToken,
   ) async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/tabs/$tabId/settlements'),
-        headers: {'Authorization': 'Bearer $accessToken'},
-      ).timeout(_timeout);
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/tabs/$tabId/settlements'),
+            headers: {'Authorization': 'Bearer $accessToken'},
+          )
+          .timeout(_timeout);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => SettlementResponse.fromJson(json as Map<String, dynamic>)).toList();
+        return data
+            .map(
+              (json) =>
+                  SettlementResponse.fromJson(json as Map<String, dynamic>),
+            )
+            .toList();
       } else {
         throw ApiException(
           'Failed to get settlements',
@@ -382,7 +505,10 @@ class ApiService {
     } on ApiException {
       rethrow;
     } on TimeoutException {
-      throw ApiException('Request timed out. Check your connection.', isTimeout: true);
+      throw ApiException(
+        'Request timed out. Check your connection.',
+        isTimeout: true,
+      );
     } on SocketException {
       throw ApiException('Could not connect to server.', isNetworkError: true);
     } catch (e) {
@@ -398,14 +524,16 @@ class ApiService {
     bool paid,
   ) async {
     try {
-      final response = await http.patch(
-        Uri.parse('$baseUrl/api/tabs/$tabId/settlements/$settlementId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken',
-        },
-        body: jsonEncode({'paid': paid}),
-      ).timeout(_timeout);
+      final response = await http
+          .patch(
+            Uri.parse('$baseUrl/api/tabs/$tabId/settlements/$settlementId'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $accessToken',
+            },
+            body: jsonEncode({'paid': paid}),
+          )
+          .timeout(_timeout);
       if (response.statusCode == 200) {
         return true;
       } else {
@@ -417,7 +545,10 @@ class ApiService {
     } on ApiException {
       rethrow;
     } on TimeoutException {
-      throw ApiException('Request timed out. Check your connection.', isTimeout: true);
+      throw ApiException(
+        'Request timed out. Check your connection.',
+        isTimeout: true,
+      );
     } on SocketException {
       throw ApiException('Could not connect to server.', isNetworkError: true);
     } catch (e) {
@@ -432,10 +563,12 @@ class ApiService {
     String accessToken,
   ) async {
     try {
-      final response = await http.delete(
-        Uri.parse('$baseUrl/api/tabs/$tabId/images/$imageId'),
-        headers: {'Authorization': 'Bearer $accessToken'},
-      ).timeout(_timeout);
+      final response = await http
+          .delete(
+            Uri.parse('$baseUrl/api/tabs/$tabId/images/$imageId'),
+            headers: {'Authorization': 'Bearer $accessToken'},
+          )
+          .timeout(_timeout);
       if (response.statusCode == 200) {
         return true;
       } else {
@@ -447,7 +580,10 @@ class ApiService {
     } on ApiException {
       rethrow;
     } on TimeoutException {
-      throw ApiException('Request timed out. Check your connection.', isTimeout: true);
+      throw ApiException(
+        'Request timed out. Check your connection.',
+        isTimeout: true,
+      );
     } on SocketException {
       throw ApiException('Could not connect to server.', isNetworkError: true);
     } catch (e) {
@@ -462,14 +598,16 @@ class ApiService {
     String displayName,
   ) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/tabs/$tabId/join'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken',
-        },
-        body: jsonEncode({'display_name': displayName}),
-      ).timeout(_timeout);
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/tabs/$tabId/join'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $accessToken',
+            },
+            body: jsonEncode({'display_name': displayName}),
+          )
+          .timeout(_timeout);
 
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body) as Map<String, dynamic>?;
@@ -491,7 +629,10 @@ class ApiService {
     } on ApiException {
       rethrow;
     } on TimeoutException {
-      throw ApiException('Request timed out. Check your connection.', isTimeout: true);
+      throw ApiException(
+        'Request timed out. Check your connection.',
+        isTimeout: true,
+      );
     } on SocketException {
       throw ApiException('Could not connect to server.', isNetworkError: true);
     } catch (e) {
@@ -505,14 +646,21 @@ class ApiService {
     String accessToken,
   ) async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/tabs/$tabId/members'),
-        headers: {'Authorization': 'Bearer $accessToken'},
-      ).timeout(_timeout);
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/tabs/$tabId/members'),
+            headers: {'Authorization': 'Bearer $accessToken'},
+          )
+          .timeout(_timeout);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => TabMemberResponse.fromJson(json as Map<String, dynamic>)).toList();
+        return data
+            .map(
+              (json) =>
+                  TabMemberResponse.fromJson(json as Map<String, dynamic>),
+            )
+            .toList();
       } else {
         throw ApiException(
           'Failed to get members',
@@ -522,7 +670,10 @@ class ApiService {
     } on ApiException {
       rethrow;
     } on TimeoutException {
-      throw ApiException('Request timed out. Check your connection.', isTimeout: true);
+      throw ApiException(
+        'Request timed out. Check your connection.',
+        isTimeout: true,
+      );
     } on SocketException {
       throw ApiException('Could not connect to server.', isNetworkError: true);
     } catch (e) {
@@ -531,15 +682,14 @@ class ApiService {
   }
 
   /// Fetches full tab data from the backend
-  Future<Map<String, dynamic>> getTabData(
-    int tabId,
-    String accessToken,
-  ) async {
+  Future<Map<String, dynamic>> getTabData(int tabId, String accessToken) async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/tabs/$tabId'),
-        headers: {'Authorization': 'Bearer $accessToken'},
-      ).timeout(_timeout);
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/tabs/$tabId'),
+            headers: {'Authorization': 'Bearer $accessToken'},
+          )
+          .timeout(_timeout);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>?;
@@ -556,7 +706,10 @@ class ApiService {
     } on ApiException {
       rethrow;
     } on TimeoutException {
-      throw ApiException('Request timed out. Check your connection.', isTimeout: true);
+      throw ApiException(
+        'Request timed out. Check your connection.',
+        isTimeout: true,
+      );
     } on SocketException {
       throw ApiException('Could not connect to server.', isNetworkError: true);
     } catch (e) {
@@ -595,7 +748,8 @@ class ApiService {
 
       // Calculate proportional tax and tip
       final denominator = total - tax - tipAmount;
-      final proportion = denominator > 0 ? subtotalForPerson / denominator : 0.0;
+      final proportion =
+          denominator > 0 ? subtotalForPerson / denominator : 0.0;
       final taxShare = tax * proportion;
       final tipShare = tipAmount * proportion;
 
@@ -674,12 +828,33 @@ class BillUploadResponse {
   final int billId;
   final String accessToken;
   final String shareUrl;
+  final ExchangeRateQuote exchangeRateQuote;
+  final double usdTotal;
 
   BillUploadResponse({
     required this.billId,
     required this.accessToken,
     required this.shareUrl,
+    this.exchangeRateQuote = const ExchangeRateQuote.usd(),
+    this.usdTotal = 0,
   });
+
+  factory BillUploadResponse.fromJson(Map<String, dynamic> json) {
+    final currencyCode = json['currency_code'] as String? ?? 'USD';
+    final quote = ExchangeRateQuote(
+      currencyCode: currencyCode,
+      usdRate: (json['usd_exchange_rate'] as num?)?.toDouble() ?? 1,
+      rateDate: json['exchange_rate_date'] as String? ?? '',
+      source: json['exchange_rate_source'] as String? ?? 'native-usd',
+    );
+    return BillUploadResponse(
+      billId: json['bill_id'] as int? ?? 0,
+      accessToken: json['access_token'] as String? ?? '',
+      shareUrl: json['share_url'] as String? ?? '',
+      exchangeRateQuote: quote,
+      usdTotal: (json['usd_total'] as num?)?.toDouble() ?? 0,
+    );
+  }
 }
 
 /// Response object for tab images

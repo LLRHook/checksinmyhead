@@ -296,6 +296,7 @@ class EnhancedShareSheet extends StatelessWidget {
           showPersonItems: options.showPersonItems,
           showBreakdown: !options.showBreakdown,
           billName: data.billName,
+          currencyCode: data.currencyCode,
         );
 
         ShareUtils.shareBillSummary(summary: summary);

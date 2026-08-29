@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FaCheck } from "react-icons/fa6";
 import { SiVenmo } from "react-icons/si";
 import { type TabSettlement, updateSettlementPaid } from "@/lib/api";
+import { formatUSDMoney } from "@/lib/currency";
 import { buildVenmoPayUrl } from "@/lib/venmo";
 
 interface SettlementCardProps {
@@ -111,7 +112,7 @@ export default function SettlementCard({
                     : "text-[var(--accent)] dark:text-white"
                 }`}
               >
-                ${settlement.amount.toFixed(2)}
+                {formatUSDMoney(settlement.amount)}
               </div>
               {!settlement.paid && venmoId && (
                 <button

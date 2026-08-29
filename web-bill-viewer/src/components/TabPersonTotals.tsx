@@ -3,6 +3,7 @@
 import { FaCheck } from "react-icons/fa6";
 import { SiVenmo } from "react-icons/si";
 import type { TabPersonTotal } from "@/lib/api";
+import { formatUSDMoney } from "@/lib/currency";
 import { buildVenmoPayUrl } from "@/lib/venmo";
 
 interface TabPersonTotalsProps {
@@ -75,7 +76,7 @@ export default function TabPersonTotals({
                     : "text-[var(--accent)] dark:text-white"
                 }`}
               >
-                ${person.total.toFixed(2)}
+                {formatUSDMoney(person.total)}
               </div>
               {!person.all_paid && venmoId && (
                 <a

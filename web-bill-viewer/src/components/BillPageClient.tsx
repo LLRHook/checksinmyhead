@@ -201,7 +201,7 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
 
   const sidebar = (
     <>
-      <BillHeader name={bill.name} total={bill.total} />
+      <BillHeader bill={bill} />
       <PaymentDetails paymentMethods={bill.payment_methods} />
     </>
   );
@@ -228,6 +228,7 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
               <PersonShare
                 key={share.id}
                 personShare={share}
+                bill={bill}
                 hasVenmo={hasVenmo}
                 billId={bill.id}
                 token={token}
@@ -236,13 +237,7 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
         </div>
       </div>
 
-      <BillBreakdown
-        items={bill.items}
-        subtotal={bill.subtotal}
-        tax={bill.tax}
-        tipAmount={bill.tip_amount}
-        tipPercentage={bill.tip_percentage}
-      />
+      <BillBreakdown bill={bill} />
     </DesktopLayout>
   );
 }
