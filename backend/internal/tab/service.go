@@ -5,6 +5,7 @@ import (
 	"backend/pkg/security"
 	"errors"
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 	"time"
@@ -189,10 +190,10 @@ func NewTabService(repo TabRepository, imgQuerier ImageQuerier) TabService {
 	return &tabService{repo: repo, imgQuerier: imgQuerier}
 }
 
-// allocateUSDShareCents converts one bill's shares to USD while preserving the
-// bill's frozen USD total exactly. Any fractional-cent remainder is assigned by
-// largest remainder, with a stable name/index tie-break so recalculation is
-// deterministic.
+// allocateUSDShareCents converts one bill's assigned shares to USD. Fully
+// assigned bills preserve the frozen USD total exactly; partial bills preserve
+// only their assigned value. Any fractional-cent remainder uses a stable
+// largest-remainder allocation so recalculation is deterministic.
 func allocateUSDShareCents(bill models.Bill) []int64 {
 	result := make([]int64, len(bill.PersonShares))
 	if len(result) == 0 {
@@ -200,11 +201,6 @@ func allocateUSDShareCents(bill models.Bill) []int64 {
 	}
 
 	bill.NormalizeCurrency()
-	targetCents := int64(bill.USDTotal*100 + 0.5)
-	if targetCents <= 0 {
-		return result
-	}
-
 	var shareTotal float64
 	for _, share := range bill.PersonShares {
 		if share.Total > 0 {
@@ -212,6 +208,17 @@ func allocateUSDShareCents(bill models.Bill) []int64 {
 		}
 	}
 	if shareTotal <= 0 {
+		return result
+	}
+
+	// Partial active assignments must remain partial. Reconcile against the
+	// full frozen bill total only when the recorded shares cover the bill;
+	// otherwise reconcile only the converted amount that has been assigned.
+	targetCents := int64(math.Round(shareTotal * bill.USDExchangeRate * 100))
+	if math.Abs(shareTotal-bill.Total) < 0.005 {
+		targetCents = int64(math.Round(bill.USDTotal * 100))
+	}
+	if targetCents <= 0 {
 		return result
 	}
 
@@ -233,7 +240,7 @@ func allocateUSDShareCents(bill models.Bill) []int64 {
 		remainders = append(remainders, remainder{
 			index:    i,
 			fraction: exactCents - float64(wholeCents),
-			name:     strings.ToLower(share.PersonName),
+			name:     share.PersonName,
 		})
 	}
 

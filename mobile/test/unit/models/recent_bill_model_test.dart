@@ -42,6 +42,94 @@ RecentBill _makeRecentBill({
 
 void main() {
   group('RecentBillModel.generatePersonShares', () {
+    test('reconciles fractional USD cents to the frozen bill total', () {
+      final bill = RecentBillModel.fromData(
+        _makeRecentBill(
+          participants: ['Alice', 'Bob', 'Cara'],
+          total: 0.80,
+          subtotal: 0.80,
+          tax: 0,
+          tipAmount: 0,
+          currencyCode: 'EUR',
+          usdExchangeRate: 1.25,
+        ),
+      );
+
+      final shares = bill.generateUSDPersonShares();
+      final byName = {
+        for (final entry in shares.entries) entry.key.name: entry.value,
+      };
+      expect(byName, {'Alice': 0.34, 'Bob': 0.33, 'Cara': 0.33});
+      expect(shares.values.fold(0.0, (sum, value) => sum + value), 1.00);
+    });
+
+    test('uses an ordinal name tie-break for non-ASCII participants', () {
+      final bill = RecentBillModel.fromData(
+        _makeRecentBill(
+          participants: ['ä', 'z', 'Ω'],
+          total: 0.80,
+          subtotal: 0.80,
+          tax: 0,
+          tipAmount: 0,
+          currencyCode: 'EUR',
+          usdExchangeRate: 1.25,
+        ),
+      );
+
+      final byName = {
+        for (final entry in bill.generateUSDPersonShares().entries)
+          entry.key.name: entry.value,
+      };
+      expect(byName['z'], 0.34);
+      expect(byName['ä'], 0.33);
+      expect(byName['Ω'], 0.33);
+    });
+
+    test('uses UTF-8 order for supplementary versus high-BMP names', () {
+      final bill = RecentBillModel.fromData(
+        _makeRecentBill(
+          participants: ['😀', 'Ａ'],
+          total: 0.008,
+          subtotal: 0.008,
+          tax: 0,
+          tipAmount: 0,
+          currencyCode: 'EUR',
+          usdExchangeRate: 1.25,
+        ),
+      );
+
+      final byName = {
+        for (final entry in bill.generateUSDPersonShares().entries)
+          entry.key.name: entry.value,
+      };
+      expect(byName['😀'], 0);
+      expect(byName['Ａ'], 0.01);
+    });
+
+    test('does not scale a partial assignment to the full USD bill total', () {
+      final items = jsonEncode([
+        {
+          'name': 'Assigned item',
+          'price': 8.0,
+          'assignments': {'Alice': 100.0},
+        },
+      ]);
+      final bill = RecentBillModel.fromData(
+        _makeRecentBill(
+          participants: ['Alice'],
+          total: 80,
+          subtotal: 80,
+          tax: 0,
+          tipAmount: 0,
+          items: items,
+          currencyCode: 'EUR',
+          usdExchangeRate: 1.25,
+        ),
+      );
+
+      expect(bill.generateUSDPersonShares().values.single, 10);
+    });
+
     test('splits total equally when no items', () {
       final bill = RecentBillModel.fromData(
         _makeRecentBill(participants: ['Alice', 'Bob'], total: 30.0),

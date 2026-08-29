@@ -10,9 +10,11 @@ import (
 type fakeExchangeRateProvider struct {
 	quote models.ExchangeRateQuote
 	err   error
+	calls int
 }
 
 func (f *fakeExchangeRateProvider) LatestUSD(_ context.Context, _ string) (models.ExchangeRateQuote, error) {
+	f.calls++
 	return f.quote, f.err
 }
 
@@ -129,6 +131,25 @@ func TestCreateBill_ProviderFailureDoesNotPersistForeignCurrencyBill(t *testing.
 	}
 	if len(repo.bills) != 0 {
 		t.Fatal("foreign-currency bill must not be persisted without a verified rate")
+	}
+}
+
+func TestCreateBill_RejectsUnsupportedCurrencyWithoutCallingProvider(t *testing.T) {
+	repo := newMockRepo()
+	provider := &fakeExchangeRateProvider{quote: models.ExchangeRateQuote{
+		Base: "ZZZ", Quote: "USD", Rate: 2, Date: "2026-08-29", Source: "unexpected",
+	}}
+	svc := NewBillService(repo, provider)
+	b := &models.Bill{CurrencyCode: "ZZZ", Total: 25}
+
+	if err := svc.CreateBill(context.Background(), b); !errors.Is(err, ErrInvalidCurrency) {
+		t.Fatalf("expected unsupported currency error, got %v", err)
+	}
+	if len(repo.bills) != 0 {
+		t.Fatal("unsupported currency bill must not be persisted")
+	}
+	if provider.calls != 0 {
+		t.Fatalf("unsupported currency reached provider %d time(s)", provider.calls)
 	}
 }
 

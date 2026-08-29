@@ -17,6 +17,15 @@ var (
 
 var currencyCodePattern = regexp.MustCompile(`^[A-Z]{3}$`)
 
+var supportedCurrencyCodes = map[string]struct{}{
+	"USD": {},
+	"EUR": {},
+	"GBP": {},
+	"CAD": {},
+	"JPY": {},
+	"MXN": {},
+}
+
 type ExchangeRateProvider interface {
 	LatestUSD(ctx context.Context, currency string) (models.ExchangeRateQuote, error)
 }
@@ -52,6 +61,9 @@ func (b *billService) GetUSDExchangeRate(ctx context.Context, currency string) (
 		currency = "USD"
 	}
 	if !currencyCodePattern.MatchString(currency) {
+		return models.ExchangeRateQuote{}, ErrInvalidCurrency
+	}
+	if _, supported := supportedCurrencyCodes[currency]; !supported {
 		return models.ExchangeRateQuote{}, ErrInvalidCurrency
 	}
 	if currency == "USD" {

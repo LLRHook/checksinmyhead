@@ -12,6 +12,192 @@ import {
 // ── computeTabPersonTotals ──────────────────────────────────────
 
 describe("computeTabPersonTotals", () => {
+  it("reconciles fractional cents to each frozen USD bill total", () => {
+    const share = 0.8 / 3;
+    const tab: Tab = {
+      id: 1,
+      name: "Fractional split",
+      description: "",
+      total_amount: 1,
+      finalized: false,
+      finalized_at: null,
+      created_at: "2026-08-29",
+      net_balances: [],
+      bills: [
+        {
+          id: 1,
+          name: "Small foreign receipt",
+          subtotal: 0.8,
+          tax: 0,
+          tip_amount: 0,
+          tip_percentage: 0,
+          total: 0.8,
+          currency_code: "EUR",
+          usd_exchange_rate: 1.25,
+          usd_total: 1,
+          date: "2026-08-29",
+          payment_methods: [],
+          items: [],
+          person_shares: ["Alice", "Bob", "Cara"].map((person_name, index) => ({
+            id: index + 1,
+            person_name,
+            items: [],
+            subtotal: share,
+            tax_share: 0,
+            tip_share: 0,
+            total: share,
+            paid: false,
+          })),
+        },
+      ],
+    };
+
+    const totals = computeTabPersonTotals(tab);
+    expect(
+      totals.map(({ person_name, total }) => ({ person_name, total })),
+    ).toEqual([
+      { person_name: "Alice", total: 0.34 },
+      { person_name: "Bob", total: 0.33 },
+      { person_name: "Cara", total: 0.33 },
+    ]);
+    expect(totals.reduce((sum, entry) => sum + entry.total, 0)).toBe(1);
+  });
+
+  it("uses an ordinal name tie-break for non-ASCII participants", () => {
+    const share = 0.8 / 3;
+    const tab: Tab = {
+      id: 1,
+      name: "Ordinal split",
+      description: "",
+      total_amount: 1,
+      finalized: false,
+      finalized_at: null,
+      created_at: "2026-08-29",
+      net_balances: [],
+      bills: [
+        {
+          id: 1,
+          name: "Receipt",
+          subtotal: 0.8,
+          tax: 0,
+          tip_amount: 0,
+          tip_percentage: 0,
+          total: 0.8,
+          currency_code: "EUR",
+          usd_exchange_rate: 1.25,
+          usd_total: 1,
+          date: "2026-08-29",
+          payment_methods: [],
+          items: [],
+          person_shares: ["ä", "z", "Ω"].map((person_name, index) => ({
+            id: index + 1,
+            person_name,
+            items: [],
+            subtotal: share,
+            tax_share: 0,
+            tip_share: 0,
+            total: share,
+            paid: false,
+          })),
+        },
+      ],
+    };
+
+    const totals = computeTabPersonTotals(tab);
+    expect(totals.find((entry) => entry.person_name === "z")?.total).toBe(0.34);
+    expect(totals.find((entry) => entry.person_name === "ä")?.total).toBe(0.33);
+  });
+
+  it("uses UTF-8 order for supplementary versus high-BMP names", () => {
+    const tab: Tab = {
+      id: 1,
+      name: "UTF-8 split",
+      description: "",
+      total_amount: 0.01,
+      finalized: false,
+      finalized_at: null,
+      created_at: "2026-08-29",
+      net_balances: [],
+      bills: [
+        {
+          id: 1,
+          name: "One cent",
+          subtotal: 0.008,
+          tax: 0,
+          tip_amount: 0,
+          tip_percentage: 0,
+          total: 0.008,
+          currency_code: "EUR",
+          usd_exchange_rate: 1.25,
+          usd_total: 0.01,
+          date: "2026-08-29",
+          payment_methods: [],
+          items: [],
+          person_shares: ["😀", "Ａ"].map((person_name, index) => ({
+            id: index + 1,
+            person_name,
+            items: [],
+            subtotal: 0.004,
+            tax_share: 0,
+            tip_share: 0,
+            total: 0.004,
+            paid: false,
+          })),
+        },
+      ],
+    };
+
+    const totals = computeTabPersonTotals(tab);
+    expect(totals.find((entry) => entry.person_name === "😀")?.total).toBe(0);
+    expect(totals.find((entry) => entry.person_name === "Ａ")?.total).toBe(
+      0.01,
+    );
+  });
+
+  it("does not scale a partial assignment to the full USD bill total", () => {
+    const tab: Tab = {
+      id: 1,
+      name: "In-progress split",
+      description: "",
+      total_amount: 100,
+      finalized: false,
+      finalized_at: null,
+      created_at: "2026-08-29",
+      net_balances: [],
+      bills: [
+        {
+          id: 1,
+          name: "Partially assigned",
+          subtotal: 80,
+          tax: 0,
+          tip_amount: 0,
+          tip_percentage: 0,
+          total: 80,
+          currency_code: "EUR",
+          usd_exchange_rate: 1.25,
+          usd_total: 100,
+          date: "2026-08-29",
+          payment_methods: [],
+          items: [],
+          person_shares: [
+            {
+              id: 1,
+              person_name: "Alice",
+              items: [],
+              subtotal: 8,
+              tax_share: 0,
+              tip_share: 0,
+              total: 8,
+              paid: false,
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(computeTabPersonTotals(tab)[0].total).toBe(10);
+  });
+
   it("aggregates mixed-currency shares in frozen USD values", () => {
     const tab: Tab = {
       id: 1,

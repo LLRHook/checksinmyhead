@@ -83,6 +83,7 @@ Create a new bill.
 ### `GET /api/exchange-rates/:currency`
 
 Preview the latest verified daily conversion from the selected currency to USD before saving a receipt.
+Supported receipt currencies in 1.4.1 are `USD`, `EUR`, `GBP`, `CAD`, `JPY`, and `MXN`.
 
 **Response** `200`
 ```json
@@ -98,7 +99,7 @@ Preview the latest verified daily conversion from the selected currency to USD b
 **Errors**
 | Status | Body | Meaning |
 |--------|------|---------|
-| 400 | `{"error": "unsupported currency code"}` | Invalid ISO-style currency code |
+| 400 | `{"error": "unsupported currency code"}` | Currency is not supported by the 1.4.1 receipt selector |
 | 503 | `{"error": "daily exchange rate is unavailable; retry or use USD"}` | No verified daily quote is available; no conversion should be saved |
 
 ### `GET /api/bills/:id?t=token`

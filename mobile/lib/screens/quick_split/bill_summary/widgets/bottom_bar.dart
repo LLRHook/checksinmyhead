@@ -239,9 +239,6 @@ class DoneButtonHandler {
           total: updatedData.total,
           paymentMethods: apiPaymentMethods,
           currencyCode: updatedData.currencyCode,
-          usdExchangeRate: updatedData.usdExchangeRate,
-          exchangeRateDate: updatedData.exchangeRateDate,
-          exchangeRateSource: updatedData.exchangeRateSource,
         );
 
         if (lazyMode) {
