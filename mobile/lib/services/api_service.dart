@@ -45,9 +45,6 @@ class ApiService {
     required double total,
     required List<Map<String, String>> paymentMethods,
     String currencyCode = 'USD',
-    double usdExchangeRate = 1,
-    String exchangeRateDate = '',
-    String exchangeRateSource = 'native-usd',
   }) async {
     try {
       // Build the request body matching backend's CreateBillRequest
@@ -63,9 +60,6 @@ class ApiService {
         total: total,
         paymentMethods: paymentMethods,
         currencyCode: currencyCode,
-        usdExchangeRate: usdExchangeRate,
-        exchangeRateDate: exchangeRateDate,
-        exchangeRateSource: exchangeRateSource,
       );
 
       final response = await http
@@ -81,7 +75,13 @@ class ApiService {
         if (data == null) {
           throw ApiException('Failed to parse bill upload response');
         }
-        return BillUploadResponse.fromJson(data);
+        final result = BillUploadResponse.fromJson(data);
+        if (!result.isAuthoritativeFor(currencyCode)) {
+          throw ApiException(
+            'The server did not confirm this daily conversion. Nothing was saved; retry or use USD.',
+          );
+        }
+        return result;
       } else {
         throw ApiException(
           'Failed to upload bill',
@@ -151,9 +151,6 @@ class ApiService {
     required double total,
     required List<Map<String, String>> paymentMethods,
     required String currencyCode,
-    required double usdExchangeRate,
-    required String exchangeRateDate,
-    required String exchangeRateSource,
   }) {
     return {
       'name': billName,
@@ -163,9 +160,6 @@ class ApiService {
       'tip_percentage': tipPercentage,
       'total': total,
       'currency_code': currencyCode,
-      'usd_exchange_rate': usdExchangeRate,
-      'exchange_rate_date': exchangeRateDate,
-      'exchange_rate_source': exchangeRateSource,
       'participants': participants.map((p) => {'name': p.name}).toList(),
       'items': _buildItemsJson(items, participants),
       'person_shares': _buildPersonSharesJson(
@@ -854,6 +848,18 @@ class BillUploadResponse {
       exchangeRateQuote: quote,
       usdTotal: (json['usd_total'] as num?)?.toDouble() ?? 0,
     );
+  }
+
+  bool isAuthoritativeFor(String requestedCurrencyCode) {
+    final requested = requestedCurrencyCode.trim().toUpperCase();
+    if (requested.isEmpty || requested == 'USD') {
+      return exchangeRateQuote.currencyCode == 'USD' &&
+          exchangeRateQuote.usdRate == 1;
+    }
+    return exchangeRateQuote.currencyCode == requested &&
+        exchangeRateQuote.isValid &&
+        usdTotal.isFinite &&
+        usdTotal > 0;
   }
 }
 

@@ -281,6 +281,66 @@ func TestFinalizeTab_ReconcilesFractionalCentsToFrozenUSDTotal(t *testing.T) {
 	}
 }
 
+func TestAllocateUSDShareCents_UsesOrdinalNameTieBreak(t *testing.T) {
+	bill := models.Bill{
+		CurrencyCode:    "EUR",
+		USDExchangeRate: 1.25,
+		Total:           0.80,
+		USDTotal:        1.00,
+		PersonShares: []models.PersonShare{
+			{PersonName: "ä", Total: 0.80 / 3},
+			{PersonName: "z", Total: 0.80 / 3},
+			{PersonName: "Ω", Total: 0.80 / 3},
+		},
+	}
+
+	amounts := allocateUSDShareCents(bill)
+	if amounts[0] != 33 || amounts[1] != 34 || amounts[2] != 33 {
+		t.Fatalf("expected ordinal tie-break to award z the extra cent, got %#v", amounts)
+	}
+}
+
+func TestAllocateUSDShareCents_UsesUTF8OrderForSupplementaryNames(t *testing.T) {
+	bill := models.Bill{
+		CurrencyCode:    "EUR",
+		USDExchangeRate: 1.25,
+		Total:           0.008,
+		USDTotal:        0.01,
+		PersonShares: []models.PersonShare{
+			{PersonName: "😀", Total: 0.004},
+			{PersonName: "Ａ", Total: 0.004},
+		},
+	}
+
+	amounts := allocateUSDShareCents(bill)
+	if amounts[0] != 0 || amounts[1] != 1 {
+		t.Fatalf("expected UTF-8 order to award fullwidth A the cent, got %#v", amounts)
+	}
+}
+
+func TestFinalizeTab_DoesNotScalePartialAssignmentsToFullBill(t *testing.T) {
+	repo := newMockRepo()
+	repo.tabs[1] = &models.Tab{
+		ID: 1,
+		Bills: []models.Bill{{
+			CurrencyCode:    "EUR",
+			USDExchangeRate: 1.25,
+			Total:           80,
+			USDTotal:        100,
+			PersonShares:    []models.PersonShare{{PersonName: "Alice", Total: 8}},
+		}},
+	}
+	svc := NewTabService(repo, &mockImageQuerier{})
+
+	settlements, err := svc.FinalizeTab(1)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(settlements) != 1 || settlements[0].Amount != 10 {
+		t.Fatalf("expected only the assigned EUR 8 to convert to USD 10, got %#v", settlements)
+	}
+}
+
 func TestGetTab_UsesFrozenUSDTotalAndLegacyUSDFallback(t *testing.T) {
 	repo := newMockRepo()
 	repo.tabs[1] = &models.Tab{ID: 1, Bills: []models.Bill{
@@ -771,6 +831,29 @@ func TestComputeNetBalances_ReconcilesFractionalCents(t *testing.T) {
 	}
 	if amounts["Bob"] != 0.34 || amounts["Cara"] != 0.33 || amounts["Dana"] != 0.33 {
 		t.Fatalf("expected deterministic cent allocation, got %#v", amounts)
+	}
+}
+
+func TestComputeNetBalances_DoesNotScalePartialAssignmentsToFullBill(t *testing.T) {
+	payerID := uint(1)
+	tab := &models.Tab{
+		Members: []models.TabMember{
+			{ID: payerID, DisplayName: "Alice"},
+			{ID: 2, DisplayName: "Bob"},
+		},
+		Bills: []models.Bill{{
+			PaidByMemberID:  &payerID,
+			CurrencyCode:    "EUR",
+			USDExchangeRate: 1.25,
+			Total:           80,
+			USDTotal:        100,
+			PersonShares:    []models.PersonShare{{PersonName: "Bob", Total: 8}},
+		}},
+	}
+
+	balances := ComputeNetBalances(tab)
+	if len(balances) != 1 || balances[0].From != "Bob" || balances[0].To != "Alice" || balances[0].Amount != 10 {
+		t.Fatalf("expected only the assigned USD 10 to be owed, got %#v", balances)
 	}
 }
 

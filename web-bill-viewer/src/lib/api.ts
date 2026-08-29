@@ -1,4 +1,4 @@
-import { toUSD } from "./currency";
+import { allocateBillUSDShareAmounts } from "./currency";
 
 export interface ItemDetail {
   name: string;
@@ -335,7 +335,8 @@ export function computeTabPersonTotals(tab: Tab): TabPersonTotal[] {
   const displayNames: Record<string, string> = {};
 
   for (const bill of tab.bills) {
-    for (const share of bill.person_shares) {
+    const usdShares = allocateBillUSDShareAmounts(bill);
+    for (const [index, share] of bill.person_shares.entries()) {
       const key = share.person_name.toLowerCase();
       if (!totals[key]) {
         totals[key] = { total: 0, bill_count: 0, all_paid: true };
@@ -344,7 +345,7 @@ export function computeTabPersonTotals(tab: Tab): TabPersonTotal[] {
         // Prefer a capitalized variant over all-lowercase
         displayNames[key] = share.person_name;
       }
-      totals[key].total += toUSD(share.total, bill);
+      totals[key].total += usdShares[index];
       totals[key].bill_count += 1;
       if (!share.paid) {
         totals[key].all_paid = false;

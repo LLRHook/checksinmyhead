@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { Bill } from "@/lib/api";
-import { ReceiptSummary } from "./LazyBillBoard";
+import { buildPaymentDetails, ReceiptSummary } from "./LazyBillBoard";
 
 function bill(overrides: Partial<Bill> = {}): Bill {
   return {
@@ -21,6 +21,34 @@ function bill(overrides: Partial<Bill> = {}): Bill {
 }
 
 describe("shared receipt currency summary", () => {
+  it("uses the reconciled cent for both Pay and the Venmo URL", () => {
+    const share = 0.8 / 3;
+    const receipt = bill({
+      name: "Tiny dinner",
+      total: 0.8,
+      subtotal: 0.8,
+      currency_code: "EUR",
+      usd_exchange_rate: 1.25,
+      usd_total: 1,
+      payment_methods: [{ name: "Venmo", identifier: "@alice" }],
+      person_shares: ["Alice", "Bob", "Cara"].map((person_name, index) => ({
+        id: index + 1,
+        person_name,
+        items: [],
+        subtotal: share,
+        tax_share: 0,
+        tip_share: 0,
+        total: share,
+        paid: false,
+      })),
+    });
+
+    const payment = buildPaymentDetails(receipt, "Alice", share);
+    expect(payment.usdTotal).toBe(0.34);
+    expect(payment.venmoUrl).toContain("amount=0.34");
+    expect(payment.venmoUrl).toContain("recipients=alice");
+  });
+
   it("shows original EUR values with the frozen USD conversion audit", () => {
     const markup = renderToStaticMarkup(
       <ReceiptSummary

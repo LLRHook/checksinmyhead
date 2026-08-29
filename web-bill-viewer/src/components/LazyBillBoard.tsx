@@ -17,6 +17,7 @@ import {
   updateTabPersonSharePaid,
 } from "@/lib/api";
 import {
+  allocateBillUSDShareAmounts,
   billCurrencyCode,
   billUSDExchangeRate,
   billUSDTotal,
@@ -73,6 +74,31 @@ function currentTotals(bill: Bill, name: string) {
     tip_share: tip,
     total: round(subtotal + tax + tip),
     paid: false,
+  };
+}
+
+export function buildPaymentDetails(
+  bill: Bill,
+  name: string,
+  fallbackOriginalTotal: number,
+) {
+  const shareIndex = bill.person_shares.findIndex(
+    (share) => share.person_name.toLowerCase() === name.toLowerCase(),
+  );
+  const usdTotal =
+    shareIndex >= 0
+      ? allocateBillUSDShareAmounts(bill)[shareIndex]
+      : toUSD(fallbackOriginalTotal, bill);
+  const venmo = bill.payment_methods.find((method) =>
+    method.name.toLowerCase().includes("venmo"),
+  );
+
+  return {
+    usdTotal,
+    venmo,
+    venmoUrl: venmo
+      ? buildVenmoPayUrl(venmo.identifier, usdTotal.toFixed(2), bill.name)
+      : null,
   };
 }
 
@@ -192,8 +218,9 @@ export default function LazyBillBoard({
   const currentShare = bill.person_shares.find(
     (share) => share.person_name.toLowerCase() === name.toLowerCase(),
   );
-  const venmo = bill.payment_methods.find((method) =>
-    method.name.toLowerCase().includes("venmo"),
+  const paymentDetails = useMemo(
+    () => buildPaymentDetails(bill, name, totals.total),
+    [bill, name, totals.total],
   );
 
   const saveAssignments = async (
@@ -359,7 +386,7 @@ export default function LazyBillBoard({
             {formatOriginalMoney(totals.total, bill)}
           </p>
           <p className="mt-2 text-sm font-semibold text-[var(--primary)]">
-            Pay {formatUSDMoney(toUSD(totals.total, bill))}
+            Pay {formatUSDMoney(paymentDetails.usdTotal)}
           </p>
           <div className="mt-6 space-y-2 border-t border-[var(--border-light)] pt-4 text-sm dark:border-[var(--border-dark)]">
             <SummaryRow
@@ -375,21 +402,17 @@ export default function LazyBillBoard({
           <h2 className="font-bold text-[var(--accent)] dark:text-white">
             Pay {name}
           </h2>
-          {venmo && (
+          {paymentDetails.venmo && (
             <a
-              href={buildVenmoPayUrl(
-                venmo.identifier,
-                toUSD(totals.total, bill).toFixed(2),
-                bill.name,
-              )}
+              href={paymentDetails.venmoUrl ?? undefined}
               className="mt-4 flex items-center justify-center rounded-2xl bg-[#4b938d] px-4 py-4 font-bold text-white"
             >
               Pay with Venmo
             </a>
           )}
           <p className="mt-4 text-sm text-[var(--text-secondary)]">
-            {venmo
-              ? `${venmo.name}: ${venmo.identifier}`
+            {paymentDetails.venmo
+              ? `${paymentDetails.venmo.name}: ${paymentDetails.venmo.identifier}`
               : "Use one of the payment methods shown with the bill."}
           </p>
           <button

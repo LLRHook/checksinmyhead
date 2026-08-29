@@ -54,3 +54,21 @@ func TestCreateBill_ReturnsAuthoritativeUSDAudit(t *testing.T) {
 		t.Fatalf("unexpected audit response: %#v", body)
 	}
 }
+
+func TestGetExchangeRate_RejectsUnsupportedCurrencyBeforeProvider(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	provider := &fakeExchangeRateProvider{}
+	handler := NewBillHandler(NewBillService(newMockRepo(), provider))
+	router := gin.New()
+	router.GET("/api/exchange-rates/:currency", handler.GetExchangeRate)
+
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/api/exchange-rates/ZZZ", nil))
+
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d: %s", response.Code, response.Body.String())
+	}
+	if provider.calls != 0 {
+		t.Fatalf("unsupported currency reached provider %d time(s)", provider.calls)
+	}
+}

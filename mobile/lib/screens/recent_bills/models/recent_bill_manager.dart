@@ -284,9 +284,6 @@ class RecentBillsManager extends ChangeNotifier {
             total: model.total,
             paymentMethods: paymentMethods,
             currencyCode: model.currencyCode,
-            usdExchangeRate: model.usdExchangeRate,
-            exchangeRateDate: model.exchangeRateDate ?? '',
-            exchangeRateSource: model.exchangeRateSource,
           );
 
           await updateBillShareUrl(bill.id, response.shareUrl);
@@ -322,9 +319,6 @@ class RecentBillsManager extends ChangeNotifier {
         total: model.total,
         paymentMethods: paymentMethods,
         currencyCode: model.currencyCode,
-        usdExchangeRate: model.usdExchangeRate,
-        exchangeRateDate: model.exchangeRateDate ?? '',
-        exchangeRateSource: model.exchangeRateSource,
       );
 
       await updateBillShareUrl(bill.id, response.shareUrl);
