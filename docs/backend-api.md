@@ -32,6 +32,7 @@ Create a new bill.
   "tip_amount": 27.60,
   "tip_percentage": 20.0,
   "total": 173.88,
+  "currency_code": "EUR",
   "participants": [
     { "name": "Alice" },
     { "name": "Bob" }
@@ -68,9 +69,38 @@ Create a new bill.
 {
   "bill_id": 1,
   "access_token": "abc123...",
-  "share_url": "https://billington.app/b/1?t=abc123..."
+  "share_url": "https://billington.app/b/1?t=abc123...",
+  "currency_code": "EUR",
+  "usd_exchange_rate": 1.1652,
+  "exchange_rate_date": "2026-08-29",
+  "exchange_rate_source": "frankfurter-v2-blended",
+  "usd_total": 202.59
 }
 ```
+
+`currency_code` defaults to `USD` for older clients. For non-USD bills the service fetches the latest available daily rate, validates it, and freezes the returned rate/date/source on the created bill. A failed or invalid provider response returns `503`; the bill is not saved. Clients must not calculate or submit their own authoritative rate.
+
+### `GET /api/exchange-rates/:currency`
+
+Preview the latest verified daily conversion from the selected currency to USD before saving a receipt.
+Supported receipt currencies in 1.4.1 are `USD`, `EUR`, `GBP`, `CAD`, `JPY`, and `MXN`.
+
+**Response** `200`
+```json
+{
+  "date": "2026-08-29",
+  "base": "EUR",
+  "quote": "USD",
+  "rate": 1.1652,
+  "source": "frankfurter-v2-blended"
+}
+```
+
+**Errors**
+| Status | Body | Meaning |
+|--------|------|---------|
+| 400 | `{"error": "unsupported currency code"}` | Currency is not supported by the 1.4.1 receipt selector |
+| 503 | `{"error": "daily exchange rate is unavailable; retry or use USD"}` | No verified daily quote is available; no conversion should be saved |
 
 ### `GET /api/bills/:id?t=token`
 

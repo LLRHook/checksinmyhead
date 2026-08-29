@@ -36,6 +36,7 @@ import 'widgets/tip_options_section.dart';
 import 'widgets/items_section.dart';
 import 'widgets/bill_summary_section.dart';
 import 'widgets/continue_button.dart';
+import 'widgets/currency_section.dart';
 
 /// BillEntryScreen - Main interface for entering bill details
 ///
@@ -92,6 +93,13 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
   /// - At least one item has been added
   /// - Total of all items matches the entered subtotal (within rounding tolerance)
   void _continueToItemAssignment() {
+    if (!_billData.hasUsableExchangeRate || _billData.isLoadingExchangeRate) {
+      _showSnackBar(
+        _billData.exchangeRateError ??
+            'Wait for the daily USD rate, or choose USD.',
+      );
+      return;
+    }
     if (_billData.subtotal <= 0) {
       _showSnackBar('Please enter a subtotal amount');
       return;
@@ -221,6 +229,10 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
                 isCustomTipAmount: _billData.useCustomTipAmount,
                 scannedVendor: _billData.scannedVendor,
                 lazyMode: true,
+                currencyCode: _billData.currencyCode,
+                usdExchangeRate: _billData.exchangeRateQuote.usdRate,
+                exchangeRateDate: _billData.exchangeRateQuote.rateDate,
+                exchangeRateSource: _billData.exchangeRateQuote.source,
               ),
         ),
       );
@@ -254,6 +266,10 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
               isCustomTipAmount: _billData.useCustomTipAmount,
               initialBirthdayPerson: _billData.birthdayPerson,
               scannedVendor: _billData.scannedVendor,
+              currencyCode: _billData.currencyCode,
+              usdExchangeRate: _billData.exchangeRateQuote.usdRate,
+              exchangeRateDate: _billData.exchangeRateQuote.rateDate,
+              exchangeRateSource: _billData.exchangeRateQuote.source,
             ),
       ),
     );
@@ -336,6 +352,11 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
 
                 // Scan a receipt to auto-fill bill details
                 const ScanReceiptButton(),
+
+                const SizedBox(height: AppSpacing.large),
+
+                // Subtotal and tax input fields
+                const CurrencySection(),
 
                 const SizedBox(height: AppSpacing.large),
 

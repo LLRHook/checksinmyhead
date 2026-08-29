@@ -1,3 +1,5 @@
+import { allocateBillUSDShareAmounts } from "./currency";
+
 export interface ItemDetail {
   name: string;
   amount: number;
@@ -41,6 +43,14 @@ export interface Bill {
   tip_amount: number;
   tip_percentage: number;
   total: number;
+  /** Original receipt currency. Missing on pre-1.4.1 records, which are USD. */
+  currency_code?: string;
+  /** Frozen number of USD per one unit of the original currency. */
+  usd_exchange_rate?: number;
+  exchange_rate_date?: string;
+  exchange_rate_source?: string;
+  /** Frozen USD value of the receipt total. */
+  usd_total?: number;
   date: string;
   payment_methods: PaymentMethod[];
   items: BillItem[];
@@ -325,7 +335,8 @@ export function computeTabPersonTotals(tab: Tab): TabPersonTotal[] {
   const displayNames: Record<string, string> = {};
 
   for (const bill of tab.bills) {
-    for (const share of bill.person_shares) {
+    const usdShares = allocateBillUSDShareAmounts(bill);
+    for (const [index, share] of bill.person_shares.entries()) {
       const key = share.person_name.toLowerCase();
       if (!totals[key]) {
         totals[key] = { total: 0, bill_count: 0, all_paid: true };
@@ -334,7 +345,7 @@ export function computeTabPersonTotals(tab: Tab): TabPersonTotal[] {
         // Prefer a capitalized variant over all-lowercase
         displayNames[key] = share.person_name;
       }
-      totals[key].total += share.total;
+      totals[key].total += usdShares[index];
       totals[key].bill_count += 1;
       if (!share.paid) {
         totals[key].all_paid = false;

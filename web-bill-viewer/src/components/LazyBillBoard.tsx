@@ -16,6 +16,16 @@ import {
   updateTabBillItemAssignments,
   updateTabPersonSharePaid,
 } from "@/lib/api";
+import {
+  allocateBillUSDShareAmounts,
+  billCurrencyCode,
+  billUSDExchangeRate,
+  billUSDTotal,
+  formatOriginalMoney,
+  formatUSDExchangeRate,
+  formatUSDMoney,
+  toUSD,
+} from "@/lib/currency";
 import { buildVenmoPayUrl } from "@/lib/venmo";
 
 interface LazyBillBoardProps {
@@ -26,10 +36,6 @@ interface LazyBillBoardProps {
 
 type StoredMember = { display_name: string; member_token?: string };
 type Stage = "landing" | "picker" | "pay";
-
-function money(value: number) {
-  return `$${value.toFixed(2)}`;
-}
 
 function round(value: number) {
   return Math.round(value * 100) / 100;
@@ -71,7 +77,34 @@ function currentTotals(bill: Bill, name: string) {
   };
 }
 
-function ReceiptSummary({ bill }: { bill: Bill }) {
+export function buildPaymentDetails(
+  bill: Bill,
+  name: string,
+  fallbackOriginalTotal: number,
+) {
+  const shareIndex = bill.person_shares.findIndex(
+    (share) => share.person_name.toLowerCase() === name.toLowerCase(),
+  );
+  const usdTotal =
+    shareIndex >= 0
+      ? allocateBillUSDShareAmounts(bill)[shareIndex]
+      : toUSD(fallbackOriginalTotal, bill);
+  const venmo = bill.payment_methods.find((method) =>
+    method.name.toLowerCase().includes("venmo"),
+  );
+
+  return {
+    usdTotal,
+    venmo,
+    venmoUrl: venmo
+      ? buildVenmoPayUrl(venmo.identifier, usdTotal.toFixed(2), bill.name)
+      : null,
+  };
+}
+
+export function ReceiptSummary({ bill }: { bill: Bill }) {
+  const currency = billCurrencyCode(bill);
+
   return (
     <div className="rounded-3xl bg-[var(--card-bg-light)] p-5 shadow-sm dark:bg-[var(--card-bg-dark)] dark:border dark:border-[var(--border-dark)] sm:p-7">
       <div className="mb-5 flex items-center gap-3">
@@ -94,29 +127,50 @@ function ReceiptSummary({ bill }: { bill: Bill }) {
               {item.name}
             </span>
             <span className="font-mono font-medium text-[var(--accent)] dark:text-white">
-              {money(item.price)}
+              {formatOriginalMoney(item.price, bill)}
             </span>
           </div>
         ))}
       </div>
       <div className="mt-4 space-y-2 border-t border-[var(--border-light)] pt-4 text-sm dark:border-[var(--border-dark)]">
-        <SummaryRow label="Subtotal" value={bill.subtotal} />
-        <SummaryRow label="Tax" value={bill.tax} />
+        <SummaryRow bill={bill} label="Subtotal" value={bill.subtotal} />
+        <SummaryRow bill={bill} label="Tax" value={bill.tax} />
         <SummaryRow
+          bill={bill}
           label={`Tip${bill.tip_percentage ? ` (${bill.tip_percentage}%)` : ""}`}
           value={bill.tip_amount}
         />
-        <SummaryRow label="Total" value={bill.total} strong />
+        <SummaryRow bill={bill} label="Total" value={bill.total} strong />
       </div>
+      {currency !== "USD" && (
+        <div className="mt-4 rounded-2xl bg-[var(--secondary)] px-4 py-3 text-sm dark:bg-white/10">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-[var(--text-secondary)]">
+              Recorded in USD
+            </span>
+            <strong className="font-mono text-[var(--accent)] dark:text-white">
+              {formatUSDMoney(billUSDTotal(bill))}
+            </strong>
+          </div>
+          <p className="mt-1 text-xs text-[var(--text-secondary)]">
+            Frozen at 1 {currency} ={" "}
+            {formatUSDExchangeRate(billUSDExchangeRate(bill))}
+            {bill.exchange_rate_date ? ` on ${bill.exchange_rate_date}` : ""}
+            {bill.exchange_rate_source ? ` · ${bill.exchange_rate_source}` : ""}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
 
 function SummaryRow({
+  bill,
   label,
   value,
   strong = false,
 }: {
+  bill: Bill;
   label: string;
   value: number;
   strong?: boolean;
@@ -127,7 +181,7 @@ function SummaryRow({
     >
       <span>{label}</span>
       <span className="font-mono text-[var(--accent)] dark:text-white">
-        {money(value)}
+        {formatOriginalMoney(value, bill)}
       </span>
     </div>
   );
@@ -164,8 +218,9 @@ export default function LazyBillBoard({
   const currentShare = bill.person_shares.find(
     (share) => share.person_name.toLowerCase() === name.toLowerCase(),
   );
-  const venmo = bill.payment_methods.find((method) =>
-    method.name.toLowerCase().includes("venmo"),
+  const paymentDetails = useMemo(
+    () => buildPaymentDetails(bill, name, totals.total),
+    [bill, name, totals.total],
   );
 
   const saveAssignments = async (
@@ -328,33 +383,36 @@ export default function LazyBillBoard({
             Your total
           </p>
           <p className="mt-2 text-5xl font-bold tracking-tight text-[var(--accent)] dark:text-white">
-            {money(totals.total)}
+            {formatOriginalMoney(totals.total, bill)}
+          </p>
+          <p className="mt-2 text-sm font-semibold text-[var(--primary)]">
+            Pay {formatUSDMoney(paymentDetails.usdTotal)}
           </p>
           <div className="mt-6 space-y-2 border-t border-[var(--border-light)] pt-4 text-sm dark:border-[var(--border-dark)]">
-            <SummaryRow label="Your items" value={totals.subtotal} />
-            <SummaryRow label="Tax" value={totals.tax_share} />
-            <SummaryRow label="Tip" value={totals.tip_share} />
+            <SummaryRow
+              bill={bill}
+              label="Your items"
+              value={totals.subtotal}
+            />
+            <SummaryRow bill={bill} label="Tax" value={totals.tax_share} />
+            <SummaryRow bill={bill} label="Tip" value={totals.tip_share} />
           </div>
         </div>
         <div className="rounded-3xl bg-[var(--card-bg-light)] p-5 shadow-sm dark:bg-[var(--card-bg-dark)] dark:border dark:border-[var(--border-dark)]">
           <h2 className="font-bold text-[var(--accent)] dark:text-white">
             Pay {name}
           </h2>
-          {venmo && (
+          {paymentDetails.venmo && (
             <a
-              href={buildVenmoPayUrl(
-                venmo.identifier,
-                totals.total.toFixed(2),
-                bill.name,
-              )}
+              href={paymentDetails.venmoUrl ?? undefined}
               className="mt-4 flex items-center justify-center rounded-2xl bg-[#4b938d] px-4 py-4 font-bold text-white"
             >
               Pay with Venmo
             </a>
           )}
           <p className="mt-4 text-sm text-[var(--text-secondary)]">
-            {venmo
-              ? `${venmo.name}: ${venmo.identifier}`
+            {paymentDetails.venmo
+              ? `${paymentDetails.venmo.name}: ${paymentDetails.venmo.identifier}`
               : "Use one of the payment methods shown with the bill."}
           </p>
           <button
@@ -424,7 +482,7 @@ export default function LazyBillBoard({
                     ? "Paid"
                     : unavailable
                       ? `Taken by ${assignments[0]?.person_name ?? "someone"}`
-                      : money(item.price)}
+                      : formatOriginalMoney(item.price, bill)}
                 </p>
               </div>
               <button

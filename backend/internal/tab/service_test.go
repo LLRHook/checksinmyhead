@@ -221,6 +221,143 @@ func TestFinalizeTab_Success(t *testing.T) {
 	}
 }
 
+func TestFinalizeTab_UsesFrozenUSDAmountsForMixedCurrencies(t *testing.T) {
+	repo := newMockRepo()
+	repo.tabs[1] = &models.Tab{
+		ID: 1,
+		Bills: []models.Bill{
+			{CurrencyCode: "USD", USDExchangeRate: 1, Total: 25, USDTotal: 25, PersonShares: []models.PersonShare{{PersonName: "Alice", Total: 25}}},
+			{CurrencyCode: "EUR", USDExchangeRate: 1.25, Total: 40, USDTotal: 50, PersonShares: []models.PersonShare{{PersonName: "Alice", Total: 24}, {PersonName: "Bob", Total: 16}}},
+		},
+	}
+	svc := NewTabService(repo, &mockImageQuerier{})
+
+	settlements, err := svc.FinalizeTab(1)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	totals := map[string]float64{}
+	for _, settlement := range settlements {
+		totals[settlement.PersonName] = settlement.Amount
+	}
+	if totals["Alice"] != 55 || totals["Bob"] != 20 {
+		t.Fatalf("expected stable USD settlements Alice=55 Bob=20, got %#v", totals)
+	}
+}
+
+func TestFinalizeTab_ReconcilesFractionalCentsToFrozenUSDTotal(t *testing.T) {
+	repo := newMockRepo()
+	repo.tabs[1] = &models.Tab{
+		ID: 1,
+		Bills: []models.Bill{{
+			CurrencyCode:    "EUR",
+			USDExchangeRate: 1.25,
+			Total:           0.80,
+			USDTotal:        1.00,
+			PersonShares: []models.PersonShare{
+				{PersonName: "Alice", Total: 0.80 / 3},
+				{PersonName: "Bob", Total: 0.80 / 3},
+				{PersonName: "Cara", Total: 0.80 / 3},
+			},
+		}},
+	}
+	svc := NewTabService(repo, &mockImageQuerier{})
+
+	settlements, err := svc.FinalizeTab(1)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	totals := map[string]float64{}
+	var sum float64
+	for _, settlement := range settlements {
+		totals[settlement.PersonName] = settlement.Amount
+		sum += settlement.Amount
+	}
+	if sum != 1.00 {
+		t.Fatalf("expected shares to reconcile to frozen USD total 1.00, got %.2f", sum)
+	}
+	if totals["Alice"] != 0.34 || totals["Bob"] != 0.33 || totals["Cara"] != 0.33 {
+		t.Fatalf("expected deterministic largest-remainder allocation, got %#v", totals)
+	}
+}
+
+func TestAllocateUSDShareCents_UsesOrdinalNameTieBreak(t *testing.T) {
+	bill := models.Bill{
+		CurrencyCode:    "EUR",
+		USDExchangeRate: 1.25,
+		Total:           0.80,
+		USDTotal:        1.00,
+		PersonShares: []models.PersonShare{
+			{PersonName: "ä", Total: 0.80 / 3},
+			{PersonName: "z", Total: 0.80 / 3},
+			{PersonName: "Ω", Total: 0.80 / 3},
+		},
+	}
+
+	amounts := allocateUSDShareCents(bill)
+	if amounts[0] != 33 || amounts[1] != 34 || amounts[2] != 33 {
+		t.Fatalf("expected ordinal tie-break to award z the extra cent, got %#v", amounts)
+	}
+}
+
+func TestAllocateUSDShareCents_UsesUTF8OrderForSupplementaryNames(t *testing.T) {
+	bill := models.Bill{
+		CurrencyCode:    "EUR",
+		USDExchangeRate: 1.25,
+		Total:           0.008,
+		USDTotal:        0.01,
+		PersonShares: []models.PersonShare{
+			{PersonName: "😀", Total: 0.004},
+			{PersonName: "Ａ", Total: 0.004},
+		},
+	}
+
+	amounts := allocateUSDShareCents(bill)
+	if amounts[0] != 0 || amounts[1] != 1 {
+		t.Fatalf("expected UTF-8 order to award fullwidth A the cent, got %#v", amounts)
+	}
+}
+
+func TestFinalizeTab_DoesNotScalePartialAssignmentsToFullBill(t *testing.T) {
+	repo := newMockRepo()
+	repo.tabs[1] = &models.Tab{
+		ID: 1,
+		Bills: []models.Bill{{
+			CurrencyCode:    "EUR",
+			USDExchangeRate: 1.25,
+			Total:           80,
+			USDTotal:        100,
+			PersonShares:    []models.PersonShare{{PersonName: "Alice", Total: 8}},
+		}},
+	}
+	svc := NewTabService(repo, &mockImageQuerier{})
+
+	settlements, err := svc.FinalizeTab(1)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(settlements) != 1 || settlements[0].Amount != 10 {
+		t.Fatalf("expected only the assigned EUR 8 to convert to USD 10, got %#v", settlements)
+	}
+}
+
+func TestGetTab_UsesFrozenUSDTotalAndLegacyUSDFallback(t *testing.T) {
+	repo := newMockRepo()
+	repo.tabs[1] = &models.Tab{ID: 1, Bills: []models.Bill{
+		{Total: 10},
+		{CurrencyCode: "EUR", USDExchangeRate: 1.25, Total: 20, USDTotal: 25},
+	}}
+	svc := NewTabService(repo, &mockImageQuerier{})
+
+	tab, err := svc.GetTab(1)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if tab.TotalAmount != 35 {
+		t.Fatalf("expected USD tab total 35, got %.2f", tab.TotalAmount)
+	}
+}
+
 func TestFinalizeTab_AlreadyFinalized(t *testing.T) {
 	repo := newMockRepo()
 	imgQ := &mockImageQuerier{}
@@ -653,6 +790,70 @@ func TestComputeNetBalances_CaseInsensitive(t *testing.T) {
 	}
 	if balances[0].Amount != 70 {
 		t.Errorf("expected amount 70, got %f", balances[0].Amount)
+	}
+}
+
+func TestComputeNetBalances_ReconcilesFractionalCents(t *testing.T) {
+	payerID := uint(1)
+	tab := &models.Tab{
+		Members: []models.TabMember{
+			{ID: payerID, DisplayName: "Alice"},
+			{ID: 2, DisplayName: "Bob"},
+			{ID: 3, DisplayName: "Cara"},
+			{ID: 4, DisplayName: "Dana"},
+		},
+		Bills: []models.Bill{{
+			PaidByMemberID:  &payerID,
+			CurrencyCode:    "EUR",
+			USDExchangeRate: 1.25,
+			Total:           0.80,
+			USDTotal:        1.00,
+			PersonShares: []models.PersonShare{
+				{PersonName: "Bob", Total: 0.80 / 3},
+				{PersonName: "Cara", Total: 0.80 / 3},
+				{PersonName: "Dana", Total: 0.80 / 3},
+			},
+		}},
+	}
+
+	balances := ComputeNetBalances(tab)
+	var sum float64
+	amounts := map[string]float64{}
+	for _, balance := range balances {
+		if balance.To != "Alice" {
+			t.Fatalf("expected Alice to receive each payment, got %#v", balance)
+		}
+		sum += balance.Amount
+		amounts[balance.From] = balance.Amount
+	}
+	if sum != 1.00 {
+		t.Fatalf("expected net balances to reconcile to 1.00, got %.2f", sum)
+	}
+	if amounts["Bob"] != 0.34 || amounts["Cara"] != 0.33 || amounts["Dana"] != 0.33 {
+		t.Fatalf("expected deterministic cent allocation, got %#v", amounts)
+	}
+}
+
+func TestComputeNetBalances_DoesNotScalePartialAssignmentsToFullBill(t *testing.T) {
+	payerID := uint(1)
+	tab := &models.Tab{
+		Members: []models.TabMember{
+			{ID: payerID, DisplayName: "Alice"},
+			{ID: 2, DisplayName: "Bob"},
+		},
+		Bills: []models.Bill{{
+			PaidByMemberID:  &payerID,
+			CurrencyCode:    "EUR",
+			USDExchangeRate: 1.25,
+			Total:           80,
+			USDTotal:        100,
+			PersonShares:    []models.PersonShare{{PersonName: "Bob", Total: 8}},
+		}},
+	}
+
+	balances := ComputeNetBalances(tab)
+	if len(balances) != 1 || balances[0].From != "Bob" || balances[0].To != "Alice" || balances[0].Amount != 10 {
+		t.Fatalf("expected only the assigned USD 10 to be owed, got %#v", balances)
 	}
 }
 

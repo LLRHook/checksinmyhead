@@ -2,6 +2,7 @@ package main
 
 import (
 	"backend/internal/bill"
+	"backend/internal/exchange"
 	"backend/internal/image"
 	"backend/internal/receipt"
 	"backend/internal/tab"
@@ -26,7 +27,8 @@ func main() {
 		log.Fatal(err)
 	}
 	repo := bill.NewBillRepository(db)
-	service := bill.NewBillService(repo)
+	rateClient := exchange.NewClient(os.Getenv("EXCHANGE_RATE_API_URL"))
+	service := bill.NewBillService(repo, rateClient)
 	handler := bill.NewBillHandler(service)
 
 	uploadDir := os.Getenv("UPLOAD_DIR")
@@ -80,6 +82,7 @@ func main() {
 	r.GET("/health", getHealth)
 	r.GET("/api/bills/:id", handler.GetBill)
 	r.POST("/api/bills", handler.CreateBill)
+	r.GET("/api/exchange-rates/:currency", handler.GetExchangeRate)
 	r.PATCH("/api/bills/:id/shares/:shareId", handler.UpdatePersonSharePaid)
 	r.POST("/api/tabs", tabHandler.CreateTab)
 	r.GET("/api/tabs/:id", tabHandler.GetTab)

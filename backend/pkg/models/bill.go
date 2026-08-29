@@ -1,6 +1,8 @@
 package models
 
 import (
+	"math"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -60,30 +62,64 @@ type PersonShare struct {
 }
 
 type Bill struct {
-	ID              uint            `gorm:"primaryKey" json:"id"`
-	TabID           *uint           `gorm:"index" json:"tab_id,omitempty"`
-	AddedByMemberID *uint           `gorm:"index" json:"added_by_member_id,omitempty"`
-	PaidByMemberID  *uint           `gorm:"index" json:"paid_by_member_id,omitempty"`
-	Name            string          `gorm:"not null" json:"name"`
-	Subtotal        float64         `gorm:"not null" json:"subtotal"`
-	Tax             float64         `gorm:"not null" json:"tax"`
-	TipAmount       float64         `gorm:"not null" json:"tip_amount"`
-	TipPercentage   float64         `json:"tip_percentage"`
-	Total           float64         `gorm:"not null" json:"total"`
-	Date            time.Time       `gorm:"not null" json:"date"`
-	PaymentMethods  []PaymentMethod `gorm:"type:jsonb;serializer:json" json:"payment_methods"` // Changed to array
-	Participants    []Person        `gorm:"many2many:bill_participants;constraint:OnDelete:SET NULL" json:"participants"`
-	Items           []BillItem      `gorm:"constraint:OnDelete:CASCADE" json:"items"`
-	PersonShares    []PersonShare   `gorm:"constraint:OnDelete:CASCADE" json:"person_shares"`
-	AccessToken     string          `gorm:"type:varchar(64);uniqueIndex" json:"access_token,omitempty"`
-	CreatedAt       time.Time       `json:"created_at"`
-	UpdatedAt       time.Time       `json:"updated_at"`
+	ID                 uint            `gorm:"primaryKey" json:"id"`
+	TabID              *uint           `gorm:"index" json:"tab_id,omitempty"`
+	AddedByMemberID    *uint           `gorm:"index" json:"added_by_member_id,omitempty"`
+	PaidByMemberID     *uint           `gorm:"index" json:"paid_by_member_id,omitempty"`
+	Name               string          `gorm:"not null" json:"name"`
+	Subtotal           float64         `gorm:"not null" json:"subtotal"`
+	Tax                float64         `gorm:"not null" json:"tax"`
+	TipAmount          float64         `gorm:"not null" json:"tip_amount"`
+	TipPercentage      float64         `json:"tip_percentage"`
+	Total              float64         `gorm:"not null" json:"total"`
+	CurrencyCode       string          `gorm:"type:varchar(3);not null;default:'USD'" json:"currency_code"`
+	USDExchangeRate    float64         `gorm:"not null;default:1" json:"usd_exchange_rate"`
+	ExchangeRateDate   string          `gorm:"type:varchar(10)" json:"exchange_rate_date"`
+	ExchangeRateSource string          `gorm:"type:varchar(64)" json:"exchange_rate_source"`
+	USDTotal           float64         `gorm:"not null;default:0" json:"usd_total"`
+	Date               time.Time       `gorm:"not null" json:"date"`
+	PaymentMethods     []PaymentMethod `gorm:"type:jsonb;serializer:json" json:"payment_methods"` // Changed to array
+	Participants       []Person        `gorm:"many2many:bill_participants;constraint:OnDelete:SET NULL" json:"participants"`
+	Items              []BillItem      `gorm:"constraint:OnDelete:CASCADE" json:"items"`
+	PersonShares       []PersonShare   `gorm:"constraint:OnDelete:CASCADE" json:"person_shares"`
+	AccessToken        string          `gorm:"type:varchar(64);uniqueIndex" json:"access_token,omitempty"`
+	CreatedAt          time.Time       `json:"created_at"`
+	UpdatedAt          time.Time       `json:"updated_at"`
+}
+
+// NormalizeCurrency makes pre-1.4.1 rows behave as native USD without writing
+// them back. New foreign-currency rows always carry an explicit frozen rate.
+func (b *Bill) NormalizeCurrency() {
+	b.CurrencyCode = strings.ToUpper(strings.TrimSpace(b.CurrencyCode))
+	if b.CurrencyCode == "" {
+		b.CurrencyCode = "USD"
+	}
+	if b.CurrencyCode == "USD" {
+		b.USDExchangeRate = 1
+		if b.ExchangeRateSource == "" {
+			b.ExchangeRateSource = "native-usd"
+		}
+	}
+	if b.USDExchangeRate > 0 && b.USDTotal == 0 && b.Total != 0 {
+		b.USDTotal = math.Round(b.Total*b.USDExchangeRate*100) / 100
+	}
+}
+
+func (b *Bill) USDValue(value float64) float64 {
+	b.NormalizeCurrency()
+	return math.Round(value*b.USDExchangeRate*100) / 100
 }
 
 // BeforeCreate hook to set default values before creating a Bill.
 func (b *Bill) BeforeCreate(tx *gorm.DB) error {
+	b.NormalizeCurrency()
 	if b.Date.IsZero() {
 		b.Date = time.Now()
 	}
+	return nil
+}
+
+func (b *Bill) AfterFind(tx *gorm.DB) error {
+	b.NormalizeCurrency()
 	return nil
 }

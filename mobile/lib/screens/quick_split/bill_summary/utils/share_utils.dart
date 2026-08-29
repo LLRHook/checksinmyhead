@@ -22,6 +22,7 @@ import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/models/bill_item.dart';
 import 'calculation_utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 
 /// ShareUtils - Utility for generating and sharing bill summaries
 ///
@@ -64,7 +65,10 @@ class ShareUtils {
     required bool showPersonItems,
     required bool showBreakdown,
     String? billName,
+    String currencyCode = 'USD',
   }) async {
+    String money(double value) =>
+        CurrencyFormatter.formatCurrency(value, currencyCode: currencyCode);
     // Sort participants by payment amount (highest first)
     final sortedParticipants = List<Person>.from(participants);
     sortedParticipants.sort((a, b) {
@@ -88,27 +92,27 @@ class ShareUtils {
     }
 
     text.writeln('BILL SUMMARY');
-    text.writeln('Total: \$${total.toStringAsFixed(2)}');
+    text.writeln('Total: ${money(total)}');
     text.writeln('───────────────');
 
     if (showAllItems && items.isNotEmpty) {
       text.writeln('ITEMS:');
       for (var item in items) {
-        text.writeln('• ${item.name}: \$${item.price.toStringAsFixed(2)}');
+        text.writeln('• ${item.name}: ${money(item.price)}');
       }
       text.writeln('───────────────');
     }
 
     if (showBreakdown) {
       text.writeln('BREAKDOWN:');
-      text.writeln('Subtotal: \$${subtotal.toStringAsFixed(2)}');
-      text.writeln('Tax: \$${tax.toStringAsFixed(2)}');
+      text.writeln('Subtotal: ${money(subtotal)}');
+      text.writeln('Tax: ${money(tax)}');
 
       if (isCustomTipAmount) {
-        text.writeln('Tip: \$${tipAmount.toStringAsFixed(2)}');
+        text.writeln('Tip: ${money(tipAmount)}');
       } else {
         text.writeln(
-          'Tip (${tipPercentage.toStringAsFixed(0)}%): \$${tipAmount.toStringAsFixed(2)}',
+          'Tip (${tipPercentage.toStringAsFixed(0)}%): ${money(tipAmount)}',
         );
       }
 
@@ -125,9 +129,9 @@ class ShareUtils {
       if (share > 0 || person == birthdayPerson) {
         anySharesWritten = true;
         if (person == birthdayPerson) {
-          text.writeln('• 🎂 ${person.name}: \$${share.toStringAsFixed(2)}');
+          text.writeln('• 🎂 ${person.name}: ${money(share)}');
         } else {
-          text.writeln('• ${person.name}: \$${share.toStringAsFixed(2)}');
+          text.writeln('• ${person.name}: ${money(share)}');
         }
 
         if (showPersonItems && items.isNotEmpty) {
@@ -155,9 +159,7 @@ class ShareUtils {
                 sharedText = " (shared)";
               }
 
-              personItems.add(
-                "  - ${item.name}: \$${amount.toStringAsFixed(2)}$sharedText",
-              );
+              personItems.add('  - ${item.name}: ${money(amount)}$sharedText');
             }
           }
 
@@ -167,7 +169,7 @@ class ShareUtils {
             }
 
             text.writeln(
-              '  + Tax & tip: \$${(amounts['tax']! + amounts['tip']!).toStringAsFixed(2)}',
+              "  + Tax & tip: ${money(amounts['tax']! + amounts['tip']!)}",
             );
 
             text.writeln('');
@@ -218,7 +220,10 @@ class ShareUtils {
     required bool showPersonItems,
     required bool showBreakdown,
     String? billName,
+    String currencyCode = 'USD',
   }) async {
+    String money(double value) =>
+        CurrencyFormatter.formatCurrency(value, currencyCode: currencyCode);
     // Sort participants by payment amount (highest first)
     final sortedParticipants = List<Person>.from(participants);
     sortedParticipants.sort((a, b) {
@@ -241,27 +246,27 @@ class ShareUtils {
     }
 
     text.writeln('BILL SUMMARY');
-    text.writeln('Total: \$${total.toStringAsFixed(2)}');
+    text.writeln('Total: ${money(total)}');
     text.writeln('───────────────');
 
     if (showAllItems && items.isNotEmpty) {
       text.writeln('ITEMS:');
       for (var item in items) {
-        text.writeln('• ${item.name}: \$${item.price.toStringAsFixed(2)}');
+        text.writeln('• ${item.name}: ${money(item.price)}');
       }
       text.writeln('───────────────');
     }
 
     if (showBreakdown) {
       text.writeln('BREAKDOWN:');
-      text.writeln('Subtotal: \$${subtotal.toStringAsFixed(2)}');
-      text.writeln('Tax: \$${tax.toStringAsFixed(2)}');
+      text.writeln('Subtotal: ${money(subtotal)}');
+      text.writeln('Tax: ${money(tax)}');
 
       if (isCustomTipAmount) {
-        text.writeln('Tip: \$${tipAmount.toStringAsFixed(2)}');
+        text.writeln('Tip: ${money(tipAmount)}');
       } else {
         text.writeln(
-          'Tip (${tipPercentage.toStringAsFixed(0)}%): \$${tipAmount.toStringAsFixed(2)}',
+          'Tip (${tipPercentage.toStringAsFixed(0)}%): ${money(tipAmount)}',
         );
       }
 
@@ -274,7 +279,7 @@ class ShareUtils {
       final share = personSharesByName[person.name] ?? 0;
 
       if (share > 0) {
-        text.writeln('• ${person.name}: \$${share.toStringAsFixed(2)}');
+        text.writeln('• ${person.name}: ${money(share)}');
 
         if (showPersonItems && items.isNotEmpty) {
           List<String> personItems = [];
@@ -300,9 +305,7 @@ class ShareUtils {
                 sharedText = " (shared)";
               }
 
-              personItems.add(
-                "  - ${item.name}: \$${amount.toStringAsFixed(2)}$sharedText",
-              );
+              personItems.add('  - ${item.name}: ${money(amount)}$sharedText');
             }
           }
 
@@ -316,9 +319,7 @@ class ShareUtils {
               final proportion = share / total;
               final taxAndTipPortion = proportion * (tax + tipAmount);
 
-              text.writeln(
-                '  + Tax & tip: \$${taxAndTipPortion.toStringAsFixed(2)}',
-              );
+              text.writeln('  + Tax & tip: ${money(taxAndTipPortion)}');
             }
 
             text.writeln('');

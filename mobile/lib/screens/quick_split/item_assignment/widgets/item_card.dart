@@ -19,6 +19,7 @@ import 'package:checks_frontend/config/theme.dart';
 import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_utils.dart';
 import 'package:checks_frontend/screens/quick_split/item_assignment/widgets/participant_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 import 'package:flutter/services.dart';
 import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/models/bill_item.dart';
@@ -71,6 +72,7 @@ class ItemCard extends StatefulWidget {
 
   /// Function to calculate what percentage of the total bill a person is responsible for
   final double Function(Person) getPersonBillPercentage;
+  final String currencyCode;
 
   const ItemCard({
     super.key,
@@ -85,6 +87,7 @@ class ItemCard extends StatefulWidget {
     required this.universalItemIcon,
     required this.onBirthdayToggle,
     required this.getPersonBillPercentage,
+    this.currencyCode = 'USD',
   });
 
   @override
@@ -679,136 +682,144 @@ class _ItemCardState extends State<ItemCard>
         children: [
           // Card header - always visible part with item details
           Semantics(
-            label: '${widget.item.name}, ${widget.item.price.toStringAsFixed(2)} dollars, ${isFullyAssigned ? 'fully assigned' : isAssigned ? '${widget.assignedPercentage.toStringAsFixed(0)} percent assigned' : 'unassigned'}',
+            label:
+                '${widget.item.name}, ${CurrencyFormatter.formatCurrency(widget.item.price, currencyCode: widget.currencyCode)}, ${isFullyAssigned
+                    ? 'fully assigned'
+                    : isAssigned
+                    ? '${widget.assignedPercentage.toStringAsFixed(0)} percent assigned'
+                    : 'unassigned'}',
             button: true,
             child: InkWell(
-            onTap: _toggleExpand,
-            borderRadius: BorderRadius.circular(16),
-            splashColor: dominantColor.withValues(alpha: .05),
-            highlightColor: dominantColor.withValues(alpha: .1),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  // Item icon with assignment status indicator
-                  Stack(
-                    children: [
-                      // Icon background - adapts to assignment state
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: iconBgColor,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow:
-                              _showHighlight
-                                  ? [
-                                    BoxShadow(
-                                      color: dominantColor.withValues(
-                                        alpha: .3,
+              onTap: _toggleExpand,
+              borderRadius: BorderRadius.circular(16),
+              splashColor: dominantColor.withValues(alpha: .05),
+              highlightColor: dominantColor.withValues(alpha: .1),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    // Item icon with assignment status indicator
+                    Stack(
+                      children: [
+                        // Icon background - adapts to assignment state
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: iconBgColor,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow:
+                                _showHighlight
+                                    ? [
+                                      BoxShadow(
+                                        color: dominantColor.withValues(
+                                          alpha: .3,
+                                        ),
+                                        blurRadius: 10,
+                                        spreadRadius: 1,
                                       ),
-                                      blurRadius: 10,
-                                      spreadRadius: 1,
-                                    ),
-                                  ]
-                                  : null,
+                                    ]
+                                    : null,
+                          ),
+                          child: Icon(
+                            widget.universalItemIcon,
+                            color: isAssigned ? dominantColor : themeSlateGray,
+                            size: 22,
+                          ),
                         ),
-                        child: Icon(
-                          widget.universalItemIcon,
-                          color: isAssigned ? dominantColor : themeSlateGray,
-                          size: 22,
-                        ),
-                      ),
 
-                      // Green checkmark dot for fully assigned items (decorative)
-                      if (isFullyAssigned)
-                        Positioned(
-                          top: 0,
-                          right: 0,
-                          child: ExcludeSemantics(
-                            child: Container(
-                              width: 12,
-                              height: 12,
-                              decoration: BoxDecoration(
-                                color: themeSuccessGreen,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color:
-                                      brightness == Brightness.dark
-                                          ? colorScheme.surface
-                                          : Colors.white,
-                                  width: 2,
+                        // Green checkmark dot for fully assigned items (decorative)
+                        if (isFullyAssigned)
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: ExcludeSemantics(
+                              child: Container(
+                                width: 12,
+                                height: 12,
+                                decoration: BoxDecoration(
+                                  color: themeSuccessGreen,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color:
+                                        brightness == Brightness.dark
+                                            ? colorScheme.surface
+                                            : Colors.white,
+                                    width: 2,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                    ],
-                  ),
-
-                  const SizedBox(width: 14),
-
-                  // Item name and price
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.item.name,
-                          style: textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: titleColor,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '\$${widget.item.price.toStringAsFixed(2)}',
-                          style: textTheme.bodyMedium?.copyWith(
-                            color: priceColor,
-                          ),
-                        ),
                       ],
                     ),
-                  ),
 
-                  // Assignment status section at right side
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      // Status text badge (Unassigned/Assigned/Percentage)
-                      _buildAssignmentStatus(
-                        isAssigned,
-                        isFullyAssigned,
-                        dominantColor,
-                        themePrimaryBlue,
-                        themeSuccessGreen,
-                        themeWarningOrange,
-                        brightness,
-                      ),
+                    const SizedBox(width: 14),
 
-                      const SizedBox(height: 4),
-
-                      // Either show assignee avatars or expand indicator
-                      if (isAssigned && !_isExpanded)
-                        _buildAssigneeAvatars()
-                      else
-                        RotationTransition(
-                          turns: _rotateAnimation,
-                          child: Icon(
-                            Icons.keyboard_arrow_down,
-                            color:
-                                isAssigned
-                                    ? dominantColor
-                                    : themeLightSlateGray,
-                            size: 24,
+                    // Item name and price
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.item.name,
+                            style: textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: titleColor,
+                            ),
                           ),
+                          const SizedBox(height: 2),
+                          Text(
+                            CurrencyFormatter.formatCurrency(
+                              widget.item.price,
+                              currencyCode: widget.currencyCode,
+                            ),
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: priceColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Assignment status section at right side
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        // Status text badge (Unassigned/Assigned/Percentage)
+                        _buildAssignmentStatus(
+                          isAssigned,
+                          isFullyAssigned,
+                          dominantColor,
+                          themePrimaryBlue,
+                          themeSuccessGreen,
+                          themeWarningOrange,
+                          brightness,
                         ),
-                    ],
-                  ),
-                ],
+
+                        const SizedBox(height: 4),
+
+                        // Either show assignee avatars or expand indicator
+                        if (isAssigned && !_isExpanded)
+                          _buildAssigneeAvatars()
+                        else
+                          RotationTransition(
+                            turns: _rotateAnimation,
+                            child: Icon(
+                              Icons.keyboard_arrow_down,
+                              color:
+                                  isAssigned
+                                      ? dominantColor
+                                      : themeLightSlateGray,
+                              size: 24,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
           ),
 
           // Expandable section with participant selector and action buttons
@@ -1196,40 +1207,43 @@ class _ItemCardState extends State<ItemCard>
         Padding(
           padding: const EdgeInsets.only(top: 16),
           child: Semantics(
-            label: _multiSelectMode ? 'Cancel multi-select' : 'Done assigning item',
+            label:
+                _multiSelectMode
+                    ? 'Cancel multi-select'
+                    : 'Done assigning item',
             button: true,
             child: GestureDetector(
-            onTap: () {
-              // If in multi-select mode, cancel it
-              if (_multiSelectMode) {
-                _cancelMultiSelectMode();
-              } else {
-                // Only close when pressing "Done" (not in multi-select mode)
-                setState(() {
-                  _isExpanded = false;
-                  _animController.reverse();
-                });
-              }
-              HapticFeedback.mediumImpact();
-            },
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: cancelButtonBgColor,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Center(
-                child: Text(
-                  _multiSelectMode ? 'Cancel' : 'Done',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: cancelButtonTextColor,
+              onTap: () {
+                // If in multi-select mode, cancel it
+                if (_multiSelectMode) {
+                  _cancelMultiSelectMode();
+                } else {
+                  // Only close when pressing "Done" (not in multi-select mode)
+                  setState(() {
+                    _isExpanded = false;
+                    _animController.reverse();
+                  });
+                }
+                HapticFeedback.mediumImpact();
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: cancelButtonBgColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text(
+                    _multiSelectMode ? 'Cancel' : 'Done',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: cancelButtonTextColor,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
           ),
         ),
       ],
@@ -1253,46 +1267,46 @@ class _ItemCardState extends State<ItemCard>
       button: true,
       enabled: isEnabled,
       child: GestureDetector(
-      onTap: () {
-        if (isEnabled) {
-          onTap();
-          HapticFeedback.mediumImpact();
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        decoration: BoxDecoration(
-          gradient: gradient,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: .1),
-              blurRadius: 4,
-              spreadRadius: 0,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: textColor, size: 18),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: textColor,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
+        onTap: () {
+          if (isEnabled) {
+            onTap();
+            HapticFeedback.mediumImpact();
+          }
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          decoration: BoxDecoration(
+            gradient: gradient,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: .1),
+                blurRadius: 4,
+                spreadRadius: 0,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: textColor, size: 18),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: textColor,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
