@@ -3,6 +3,13 @@
 import { FaChevronDown, FaReceipt } from "react-icons/fa6";
 import { useCollapsible } from "@/hooks/useCollapsible";
 import type { Bill } from "@/lib/api";
+import {
+  billCurrencyCode,
+  billUSDTotal,
+  formatOriginalMoney,
+  formatUSDMoney,
+  toUSD,
+} from "@/lib/currency";
 
 interface TabBillListProps {
   bills: Bill[];
@@ -10,6 +17,7 @@ interface TabBillListProps {
 
 function BillCard({ bill }: { bill: Bill }) {
   const { isOpen, toggle, contentRef, height } = useCollapsible();
+  const isForeignCurrency = billCurrencyCode(bill) !== "USD";
 
   return (
     <div className="bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-2xl overflow-hidden shadow-sm dark:shadow-none dark:border dark:border-[var(--border-dark)] transition-all duration-200">
@@ -34,9 +42,16 @@ function BillCard({ bill }: { bill: Bill }) {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-lg font-bold font-mono text-[var(--accent)] dark:text-white">
-            ${bill.total.toFixed(2)}
-          </span>
+          <div className="text-right">
+            <span className="block text-lg font-bold font-mono text-[var(--accent)] dark:text-white">
+              {formatOriginalMoney(bill.total, bill)}
+            </span>
+            {isForeignCurrency && (
+              <span className="block text-xs text-[var(--text-secondary)]">
+                {formatUSDMoney(billUSDTotal(bill))}
+              </span>
+            )}
+          </div>
           <FaChevronDown
             className={`text-[var(--text-secondary)] transition-transform duration-200 ease-out ${isOpen ? "rotate-180" : ""}`}
             size={12}
@@ -63,7 +78,14 @@ function BillCard({ bill }: { bill: Bill }) {
                     </div>
                   </td>
                   <td className="py-1.5 text-sm font-mono font-medium text-right text-[var(--accent)] dark:text-white">
-                    ${share.total.toFixed(2)}
+                    <span className="block">
+                      {formatOriginalMoney(share.total, bill)}
+                    </span>
+                    {isForeignCurrency && (
+                      <span className="block text-xs font-normal text-[var(--text-secondary)]">
+                        {formatUSDMoney(toUSD(share.total, bill))}
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}

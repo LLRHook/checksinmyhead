@@ -99,7 +99,10 @@ class TipOptionsSection extends StatelessWidget {
             decoration: AppInputDecoration.buildInputDecoration(
               context: context,
               labelText: 'Tip Amount',
-              prefixText: '\$',
+              prefixText:
+                  billData.currencyCode == 'USD'
+                      ? '\$'
+                      : '${billData.currencyCode} ',
               hintText: '0.00',
             ),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -274,7 +277,8 @@ class _TipPercentageSlider extends StatelessWidget {
                 max: 99,
                 divisions: 99, // Allow 1% increments
                 label: '${tipPercentage.toInt()}%',
-                semanticFormatterCallback: (value) => '${value.toInt()} percent tip',
+                semanticFormatterCallback:
+                    (value) => '${value.toInt()} percent tip',
                 onChanged: (value) {
                   // Round to nearest integer to ensure precise selection
                   onChanged(value.roundToDouble());
@@ -339,45 +343,48 @@ class _QuickTipPercentageButtons extends StatelessWidget {
               button: true,
               selected: isSelected,
               child: GestureDetector(
-              onTap: () => onPercentageSelected(percentage.toDouble()),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: isSelected ? colorScheme.primary : unselectedBgColor,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isSelected ? colorScheme.primary : borderColor,
-                    width: 1.5,
+                onTap: () => onPercentageSelected(percentage.toDouble()),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
                   ),
-                  // Add subtle elevation shadow only to selected button
-                  boxShadow:
-                      isSelected
-                          ? [
-                            BoxShadow(
-                              color: colorScheme.primary.withValues(
-                                alpha:
-                                    brightness == Brightness.dark ? 0.15 : 0.2,
+                  decoration: BoxDecoration(
+                    color: isSelected ? colorScheme.primary : unselectedBgColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isSelected ? colorScheme.primary : borderColor,
+                      width: 1.5,
+                    ),
+                    // Add subtle elevation shadow only to selected button
+                    boxShadow:
+                        isSelected
+                            ? [
+                              BoxShadow(
+                                color: colorScheme.primary.withValues(
+                                  alpha:
+                                      brightness == Brightness.dark
+                                          ? 0.15
+                                          : 0.2,
+                                ),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
                               ),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ]
-                          : null,
-                ),
-                child: Text(
-                  '$percentage%',
-                  style: TextStyle(
-                    color: isSelected ? selectedTextColor : unselectedTextColor,
-                    fontWeight:
-                        isSelected ? FontWeight.bold : FontWeight.normal,
+                            ]
+                            : null,
+                  ),
+                  child: Text(
+                    '$percentage%',
+                    style: TextStyle(
+                      color:
+                          isSelected ? selectedTextColor : unselectedTextColor,
+                      fontWeight:
+                          isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
                   ),
                 ),
               ),
-            ),
             );
           }).toList(),
     );

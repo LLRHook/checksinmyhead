@@ -92,7 +92,6 @@ export default async function TabPage({
   const images = await getTabImages(id, token);
   const settlements = tab.finalized ? await getSettlements(id, token) : [];
   const members = await getTabMembers(id, token);
-  const primaryBill = tab.bills[0] ?? null;
   const paymentMethods = Array.from(
     new Map(
       tab.bills
@@ -102,8 +101,6 @@ export default async function TabPage({
         ),
     ).values(),
   );
-  const isLazyMode = tab.description.toLowerCase().includes("lazy mode");
-
   const venmoId =
     tab.bills
       .flatMap((b) => b.payment_methods || [])
@@ -122,7 +119,7 @@ export default async function TabPage({
 
       {members.length > 0 && <MemberList members={members} />}
 
-      {!isLazyMode && <JoinTabButton tabId={id} token={token} />}
+      {!tab.finalized && <JoinTabButton tabId={id} token={token} />}
 
       {paymentMethods.length > 0 && (
         <PaymentDetails paymentMethods={paymentMethods} />
@@ -136,34 +133,34 @@ export default async function TabPage({
 
   return (
     <DesktopLayout sidebar={sidebar}>
-      {isLazyMode && primaryBill ? (
-        <LazyBillBoard tabId={id} token={token} bill={primaryBill} />
+      {(tab.net_balances ?? []).length > 0 && (
+        <NetBalances
+          balances={tab.net_balances ?? []}
+          finalized={tab.finalized}
+          venmoId={venmoId}
+          currentMemberName={null}
+        />
+      )}
+
+      {tab.finalized && settlements.length > 0 ? (
+        <SettlementCard
+          settlements={settlements}
+          venmoId={venmoId}
+          tabId={id}
+          token={token}
+        />
       ) : (
-        <>
-          {(tab.net_balances ?? []).length > 0 && (
-            <NetBalances
-              balances={tab.net_balances ?? []}
-              finalized={tab.finalized}
-              venmoId={venmoId}
-              currentMemberName={null}
-            />
-          )}
+        personTotals.length > 0 && (
+          <TabPersonTotals personTotals={personTotals} venmoId={venmoId} />
+        )
+      )}
 
-          {tab.finalized && settlements.length > 0 ? (
-            <SettlementCard
-              settlements={settlements}
-              venmoId={venmoId}
-              tabId={id}
-              token={token}
-            />
-          ) : (
-            personTotals.length > 0 && (
-              <TabPersonTotals personTotals={personTotals} venmoId={venmoId} />
-            )
-          )}
-
-          <TabBillList bills={tab.bills} />
-        </>
+      {tab.finalized ? (
+        <TabBillList bills={tab.bills} />
+      ) : (
+        tab.bills.map((bill) => (
+          <LazyBillBoard key={bill.id} tabId={id} token={token} bill={bill} />
+        ))
       )}
     </DesktopLayout>
   );

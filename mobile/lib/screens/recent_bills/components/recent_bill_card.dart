@@ -263,7 +263,9 @@ class _RecentBillCardState extends State<RecentBillCard> {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    widget.bill.participantSummary, // Names or count of participants
+                                    widget
+                                        .bill
+                                        .participantSummary, // Names or count of participants
                                     style: textTheme.bodyMedium?.copyWith(
                                       color: participantsTextColor,
                                     ),
@@ -320,7 +322,10 @@ class _RecentBillCardState extends State<RecentBillCard> {
                               FittedBox(
                                 fit: BoxFit.scaleDown,
                                 child: Text(
-                                  CurrencyFormatter.formatCurrency(widget.bill.total),
+                                  CurrencyFormatter.formatCurrency(
+                                    widget.bill.total,
+                                    currencyCode: widget.bill.currencyCode,
+                                  ),
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -366,29 +371,29 @@ class _RecentBillCardState extends State<RecentBillCard> {
                       if (widget.bill.shareUrl == null &&
                           widget.onRetryUpload != null) ...[
                         Expanded(
-                          child: _isRetrying
-                              ? const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 12),
-                                  child: Center(
-                                    child: SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
+                          child:
+                              _isRetrying
+                                  ? const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 12),
+                                    child: Center(
+                                      child: SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
                                       ),
                                     ),
+                                  )
+                                  : _buildActionButton(
+                                    context,
+                                    icon: Icons.link,
+                                    label: 'Get Link',
+                                    onTap: _handleRetryUpload,
+                                    color: adjustedBillColor,
                                   ),
-                                )
-                              : _buildActionButton(
-                                  context,
-                                  icon: Icons.link,
-                                  label: 'Get Link',
-                                  onTap: _handleRetryUpload,
-                                  color: adjustedBillColor,
-                                ),
                         ),
-                        Container(
-                            width: 1, height: 24, color: dividerColor),
+                        Container(width: 1, height: 24, color: dividerColor),
                       ],
 
                       // "Delete" button

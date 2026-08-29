@@ -377,7 +377,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
   }
 
   double _calculateTotal() {
-    return _tabBills.fold(0.0, (sum, bill) => sum + bill.total);
+    return _tabBills.fold(0.0, (sum, bill) => sum + bill.usdTotal);
   }
 
   // Known limitation: Person equality uses both name and color, so the same
@@ -388,7 +388,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
     final Map<String, String> nameMapping = {};
 
     for (final bill in _tabBills) {
-      final billShares = bill.generatePersonShares();
+      final billShares = bill.generateUSDPersonShares();
 
       billShares.forEach((person, amount) {
         final nameLower = person.name.toLowerCase();
@@ -1376,7 +1376,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
           ),
           child: Semantics(
             label:
-                '${bill.billName}, ${CurrencyFormatter.formatCurrency(bill.total)}, ${bill.formattedDate}${!_currentTab.isFinalized ? '. Swipe left to remove' : ''}',
+                '${bill.billName}, ${CurrencyFormatter.formatCurrency(bill.total, currencyCode: bill.currencyCode)}, ${bill.formattedDate}${!_currentTab.isFinalized ? '. Swipe left to remove' : ''}',
             button: true,
             child: Material(
               color: Colors.transparent,
@@ -1459,7 +1459,10 @@ class _TabDetailScreenState extends State<TabDetailScreen>
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          CurrencyFormatter.formatCurrency(bill.total),
+                          CurrencyFormatter.formatCurrency(
+                            bill.total,
+                            currencyCode: bill.currencyCode,
+                          ),
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
@@ -2150,7 +2153,7 @@ class _BillSelectorSheetState extends State<_BillSelectorSheet> {
                       ),
                     ),
                     subtitle: Text(
-                      '${bill.formattedDate} • ${CurrencyFormatter.formatCurrency(bill.total)}',
+                      '${bill.formattedDate} • ${CurrencyFormatter.formatCurrency(bill.total, currencyCode: bill.currencyCode)}',
                       style: TextStyle(
                         fontSize: 13,
                         color: colorScheme.onSurface.withValues(alpha: 0.6),

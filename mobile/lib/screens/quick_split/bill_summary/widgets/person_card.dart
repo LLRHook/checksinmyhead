@@ -23,6 +23,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/models/bill_item.dart';
+import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 
 /// PersonCard - Displays an individual's payment details with expandable item breakdown
 ///
@@ -182,22 +183,23 @@ class _PersonCardState extends State<PersonCard>
         children: [
           // Interactive header with person info and total amount
           Semantics(
-            label: '${widget.person.name}${isBirthdayPerson ? ', birthday person' : ''}, owes ${totalShare.toStringAsFixed(2)} dollars${totalShare > 0 ? ', tap to ${_isExpanded ? 'collapse' : 'expand'} details' : ''}',
+            label:
+                '${widget.person.name}${isBirthdayPerson ? ', birthday person' : ''}, owes ${CurrencyFormatter.formatCurrency(totalShare, currencyCode: widget.data.currencyCode)}${totalShare > 0 ? ', tap to ${_isExpanded ? 'collapse' : 'expand'} details' : ''}',
             button: totalShare > 0,
             child: InkWell(
-            onTap: totalShare > 0 ? _toggleExpanded : null,
-            borderRadius: BorderRadius.circular(16),
-            child: _buildPersonHeader(
-              context,
-              isBirthdayPerson,
-              totalShare,
-              birthdayBgColor,
-              birthdayTextColor,
-              birthdayPillBgColor,
-              birthdayPillTextColor,
-              expandIconColor,
+              onTap: totalShare > 0 ? _toggleExpanded : null,
+              borderRadius: BorderRadius.circular(16),
+              child: _buildPersonHeader(
+                context,
+                isBirthdayPerson,
+                totalShare,
+                birthdayBgColor,
+                birthdayTextColor,
+                birthdayPillBgColor,
+                birthdayPillTextColor,
+                expandIconColor,
+              ),
             ),
-          ),
           ),
 
           // Animated collapsible content
@@ -364,7 +366,10 @@ class _PersonCardState extends State<PersonCard>
           Row(
             children: [
               Text(
-                '\$${totalShare.toStringAsFixed(2)}',
+                CurrencyFormatter.formatCurrency(
+                  totalShare,
+                  currencyCode: widget.data.currencyCode,
+                ),
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -404,7 +409,8 @@ class _PersonCardState extends State<PersonCard>
             : Colors.grey.shade600;
 
     return Semantics(
-      label: '${item.name}${percentage < 100 ? ', ${percentage.toStringAsFixed(0)} percent' : ''}: ${amount.toStringAsFixed(2)} dollars',
+      label:
+          '${item.name}${percentage < 100 ? ', ${percentage.toStringAsFixed(0)} percent' : ''}: ${CurrencyFormatter.formatCurrency(amount, currencyCode: widget.data.currencyCode)}',
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         child: ExcludeSemantics(
@@ -426,7 +432,10 @@ class _PersonCardState extends State<PersonCard>
                   style: TextStyle(fontSize: 12, color: secondaryTextColor),
                 ),
               Text(
-                '\$${amount.toStringAsFixed(2)}',
+                CurrencyFormatter.formatCurrency(
+                  amount,
+                  currencyCode: widget.data.currencyCode,
+                ),
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -458,7 +467,8 @@ class _PersonCardState extends State<PersonCard>
     final textColor = color ?? defaultColor;
 
     return Semantics(
-      label: '$label: ${amount.toStringAsFixed(2)} dollars',
+      label:
+          '$label: ${CurrencyFormatter.formatCurrency(amount, currencyCode: widget.data.currencyCode)}',
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 2),
         child: ExcludeSemantics(
@@ -474,7 +484,10 @@ class _PersonCardState extends State<PersonCard>
                 ),
               ),
               Text(
-                '\$${amount.toStringAsFixed(2)}',
+                CurrencyFormatter.formatCurrency(
+                  amount,
+                  currencyCode: widget.data.currencyCode,
+                ),
                 style: TextStyle(
                   fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
                   fontSize: isTotal ? 15 : 14,

@@ -2,9 +2,21 @@ package bill
 
 import (
 	"backend/pkg/models"
+	"context"
 	"errors"
 	"testing"
 )
+
+type fakeExchangeRateProvider struct {
+	quote models.ExchangeRateQuote
+	err   error
+	calls int
+}
+
+func (f *fakeExchangeRateProvider) LatestUSD(_ context.Context, _ string) (models.ExchangeRateQuote, error) {
+	f.calls++
+	return f.quote, f.err
+}
 
 // ── Mock BillRepository ─────────────────────────────────────────
 
@@ -82,5 +94,74 @@ func TestUpdatePersonSharePaid_Error(t *testing.T) {
 	err := svc.UpdatePersonSharePaid(5, true)
 	if err == nil {
 		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestCreateBill_FreezesLatestDailyConversion(t *testing.T) {
+	repo := newMockRepo()
+	provider := &fakeExchangeRateProvider{quote: models.ExchangeRateQuote{
+		Base: "EUR", Quote: "USD", Rate: 1.1652, Date: "2026-08-29", Source: "frankfurter-v2-blended",
+	}}
+	svc := NewBillService(repo, provider)
+	b := &models.Bill{CurrencyCode: "eur", Total: 85.82}
+
+	err := svc.CreateBill(context.Background(), b)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if b.CurrencyCode != "EUR" || b.USDExchangeRate != 1.1652 || b.ExchangeRateDate != "2026-08-29" || b.ExchangeRateSource != "frankfurter-v2-blended" {
+		t.Fatalf("unexpected frozen conversion: %+v", b)
+	}
+	if b.USDTotal != 100.00 {
+		t.Fatalf("expected converted USD total 100.00, got %.2f", b.USDTotal)
+	}
+	if b.ID == 0 {
+		t.Fatal("expected bill to be persisted")
+	}
+}
+
+func TestCreateBill_ProviderFailureDoesNotPersistForeignCurrencyBill(t *testing.T) {
+	repo := newMockRepo()
+	provider := &fakeExchangeRateProvider{err: errors.New("provider unavailable")}
+	svc := NewBillService(repo, provider)
+	b := &models.Bill{CurrencyCode: "CAD", Total: 25}
+
+	if err := svc.CreateBill(context.Background(), b); err == nil {
+		t.Fatal("expected explicit exchange-rate error")
+	}
+	if len(repo.bills) != 0 {
+		t.Fatal("foreign-currency bill must not be persisted without a verified rate")
+	}
+}
+
+func TestCreateBill_RejectsUnsupportedCurrencyWithoutCallingProvider(t *testing.T) {
+	repo := newMockRepo()
+	provider := &fakeExchangeRateProvider{quote: models.ExchangeRateQuote{
+		Base: "ZZZ", Quote: "USD", Rate: 2, Date: "2026-08-29", Source: "unexpected",
+	}}
+	svc := NewBillService(repo, provider)
+	b := &models.Bill{CurrencyCode: "ZZZ", Total: 25}
+
+	if err := svc.CreateBill(context.Background(), b); !errors.Is(err, ErrInvalidCurrency) {
+		t.Fatalf("expected unsupported currency error, got %v", err)
+	}
+	if len(repo.bills) != 0 {
+		t.Fatal("unsupported currency bill must not be persisted")
+	}
+	if provider.calls != 0 {
+		t.Fatalf("unsupported currency reached provider %d time(s)", provider.calls)
+	}
+}
+
+func TestCreateBill_LegacyUSDUsesStableIdentityConversion(t *testing.T) {
+	repo := newMockRepo()
+	svc := NewBillService(repo, nil)
+	b := &models.Bill{Total: 42.37}
+
+	if err := svc.CreateBill(context.Background(), b); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if b.CurrencyCode != "USD" || b.USDExchangeRate != 1 || b.USDTotal != 42.37 {
+		t.Fatalf("unexpected USD defaults: %+v", b)
 	}
 }
