@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { FaCircleCheck, FaReceipt } from "react-icons/fa6";
+import { formatUSDMoney } from "@/lib/currency";
 
 interface TabHeaderProps {
   name: string;
@@ -41,7 +42,7 @@ export default function TabHeader({
       <div className="inline-flex items-center gap-2 bg-[var(--secondary)] dark:bg-white/10 px-5 py-2 rounded-full">
         <span className="text-sm text-[var(--text-secondary)]">Total</span>
         <span className="text-xl font-bold font-mono text-[var(--accent)] dark:text-white">
-          ${total.toFixed(2)}
+          {formatUSDMoney(total)}
         </span>
       </div>
       <div className="mt-2 flex items-center justify-center lg:justify-start gap-2">

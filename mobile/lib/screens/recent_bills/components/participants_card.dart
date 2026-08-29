@@ -336,7 +336,10 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              CurrencyFormatter.formatCurrency(totalAmount),
+                              CurrencyFormatter.formatCurrency(
+                                totalAmount,
+                                currencyCode: widget.bill.currencyCode,
+                              ),
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
@@ -417,6 +420,7 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                                 Text(
                                   CurrencyFormatter.formatCurrency(
                                     taxAndTipAmount,
+                                    currencyCode: widget.bill.currencyCode,
                                   ),
                                   style: TextStyle(
                                     fontWeight: FontWeight.w600,
@@ -496,7 +500,10 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
             children: [
               // Formatted currency amount
               Text(
-                CurrencyFormatter.formatCurrency(amount),
+                CurrencyFormatter.formatCurrency(
+                  amount,
+                  currencyCode: widget.bill.currencyCode,
+                ),
                 style: TextStyle(
                   fontWeight: FontWeight.w500,
                   fontSize: 14,

@@ -26,5 +26,19 @@ void main() {
     test('formats large amount', () {
       expect(CurrencyFormatter.formatCurrency(1234.56), equals('\$1234.56'));
     });
+
+    test('keeps legacy USD output when currency is explicit', () {
+      expect(
+        CurrencyFormatter.formatCurrency(42.5, currencyCode: 'USD'),
+        equals('\$42.50'),
+      );
+    });
+
+    test('labels non-USD amounts with their normalized currency code', () {
+      expect(
+        CurrencyFormatter.formatCurrency(42.5, currencyCode: 'eur'),
+        equals('EUR 42.50'),
+      );
+    });
   });
 }

@@ -39,7 +39,11 @@ class CurrencyFormatter {
   ///
   /// Formats the given value with a dollar sign prefix and exactly
   /// two decimal places (e.g., $12.34, $0.50, $100.00)
-  static String formatCurrency(double value) {
-    return '\$${value.toStringAsFixed(2)}';
+  static String formatCurrency(double value, {String currencyCode = 'USD'}) {
+    final code = currencyCode.trim().toUpperCase();
+    if (code.isEmpty || code == 'USD') {
+      return '\$${value.toStringAsFixed(2)}';
+    }
+    return '$code ${value.toStringAsFixed(2)}';
   }
 }

@@ -20,6 +20,7 @@ import 'package:checks_frontend/screens/quick_split/bill_summary/models/bill_sum
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:checks_frontend/models/bill_item.dart';
+import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 
 /// BillTotalCard - Displays bill total with expandable sections for items and breakdown
 ///
@@ -187,9 +188,13 @@ class _BillTotalCardState extends State<BillTotalCard>
 
             // Total amount
             Semantics(
-              label: 'Bill total: ${widget.data.total.toStringAsFixed(2)} dollars',
+              label:
+                  'Bill total: ${CurrencyFormatter.formatCurrency(widget.data.total, currencyCode: widget.data.currencyCode)}',
               child: Text(
-                '\$${widget.data.total.toStringAsFixed(2)}',
+                CurrencyFormatter.formatCurrency(
+                  widget.data.total,
+                  currencyCode: widget.data.currencyCode,
+                ),
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
@@ -206,41 +211,42 @@ class _BillTotalCardState extends State<BillTotalCard>
             if (widget.data.items.isNotEmpty) ...[
               // Clickable Items header
               Semantics(
-                label: 'Items section, ${_isItemsExpanded ? 'expanded' : 'collapsed'}, tap to ${_isItemsExpanded ? 'collapse' : 'expand'}',
+                label:
+                    'Items section, ${_isItemsExpanded ? 'expanded' : 'collapsed'}, tap to ${_isItemsExpanded ? 'collapse' : 'expand'}',
                 button: true,
                 child: InkWell(
-                onTap: _toggleItemsExpanded,
-                borderRadius: BorderRadius.circular(8),
-                splashColor: Colors.transparent,
-                highlightColor: Colors.transparent,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Items',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: colorScheme.primary,
+                  onTap: _toggleItemsExpanded,
+                  borderRadius: BorderRadius.circular(8),
+                  splashColor: Colors.transparent,
+                  highlightColor: Colors.transparent,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Items',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: colorScheme.primary,
+                            ),
                           ),
                         ),
-                      ),
-                      ExcludeSemantics(
-                        child: RotationTransition(
-                          turns: _itemsIconTurns,
-                          child: Icon(
-                            Icons.expand_more,
-                            color: expandIconColor,
-                            size: 20,
+                        ExcludeSemantics(
+                          child: RotationTransition(
+                            turns: _itemsIconTurns,
+                            child: Icon(
+                              Icons.expand_more,
+                              color: expandIconColor,
+                              size: 20,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
               ),
 
               const SizedBox(height: 8),
@@ -273,41 +279,42 @@ class _BillTotalCardState extends State<BillTotalCard>
 
             // Cost Breakdown section
             Semantics(
-              label: 'Breakdown section, ${_isCostBreakdownExpanded ? 'expanded' : 'collapsed'}, tap to ${_isCostBreakdownExpanded ? 'collapse' : 'expand'}',
+              label:
+                  'Breakdown section, ${_isCostBreakdownExpanded ? 'expanded' : 'collapsed'}, tap to ${_isCostBreakdownExpanded ? 'collapse' : 'expand'}',
               button: true,
               child: InkWell(
-              onTap: _toggleCostBreakdownExpanded,
-              borderRadius: BorderRadius.circular(8),
-              splashColor: Colors.transparent,
-              highlightColor: Colors.transparent,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Breakdown',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.primary,
+                onTap: _toggleCostBreakdownExpanded,
+                borderRadius: BorderRadius.circular(8),
+                splashColor: Colors.transparent,
+                highlightColor: Colors.transparent,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Breakdown',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.primary,
+                          ),
                         ),
                       ),
-                    ),
-                    ExcludeSemantics(
-                      child: RotationTransition(
-                        turns: _costBreakdownIconTurns,
-                        child: Icon(
-                          Icons.expand_more,
-                          color: expandIconColor,
-                          size: 20,
+                      ExcludeSemantics(
+                        child: RotationTransition(
+                          turns: _costBreakdownIconTurns,
+                          child: Icon(
+                            Icons.expand_more,
+                            color: expandIconColor,
+                            size: 20,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
             ),
 
             const SizedBox(height: 8),
@@ -362,7 +369,8 @@ class _BillTotalCardState extends State<BillTotalCard>
     final totalItemCost = item.price;
 
     return Semantics(
-      label: '${item.name}: ${totalItemCost.toStringAsFixed(2)} dollars',
+      label:
+          '${item.name}: ${CurrencyFormatter.formatCurrency(totalItemCost, currencyCode: widget.data.currencyCode)}',
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8),
         decoration:
@@ -396,7 +404,10 @@ class _BillTotalCardState extends State<BillTotalCard>
                     ),
                   ),
                   Text(
-                    '\$${totalItemCost.toStringAsFixed(2)}',
+                    CurrencyFormatter.formatCurrency(
+                      totalItemCost,
+                      currencyCode: widget.data.currencyCode,
+                    ),
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -431,12 +442,14 @@ class _BillTotalCardState extends State<BillTotalCard>
 
     final effectiveTextColor = textColor ?? defaultTextColor;
 
-    final displayLabel = showPercentage && label == 'Tip' && !widget.data.isCustomTipAmount
-        ? 'Tip (${widget.data.tipPercentage.toStringAsFixed(0)}%)'
-        : label;
+    final displayLabel =
+        showPercentage && label == 'Tip' && !widget.data.isCustomTipAmount
+            ? 'Tip (${widget.data.tipPercentage.toStringAsFixed(0)}%)'
+            : label;
 
     return Semantics(
-      label: '$displayLabel: ${amount.toStringAsFixed(2)} dollars',
+      label:
+          '$displayLabel: ${CurrencyFormatter.formatCurrency(amount, currencyCode: widget.data.currencyCode)}',
       child: ExcludeSemantics(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -450,7 +463,10 @@ class _BillTotalCardState extends State<BillTotalCard>
               ),
             ),
             Text(
-              '\$${amount.toStringAsFixed(2)}',
+              CurrencyFormatter.formatCurrency(
+                amount,
+                currencyCode: widget.data.currencyCode,
+              ),
               style: TextStyle(
                 fontSize: fontSize,
                 fontWeight: isBold ? FontWeight.w600 : FontWeight.w500,

@@ -16,6 +16,7 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import 'package:checks_frontend/screens/quick_split/bill_entry/models/bill_data.dart';
+import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -79,9 +80,19 @@ class BillSummarySection extends StatelessWidget {
             const SizedBox(height: 16),
 
             // Bill breakdown rows
-            _buildBreakdownRow(context, 'Subtotal', billData.subtotal),
+            _buildBreakdownRow(
+              context,
+              'Subtotal',
+              billData.subtotal,
+              currencyCode: billData.currencyCode,
+            ),
             const SizedBox(height: 8),
-            _buildBreakdownRow(context, 'Tax', billData.tax),
+            _buildBreakdownRow(
+              context,
+              'Tax',
+              billData.tax,
+              currencyCode: billData.currencyCode,
+            ),
 
             // Only show tip row if amount is greater than zero
             if (billData.tipAmount > 0) ...[
@@ -90,6 +101,7 @@ class BillSummarySection extends StatelessWidget {
                 context,
                 _getTipLabel(billData),
                 billData.tipAmount,
+                currencyCode: billData.currencyCode,
                 showPercentage: !billData.useCustomTipAmount,
                 tipPercentage: billData.tipPercentage,
               ),
@@ -106,6 +118,7 @@ class BillSummarySection extends StatelessWidget {
               context,
               'Total',
               billData.total,
+              currencyCode: billData.currencyCode,
               isBold: true,
               fontSize: 16,
               textColor: colorScheme.primary,
@@ -124,6 +137,7 @@ class BillSummarySection extends StatelessWidget {
     BuildContext context,
     String label,
     double value, {
+    required String currencyCode,
     bool isBold = false,
     double? fontSize,
     Color? textColor,
@@ -134,7 +148,8 @@ class BillSummarySection extends StatelessWidget {
     final defaultTextColor = colorScheme.onSurface;
 
     return Semantics(
-      label: '$label: ${value.toStringAsFixed(2)} dollars${showPercentage && tipPercentage != null ? ', ${tipPercentage.toInt()} percent' : ''}',
+      label:
+          '$label: ${CurrencyFormatter.formatCurrency(value, currencyCode: currencyCode)}${showPercentage && tipPercentage != null ? ', ${tipPercentage.toInt()} percent' : ''}',
       child: Row(
         children: [
           // Label text (left-aligned)
@@ -155,7 +170,7 @@ class BillSummarySection extends StatelessWidget {
           // Amount value (right-aligned) with optional percentage
           ExcludeSemantics(
             child: Text(
-              '\$${value.toStringAsFixed(2)}${showPercentage && tipPercentage != null ? ' (${tipPercentage.toInt()}%)' : ''}',
+              '${CurrencyFormatter.formatCurrency(value, currencyCode: currencyCode)}${showPercentage && tipPercentage != null ? ' (${tipPercentage.toInt()}%)' : ''}',
               style: TextStyle(
                 fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
                 fontSize: fontSize,

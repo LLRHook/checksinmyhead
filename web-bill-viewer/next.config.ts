@@ -1,5 +1,15 @@
 import type { NextConfig } from "next";
 
+const apiConnectSources = new Set(["https://billington-api.onrender.com"]);
+try {
+  const configuredApiUrl = new URL(process.env.NEXT_PUBLIC_API_URL ?? "");
+  if (["http:", "https:"].includes(configuredApiUrl.protocol)) {
+    apiConnectSources.add(configuredApiUrl.origin);
+  }
+} catch {
+  // The API client uses its documented default when no valid URL is set.
+}
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
@@ -30,7 +40,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https:",
               "font-src 'self'",
-              "connect-src 'self' https://billington-api.onrender.com",
+              `connect-src 'self' ${[...apiConnectSources].join(" ")}`,
               "frame-ancestors 'none'",
             ].join("; "),
           },

@@ -35,6 +35,10 @@ class BillSummaryData {
   final double tipPercentage;
   final bool isCustomTipAmount;
   final String billName;
+  final String currencyCode;
+  final double usdExchangeRate;
+  final String exchangeRateDate;
+  final String exchangeRateSource;
 
   // Payment method fields
   final List<Map<String, String>> paymentMethods;
@@ -52,7 +56,16 @@ class BillSummaryData {
     this.isCustomTipAmount = false,
     this.billName = '',
     this.paymentMethods = const [],
+    this.currencyCode = 'USD',
+    this.usdExchangeRate = 1,
+    this.exchangeRateDate = '',
+    this.exchangeRateSource = 'native-usd',
   });
+
+  double get usdTotal => (total * usdExchangeRate * 100).roundToDouble() / 100;
+
+  double toUSD(double amount) =>
+      (amount * usdExchangeRate * 100).roundToDouble() / 100;
 
   /// Creates a copy with updated fields
   BillSummaryData copyWith({
@@ -68,6 +81,10 @@ class BillSummaryData {
     bool? isCustomTipAmount,
     String? billName,
     List<Map<String, String>>? paymentMethods,
+    String? currencyCode,
+    double? usdExchangeRate,
+    String? exchangeRateDate,
+    String? exchangeRateSource,
   }) {
     return BillSummaryData(
       participants: participants ?? this.participants,
@@ -82,6 +99,10 @@ class BillSummaryData {
       isCustomTipAmount: isCustomTipAmount ?? this.isCustomTipAmount,
       billName: billName ?? this.billName,
       paymentMethods: paymentMethods ?? this.paymentMethods,
+      currencyCode: currencyCode ?? this.currencyCode,
+      usdExchangeRate: usdExchangeRate ?? this.usdExchangeRate,
+      exchangeRateDate: exchangeRateDate ?? this.exchangeRateDate,
+      exchangeRateSource: exchangeRateSource ?? this.exchangeRateSource,
     );
   }
 
@@ -101,6 +122,10 @@ class BillSummaryData {
       total: bill.total,
       tipPercentage: bill.tipPercentage,
       billName: bill.billName,
+      currencyCode: bill.currencyCode,
+      usdExchangeRate: bill.usdExchangeRate,
+      exchangeRateDate: bill.exchangeRateDate ?? '',
+      exchangeRateSource: bill.exchangeRateSource,
     );
   }
 

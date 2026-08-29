@@ -92,6 +92,7 @@ class RecentBillShareUtils {
       showAllItems: shareOptions.showAllItems,
       showPersonItems: shareOptions.showPersonItems,
       showBreakdown: !shareOptions.showBreakdown,
+      currencyCode: bill.currencyCode,
     );
 
     // Trigger the device's share functionality with the formatted text

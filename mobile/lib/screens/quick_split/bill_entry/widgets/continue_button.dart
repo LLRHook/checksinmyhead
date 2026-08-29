@@ -83,7 +83,10 @@ class ContinueButton extends StatelessWidget {
         ],
       ),
       child: ElevatedButton(
-        onPressed: onPressed,
+        onPressed:
+            billData.hasUsableExchangeRate && !billData.isLoadingExchangeRate
+                ? onPressed
+                : null,
         style: ElevatedButton.styleFrom(
           backgroundColor: buttonColor,
           foregroundColor: textColor,
@@ -97,7 +100,19 @@ class ContinueButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Success state - items match subtotal
-            if (isItemsMatchingSubtotal) ...[
+            if (billData.isLoadingExchangeRate) ...[
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              const SizedBox(width: 8),
+              const Text('Loading daily rate'),
+            ] else if (!billData.hasUsableExchangeRate) ...[
+              const Icon(Icons.currency_exchange, size: 20),
+              const SizedBox(width: 8),
+              const Text('Daily rate required'),
+            ] else if (isItemsMatchingSubtotal) ...[
               Icon(Icons.check_circle, size: 20, color: textColor),
               const SizedBox(width: 8),
               Text(

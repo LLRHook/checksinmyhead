@@ -12,6 +12,108 @@ import {
 // ── computeTabPersonTotals ──────────────────────────────────────
 
 describe("computeTabPersonTotals", () => {
+  it("aggregates mixed-currency shares in frozen USD values", () => {
+    const tab: Tab = {
+      id: 1,
+      name: "International trip",
+      description: "",
+      total_amount: 121.3,
+      finalized: false,
+      finalized_at: null,
+      created_at: "2026-08-29",
+      net_balances: [],
+      bills: [
+        {
+          id: 1,
+          name: "Paris dinner",
+          subtotal: 100,
+          tax: 0,
+          tip_amount: 0,
+          tip_percentage: 0,
+          total: 100,
+          currency_code: "EUR",
+          usd_exchange_rate: 1.085,
+          usd_total: 108.5,
+          date: "2026-08-29",
+          payment_methods: [],
+          items: [],
+          person_shares: [
+            {
+              id: 1,
+              person_name: "Alice",
+              items: [],
+              subtotal: 50,
+              tax_share: 0,
+              tip_share: 0,
+              total: 50,
+              paid: false,
+            },
+          ],
+        },
+        {
+          id: 2,
+          name: "Tokyo train",
+          subtotal: 1000,
+          tax: 0,
+          tip_amount: 0,
+          tip_percentage: 0,
+          total: 1000,
+          currency_code: "JPY",
+          usd_exchange_rate: 0.0068,
+          usd_total: 6.8,
+          date: "2026-08-29",
+          payment_methods: [],
+          items: [],
+          person_shares: [
+            {
+              id: 2,
+              person_name: "Alice",
+              items: [],
+              subtotal: 1000,
+              tax_share: 0,
+              tip_share: 0,
+              total: 1000,
+              paid: false,
+            },
+          ],
+        },
+        {
+          id: 3,
+          name: "Legacy cab",
+          subtotal: 10,
+          tax: 0,
+          tip_amount: 0,
+          tip_percentage: 0,
+          total: 10,
+          date: "2026-08-29",
+          payment_methods: [],
+          items: [],
+          person_shares: [
+            {
+              id: 3,
+              person_name: "Alice",
+              items: [],
+              subtotal: 10,
+              tax_share: 0,
+              tip_share: 0,
+              total: 10,
+              paid: false,
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(computeTabPersonTotals(tab)).toEqual([
+      {
+        person_name: "Alice",
+        total: 71.05,
+        bill_count: 3,
+        all_paid: false,
+      },
+    ]);
+  });
+
   it("aggregates across multiple bills", () => {
     const tab: Tab = {
       id: 1,

@@ -1,3 +1,5 @@
+import { toUSD } from "./currency";
+
 export interface ItemDetail {
   name: string;
   amount: number;
@@ -41,6 +43,14 @@ export interface Bill {
   tip_amount: number;
   tip_percentage: number;
   total: number;
+  /** Original receipt currency. Missing on pre-1.4.1 records, which are USD. */
+  currency_code?: string;
+  /** Frozen number of USD per one unit of the original currency. */
+  usd_exchange_rate?: number;
+  exchange_rate_date?: string;
+  exchange_rate_source?: string;
+  /** Frozen USD value of the receipt total. */
+  usd_total?: number;
   date: string;
   payment_methods: PaymentMethod[];
   items: BillItem[];
@@ -334,7 +344,7 @@ export function computeTabPersonTotals(tab: Tab): TabPersonTotal[] {
         // Prefer a capitalized variant over all-lowercase
         displayNames[key] = share.person_name;
       }
-      totals[key].total += share.total;
+      totals[key].total += toUSD(share.total, bill);
       totals[key].bill_count += 1;
       if (!share.paid) {
         totals[key].all_paid = false;

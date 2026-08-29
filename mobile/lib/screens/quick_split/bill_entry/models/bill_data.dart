@@ -16,6 +16,7 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import 'package:checks_frontend/services/receipt_parser.dart';
+import 'package:checks_frontend/models/exchange_rate_quote.dart';
 import 'package:flutter/material.dart';
 import 'package:checks_frontend/models/bill_item.dart';
 import 'package:checks_frontend/models/person.dart';
@@ -32,6 +33,64 @@ import 'package:checks_frontend/models/person.dart';
 ///
 /// Notifies listeners when bill data changes to update UI components.
 class BillData extends ChangeNotifier {
+  static const supportedCurrencies = ['USD', 'EUR', 'GBP', 'CAD', 'JPY', 'MXN'];
+
+  String _currencyCode = 'USD';
+  ExchangeRateQuote _exchangeRateQuote = const ExchangeRateQuote.usd();
+  bool _isLoadingExchangeRate = false;
+  String? _exchangeRateError;
+
+  String get currencyCode => _currencyCode;
+  ExchangeRateQuote get exchangeRateQuote => _exchangeRateQuote;
+  bool get isLoadingExchangeRate => _isLoadingExchangeRate;
+  String? get exchangeRateError => _exchangeRateError;
+  bool get hasUsableExchangeRate =>
+      _currencyCode == 'USD' ||
+      (_exchangeRateQuote.currencyCode == _currencyCode &&
+          _exchangeRateQuote.isValid);
+  double get usdTotal => _exchangeRateQuote.convertToUSD(total);
+
+  void selectCurrency(String currencyCode) {
+    final normalized = currencyCode.toUpperCase();
+    if (!supportedCurrencies.contains(normalized)) return;
+    _currencyCode = normalized;
+    _exchangeRateQuote =
+        normalized == 'USD'
+            ? const ExchangeRateQuote.usd()
+            : ExchangeRateQuote(
+              currencyCode: normalized,
+              usdRate: 0,
+              rateDate: '',
+              source: '',
+            );
+    _isLoadingExchangeRate = false;
+    _exchangeRateError = null;
+    notifyListeners();
+  }
+
+  void setExchangeRateLoading() {
+    _isLoadingExchangeRate = true;
+    _exchangeRateError = null;
+    notifyListeners();
+  }
+
+  void setExchangeRateQuote(ExchangeRateQuote quote) {
+    if (quote.currencyCode != _currencyCode || !quote.isValid) {
+      setExchangeRateError('The daily rate response was invalid.');
+      return;
+    }
+    _exchangeRateQuote = quote;
+    _isLoadingExchangeRate = false;
+    _exchangeRateError = null;
+    notifyListeners();
+  }
+
+  void setExchangeRateError(String message) {
+    _isLoadingExchangeRate = false;
+    _exchangeRateError = message;
+    notifyListeners();
+  }
+
   // Text input controllers
   final TextEditingController subtotalController = TextEditingController();
   final TextEditingController taxController = TextEditingController();
@@ -208,10 +267,12 @@ class BillData extends ChangeNotifier {
     // Add scanned items, expanding quantity > 1 into individual line items
     for (final item in receipt.items) {
       if (item.quantity > 1) {
-        final perUnit =
-            double.parse((item.price / item.quantity).toStringAsFixed(2));
+        final perUnit = double.parse(
+          (item.price / item.quantity).toStringAsFixed(2),
+        );
         final lastUnit = double.parse(
-            (item.price - perUnit * (item.quantity - 1)).toStringAsFixed(2));
+          (item.price - perUnit * (item.quantity - 1)).toStringAsFixed(2),
+        );
         for (int i = 0; i < item.quantity - 1; i++) {
           addItem(item.name, perUnit);
         }

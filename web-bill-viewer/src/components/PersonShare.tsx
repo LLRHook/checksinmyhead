@@ -5,13 +5,21 @@ import { FaCheck, FaChevronDown } from "react-icons/fa6";
 import { SiVenmo } from "react-icons/si";
 import { useCollapsible } from "@/hooks/useCollapsible";
 import {
+  type Bill,
   type PersonShare as PersonShareType,
   updatePersonSharePaid,
 } from "@/lib/api";
+import {
+  billCurrencyCode,
+  formatOriginalMoney,
+  formatUSDMoney,
+  toUSD,
+} from "@/lib/currency";
 import { buildVenmoPayUrl } from "@/lib/venmo";
 
 interface PersonShareProps {
   personShare: PersonShareType;
+  bill: Bill;
   hasVenmo?: string | null;
   billId: number;
   token: string;
@@ -19,6 +27,7 @@ interface PersonShareProps {
 
 export default function PersonShare({
   personShare,
+  bill,
   hasVenmo,
   billId,
   token,
@@ -26,6 +35,8 @@ export default function PersonShare({
   const { isOpen, toggle, contentRef, height } = useCollapsible();
   const [paid, setPaid] = useState(personShare.paid);
   const [toggling, setToggling] = useState(false);
+  const isForeignCurrency = billCurrencyCode(bill) !== "USD";
+  const usdTotal = toUSD(personShare.total, bill);
 
   const togglePaid = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -83,8 +94,13 @@ export default function PersonShare({
                   : "text-[var(--accent)] dark:text-white"
               }`}
             >
-              ${personShare.total.toFixed(2)}
+              {formatOriginalMoney(personShare.total, bill)}
             </div>
+            {isForeignCurrency && (
+              <div className="text-xs font-medium text-[var(--primary)]">
+                {formatUSDMoney(usdTotal)}
+              </div>
+            )}
           </div>
         </div>
         <button
@@ -121,7 +137,7 @@ export default function PersonShare({
                   )}
                 </span>
                 <span className="font-medium font-mono text-[var(--text-secondary)]">
-                  ${item.amount.toFixed(2)}
+                  {formatOriginalMoney(item.amount, bill)}
                 </span>
               </div>
             ))}
@@ -129,20 +145,20 @@ export default function PersonShare({
               <div className="flex justify-between text-sm">
                 <span className="text-[var(--text-secondary)]">Tax</span>
                 <span className="font-mono text-[var(--text-secondary)]">
-                  ${personShare.tax_share.toFixed(2)}
+                  {formatOriginalMoney(personShare.tax_share, bill)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-[var(--text-secondary)]">Tip</span>
                 <span className="font-mono text-[var(--text-secondary)]">
-                  ${personShare.tip_share.toFixed(2)}
+                  {formatOriginalMoney(personShare.tip_share, bill)}
                 </span>
               </div>
               {hasVenmo && (
                 <a
                   href={buildVenmoPayUrl(
                     hasVenmo,
-                    personShare.total.toFixed(2),
+                    usdTotal.toFixed(2),
                     `Split bill - ${personShare.person_name}`,
                   )}
                   target="_blank"
