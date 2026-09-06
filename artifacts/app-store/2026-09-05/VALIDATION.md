@@ -1,6 +1,6 @@
 # Billington capture validation and delivery preparation
 
-Review date: 5 September 2026, America/Lima. The current **V2** five-frame preview uses one recognizable iPhone spanning its first two images. Source capture checks, hardware inspection, decoded seam equality, opaque PNG dimensions, ZIP contents and versioned preview email delivery all pass. The native editable Appshot project is a separate handoff being verified by the Appshot task; it is not established by this reference-renderer validation. V1 is preserved as an earlier delivered version.
+Review date: 5 September 2026, America/Lima. The current **V2** five-frame preview uses one recognizable iPhone spanning its first two images. Source capture checks, hardware inspection, decoded seam equality, opaque PNG dimensions, ZIP contents and versioned preview email delivery all pass. The native editable Appshot handoff is complete: both V2 projects pass strict parsing, visible UI import/edit/save/ZIP checks, and exact shared-seam checks. All ten native/reference PNG comparisons are pixel-identical in the reference headless runtime; full Chrome UI exports have the qualified rasterization difference recorded below. V1 is preserved as an earlier delivered version.
 
 ## Capture provenance
 
@@ -55,12 +55,26 @@ The custom iPhone frame has a silver rim, black bezel, larger display corners, s
 
 V2 was sent as a clearly labelled correction. A subsequent Gmail read confirms SENT and four matching attachment names and byte sizes: V2 overview (455,162), V2 connected iPhone opening (1,140,486), V2 PNG ZIP (3,579,576), and V2 cream alternate contact (448,597). Delivery metadata remains local in ignored `email-delivery-v2.json`. Nothing was submitted to Apple or TestFlight.
 
+## Completed native Appshot handoff
+
+The native implementation is committed and pushed on `feat/appshot-table-linen` at `b3a05ea6933030708bfe95897d96c68ed98d0b5f`. The Appshot owner reports **155 unit tests** and **16 production browser tests** passing, **Svelte check: 0 errors / 0 warnings**, and passing lint and production build.
+
+Both primary and all-cream V2 projects pass the supported manifest converter, portable embedding and strict parser. Visible Open project and Save project round-trips preserve their complete JSON structures, original image bytes and connected relationships. Actual UI edits to text, per-frame theme, shared placement and hardware settings persist; test edits were restored before final export.
+
+All **10/10** native `exportSlide` results are pixel-identical to their authoritative V2 reference PNGs in the reference Playwright headless runtime. Both visible ZIP exports contain five opaque **1320 × 2868** PNGs plus the exact portable project. The four connected UI panels match the exact crops of their respective **2640 × 2868** UI panorama masters, with zero seam differences.
+
+Full Chrome UI output has small rasterization differences from the reference headless configuration: maximum mean absolute channel difference **0.212852 / 255**. A matched-version full Chrome check produced the same small difference. Project data, layout and each UI export's internal seam remain intact. The package contains authoritative reference PNGs; separate UI export evidence is recorded in `verification/ui-export-comparison.json`, with native parity in `verification/pixel-comparison.json`. See `APPSHOT-INTEGRATION.md` for the concrete project and proof paths.
+
 ## Sensitive data and minimal delivery package
 
 An exact-value scan checked **16 local fixture capability values from 2 seed-state files** against **284 currently tracked files plus artifact documents/code/patches, 302 files total**. No exact fixture values were found. This is a targeted fixture-leak check, not a comprehensive secret audit. The seed-state files and SQLite backups remain local and ignored; exclude them from every delivery archive.
 
 For preview delivery, include the final contact sheet and the final ordered iPhone PNG ZIP; include the selected native iPad PNGs separately if needed. For an editable source pack, include only the selected manifests, their referenced raw captures, renderer, font assets/licenses, usage note and final validation. Use explicit filenames rather than archiving the entire artifact directory. Exclude seed-state JSON, databases, flows, diagnostic EUR images, smoke/earlier exports, hierarchy dumps and CLI traces.
 
-The custom JSON manifest is editable renderer input; it is **not a native Appshot project**. Native Appshot handoff is being prepared separately and remains pending verification. The current script relies on this Mac's existing Appshot installation/Vite server and hard-coded dependency path; the source pack therefore is not standalone. The README now documents the connected first pair as primary PNG and ZIP content.
+The source package contains two completed native Appshot projects, `Billington-v2.appshot.json` and `Billington-v2-cream.appshot.json`, with original screenshot bytes embedded and editable text, palette, layout, hardware and shared-phone geometry. They reopen in the updated native Table Linen build without this Mac's raw capture paths. The accompanying custom manifests are reference-renderer inputs; that reference script retains local Appshot dependency paths. The native project files are the portable editing path. Both projects, authoritative previews, selected raw captures, fonts/licenses and verification reports are packaged in `outputs/Billington-v2-editable-source.zip`.
 
 The dedicated preview API and database containers were stopped after the final settlement API check. The temporary browser session was closed, the iPad simulator was shut down, and the iPhone retains the captured app state. Product source remains unchanged by this capture workflow.
+
+## Post-package delivery record
+
+The final source archive was sent after packaging, and a subsequent Gmail read confirms SENT with exactly one attachment named `Billington-v2-editable-source.zip`, measuring **14,663,297 bytes**. Its local SHA-256 is `b4fede2537ea005a5ea75c993dec52781eca93a345e23353fc531814cf209510`. The archive contains 39 entries; CRC, every packaged SHA256SUMS entry and the exclusion check for all 16 fixture capability values pass. The delivery receipt remains local in ignored `email-delivery-native.json`. This paragraph records delivery after the immutable package was created; it does not require rebuilding that delivered archive.
