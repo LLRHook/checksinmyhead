@@ -1,56 +1,47 @@
-# Native editable Appshot campaign integration
+# Native editable Appshot V2 handoff
 
-The existing Appshot project model supports original screenshots, editable copy/colors/frame treatments and one continuous phone shared across adjacent frames. Exact Table Linen styling requires the Appshot owner's native renderer/schema extension; an approximate export is intentionally not being substituted as the final editable campaign.
+The final V2 campaign is a native Appshot project with editable copy, palette, layout, original screenshots, hardware settings, and one shared phone across the first two frames. No campaign PNG is substituted for editable content.
 
-The owner has supplied the pending integration contract: `tableLinenFromManifest(manifest: unknown, images: Record<string, ImageRef>): Composition`, exported from `src/lib/model/linen.ts`. Image keys are the manifest's original image paths. The native model will use style `table-linen`, resolved `Slide.linen` values for colors/layout/phone/band, `Panorama.linenPhone` for shared geometry, and newline-separated typography with paired `*italic accent*` markers. The converter accepts `table-linen` and `linen-quiet`; linked panels are primary exports. Use this converter once available rather than duplicating conversion logic.
+## Deliverables
 
-Appshot checkout: `/Users/victorivanov/Code/personal/appshot/app`.
+- `outputs/Billington-v2-editable-source.zip`: complete versioned source package.
+- `outputs/appshot-editable-source-v2/Billington-v2.appshot.json`: primary teal/cream campaign.
+- `outputs/appshot-editable-source-v2/Billington-v2-cream.appshot.json`: all-cream alternate.
+- `outputs/appshot-editable-source-v2/verification/Appshot-v2-native-editor.png`: actual editor showing all five frames and editable content controls.
+- `outputs/appshot-editable-source-v2/verification/pixel-comparison.json`: ten native/reference pixel comparisons.
+- `outputs/appshot-editable-source-v2/verification/ui-export-comparison.json`: visible UI import, edit, save, export and shared-seam evidence.
 
-Authoritative files inspected:
+Open either project using **Open project** in the updated Appshot build on `feat/appshot-table-linen` (`http://127.0.0.1:5173` in this workspace). Use **Content** for copy and palette; **Composition** for phone placement, iPhone 17 Pro Max hardware, Dynamic Island mode and side buttons. The first two frames share one phone: changes to shared geometry appear from either half. **Save project** embeds the original screenshots. **Export set** produces five device-size PNGs plus the portable project.
 
-- `src/lib/model/types.ts`: `Composition`, `Slide`, `Typography`, `Panorama` and `ImageRef`.
-- `src/lib/model/project.ts`: strict portable import validation and IndexedDB persistence. Unknown fields are dropped by `parseProject`, so adding unsupported custom fields to an old project does not preserve them.
-- `src/lib/render/canvas.ts`: shared native preview/export renderer.
-- `src/lib/stitch/panorama.ts`: canonical two-panel world geometry.
-- `src/lib/render/export.ts`: PNG, ZIP and portable original-image embedding.
-- `src/routes/+page.svelte`: visible Open project, Save project, Content, Composition and connected-device controls.
+The native integration is owned by the Appshot task. This capture task did not edit Appshot or Billington product source. Conversion uses the supported `tableLinenFromManifest(manifest, images)` export from `src/lib/model/linen.ts`, then `portableComposition` and strict `parseProject`. No duplicate converter was added.
 
-## Features already supported
+## Native implementation and owner checks
 
-The project file uses `version: 1`, a device key such as `iphone-6.9`, and 1–10 slides. `ImageRef.blobUrl` can contain original PNG bytes as a data URL, with explicit natural dimensions. Images must be under 12 MB; a project must be under 60 MB. Four unique final iPhone captures are approximately 0.5–0.6 MB each, so portability fits comfortably within these limits.
+Appshot commit `b3a05ea6933030708bfe95897d96c68ed98d0b5f` is pushed on `feat/appshot-table-linen`. The Appshot owner reports 155 unit tests and 16 production browser tests passing, Svelte check with 0 errors / 0 warnings, and passing lint and production build. The artifact-specific parity and visible UI checks below were verified independently by the capture task.
 
-The `panorama` object references adjacent `leftId` and `rightId` slide IDs and a single image. Native rendering constructs one two-panel world and crops it into adjacent exports. It does not independently create two different phones. Copy remains separate and editable on each panel.
+## Final input identity
 
-## Gaps communicated to the Appshot owner
+- Primary manifest `connected-primary-v2.manifest.json`: SHA-256 `9c1bd847f07c6044f36850ff75402e45c314931e7ff7aa2f47d496eeed0a5b3d`.
+- Cream manifest `linen-quiet-v2.manifest.json`: SHA-256 `6300b5d31dd4a1dd6b4de3a03be3ab338f64900ddfc51bba8575b94692845051`.
+- Reference renderer `render-table-linen.mjs`: SHA-256 `c40ec94987b5ab04a7cc5f6593e5a95640ce8a08fc99b3859415bf4af6cd18ee`.
 
-| Table Linen requirement | Existing model/renderer limitation |
-| --- | --- |
-| Dedicated Table Linen direction | Style enum currently has cobalt, paper, midnight, sorbet and terminal. |
-| Restrained flat two-band background | Paper style unconditionally adds a beige lower region, ellipse and flecks; other styles also add their own decorations. |
-| One regular/italic accent phrase | Headline is a single-color string without rich text segments or italic metadata. |
-| Exact type block geometry | Font metrics, headline/subtitle positions and wrapping are style-driven; the schema lacks the custom pixel controls. |
-| Quiet wordmark only | Native renderer always adds counter/footer treatments. |
-| Source-preserving custom phone placement | Native single/panorama phone vertical positions are fixed; the schema lacks top, bottom, shell, radius and max-width fields. |
-| Exact per-slide palette roles | Native schema exposes one text color, background colors and campaign accent, without separate subtitle, band and wordmark roles. |
+Both projects retain the four original 1320 × 2868 iPhone capture byte streams. The first two frames use the same completed-split source and a single shared phone at center X 1152, rotation −4.8°, top 751, bottom 2803 and maximum screen width 944. Native hardware keys preserve `iphone-17-pro-max`, `dynamicIsland: draw`, and enabled side buttons. Appshot's strict parser preserves these fields and each frame's resolved colors, typography and layout.
 
-These gaps were sent to the Appshot owner's task `01a073de-15e4-7f70-b160-9b88b8a43390`. That task owns the native implementation; this capture task must not edit its source concurrently.
+## Verification results
 
-## Final campaign relationship
+1. Both projects pass the supported converter, portable embedding and strict parser.
+2. Both import through the visible file control and save through **Save project** with exactly equal JSON structures, including original embedded image bytes and the connected relationship.
+3. Actual UI edits persist: headline, per-panel theme, shared center, Dynamic Island mode and side buttons on primary; headline and shared center on cream. The second linked frame displays the updated shared center. Every test edit was restored before final export.
+4. Native `exportSlide` results match all ten authoritative V2 reference PNGs pixel for pixel in the reference Playwright headless runtime: zero differing RGBA values.
+5. Both visible **Export set → Download complete set ZIP** operations succeed. Each ZIP contains five opaque 1320 × 2868 PNGs and the exact portable project. Each exported first pair matches the exact two crops of its own UI-runtime 2640 × 2868 panorama master, with no seam discrepancy.
+6. Full Chrome UI exports have small rasterization differences from the headless reference configuration: maximum mean absolute channel difference is 0.212852 on the 0–255 scale. A matched-version full Chrome check gave the same small difference. These exports preserve identical project data and exact internal seams. The source package's preview PNGs are the authoritative reference exports.
 
-Use the upcoming `connected-primary.manifest.json` from the Claude design agent as the art-direction authority. Do not use the superseded `full-campaign.manifest.json` pair placement.
+UI ZIPs, edited test projects and UI-runtime panorama masters remain separately under `outputs/appshot-v2-native-check/`; they are not campaign source inputs. The delivered source package includes the comparison reports and editor screenshot instead of duplicating these diagnostic files.
 
-1. Frame 1: first half of one shared phone using `captures/02-completed-split.png`.
-2. Frame 2: second half of that same shared phone and exact same source bytes.
-3. Frame 3: `captures/03-person-breakdown.png`.
-4. Frame 4: `captures/04-trip-overview.png`.
-5. Frame 5: `captures/07-settlements-tracked.png`.
+## Reuse and limits
 
-The source screenshots are real iPhone simulator captures at 1320 × 2868 with fictional USD data. Do not flatten the campaign PNGs into background images or claim those are editable raw app screenshots.
+The portable projects require the updated Appshot build with native Table Linen support; an older build does not know this style. Typography uses newline-separated lines and paired `*italic accent*` markers. Original image bytes are embedded in each project, so reopening does not depend on this Mac's raw screenshot paths. Font assets and licenses are included for provenance and reuse; the updated Appshot build supplies the same fonts.
 
-The custom renderer being brought into native Appshot is `render-table-linen.mjs` in this artifact directory. It is owned by the Claude design agent while the first-pair primary composition is being finalized.
+Five selected iPad 13-inch captures and their capture manifest are included under `captures/ipad/` as native source captures, not as a styled iPad campaign. All campaign app data is fictional USD data. The documented EUR display bug remains outside this capture task's source scope. The reference renderer is included for reproducibility context and retains its original local Appshot imports; the native `.appshot.json` files are the portable editing path.
 
-## Import/export verification after native extension
-
-Generate the portable project through the new supported schema using exact Claude Fable 5.1 for substantive helper code. Verify it passes the native `parseProject` boundary, imports through the visible Open project control, exposes original screenshots and editable text, and saves back through Save project with the same source bytes and connected relationship. Compare the native exported connected pair and full campaign against the custom renderer's authoritative output. Record any remaining pixel differences candidly instead of representing an approximate native design as the exact primary campaign.
-
-An isolated browser session verified the existing editor controls and was closed cleanly. No Appshot source files were changed during this investigation.
+V1 staging remains preserved under `outputs/appshot-editable-source-v1/` and is superseded by this V2 handoff. No new dependency was added for conversion or verification.
