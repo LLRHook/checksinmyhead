@@ -7,7 +7,7 @@ Verified 5 September 2026 against the primary sources linked below. This note in
 | Item | Current rule and production implication |
 | --- | --- |
 | File format and count | Upload 1–10 screenshots in JPEG/JPG/PNG. Images must have no alpha channel or transparency. Export opaque RGB PNGs, not merely RGBA PNGs whose alpha happens to be opaque. |
-| Main iPhone set | The 6.9-inch category accepts portrait **1320 × 2868**, **1290 × 2796**, or **1260 × 2736**; landscape swaps the axes. Use 1320 × 2868 as the campaign master when captured on the iPhone 16 Pro Max. |
+| Main iPhone set | The 6.9-inch category accepts portrait **1320 × 2868**, **1290 × 2796**, or **1260 × 2736**; landscape swaps the axes. The current iPhone 17 Pro Max simulator produced 1320 × 2868 captures for this campaign. |
 | Smaller iPhone sets | A 6.5-inch set is required only if the 6.9-inch set is absent. Its portrait sizes are 1284 × 2778 or 1242 × 2688. Apple documents scaling fallbacks for smaller categories; three complete size sets are not mandatory. |
 | iPad, if supported | A 13-inch set is required if the app runs on iPad: portrait 2064 × 2752 or 2048 × 2732. A finished iPhone campaign alone does not establish complete iPad submission coverage. |
 

@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "status": "draft",
+  "name": "Billington",
+  "style": "table-linen",
+  "output": "outputs/table-linen-draft",
+  "phone": { "mode": "full", "top": 760, "bottom": 2740, "maxWidth": 1038, "centerX": 660, "shell": 24, "radius": 60 },
+  "slides": [
+    { "id": "completed-split", "label": "Completed split", "image": "captures/REPLACE-completed-split.png", "theme": "teal", "headline": ["One bill.", "*Four fair shares.*"], "subtitle": ["A clear total for each person.", "Every share, down to the detail."] },
+    { "id": "person-detail", "label": "One person's share", "image": "captures/REPLACE-person-detail.png", "theme": "cream", "headline": ["Every share.", "*All the details.*"], "subtitle": ["See the items, tax and tip", "that make up each person's total."] },
+    { "id": "item-detail", "label": "Item detail", "image": "captures/REPLACE-item-detail.png", "theme": "cream", "headline": ["Every dish.", "*Shared your way.*"], "subtitle": ["Keep each item's split in view.", "Shared plates included."] },
+    { "id": "trip-summary", "label": "Trip summary", "image": "captures/REPLACE-trip-summary.png", "theme": "cream", "headline": ["One tab.", "*The whole weekend.*"], "subtitle": ["Bring the weekend's bills together", "and see the totals in one place."] },
+    { "id": "settlement", "label": "Settlement record", "image": "captures/REPLACE-settlement.png", "theme": "teal", "headline": ["Who owes what.", "*Clearly settled.*"], "subtitle": ["See the remaining balances", "and keep track of what's been paid."] }
+  ],
+  "panorama": { "enabled": false, "leftId": "person-detail", "rightId": "item-detail", "image": "captures/REPLACE-person-detail.png", "phone": { "centerX": 1320 } }
+}
