@@ -1,0 +1,171 @@
+{
+  "version": 1,
+  "status": "final",
+  "name": "Billington",
+  "style": "table-linen",
+  "output": "outputs/connected-first-campaign",
+  "phone": {
+    "mode": "full",
+    "top": 760,
+    "bottom": 2740,
+    "maxWidth": 1038,
+    "centerX": 660,
+    "shell": 24,
+    "radius": 60
+  },
+  "slides": [
+    {
+      "id": "shared-bill",
+      "label": "Shared bill",
+      "image": "captures/02-completed-split.png",
+      "theme": "teal",
+      "headline": [
+        "Dinner for four.",
+        "*One shared bill.*"
+      ],
+      "subtitle": [
+        "One dinner bill.",
+        "Each person pays their share."
+      ]
+    },
+    {
+      "id": "fair-shares",
+      "label": "Fair shares",
+      "image": "captures/02-completed-split.png",
+      "theme": "teal",
+      "headline": [
+        "Four fair shares.",
+        "*Exactly what’s owed.*"
+      ],
+      "subtitle": [
+        "Each person’s share, based on",
+        "what they actually had."
+      ]
+    },
+    {
+      "id": "person-detail",
+      "label": "Leo's share",
+      "image": "captures/03-person-breakdown.png",
+      "theme": "cream",
+      "headline": [
+        "Leo’s share,",
+        "*line by line.*"
+      ],
+      "subtitle": [
+        "The sea bass, a quarter of the shared plates,",
+        "and tip on just those."
+      ]
+    },
+    {
+      "id": "trip-summary",
+      "label": "Trip total",
+      "image": "captures/04-trip-overview.png",
+      "theme": "cream",
+      "headline": [
+        "One tab.",
+        "*The whole weekend.*"
+      ],
+      "subtitle": [
+        "Bring the weekend's bills together",
+        "and see the totals in one place."
+      ]
+    },
+    {
+      "id": "settlement",
+      "label": "Paid tracking",
+      "image": "captures/07-settlements-tracked.png",
+      "theme": "teal",
+      "headline": [
+        "See every share.",
+        "*Know who’s paid.*"
+      ],
+      "subtitle": [
+        "Track paid and unpaid amounts",
+        "when it’s time to settle up."
+      ]
+    }
+  ],
+  "panorama": {
+    "enabled": true,
+    "primary": true,
+    "leftId": "shared-bill",
+    "rightId": "fair-shares",
+    "image": "captures/02-completed-split.png",
+    "phone": {
+      "mode": "full",
+      "top": 751,
+      "bottom": 2803,
+      "maxWidth": 944,
+      "centerX": 1152,
+      "rotation": -4.8
+    },
+    "seamClearance": [
+      {
+        "label": "status bar: between signal and wifi glyphs",
+        "sourceRow": 97,
+        "min": 997,
+        "max": 1020
+      },
+      {
+        "label": "Bill Details title: right of text",
+        "sourceRow": 263,
+        "min": 860,
+        "max": 1320
+      },
+      {
+        "label": "Dinner in Alfama + pencil: right of pencil",
+        "sourceRow": 440,
+        "min": 945,
+        "max": 1320
+      },
+      {
+        "label": "$129.80 total: right of digits",
+        "sourceRow": 672,
+        "min": 866,
+        "max": 1320
+      },
+      {
+        "label": "Items row: left of count badge",
+        "sourceRow": 970,
+        "min": 400,
+        "max": 1010
+      },
+      {
+        "label": "Participants header: between title and badge",
+        "sourceRow": 1440,
+        "min": 490,
+        "max": 1140
+      },
+      {
+        "label": "Leo $40.70: whitespace between name and chip",
+        "sourceRow": 1650,
+        "min": 440,
+        "max": 890
+      },
+      {
+        "label": "Nora $36.30: whitespace between name and chip",
+        "sourceRow": 1840,
+        "min": 440,
+        "max": 886
+      },
+      {
+        "label": "Maya $31.90: whitespace between name and chip",
+        "sourceRow": 2190,
+        "min": 440,
+        "max": 890
+      },
+      {
+        "label": "Oliver $20.90: whitespace between name and chip",
+        "sourceRow": 2470,
+        "min": 440,
+        "max": 888
+      },
+      {
+        "label": "Share button: right of label",
+        "sourceRow": 2686,
+        "min": 780,
+        "max": 1250
+      }
+    ]
+  }
+}

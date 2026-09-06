@@ -12,3 +12,12 @@ outputs/
 claude-*.json
 claude-*.txt
 flows/
+# Intermediate layouts, mail preparation, and unmodified model patch traces.
+*.smoke.json
+first-fresh-preview.manifest.json
+full-campaign.manifest.json
+linen-quiet.manifest.json
+email-preview.txt
+email-delivery*.json
+claude-*.patch
+claude-renderer-review.md
