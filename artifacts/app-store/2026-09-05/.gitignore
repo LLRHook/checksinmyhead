@@ -1,0 +1,14 @@
+# Local capabilities, simulator storage, generated artwork and tool traces.
+fictional-seed-state*.json
+*.sqlite
+*.sqlite-*
+captures/
+outputs/
+*.png
+*.jpg
+*.zip
+*.appshot.json
+*-hierarchy.json
+claude-*.json
+claude-*.txt
+flows/
