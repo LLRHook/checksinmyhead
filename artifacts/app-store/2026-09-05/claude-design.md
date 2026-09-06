@@ -2,7 +2,60 @@
 
 Date: 2026-09-05. **Claude Fable 5.1** authored the design and substantive renderer revisions; GPT coordinated simulator capture, integration, export and independent verification. The initial renderer predates the user's Claude-code preference; see `renderer-provenance.md` for the distinction.
 
-## Current final preview — connected first pair
+## Current final preview — V2 iPhone hardware
+
+The user's new hardware correction is implemented in `connected-primary-v2.manifest.json`, with active V2 outputs in `outputs/connected-first-campaign-v2/`. The five primary PNGs, contact sheet, canonical first-pair master and ZIP retain exactly the V1 story, copy, source screen scale and pose. One same phone still spans the first two primary panels. V1 manifests and outputs are preserved below as historical deliverables. Parent coordination owns the clearly versioned follow-up email; this design subtask does not send email.
+
+Claude Fable 5.1 authored the bounded renderer hardware branch and V2 manifest. The actual CLI response reports `is_error:false`, duration 138.444 seconds and `modelUsage.claude-fable-5-1` with 11,499 output tokens, including 4,683 thinking tokens. A small auxiliary Haiku call is separately reported; no fallback model was configured. The exact raw output is `claude-hardware-v2.json`, its readable answer is `claude-hardware-v2.txt`, the input is `claude-hardware-v2-brief.txt`, and the substantive authored diff is `claude-hardware-v2.patch`.
+
+The scoped code invocation used the installed Claude CLI with `--model claude-fable-5-1 --safe-mode --strict-mcp-config --mcp-config '{"mcpServers":{}}' --permission-mode dontAsk --tools Read,Edit --allowedTools Read,Edit --no-session-persistence --effort medium --print --output-format json`. Claude could read references and edit only the named renderer and cloned V2 manifest. GPT rendered and inspected the result.
+
+The custom code-native frame uses neutral silver/aluminum styling, black glass, generous display corners and small side controls. It uses no Apple-supplied marketing artwork. Apple's [official iPhone 17 Pro specifications](https://www.apple.com/iphone-17-pro/specs/) support the selected model's 1320×2868 display, Dynamic Island and aluminum finish. This is a visually faithful custom frame, not a CAD model or Apple approval claim.
+
+The Dynamic Island measurement comes directly from `captures/hardware/iphone17-pro-max-simctl-reference.png` (SHA-256 `1dbbe79a80ee258a06ac55a519a9f7d7225846ca4b7cd7e92c141f9605c8cf39`). Its black core is x472, y42, width376, height110, radius55 in the native 1320×2868 screenshot. Root's pixel comparison shows that the real simulator compositor screenshot and the original settlement capture are identical everywhere except the antialiased island bounding box (471,41)–(849,153). All four supplied Maestro source captures have uniform blank background under the island; their PNG files remain untouched.
+
+The `phone.hardware: 'iphone-17-pro-max'` branch inherits through the existing merged phone object. `phone.dynamicIsland: 'draw'` overlays that physical cutout using the same scale and rotation as the source; `'source'` draws no additional island. A simple dark-center guard also prevents obvious duplication. `phone.hardwareButtons: true` adds the side controls. No hardware field preserves the legacy draw path.
+
+Hardware constants: display corner radius150 native pixels; metal rim8 native pixels within the existing24 output-pixel shell; side-button projection2.5 native pixels; the remaining shell is black glass. The paired phone's effective display radius is107.3 output pixels and rim5.7; standalone phones use103.6 and5.5. The island, frame, rounded source mask and side buttons all share one rigid transform. The source image is drawn unmodified; only verified blank display corners and the physical island are occluded.
+
+GPT visually inspected the full first-pair master and all-five contact sheet. The island, corners and metal edge make the phones recognizable while retaining source content and approved typography. The rendering validation reports no warnings, full phone fit including buttons, all 11 source-coordinate seam clearances passing, and zero differing channel values between the primary first two images and the master crops. Independent read-only QA subsequently passed the hardware appearance, single island with no text coverage, exact primary/master crop equality, five RGB PNGs, ZIP order/CRC and loose-file identity. Source hashes and affine geometry are unchanged. Comparing app-interior pixels with V1 outside the hardware/corner masks found zero differences across 1,749,499 pixels in each standalone frame. The rotated master had nine differing pixels out of 1,875,304 checked, with maximum channel delta13, at small antialiased glyph edges; there is no visible content change. This tiny rasterization difference means the composed rotated app interior should not be described as byte-identical to V1, even though the source capture itself is unchanged.
+
+V2 manifest SHA-256: `9c1bd847f07c6044f36850ff75402e45c314931e7ff7aa2f47d496eeed0a5b3d`. V2 renderer SHA-256: `c40ec94987b5ab04a7cc5f6593e5a95640ce8a08fc99b3859415bf4af6cd18ee`.
+
+### Verbatim Claude V2 response
+
+Implementation complete. Nothing was run; GPT renders next.
+
+**Hardware API (merged phone object, inherited by pair and standalone)**
+- `hardware`: omitted keeps legacy shell path unchanged; `'iphone-17-pro-max'` enables the new branch.
+- `dynamicIsland`: `'draw'` or `'source'`, default `'source'`. V2 manifest sets `'draw'`.
+- `hardwareButtons`: boolean, default false. V2 sets true.
+
+**Hardware constants (native capture px, scaled by source scale)**
+
+| Constant | Native | Output (pair / standalone) |
+|---|---|---|
+| Display corner radius | 150 | 107.3 / 103.6 |
+| Body corner radius | 150 + shell | display + 24 |
+| Silver rim width | 8 | 5.7 / 5.5 |
+| Black glass bezel | remainder of shell | 24 minus rim |
+| Button projection beyond body | 2.5 | 1.8 / 1.7 |
+| Island rect | x472 y42 w376 h110 r55 | scaled by screenWidth/1320, screenHeight/2868 |
+
+**Renderer edits** in `render-table-linen.mjs`
+- Validation of the three fields after the merged `p` object.
+- Hardware geometry closure after `bounds`: rim, radii, button rects (action, volume up, volume down on left; power, camera control on right, rows in reference-native coordinates), island local rect, and a trivial one-pixel guard at native (660,97) that skips the island with a warning if already dark.
+- Fit check uses bounds including button projection in hardware mode, plain `bounds` otherwise.
+- Draw branch under the same translate·rotate: buttons, shadowed silver gradient body with fine dark edge stroke, inset black glass with faint highlight stroke, display clip at 150-native radius, unmodified capture, then island fill if drawn. Legacy branch is byte-identical.
+- Geometry gains `hardware` metadata: model, island mode and drawn flag, island source and output rects, display and body radii, rim and bezel widths, button bounds, and bounds with buttons. `roundedCornerRadius` reports the effective display radius.
+
+**Manifest edits** in `connected-primary-v2.manifest.json`
+- Output path changed to `outputs/connected-first-campaign-v2`.
+- Global phone gains the three hardware fields. Pose, copy, ordering, seam clearances and status untouched.
+
+Source PNGs, V1 manifests and V1 outputs were not touched.
+
+## Preserved V1 final preview — connected first pair
 
 The latest user correction is implemented: the primary/default five-frame campaign begins with one same physical phone spanning panels 1 and 2. The active outputs are in `outputs/connected-first-campaign/`, with `contact-sheet.png`, five native 1320×2868 primary PNGs, `connected/master-2640x2868.png`, and `billington-table-linen-final.zip`. “Final” means final preview, not submission approval. No Apple upload or email is performed by this design subtask.
 

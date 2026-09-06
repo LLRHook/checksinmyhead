@@ -1,6 +1,6 @@
 # Billington capture validation and delivery preparation
 
-Review date: 5 September 2026, America/Lima. The final five-frame preview campaign uses one continuous phone across its first two images. Source capture checks, final visual inspection, decoded seam equality, opaque PNG dimensions, ZIP contents and authorized preview email delivery all pass. The native editable Appshot project is a separate handoff being implemented and verified by the Appshot task; it is not established by this renderer validation.
+Review date: 5 September 2026, America/Lima. The current **V2** five-frame preview uses one recognizable iPhone spanning its first two images. Source capture checks, hardware inspection, decoded seam equality, opaque PNG dimensions, ZIP contents and versioned preview email delivery all pass. The native editable Appshot project is a separate handoff being verified by the Appshot task; it is not established by this reference-renderer validation. V1 is preserved as an earlier delivered version.
 
 ## Capture provenance
 
@@ -43,9 +43,17 @@ The final first pair is one rigid −4.8° phone rendered on a 2640 × 2868 mast
 
 All five primary images are 1320 × 2868, 8-bit RGB PNGs without alpha. The source screen is fully retained across the opening pair and inside each later phone. Font loading, text fit, transformed device bounds and source-coordinate seam windows pass with no renderer warnings. The corrected opening subtitle is “One dinner bill. / Each person pays their share.” The final contact sheet has no overlapping labels.
 
-The final ZIP contains exactly the ordered primary PNGs—shared bill, fair shares, Leo's allocation, trip summary, paid tracking—and a validation JSON. CRC checks pass and every PNG in the ZIP is byte-identical to its loose file. The final manifest SHA-256 is `9d8afa784046b112a364a669c90877d341ae39f4333cc5d27e9f741708f3dce4`; renderer SHA-256 is `28bf8495f2e93a1f390a680115f0512b80e69f5169cf2a87504960d5d3fc145f`.
+The ZIP contains exactly the ordered primary PNGs—shared bill, fair shares, Leo's allocation, trip summary, paid tracking—and a validation JSON. CRC checks pass and every PNG in the ZIP is byte-identical to its loose file. The preserved V1 manifest SHA-256 is `9d8afa784046b112a364a669c90877d341ae39f4333cc5d27e9f741708f3dce4`; its reference renderer was `28bf8495f2e93a1f390a680115f0512b80e69f5169cf2a87504960d5d3fc145f`.
 
-Authorized preview email delivery is confirmed by Gmail's SENT label and a subsequent message read. Four attachments have matching delivered byte sizes: final overview PNG (429,523), connected opening PNG (977,977), five-frame PNG ZIP (2,849,427), and cream alternate contact PNG (356,194). The local ignored `email-delivery.json` preserves the recipient, message identifier and attachment metadata. Nothing was submitted to Apple or TestFlight.
+V1 email delivery was confirmed by Gmail's SENT label and a subsequent message read. Its four attachments had matching delivered byte sizes: overview PNG (429,523), opening PNG (977,977), PNG ZIP (2,849,427), and cream alternate contact (356,194). The ignored `email-delivery.json` preserves its delivery metadata.
+
+## Current V2 hardware and delivery
+
+The user's iPhone-frame correction is implemented in `connected-primary-v2.manifest.json`, SHA-256 `9c1bd847f07c6044f36850ff75402e45c314931e7ff7aa2f47d496eeed0a5b3d`, with renderer `c40ec94987b5ab04a7cc5f6593e5a95640ce8a08fc99b3859415bf4af6cd18ee`. Current files are in `outputs/connected-first-campaign-v2/`; the matching cream alternate is in `outputs/linen-quiet-v2/`.
+
+The custom iPhone frame has a silver rim, black bezel, larger display corners, side controls and exactly one Dynamic Island per physical phone. Direct simulator measurements and blank-safe-area checks are recorded in `HARDWARE-REFERENCE.md`. The raw source PNGs and their geometry remain unchanged. Three straight-phone app interiors are pixel-identical to V1; the shared rotated interior differs by nine isolated antialiasing pixels among 1,875,304 tested pixels, with no visible content change. Both actual opening PNGs match the V2 master regions exactly. All five exports pass the same RGB dimensions, ZIP CRC/order/identity, copy and visual checks above.
+
+V2 was sent as a clearly labelled correction. A subsequent Gmail read confirms SENT and four matching attachment names and byte sizes: V2 overview (455,162), V2 connected iPhone opening (1,140,486), V2 PNG ZIP (3,579,576), and V2 cream alternate contact (448,597). Delivery metadata remains local in ignored `email-delivery-v2.json`. Nothing was submitted to Apple or TestFlight.
 
 ## Sensitive data and minimal delivery package
 
