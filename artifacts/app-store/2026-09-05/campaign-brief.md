@@ -4,4 +4,6 @@ Use freshly captured current Flutter UI on a local iOS simulator, with fictional
 
 Story: one continuous phone spans the first two panels as the leading composition, showing a completed split with named individual amounts. The remaining panels explain one person's item allocation, the shared trip total, and paid/unpaid tracking. Keep the app's teal and cream palette, exact real app currency labels, and current functionality. No invented UI or unverified receipt-scanning success. Retain the earlier intact-phone campaign as an alternate, while making the connected first pair the default.
 
+The latest correction requires a recognizable iPhone frame. V2 retains the same original captures and composition, with a restrained silver rim, rounded display corners, side controls and one Dynamic Island measured from the actual simulator. Physical masks cover only verified blank safe-area/background pixels. Keep V1 and V2 files clearly versioned.
+
 Deliver: native captures; 1320×2868 opaque iPhone PNG campaign; coherent contact sheet; alternate on-brand treatment; editable Appshot project; applicable 13-inch iPad capture coverage; provenance and visual validation note; authorized email previews. No Apple upload or submission.

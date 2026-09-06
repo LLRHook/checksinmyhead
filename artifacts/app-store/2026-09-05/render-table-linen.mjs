@@ -138,6 +138,12 @@ try {
       if (!['full', 'bottom-crop'].includes(p.mode)) throw new Error(`${slide.id}: invalid phone.mode.`);
       if (p.mode === 'bottom-crop' && !p.cropReason) throw new Error(`${slide.id}: intentional bottom crop requires phone.cropReason.`);
       if (typeof p.rotation !== 'number' || !Number.isFinite(p.rotation) || Math.abs(p.rotation) > 8) throw new Error(`${id}: phone.rotation must be a finite number of degrees within ±8.`);
+      // Hardware API (agreed with the native Appshot owner). Absent phone.hardware keeps the legacy flat shell byte-for-byte.
+      if (p.hardware !== undefined && p.hardware !== 'iphone-17-pro-max') throw new Error(`${id}: phone.hardware must be omitted or 'iphone-17-pro-max'.`);
+      const islandMode = p.dynamicIsland === undefined ? 'source' : p.dynamicIsland;
+      if (!['draw', 'source'].includes(islandMode)) throw new Error(`${id}: phone.dynamicIsland must be 'draw' or 'source'.`);
+      if (p.hardwareButtons !== undefined && typeof p.hardwareButtons !== 'boolean') throw new Error(`${id}: phone.hardwareButtons must be boolean.`);
+      const hardwareModel = p.hardware || null;
       const border = p.frameless ? 0 : p.shell;
       const ratio = image.naturalWidth / image.naturalHeight;
       const screenWidth = p.mode === 'full' ? Math.min(p.maxWidth, (p.bottom - p.top) * ratio) : p.maxWidth;
@@ -155,13 +161,57 @@ try {
         return { left: Math.min(...corners.map(k => k.x)), right: Math.max(...corners.map(k => k.x)), top: Math.min(...corners.map(k => k.y)), bottom: Math.max(...corners.map(k => k.y)) };
       };
       const bounds = boundsOf(shell.width / 2, shell.height / 2), screenBounds = boundsOf(screenWidth / 2, screenHeight / 2);
-      if (screenWidth <= 0 || screenHeight <= 0 || bounds.left < 0 || bounds.right > width || bounds.top < 0 || (p.mode === 'full' && bounds.bottom > H)) throw new Error(`${id}: full phone (rotated bounds ${JSON.stringify(bounds)}) does not fit the canvas.`);
+      // iPhone 17 Pro Max custom hardware (code-native, not Apple artwork). Constants are NATIVE capture pixels, scaled with the source.
+      // Body bounds are unchanged from the legacy shell; the shell band is divided into a silver rim (outside) and black glass bezel (inside).
+      const HW = hardwareModel ? { displayRadiusNative: 150, rimNative: 8, buttonProjectionNative: 2.5, island: { x: 472, y: 42, width: 376, height: 110, radius: 55 }, referenceSize: { width: 1320, height: 2868 } } : null;
+      const hw = HW ? (() => {
+        const kx = screenWidth / HW.referenceSize.width, ky = screenHeight / HW.referenceSize.height; // reference-native → output, proportional to image.naturalWidth/1320 and naturalHeight/2868 then scale
+        const displayRadius = HW.displayRadiusNative * scale, rim = Math.min(border, HW.rimNative * scale), projection = HW.buttonProjectionNative * scale;
+        const sx = -screenWidth / 2, sy = -screenHeight / 2, bx = sx - border, by = sy - border;
+        const worldBox = (lx, ly, w, h) => { const k = [[lx, ly], [lx + w, ly], [lx + w, ly + h], [lx, ly + h]].map(([a, b]) => toWorld(a, b)); return { left: Math.min(...k.map(q => q.x)), right: Math.max(...k.map(q => q.x)), top: Math.min(...k.map(q => q.y)), bottom: Math.max(...k.map(q => q.y)) }; };
+        // Side buttons: rows in reference-native screen coordinates; each projects `projection` beyond the body edge and tucks 3px under it.
+        const buttonSpecs = p.hardwareButtons === true ? [['action', 'left', 300, 400], ['volume-up', 'left', 505, 700], ['volume-down', 'left', 745, 940], ['power', 'right', 585, 865], ['camera-control', 'right', 1540, 1720]] : [];
+        const buttons = buttonSpecs.map(([label, side, rowStart, rowEnd]) => {
+          const thickness = projection + 3, local = { x: side === 'left' ? bx - projection : bx + shell.width - 3, y: sy + rowStart * ky, width: thickness, height: (rowEnd - rowStart) * ky };
+          return { label, side, sourceRows: [rowStart, rowEnd], projectionNative: HW.buttonProjectionNative, local, bounds: worldBox(local.x, local.y, local.width, local.height) };
+        });
+        const islandLocal = { x: sx + HW.island.x * kx, y: sy + HW.island.y * ky, width: HW.island.width * kx, height: HW.island.height * ky, radius: HW.island.radius * ky };
+        let islandDrawn = islandMode === 'draw';
+        if (islandDrawn) { // Trivial guard only: a capture that already carries a real black island is not doubled. Explicit mode remains the contract.
+          const probe = document.createElement('canvas'); probe.width = probe.height = 1; const pc = probe.getContext('2d');
+          pc.drawImage(image, Math.round(660 * image.naturalWidth / HW.referenceSize.width), Math.round(97 * image.naturalHeight / HW.referenceSize.height), 1, 1, 0, 0, 1, 1);
+          const [r, g, b] = pc.getImageData(0, 0, 1, 1).data;
+          if (r + g + b < 120) { islandDrawn = false; warnings.push(`${id}: dynamicIsland 'draw' skipped; capture already dark at island centre (${r},${g},${b}).`); }
+        }
+        return { model: hardwareModel, kx, ky, displayRadius, bodyRadius: displayRadius + border, rim, glassBezel: border - rim, projection, buttons, islandLocal, islandDrawn, islandMode, bx, by, outerBounds: boundsOf(shell.width / 2 + (buttons.length ? projection : 0), shell.height / 2) };
+      })() : null;
+      const fitBounds = hw ? hw.outerBounds : bounds;
+      if (screenWidth <= 0 || screenHeight <= 0 || fitBounds.left < 0 || fitBounds.right > width || fitBounds.top < 0 || (p.mode === 'full' && fitBounds.bottom > H)) throw new Error(`${id}: full phone (rotated bounds ${JSON.stringify(fitBounds)}) does not fit the canvas.`);
       // A seam-straddling phone sits under both panels' copy, so every panel it touches is checked against the transformed top edge.
       const copyBottom = Math.max(...copySlides.map(s => layout(s).subtitleTop + s.subtitle.length * layout(s).subtitleLeading));
       if (bounds.top < copyBottom + 36) throw new Error(`${id}: phone collides with copy.`);
       ctx.save();
       ctx.translate(center.x, center.y); if (theta) ctx.rotate(theta);
       const sx = -screenWidth / 2, sy = -screenHeight / 2;
+      if (hw) {
+        // Hardware mode: every part (buttons, body, glass, display mask, capture, island) shares the one rigid translate·rotate above.
+        ctx.lineWidth = 1; ctx.fillStyle = '#B7BABE'; ctx.strokeStyle = 'rgba(58,62,66,0.55)';
+        for (const b of hw.buttons) { roundRect(ctx, b.local.x, b.local.y, b.local.width, b.local.height, 1.5); ctx.fill(); ctx.stroke(); }
+        if (p.shadow) { ctx.shadowColor = c.shadow; ctx.shadowBlur = 80; ctx.shadowOffsetY = 40; }
+        roundRect(ctx, hw.bx, hw.by, shell.width, shell.height, hw.bodyRadius);
+        const metal = ctx.createLinearGradient(hw.bx, hw.by, hw.bx, hw.by + shell.height);
+        metal.addColorStop(0, '#DADCDF'); metal.addColorStop(0.5, '#C3C6CA'); metal.addColorStop(1, '#D3D5D8');
+        ctx.fillStyle = metal; ctx.fill();
+        ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+        ctx.strokeStyle = 'rgba(64,68,72,0.6)'; ctx.stroke();
+        roundRect(ctx, hw.bx + hw.rim, hw.by + hw.rim, shell.width - 2 * hw.rim, shell.height - 2 * hw.rim, hw.bodyRadius - hw.rim);
+        ctx.fillStyle = '#0A0B0C'; ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.stroke();
+        // Display mask blanks corner pixels only; the capture itself is drawn unmodified under the same transform.
+        roundRect(ctx, sx, sy, screenWidth, screenHeight, hw.displayRadius); ctx.clip();
+        ctx.drawImage(image, sx, sy, screenWidth, screenHeight);
+        if (hw.islandDrawn) { const i = hw.islandLocal; roundRect(ctx, i.x, i.y, i.width, i.height, i.radius); ctx.fillStyle = '#000000'; ctx.fill(); }
+        ctx.restore();
+      } else {
       if (p.shadow) { ctx.shadowColor = c.shadow; ctx.shadowBlur = 80; ctx.shadowOffsetY = 40; }
       roundRect(ctx, sx - border, sy - border, shell.width, shell.height, p.radius + border);
       ctx.fillStyle = p.frameless ? c.canvas : c.shell; ctx.fill();
@@ -171,6 +221,7 @@ try {
       // Rounded display masking affects only corner background pixels; set radius:0 to retain every corner.
       roundRect(ctx, sx, sy, screenWidth, screenHeight, p.radius); ctx.clip();
       ctx.drawImage(image, sx, sy, screenWidth, screenHeight); ctx.restore();
+      }
       let seam = null;
       if (seamX !== null) {
         if (!(bounds.left < seamX && seamX < bounds.right)) throw new Error(`${id}: the single phone does not cross the panel seam at x=${seamX}.`);
@@ -183,7 +234,7 @@ try {
         });
         seam = { worldX: seamX, sourceColumnAtTop: round1(columnAt(0)), sourceColumnAtBottom: round1(columnAt(image.naturalHeight)), screenWidthFractionLeftOfSeam: round1(100 * (seamX - screenBounds.left) / (screenBounds.right - screenBounds.left)) / 100, clearance: checks };
       }
-      return { id, sourceWidth: image.naturalWidth, sourceHeight: image.naturalHeight, scale: round1(scale * 10000) / 10000, rotationDegrees: p.rotation, center, screen: { x, y, width: screenWidth, height: screenHeight }, shell, bounds, screenBounds, mode: p.mode, visibleScreenFraction: Math.min(1, (H - screenBounds.top) / (screenBounds.bottom - screenBounds.top)), cropReason: p.cropReason || null, roundedCornerRadius: p.radius, shared, ...(seam ? { seam } : {}) };
+      return { id, sourceWidth: image.naturalWidth, sourceHeight: image.naturalHeight, scale: round1(scale * 10000) / 10000, rotationDegrees: p.rotation, center, screen: { x, y, width: screenWidth, height: screenHeight }, shell, bounds, screenBounds, mode: p.mode, visibleScreenFraction: Math.min(1, (H - screenBounds.top) / (screenBounds.bottom - screenBounds.top)), cropReason: p.cropReason || null, roundedCornerRadius: hw ? round1(hw.displayRadius) : p.radius, hardware: hw ? { model: hw.model, dynamicIsland: hw.islandMode, islandDrawn: hw.islandDrawn, islandSourceRect: { ...HW.island, referenceSize: HW.referenceSize, center: { x: 660, y: 97 } }, islandOutputRect: { x: round1(hw.islandLocal.x), y: round1(hw.islandLocal.y), width: round1(hw.islandLocal.width), height: round1(hw.islandLocal.height), radius: round1(hw.islandLocal.radius), coordinateSpace: 'local (screen centre origin, pre-rotation)' }, displayCornerRadius: { native: HW.displayRadiusNative, output: round1(hw.displayRadius) }, bodyCornerRadiusOutput: round1(hw.bodyRadius), metalRim: { native: HW.rimNative, output: round1(hw.rim) }, glassBezelOutput: round1(hw.glassBezel), shellOutput: border, buttons: hw.buttons.map(b => ({ label: b.label, side: b.side, sourceRows: b.sourceRows, projectionNative: b.projectionNative, projectionOutput: round1(hw.projection), bounds: b.bounds })), boundsWithButtons: hw.outerBounds } : null, shared, ...(seam ? { seam } : {}) };
     }
     async function base64(bytes) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result).split(',')[1]); reader.onerror = reject; reader.readAsDataURL(new Blob([bytes])); }); }
     async function exportCanvas(canvas, name, inZip = true) {
