@@ -10,7 +10,7 @@ on:
       release_notes:
         description: 'What to test (TestFlight notes)'
         required: false
-        default: 'New in this build: receipt-based Lazy Mode lets the bill creator claim their own items in the app before sharing. Friends can select or split remaining items from a receipt-style web view, review tax and tip transparently, pay via Venmo or another listed method, and mark their share as paid. Also includes safer collaborative item updates and refreshed bill summaries.'
+        default: 'Billington 2.0: collaborative trip tabs, app-first invites, multi-currency receipts with conversion previews, creator-controlled tab settings, currency-aware balances, and a read-only web handoff. Receipt scanning, external payment links, and the existing Quick Split and Lazy Mode flows remain supported.'
         type: string
       skip_tests:
         description: 'Skip analyze/test (emergency builds only)'

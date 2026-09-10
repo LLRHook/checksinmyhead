@@ -2,17 +2,19 @@
 
 import { FaCheck } from "react-icons/fa6";
 import { SiVenmo } from "react-icons/si";
-import type { TabPersonTotal } from "@/lib/api";
+import { formatMoney, type TabPersonTotal } from "@/lib/api";
 import { buildVenmoPayUrl } from "@/lib/venmo";
 
 interface TabPersonTotalsProps {
   personTotals: TabPersonTotal[];
   venmoId?: string | null;
+  currency?: string;
 }
 
 export default function TabPersonTotals({
   personTotals,
   venmoId,
+  currency = "USD",
 }: TabPersonTotalsProps) {
   const paidCount = personTotals.filter((p) => p.all_paid).length;
 
@@ -75,7 +77,7 @@ export default function TabPersonTotals({
                     : "text-[var(--accent)] dark:text-white"
                 }`}
               >
-                ${person.total.toFixed(2)}
+                {formatMoney(person.total, currency)}
               </div>
               {!person.all_paid && venmoId && (
                 <a

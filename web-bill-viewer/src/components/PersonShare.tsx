@@ -5,6 +5,7 @@ import { FaCheck, FaChevronDown } from "react-icons/fa6";
 import { SiVenmo } from "react-icons/si";
 import { useCollapsible } from "@/hooks/useCollapsible";
 import {
+  formatMoney,
   type PersonShare as PersonShareType,
   updatePersonSharePaid,
 } from "@/lib/api";
@@ -15,6 +16,8 @@ interface PersonShareProps {
   hasVenmo?: string | null;
   billId: number;
   token: string;
+  readOnly?: boolean;
+  currency?: string;
 }
 
 export default function PersonShare({
@@ -22,6 +25,8 @@ export default function PersonShare({
   hasVenmo,
   billId,
   token,
+  readOnly = false,
+  currency = "USD",
 }: PersonShareProps) {
   const { isOpen, toggle, contentRef, height } = useCollapsible();
   const [paid, setPaid] = useState(personShare.paid);
@@ -53,19 +58,28 @@ export default function PersonShare({
     >
       <div className="w-full px-5 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={togglePaid}
-            disabled={toggling}
-            className={`w-11 h-11 rounded-full flex items-center justify-center font-semibold text-base transition-colors cursor-pointer border-none ${
-              paid
-                ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400"
-                : "bg-[var(--secondary)] dark:bg-white/10 text-[var(--text-secondary)] hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-500"
-            } ${toggling ? "opacity-50" : ""}`}
-            aria-label={`Mark ${personShare.person_name} as ${paid ? "unpaid" : "paid"}`}
-          >
-            {paid ? <FaCheck size={16} /> : personShare.person_name[0]}
-          </button>
+          {readOnly ? (
+            <div
+              className={`w-11 h-11 rounded-full flex items-center justify-center font-semibold text-base ${paid ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400" : "bg-[var(--secondary)] dark:bg-white/10 text-[var(--text-secondary)]"}`}
+              aria-hidden="true"
+            >
+              {paid ? <FaCheck size={16} /> : personShare.person_name[0]}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={togglePaid}
+              disabled={toggling}
+              className={`w-11 h-11 rounded-full flex items-center justify-center font-semibold text-base transition-colors cursor-pointer border-none ${
+                paid
+                  ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400"
+                  : "bg-[var(--secondary)] dark:bg-white/10 text-[var(--text-secondary)] hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-500"
+              } ${toggling ? "opacity-50" : ""}`}
+              aria-label={`Mark ${personShare.person_name} as ${paid ? "unpaid" : "paid"}`}
+            >
+              {paid ? <FaCheck size={16} /> : personShare.person_name[0]}
+            </button>
+          )}
           <div className="text-left">
             <h3
               className={`font-semibold text-base ${
@@ -83,7 +97,7 @@ export default function PersonShare({
                   : "text-[var(--accent)] dark:text-white"
               }`}
             >
-              ${personShare.total.toFixed(2)}
+              {formatMoney(personShare.total, currency)}
             </div>
           </div>
         </div>
@@ -121,7 +135,7 @@ export default function PersonShare({
                   )}
                 </span>
                 <span className="font-medium font-mono text-[var(--text-secondary)]">
-                  ${item.amount.toFixed(2)}
+                  {formatMoney(item.amount, currency)}
                 </span>
               </div>
             ))}
@@ -129,13 +143,13 @@ export default function PersonShare({
               <div className="flex justify-between text-sm">
                 <span className="text-[var(--text-secondary)]">Tax</span>
                 <span className="font-mono text-[var(--text-secondary)]">
-                  ${personShare.tax_share.toFixed(2)}
+                  {formatMoney(personShare.tax_share, currency)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-[var(--text-secondary)]">Tip</span>
                 <span className="font-mono text-[var(--text-secondary)]">
-                  ${personShare.tip_share.toFixed(2)}
+                  {formatMoney(personShare.tip_share, currency)}
                 </span>
               </div>
               {hasVenmo && (

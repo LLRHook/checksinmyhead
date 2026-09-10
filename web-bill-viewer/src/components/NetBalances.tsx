@@ -2,7 +2,7 @@
 
 import { FaArrowRight } from "react-icons/fa6";
 import { SiVenmo } from "react-icons/si";
-import type { NetBalance } from "@/lib/api";
+import { formatMoney, type NetBalance } from "@/lib/api";
 import { buildVenmoPayUrl } from "@/lib/venmo";
 
 interface NetBalancesProps {
@@ -10,6 +10,7 @@ interface NetBalancesProps {
   finalized: boolean;
   venmoId?: string | null;
   currentMemberName?: string | null;
+  currency?: string;
 }
 
 export default function NetBalances({
@@ -17,6 +18,7 @@ export default function NetBalances({
   finalized,
   venmoId,
   currentMemberName,
+  currency = "USD",
 }: NetBalancesProps) {
   if (balances.length === 0) return null;
 
@@ -67,7 +69,7 @@ export default function NetBalances({
         </div>
         <div className="flex items-center gap-3">
           <div className="text-xl font-bold font-mono text-[var(--accent)] dark:text-white">
-            ${balance.amount.toFixed(2)}
+            {formatMoney(balance.amount, currency)}
           </div>
           {showVenmo && venmoId && isYouFrom && (
             <button

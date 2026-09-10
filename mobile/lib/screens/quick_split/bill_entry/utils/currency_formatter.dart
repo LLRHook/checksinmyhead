@@ -37,9 +37,25 @@ class CurrencyFormatter {
 
   /// Converts a numeric value to a formatted currency string
   ///
-  /// Formats the given value with a dollar sign prefix and exactly
-  /// two decimal places (e.g., $12.34, $0.50, $100.00)
-  static String formatCurrency(double value) {
-    return '\$${value.toStringAsFixed(2)}';
+  /// Formats the given value with the selected currency symbol and exactly
+  /// two decimal places. Unknown codes use the ISO code as a safe prefix.
+  static String formatCurrency(double value, {String currencyCode = 'USD'}) {
+    const symbols = {
+      'USD': '\$',
+      'PEN': 'S/',
+      'EUR': '€',
+      'GBP': '£',
+      'CAD': 'C\$',
+      'AUD': 'A\$',
+      'MXN': 'MX\$',
+      'BRL': 'R\$',
+      'JPY': '¥',
+      'CNY': '¥',
+      'INR': '₹',
+      'CHF': 'CHF ',
+    };
+    final code = currencyCode.trim().toUpperCase();
+    final prefix = symbols[code] ?? '$code ';
+    return '$prefix${value.toStringAsFixed(2)}';
   }
 }

@@ -32,6 +32,28 @@ import 'package:checks_frontend/models/person.dart';
 ///
 /// Notifies listeners when bill data changes to update UI components.
 class BillData extends ChangeNotifier {
+  static const defaultCurrencyCode = 'USD';
+  static const supportedCurrencies = <String, String>{
+    'USD': 'US Dollar',
+    'PEN': 'Peruvian Sol',
+    'EUR': 'Euro',
+    'GBP': 'British Pound',
+    'CAD': 'Canadian Dollar',
+    'AUD': 'Australian Dollar',
+    'MXN': 'Mexican Peso',
+    'BRL': 'Brazilian Real',
+    'JPY': 'Japanese Yen',
+    'CNY': 'Chinese Yuan',
+    'INR': 'Indian Rupee',
+    'CHF': 'Swiss Franc',
+  };
+  String currencyCode = defaultCurrencyCode;
+
+  void setCurrencyCode(String value) {
+    currencyCode = value.toUpperCase();
+    notifyListeners();
+  }
+
   // Text input controllers
   final TextEditingController subtotalController = TextEditingController();
   final TextEditingController taxController = TextEditingController();
@@ -178,6 +200,10 @@ class BillData extends ChangeNotifier {
   /// Clears existing items and replaces them with the parsed data.
   /// Sets subtotal, tax, and tip from the scan results.
   void populateFromScan(ParsedReceipt receipt) {
+    if (receipt.currencyCode != null &&
+        receipt.currencyCode!.trim().isNotEmpty) {
+      currencyCode = receipt.currencyCode!.trim().toUpperCase();
+    }
     // Clear existing items
     while (items.isNotEmpty) {
       items.removeLast();
@@ -208,10 +234,12 @@ class BillData extends ChangeNotifier {
     // Add scanned items, expanding quantity > 1 into individual line items
     for (final item in receipt.items) {
       if (item.quantity > 1) {
-        final perUnit =
-            double.parse((item.price / item.quantity).toStringAsFixed(2));
+        final perUnit = double.parse(
+          (item.price / item.quantity).toStringAsFixed(2),
+        );
         final lastUnit = double.parse(
-            (item.price - perUnit * (item.quantity - 1)).toStringAsFixed(2));
+          (item.price - perUnit * (item.quantity - 1)).toStringAsFixed(2),
+        );
         for (int i = 0; i < item.quantity - 1; i++) {
           addItem(item.name, perUnit);
         }

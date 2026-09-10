@@ -44,6 +44,9 @@ class ParsedReceipt {
   final double? tax;
   final double? tip;
   final double? total;
+  final String? currencyCode;
+  final String? currencySymbol;
+  final double? currencyConfidence;
 
   const ParsedReceipt({
     this.vendor,
@@ -52,10 +55,14 @@ class ParsedReceipt {
     this.tax,
     this.tip,
     this.total,
+    this.currencyCode,
+    this.currencySymbol,
+    this.currencyConfidence,
   });
 
   factory ParsedReceipt.fromJson(Map<String, dynamic> json) {
-    final itemsList = (json['items'] as List<dynamic>?)
+    final itemsList =
+        (json['items'] as List<dynamic>?)
             ?.map((e) => ParsedItem.fromJson(e as Map<String, dynamic>))
             .toList() ??
         [];
@@ -67,6 +74,9 @@ class ParsedReceipt {
       tax: (json['tax'] as num?)?.toDouble(),
       tip: (json['tip'] as num?)?.toDouble(),
       total: (json['total'] as num?)?.toDouble(),
+      currencyCode: json['currency_code'] as String?,
+      currencySymbol: json['currency_symbol'] as String?,
+      currencyConfidence: (json['currency_confidence'] as num?)?.toDouble(),
     );
   }
 }

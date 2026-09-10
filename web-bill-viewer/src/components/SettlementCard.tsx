@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { FaCheck } from "react-icons/fa6";
 import { SiVenmo } from "react-icons/si";
-import { type TabSettlement, updateSettlementPaid } from "@/lib/api";
+import {
+  formatMoney,
+  type TabSettlement,
+  updateSettlementPaid,
+} from "@/lib/api";
 import { buildVenmoPayUrl } from "@/lib/venmo";
 
 interface SettlementCardProps {
@@ -11,6 +15,8 @@ interface SettlementCardProps {
   venmoId?: string | null;
   tabId: string;
   token: string;
+  currency?: string;
+  readOnly?: boolean;
 }
 
 export default function SettlementCard({
@@ -18,6 +24,8 @@ export default function SettlementCard({
   venmoId,
   tabId,
   token,
+  currency = "USD",
+  readOnly = false,
 }: SettlementCardProps) {
   const [settlements, setSettlements] = useState(initialSettlements);
   const [togglingId, setTogglingId] = useState<number | null>(null);
@@ -60,7 +68,9 @@ export default function SettlementCard({
           </span>
         </div>
         <p className="text-xs text-[var(--text-secondary)] opacity-60 mt-0.5">
-          Tap an avatar to mark as paid
+          {readOnly
+            ? "Open Billington to update payment status"
+            : "Tap an avatar to mark as paid"}
         </p>
       </div>
       <div className="space-y-3">
@@ -74,23 +84,40 @@ export default function SettlementCard({
             }`}
           >
             <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={() => togglePaid(settlement)}
-                disabled={togglingId !== null}
-                className={`w-11 h-11 rounded-full flex items-center justify-center font-semibold text-base transition-colors cursor-pointer border-none ${
-                  settlement.paid
-                    ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400"
-                    : "bg-[var(--secondary)] dark:bg-white/10 text-[var(--text-secondary)] hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-500"
-                } ${togglingId !== null ? "opacity-50" : ""}`}
-                aria-label={`Mark ${settlement.person_name} as ${settlement.paid ? "unpaid" : "paid"}`}
-              >
-                {settlement.paid ? (
-                  <FaCheck size={16} />
-                ) : (
-                  settlement.person_name[0]
-                )}
-              </button>
+              {readOnly ? (
+                <div
+                  className={`w-11 h-11 rounded-full flex items-center justify-center font-semibold text-base ${
+                    settlement.paid
+                      ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400"
+                      : "bg-[var(--secondary)] dark:bg-white/10 text-[var(--text-secondary)]"
+                  }`}
+                  title={`${settlement.person_name} is ${settlement.paid ? "paid" : "unpaid"}`}
+                >
+                  {settlement.paid ? (
+                    <FaCheck size={16} />
+                  ) : (
+                    settlement.person_name[0]
+                  )}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => togglePaid(settlement)}
+                  disabled={togglingId !== null}
+                  className={`w-11 h-11 rounded-full flex items-center justify-center font-semibold text-base transition-colors cursor-pointer border-none ${
+                    settlement.paid
+                      ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400"
+                      : "bg-[var(--secondary)] dark:bg-white/10 text-[var(--text-secondary)] hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-500"
+                  } ${togglingId !== null ? "opacity-50" : ""}`}
+                  aria-label={`Mark ${settlement.person_name} as ${settlement.paid ? "unpaid" : "paid"}`}
+                >
+                  {settlement.paid ? (
+                    <FaCheck size={16} />
+                  ) : (
+                    settlement.person_name[0]
+                  )}
+                </button>
+              )}
               <div>
                 <h3
                   className={`font-semibold text-base ${
@@ -111,7 +138,7 @@ export default function SettlementCard({
                     : "text-[var(--accent)] dark:text-white"
                 }`}
               >
-                ${settlement.amount.toFixed(2)}
+                {formatMoney(settlement.amount, currency)}
               </div>
               {!settlement.paid && venmoId && (
                 <button

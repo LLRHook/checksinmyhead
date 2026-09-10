@@ -24,6 +24,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/models/bill_item.dart';
+import 'package:checks_frontend/models/tab.dart';
 
 // Models
 import 'models/bill_data.dart';
@@ -36,6 +37,7 @@ import 'widgets/tip_options_section.dart';
 import 'widgets/items_section.dart';
 import 'widgets/bill_summary_section.dart';
 import 'widgets/continue_button.dart';
+import 'widgets/currency_conversion_preview.dart';
 
 /// BillEntryScreen - Main interface for entering bill details
 ///
@@ -59,11 +61,13 @@ import 'widgets/continue_button.dart';
 class BillEntryScreen extends StatefulWidget {
   final List<Person> participants;
   final bool lazyMode;
+  final AppTab? tab;
 
   const BillEntryScreen({
     super.key,
     required this.participants,
     this.lazyMode = false,
+    this.tab,
   });
 
   @override
@@ -221,6 +225,8 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
                 isCustomTipAmount: _billData.useCustomTipAmount,
                 scannedVendor: _billData.scannedVendor,
                 lazyMode: true,
+                currencyCode: _billData.currencyCode,
+                tab: widget.tab,
               ),
         ),
       );
@@ -254,6 +260,8 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
               isCustomTipAmount: _billData.useCustomTipAmount,
               initialBirthdayPerson: _billData.birthdayPerson,
               scannedVendor: _billData.scannedVendor,
+              currencyCode: _billData.currencyCode,
+              tab: widget.tab,
             ),
       ),
     );
@@ -336,6 +344,53 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
 
                 // Scan a receipt to auto-fill bill details
                 const ScanReceiptButton(),
+
+                const SizedBox(height: AppSpacing.large),
+
+                // Confirm the transaction currency before entering amounts.
+                Consumer<BillData>(
+                  builder: (context, billData, _) {
+                    return Column(
+                      children: [
+                        DropdownButtonFormField<String>(
+                          initialValue:
+                              BillData.supportedCurrencies.containsKey(
+                                    billData.currencyCode,
+                                  )
+                                  ? billData.currencyCode
+                                  : BillData.defaultCurrencyCode,
+                          decoration: const InputDecoration(
+                            labelText: 'Receipt currency',
+                            prefixIcon: Icon(Icons.currency_exchange_outlined),
+                            helperText: 'Confirm this before saving the bill',
+                          ),
+                          items:
+                              BillData.supportedCurrencies.entries
+                                  .map(
+                                    (entry) => DropdownMenuItem<String>(
+                                      value: entry.key,
+                                      child: Text(
+                                        '${entry.key} · ${entry.value}',
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                          onChanged: (value) {
+                            if (value != null) billData.setCurrencyCode(value);
+                          },
+                        ),
+                        if (widget.tab != null &&
+                            widget.tab!.displayCurrency !=
+                                billData.currencyCode)
+                          CurrencyConversionPreview(
+                            amount: billData.total,
+                            fromCurrency: billData.currencyCode,
+                            toCurrency: widget.tab!.displayCurrency,
+                          ),
+                      ],
+                    );
+                  },
+                ),
 
                 const SizedBox(height: AppSpacing.large),
 

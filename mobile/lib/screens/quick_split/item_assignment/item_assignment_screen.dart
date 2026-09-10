@@ -21,6 +21,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/models/bill_item.dart';
+import 'package:checks_frontend/models/tab.dart';
 import 'tutorial/tutorial_manager.dart';
 
 // Widgets
@@ -54,6 +55,8 @@ class ItemAssignmentScreen extends StatefulWidget {
   final bool isCustomTipAmount;
   final Person? initialBirthdayPerson;
   final String? scannedVendor;
+  final String currencyCode;
+  final AppTab? tab;
 
   const ItemAssignmentScreen({
     super.key,
@@ -67,6 +70,8 @@ class ItemAssignmentScreen extends StatefulWidget {
     required this.isCustomTipAmount,
     this.initialBirthdayPerson,
     this.scannedVendor,
+    this.currencyCode = 'USD',
+    this.tab,
   });
 
   @override
@@ -232,6 +237,8 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
               tipPercentage: widget.tipPercentage,
               isCustomTipAmount: widget.isCustomTipAmount,
               scannedVendor: widget.scannedVendor,
+              currencyCode: widget.currencyCode,
+              tab: widget.tab,
             ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           const begin = Offset(1.0, 0.0);
@@ -442,7 +449,8 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
                   ),
                   const SizedBox(height: 2),
                   Semantics(
-                    label: '${assignedAmount.toStringAsFixed(2)} dollars assigned',
+                    label:
+                        '${assignedAmount.toStringAsFixed(2)} dollars assigned',
                     child: Text(
                       '\$${assignedAmount.toStringAsFixed(2)}',
                       style: TextStyle(
@@ -503,7 +511,8 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
             child: Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Semantics(
-                label: '${assignedPercentage.toStringAsFixed(0)} percent assigned',
+                label:
+                    '${assignedPercentage.toStringAsFixed(0)} percent assigned',
                 child: Text(
                   '${assignedPercentage.toStringAsFixed(0)}%',
                   style: TextStyle(

@@ -22,12 +22,15 @@ type ParsedItem struct {
 
 // ParsedReceipt represents the structured data extracted from a receipt image.
 type ParsedReceipt struct {
-	Vendor   string       `json:"vendor,omitempty"`
-	Items    []ParsedItem `json:"items"`
-	Subtotal *float64     `json:"subtotal,omitempty"`
-	Tax      *float64     `json:"tax,omitempty"`
-	Tip      *float64     `json:"tip,omitempty"`
-	Total    *float64     `json:"total,omitempty"`
+	Vendor             string       `json:"vendor,omitempty"`
+	CurrencyCode       *string      `json:"currency_code,omitempty"`
+	CurrencySymbol     *string      `json:"currency_symbol,omitempty"`
+	CurrencyConfidence *float64     `json:"currency_confidence,omitempty"`
+	Items              []ParsedItem `json:"items"`
+	Subtotal           *float64     `json:"subtotal,omitempty"`
+	Tax                *float64     `json:"tax,omitempty"`
+	Tip                *float64     `json:"tip,omitempty"`
+	Total              *float64     `json:"total,omitempty"`
 }
 
 // ParseErrorCode identifies specific receipt parsing failure reasons.
@@ -81,6 +84,9 @@ Return ONLY valid JSON — no explanation, no markdown, no text outside the JSON
 Schema (follow EXACTLY):
 {
   "vendor": "Store Name",
+  "currency_code": "USD",
+  "currency_symbol": "$",
+  "currency_confidence": 0.98,
   "items": [
     {"name": "Item Name", "price": 5.98, "quantity": 2}
   ],
@@ -112,9 +118,11 @@ CRITICAL RULES — read carefully:
 
 5. EXCLUDE: Payment methods, card numbers, change due, cashier info, barcodes, loyalty card numbers, transaction IDs.
 
-6. TOTALS: Extract subtotal, tax, tip, and total if visible. Omit any you cannot find. The "items" array is always required even if empty.
+6. CURRENCY: Identify the receipt's transaction currency and return its ISO 4217 code and printed symbol. Support every currency shown on the receipt, not only USD. Examples include "$" → USD only when the receipt context confirms United States dollars, "S/" or "S/." → PEN, "€" → EUR, "£" → GBP, and "¥" → JPY or CNY based on context. If a symbol is ambiguous, set currency_code to null and lower currency_confidence; never guess silently.
 
-7. VALIDATION: Before responding, verify that your item prices sum close to the subtotal or total. If they don't, re-examine the receipt for missed quantities or items.
+7. TOTALS: Extract subtotal, tax, tip, and total if visible. Omit any you cannot find. The "items" array is always required even if empty.
+
+8. VALIDATION: Before responding, verify that your item prices sum close to the subtotal or total. If they don't, re-examine the receipt for missed quantities or items.
 
 Think step by step: first identify the vendor, then read every line item carefully checking for quantity indicators, then extract totals.`
 

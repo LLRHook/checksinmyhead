@@ -154,22 +154,10 @@ func (m *mockTabRepository) GetMembersByTabID(tabID uint) ([]models.TabMember, e
 	return result, nil
 }
 
-// ── Mock ImageQuerier ───────────────────────────────────────────
-
-type mockImageQuerier struct {
-	images []models.TabImage
-	err    error
-}
-
-func (m *mockImageQuerier) GetByTabID(tabID uint) ([]models.TabImage, error) {
-	return m.images, m.err
-}
-
 // ── Tests ───────────────────────────────────────────────────────
 
 func TestFinalizeTab_Success(t *testing.T) {
 	repo := newMockRepo()
-	imgQ := &mockImageQuerier{images: []models.TabImage{}}
 
 	repo.tabs[1] = &models.Tab{
 		ID:        1,
@@ -192,7 +180,7 @@ func TestFinalizeTab_Success(t *testing.T) {
 		},
 	}
 
-	svc := NewTabService(repo, imgQ)
+	svc := NewTabService(repo)
 	settlements, err := svc.FinalizeTab(1)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -223,7 +211,6 @@ func TestFinalizeTab_Success(t *testing.T) {
 
 func TestFinalizeTab_AlreadyFinalized(t *testing.T) {
 	repo := newMockRepo()
-	imgQ := &mockImageQuerier{}
 
 	repo.tabs[1] = &models.Tab{
 		ID:        1,
@@ -231,7 +218,7 @@ func TestFinalizeTab_AlreadyFinalized(t *testing.T) {
 		Bills:     []models.Bill{{ID: 1}},
 	}
 
-	svc := NewTabService(repo, imgQ)
+	svc := NewTabService(repo)
 	_, err := svc.FinalizeTab(1)
 	if err == nil {
 		t.Fatal("expected error for already finalized tab")
@@ -243,7 +230,6 @@ func TestFinalizeTab_AlreadyFinalized(t *testing.T) {
 
 func TestFinalizeTab_NoBills(t *testing.T) {
 	repo := newMockRepo()
-	imgQ := &mockImageQuerier{}
 
 	repo.tabs[1] = &models.Tab{
 		ID:        1,
@@ -251,7 +237,7 @@ func TestFinalizeTab_NoBills(t *testing.T) {
 		Bills:     []models.Bill{},
 	}
 
-	svc := NewTabService(repo, imgQ)
+	svc := NewTabService(repo)
 	_, err := svc.FinalizeTab(1)
 	if err == nil {
 		t.Fatal("expected error for tab with no bills")
@@ -263,7 +249,7 @@ func TestFinalizeTab_NoBills(t *testing.T) {
 
 func TestUpdateBillItemAssignments_ForwardsToRepository(t *testing.T) {
 	repo := newMockRepo()
-	svc := NewTabService(repo, &mockImageQuerier{})
+	svc := NewTabService(repo)
 
 	assignments := []models.ItemAssignment{
 		{PersonName: "Alice", Percentage: 100},
@@ -322,35 +308,9 @@ func TestBuildPersonShares_FromAssignments(t *testing.T) {
 	}
 }
 
-func TestFinalizeTab_UnprocessedImages(t *testing.T) {
-	repo := newMockRepo()
-	imgQ := &mockImageQuerier{
-		images: []models.TabImage{
-			{ID: 1, TabID: 1, Processed: true},
-			{ID: 2, TabID: 1, Processed: false},
-		},
-	}
-
-	repo.tabs[1] = &models.Tab{
-		ID:        1,
-		Finalized: false,
-		Bills:     []models.Bill{{ID: 1, Total: 50, PersonShares: []models.PersonShare{{PersonName: "Alice", Total: 50}}}},
-	}
-
-	svc := NewTabService(repo, imgQ)
-	_, err := svc.FinalizeTab(1)
-	if err == nil {
-		t.Fatal("expected error for unprocessed images")
-	}
-	if err.Error() != "all images must be marked as processed before finalizing" {
-		t.Errorf("unexpected error: %v", err)
-	}
-}
-
 func TestJoinTab_Success(t *testing.T) {
 	repo := newMockRepo()
-	imgQ := &mockImageQuerier{}
-	svc := NewTabService(repo, imgQ)
+	svc := NewTabService(repo)
 
 	member, err := svc.JoinTab(1, "Charlie")
 	if err != nil {
@@ -376,8 +336,7 @@ func TestJoinTab_Success(t *testing.T) {
 
 func TestJoinTabAsCreator_Success(t *testing.T) {
 	repo := newMockRepo()
-	imgQ := &mockImageQuerier{}
-	svc := NewTabService(repo, imgQ)
+	svc := NewTabService(repo)
 
 	member, err := svc.JoinTabAsCreator(1, "Alice")
 	if err != nil {
@@ -397,11 +356,10 @@ func TestJoinTabAsCreator_Success(t *testing.T) {
 
 func TestAddBillToTab_WithMember(t *testing.T) {
 	repo := newMockRepo()
-	imgQ := &mockImageQuerier{}
 
 	repo.tabs[1] = &models.Tab{ID: 1}
 
-	svc := NewTabService(repo, imgQ)
+	svc := NewTabService(repo)
 	memberID := uint(42)
 	err := svc.AddBillToTab(1, 99, "bill-token", &memberID)
 	if err != nil {
@@ -424,11 +382,10 @@ func TestAddBillToTab_WithMember(t *testing.T) {
 
 func TestAddBillToTab_SetsPaidByMemberID(t *testing.T) {
 	repo := newMockRepo()
-	imgQ := &mockImageQuerier{}
 
 	repo.tabs[1] = &models.Tab{ID: 1}
 
-	svc := NewTabService(repo, imgQ)
+	svc := NewTabService(repo)
 	memberID := uint(42)
 	err := svc.AddBillToTab(1, 99, "bill-token", &memberID)
 	if err != nil {
@@ -442,8 +399,7 @@ func TestAddBillToTab_SetsPaidByMemberID(t *testing.T) {
 
 func TestAddBillToTab_AllowsMissingBillTokenForLegacyClients(t *testing.T) {
 	repo := newMockRepo()
-	imgQ := &mockImageQuerier{}
-	svc := NewTabService(repo, imgQ)
+	svc := NewTabService(repo)
 
 	err := svc.AddBillToTab(1, 99, "", nil)
 	if err != nil {
@@ -459,7 +415,6 @@ func TestAddBillToTab_AllowsMissingBillTokenForLegacyClients(t *testing.T) {
 
 func TestGetMembers_Success(t *testing.T) {
 	repo := newMockRepo()
-	imgQ := &mockImageQuerier{}
 
 	repo.members = []models.TabMember{
 		{ID: 1, TabID: 5, DisplayName: "Alice", Role: "creator", JoinedAt: time.Now()},
@@ -467,7 +422,7 @@ func TestGetMembers_Success(t *testing.T) {
 		{ID: 3, TabID: 9, DisplayName: "Eve", Role: "member", JoinedAt: time.Now()},
 	}
 
-	svc := NewTabService(repo, imgQ)
+	svc := NewTabService(repo)
 	members, err := svc.GetMembers(5)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)

@@ -18,6 +18,7 @@
 import 'package:flutter/material.dart';
 import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/models/bill_item.dart';
+import 'package:checks_frontend/models/tab.dart';
 
 // Import refactored components
 import 'models/bill_summary_data.dart';
@@ -57,6 +58,8 @@ class BillSummaryScreen extends StatefulWidget {
   final bool isCustomTipAmount;
   final String? scannedVendor;
   final bool lazyMode;
+  final String currencyCode;
+  final AppTab? tab;
 
   const BillSummaryScreen({
     super.key,
@@ -72,6 +75,8 @@ class BillSummaryScreen extends StatefulWidget {
     this.isCustomTipAmount = false,
     this.scannedVendor,
     this.lazyMode = false,
+    this.currencyCode = 'USD',
+    this.tab,
   });
 
   @override
@@ -110,6 +115,7 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
       isCustomTipAmount: widget.isCustomTipAmount,
       billName: billName,
       paymentMethods: const <Map<String, String>>[],
+      currencyCode: widget.currencyCode,
     );
   }
 
@@ -298,10 +304,12 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
                   context,
                   data: _summaryData,
                   lazyMode: widget.lazyMode,
+                  tab: widget.tab,
                 );
               },
               data:
                   _summaryData, // Pass the entire data object instead of individual props
+              tab: widget.tab,
             ),
           ),
         ],
