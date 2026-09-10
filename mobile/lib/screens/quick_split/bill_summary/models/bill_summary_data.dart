@@ -35,6 +35,7 @@ class BillSummaryData {
   final double tipPercentage;
   final bool isCustomTipAmount;
   final String billName;
+  final String currencyCode;
 
   // Payment method fields
   final List<Map<String, String>> paymentMethods;
@@ -51,6 +52,7 @@ class BillSummaryData {
     this.tipPercentage = 0,
     this.isCustomTipAmount = false,
     this.billName = '',
+    this.currencyCode = 'USD',
     this.paymentMethods = const [],
   });
 
@@ -68,6 +70,7 @@ class BillSummaryData {
     bool? isCustomTipAmount,
     String? billName,
     List<Map<String, String>>? paymentMethods,
+    String? currencyCode,
   }) {
     return BillSummaryData(
       participants: participants ?? this.participants,
@@ -82,6 +85,7 @@ class BillSummaryData {
       isCustomTipAmount: isCustomTipAmount ?? this.isCustomTipAmount,
       billName: billName ?? this.billName,
       paymentMethods: paymentMethods ?? this.paymentMethods,
+      currencyCode: currencyCode ?? this.currencyCode,
     );
   }
 

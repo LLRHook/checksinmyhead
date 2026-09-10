@@ -2,7 +2,7 @@
 
 import { FaChevronDown, FaReceipt } from "react-icons/fa6";
 import { useCollapsible } from "@/hooks/useCollapsible";
-import type { Bill } from "@/lib/api";
+import { type Bill, formatMoney } from "@/lib/api";
 
 interface TabBillListProps {
   bills: Bill[];
@@ -35,7 +35,10 @@ function BillCard({ bill }: { bill: Bill }) {
         </div>
         <div className="flex items-center gap-3">
           <span className="text-lg font-bold font-mono text-[var(--accent)] dark:text-white">
-            ${bill.total.toFixed(2)}
+            {formatMoney(
+              bill.display_total ?? bill.total,
+              bill.display_currency ?? bill.currency_code ?? "USD",
+            )}
           </span>
           <FaChevronDown
             className={`text-[var(--text-secondary)] transition-transform duration-200 ease-out ${isOpen ? "rotate-180" : ""}`}
@@ -63,7 +66,10 @@ function BillCard({ bill }: { bill: Bill }) {
                     </div>
                   </td>
                   <td className="py-1.5 text-sm font-mono font-medium text-right text-[var(--accent)] dark:text-white">
-                    ${share.total.toFixed(2)}
+                    {formatMoney(
+                      share.total,
+                      bill.display_currency ?? bill.currency_code ?? "USD",
+                    )}
                   </td>
                 </tr>
               ))}

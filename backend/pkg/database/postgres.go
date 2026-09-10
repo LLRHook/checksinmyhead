@@ -46,7 +46,7 @@ func InitDB() (*gorm.DB, error) {
 	sqlDB.SetConnMaxIdleTime(time.Duration(envInt("DB_CONN_MAX_IDLE_MINUTES", 5)) * time.Minute)
 
 	// Migrate parent tables first (Tab before Bill, since Bill has FK to Tab)
-	err = db.AutoMigrate(&models.Tab{}, &models.TabMember{}, &models.TabImage{}, &models.TabSettlement{}, &models.Bill{}, &models.Person{}, &models.BillItem{}, &models.ItemAssignment{}, &models.PersonShare{})
+	err = db.AutoMigrate(&models.Tab{}, &models.TabMember{}, &models.TabSettlement{}, &models.Bill{}, &models.Person{}, &models.BillItem{}, &models.ItemAssignment{}, &models.PersonShare{})
 	if err != nil {
 		return nil, err
 	}

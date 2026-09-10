@@ -1,6 +1,7 @@
 package bill
 
 import (
+	"backend/internal/currency"
 	"backend/pkg/models"
 	"backend/pkg/security"
 	"crypto/subtle"
@@ -23,10 +24,15 @@ func appDomain() string {
 
 type BillHandler struct {
 	service BillService
+	rates   *currency.Service
 }
 
-func NewBillHandler(service BillService) *BillHandler {
-	return &BillHandler{service: service}
+func NewBillHandler(service BillService, rates ...*currency.Service) *BillHandler {
+	var rateService *currency.Service
+	if len(rates) > 0 {
+		rateService = rates[0]
+	}
+	return &BillHandler{service: service, rates: rateService}
 }
 
 func (h *BillHandler) CreateBill(c *gin.Context) {
@@ -40,6 +46,31 @@ func (h *BillHandler) CreateBill(c *gin.Context) {
 
 	// Sanitize user-provided strings
 	bill.Name = security.SanitizeString(bill.Name)
+	if bill.CurrencyCode == "" {
+		bill.CurrencyCode = "USD"
+	}
+	if bill.DisplayCurrency == "" {
+		bill.DisplayCurrency = bill.CurrencyCode
+	}
+	if bill.CurrencyCode != bill.DisplayCurrency {
+		if h.rates == nil {
+			c.JSON(503, gin.H{"error": "currency conversion is temporarily unavailable"})
+			return
+		}
+		rate, err := h.rates.GetRate(bill.CurrencyCode, bill.DisplayCurrency)
+		if err != nil {
+			c.JSON(503, gin.H{"error": "currency conversion is temporarily unavailable"})
+			return
+		}
+		displayTotal := bill.Total * rate.Value
+		bill.DisplayTotal = &displayTotal
+		bill.ExchangeRate = &rate.Value
+		bill.ExchangeRateSource = rate.Source
+		bill.ExchangeRateDate = &rate.UpdatedAt
+	} else {
+		displayTotal := bill.Total
+		bill.DisplayTotal = &displayTotal
+	}
 	for i := range bill.Items {
 		bill.Items[i].Name = security.SanitizeString(bill.Items[i].Name)
 	}

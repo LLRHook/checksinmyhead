@@ -22,6 +22,8 @@ import 'package:checks_frontend/screens/quick_split/bill_summary/widgets/enhance
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
 import 'package:checks_frontend/screens/settings/services/preferences_service.dart';
 import 'package:checks_frontend/services/api_service.dart';
+import 'package:checks_frontend/models/tab.dart';
+import 'package:checks_frontend/screens/tabs/tab_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:logger/logger.dart';
@@ -35,6 +37,7 @@ class BottomBar extends StatelessWidget {
   final Function onDoneTap;
   final BillSummaryData data;
   final bool lazyMode;
+  final AppTab? tab;
 
   const BottomBar({
     super.key,
@@ -42,6 +45,7 @@ class BottomBar extends StatelessWidget {
     required this.onDoneTap,
     required this.data,
     this.lazyMode = false,
+    this.tab,
   });
 
   @override
@@ -156,6 +160,7 @@ class DoneButtonHandler {
     BuildContext context, {
     required BillSummaryData data,
     bool lazyMode = false,
+    AppTab? tab,
   }) async {
     if (_isSaving) return;
     _isSaving = true;
@@ -210,6 +215,7 @@ class DoneButtonHandler {
         isCustomTipAmount: data.isCustomTipAmount,
         billName: billName,
         paymentMethods: paymentMethods,
+        currencyCode: data.currencyCode,
       );
 
       // Save locally first (always works even if backend fails)
@@ -262,6 +268,8 @@ class DoneButtonHandler {
             tipPercentage: updatedData.tipPercentage,
             total: updatedData.total,
             paymentMethods: apiPaymentMethods,
+            currencyCode: updatedData.currencyCode,
+            displayCurrency: tab?.displayCurrency,
           );
 
           await _apiService.addBillToTab(
@@ -291,6 +299,8 @@ class DoneButtonHandler {
             tipPercentage: updatedData.tipPercentage,
             total: updatedData.total,
             paymentMethods: apiPaymentMethods,
+            currencyCode: updatedData.currencyCode,
+            displayCurrency: tab?.displayCurrency,
           );
 
           shareUrl = response.shareUrl;
@@ -300,6 +310,9 @@ class DoneButtonHandler {
           final mostRecent = await DatabaseProvider.db.getMostRecentBill();
           if (mostRecent != null) {
             await _billsManager.updateBillShareUrl(mostRecent.id, shareUrl);
+            if (tab?.id != null) {
+              await TabManager().addBillsToTab(tab!.id!, [mostRecent.id]);
+            }
           }
         }
       } on ApiException catch (e) {

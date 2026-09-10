@@ -41,6 +41,12 @@ export interface Bill {
   tip_amount: number;
   tip_percentage: number;
   total: number;
+  currency_code?: string;
+  display_currency?: string;
+  display_total?: number;
+  exchange_rate?: number;
+  exchange_rate_source?: string;
+  exchange_rate_date?: string;
   date: string;
   payment_methods: PaymentMethod[];
   items: BillItem[];
@@ -54,6 +60,7 @@ export interface Tab {
   description: string;
   bills: Bill[];
   total_amount: number;
+  display_currency?: string;
   finalized: boolean;
   finalized_at: string | null;
   created_at: string;
@@ -90,21 +97,21 @@ export interface NetBalance {
   amount: number;
 }
 
-export interface TabImage {
-  id: number;
-  tab_id: number;
-  filename: string;
-  url: string;
-  size: number;
-  mime_type: string;
-  processed: boolean;
-  uploaded_by: string;
-  created_at: string;
-}
-
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 export { API_BASE_URL };
+
+export function formatMoney(amount: number, currency = "USD"): string {
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: currency.toUpperCase(),
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return `${currency.toUpperCase()} ${amount.toFixed(2)}`;
+  }
+}
 
 export async function getBill(id: string, token: string): Promise<Bill> {
   const response = await fetch(`${API_BASE_URL}/api/bills/${id}`, {
@@ -142,21 +149,6 @@ export async function getTab(id: string, token: string): Promise<Tab> {
   return response.json();
 }
 
-export async function getTabImages(
-  id: string,
-  token: string,
-): Promise<TabImage[]> {
-  const response = await fetch(`${API_BASE_URL}/api/tabs/${id}/images`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (!response.ok) {
-    return [];
-  }
-
-  return response.json();
-}
-
 export async function getSettlements(
   id: string,
   token: string,
@@ -182,32 +174,6 @@ export async function getTabMembers(
 
   if (!response.ok) {
     return [];
-  }
-
-  return response.json();
-}
-
-export async function joinTab(
-  id: string,
-  token: string,
-  displayName: string,
-): Promise<{
-  member_id: number;
-  member_token: string;
-  display_name: string;
-  role: string;
-} | null> {
-  const response = await fetch(`${API_BASE_URL}/api/tabs/${id}/join`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ display_name: displayName }),
-  });
-
-  if (!response.ok) {
-    return null;
   }
 
   return response.json();

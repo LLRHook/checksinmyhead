@@ -82,3 +82,115 @@
 - [ ] Align Render Docker build images with the Go version required by `backend/go.mod`.
 - [ ] Verify the production health endpoint and Render rollout after merging the fix.
 - [ ] Confirm whether a Render deploy hook secret is needed or Git auto-deploy is the intended path.
+
+# Tab Roster & Receipt Flow Revamp
+
+## Product decisions
+
+- [ ] A tab owns a reusable roster of people for the trip/event.
+- [ ] The roster is persisted locally and synced to the backend so the tab remains coherent across devices.
+- [ ] Tab roster people are separate from anonymous collaboration members; joining a shared tab does not silently add someone to the expense roster.
+- [ ] Creating a receipt from a tab starts the existing receipt-entry flow, then asks who participated in that specific stop before assignment.
+- [ ] The per-receipt participant list is preselected from the tab roster, with people removable for that receipt only.
+- [ ] The existing normal item-assignment flow and lazy-mode flow remain the calculation/claim engines after the new participant step.
+- [ ] Existing bills can still be attached to a tab, but “Add receipt” becomes the primary action.
+- [ ] A receipt must retain its own participant snapshot so later roster edits do not rewrite historical bills.
+
+## Implementation plan
+
+- [ ] Add a participant roster representation to local `Tabs` storage and `AppTab`, including schema migration, serialization, and unit coverage.
+- [ ] Extend backend tab data/update support with a sanitized roster payload, repository persistence, and API tests.
+- [ ] Build a reusable tab roster editor using the existing participant/recent-people/group components and make it available during tab creation and tab detail editing.
+- [ ] Replace the tab detail primary add flow with “Add receipt”; pass tab context through bill entry, assignment, and summary so the completed bill is saved and synced into that tab.
+- [ ] Add a focused per-receipt participant selection step: roster preselected, removable people, empty-state validation, and immutable participant snapshot passed to the bill flow.
+- [ ] Preserve normal assignment and lazy mode behavior, adapting lazy mode to the selected receipt participants without introducing a second sharing model.
+- [ ] Keep the existing “attach existing bill” path as a secondary action and prevent duplicate attachment.
+- [ ] Add focused mobile tests for roster persistence, per-receipt removal, snapshot behavior, tab receipt navigation, and regression coverage for normal/lazy flows.
+- [ ] Add backend tests for roster update/auth/sanitization and run Flutter formatting, analyzer, targeted tests, Go tests, and a manual tab-flow smoke test.
+
+## Review checkpoint
+
+- Complexity: medium-to-ambitious. The UI is straightforward, but tab context must survive multiple existing navigation layers and historical receipts must not change when the roster changes.
+- Main risk: lazy mode currently uses an empty participant list by design. The implementation must preserve its existing collaborative claim semantics while using the selected roster only as the tab’s intended participant context.
+- No implementation has started for this feature; awaiting product-owner approval of the scope above.
+
+# Billington 2.0 — Collaborative Trips & Multi-Currency
+
+## Product decisions — approved for implementation
+
+- [x] Tabs become the primary collaborative product: a trip/event has members, shared bills, balances, and settlement actions in the mobile app.
+- [x] The existing anonymous collaboration model remains account-less. Each installation gets a generated local identity/display name that can be edited; no hardware device identifier, password, or account is required for v2.
+- [x] A shared link is an app invite/deep link. If the app is installed it opens the join flow; if it is not installed it shows a short install handoff and preserves the invite for after installation. The web page remains a lightweight fallback/status page, not the main editing experience.
+- [x] Joining a tab creates or restores that installation's member token and shows “You’re part of [tab], owned by [creator]” inside the tab.
+- [x] Any member can add a bill, assign people/items, view the running total, see net balances, and mark a settlement paid. The creator alone can rename/delete/finalize a tab.
+- [x] Receipt photos are still allowed locally for AI scanning, but tab image uploads, receipt galleries, processed-image gates, and trip-memory behavior are removed from the product path unless a later product decision restores them.
+- [x] Payments in v2 mean launching the payer/owner’s configured Venmo, Cash App, PayPal, or other payment link and recording “marked paid.” Real in-app money movement is out of scope.
+- [x] Every bill stores its original ISO 4217 currency and the tab stores a selectable display currency, defaulting to USD. Support the provider's supported currencies rather than special-casing PEN; imported values remain auditable in the original currency, while converted values include the rate/date used.
+- [x] Add currency selection during tab creation and in tab settings, plus currency selection/confirmation during standalone bill entry. A receipt's detected currency should be editable before save; never silently treat an unknown symbol as USD.
+
+## Implementation plan
+
+### 1. Currency-aware receipt parsing and conversion
+
+- [x] Extend the receipt parser response with `currency_code`, `currency_symbol`, and a confidence/needs-review signal while retaining the original numeric amounts.
+- [x] Update the AI prompt to recognize ISO codes and symbols, including `PEN`/`S/`/`S/ .`, distinguish soles from dollars, never silently convert a receipt, and flag ambiguous currency instead of guessing.
+- [x] Add a currency confirmation step after scanning: detected currency, tab display currency, editable totals, and a clear conversion preview before saving.
+- [x] Add a backend currency service with a provider interface, daily caching, timeout/error handling, and stored `rate`, `source`, and `rate_date` metadata on each converted bill.
+- [x] Use ExchangeRate-API’s keyed endpoint from the backend only. The free plan supports multiple base/target currencies through standard/pair endpoints and 1,500 requests/month; cache daily because the provider updates daily. Do not commit the key or send it to Flutter.
+- [ ] Add the secret `EXCHANGE_RATE_API_KEY` to the deployment environment and document the required account setup. The Docker wiring and `.env.example` are ready; if the key is unavailable, support a manual rate entry/fallback so a trip is not blocked.
+- [x] Add currency formatting throughout mobile, backend JSON, and the tab viewer; web/backend/mobile are currency-aware.
+- [ ] Test PEN → USD, USD → PEN, same-currency bills, missing/ambiguous currency, provider failure, cached rates, rounding, and historical bill immutability.
+
+### 2. Backend tab collaboration model
+
+- [ ] Audit and consolidate the existing tab/member/image/finalization APIs into one supported tab workflow; mark image upload/finalization endpoints deprecated before removing their UI.
+- [ ] Add explicit member-owned bill creation or a transaction that creates a bill and attaches it to a tab, so members do not need a separate orphan bill/share-link flow.
+- [ ] Persist the payer/member who paid each bill, the bill’s participant snapshot, currency metadata, creator/member attribution, and the payment handles explicitly published for that bill/tab.
+- [ ] Keep payment handles scoped to a shared bill/tab rather than creating a global user directory. Local settings remain the source of truth until a user chooses to publish them; shared data may contain only the selected handle needed by collaborators.
+- [ ] Return a tab summary containing members, bills, total by display currency, each member’s paid/owed/net amount, and minimized settlement suggestions (for example, A pays B).
+- [ ] Add authorization rules: valid tab token for reads, member token for writes, creator-only destructive actions, finalized tabs immutable, and idempotent join behavior for a previously joined installation.
+- [ ] Keep optimistic concurrency for collaborative edits; add conflict responses and refresh behavior for two people editing the same bill.
+- [ ] Add Go tests for join idempotency, member attribution, cross-member bill creation, balance math, currency conversion persistence, permissions, finalization, and payment-state updates.
+
+### 3. Mobile tab experience
+
+- [ ] Replace the current tab detail hierarchy with a clear trip dashboard: tab name/owner, member row, total, “you owe/you’re owed,” balances, recent bills, and one primary “Add bill” action.
+- [ ] Add “Add bill to this tab” as a first-class entry point that passes tab/member context through receipt scan, manual entry, participant selection, item assignment, and save/sync.
+- [ ] Preserve “I’m Lazy” and Quick Split as fast paths for one-off dinners; offer “Save to tab” when appropriate without making those flows carry the full tab complexity.
+- [ ] Add member management/join status, copy/share invite, leave tab, and creator controls. Use a generated install identity as the default name and let the user edit it.
+- [ ] Add local persistence for the install identity and member tokens with recovery-safe behavior; never rely on a raw device ID or expose member tokens in logs.
+- [ ] Add settlement UI that shows who owes whom, launches configured payment methods, and records payment status with confirmation and undo where safe.
+- [x] Remove the tab image gallery, processed checklist, camera FAB, and image-driven finalization gate from the primary flow. Keep camera access only where needed for receipt parsing.
+
+### 4. Invite/deep-link and web fallback
+
+- [x] Define one canonical tab invite URL and configure iOS Universal Links plus the Billington URL scheme to open the iOS app directly.
+- [ ] On cold install/open, retain the invite URL until onboarding completes, then show the join confirmation with tab name, owner, and the generated/editable display name.
+- [x] Replace the web viewer’s join/edit ambiguity with a lightweight “Open in Billington” handoff, install CTA, read-only fallback summary, and clear explanation that edits happen in the app.
+- [ ] Keep direct payment links and read-only browser access available for people who cannot install, but do not promise browser-based collaborative editing in v1.
+- [ ] Add mobile/web smoke tests for installed, not-installed, expired/invalid invite, duplicate join, and returning member flows.
+
+### 4b. Web presence and viewer overhaul
+
+- [ ] Audit the public landing page, bill viewer, and tab viewer for stale 1.4/lazy-mode assumptions and a consistent Billington 2.0 message.
+- [ ] Make tab pages read-only in the browser: show trip identity, owner, members, totals, net balances, original/converted currencies, payment handles, and last-updated state without browser mutations.
+- [ ] Add a prominent, responsive “Open in Billington”/“Get the app to join” handoff that preserves the tab invite URL through installation.
+- [x] Remove or gate browser join/claim/edit controls that conflict with the app-required collaboration model.
+- [x] Replace hard-coded dollar formatting in every viewer component with currency-aware formatting and conversion context.
+- [ ] Keep the existing visual language: warm brand accent, rounded cards, restrained hierarchy, dark mode, mobile-first responsive layout, accessible focus states, and no new visual system.
+- [ ] Add web tests for read-only behavior, app handoff, currency display, invalid tokens, empty tabs, and payment-link rendering.
+
+### 5. Polish, documentation, and launch verification
+
+- [ ] Follow `ui_prompt.md` for the tab dashboard and join/add-bill flow; keep the existing fast paths visually distinct from the collaborative trip experience.
+- [ ] Update roadmap, API docs, privacy docs, setup/deployment docs, and release notes to match the final supported model.
+- [ ] Add migration/backfill behavior for existing tabs and bills, including default USD and legacy `$` formatting where currency is unknown.
+- [ ] Run Flutter format/analyze/tests, Go race tests, web lint/typecheck/unit tests, production builds, and a two-device manual trip simulation.
+- [ ] Verify production environment variables, database migrations, deep links, rate-cache behavior, payment links, and error states before calling v1 complete.
+- [x] Verify the displayed app version, Flutter package version, iOS marketing version, build number, and release notes are consistent; remove stale installed/build artifacts before judging the Settings version.
+
+## Review checkpoint
+
+- Complexity: ambitious but bounded if v1 keeps account-less identity, daily exchange rates, external payment links, and one canonical tab model.
+- Main risk: trying to become all of Splitwise at once. The proposed launch slice is shared trip accounting and settlement tracking; accounts, chat, real money movement, receipt archives, and historical exchange-rate reconstruction can follow in v2.
+- Required product-owner confirmations: approve the v1 boundary above, create/provide the ExchangeRate-API key through a secure environment variable, and decide whether the web fallback should remain read-only or be removed entirely.

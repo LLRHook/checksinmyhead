@@ -13,6 +13,7 @@ class AppTab {
   final String? memberToken;
   final String? role;
   final bool isRemote;
+  final String displayCurrency;
 
   AppTab({
     this.id,
@@ -27,6 +28,7 @@ class AppTab {
     this.memberToken,
     this.role,
     this.isRemote = false,
+    this.displayCurrency = 'USD',
   });
 
   bool get isSynced => backendId != null;
@@ -62,6 +64,7 @@ class AppTab {
     String? memberToken,
     String? role,
     bool? isRemote,
+    String? displayCurrency,
   }) {
     return AppTab(
       id: id ?? this.id,
@@ -76,6 +79,7 @@ class AppTab {
       memberToken: memberToken ?? this.memberToken,
       role: role ?? this.role,
       isRemote: isRemote ?? this.isRemote,
+      displayCurrency: displayCurrency ?? this.displayCurrency,
     );
   }
 }

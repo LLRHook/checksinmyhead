@@ -94,33 +94,6 @@ Transform Billington from a local Flutter app into a Splitwise competitor with g
 
 ---
 
-## Phase 4: Image Uploads ✅ COMPLETE
-*Goal: Receipt photos and trip memories*
-
-### Week 7-8: Image Infrastructure
-- [X] **Backend: Storage Setup**
-  - [X] Local file storage with upload directory
-  - [X] TabImage model with processed flag
-  - [X] Image endpoints (POST, GET, PATCH, DELETE)
-  - [X] Multipart upload handler with MIME validation
-  - [X] Rate limiting (20/hour) and file size limits (10MB)
-
-- [X] **Flutter: Camera & Upload**
-  - [X] `image_picker` package integrated
-  - [X] Camera/gallery picker UI
-  - [X] Image compression before upload
-  - [X] Upload progress indicator
-  - [X] Display uploaded images in tab
-  - [X] Mark images as "processed" checkbox
-
-- [X] **Web Viewer: Image Gallery**
-  - [X] TabImageGallery component with lightbox
-  - [X] Show processed/unprocessed status
-
-**Milestone**: Users can photograph receipts and attach to tabs
-
----
-
 ## Phase 5: Processing Workflow ✅ COMPLETE
 *Goal: Mark trip complete and settle up*
 
@@ -128,13 +101,13 @@ Transform Billington from a local Flutter app into a Splitwise competitor with g
 - [X] **Backend: Finalization Logic**
   - [X] `Finalized` + `FinalizedAt` fields on Tab model
   - [X] `TabSettlement` model with per-person amounts + paid status
-  - [X] `POST /api/tabs/:id/finalize` — validates images, creates settlements
+  - [X] `POST /api/tabs/:id/finalize` — creates settlements from tab bills
   - [X] `GET /api/tabs/:id/settlements` — fetch settlement list
   - [X] `PATCH /api/tabs/:id/settlements/:id` — toggle paid
-  - [X] Mutation guards on AddBill, UpdateTab, UploadImage, DeleteImage
+  - [X] Mutation guards on AddBill and UpdateTab
 
 - [X] **Flutter: Settlement UI**
-  - [X] "Finalize" FAB appears when all images processed
+  - [X] "Finalize" FAB appears when the tab is ready to settle
   - [X] Confirmation sheet with settlement preview
   - [X] Settlement cards with tap-to-toggle paid status
   - [X] Drift schema v4 with finalized column
@@ -168,7 +141,6 @@ Transform Billington from a local Flutter app into a Splitwise competitor with g
 - [X] **Backend: Member attribution on write endpoints**
   - [X] AddBillToTab records added_by_member_id via ?m= param
   - [X] FinalizeTab requires creator role when members exist
-  - [X] UploadImage resolves ?m= for uploaded_by attribution
 - [X] **Flutter: Drift migration v5 + model update**
   - [X] memberToken, role, isRemote columns on Tabs table
   - [X] Tab model fields + isCreator/isMember getters
@@ -203,7 +175,6 @@ Transform Billington from a local Flutter app into a Splitwise competitor with g
   - [X] Cleanup on exit (kill processes, docker-compose down)
 - [X] **Backend Go tests** (`internal/tab/service_test.go`)
   - [X] Manual mocks for TabRepository and ImageQuerier
-  - [X] 8 test cases: FinalizeTab (success, already finalized, no bills, unprocessed images), JoinTab, JoinTabAsCreator, AddBillToTab, GetMembers
 - [X] **Web viewer tests** (Vitest)
   - [X] Vitest config + test scripts in package.json
   - [X] 8 test cases: computeTabPersonTotals (aggregation, case-insensitive, sort, empty), getBill (403, 404, success), getTab (500)

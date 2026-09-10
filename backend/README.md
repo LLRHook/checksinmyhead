@@ -15,11 +15,6 @@ internal/
 │   ├── handler.go            #   Join, finalize, settlement endpoints
 │   ├── service.go            #   Finalization logic, member management
 │   └── repository.go         #   Tab queries with eager loading
-└── image/                    # Image upload & management
-    ├── handler.go            #   Multipart upload, MIME validation
-    ├── service.go            #   Image business logic
-    ├── repository.go         #   Image CRUD
-    └── ratelimit.go          #   20 uploads/hour per tab
 pkg/
 ├── models/                   # GORM data models (Tab, Bill, TabMember, etc.)
 ├── database/postgres.go      # DB connection + AutoMigrate
@@ -61,7 +56,9 @@ Or use the root `./dev.sh` script to start the full stack (backend + web + mobil
 | `DB_NAME` | `billington_data` | Database name |
 | `DB_USER` | `billington_admin` | Database user |
 | `DB_PASSWORD` | `changeme` | Database password |
-| `UPLOAD_DIR` | `./uploads` | Image upload directory |
+| `EXCHANGE_RATE_API_KEY` | — | Server-only ExchangeRate-API key used for cross-currency conversion |
+
+Cross-currency bills require `EXCHANGE_RATE_API_KEY`. Same-currency bills continue to work without it; never put this key in the mobile app or web bundle.
 
 ## Testing
 

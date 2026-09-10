@@ -32,6 +32,19 @@ void main() {
       expect(receipt.total, 9.69);
     });
 
+    test('preserves detected currency metadata', () {
+      final receipt = ParsedReceipt.fromJson({
+        'currency_code': 'PEN',
+        'currency_symbol': 'S/',
+        'currency_confidence': 0.99,
+        'items': [],
+      });
+
+      expect(receipt.currencyCode, 'PEN');
+      expect(receipt.currencySymbol, 'S/');
+      expect(receipt.currencyConfidence, 0.99);
+    });
+
     test('handles missing optional fields', () {
       final json = {
         'items': [

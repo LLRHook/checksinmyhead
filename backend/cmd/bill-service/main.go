@@ -2,7 +2,7 @@ package main
 
 import (
 	"backend/internal/bill"
-	"backend/internal/image"
+	"backend/internal/currency"
 	"backend/internal/receipt"
 	"backend/internal/tab"
 	"backend/pkg/database"
@@ -27,21 +27,13 @@ func main() {
 	}
 	repo := bill.NewBillRepository(db)
 	service := bill.NewBillService(repo)
-	handler := bill.NewBillHandler(service)
-
-	uploadDir := os.Getenv("UPLOAD_DIR")
-	if uploadDir == "" {
-		uploadDir = "./uploads"
-	}
-
-	imgRepo := image.NewImageRepository(db)
-	imgService := image.NewImageService(imgRepo)
+	rateService := currency.NewService()
+	handler := bill.NewBillHandler(service, rateService)
 
 	tabRepo := tab.NewTabRepository(db)
-	tabService := tab.NewTabService(tabRepo, imgService)
+	tabService := tab.NewTabService(tabRepo)
 	tabHandler := tab.NewTabHandler(tabService)
-
-	imgHandler := image.NewImageHandler(imgService, tabService, uploadDir)
+	currencyHandler := currency.NewHandler(currency.NewService())
 
 	// Receipt parsing (optional — degrades gracefully if ANTHROPIC_API_KEY is not set)
 	var receiptHandler *receipt.Handler
@@ -78,6 +70,7 @@ func main() {
 		ExposeHeaders: []string{"Content-Length"},
 	}))
 	r.GET("/health", getHealth)
+	r.GET("/api/currency/rate", currencyHandler.GetRate)
 	r.GET("/api/bills/:id", handler.GetBill)
 	r.POST("/api/bills", handler.CreateBill)
 	r.PATCH("/api/bills/:id/shares/:shareId", handler.UpdatePersonSharePaid)
@@ -96,13 +89,6 @@ func main() {
 	if receiptHandler != nil {
 		r.POST("/api/receipts/parse", receiptHandler.ParseReceipt)
 	}
-
-	r.POST("/api/tabs/:id/images", imgHandler.UploadImage)
-	r.GET("/api/tabs/:id/images", imgHandler.ListImages)
-	r.PATCH("/api/tabs/:id/images/:imageId", imgHandler.UpdateImage)
-	r.DELETE("/api/tabs/:id/images/:imageId", imgHandler.DeleteImage)
-
-	r.Static("/uploads", uploadDir)
 
 	fmt.Println("Bill service starting on :8080")
 	log.Fatal(http.ListenAndServe(":8080", r))

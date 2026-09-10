@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:checks_frontend/models/tab.dart';
@@ -7,9 +6,11 @@ import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.dart';
 import 'package:checks_frontend/screens/recent_bills/billDetails/bill_details_screen.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
+import 'package:checks_frontend/screens/quick_split/bill_entry/bill_entry_screen.dart';
+import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/services/api_service.dart';
+import 'package:checks_frontend/screens/settings/services/preferences_service.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:image_picker/image_picker.dart';
 
 class TabDetailScreen extends StatefulWidget {
   final AppTab tab;
@@ -27,11 +28,9 @@ class _TabDetailScreenState extends State<TabDetailScreen>
   final _apiService = ApiService();
   List<RecentBillModel> _allBills = [];
   List<RecentBillModel> _tabBills = [];
-  List<TabImageResponse> _images = [];
   List<SettlementResponse> _settlements = [];
   List<TabMemberResponse> _members = [];
   bool _isLoading = true;
-  bool _isUploading = false;
   bool _isFinalizing = false;
   late AppTab _currentTab;
   late AnimationController _animController;
@@ -53,6 +52,13 @@ class _TabDetailScreenState extends State<TabDetailScreen>
     super.dispose();
   }
 
+  String _formatCurrency(double value) {
+    return CurrencyFormatter.formatCurrency(
+      value,
+      currencyCode: _currentTab.displayCurrency,
+    );
+  }
+
   Future<void> _loadBills() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
@@ -71,7 +77,6 @@ class _TabDetailScreenState extends State<TabDetailScreen>
             .where((bill) => _currentTab.billIds.contains(bill.id))
             .toList();
 
-    await _loadImages();
     await _loadSettlements();
     await _loadMembers();
 
@@ -103,25 +108,6 @@ class _TabDetailScreenState extends State<TabDetailScreen>
     }
   }
 
-  Future<void> _loadImages() async {
-    if (_currentTab.backendId == null || _currentTab.accessToken == null) {
-      return;
-    }
-
-    try {
-      final images = await _apiService.getTabImages(
-        _currentTab.backendId!,
-        _currentTab.accessToken!,
-      );
-
-      if (mounted) {
-        setState(() => _images = images);
-      }
-    } on ApiException {
-      // Images are non-critical; silently fail
-    }
-  }
-
   Future<void> _loadSettlements() async {
     if (_currentTab.backendId == null || _currentTab.accessToken == null) {
       return;
@@ -146,108 +132,9 @@ class _TabDetailScreenState extends State<TabDetailScreen>
     if (!_currentTab.isSynced) return false;
     if (_currentTab.isFinalized) return false;
     if (_tabBills.isEmpty && !_currentTab.isRemote) return false;
-    if (_images.isNotEmpty && !_images.every((i) => i.processed)) return false;
     // If tab has members, only the creator can finalize
     if (_members.isNotEmpty && !_currentTab.isCreator) return false;
     return true;
-  }
-
-  Future<void> _pickAndUploadImage() async {
-    if (_currentTab.backendId == null || _currentTab.accessToken == null) {
-      _showSnackBar('Tab must be synced to upload images', isError: true);
-      return;
-    }
-
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => const _ImageSourceSheet(),
-    );
-
-    if (source == null || !mounted) return;
-
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: source,
-      maxWidth: 1920,
-      imageQuality: 70,
-    );
-
-    if (pickedFile == null || !mounted) return;
-
-    setState(() => _isUploading = true);
-
-    try {
-      await _apiService.uploadTabImage(
-        _currentTab.backendId!,
-        _currentTab.accessToken!,
-        File(pickedFile.path),
-        memberToken: _currentTab.memberToken,
-      );
-
-      if (mounted) {
-        setState(() => _isUploading = false);
-        _showSnackBar('Receipt uploaded');
-        await _loadImages();
-      }
-    } on ApiException {
-      if (mounted) {
-        setState(() => _isUploading = false);
-        _showSnackBar('Failed to upload image', isError: true);
-      }
-    }
-  }
-
-  Future<void> _toggleProcessed(TabImageResponse image) async {
-    if (_currentTab.backendId == null || _currentTab.accessToken == null) {
-      return;
-    }
-
-    try {
-      await _apiService.updateTabImage(
-        _currentTab.backendId!,
-        image.id,
-        _currentTab.accessToken!,
-        !image.processed,
-      );
-
-      if (mounted) {
-        await _loadImages();
-      }
-    } on ApiException {
-      // Toggle failed; silently fail
-    }
-  }
-
-  Future<void> _deleteImage(TabImageResponse image) async {
-    if (_currentTab.backendId == null || _currentTab.accessToken == null) {
-      return;
-    }
-
-    final confirmed = await showModalBottomSheet<bool>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => const _DeleteImageSheet(),
-    );
-
-    if (confirmed != true || !mounted) return;
-
-    try {
-      await _apiService.deleteTabImage(
-        _currentTab.backendId!,
-        image.id,
-        _currentTab.accessToken!,
-      );
-
-      if (mounted) {
-        _showSnackBar('Image deleted');
-        await _loadImages();
-      }
-    } on ApiException {
-      if (mounted) {
-        _showSnackBar('Failed to delete image', isError: true);
-      }
-    }
   }
 
   Future<void> _finalizeTab() async {
@@ -334,10 +221,104 @@ class _TabDetailScreenState extends State<TabDetailScreen>
     }
   }
 
+  Future<void> _addReceiptToTab() async {
+    HapticFeedback.mediumImpact();
+    final participants =
+        _members
+            .map(
+              (member) => Person(name: member.displayName, color: Colors.blue),
+            )
+            .toList();
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (context) =>
+                BillEntryScreen(participants: participants, tab: _currentTab),
+      ),
+    );
+    if (mounted) await _loadBills();
+  }
+
   Future<void> _removeBill(int billId) async {
     if (_currentTab.id == null) return;
     await _tabManager.removeBillFromTab(_currentTab.id!, billId);
     await _loadBills();
+  }
+
+  Future<void> _chooseDisplayCurrency() async {
+    if (_currentTab.id == null) return;
+    const currencies = {
+      'USD': 'US Dollar',
+      'PEN': 'Peruvian Sol',
+      'EUR': 'Euro',
+      'GBP': 'British Pound',
+      'CAD': 'Canadian Dollar',
+      'AUD': 'Australian Dollar',
+      'MXN': 'Mexican Peso',
+      'BRL': 'Brazilian Real',
+      'JPY': 'Japanese Yen',
+      'CNY': 'Chinese Yuan',
+      'INR': 'Indian Rupee',
+      'CHF': 'Swiss Franc',
+    };
+
+    final selected = await showDialog<String>(
+      context: context,
+      builder:
+          (context) => SimpleDialog(
+            title: const Text('Tab display currency'),
+            children:
+                currencies.entries
+                    .map(
+                      (entry) => SimpleDialogOption(
+                        onPressed: () => Navigator.pop(context, entry.key),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 48,
+                              child: Text(
+                                entry.key,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            Expanded(child: Text(entry.value)),
+                            if (entry.key == _currentTab.displayCurrency)
+                              const Icon(Icons.check, size: 18),
+                          ],
+                        ),
+                      ),
+                    )
+                    .toList(),
+          ),
+    );
+
+    if (selected == null || selected == _currentTab.displayCurrency) return;
+    await PreferencesService().setTabDisplayCurrency(_currentTab.id!, selected);
+    if (_currentTab.backendId != null && _currentTab.accessToken != null) {
+      try {
+        await _apiService.updateTabDisplayCurrency(
+          _currentTab.backendId!,
+          _currentTab.accessToken!,
+          selected,
+          memberToken: _currentTab.memberToken,
+        );
+      } on ApiException {
+        if (mounted) {
+          _showSnackBar(
+            'Saved on this device, but could not sync the tab currency.',
+            isError: true,
+          );
+        }
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _currentTab = _currentTab.copyWith(displayCurrency: selected);
+    });
+    _showSnackBar('Tab totals will display in $selected');
   }
 
   void _shareTab() {
@@ -455,27 +436,30 @@ class _TabDetailScreenState extends State<TabDetailScreen>
           },
         ),
         actions: [
-          if (_currentTab.isSynced && !_currentTab.isFinalized)
-            IconButton(
-              tooltip: 'Upload receipt photo',
-              icon:
-                  _isUploading
-                      ? SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: colorScheme.onSurface,
-                        ),
-                      )
-                      : const Icon(Icons.camera_alt_outlined),
-              onPressed: _isUploading ? null : _pickAndUploadImage,
-            ),
           if (_currentTab.shareUrl != null)
             IconButton(
               icon: const Icon(Icons.share_outlined),
               tooltip: 'Share tab',
               onPressed: _shareTab,
+            ),
+          if (!_currentTab.isFinalized)
+            PopupMenuButton<String>(
+              tooltip: 'More tab actions',
+              onSelected: (value) {
+                if (value == 'existing') _addBillsToTab();
+                if (value == 'currency') _chooseDisplayCurrency();
+              },
+              itemBuilder:
+                  (context) => const [
+                    PopupMenuItem(
+                      value: 'currency',
+                      child: Text('Set display currency'),
+                    ),
+                    PopupMenuItem(
+                      value: 'existing',
+                      child: Text('Add existing bill'),
+                    ),
+                  ],
             ),
         ],
       ),
@@ -484,7 +468,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
               ? Center(
                 child: CircularProgressIndicator(color: colorScheme.primary),
               )
-              : _tabBills.isEmpty && _images.isEmpty
+              : _tabBills.isEmpty
               ? _buildEmptyState()
               : Column(
                 children: [
@@ -502,7 +486,6 @@ class _TabDetailScreenState extends State<TabDetailScreen>
                             _buildSettlementsCard()
                           else if (_calculatePersonTotals().isNotEmpty)
                             _buildPersonTotalsCard(),
-                          if (_images.isNotEmpty) _buildImagesSection(),
                           if (_tabBills.isNotEmpty) ..._buildBillCards(),
                         ],
                       ),
@@ -559,9 +542,9 @@ class _TabDetailScreenState extends State<TabDetailScreen>
             ),
             const SizedBox(height: 24),
             FilledButton.icon(
-              onPressed: _addBillsToTab,
+              onPressed: _addReceiptToTab,
               icon: const Icon(Icons.add),
-              label: const Text('Add Bills'),
+              label: const Text('Add Receipt'),
               style: FilledButton.styleFrom(
                 backgroundColor: colorScheme.primary,
                 foregroundColor:
@@ -590,7 +573,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
 
     return Semantics(
       label:
-          'Tab total: ${CurrencyFormatter.formatCurrency(total)}, ${_tabBills.length} bill${_tabBills.length == 1 ? '' : 's'}',
+          'Tab total: ${_formatCurrency(total)}, ${_tabBills.length} bill${_tabBills.length == 1 ? '' : 's'}',
       child: Container(
         margin: const EdgeInsets.fromLTRB(20, 16, 20, 12),
         padding: const EdgeInsets.all(24),
@@ -627,7 +610,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
             ),
             const SizedBox(height: 8),
             Text(
-              CurrencyFormatter.formatCurrency(total),
+              _formatCurrency(total),
               style: TextStyle(
                 color:
                     brightness == Brightness.dark
@@ -854,7 +837,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
               final settlement = _settlements[index];
               return Semantics(
                 label:
-                    '${settlement.personName}, ${CurrencyFormatter.formatCurrency(settlement.amount)}, ${settlement.paid ? 'paid' : 'unpaid'}. Tap to toggle',
+                    '${settlement.personName}, ${_formatCurrency(settlement.amount)}, ${settlement.paid ? 'paid' : 'unpaid'}. Tap to toggle',
                 button: true,
                 child: GestureDetector(
                   onTap: () {
@@ -920,7 +903,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          CurrencyFormatter.formatCurrency(settlement.amount),
+                          _formatCurrency(settlement.amount),
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -1010,8 +993,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
             itemBuilder: (context, index) {
               final entry = sortedEntries[index];
               return Semantics(
-                label:
-                    '${entry.key}: ${CurrencyFormatter.formatCurrency(entry.value)}',
+                label: '${entry.key}: ${_formatCurrency(entry.value)}',
                 child: Row(
                   children: [
                     CircleAvatar(
@@ -1049,7 +1031,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        CurrencyFormatter.formatCurrency(entry.value),
+                        _formatCurrency(entry.value),
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -1064,255 +1046,6 @@ class _TabDetailScreenState extends State<TabDetailScreen>
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildImagesSection() {
-    final colorScheme = Theme.of(context).colorScheme;
-    final brightness = Theme.of(context).brightness;
-    final cardBgColor =
-        brightness == Brightness.dark ? colorScheme.surface : Colors.white;
-    final processedCount = _images.where((img) => img.processed).length;
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-      decoration: BoxDecoration(
-        color: cardBgColor,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color:
-                brightness == Brightness.dark
-                    ? Colors.black.withValues(alpha: 0.2)
-                    : Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: colorScheme.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    Icons.receipt_outlined,
-                    color: colorScheme.primary,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Receipts',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.onSurface,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer.withValues(alpha: 0.6),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '$processedCount/${_images.length} processed',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.primary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Divider(height: 1, color: colorScheme.outline.withValues(alpha: 0.2)),
-          SizedBox(
-            height: 120,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.all(16),
-              itemCount: _images.length,
-              itemBuilder: (context, index) {
-                final image = _images[index];
-                return Semantics(
-                  label:
-                      'Receipt image ${index + 1} of ${_images.length}${image.processed ? ', processed' : ', unprocessed'}. Tap to view full screen${!_currentTab.isFinalized ? '. Long press for options' : ''}',
-                  button: true,
-                  child: GestureDetector(
-                    onTap: () => _showFullScreenImage(image),
-                    onLongPress:
-                        _currentTab.isFinalized
-                            ? null
-                            : () {
-                              HapticFeedback.mediumImpact();
-                              _showImageActions(image);
-                            },
-                    child: Container(
-                      width: 88,
-                      margin: EdgeInsets.only(
-                        right: index < _images.length - 1 ? 10 : 0,
-                      ),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color:
-                              image.processed
-                                  ? Colors.green.withValues(alpha: 0.5)
-                                  : colorScheme.outline.withValues(alpha: 0.2),
-                          width: image.processed ? 2 : 1,
-                        ),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(11),
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            Image.network(
-                              '${_apiService.baseUrl}${image.url}',
-                              fit: BoxFit.cover,
-                              errorBuilder:
-                                  (context, error, stackTrace) => Container(
-                                    color: colorScheme.surfaceContainerHighest,
-                                    child: Icon(
-                                      Icons.image_not_supported_outlined,
-                                      color: colorScheme.onSurface.withValues(
-                                        alpha: 0.3,
-                                      ),
-                                    ),
-                                  ),
-                            ),
-                            if (image.processed)
-                              Positioned(
-                                top: 4,
-                                right: 4,
-                                child: Container(
-                                  padding: const EdgeInsets.all(2),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.green,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.check,
-                                    size: 12,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showFullScreenImage(TabImageResponse image) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder:
-            (context) => _FullScreenImageView(
-              imageUrl: '${_apiService.baseUrl}${image.url}',
-              image: image,
-              onToggleProcessed:
-                  _currentTab.isFinalized
-                      ? null
-                      : () => _toggleProcessed(image),
-              onDelete:
-                  _currentTab.isFinalized ? null : () => _deleteImage(image),
-            ),
-      ),
-    );
-  }
-
-  void _showImageActions(TabImageResponse image) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final brightness = Theme.of(context).brightness;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder:
-          (context) => Container(
-            decoration: BoxDecoration(
-              color:
-                  brightness == Brightness.dark
-                      ? colorScheme.surface
-                      : Colors.white,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(28),
-              ),
-            ),
-            child: SafeArea(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(height: 12),
-                  ExcludeSemantics(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: colorScheme.onSurface.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  ListTile(
-                    leading: Icon(
-                      image.processed
-                          ? Icons.check_box
-                          : Icons.check_box_outline_blank,
-                      color: colorScheme.primary,
-                    ),
-                    title: Text(
-                      image.processed
-                          ? 'Mark as unprocessed'
-                          : 'Mark as processed',
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _toggleProcessed(image);
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(
-                      Icons.delete_outline,
-                      color: Colors.red,
-                    ),
-                    title: const Text('Delete image'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _deleteImage(image);
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                ],
-              ),
-            ),
-          ),
     );
   }
 
@@ -1376,7 +1109,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
           ),
           child: Semantics(
             label:
-                '${bill.billName}, ${CurrencyFormatter.formatCurrency(bill.total)}, ${bill.formattedDate}${!_currentTab.isFinalized ? '. Swipe left to remove' : ''}',
+                '${bill.billName}, ${_formatCurrency(bill.total)}, ${bill.formattedDate}${!_currentTab.isFinalized ? '. Swipe left to remove' : ''}',
             button: true,
             child: Material(
               color: Colors.transparent,
@@ -1459,7 +1192,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          CurrencyFormatter.formatCurrency(bill.total),
+                          _formatCurrency(bill.total),
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
@@ -1544,7 +1277,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
         ],
       ),
       child: FloatingActionButton.extended(
-        onPressed: _addBillsToTab,
+        onPressed: _addReceiptToTab,
         elevation: 0,
         backgroundColor: colorScheme.primary,
         foregroundColor:
@@ -1553,7 +1286,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
                 : Colors.white,
         icon: const Icon(Icons.add, size: 22),
         label: const Text(
-          'Add Bills',
+          'Add Receipt',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
@@ -1742,266 +1475,6 @@ class _FinalizeConfirmSheet extends StatelessWidget {
   }
 }
 
-// Full-screen image viewer
-class _FullScreenImageView extends StatelessWidget {
-  final String imageUrl;
-  final TabImageResponse image;
-  final VoidCallback? onToggleProcessed;
-  final VoidCallback? onDelete;
-
-  const _FullScreenImageView({
-    required this.imageUrl,
-    required this.image,
-    this.onToggleProcessed,
-    this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (image.processed)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.green,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  'Processed',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                ),
-              ),
-          ],
-        ),
-        actions: [
-          if (onToggleProcessed != null)
-            IconButton(
-              tooltip:
-                  image.processed ? 'Mark as unprocessed' : 'Mark as processed',
-              icon: Icon(
-                image.processed
-                    ? Icons.check_box
-                    : Icons.check_box_outline_blank,
-                color: image.processed ? Colors.green : Colors.white,
-              ),
-              onPressed: () {
-                onToggleProcessed!();
-                Navigator.pop(context);
-              },
-            ),
-          if (onDelete != null)
-            IconButton(
-              tooltip: 'Delete image',
-              icon: const Icon(Icons.delete_outline, color: Colors.red),
-              onPressed: () {
-                Navigator.pop(context);
-                onDelete!();
-              },
-            ),
-        ],
-      ),
-      body: Center(
-        child: InteractiveViewer(
-          child: Image.network(
-            imageUrl,
-            fit: BoxFit.contain,
-            errorBuilder:
-                (context, error, stackTrace) => Icon(
-                  Icons.image_not_supported_outlined,
-                  size: 64,
-                  color: colorScheme.onSurface.withValues(alpha: 0.3),
-                ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// Image source picker sheet
-class _ImageSourceSheet extends StatelessWidget {
-  const _ImageSourceSheet();
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final brightness = Theme.of(context).brightness;
-
-    return Container(
-      decoration: BoxDecoration(
-        color:
-            brightness == Brightness.dark ? colorScheme.surface : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 12),
-            ExcludeSemantics(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: colorScheme.onSurface.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Add Receipt',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: colorScheme.primary.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.camera_alt, color: colorScheme.primary),
-              ),
-              title: const Text('Camera'),
-              subtitle: const Text('Take a photo of the receipt'),
-              onTap: () => Navigator.pop(context, ImageSource.camera),
-            ),
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: colorScheme.primary.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.photo_library, color: colorScheme.primary),
-              ),
-              title: const Text('Gallery'),
-              subtitle: const Text('Choose from photo library'),
-              onTap: () => Navigator.pop(context, ImageSource.gallery),
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// Delete image confirmation sheet
-class _DeleteImageSheet extends StatelessWidget {
-  const _DeleteImageSheet();
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final brightness = Theme.of(context).brightness;
-
-    return Container(
-      decoration: BoxDecoration(
-        color:
-            brightness == Brightness.dark ? colorScheme.surface : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.delete_outline,
-                color: Colors.red,
-                size: 28,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Delete Image',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'This will permanently delete the receipt image.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 15,
-                color: colorScheme.onSurface.withValues(alpha: 0.7),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      HapticFeedback.selectionClick();
-                      Navigator.pop(context, false);
-                    },
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      side: BorderSide(
-                        color: colorScheme.outline.withValues(alpha: 0.5),
-                      ),
-                    ),
-                    child: const Text('Cancel'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () {
-                      HapticFeedback.mediumImpact();
-                      Navigator.pop(context, true);
-                    },
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    child: const Text(
-                      'Delete',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// Bill Selector Sheet
 class _BillSelectorSheet extends StatefulWidget {
   final List<RecentBillModel> bills;
 
@@ -2017,208 +1490,70 @@ class _BillSelectorSheetState extends State<_BillSelectorSheet> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final brightness = Theme.of(context).brightness;
-
-    return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.8,
-      ),
-      decoration: BoxDecoration(
-        color:
-            brightness == Brightness.dark ? colorScheme.surface : Colors.white,
+    return SafeArea(
+      child: Material(
+        color: colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              children: [
-                Center(
-                  child: ExcludeSemantics(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: colorScheme.onSurface.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primary.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.library_add,
-                        color: colorScheme.primary,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Text(
-                        'Add Bills to Tab',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.onSurface,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                    ),
-                    if (_selectedBillIds.isNotEmpty)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: colorScheme.primary,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          '${_selectedBillIds.length}',
-                          style: TextStyle(
-                            color:
-                                brightness == Brightness.dark
-                                    ? Colors.black.withValues(alpha: 0.9)
-                                    : Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Add Bills to Tab',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  children:
+                      widget.bills.map((bill) {
+                        return CheckboxListTile(
+                          value: _selectedBillIds.contains(bill.id),
+                          title: Text(bill.billName),
+                          subtitle: Text(
+                            '${bill.formattedDate} • ${CurrencyFormatter.formatCurrency(bill.total)}',
                           ),
-                        ),
-                      ),
-                  ],
+                          onChanged:
+                              (selected) => setState(() {
+                                if (selected == true) {
+                                  _selectedBillIds.add(bill.id);
+                                } else {
+                                  _selectedBillIds.remove(bill.id);
+                                }
+                              }),
+                        );
+                      }).toList(),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed:
+                          _selectedBillIds.isEmpty
+                              ? null
+                              : () => Navigator.pop(
+                                context,
+                                _selectedBillIds.toList(),
+                              ),
+                      child: Text('Add ${_selectedBillIds.length}'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          Flexible(
-            child: ListView.builder(
-              shrinkWrap: true,
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              itemCount: widget.bills.length,
-              itemBuilder: (context, index) {
-                final bill = widget.bills[index];
-                final isSelected = _selectedBillIds.contains(bill.id);
-
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color:
-                        isSelected
-                            ? colorScheme.primaryContainer.withValues(
-                              alpha: 0.3,
-                            )
-                            : (brightness == Brightness.dark
-                                ? colorScheme.surfaceContainerHighest
-                                : Colors.grey.shade50),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color:
-                          isSelected
-                              ? colorScheme.primary
-                              : colorScheme.outline.withValues(alpha: 0.2),
-                      width: isSelected ? 2 : 1,
-                    ),
-                  ),
-                  child: CheckboxListTile(
-                    value: isSelected,
-                    onChanged: (checked) {
-                      HapticFeedback.selectionClick();
-                      setState(() {
-                        if (checked == true) {
-                          _selectedBillIds.add(bill.id);
-                        } else {
-                          _selectedBillIds.remove(bill.id);
-                        }
-                      });
-                    },
-                    title: Text(
-                      bill.billName,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: colorScheme.onSurface,
-                      ),
-                    ),
-                    subtitle: Text(
-                      '${bill.formattedDate} • ${CurrencyFormatter.formatCurrency(bill.total)}',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: colorScheme.onSurface.withValues(alpha: 0.6),
-                      ),
-                    ),
-                    activeColor: colorScheme.primary,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      HapticFeedback.selectionClick();
-                      Navigator.pop(context);
-                    },
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      side: BorderSide(
-                        color: colorScheme.outline.withValues(alpha: 0.5),
-                      ),
-                    ),
-                    child: const Text('Cancel'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed:
-                        _selectedBillIds.isEmpty
-                            ? null
-                            : () {
-                              HapticFeedback.mediumImpact();
-                              Navigator.pop(context, _selectedBillIds.toList());
-                            },
-                    style: FilledButton.styleFrom(
-                      backgroundColor: colorScheme.primary,
-                      foregroundColor:
-                          brightness == Brightness.dark
-                              ? Colors.black.withValues(alpha: 0.9)
-                              : Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    child: Text(
-                      'Add ${_selectedBillIds.length}',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
