@@ -18,6 +18,7 @@
 import 'dart:async';
 
 import 'package:checks_frontend/database/database_provider.dart';
+import 'package:checks_frontend/database/database.dart';
 import 'package:checks_frontend/models/bill_item.dart';
 import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/services/api_service.dart';
@@ -138,6 +139,7 @@ class RecentBillsManager extends ChangeNotifier {
     double usdExchangeRate = 1,
     String? exchangeRateDate,
     String exchangeRateSource = 'native-usd',
+    bool skipDuplicateCheck = false,
   }) async {
     try {
       // Forward all data to the database provider
@@ -156,6 +158,7 @@ class RecentBillsManager extends ChangeNotifier {
         usdExchangeRate: usdExchangeRate,
         exchangeRateDate: exchangeRateDate,
         exchangeRateSource: exchangeRateSource,
+        skipDuplicateCheck: skipDuplicateCheck,
       );
 
       // Refresh the bills list to update listeners
@@ -165,6 +168,152 @@ class RecentBillsManager extends ChangeNotifier {
       // Log any errors but don't propagate them to the UI
       debugPrint('Error saving bill: $e');
     }
+  }
+
+  /// Caches tab bills received from the backend so a joined device can render
+  /// the same trip dashboard as the device that added the receipt.
+  Future<List<int>> importRemoteTabBills(
+    int tabId,
+    List<dynamic> remoteBills,
+  ) async {
+    final localIds = <int>[];
+    var localBills = await DatabaseProvider.db.getRecentBills();
+
+    for (final rawBill in remoteBills) {
+      if (rawBill is! Map<String, dynamic>) continue;
+      final remoteBillId = (rawBill['id'] as num?)?.toInt();
+      if (remoteBillId == null || remoteBillId <= 0) continue;
+
+      final marker = _remoteTabBillMarker(tabId, remoteBillId);
+      final existing = _findLocalCopy(localBills, remoteBillId, marker);
+      if (existing != null) {
+        localIds.add(existing.id);
+        continue;
+      }
+
+      final people = _peopleFromRemoteBill(rawBill);
+      final peopleByName = {
+        for (final person in people) person.name.toLowerCase(): person,
+      };
+      final items = _itemsFromRemoteBill(rawBill, peopleByName);
+      final shares = _sharesFromRemoteBill(rawBill, peopleByName);
+
+      await DatabaseProvider.db.saveBill(
+        participants: people,
+        personShares: shares,
+        items: items,
+        subtotal: (rawBill['subtotal'] as num?)?.toDouble() ?? 0,
+        tax: (rawBill['tax'] as num?)?.toDouble() ?? 0,
+        tipAmount: (rawBill['tip_amount'] as num?)?.toDouble() ?? 0,
+        tipPercentage: (rawBill['tip_percentage'] as num?)?.toDouble() ?? 0,
+        total: (rawBill['total'] as num?)?.toDouble() ?? 0,
+        billName: rawBill['name'] as String? ?? 'Trip receipt',
+        shareUrl: marker,
+        currencyCode: rawBill['currency_code'] as String? ?? 'USD',
+        usdExchangeRate:
+            (rawBill['usd_exchange_rate'] as num?)?.toDouble() ?? 1,
+        exchangeRateDate: rawBill['exchange_rate_date'] as String?,
+        exchangeRateSource:
+            rawBill['exchange_rate_source'] as String? ?? 'native-usd',
+        skipDuplicateCheck: true,
+      );
+      localBills = await DatabaseProvider.db.getRecentBills();
+      final imported = _findLocalCopy(localBills, remoteBillId, marker);
+      if (imported != null) localIds.add(imported.id);
+    }
+
+    return localIds;
+  }
+
+  String _remoteTabBillMarker(int tabId, int billId) =>
+      'billington://tab/$tabId/bill/$billId';
+
+  RecentBill? _findLocalCopy(
+    List<RecentBill> bills,
+    int remoteBillId,
+    String marker,
+  ) {
+    for (final bill in bills) {
+      final url = bill.shareUrl;
+      if (url == marker) return bill;
+      final uri = url == null ? null : Uri.tryParse(url);
+      if (uri != null &&
+          uri.pathSegments.length >= 2 &&
+          uri.pathSegments[uri.pathSegments.length - 2] == 'b' &&
+          int.tryParse(uri.pathSegments.last) == remoteBillId) {
+        return bill;
+      }
+    }
+    return null;
+  }
+
+  List<Person> _peopleFromRemoteBill(Map<String, dynamic> bill) {
+    final names = <String>{};
+    final participants = bill['participants'];
+    if (participants is List) {
+      for (final participant in participants) {
+        final name =
+            participant is Map<String, dynamic>
+                ? participant['name'] as String?
+                : null;
+        if (name != null && name.trim().isNotEmpty) names.add(name.trim());
+      }
+    }
+    final shares = bill['person_shares'];
+    if (shares is List) {
+      for (final share in shares) {
+        final name =
+            share is Map<String, dynamic>
+                ? share['person_name'] as String?
+                : null;
+        if (name != null && name.trim().isNotEmpty) names.add(name.trim());
+      }
+    }
+    return names.map((name) => Person(name: name, color: Colors.blue)).toList();
+  }
+
+  List<BillItem> _itemsFromRemoteBill(
+    Map<String, dynamic> bill,
+    Map<String, Person> peopleByName,
+  ) {
+    final rawItems = bill['items'];
+    if (rawItems is! List) return [];
+    return rawItems.whereType<Map<String, dynamic>>().map((item) {
+      final assignments = <Person, double>{};
+      final rawAssignments = item['assignments'];
+      if (rawAssignments is List) {
+        for (final assignment
+            in rawAssignments.whereType<Map<String, dynamic>>()) {
+          final name = assignment['person_name'] as String?;
+          final person = name == null ? null : peopleByName[name.toLowerCase()];
+          final percentage = (assignment['percentage'] as num?)?.toDouble();
+          if (person != null && percentage != null && percentage > 0) {
+            assignments[person] = percentage;
+          }
+        }
+      }
+      return BillItem(
+        name: item['name'] as String? ?? 'Item',
+        price: (item['price'] as num?)?.toDouble() ?? 0,
+        assignments: assignments,
+      );
+    }).toList();
+  }
+
+  Map<Person, double> _sharesFromRemoteBill(
+    Map<String, dynamic> bill,
+    Map<String, Person> peopleByName,
+  ) {
+    final result = <Person, double>{};
+    final shares = bill['person_shares'];
+    if (shares is! List) return result;
+    for (final share in shares.whereType<Map<String, dynamic>>()) {
+      final name = share['person_name'] as String?;
+      final person = name == null ? null : peopleByName[name.toLowerCase()];
+      final total = (share['total'] as num?)?.toDouble();
+      if (person != null && total != null) result[person] = total;
+    }
+    return result;
   }
 
   /// Deletes a specific bill from the database

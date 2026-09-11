@@ -117,7 +117,7 @@ func (m *mockTabRepository) CreateSettlements(settlements []models.TabSettlement
 	return nil
 }
 
-func (m *mockTabRepository) UpdateSettlementPaid(id uint, paid bool) error {
+func (m *mockTabRepository) UpdateSettlementPaid(tabID uint, id uint, paid bool) error {
 	return m.updatePaidErr
 }
 

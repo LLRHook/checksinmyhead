@@ -10,6 +10,9 @@ import 'package:checks_frontend/screens/quick_split/bill_entry/bill_entry_screen
 import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/services/api_service.dart';
 import 'package:checks_frontend/screens/settings/services/preferences_service.dart';
+import 'package:checks_frontend/database/database.dart' hide Tab;
+import 'package:checks_frontend/database/database_provider.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:share_plus/share_plus.dart';
 
 class TabDetailScreen extends StatefulWidget {
@@ -69,6 +72,32 @@ class _TabDetailScreenState extends State<TabDetailScreen>
       final refreshed = await _tabManager.getTabById(_currentTab.id!);
       if (refreshed != null) {
         _currentTab = refreshed;
+      }
+    }
+
+    if (_currentTab.id != null &&
+        _currentTab.backendId != null &&
+        _currentTab.accessToken != null) {
+      try {
+        final remoteTab = await _apiService.getTabData(
+          _currentTab.backendId!,
+          _currentTab.accessToken!,
+        );
+        final remoteBills = remoteTab['bills'];
+        if (remoteBills is List) {
+          final syncedBillIds = await _billsManager.importRemoteTabBills(
+            _currentTab.backendId!,
+            remoteBills,
+          );
+          await DatabaseProvider.db.updateTab(
+            _currentTab.id!,
+            TabsCompanion(billIds: Value(syncedBillIds.join(','))),
+          );
+          final refreshed = await _tabManager.getTabById(_currentTab.id!);
+          if (refreshed != null) _currentTab = refreshed;
+        }
+      } on ApiException {
+        // Preserve the last cached dashboard while the trip is offline.
       }
     }
 
@@ -179,6 +208,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
         settlement.id,
         _currentTab.accessToken!,
         !settlement.paid,
+        memberToken: _currentTab.memberToken,
       );
 
       if (mounted) {
@@ -194,7 +224,11 @@ class _TabDetailScreenState extends State<TabDetailScreen>
 
     final availableBills =
         _allBills
-            .where((bill) => !_currentTab.billIds.contains(bill.id))
+            .where(
+              (bill) =>
+                  !_currentTab.billIds.contains(bill.id) &&
+                  !(bill.shareUrl?.startsWith('billington://tab/') ?? false),
+            )
             .toList();
 
     if (availableBills.isEmpty) {

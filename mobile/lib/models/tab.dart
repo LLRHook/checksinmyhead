@@ -48,7 +48,12 @@ class AppTab {
 
   static List<int> parseBillIds(String json) {
     if (json.isEmpty) return [];
-    return json.split(',').map((e) => int.parse(e)).toList();
+    return json
+        .split(',')
+        .map((value) => int.tryParse(value.trim()))
+        .whereType<int>()
+        .toSet()
+        .toList();
   }
 
   AppTab copyWith({
