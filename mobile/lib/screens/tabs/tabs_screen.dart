@@ -5,9 +5,12 @@ import 'package:checks_frontend/screens/tabs/tab_detail_screen.dart';
 import 'package:checks_frontend/screens/tabs/tab_manager.dart';
 import 'package:checks_frontend/screens/settings/services/preferences_service.dart';
 import 'package:checks_frontend/config/dialogUtils/dialog_utils.dart';
+import 'package:checks_frontend/services/invite_link_service.dart';
 
 class TabsScreen extends StatefulWidget {
-  const TabsScreen({super.key});
+  final String? initialInviteUrl;
+
+  const TabsScreen({super.key, this.initialInviteUrl});
 
   @override
   State<TabsScreen> createState() => _TabsScreenState();
@@ -17,6 +20,7 @@ class _TabsScreenState extends State<TabsScreen>
     with SingleTickerProviderStateMixin {
   List<AppTab> _tabs = [];
   bool _isLoading = false;
+  bool _initialInviteShown = false;
   late AnimationController _animController;
   final _tabManager = TabManager();
   final _prefsService = PreferencesService();
@@ -28,7 +32,14 @@ class _TabsScreenState extends State<TabsScreen>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-    _loadTabs();
+    _loadTabs().then((_) {
+      if (widget.initialInviteUrl != null && !_initialInviteShown && mounted) {
+        _initialInviteShown = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _showJoinSheet(prefillUrl: widget.initialInviteUrl);
+        });
+      }
+    });
   }
 
   @override
@@ -81,7 +92,10 @@ class _TabsScreenState extends State<TabsScreen>
 
         if (navResult == true) _loadTabs();
       } else if (newTab == null && mounted) {
-        AppDialogs.showError(context, 'Failed to create tab. Please try again.');
+        AppDialogs.showError(
+          context,
+          'Failed to create tab. Please try again.',
+        );
       }
     }
   }
@@ -113,6 +127,8 @@ class _TabsScreenState extends State<TabsScreen>
       final tab = await _tabManager.joinTab(url, displayName);
 
       if (tab != null && mounted) {
+        await InviteLinkService().clearPendingInvite();
+        if (!mounted) return;
         setState(() => _tabs.insert(0, tab));
 
         final navResult = await Navigator.push(
@@ -122,7 +138,10 @@ class _TabsScreenState extends State<TabsScreen>
 
         if (navResult == true) _loadTabs();
       } else if (tab == null && mounted) {
-        AppDialogs.showError(context, 'Failed to join tab. Check the link and try again.');
+        AppDialogs.showError(
+          context,
+          'Failed to join tab. Check the link and try again.',
+        );
       }
     }
   }
@@ -456,100 +475,101 @@ class _TabCard extends StatelessWidget {
           ],
         ),
         child: Semantics(
-          label: '${tab.name}, ${tab.billIds.length} bill${tab.billIds.length == 1 ? '' : 's'}. Swipe left to delete',
+          label:
+              '${tab.name}, ${tab.billIds.length} bill${tab.billIds.length == 1 ? '' : 's'}. Swipe left to delete',
           button: true,
           child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(20),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  ExcludeSemantics(
-                    child: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          colorScheme.primary,
-                          colorScheme.primary.withValues(alpha: 0.8),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: colorScheme.primary.withValues(alpha: 0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.folder_special,
-                      color:
-                          brightness == Brightness.dark
-                              ? Colors.black.withValues(alpha: 0.9)
-                              : Colors.white,
-                      size: 24,
-                    ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          tab.name,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 17,
-                            color: colorScheme.onSurface,
-                            letterSpacing: -0.3,
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(20),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    ExcludeSemantics(
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              colorScheme.primary,
+                              colorScheme.primary.withValues(alpha: 0.8),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.receipt_long_outlined,
-                              size: 14,
-                              color: colorScheme.onSurface.withValues(
-                                alpha: 0.5,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${tab.billIds.length} bill${tab.billIds.length == 1 ? '' : 's'}',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: colorScheme.onSurface.withValues(
-                                  alpha: 0.6,
-                                ),
-                                fontWeight: FontWeight.w500,
-                              ),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: colorScheme.primary.withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
                             ),
                           ],
                         ),
-                      ],
+                        child: Icon(
+                          Icons.folder_special,
+                          color:
+                              brightness == Brightness.dark
+                                  ? Colors.black.withValues(alpha: 0.9)
+                                  : Colors.white,
+                          size: 24,
+                        ),
+                      ),
                     ),
-                  ),
-                  ExcludeSemantics(
-                    child: Icon(
-                    Icons.chevron_right_rounded,
-                    color: colorScheme.onSurface.withValues(alpha: 0.3),
-                    size: 28,
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            tab.name,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 17,
+                              color: colorScheme.onSurface,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.receipt_long_outlined,
+                                size: 14,
+                                color: colorScheme.onSurface.withValues(
+                                  alpha: 0.5,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${tab.billIds.length} bill${tab.billIds.length == 1 ? '' : 's'}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: colorScheme.onSurface.withValues(
+                                    alpha: 0.6,
+                                  ),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                    ExcludeSemantics(
+                      child: Icon(
+                        Icons.chevron_right_rounded,
+                        color: colorScheme.onSurface.withValues(alpha: 0.3),
+                        size: 28,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
         ),
       ),
     );
@@ -608,12 +628,12 @@ class _CreateTabSheetState extends State<_CreateTabSheet> {
               Center(
                 child: ExcludeSemantics(
                   child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: colorScheme.onSurface.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: colorScheme.onSurface.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
               ),
@@ -773,12 +793,12 @@ class _JoinTabSheetState extends State<_JoinTabSheet> {
               Center(
                 child: ExcludeSemantics(
                   child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: colorScheme.onSurface.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: colorScheme.onSurface.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
               ),
@@ -837,7 +857,8 @@ class _JoinTabSheetState extends State<_JoinTabSheet> {
                   ),
                 ),
                 validator: (value) {
-                  if (value == null || !value.contains('billingtonapp.vercel.app/t/')) {
+                  if (value == null ||
+                      !value.contains('billingtonapp.vercel.app/t/')) {
                     return 'Please enter a valid Billington link';
                   }
                   return null;

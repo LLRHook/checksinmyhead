@@ -22,6 +22,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/models/bill_item.dart';
+import 'package:checks_frontend/models/tab.dart';
 import 'tutorial/tutorial_manager.dart';
 
 // Widgets
@@ -56,9 +57,7 @@ class ItemAssignmentScreen extends StatefulWidget {
   final Person? initialBirthdayPerson;
   final String? scannedVendor;
   final String currencyCode;
-  final double usdExchangeRate;
-  final String exchangeRateDate;
-  final String exchangeRateSource;
+  final AppTab? tab;
 
   const ItemAssignmentScreen({
     super.key,
@@ -73,9 +72,7 @@ class ItemAssignmentScreen extends StatefulWidget {
     this.initialBirthdayPerson,
     this.scannedVendor,
     this.currencyCode = 'USD',
-    this.usdExchangeRate = 1,
-    this.exchangeRateDate = '',
-    this.exchangeRateSource = 'native-usd',
+    this.tab,
   });
 
   @override
@@ -242,9 +239,7 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
               isCustomTipAmount: widget.isCustomTipAmount,
               scannedVendor: widget.scannedVendor,
               currencyCode: widget.currencyCode,
-              usdExchangeRate: widget.usdExchangeRate,
-              exchangeRateDate: widget.exchangeRateDate,
-              exchangeRateSource: widget.exchangeRateSource,
+              tab: widget.tab,
             ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           const begin = Offset(1.0, 0.0);
@@ -465,7 +460,7 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
                   const SizedBox(height: 2),
                   Semantics(
                     label:
-                        '${CurrencyFormatter.formatCurrency(assignedAmount, currencyCode: widget.currencyCode)} assigned',
+                        '${assignedAmount.toStringAsFixed(2)} dollars assigned',
                     child: Text(
                       CurrencyFormatter.formatCurrency(
                         assignedAmount,

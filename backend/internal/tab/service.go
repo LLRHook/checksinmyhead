@@ -11,11 +11,6 @@ import (
 	"time"
 )
 
-// ImageQuerier provides read access to tab images without importing the image package.
-type ImageQuerier interface {
-	GetByTabID(tabID uint) ([]models.TabImage, error)
-}
-
 type TabService interface {
 	CreateTab(tab *models.Tab) error
 	GetTab(id uint) (tab *models.Tab, err error)
@@ -34,8 +29,7 @@ type TabService interface {
 }
 
 type tabService struct {
-	repo       TabRepository
-	imgQuerier ImageQuerier
+	repo TabRepository
 }
 
 func (s *tabService) CreateTab(tab *models.Tab) error {
@@ -50,8 +44,13 @@ func (s *tabService) GetTab(id uint) (tab *models.Tab, err error) {
 	// Recalculate total from bills and strip bill access tokens
 	var total float64
 	for i := range tab.Bills {
-		tab.Bills[i].NormalizeCurrency()
-		total += tab.Bills[i].USDTotal
+		if tab.Bills[i].USDTotal > 0 {
+			total += tab.Bills[i].USDTotal
+		} else if tab.Bills[i].DisplayTotal != nil {
+			total += *tab.Bills[i].DisplayTotal
+		} else {
+			total += tab.Bills[i].Total
+		}
 		tab.Bills[i].AccessToken = ""
 	}
 	tab.TotalAmount = total
@@ -91,17 +90,6 @@ func (s *tabService) FinalizeTab(id uint) ([]models.TabSettlement, error) {
 
 	if len(tab.Bills) == 0 {
 		return nil, errors.New("tab has no bills")
-	}
-
-	// Check all images are processed
-	images, err := s.imgQuerier.GetByTabID(id)
-	if err != nil {
-		return nil, err
-	}
-	for _, img := range images {
-		if !img.Processed {
-			return nil, errors.New("all images must be marked as processed before finalizing")
-		}
 	}
 
 	// Compute per-person totals from bill person_shares
@@ -186,8 +174,8 @@ func (s *tabService) GetMembers(tabID uint) ([]models.TabMember, error) {
 	return s.repo.GetMembersByTabID(tabID)
 }
 
-func NewTabService(repo TabRepository, imgQuerier ImageQuerier) TabService {
-	return &tabService{repo: repo, imgQuerier: imgQuerier}
+func NewTabService(repo TabRepository) TabService {
+	return &tabService{repo: repo}
 }
 
 // allocateUSDShareCents converts one bill's assigned shares to USD. Fully
@@ -287,12 +275,10 @@ func ComputeNetBalances(tab *models.Tab) []models.NetBalance {
 		}
 		payerKey := strings.ToLower(payerName)
 		displayNames[payerKey] = payerName
-		bill.NormalizeCurrency()
-		nets[payerKey] += int64(bill.USDTotal*100 + 0.5)
-
 		shareCents := allocateUSDShareCents(bill)
 		for i, share := range bill.PersonShares {
 			key := strings.ToLower(share.PersonName)
+			nets[payerKey] += shareCents[i]
 			nets[key] -= shareCents[i]
 			if _, exists := displayNames[key]; !exists {
 				displayNames[key] = share.PersonName

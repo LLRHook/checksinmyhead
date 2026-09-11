@@ -22,6 +22,7 @@ import 'screens/settings/settings_screen.dart';
 import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/settings/services/preferences_service.dart';
 import 'config/theme.dart';
+import 'services/invite_link_service.dart';
 
 // Purpose: Entry point for the Billington bill-splitting application.
 // This file initializes the app and sets up the global theme and navigation routes.
@@ -42,6 +43,8 @@ void main() async {
   if (savedColor != null) {
     AppTheme.setPrimaryColor(Color(savedColor));
   }
+
+  await InviteLinkService().initialize();
 
   runApp(const MyApp());
 }

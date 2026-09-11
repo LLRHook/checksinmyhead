@@ -19,8 +19,11 @@ import 'package:checks_frontend/screens/quick_split/bill_summary/models/bill_sum
 import 'package:checks_frontend/screens/quick_split/bill_summary/widgets/bill_name_sheet.dart';
 import 'package:checks_frontend/screens/quick_split/bill_summary/widgets/enhanced_share_sheet.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
+import 'package:checks_frontend/database/database_provider.dart';
 import 'package:checks_frontend/screens/settings/services/preferences_service.dart';
 import 'package:checks_frontend/services/api_service.dart';
+import 'package:checks_frontend/models/tab.dart';
+import 'package:checks_frontend/screens/tabs/tab_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:logger/logger.dart';
@@ -34,6 +37,7 @@ class BottomBar extends StatelessWidget {
   final Function onDoneTap;
   final BillSummaryData data;
   final bool lazyMode;
+  final AppTab? tab;
 
   const BottomBar({
     super.key,
@@ -41,6 +45,7 @@ class BottomBar extends StatelessWidget {
     required this.onDoneTap,
     required this.data,
     this.lazyMode = false,
+    this.tab,
   });
 
   @override
@@ -155,6 +160,7 @@ class DoneButtonHandler {
     BuildContext context, {
     required BillSummaryData data,
     bool lazyMode = false,
+    AppTab? tab,
   }) async {
     if (_isSaving) return;
     _isSaving = true;
@@ -210,9 +216,21 @@ class DoneButtonHandler {
         billName: billName,
         paymentMethods: paymentMethods,
         currencyCode: data.currencyCode,
-        usdExchangeRate: data.usdExchangeRate,
-        exchangeRateDate: data.exchangeRateDate,
-        exchangeRateSource: data.exchangeRateSource,
+      );
+
+      // Save locally first (always works even if backend fails)
+      await _billsManager.saveBill(
+        participants: updatedData.participants,
+        personShares: updatedData.personShares,
+        items: updatedData.items,
+        subtotal: updatedData.subtotal,
+        tax: updatedData.tax,
+        tipAmount: updatedData.tipAmount,
+        total: updatedData.total,
+        birthdayPerson: updatedData.birthdayPerson,
+        tipPercentage: updatedData.tipPercentage,
+        isCustomTipAmount: updatedData.isCustomTipAmount,
+        billName: updatedData.billName,
       );
 
       // Try to upload to backend
@@ -253,6 +271,21 @@ class DoneButtonHandler {
                     : null,
           );
 
+          final response = await _apiService.uploadBill(
+            billName: billName,
+            participants: const [],
+            personShares: const {},
+            items: updatedData.items,
+            subtotal: updatedData.subtotal,
+            tax: updatedData.tax,
+            tipAmount: updatedData.tipAmount,
+            tipPercentage: updatedData.tipPercentage,
+            total: updatedData.total,
+            paymentMethods: apiPaymentMethods,
+            currencyCode: updatedData.currencyCode,
+            displayCurrency: tab?.displayCurrency,
+          );
+
           await _apiService.addBillToTab(
             tabResponse.tabId,
             response.billId,
@@ -264,8 +297,32 @@ class DoneButtonHandler {
           shareUrl = tabResponse.shareUrl;
           logger.d('Lazy bill uploaded successfully: $shareUrl');
         } else {
+          final response = await _apiService.uploadBill(
+            billName: billName,
+            participants: updatedData.participants,
+            personShares: updatedData.personShares,
+            items: updatedData.items,
+            subtotal: updatedData.subtotal,
+            tax: updatedData.tax,
+            tipAmount: updatedData.tipAmount,
+            tipPercentage: updatedData.tipPercentage,
+            total: updatedData.total,
+            paymentMethods: apiPaymentMethods,
+            currencyCode: updatedData.currencyCode,
+            displayCurrency: tab?.displayCurrency,
+          );
+
           shareUrl = response.shareUrl;
           logger.d('Bill uploaded successfully: $shareUrl');
+
+          // Persist the share URL to the most recently saved bill
+          final mostRecent = await DatabaseProvider.db.getMostRecentBill();
+          if (mostRecent != null) {
+            await _billsManager.updateBillShareUrl(mostRecent.id, shareUrl);
+            if (tab?.id != null) {
+              await TabManager().addBillsToTab(tab!.id!, [mostRecent.id]);
+            }
+          }
         }
 
         // Persist the backend's authoritative frozen rate, never the preview

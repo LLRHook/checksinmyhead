@@ -33,32 +33,42 @@ import 'package:checks_frontend/models/person.dart';
 ///
 /// Notifies listeners when bill data changes to update UI components.
 class BillData extends ChangeNotifier {
-  static const supportedCurrencies = ['USD', 'EUR', 'GBP', 'CAD', 'JPY', 'MXN'];
-
-  String _currencyCode = 'USD';
+  static const defaultCurrencyCode = 'USD';
+  static const supportedCurrencies = <String, String>{
+    'USD': 'US Dollar',
+    'PEN': 'Peruvian Sol',
+    'EUR': 'Euro',
+    'GBP': 'British Pound',
+    'CAD': 'Canadian Dollar',
+    'AUD': 'Australian Dollar',
+    'MXN': 'Mexican Peso',
+    'BRL': 'Brazilian Real',
+    'JPY': 'Japanese Yen',
+    'CNY': 'Chinese Yuan',
+    'INR': 'Indian Rupee',
+    'CHF': 'Swiss Franc',
+  };
+  String currencyCode = defaultCurrencyCode;
   ExchangeRateQuote _exchangeRateQuote = const ExchangeRateQuote.usd();
   bool _isLoadingExchangeRate = false;
   String? _exchangeRateError;
 
-  String get currencyCode => _currencyCode;
   ExchangeRateQuote get exchangeRateQuote => _exchangeRateQuote;
   bool get isLoadingExchangeRate => _isLoadingExchangeRate;
   String? get exchangeRateError => _exchangeRateError;
   bool get hasUsableExchangeRate =>
-      _currencyCode == 'USD' ||
-      (_exchangeRateQuote.currencyCode == _currencyCode &&
+      currencyCode == defaultCurrencyCode ||
+      (_exchangeRateQuote.currencyCode == currencyCode &&
           _exchangeRateQuote.isValid);
   double get usdTotal => _exchangeRateQuote.convertToUSD(total);
 
-  void selectCurrency(String currencyCode) {
-    final normalized = currencyCode.toUpperCase();
-    if (!supportedCurrencies.contains(normalized)) return;
-    _currencyCode = normalized;
+  void setCurrencyCode(String value) {
+    currencyCode = value.toUpperCase();
     _exchangeRateQuote =
-        normalized == 'USD'
+        currencyCode == defaultCurrencyCode
             ? const ExchangeRateQuote.usd()
             : ExchangeRateQuote(
-              currencyCode: normalized,
+              currencyCode: currencyCode,
               usdRate: 0,
               rateDate: '',
               source: '',
@@ -68,6 +78,8 @@ class BillData extends ChangeNotifier {
     notifyListeners();
   }
 
+  void selectCurrency(String value) => setCurrencyCode(value);
+
   void setExchangeRateLoading() {
     _isLoadingExchangeRate = true;
     _exchangeRateError = null;
@@ -75,7 +87,7 @@ class BillData extends ChangeNotifier {
   }
 
   void setExchangeRateQuote(ExchangeRateQuote quote) {
-    if (quote.currencyCode != _currencyCode || !quote.isValid) {
+    if (quote.currencyCode != currencyCode || !quote.isValid) {
       setExchangeRateError('The daily rate response was invalid.');
       return;
     }
@@ -237,6 +249,10 @@ class BillData extends ChangeNotifier {
   /// Clears existing items and replaces them with the parsed data.
   /// Sets subtotal, tax, and tip from the scan results.
   void populateFromScan(ParsedReceipt receipt) {
+    if (receipt.currencyCode != null &&
+        receipt.currencyCode!.trim().isNotEmpty) {
+      currencyCode = receipt.currencyCode!.trim().toUpperCase();
+    }
     // Clear existing items
     while (items.isNotEmpty) {
       items.removeLast();

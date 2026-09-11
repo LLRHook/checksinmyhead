@@ -27,6 +27,7 @@ class PreferencesService {
   static const String _displayNameKey = 'display_name';
   static const String _autoAddSelfKey = 'auto_add_self';
   static const String _accentColorKey = 'accent_color';
+  static const String _tabCurrencyPrefix = 'tab_currency_';
 
   /// Returns a singleton instance
   static final PreferencesService _instance = PreferencesService._internal();
@@ -184,5 +185,18 @@ class PreferencesService {
   Future<void> resetAccentColor() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_accentColorKey);
+  }
+
+  Future<String> getTabDisplayCurrency(int tabId) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('$_tabCurrencyPrefix$tabId') ?? 'USD';
+  }
+
+  Future<void> setTabDisplayCurrency(int tabId, String currencyCode) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      '$_tabCurrencyPrefix$tabId',
+      currencyCode.trim().toUpperCase(),
+    );
   }
 }

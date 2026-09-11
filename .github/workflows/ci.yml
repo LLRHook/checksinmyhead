@@ -63,7 +63,7 @@ jobs:
       # reachable Go standard-library vulnerabilities. govulncheck also filters
       # to what the code actually calls, so it does not drown in noise.
       - name: Vulnerability scan
-        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
 
   mobile:
     runs-on: ubuntu-latest

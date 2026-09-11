@@ -4,6 +4,7 @@ import 'package:checks_frontend/database/database.dart' hide Tab;
 import 'package:checks_frontend/database/database_provider.dart';
 import 'package:checks_frontend/models/tab.dart';
 import 'package:checks_frontend/services/api_service.dart';
+import 'package:checks_frontend/screens/settings/services/preferences_service.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/material.dart' hide Tab;
 
@@ -27,7 +28,7 @@ class TabManager extends ChangeNotifier {
   Future<List<AppTab>> getAllTabs() async {
     try {
       final tabsData = await DatabaseProvider.db.getAllTabs();
-      final tabs = tabsData.map(_tabDataToAppTab).toList();
+      final tabs = await Future.wait(tabsData.map(_tabDataToAppTab));
       if (!_tabsStreamController.isClosed) {
         _tabsStreamController.add(tabs);
       }
@@ -63,7 +64,7 @@ class TabManager extends ChangeNotifier {
       final tabData = await DatabaseProvider.db.getTabById(id);
       if (tabData == null) return null;
 
-      final tab = _tabDataToAppTab(tabData);
+      final tab = await _tabDataToAppTab(tabData);
       notifyListeners();
       return tab;
     } catch (e) {
@@ -264,7 +265,7 @@ class TabManager extends ChangeNotifier {
       final insertedTab = await DatabaseProvider.db.getTabById(localId);
       if (insertedTab == null) return null;
 
-      final tab = _tabDataToAppTab(insertedTab);
+      final tab = await _tabDataToAppTab(insertedTab);
       notifyListeners();
       return tab;
     } on ApiException {
@@ -277,8 +278,8 @@ class TabManager extends ChangeNotifier {
   }
 
   // Use the Drift-generated Tab type (not Flutter's Tab widget)
-  AppTab _tabDataToAppTab(dynamic tabData) {
-    return AppTab(
+  Future<AppTab> _tabDataToAppTab(dynamic tabData) async {
+    final appTab = AppTab(
       id: tabData.id,
       name: tabData.name,
       description: tabData.description,
@@ -291,7 +292,13 @@ class TabManager extends ChangeNotifier {
       memberToken: tabData.memberToken,
       role: tabData.role,
       isRemote: tabData.isRemote,
+      displayCurrency: 'USD',
     );
+    if (appTab.id == null) return appTab;
+    final currency = await PreferencesService().getTabDisplayCurrency(
+      appTab.id!,
+    );
+    return appTab.copyWith(displayCurrency: currency);
   }
 
   _BackendBillRef? _parseBillShareUrl(String? shareUrl) {

@@ -72,11 +72,14 @@ type Bill struct {
 	TipAmount          float64         `gorm:"not null" json:"tip_amount"`
 	TipPercentage      float64         `json:"tip_percentage"`
 	Total              float64         `gorm:"not null" json:"total"`
-	CurrencyCode       string          `gorm:"type:varchar(3);not null;default:'USD'" json:"currency_code"`
+	CurrencyCode       string          `gorm:"type:char(3);not null;default:'USD'" json:"currency_code"`
 	USDExchangeRate    float64         `gorm:"not null;default:1" json:"usd_exchange_rate"`
-	ExchangeRateDate   string          `gorm:"type:varchar(10)" json:"exchange_rate_date"`
-	ExchangeRateSource string          `gorm:"type:varchar(64)" json:"exchange_rate_source"`
 	USDTotal           float64         `gorm:"not null;default:0" json:"usd_total"`
+	DisplayCurrency    string          `gorm:"type:char(3);not null;default:'USD'" json:"display_currency"`
+	DisplayTotal       *float64        `json:"display_total,omitempty"`
+	ExchangeRate       *float64        `json:"exchange_rate,omitempty"`
+	ExchangeRateSource string          `json:"exchange_rate_source,omitempty"`
+	ExchangeRateDate   string          `gorm:"type:varchar(10)" json:"exchange_rate_date,omitempty"`
 	Date               time.Time       `gorm:"not null" json:"date"`
 	PaymentMethods     []PaymentMethod `gorm:"type:jsonb;serializer:json" json:"payment_methods"` // Changed to array
 	Participants       []Person        `gorm:"many2many:bill_participants;constraint:OnDelete:SET NULL" json:"participants"`
@@ -87,8 +90,8 @@ type Bill struct {
 	UpdatedAt          time.Time       `json:"updated_at"`
 }
 
-// NormalizeCurrency makes pre-1.4.1 rows behave as native USD without writing
-// them back. New foreign-currency rows always carry an explicit frozen rate.
+// NormalizeCurrency keeps legacy rows safe and gives every bill a deterministic
+// USD audit value for tab totals and settlement calculations.
 func (b *Bill) NormalizeCurrency() {
 	b.CurrencyCode = strings.ToUpper(strings.TrimSpace(b.CurrencyCode))
 	if b.CurrencyCode == "" {

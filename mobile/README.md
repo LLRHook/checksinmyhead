@@ -132,21 +132,6 @@ This guide will help you set up Flutter for iOS development on macOS and get our
 - Run `flutter doctor -v` to diagnose any setup issues
 - For CocoaPods issues, try running `pod repo update` in the `ios` directory
 
-## Adding Android Support Later
-
-If you need to add Android support to the project in the future:
-
-```bash
-flutter create --platforms=android .
-```
-
-This will add the Android platform-specific files to your existing project.
-
-## Note on Project Structure
-
-- After initial project creation, we've removed the platform-specific code for Android, Linux, and Windows to keep the project clean for iOS development
-- Only maintain the platform folders you actually need for development
-
 ## Updating Flutter
 
 To update Flutter to the latest version:

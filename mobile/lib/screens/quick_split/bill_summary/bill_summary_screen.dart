@@ -18,6 +18,7 @@
 import 'package:flutter/material.dart';
 import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/models/bill_item.dart';
+import 'package:checks_frontend/models/tab.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 
 // Import refactored components
@@ -59,9 +60,7 @@ class BillSummaryScreen extends StatefulWidget {
   final String? scannedVendor;
   final bool lazyMode;
   final String currencyCode;
-  final double usdExchangeRate;
-  final String exchangeRateDate;
-  final String exchangeRateSource;
+  final AppTab? tab;
 
   const BillSummaryScreen({
     super.key,
@@ -78,9 +77,7 @@ class BillSummaryScreen extends StatefulWidget {
     this.scannedVendor,
     this.lazyMode = false,
     this.currencyCode = 'USD',
-    this.usdExchangeRate = 1,
-    this.exchangeRateDate = '',
-    this.exchangeRateSource = 'native-usd',
+    this.tab,
   });
 
   @override
@@ -120,9 +117,6 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
       billName: billName,
       paymentMethods: const <Map<String, String>>[],
       currencyCode: widget.currencyCode,
-      usdExchangeRate: widget.usdExchangeRate,
-      exchangeRateDate: widget.exchangeRateDate,
-      exchangeRateSource: widget.exchangeRateSource,
     );
   }
 
@@ -314,10 +308,12 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
                   context,
                   data: _summaryData,
                   lazyMode: widget.lazyMode,
+                  tab: widget.tab,
                 );
               },
               data:
                   _summaryData, // Pass the entire data object instead of individual props
+              tab: widget.tab,
             ),
           ),
         ],

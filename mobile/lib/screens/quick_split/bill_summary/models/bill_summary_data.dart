@@ -55,8 +55,8 @@ class BillSummaryData {
     this.tipPercentage = 0,
     this.isCustomTipAmount = false,
     this.billName = '',
-    this.paymentMethods = const [],
     this.currencyCode = 'USD',
+    this.paymentMethods = const [],
     this.usdExchangeRate = 1,
     this.exchangeRateDate = '',
     this.exchangeRateSource = 'native-usd',
@@ -82,9 +82,6 @@ class BillSummaryData {
     String? billName,
     List<Map<String, String>>? paymentMethods,
     String? currencyCode,
-    double? usdExchangeRate,
-    String? exchangeRateDate,
-    String? exchangeRateSource,
   }) {
     return BillSummaryData(
       participants: participants ?? this.participants,
@@ -100,9 +97,6 @@ class BillSummaryData {
       billName: billName ?? this.billName,
       paymentMethods: paymentMethods ?? this.paymentMethods,
       currencyCode: currencyCode ?? this.currencyCode,
-      usdExchangeRate: usdExchangeRate ?? this.usdExchangeRate,
-      exchangeRateDate: exchangeRateDate ?? this.exchangeRateDate,
-      exchangeRateSource: exchangeRateSource ?? this.exchangeRateSource,
     );
   }
 

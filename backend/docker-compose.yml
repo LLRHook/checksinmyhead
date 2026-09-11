@@ -22,8 +22,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    volumes:
-      - uploads_data:/app/uploads
     environment:
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
@@ -32,7 +30,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       DB_SSLMODE: ${DB_SSLMODE:-disable}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-      UPLOAD_DIR: /app/uploads
+      EXCHANGE_RATE_API_KEY: ${EXCHANGE_RATE_API_KEY}
 
   web-service:
     build: 
@@ -52,4 +50,3 @@ services:
 
 volumes:
   postgres_data:
-  uploads_data:
