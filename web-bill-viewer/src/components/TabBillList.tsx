@@ -10,7 +10,6 @@ interface TabBillListProps {
 
 function BillCard({ bill }: { bill: Bill }) {
   const { isOpen, toggle, contentRef, height } = useCollapsible();
-
   return (
     <div className="bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-2xl overflow-hidden shadow-sm dark:shadow-none dark:border dark:border-[var(--border-dark)] transition-all duration-200">
       <button

@@ -113,6 +113,11 @@ class RecentBills extends Table {
   DateTimeColumn get createdAt =>
       dateTime().withDefault(Constant(DateTime.now()))();
   TextColumn get shareUrl => text().nullable()();
+  TextColumn get currencyCode => text().withDefault(const Constant('USD'))();
+  RealColumn get usdExchangeRate => real().withDefault(const Constant(1))();
+  TextColumn get exchangeRateDate => text().nullable()();
+  TextColumn get exchangeRateSource =>
+      text().withDefault(const Constant('native-usd'))();
 }
 
 // Main database class handling all database operations
@@ -133,8 +138,10 @@ class AppDatabase extends _$AppDatabase {
 
   AppDatabase() : super(_openConnection());
 
+  AppDatabase.forTesting(super.executor);
+
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -171,6 +178,12 @@ class AppDatabase extends _$AppDatabase {
         await customStatement(
           'CREATE UNIQUE INDEX IF NOT EXISTS idx_people_group_members_unique ON people_group_members(group_id, person_id)',
         );
+      }
+      if (from < 8) {
+        await migrator.addColumn(recentBills, recentBills.currencyCode);
+        await migrator.addColumn(recentBills, recentBills.usdExchangeRate);
+        await migrator.addColumn(recentBills, recentBills.exchangeRateDate);
+        await migrator.addColumn(recentBills, recentBills.exchangeRateSource);
       }
     },
     beforeOpen: (details) async {
@@ -357,7 +370,12 @@ class AppDatabase extends _$AppDatabase {
     double tipPercentage = 0,
     bool isCustomTipAmount = false,
     String? shareUrl,
+    String currencyCode = 'USD',
+    double usdExchangeRate = 1,
+    String? exchangeRateDate,
+    String exchangeRateSource = 'native-usd',
   }) async {
+    final normalizedCurrencyCode = currencyCode.trim().toUpperCase();
     final participantNames = participants.map((p) => p.name).toList();
     final participantsJson = jsonEncode(participantNames);
 
@@ -369,6 +387,7 @@ class AppDatabase extends _$AppDatabase {
               ..where(
                 (b) => b.total.isBetweenValues(total - 0.01, total + 0.01),
               )
+              ..where((b) => b.currencyCode.equals(normalizedCurrencyCode))
               ..where((b) => b.participants.equals(participantsJson)))
             .get();
 
@@ -412,6 +431,10 @@ class AppDatabase extends _$AppDatabase {
               ? Value(participants.first.color.toARGB32())
               : const Value.absent(),
       shareUrl: Value(shareUrl),
+      currencyCode: Value(normalizedCurrencyCode),
+      usdExchangeRate: Value(usdExchangeRate),
+      exchangeRateDate: Value(exchangeRateDate),
+      exchangeRateSource: Value(exchangeRateSource),
       createdAt: Value(DateTime.now()),
     );
 

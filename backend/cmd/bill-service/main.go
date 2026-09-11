@@ -73,6 +73,7 @@ func main() {
 	r.GET("/api/currency/rate", currencyHandler.GetRate)
 	r.GET("/api/bills/:id", handler.GetBill)
 	r.POST("/api/bills", handler.CreateBill)
+	r.GET("/api/exchange-rates/:currency", handler.GetExchangeRate)
 	r.PATCH("/api/bills/:id/shares/:shareId", handler.UpdatePersonSharePaid)
 	r.POST("/api/tabs", tabHandler.CreateTab)
 	r.GET("/api/tabs/:id", tabHandler.GetTab)

@@ -16,6 +16,7 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import 'package:checks_frontend/services/receipt_parser.dart';
+import 'package:checks_frontend/models/exchange_rate_quote.dart';
 import 'package:flutter/material.dart';
 import 'package:checks_frontend/models/bill_item.dart';
 import 'package:checks_frontend/models/person.dart';
@@ -48,9 +49,57 @@ class BillData extends ChangeNotifier {
     'CHF': 'Swiss Franc',
   };
   String currencyCode = defaultCurrencyCode;
+  ExchangeRateQuote _exchangeRateQuote = const ExchangeRateQuote.usd();
+  bool _isLoadingExchangeRate = false;
+  String? _exchangeRateError;
+
+  ExchangeRateQuote get exchangeRateQuote => _exchangeRateQuote;
+  bool get isLoadingExchangeRate => _isLoadingExchangeRate;
+  String? get exchangeRateError => _exchangeRateError;
+  bool get hasUsableExchangeRate =>
+      currencyCode == defaultCurrencyCode ||
+      (_exchangeRateQuote.currencyCode == currencyCode &&
+          _exchangeRateQuote.isValid);
+  double get usdTotal => _exchangeRateQuote.convertToUSD(total);
 
   void setCurrencyCode(String value) {
     currencyCode = value.toUpperCase();
+    _exchangeRateQuote =
+        currencyCode == defaultCurrencyCode
+            ? const ExchangeRateQuote.usd()
+            : ExchangeRateQuote(
+              currencyCode: currencyCode,
+              usdRate: 0,
+              rateDate: '',
+              source: '',
+            );
+    _isLoadingExchangeRate = false;
+    _exchangeRateError = null;
+    notifyListeners();
+  }
+
+  void selectCurrency(String value) => setCurrencyCode(value);
+
+  void setExchangeRateLoading() {
+    _isLoadingExchangeRate = true;
+    _exchangeRateError = null;
+    notifyListeners();
+  }
+
+  void setExchangeRateQuote(ExchangeRateQuote quote) {
+    if (quote.currencyCode != currencyCode || !quote.isValid) {
+      setExchangeRateError('The daily rate response was invalid.');
+      return;
+    }
+    _exchangeRateQuote = quote;
+    _isLoadingExchangeRate = false;
+    _exchangeRateError = null;
+    notifyListeners();
+  }
+
+  void setExchangeRateError(String message) {
+    _isLoadingExchangeRate = false;
+    _exchangeRateError = message;
     notifyListeners();
   }
 

@@ -44,6 +44,37 @@ EDITABLE_STATES = %w[
   INVALID_BINARY
 ].freeze
 
+REJECTED_STATES = %w[
+  DEVELOPER_REJECTED
+  REJECTED
+  METADATA_REJECTED
+  INVALID_BINARY
+].freeze
+
+def repurpose_rejected_version(version, version_string)
+  version_id = version.fetch("id")
+  old_version_string = version.dig("attributes", "versionString")
+
+  # A rejected record is still Apple's one editable App Store version. Creating
+  # a second record returns HTTP 409, so remove the rejected build and update
+  # this record to the new marketing version before attaching the new build.
+  puts "Reusing rejected App Store version #{old_version_string} as #{version_string}"
+  puts "Removing the build attached to rejected version #{old_version_string}"
+  ASC.patch("/v1/appStoreVersions/#{version_id}/relationships/build", { data: nil })
+
+  puts "Updating App Store version #{old_version_string} to #{version_string}"
+  ASC.patch("/v1/appStoreVersions/#{version_id}", {
+    data: {
+      type: "appStoreVersions",
+      id: version_id,
+      attributes: {
+        versionString: version_string,
+        releaseType: RELEASE_TYPE
+      }
+    }
+  }).fetch("data")
+end
+
 def find_editable_version(app_id, version_string)
   response = ASC.get("/v1/apps/#{app_id}/appStoreVersions", {
     "filter[platform]" => "IOS",
@@ -60,6 +91,8 @@ def find_editable_version(app_id, version_string)
       raise ASC::Error, "Version #{version_string} already exists in state #{state} and cannot be edited. " \
                         "Resolve it in App Store Connect, or tag a new version."
     end
+    return repurpose_rejected_version(exact, version_string) if REJECTED_STATES.include?(state)
+
     puts "Reusing existing editable version #{version_string} (state #{state})"
     return exact
   end
@@ -72,10 +105,8 @@ def find_editable_version(app_id, version_string)
   end
   if open
     open_state = open.dig("attributes", "appStoreState") || open.dig("attributes", "appVersionState")
-    if %w[DEVELOPER_REJECTED REJECTED METADATA_REJECTED INVALID_BINARY].include?(open_state)
-      puts "Leaving rejected App Store version #{open.dig('attributes', 'versionString')} in place " \
-           "(state #{open_state}); attempting to create #{version_string}"
-      return nil
+    if REJECTED_STATES.include?(open_state)
+      return repurpose_rejected_version(open, version_string)
     end
 
     raise ASC::Error, "Version #{open.dig('attributes', 'versionString')} is already open for editing " \
@@ -261,42 +292,77 @@ def submit_for_review(app_id, version_id)
   submission_id
 end
 
-app = ASC.find_app(BUNDLE_ID)
-app_id = app.fetch("id")
-puts "App: #{app.dig('attributes', 'name')} (#{BUNDLE_ID}) id=#{app_id}"
+def verify_review_submission(submission_id, version_id, build_id, attempts: 20, interval: 6)
+  attempts.times do |attempt|
+    version = ASC.get("/v1/appStoreVersions/#{version_id}", {
+      "fields[appStoreVersions]" => "versionString,appStoreState,appVersionState,build",
+      "include" => "build"
+    }).fetch("data")
+    version_state = version.dig("attributes", "appStoreState") || version.dig("attributes", "appVersionState")
+    included_build = ASC.get("/v1/appStoreVersions/#{version_id}/relationships/build")
+      .dig("data", "id")
+    raise ASC::Error, "App Store version readback says #{version.dig('attributes', 'versionString')}, expected #{VERSION_STRING}" unless version.dig("attributes", "versionString") == VERSION_STRING
+    raise ASC::Error, "App Store version #{VERSION_STRING} has build #{included_build || 'none'}, expected #{build_id}" unless included_build == build_id
 
-build = ASC.wait_for_build(app_id, BUILD_NUMBER)
-build_id = build.fetch("id")
-puts "Build #{BUILD_NUMBER} is VALID (id=#{build_id})"
+    submission = ASC.get("/v1/reviewSubmissions/#{submission_id}", {
+      "fields[reviewSubmissions]" => "state,submittedDate"
+    }).fetch("data")
+    submission_state = submission.dig("attributes", "state")
+    submitted_date = submission.dig("attributes", "submittedDate")
 
-version = find_editable_version(app_id, VERSION_STRING) || create_version(app_id, VERSION_STRING)
-version_id = version.fetch("id")
+    if %w[WAITING_FOR_REVIEW IN_REVIEW COMPLETING COMPLETE].include?(submission_state) && !submitted_date.to_s.empty?
+      puts "Verified App Store Connect status: submission=#{submission_state}, version=#{version_state}, build=#{build_id}"
+      return { submission_state: submission_state, version_state: version_state }
+    end
 
-attach_build(version_id, build_id)
+    puts "Submission readback is #{submission_state || 'unknown'} (attempt #{attempt + 1}/#{attempts}); waiting for submitted state"
+    sleep interval if attempt + 1 < attempts
+  end
 
-if RELEASE_NOTES.empty?
-  puts "No RELEASE_NOTES provided; leaving existing What's New untouched."
-else
-  update_release_notes(version_id, RELEASE_NOTES)
+  raise ASC::Error, "App Store Connect did not confirm submission #{submission_id} as submitted"
 end
 
-if SUBMIT
-  submission_id = submit_for_review(app_id, version_id)
-  puts "Submitted for review. Submission #{submission_id}, version #{VERSION_STRING}, build #{BUILD_NUMBER}."
-else
-  puts "SUBMIT_FOR_REVIEW=false — version #{VERSION_STRING} prepared with build #{BUILD_NUMBER} but NOT submitted."
-end
+def release
+  app = ASC.find_app(BUNDLE_ID)
+  app_id = app.fetch("id")
+  puts "App: #{app.dig('attributes', 'name')} (#{BUNDLE_ID}) id=#{app_id}"
 
-if (summary = ENV["GITHUB_STEP_SUMMARY"])
-  File.open(summary, "a") do |f|
-    f.puts "### App Store release"
-    f.puts
-    f.puts "| Field | Value |"
-    f.puts "| --- | --- |"
-    f.puts "| Version | `#{VERSION_STRING}` |"
-    f.puts "| Build | `#{BUILD_NUMBER}` |"
-    f.puts "| Release type | `#{RELEASE_TYPE}` |"
-    f.puts "| Submitted for review | `#{SUBMIT}` |"
-    f.puts "| Screenshots / marketing images | untouched (managed manually) |"
+  build = ASC.wait_for_build(app_id, BUILD_NUMBER)
+  build_id = build.fetch("id")
+  puts "Build #{BUILD_NUMBER} is VALID (id=#{build_id})"
+
+  version = find_editable_version(app_id, VERSION_STRING) || create_version(app_id, VERSION_STRING)
+  version_id = version.fetch("id")
+
+  attach_build(version_id, build_id)
+
+  if RELEASE_NOTES.empty?
+    puts "No RELEASE_NOTES provided; leaving existing What's New untouched."
+  else
+    update_release_notes(version_id, RELEASE_NOTES)
+  end
+
+  if SUBMIT
+    submission_id = submit_for_review(app_id, version_id)
+    verified = verify_review_submission(submission_id, version_id, build_id)
+    puts "Submitted for review. Submission #{submission_id} is #{verified[:submission_state]}, version #{VERSION_STRING}, build #{BUILD_NUMBER}."
+  else
+    puts "SUBMIT_FOR_REVIEW=false — version #{VERSION_STRING} prepared with build #{BUILD_NUMBER} but NOT submitted."
+  end
+
+  if (summary = ENV["GITHUB_STEP_SUMMARY"])
+    File.open(summary, "a") do |f|
+      f.puts "### App Store release"
+      f.puts
+      f.puts "| Field | Value |"
+      f.puts "| --- | --- |"
+      f.puts "| Version | `#{VERSION_STRING}` |"
+      f.puts "| Build | `#{BUILD_NUMBER}` |"
+      f.puts "| Release type | `#{RELEASE_TYPE}` |"
+      f.puts "| Submitted for review | `#{SUBMIT}` |"
+      f.puts "| Screenshots / marketing images | untouched (managed manually) |"
+    end
   end
 end
+
+release if $PROGRAM_NAME == __FILE__

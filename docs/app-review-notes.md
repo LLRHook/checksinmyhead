@@ -1,6 +1,15 @@
 # App Review Notes
 
-## What is new in 1.4.0
+## What is new in 1.4.1
+
+Billington 1.4.1 contains two visible product changes:
+
+1. Open an active shared tab link, choose **Join this trip**, enter a display name, and open any receipt. Guests can select an unclaimed item or split it with other people. The updated assignments and shares persist after refresh. Finalize the tab in the app to confirm the same link becomes read-only and no longer offers Join.
+2. When entering a receipt in the app, select its original currency. For a non-USD currency the app shows the latest available daily conversion to USD before continuing. The receipt keeps its original amounts and rate audit details; shared tab totals, balances, and settlements use the frozen USD value.
+
+If the daily reference rate cannot be retrieved, Billington explicitly asks the user to retry or use USD and does not save an unverified conversion.
+
+## Previous 1.4.0 reviewer context
 
 Billington 1.4.0 adds a visible, user-facing Lazy Mode workflow for receipt-based bill splitting. It is available directly from the main screen under “I'm Lazy”; there are no reviewer-only switches, hidden menus, or environment-specific features.
 

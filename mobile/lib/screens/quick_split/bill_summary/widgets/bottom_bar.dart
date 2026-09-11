@@ -15,11 +15,11 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import 'package:checks_frontend/database/database_provider.dart';
 import 'package:checks_frontend/screens/quick_split/bill_summary/models/bill_summary_data.dart';
 import 'package:checks_frontend/screens/quick_split/bill_summary/widgets/bill_name_sheet.dart';
 import 'package:checks_frontend/screens/quick_split/bill_summary/widgets/enhanced_share_sheet.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
+import 'package:checks_frontend/database/database_provider.dart';
 import 'package:checks_frontend/screens/settings/services/preferences_service.dart';
 import 'package:checks_frontend/services/api_service.dart';
 import 'package:checks_frontend/models/tab.dart';
@@ -245,6 +245,20 @@ class DoneButtonHandler {
                   {'name': 'Venmo', 'identifier': '@username'},
                 ];
 
+        final response = await _apiService.uploadBill(
+          billName: billName,
+          participants: lazyMode ? const [] : updatedData.participants,
+          personShares: lazyMode ? const {} : updatedData.personShares,
+          items: updatedData.items,
+          subtotal: updatedData.subtotal,
+          tax: updatedData.tax,
+          tipAmount: updatedData.tipAmount,
+          tipPercentage: updatedData.tipPercentage,
+          total: updatedData.total,
+          paymentMethods: apiPaymentMethods,
+          currencyCode: updatedData.currencyCode,
+        );
+
         if (lazyMode) {
           final creatorDisplayName = await _prefsService.getDisplayName();
           final tabResponse = await _apiService.createTab(
@@ -282,11 +296,6 @@ class DoneButtonHandler {
 
           shareUrl = tabResponse.shareUrl;
           logger.d('Lazy bill uploaded successfully: $shareUrl');
-
-          final mostRecent = await DatabaseProvider.db.getMostRecentBill();
-          if (mostRecent != null) {
-            await _billsManager.updateBillShareUrl(mostRecent.id, shareUrl);
-          }
         } else {
           final response = await _apiService.uploadBill(
             billName: billName,
@@ -315,12 +324,61 @@ class DoneButtonHandler {
             }
           }
         }
+
+        // Persist the backend's authoritative frozen rate, never the preview
+        // quote alone. This makes saved totals stable if rates change later.
+        await _billsManager.saveBill(
+          participants: updatedData.participants,
+          personShares: updatedData.personShares,
+          items: updatedData.items,
+          subtotal: updatedData.subtotal,
+          tax: updatedData.tax,
+          tipAmount: updatedData.tipAmount,
+          total: updatedData.total,
+          birthdayPerson: updatedData.birthdayPerson,
+          tipPercentage: updatedData.tipPercentage,
+          isCustomTipAmount: updatedData.isCustomTipAmount,
+          billName: updatedData.billName,
+          shareUrl: shareUrl,
+          currencyCode: response.exchangeRateQuote.currencyCode,
+          usdExchangeRate: response.exchangeRateQuote.usdRate,
+          exchangeRateDate: response.exchangeRateQuote.rateDate,
+          exchangeRateSource: response.exchangeRateQuote.source,
+        );
       } on ApiException catch (e) {
         logger.d('Failed to upload to backend: $e');
-        // Continue anyway - local save succeeded
+        if (updatedData.currencyCode != 'USD') {
+          if (navigator.mounted) navigator.pop();
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Could not verify the daily ${updatedData.currencyCode} rate. '
+                  'Nothing was saved; retry or use USD.',
+                ),
+              ),
+            );
+          }
+          return;
+        }
+        await _saveUSDLocally(updatedData);
       } catch (e) {
         logger.d('Failed to upload to backend: $e');
-        // Continue anyway - local save succeeded
+        if (updatedData.currencyCode != 'USD') {
+          if (navigator.mounted) navigator.pop();
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Could not save this converted bill. Nothing was saved; '
+                  'please retry.',
+                ),
+              ),
+            );
+          }
+          return;
+        }
+        await _saveUSDLocally(updatedData);
       }
 
       // Close loading dialog
@@ -350,5 +408,21 @@ class DoneButtonHandler {
     } finally {
       _isSaving = false;
     }
+  }
+
+  static Future<void> _saveUSDLocally(BillSummaryData data) {
+    return _billsManager.saveBill(
+      participants: data.participants,
+      personShares: data.personShares,
+      items: data.items,
+      subtotal: data.subtotal,
+      tax: data.tax,
+      tipAmount: data.tipAmount,
+      total: data.total,
+      birthdayPerson: data.birthdayPerson,
+      tipPercentage: data.tipPercentage,
+      isCustomTipAmount: data.isCustomTipAmount,
+      billName: data.billName,
+    );
   }
 }

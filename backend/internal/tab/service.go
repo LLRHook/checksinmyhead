@@ -44,7 +44,9 @@ func (s *tabService) GetTab(id uint) (tab *models.Tab, err error) {
 	// Recalculate total from bills and strip bill access tokens
 	var total float64
 	for i := range tab.Bills {
-		if tab.Bills[i].DisplayTotal != nil {
+		if tab.Bills[i].USDTotal > 0 {
+			total += tab.Bills[i].USDTotal
+		} else if tab.Bills[i].DisplayTotal != nil {
 			total += *tab.Bills[i].DisplayTotal
 		} else {
 			total += tab.Bills[i].Total
@@ -91,12 +93,13 @@ func (s *tabService) FinalizeTab(id uint) ([]models.TabSettlement, error) {
 	}
 
 	// Compute per-person totals from bill person_shares
-	personTotals := make(map[string]float64)
+	personTotals := make(map[string]int64)
 	personDisplayNames := make(map[string]string) // preserve original casing
 	for _, bill := range tab.Bills {
-		for _, share := range bill.PersonShares {
+		shareCents := allocateUSDShareCents(bill)
+		for i, share := range bill.PersonShares {
 			key := strings.ToLower(share.PersonName)
-			personTotals[key] += share.Total
+			personTotals[key] += shareCents[i]
 			// Prefer a capitalized variant over all-lowercase
 			if existing, ok := personDisplayNames[key]; !ok {
 				personDisplayNames[key] = share.PersonName
@@ -112,7 +115,7 @@ func (s *tabService) FinalizeTab(id uint) ([]models.TabSettlement, error) {
 		settlements = append(settlements, models.TabSettlement{
 			TabID:      id,
 			PersonName: personDisplayNames[key],
-			Amount:     amount,
+			Amount:     float64(amount) / 100,
 			Paid:       false,
 		})
 	}
@@ -175,6 +178,77 @@ func NewTabService(repo TabRepository) TabService {
 	return &tabService{repo: repo}
 }
 
+// allocateUSDShareCents converts one bill's assigned shares to USD. Fully
+// assigned bills preserve the frozen USD total exactly; partial bills preserve
+// only their assigned value. Any fractional-cent remainder uses a stable
+// largest-remainder allocation so recalculation is deterministic.
+func allocateUSDShareCents(bill models.Bill) []int64 {
+	result := make([]int64, len(bill.PersonShares))
+	if len(result) == 0 {
+		return result
+	}
+
+	bill.NormalizeCurrency()
+	var shareTotal float64
+	for _, share := range bill.PersonShares {
+		if share.Total > 0 {
+			shareTotal += share.Total
+		}
+	}
+	if shareTotal <= 0 {
+		return result
+	}
+
+	// Partial active assignments must remain partial. Reconcile against the
+	// full frozen bill total only when the recorded shares cover the bill;
+	// otherwise reconcile only the converted amount that has been assigned.
+	targetCents := int64(math.Round(shareTotal * bill.USDExchangeRate * 100))
+	if math.Abs(shareTotal-bill.Total) < 0.005 {
+		targetCents = int64(math.Round(bill.USDTotal * 100))
+	}
+	if targetCents <= 0 {
+		return result
+	}
+
+	type remainder struct {
+		index    int
+		fraction float64
+		name     string
+	}
+	remainders := make([]remainder, 0, len(bill.PersonShares))
+	var allocated int64
+	for i, share := range bill.PersonShares {
+		exactCents := 0.0
+		if share.Total > 0 {
+			exactCents = float64(targetCents) * share.Total / shareTotal
+		}
+		wholeCents := int64(exactCents)
+		result[i] = wholeCents
+		allocated += wholeCents
+		remainders = append(remainders, remainder{
+			index:    i,
+			fraction: exactCents - float64(wholeCents),
+			name:     share.PersonName,
+		})
+	}
+
+	sort.SliceStable(remainders, func(i, j int) bool {
+		if remainders[i].fraction != remainders[j].fraction {
+			return remainders[i].fraction > remainders[j].fraction
+		}
+		if remainders[i].name != remainders[j].name {
+			return remainders[i].name < remainders[j].name
+		}
+		return remainders[i].index < remainders[j].index
+	})
+	remaining := targetCents - allocated
+	for i := int64(0); i < remaining; i++ {
+		result[remainders[int(i%int64(len(remainders)))].index]++
+	}
+
+	return result
+}
+
 // ComputeNetBalances takes a Tab (with Members, Bills, PersonShares preloaded)
 // and returns simplified "who owes whom" transactions using greedy settlement.
 func ComputeNetBalances(tab *models.Tab) []models.NetBalance {
@@ -189,7 +263,7 @@ func ComputeNetBalances(tab *models.Tab) []models.NetBalance {
 		displayNames[key] = m.DisplayName
 	}
 
-	nets := make(map[string]float64)
+	nets := make(map[string]int64)
 
 	for _, bill := range tab.Bills {
 		if bill.PaidByMemberID == nil {
@@ -201,15 +275,11 @@ func ComputeNetBalances(tab *models.Tab) []models.NetBalance {
 		}
 		payerKey := strings.ToLower(payerName)
 		displayNames[payerKey] = payerName
-		conversion := 1.0
-		if bill.DisplayTotal != nil && bill.Total != 0 {
-			conversion = *bill.DisplayTotal / bill.Total
-		}
-		nets[payerKey] += bill.Total * conversion
-
-		for _, share := range bill.PersonShares {
+		shareCents := allocateUSDShareCents(bill)
+		for i, share := range bill.PersonShares {
 			key := strings.ToLower(share.PersonName)
-			nets[key] -= share.Total * conversion
+			nets[payerKey] += shareCents[i]
+			nets[key] -= shareCents[i]
 			if _, exists := displayNames[key]; !exists {
 				displayNames[key] = share.PersonName
 			}
@@ -218,16 +288,15 @@ func ComputeNetBalances(tab *models.Tab) []models.NetBalance {
 
 	type entry struct {
 		name   string
-		amount float64
+		amount int64
 	}
 
 	var creditors, debtors []entry
 	for key, net := range nets {
-		rounded := math.Round(net*100) / 100
-		if rounded >= 0.01 {
-			creditors = append(creditors, entry{displayNames[key], rounded})
-		} else if rounded <= -0.01 {
-			debtors = append(debtors, entry{displayNames[key], -rounded})
+		if net >= 1 {
+			creditors = append(creditors, entry{displayNames[key], net})
+		} else if net <= -1 {
+			debtors = append(debtors, entry{displayNames[key], -net})
 		}
 	}
 
@@ -237,21 +306,20 @@ func ComputeNetBalances(tab *models.Tab) []models.NetBalance {
 	var balances []models.NetBalance
 	ci, di := 0, 0
 	for ci < len(creditors) && di < len(debtors) {
-		amt := math.Min(creditors[ci].amount, debtors[di].amount)
-		amt = math.Round(amt*100) / 100
+		amt := min(creditors[ci].amount, debtors[di].amount)
 		if amt > 0 {
 			balances = append(balances, models.NetBalance{
 				From:   debtors[di].name,
 				To:     creditors[ci].name,
-				Amount: amt,
+				Amount: float64(amt) / 100,
 			})
 		}
 		creditors[ci].amount -= amt
 		debtors[di].amount -= amt
-		if creditors[ci].amount < 0.01 {
+		if creditors[ci].amount == 0 {
 			ci++
 		}
-		if debtors[di].amount < 0.01 {
+		if debtors[di].amount == 0 {
 			di++
 		}
 	}

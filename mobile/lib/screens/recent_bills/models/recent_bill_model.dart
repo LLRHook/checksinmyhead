@@ -78,6 +78,12 @@ class RecentBillModel {
   /// Shareable web URL for this bill (null if never uploaded)
   final String? shareUrl;
 
+  /// Original receipt currency and the immutable daily conversion audit.
+  final String currencyCode;
+  final double usdExchangeRate;
+  final String? exchangeRateDate;
+  final String exchangeRateSource;
+
   RecentBillModel({
     required this.id,
     this.billName = '',
@@ -93,6 +99,10 @@ class RecentBillModel {
     required this.color,
     this.itemAssignments,
     this.shareUrl,
+    this.currencyCode = 'USD',
+    this.usdExchangeRate = 1,
+    this.exchangeRateDate,
+    this.exchangeRateSource = 'native-usd',
   });
 
   /// Creates a RecentBillModel from raw database data
@@ -184,7 +194,78 @@ class RecentBillModel {
       itemAssignments: assignmentsMap,
       color: Color(data.colorValue), // Convert stored integer to Color
       shareUrl: data.shareUrl,
+      currencyCode: data.currencyCode,
+      usdExchangeRate: data.usdExchangeRate,
+      exchangeRateDate: data.exchangeRateDate,
+      exchangeRateSource: data.exchangeRateSource,
     );
+  }
+
+  double get usdTotal => (total * usdExchangeRate * 100).roundToDouble() / 100;
+
+  Map<Person, double> generateUSDPersonShares() {
+    final shares = generatePersonShares();
+    if (shares.isEmpty) return {};
+
+    final entries = shares.entries.toList();
+    final shareTotal = entries.fold<double>(
+      0,
+      (sum, entry) => sum + (entry.value > 0 ? entry.value : 0),
+    );
+    if (shareTotal <= 0) {
+      return {for (final entry in entries) entry.key: 0};
+    }
+
+    final targetCents =
+        (shareTotal - total).abs() < 0.005
+            ? (usdTotal * 100).round()
+            : (shareTotal * usdExchangeRate * 100).round();
+    if (targetCents <= 0) {
+      return {for (final entry in entries) entry.key: 0};
+    }
+
+    final cents = List<int>.filled(entries.length, 0);
+    final remainders = <({int index, double fraction, List<int> nameBytes})>[];
+    for (var index = 0; index < entries.length; index++) {
+      final amount = entries[index].value > 0 ? entries[index].value : 0;
+      final exactCents = targetCents * amount / shareTotal;
+      final wholeCents = exactCents.floor();
+      cents[index] = wholeCents;
+      remainders.add((
+        index: index,
+        fraction: exactCents - wholeCents,
+        nameBytes: utf8.encode(entries[index].key.name),
+      ));
+    }
+
+    remainders.sort((a, b) {
+      final fractionOrder = b.fraction.compareTo(a.fraction);
+      if (fractionOrder != 0) return fractionOrder;
+      var nameOrder = 0;
+      final length =
+          a.nameBytes.length < b.nameBytes.length
+              ? a.nameBytes.length
+              : b.nameBytes.length;
+      for (var index = 0; index < length; index++) {
+        nameOrder = a.nameBytes[index].compareTo(b.nameBytes[index]);
+        if (nameOrder != 0) break;
+      }
+      if (nameOrder == 0) {
+        nameOrder = a.nameBytes.length.compareTo(b.nameBytes.length);
+      }
+      if (nameOrder != 0) return nameOrder;
+      return a.index.compareTo(b.index);
+    });
+    final remaining =
+        targetCents - cents.fold<int>(0, (sum, value) => sum + value);
+    for (var index = 0; index < remaining; index++) {
+      cents[remainders[index % remainders.length].index]++;
+    }
+
+    return {
+      for (var index = 0; index < entries.length; index++)
+        entries[index].key: cents[index] / 100,
+    };
   }
 
   /// Formats the date in a readable MM/DD/YYYY format

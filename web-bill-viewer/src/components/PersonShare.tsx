@@ -5,14 +5,17 @@ import { FaCheck, FaChevronDown } from "react-icons/fa6";
 import { SiVenmo } from "react-icons/si";
 import { useCollapsible } from "@/hooks/useCollapsible";
 import {
+  type Bill,
   formatMoney,
   type PersonShare as PersonShareType,
   updatePersonSharePaid,
 } from "@/lib/api";
+import { billCurrencyCode, formatUSDMoney, toUSD } from "@/lib/currency";
 import { buildVenmoPayUrl } from "@/lib/venmo";
 
 interface PersonShareProps {
   personShare: PersonShareType;
+  bill: Bill;
   hasVenmo?: string | null;
   billId: number;
   token: string;
@@ -22,6 +25,7 @@ interface PersonShareProps {
 
 export default function PersonShare({
   personShare,
+  bill,
   hasVenmo,
   billId,
   token,
@@ -31,6 +35,8 @@ export default function PersonShare({
   const { isOpen, toggle, contentRef, height } = useCollapsible();
   const [paid, setPaid] = useState(personShare.paid);
   const [toggling, setToggling] = useState(false);
+  const isForeignCurrency = billCurrencyCode(bill) !== "USD";
+  const usdTotal = toUSD(personShare.total, bill);
 
   const togglePaid = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -99,6 +105,11 @@ export default function PersonShare({
             >
               {formatMoney(personShare.total, currency)}
             </div>
+            {isForeignCurrency && (
+              <div className="text-xs font-medium text-[var(--primary)]">
+                {formatUSDMoney(usdTotal)}
+              </div>
+            )}
           </div>
         </div>
         <button
@@ -156,7 +167,7 @@ export default function PersonShare({
                 <a
                   href={buildVenmoPayUrl(
                     hasVenmo,
-                    personShare.total.toFixed(2),
+                    usdTotal.toFixed(2),
                     `Split bill - ${personShare.person_name}`,
                   )}
                   target="_blank"

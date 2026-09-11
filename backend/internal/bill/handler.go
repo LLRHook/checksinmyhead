@@ -5,11 +5,13 @@ import (
 	"backend/pkg/models"
 	"backend/pkg/security"
 	"crypto/subtle"
+	"errors"
 	"fmt"
 	"log"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -66,7 +68,7 @@ func (h *BillHandler) CreateBill(c *gin.Context) {
 		bill.DisplayTotal = &displayTotal
 		bill.ExchangeRate = &rate.Value
 		bill.ExchangeRateSource = rate.Source
-		bill.ExchangeRateDate = &rate.UpdatedAt
+		bill.ExchangeRateDate = rate.UpdatedAt.Format(time.DateOnly)
 	} else {
 		displayTotal := bill.Total
 		bill.DisplayTotal = &displayTotal
@@ -86,10 +88,18 @@ func (h *BillHandler) CreateBill(c *gin.Context) {
 	}
 	bill.AccessToken = token
 	//Call service
-	err = h.service.CreateBill(&bill)
+	err = h.service.CreateBill(c.Request.Context(), &bill)
 
 	//Return response based on result
 	if err != nil {
+		if errors.Is(err, ErrInvalidCurrency) {
+			c.JSON(400, gin.H{"error": "unsupported currency code"})
+			return
+		}
+		if errors.Is(err, ErrExchangeRateUnavailable) {
+			c.JSON(503, gin.H{"error": "daily exchange rate is unavailable; retry or use USD"})
+			return
+		}
 		log.Printf("internal error: %v", err)
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return
@@ -97,10 +107,28 @@ func (h *BillHandler) CreateBill(c *gin.Context) {
 
 	// Return created bill with ID
 	c.JSON(201, gin.H{
-		"bill_id":      bill.ID,
-		"access_token": token,
-		"share_url":    fmt.Sprintf("%s/b/%d?t=%s", appDomain(), bill.ID, token),
+		"bill_id":              bill.ID,
+		"access_token":         token,
+		"share_url":            fmt.Sprintf("%s/b/%d?t=%s", appDomain(), bill.ID, token),
+		"currency_code":        bill.CurrencyCode,
+		"usd_exchange_rate":    bill.USDExchangeRate,
+		"exchange_rate_date":   bill.ExchangeRateDate,
+		"exchange_rate_source": bill.ExchangeRateSource,
+		"usd_total":            bill.USDTotal,
 	})
+}
+
+func (h *BillHandler) GetExchangeRate(c *gin.Context) {
+	quote, err := h.service.GetUSDExchangeRate(c.Request.Context(), c.Param("currency"))
+	if err != nil {
+		if errors.Is(err, ErrInvalidCurrency) {
+			c.JSON(400, gin.H{"error": "unsupported currency code"})
+			return
+		}
+		c.JSON(503, gin.H{"error": "daily exchange rate is unavailable; retry or use USD"})
+		return
+	}
+	c.JSON(200, quote)
 }
 
 // getBillAndValidate parses the ID, fetches the bill, and validates the token.

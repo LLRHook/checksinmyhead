@@ -16,6 +16,7 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import 'package:flutter/material.dart';
+import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 
 /// A customized bottom bar widget for the assignment screen that displays
 /// the total bill amount and provides a continue button for navigation.
@@ -37,8 +38,9 @@ import 'package:flutter/material.dart';
 /// )
 /// ```
 class AssignmentBottomBar extends StatelessWidget {
-  /// The total bill amount to display, typically in dollars
+  /// The total bill amount to display in the receipt's original currency.
   final double totalBill;
+  final String currencyCode;
 
   /// Callback function executed when the continue button is tapped
   final VoidCallback onContinueTap;
@@ -49,6 +51,7 @@ class AssignmentBottomBar extends StatelessWidget {
   const AssignmentBottomBar({
     super.key,
     required this.totalBill,
+    this.currencyCode = 'USD',
     required this.onContinueTap,
   });
 
@@ -107,9 +110,13 @@ class AssignmentBottomBar extends StatelessWidget {
                   style: TextStyle(fontSize: 12, color: labelColor),
                 ),
                 Semantics(
-                  label: 'Total bill: ${totalBill.toStringAsFixed(2)} dollars',
+                  label:
+                      'Total bill: ${CurrencyFormatter.formatCurrency(totalBill, currencyCode: currencyCode)}',
                   child: Text(
-                    '\$${totalBill.toStringAsFixed(2)}',
+                    CurrencyFormatter.formatCurrency(
+                      totalBill,
+                      currencyCode: currencyCode,
+                    ),
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
