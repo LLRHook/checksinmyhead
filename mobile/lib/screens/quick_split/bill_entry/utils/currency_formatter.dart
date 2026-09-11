@@ -37,13 +37,11 @@ class CurrencyFormatter {
 
   /// Converts a numeric value to a formatted currency string
   ///
-  /// Formats the given value with a dollar sign prefix and exactly
-  /// two decimal places (e.g., $12.34, $0.50, $100.00)
+  /// Formats the given value with the selected currency symbol and exactly
+  /// two decimal places. Unknown codes use the ISO code as a safe prefix.
   static String formatCurrency(double value, {String currencyCode = 'USD'}) {
     final code = currencyCode.trim().toUpperCase();
-    if (code.isEmpty || code == 'USD') {
-      return '\$${value.toStringAsFixed(2)}';
-    }
-    return '$code ${value.toStringAsFixed(2)}';
+    final prefix = code == 'USD' ? '\$' : '$code ';
+    return '$prefix${value.toStringAsFixed(2)}';
   }
 }

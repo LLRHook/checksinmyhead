@@ -32,6 +32,25 @@ class ApiService {
 
   String get baseUrl => ApiConfig.baseUrl;
 
+  Future<double> getCurrencyRate(String from, String to) async {
+    final uri = Uri.parse(
+      '$baseUrl/api/currency/rate?from=${from.toUpperCase()}&to=${to.toUpperCase()}',
+    );
+    final response = await http.get(uri).timeout(_timeout);
+    if (response.statusCode != 200) {
+      throw ApiException(
+        'Exchange rate unavailable',
+        statusCode: response.statusCode,
+      );
+    }
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final rate = (data['value'] as num?)?.toDouble();
+    if (rate == null || rate <= 0) {
+      throw ApiException('Invalid exchange rate response');
+    }
+    return rate;
+  }
+
   /// Uploads a completed bill to the backend
   Future<BillUploadResponse> uploadBill({
     required String billName,
@@ -45,22 +64,30 @@ class ApiService {
     required double total,
     required List<Map<String, String>> paymentMethods,
     String currencyCode = 'USD',
+    String? displayCurrency,
   }) async {
     try {
       // Build the request body matching backend's CreateBillRequest
-      final requestBody = buildBillRequest(
-        billName: billName,
-        participants: participants,
-        personShares: personShares,
-        items: items,
-        subtotal: subtotal,
-        tax: tax,
-        tipAmount: tipAmount,
-        tipPercentage: tipPercentage,
-        total: total,
-        paymentMethods: paymentMethods,
-        currencyCode: currencyCode,
-      );
+      final requestBody = {
+        'name': billName,
+        'subtotal': subtotal,
+        'tax': tax,
+        'tip_amount': tipAmount,
+        'tip_percentage': tipPercentage,
+        'total': total,
+        'participants': participants.map((p) => {'name': p.name}).toList(),
+        'items': _buildItemsJson(items, participants),
+        'person_shares': _buildPersonSharesJson(
+          personShares,
+          items,
+          tax,
+          tipAmount,
+          total,
+        ),
+        'payment_methods': paymentMethods,
+        'currency_code': currencyCode,
+        'display_currency': displayCurrency ?? currencyCode,
+      };
 
       final response = await http
           .post(
@@ -199,9 +226,14 @@ class ApiService {
     String name,
     String description, {
     String? creatorDisplayName,
+    String displayCurrency = 'USD',
   }) async {
     try {
-      final body = <String, dynamic>{'name': name, 'description': description};
+      final body = <String, dynamic>{
+        'name': name,
+        'description': description,
+        'display_currency': displayCurrency,
+      };
       if (creatorDisplayName != null && creatorDisplayName.isNotEmpty) {
         body['creator_display_name'] = creatorDisplayName;
       }
@@ -246,6 +278,34 @@ class ApiService {
     }
   }
 
+  Future<void> updateTabDisplayCurrency(
+    int tabId,
+    String accessToken,
+    String currencyCode, {
+    String? memberToken,
+  }) async {
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $accessToken',
+    };
+    if (memberToken != null && memberToken.isNotEmpty) {
+      headers['X-Member-Token'] = memberToken;
+    }
+    final response = await http
+        .patch(
+          Uri.parse('$baseUrl/api/tabs/$tabId'),
+          headers: headers,
+          body: jsonEncode({'display_currency': currencyCode}),
+        )
+        .timeout(_timeout);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(
+        'Failed to update tab currency',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
   /// Adds a bill to a tab on the backend
   Future<bool> addBillToTab(
     int tabId,
@@ -276,135 +336,6 @@ class ApiService {
       } else {
         throw ApiException(
           'Failed to add bill to tab',
-          statusCode: response.statusCode,
-        );
-      }
-    } on ApiException {
-      rethrow;
-    } on TimeoutException {
-      throw ApiException(
-        'Request timed out. Check your connection.',
-        isTimeout: true,
-      );
-    } on SocketException {
-      throw ApiException('Could not connect to server.', isNetworkError: true);
-    } catch (e) {
-      throw ApiException('An unexpected error occurred.');
-    }
-  }
-
-  /// Uploads an image to a tab
-  Future<TabImageResponse> uploadTabImage(
-    int tabId,
-    String accessToken,
-    File imageFile, {
-    String? memberToken,
-  }) async {
-    try {
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse('$baseUrl/api/tabs/$tabId/images'),
-      );
-      request.headers['Authorization'] = 'Bearer $accessToken';
-      if (memberToken != null) {
-        request.headers['X-Member-Token'] = memberToken;
-      }
-      request.files.add(
-        await http.MultipartFile.fromPath('image', imageFile.path),
-      );
-
-      final streamedResponse = await request.send().timeout(_timeout);
-      final response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode == 201) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>?;
-        if (data == null) {
-          throw ApiException('Failed to parse image upload response');
-        }
-        return TabImageResponse.fromJson(data);
-      } else {
-        throw ApiException(
-          'Failed to upload image',
-          statusCode: response.statusCode,
-        );
-      }
-    } on ApiException {
-      rethrow;
-    } on TimeoutException {
-      throw ApiException(
-        'Request timed out. Check your connection.',
-        isTimeout: true,
-      );
-    } on SocketException {
-      throw ApiException('Could not connect to server.', isNetworkError: true);
-    } catch (e) {
-      throw ApiException('An unexpected error occurred.');
-    }
-  }
-
-  /// Gets all images for a tab
-  Future<List<TabImageResponse>> getTabImages(
-    int tabId,
-    String accessToken,
-  ) async {
-    try {
-      final response = await http
-          .get(
-            Uri.parse('$baseUrl/api/tabs/$tabId/images'),
-            headers: {'Authorization': 'Bearer $accessToken'},
-          )
-          .timeout(_timeout);
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        return data
-            .map(
-              (json) => TabImageResponse.fromJson(json as Map<String, dynamic>),
-            )
-            .toList();
-      } else {
-        throw ApiException(
-          'Failed to get images',
-          statusCode: response.statusCode,
-        );
-      }
-    } on ApiException {
-      rethrow;
-    } on TimeoutException {
-      throw ApiException(
-        'Request timed out. Check your connection.',
-        isTimeout: true,
-      );
-    } on SocketException {
-      throw ApiException('Could not connect to server.', isNetworkError: true);
-    } catch (e) {
-      throw ApiException('An unexpected error occurred.');
-    }
-  }
-
-  /// Toggles the processed status of an image
-  Future<bool> updateTabImage(
-    int tabId,
-    int imageId,
-    String accessToken,
-    bool processed,
-  ) async {
-    try {
-      final response = await http
-          .patch(
-            Uri.parse('$baseUrl/api/tabs/$tabId/images/$imageId'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $accessToken',
-            },
-            body: jsonEncode({'processed': processed}),
-          )
-          .timeout(_timeout);
-      if (response.statusCode == 200) {
-        return true;
-      } else {
-        throw ApiException(
-          'Failed to update image',
           statusCode: response.statusCode,
         );
       }
@@ -533,41 +464,6 @@ class ApiService {
       } else {
         throw ApiException(
           'Failed to update settlement',
-          statusCode: response.statusCode,
-        );
-      }
-    } on ApiException {
-      rethrow;
-    } on TimeoutException {
-      throw ApiException(
-        'Request timed out. Check your connection.',
-        isTimeout: true,
-      );
-    } on SocketException {
-      throw ApiException('Could not connect to server.', isNetworkError: true);
-    } catch (e) {
-      throw ApiException('An unexpected error occurred.');
-    }
-  }
-
-  /// Deletes an image from a tab
-  Future<bool> deleteTabImage(
-    int tabId,
-    int imageId,
-    String accessToken,
-  ) async {
-    try {
-      final response = await http
-          .delete(
-            Uri.parse('$baseUrl/api/tabs/$tabId/images/$imageId'),
-            headers: {'Authorization': 'Bearer $accessToken'},
-          )
-          .timeout(_timeout);
-      if (response.statusCode == 200) {
-        return true;
-      } else {
-        throw ApiException(
-          'Failed to delete image',
           statusCode: response.statusCode,
         );
       }
@@ -860,45 +756,6 @@ class BillUploadResponse {
         exchangeRateQuote.isValid &&
         usdTotal.isFinite &&
         usdTotal > 0;
-  }
-}
-
-/// Response object for tab images
-class TabImageResponse {
-  final int id;
-  final int tabId;
-  final String filename;
-  final String url;
-  final int size;
-  final String mimeType;
-  final bool processed;
-  final String uploadedBy;
-  final String createdAt;
-
-  TabImageResponse({
-    required this.id,
-    required this.tabId,
-    required this.filename,
-    required this.url,
-    required this.size,
-    required this.mimeType,
-    required this.processed,
-    required this.uploadedBy,
-    required this.createdAt,
-  });
-
-  factory TabImageResponse.fromJson(Map<String, dynamic> json) {
-    return TabImageResponse(
-      id: (json['id'] as int?) ?? 0,
-      tabId: (json['tab_id'] as int?) ?? 0,
-      filename: json['filename'] ?? '',
-      url: json['url'] ?? '',
-      size: json['size'] ?? 0,
-      mimeType: json['mime_type'] ?? '',
-      processed: json['processed'] ?? false,
-      uploadedBy: json['uploaded_by'] ?? '',
-      createdAt: json['created_at'] ?? '',
-    );
   }
 }
 

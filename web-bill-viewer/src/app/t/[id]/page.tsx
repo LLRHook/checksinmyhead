@@ -1,23 +1,19 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { FaLock, FaTriangleExclamation } from "react-icons/fa6";
+import AppHandoff from "@/components/AppHandoff";
 import DesktopLayout from "@/components/DesktopLayout";
-import JoinTabButton from "@/components/JoinTabButton";
-import LazyBillBoard from "@/components/LazyBillBoard";
 import MemberList from "@/components/MemberList";
 import NetBalances from "@/components/NetBalances";
 import PaymentDetails from "@/components/PaymentDetails";
 import SettlementCard from "@/components/SettlementCard";
 import TabBillList from "@/components/TabBillList";
 import TabHeader from "@/components/TabHeader";
-import TabImageGallery from "@/components/TabImageGallery";
 import TabPersonTotals from "@/components/TabPersonTotals";
 import {
-  API_BASE_URL,
   computeTabPersonTotals,
   getSettlements,
   getTab,
-  getTabImages,
   getTabMembers,
   type Tab,
 } from "@/lib/api";
@@ -89,7 +85,6 @@ export default async function TabPage({
   }
 
   const personTotals = computeTabPersonTotals(tab);
-  const images = await getTabImages(id, token);
   const settlements = tab.finalized ? await getSettlements(id, token) : [];
   const members = await getTabMembers(id, token);
   const paymentMethods = Array.from(
@@ -115,18 +110,15 @@ export default async function TabPage({
         total={tab.total_amount}
         billCount={tab.bills.length}
         finalized={tab.finalized}
+        currency={tab.display_currency}
       />
 
       {members.length > 0 && <MemberList members={members} />}
 
-      {!tab.finalized && <JoinTabButton tabId={id} token={token} />}
+      <AppHandoff tabId={id} token={token} />
 
       {paymentMethods.length > 0 && (
         <PaymentDetails paymentMethods={paymentMethods} />
-      )}
-
-      {images.length > 0 && (
-        <TabImageGallery images={images} apiBaseUrl={API_BASE_URL} />
       )}
     </>
   );
@@ -139,6 +131,7 @@ export default async function TabPage({
           finalized={tab.finalized}
           venmoId={venmoId}
           currentMemberName={null}
+          currency={tab.display_currency}
         />
       )}
 
@@ -148,20 +141,20 @@ export default async function TabPage({
           venmoId={venmoId}
           tabId={id}
           token={token}
+          currency={tab.display_currency}
+          readOnly
         />
       ) : (
         personTotals.length > 0 && (
-          <TabPersonTotals personTotals={personTotals} venmoId={venmoId} />
+          <TabPersonTotals
+            personTotals={personTotals}
+            venmoId={venmoId}
+            currency={tab.display_currency}
+          />
         )
       )}
 
-      {tab.finalized ? (
-        <TabBillList bills={tab.bills} />
-      ) : (
-        tab.bills.map((bill) => (
-          <LazyBillBoard key={bill.id} tabId={id} token={token} bill={bill} />
-        ))
-      )}
+      <TabBillList bills={tab.bills} />
     </DesktopLayout>
   );
 }

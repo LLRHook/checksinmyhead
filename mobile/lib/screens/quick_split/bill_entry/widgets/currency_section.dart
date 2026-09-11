@@ -70,7 +70,7 @@ class CurrencySection extends StatelessWidget {
                     border: OutlineInputBorder(),
                   ),
                   items:
-                      BillData.supportedCurrencies
+                      BillData.supportedCurrencies.keys
                           .map(
                             (currency) => DropdownMenuItem(
                               value: currency,

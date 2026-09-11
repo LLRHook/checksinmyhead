@@ -141,6 +141,7 @@ func (h *TabHandler) CreateTab(c *gin.Context) {
 		Name               string `json:"name"`
 		Description        string `json:"description"`
 		CreatorDisplayName string `json:"creator_display_name"`
+		DisplayCurrency    string `json:"display_currency"`
 	}
 
 	if err := c.ShouldBindJSON(&body); err != nil {
@@ -148,9 +149,14 @@ func (h *TabHandler) CreateTab(c *gin.Context) {
 		return
 	}
 
+	displayCurrency := strings.ToUpper(strings.TrimSpace(body.DisplayCurrency))
+	if len(displayCurrency) != 3 {
+		displayCurrency = "USD"
+	}
 	tab := models.Tab{
-		Name:        security.SanitizeString(body.Name),
-		Description: security.SanitizeString(body.Description),
+		Name:            security.SanitizeString(body.Name),
+		Description:     security.SanitizeString(body.Description),
+		DisplayCurrency: displayCurrency,
 	}
 
 	token, err := security.GenerateSecureToken()
@@ -369,6 +375,9 @@ func (h *TabHandler) UpdateTab(c *gin.Context) {
 	if tab == nil {
 		return
 	}
+	if !h.requireCreator(c, tab.ID) {
+		return
+	}
 
 	if tab.Finalized {
 		c.JSON(400, gin.H{"error": "tab is finalized"})
@@ -376,8 +385,9 @@ func (h *TabHandler) UpdateTab(c *gin.Context) {
 	}
 
 	var body struct {
-		Name        *string `json:"name"`
-		Description *string `json:"description"`
+		Name            *string `json:"name"`
+		Description     *string `json:"description"`
+		DisplayCurrency *string `json:"display_currency"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(400, gin.H{"error": "bad request"})
@@ -393,6 +403,14 @@ func (h *TabHandler) UpdateTab(c *gin.Context) {
 		sanitized := security.SanitizeString(*body.Description)
 		update.Description = sanitized
 	}
+	if body.DisplayCurrency != nil {
+		currency := strings.ToUpper(strings.TrimSpace(*body.DisplayCurrency))
+		if len(currency) != 3 {
+			c.JSON(400, gin.H{"error": "invalid display currency"})
+			return
+		}
+		update.DisplayCurrency = currency
+	}
 
 	err := h.service.UpdateTab(update)
 	if err != nil {
@@ -402,6 +420,24 @@ func (h *TabHandler) UpdateTab(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{"status": "ok"})
+}
+
+func (h *TabHandler) requireCreator(c *gin.Context, tabID uint) bool {
+	members, err := h.service.GetMembers(tabID)
+	if err != nil {
+		log.Printf("internal error: %v", err)
+		c.JSON(500, gin.H{"error": "an internal error occurred"})
+		return false
+	}
+	if len(members) == 0 {
+		return true
+	}
+	member := h.getMemberFromQuery(c, tabID)
+	if member == nil || member.Role != "creator" {
+		c.JSON(403, gin.H{"error": "only the tab creator can update tab settings"})
+		return false
+	}
+	return true
 }
 
 func (h *TabHandler) FinalizeTab(c *gin.Context) {

@@ -67,8 +67,9 @@ func (r *tabRepository) GetForFinalization(id uint) (tab *models.Tab, err error)
 
 func (r *tabRepository) Update(tab *models.Tab) error {
 	return r.db.Model(tab).Updates(models.Tab{
-		Name:        tab.Name,
-		Description: tab.Description,
+		Name:            tab.Name,
+		Description:     tab.Description,
+		DisplayCurrency: tab.DisplayCurrency,
 	}).Error
 }
 

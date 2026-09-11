@@ -8,3 +8,6 @@
 - In the lazy creator path, do not show secondary share actions that produce the wrong artifact; keep the footer focused on link creation only.
 - When the bill creator already knows their own items, resolve those claims in the app before publishing the collaborative link; sending them to the web creates unnecessary identity and ownership ambiguity.
 - Keep every public identity surface aligned with the current product name; stale store URLs from a previous product name can look misleading during App Review.
+- Treat currency as a general bill attribute, not a one-country exception: default to USD, allow explicit selection, and preserve the original currency alongside any converted display total.
+- When a user reports an old version label, verify all source version authorities and the installed artifact before changing version numbers; stale builds can make correct source look incorrect.
+- Payment handles can remain privacy-preserving without a user database when they are local by default and copied only into the specific shared bill/tab the user intentionally publishes.

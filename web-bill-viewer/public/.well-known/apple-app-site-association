@@ -1,0 +1,12 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["D9QD5DUKNC.com.checksinmyhead-vng.app"],
+        "components": [
+          { "/": "/t/*", "comment": "Billington tab invites" }
+        ]
+      }
+    ]
+  }
+}
