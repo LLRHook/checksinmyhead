@@ -567,25 +567,6 @@ class _TabDetailScreenState extends State<TabDetailScreen>
               ),
             ),
             const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: _addReceiptToTab,
-              icon: const Icon(Icons.add),
-              label: const Text('Add Receipt'),
-              style: FilledButton.styleFrom(
-                backgroundColor: colorScheme.primary,
-                foregroundColor:
-                    brightness == Brightness.dark
-                        ? Colors.black.withValues(alpha: 0.9)
-                        : Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 14,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-            ),
             if (_currentTab.shareUrl != null) ...[
               const SizedBox(height: 12),
               OutlinedButton.icon(
