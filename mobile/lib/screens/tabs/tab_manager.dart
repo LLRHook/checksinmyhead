@@ -83,13 +83,13 @@ class TabManager extends ChangeNotifier {
     }
   }
 
-  Future<void> addBillsToTab(int tabId, List<int> billIds) async {
+  Future<bool> addBillsToTab(int tabId, List<int> billIds) async {
     try {
       final tabData = await DatabaseProvider.db.getTabById(tabId);
-      if (tabData == null) return;
+      if (tabData == null) return false;
 
       final existingIds = AppTab.parseBillIds(tabData.billIds);
-      final updatedIds = [...existingIds, ...billIds];
+      final updatedIds = {...existingIds, ...billIds}.toList();
 
       await DatabaseProvider.db.updateTab(
         tabId,
@@ -99,27 +99,38 @@ class TabManager extends ChangeNotifier {
       if (tabData.accessToken != null && tabData.backendId != null) {
         final apiService = ApiService();
 
+        var syncSucceeded = true;
         for (final localBillId in billIds) {
           final billData = await DatabaseProvider.db.getBillById(localBillId);
           final shareUrl = billData?.shareUrl;
           final backendBill = _parseBillShareUrl(shareUrl);
           if (backendBill == null) {
             debugPrint('Skipping backend tab sync for bill without share URL');
+            syncSucceeded = false;
             continue;
           }
 
-          apiService.addBillToTab(
-            tabData.backendId!,
-            backendBill.id,
-            tabData.accessToken!,
-            billToken: backendBill.token,
-          );
+          try {
+            await apiService.addBillToTab(
+              tabData.backendId!,
+              backendBill.id,
+              tabData.accessToken!,
+              billToken: backendBill.token,
+              memberToken: tabData.memberToken,
+            );
+          } on ApiException {
+            syncSucceeded = false;
+          }
         }
+        notifyListeners();
+        return syncSucceeded;
       }
 
       notifyListeners();
+      return true;
     } catch (e) {
       debugPrint('Error adding bills to tab');
+      return false;
     }
   }
 
@@ -258,6 +269,16 @@ class TabManager extends ChangeNotifier {
       final apiService = ApiService();
 
       // Join the tab
+      final existing = (await DatabaseProvider.db.getAllTabs()).where(
+        (tab) =>
+            tab.backendId == tabId &&
+            tab.accessToken == accessToken &&
+            tab.memberToken != null,
+      );
+      if (existing.isNotEmpty) {
+        return _tabDataToAppTab(existing.first);
+      }
+
       final joinResponse = await apiService.joinTab(
         tabId,
         accessToken,
@@ -291,10 +312,35 @@ class TabManager extends ChangeNotifier {
       return tab;
     } on ApiException {
       debugPrint('Error joining tab');
-      return null;
+      rethrow;
     } catch (_) {
       debugPrint('Error joining tab');
       return null;
+    }
+  }
+
+  Future<bool> leaveTab(int localId) async {
+    try {
+      final tabData = await DatabaseProvider.db.getTabById(localId);
+      if (tabData == null ||
+          tabData.backendId == null ||
+          tabData.accessToken == null ||
+          tabData.memberToken == null) {
+        return false;
+      }
+      await ApiService().leaveTab(
+        tabData.backendId!,
+        tabData.accessToken!,
+        tabData.memberToken!,
+      );
+      await DatabaseProvider.db.deleteTab(localId);
+      await getAllTabs();
+      notifyListeners();
+      return true;
+    } on ApiException {
+      return false;
+    } catch (_) {
+      return false;
     }
   }
 

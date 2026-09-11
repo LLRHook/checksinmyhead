@@ -85,6 +85,7 @@ func main() {
 	r.GET("/api/tabs/:id/settlements", tabHandler.GetSettlements)
 	r.PATCH("/api/tabs/:id/settlements/:settlementId", tabHandler.UpdateSettlement)
 	r.POST("/api/tabs/:id/join", tabHandler.JoinTab)
+	r.DELETE("/api/tabs/:id/members/me", tabHandler.LeaveTab)
 	r.GET("/api/tabs/:id/members", tabHandler.GetMembers)
 
 	if receiptHandler != nil {

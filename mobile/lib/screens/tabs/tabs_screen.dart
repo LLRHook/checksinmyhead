@@ -6,6 +6,7 @@ import 'package:checks_frontend/screens/tabs/tab_manager.dart';
 import 'package:checks_frontend/screens/settings/services/preferences_service.dart';
 import 'package:checks_frontend/config/dialogUtils/dialog_utils.dart';
 import 'package:checks_frontend/services/invite_link_service.dart';
+import 'package:checks_frontend/services/api_service.dart';
 
 class TabsScreen extends StatefulWidget {
   final String? initialInviteUrl;
@@ -124,23 +125,32 @@ class _TabsScreenState extends State<TabsScreen>
         return;
       }
 
-      final tab = await _tabManager.joinTab(url, displayName);
+      AppTab? tab;
+      String? joinError;
+      try {
+        tab = await _tabManager.joinTab(url, displayName);
+      } on ApiException catch (error) {
+        joinError = error.message;
+      }
 
-      if (tab != null && mounted) {
+      final joinedTab = tab;
+      if (joinedTab != null && mounted) {
         await InviteLinkService().clearPendingInvite();
         if (!mounted) return;
-        setState(() => _tabs.insert(0, tab));
+        setState(() => _tabs.insert(0, joinedTab));
 
         final navResult = await Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => TabDetailScreen(tab: tab)),
+          MaterialPageRoute(
+            builder: (context) => TabDetailScreen(tab: joinedTab),
+          ),
         );
 
         if (navResult == true) _loadTabs();
       } else if (tab == null && mounted) {
         AppDialogs.showError(
           context,
-          'Failed to join tab. Check the link and try again.',
+          joinError ?? 'Failed to join tab. Check the link and try again.',
         );
       }
     }
