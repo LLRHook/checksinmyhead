@@ -374,26 +374,29 @@ class AppDatabase extends _$AppDatabase {
     double usdExchangeRate = 1,
     String? exchangeRateDate,
     String exchangeRateSource = 'native-usd',
+    bool skipDuplicateCheck = false,
   }) async {
     final normalizedCurrencyCode = currencyCode.trim().toUpperCase();
     final participantNames = participants.map((p) => p.name).toList();
     final participantsJson = jsonEncode(participantNames);
 
     // Check for duplicate bills within the last minute
-    final oneMinuteAgo = DateTime.now().subtract(const Duration(minutes: 1));
-    final recentBillsResults =
-        await (select(recentBills)
-              ..where((b) => b.createdAt.isBiggerThanValue(oneMinuteAgo))
-              ..where(
-                (b) => b.total.isBetweenValues(total - 0.01, total + 0.01),
-              )
-              ..where((b) => b.currencyCode.equals(normalizedCurrencyCode))
-              ..where((b) => b.participants.equals(participantsJson)))
-            .get();
+    if (!skipDuplicateCheck) {
+      final oneMinuteAgo = DateTime.now().subtract(const Duration(minutes: 1));
+      final recentBillsResults =
+          await (select(recentBills)
+                ..where((b) => b.createdAt.isBiggerThanValue(oneMinuteAgo))
+                ..where(
+                  (b) => b.total.isBetweenValues(total - 0.01, total + 0.01),
+                )
+                ..where((b) => b.currencyCode.equals(normalizedCurrencyCode))
+                ..where((b) => b.participants.equals(participantsJson)))
+              .get();
 
-    // If a similar bill exists within the last minute, skip saving
-    if (recentBillsResults.isNotEmpty) {
-      return;
+      // If a similar bill exists within the last minute, skip saving
+      if (recentBillsResults.isNotEmpty) {
+        return;
+      }
     }
 
     String? itemsJson;

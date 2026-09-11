@@ -446,16 +446,21 @@ class ApiService {
     int tabId,
     int settlementId,
     String accessToken,
-    bool paid,
-  ) async {
+    bool paid, {
+    String? memberToken,
+  }) async {
     try {
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $accessToken',
+      };
+      if (memberToken != null && memberToken.isNotEmpty) {
+        headers['X-Member-Token'] = memberToken;
+      }
       final response = await http
           .patch(
             Uri.parse('$baseUrl/api/tabs/$tabId/settlements/$settlementId'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $accessToken',
-            },
+            headers: headers,
             body: jsonEncode({'paid': paid}),
           )
           .timeout(_timeout);
