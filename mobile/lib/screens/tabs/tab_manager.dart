@@ -54,7 +54,7 @@ class TabManager extends ChangeNotifier {
         ),
       );
 
-      _syncTabToBackend(
+      await _syncTabToBackend(
         id,
         name,
         description,
