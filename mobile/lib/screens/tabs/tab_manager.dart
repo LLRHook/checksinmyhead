@@ -89,18 +89,14 @@ class TabManager extends ChangeNotifier {
       if (tabData == null) return false;
 
       final existingIds = AppTab.parseBillIds(tabData.billIds);
-      final updatedIds = {...existingIds, ...billIds}.toList();
-
-      await DatabaseProvider.db.updateTab(
-        tabId,
-        TabsCompanion(billIds: Value(updatedIds.join(','))),
-      );
+      final attachedIds = <int>[];
 
       if (tabData.accessToken != null && tabData.backendId != null) {
         final apiService = ApiService();
 
         var syncSucceeded = true;
         for (final localBillId in billIds) {
+          if (existingIds.contains(localBillId)) continue;
           final billData = await DatabaseProvider.db.getBillById(localBillId);
           final shareUrl = billData?.shareUrl;
           final backendBill = _parseBillShareUrl(shareUrl);
@@ -118,13 +114,28 @@ class TabManager extends ChangeNotifier {
               billToken: backendBill.token,
               memberToken: tabData.memberToken,
             );
+            attachedIds.add(localBillId);
           } on ApiException {
             syncSucceeded = false;
           }
         }
+        await DatabaseProvider.db.updateTab(
+          tabId,
+          TabsCompanion(
+            billIds: Value([...existingIds, ...attachedIds].join(',')),
+          ),
+        );
         notifyListeners();
         return syncSucceeded;
       }
+
+      attachedIds.addAll(billIds.where((id) => !existingIds.contains(id)));
+      await DatabaseProvider.db.updateTab(
+        tabId,
+        TabsCompanion(
+          billIds: Value([...existingIds, ...attachedIds].join(',')),
+        ),
+      );
 
       notifyListeners();
       return true;
@@ -306,6 +317,13 @@ class TabManager extends ChangeNotifier {
 
       final insertedTab = await DatabaseProvider.db.getTabById(localId);
       if (insertedTab == null) return null;
+
+      final displayCurrency =
+          (tabData['display_currency'] as String? ?? 'USD').toUpperCase();
+      await PreferencesService().setTabDisplayCurrency(
+        localId,
+        displayCurrency,
+      );
 
       final tab = await _tabDataToAppTab(insertedTab);
       notifyListeners();

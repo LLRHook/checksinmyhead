@@ -24,7 +24,7 @@ type TabRepository interface {
 	Finalize(id uint) error
 	GetSettlements(tabID uint) ([]models.TabSettlement, error)
 	CreateSettlements(settlements []models.TabSettlement) error
-	UpdateSettlementPaid(id uint, paid bool) error
+	UpdateSettlementPaid(tabID uint, id uint, paid bool) error
 	CreateMember(member *models.TabMember) error
 	GetMemberByToken(token string) (*models.TabMember, error)
 	GetMembersByTabID(tabID uint) ([]models.TabMember, error)
@@ -182,8 +182,15 @@ func (r *tabRepository) CreateSettlements(settlements []models.TabSettlement) er
 	return r.db.Create(&settlements).Error
 }
 
-func (r *tabRepository) UpdateSettlementPaid(id uint, paid bool) error {
-	return r.db.Model(&models.TabSettlement{}).Where("id = ?", id).Update("paid", paid).Error
+func (r *tabRepository) UpdateSettlementPaid(tabID uint, id uint, paid bool) error {
+	result := r.db.Model(&models.TabSettlement{}).Where("id = ? AND tab_id = ?", id, tabID).Update("paid", paid)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (r *tabRepository) CreateMember(member *models.TabMember) error {
