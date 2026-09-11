@@ -213,11 +213,52 @@ class _TabDetailScreenState extends State<TabDetailScreen>
         selectedBills.isNotEmpty &&
         _currentTab.id != null &&
         mounted) {
-      await _tabManager.addBillsToTab(_currentTab.id!, selectedBills);
+      final synced = await _tabManager.addBillsToTab(
+        _currentTab.id!,
+        selectedBills,
+      );
       await _loadBills();
 
       _showSnackBar(
-        'Added ${selectedBills.length} bill${selectedBills.length == 1 ? '' : 's'}',
+        synced
+            ? 'Added ${selectedBills.length} bill${selectedBills.length == 1 ? '' : 's'}'
+            : 'Saved locally, but could not sync every bill. Check your connection.',
+        isError: !synced,
+      );
+    }
+  }
+
+  Future<void> _leaveTab() async {
+    if (_currentTab.id == null || _currentTab.isCreator) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Leave tab?'),
+            content: Text(
+              'You will stop receiving updates for "${_currentTab.name}" on this device.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Leave'),
+              ),
+            ],
+          ),
+    );
+    if (confirmed != true || !mounted) return;
+    final left = await _tabManager.leaveTab(_currentTab.id!);
+    if (!mounted) return;
+    if (left) {
+      Navigator.pop(context, true);
+    } else {
+      _showSnackBar(
+        'Could not leave this tab. Check your connection.',
+        isError: true,
       );
     }
   }
@@ -474,9 +515,10 @@ class _TabDetailScreenState extends State<TabDetailScreen>
               onSelected: (value) {
                 if (value == 'existing') _addBillsToTab();
                 if (value == 'currency') _chooseDisplayCurrency();
+                if (value == 'leave') _leaveTab();
               },
               itemBuilder:
-                  (context) => const [
+                  (context) => [
                     PopupMenuItem(
                       value: 'currency',
                       child: Text('Set display currency'),
@@ -485,6 +527,8 @@ class _TabDetailScreenState extends State<TabDetailScreen>
                       value: 'existing',
                       child: Text('Add existing bill'),
                     ),
+                    if (_currentTab.isRemote && !_currentTab.isCreator)
+                      PopupMenuItem(value: 'leave', child: Text('Leave tab')),
                   ],
             ),
         ],
