@@ -116,6 +116,23 @@
 
 # Billington 2.0 — Collaborative Trips & Multi-Currency
 
+## 2.0.2 release hardening — complete
+
+- [x] Make repeated tab joins idempotent per installation.
+- [x] Await existing-bill attachment sync and surface failures.
+- [x] Add leave-tab and invalid/expired invite handling.
+- [ ] Verify production currency-provider configuration without exposing the API key.
+- [x] Add focused regression tests and document the two-device smoke test.
+
+### Review
+
+- Repeated invite taps now reuse the existing local tab, and the backend accepts a persisted member token idempotently.
+- Existing-bill attachment awaits every backend write and reports partial sync failures instead of silently claiming success.
+- Remote members can leave from the tab menu; creators cannot accidentally leave their own tab.
+- Invalid or expired invite responses now explain the failure in the join UI.
+- The exchange-rate key remains server-only and is documented in `backend/README.md`; production secret configuration still needs to be confirmed in the deployment provider.
+- Two-device smoke test remains a manual launch check: create a tab on device A, invite device B, join, add a bill from each device, edit the same item to confirm conflict handling, mark a settlement paid, then leave on device B.
+
 ## Product decisions — approved for implementation
 
 - [x] Tabs become the primary collaborative product: a trip/event has members, shared bills, balances, and settlement actions in the mobile app.

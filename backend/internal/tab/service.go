@@ -26,6 +26,7 @@ type TabService interface {
 	JoinTabAsCreator(tabID uint, displayName string) (*models.TabMember, error)
 	GetMemberByToken(token string) (*models.TabMember, error)
 	GetMembers(tabID uint) ([]models.TabMember, error)
+	DeleteMember(tabID uint, memberID uint) error
 }
 
 type tabService struct {
@@ -172,6 +173,10 @@ func (s *tabService) GetMemberByToken(token string) (*models.TabMember, error) {
 
 func (s *tabService) GetMembers(tabID uint) ([]models.TabMember, error) {
 	return s.repo.GetMembersByTabID(tabID)
+}
+
+func (s *tabService) DeleteMember(tabID uint, memberID uint) error {
+	return s.repo.DeleteMember(tabID, memberID)
 }
 
 func NewTabService(repo TabRepository) TabService {

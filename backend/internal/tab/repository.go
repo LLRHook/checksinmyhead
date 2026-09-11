@@ -28,6 +28,7 @@ type TabRepository interface {
 	CreateMember(member *models.TabMember) error
 	GetMemberByToken(token string) (*models.TabMember, error)
 	GetMembersByTabID(tabID uint) ([]models.TabMember, error)
+	DeleteMember(tabID uint, memberID uint) error
 }
 
 type tabRepository struct {
@@ -199,6 +200,17 @@ func (r *tabRepository) GetMembersByTabID(tabID uint) ([]models.TabMember, error
 	var members []models.TabMember
 	err := r.db.Where("tab_id = ?", tabID).Order("joined_at ASC").Find(&members).Error
 	return members, err
+}
+
+func (r *tabRepository) DeleteMember(tabID uint, memberID uint) error {
+	result := r.db.Where("id = ? AND tab_id = ? AND role <> ?", memberID, tabID, "creator").Delete(&models.TabMember{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func NewTabRepository(db *gorm.DB) TabRepository {

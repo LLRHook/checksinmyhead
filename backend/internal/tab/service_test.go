@@ -26,6 +26,7 @@ type mockTabRepository struct {
 	createMemberErr      error
 	getMemberByTokenErr  error
 	getMembersByTabIDErr error
+	deleteMemberErr      error
 	updateAssignmentsErr error
 
 	// Capture calls
@@ -152,6 +153,10 @@ func (m *mockTabRepository) GetMembersByTabID(tabID uint) ([]models.TabMember, e
 		}
 	}
 	return result, nil
+}
+
+func (m *mockTabRepository) DeleteMember(tabID uint, memberID uint) error {
+	return m.deleteMemberErr
 }
 
 // ── Tests ───────────────────────────────────────────────────────

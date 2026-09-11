@@ -485,21 +485,26 @@ class ApiService {
   Future<TabJoinResponse> joinTab(
     int tabId,
     String accessToken,
-    String displayName,
-  ) async {
+    String displayName, {
+    String? memberToken,
+  }) async {
     try {
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $accessToken',
+      };
+      if (memberToken != null && memberToken.isNotEmpty) {
+        headers['X-Member-Token'] = memberToken;
+      }
       final response = await http
           .post(
             Uri.parse('$baseUrl/api/tabs/$tabId/join'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $accessToken',
-            },
+            headers: headers,
             body: jsonEncode({'display_name': displayName}),
           )
           .timeout(_timeout);
 
-      if (response.statusCode == 201) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body) as Map<String, dynamic>?;
         if (data == null) {
           throw ApiException('Failed to parse join tab response');
@@ -511,8 +516,48 @@ class ApiService {
           role: data['role'] as String? ?? 'member',
         );
       } else {
+        final message =
+            response.statusCode == 403
+                ? 'This invite is invalid or expired.'
+                : response.statusCode == 404
+                ? 'This tab no longer exists.'
+                : 'Failed to join tab';
+        throw ApiException(message, statusCode: response.statusCode);
+      }
+    } on ApiException {
+      rethrow;
+    } on TimeoutException {
+      throw ApiException(
+        'Request timed out. Check your connection.',
+        isTimeout: true,
+      );
+    } on SocketException {
+      throw ApiException('Could not connect to server.', isNetworkError: true);
+    } catch (e) {
+      throw ApiException('An unexpected error occurred.');
+    }
+  }
+
+  Future<void> leaveTab(
+    int tabId,
+    String accessToken,
+    String memberToken,
+  ) async {
+    try {
+      final response = await http
+          .delete(
+            Uri.parse('$baseUrl/api/tabs/$tabId/members/me'),
+            headers: {
+              'Authorization': 'Bearer $accessToken',
+              'X-Member-Token': memberToken,
+            },
+          )
+          .timeout(_timeout);
+      if (response.statusCode != 200) {
         throw ApiException(
-          'Failed to join tab',
+          response.statusCode == 400
+              ? 'The tab creator cannot leave the tab.'
+              : 'Could not leave this tab.',
           statusCode: response.statusCode,
         );
       }
@@ -525,7 +570,7 @@ class ApiService {
       );
     } on SocketException {
       throw ApiException('Could not connect to server.', isNetworkError: true);
-    } catch (e) {
+    } catch (_) {
       throw ApiException('An unexpected error occurred.');
     }
   }
