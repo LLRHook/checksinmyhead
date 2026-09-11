@@ -153,6 +153,27 @@ class TabManager extends ChangeNotifier {
     }
   }
 
+  /// Retries backend setup for a locally-created tab whose invite URL was not
+  /// available when the tab was first created.
+  Future<AppTab?> retryTabSync(
+    int localId, {
+    String? creatorDisplayName,
+  }) async {
+    final tabData = await DatabaseProvider.db.getTabById(localId);
+    if (tabData == null) return null;
+    if (tabData.shareUrl != null && tabData.shareUrl!.isNotEmpty) {
+      return _tabDataToAppTab(tabData);
+    }
+
+    await _syncTabToBackend(
+      localId,
+      tabData.name,
+      tabData.description,
+      creatorDisplayName: creatorDisplayName,
+    );
+    return getTabById(localId);
+  }
+
   Future<void> removeBillFromTab(int tabId, int billId) async {
     try {
       final tabData = await DatabaseProvider.db.getTabById(tabId);
