@@ -1,6 +1,8 @@
 package models
 
 import (
+	"math"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -71,11 +73,13 @@ type Bill struct {
 	TipPercentage      float64         `json:"tip_percentage"`
 	Total              float64         `gorm:"not null" json:"total"`
 	CurrencyCode       string          `gorm:"type:char(3);not null;default:'USD'" json:"currency_code"`
+	USDExchangeRate    float64         `gorm:"not null;default:1" json:"usd_exchange_rate"`
+	USDTotal           float64         `gorm:"not null;default:0" json:"usd_total"`
 	DisplayCurrency    string          `gorm:"type:char(3);not null;default:'USD'" json:"display_currency"`
 	DisplayTotal       *float64        `json:"display_total,omitempty"`
 	ExchangeRate       *float64        `json:"exchange_rate,omitempty"`
 	ExchangeRateSource string          `json:"exchange_rate_source,omitempty"`
-	ExchangeRateDate   *time.Time      `json:"exchange_rate_date,omitempty"`
+	ExchangeRateDate   string          `gorm:"type:varchar(10)" json:"exchange_rate_date,omitempty"`
 	Date               time.Time       `gorm:"not null" json:"date"`
 	PaymentMethods     []PaymentMethod `gorm:"type:jsonb;serializer:json" json:"payment_methods"` // Changed to array
 	Participants       []Person        `gorm:"many2many:bill_participants;constraint:OnDelete:SET NULL" json:"participants"`
@@ -86,10 +90,39 @@ type Bill struct {
 	UpdatedAt          time.Time       `json:"updated_at"`
 }
 
+// NormalizeCurrency keeps legacy rows safe and gives every bill a deterministic
+// USD audit value for tab totals and settlement calculations.
+func (b *Bill) NormalizeCurrency() {
+	b.CurrencyCode = strings.ToUpper(strings.TrimSpace(b.CurrencyCode))
+	if b.CurrencyCode == "" {
+		b.CurrencyCode = "USD"
+	}
+	if b.CurrencyCode == "USD" {
+		b.USDExchangeRate = 1
+		if b.ExchangeRateSource == "" {
+			b.ExchangeRateSource = "native-usd"
+		}
+	}
+	if b.USDExchangeRate > 0 && b.USDTotal == 0 && b.Total != 0 {
+		b.USDTotal = math.Round(b.Total*b.USDExchangeRate*100) / 100
+	}
+}
+
+func (b *Bill) USDValue(value float64) float64 {
+	b.NormalizeCurrency()
+	return math.Round(value*b.USDExchangeRate*100) / 100
+}
+
 // BeforeCreate hook to set default values before creating a Bill.
 func (b *Bill) BeforeCreate(tx *gorm.DB) error {
+	b.NormalizeCurrency()
 	if b.Date.IsZero() {
 		b.Date = time.Now()
 	}
+	return nil
+}
+
+func (b *Bill) AfterFind(tx *gorm.DB) error {
+	b.NormalizeCurrency()
 	return nil
 }

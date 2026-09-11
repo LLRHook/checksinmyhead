@@ -160,10 +160,10 @@ class _ItemsSectionState extends State<ItemsSection>
     final newTotalItems = billData.itemsTotal + price;
     if (billData.subtotal > 0 && newTotalItems > billData.subtotal) {
       // Show error message with remaining amount
-      final remaining = (billData.subtotal - billData.itemsTotal)
-          .toStringAsFixed(2);
+      final remaining = billData.subtotal - billData.itemsTotal;
       widget.showSnackBar(
-        'Item price exceeds remaining amount. You can add up to \$$remaining',
+        'Item price exceeds remaining amount. You can add up to '
+        '${CurrencyFormatter.formatCurrency(remaining, currencyCode: billData.currencyCode)}',
       );
       return;
     }
@@ -314,7 +314,10 @@ class _ItemsSectionState extends State<ItemsSection>
                 decoration: AppInputDecoration.buildInputDecoration(
                   context: context,
                   labelText: 'Item price',
-                  prefixText: '\$',
+                  prefixText:
+                      billData.currencyCode == 'USD'
+                          ? '\$'
+                          : '${billData.currencyCode} ',
                   hintText: isSubtotalSet ? '0.00' : 'Enter subtotal first',
                 ),
                 keyboardType: const TextInputType.numberWithOptions(
@@ -386,7 +389,7 @@ class _ItemsSectionState extends State<ItemsSection>
                       ],
                     ).createShader(bounds),
                 child: Text(
-                  'Items: \$${billData.animatedItemsTotal.toStringAsFixed(2)}',
+                  'Items: ${CurrencyFormatter.formatCurrency(billData.animatedItemsTotal, currencyCode: billData.currencyCode)}',
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
@@ -397,7 +400,10 @@ class _ItemsSectionState extends State<ItemsSection>
               Text('of', style: TextStyle(color: colorScheme.onSurface)),
               const SizedBox(width: 4),
               Text(
-                '\$${billData.subtotal.toStringAsFixed(2)}',
+                CurrencyFormatter.formatCurrency(
+                  billData.subtotal,
+                  currencyCode: billData.currencyCode,
+                ),
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   color: colorScheme.onSurface.withValues(alpha: .8),
@@ -434,62 +440,62 @@ class _ItemsSectionState extends State<ItemsSection>
 
           // Animated progress bar (decorative, info conveyed by text above)
           ExcludeSemantics(
-          child: Container(
-            height: 8,
-            decoration: BoxDecoration(
-              color: progressBgColor,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                // Calculate progress percentage (capped at 100%)
-                final progressPercentage =
-                    billData.subtotal > 0
-                        ? (billData.animatedItemsTotal / billData.subtotal)
-                            .clamp(0.0, 1.0)
-                        : 0.0;
+            child: Container(
+              height: 8,
+              decoration: BoxDecoration(
+                color: progressBgColor,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // Calculate progress percentage (capped at 100%)
+                  final progressPercentage =
+                      billData.subtotal > 0
+                          ? (billData.animatedItemsTotal / billData.subtotal)
+                              .clamp(0.0, 1.0)
+                          : 0.0;
 
-                return Stack(
-                  children: [
-                    // Animated progress fill with gradient and shadow
-                    Container(
-                      width: constraints.maxWidth * progressPercentage,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(4),
-                        gradient: LinearGradient(
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                          colors: [
-                            _getProgressColor(
-                              context,
-                              billData.animatedItemsTotal,
-                              billData.subtotal,
+                  return Stack(
+                    children: [
+                      // Animated progress fill with gradient and shadow
+                      Container(
+                        width: constraints.maxWidth * progressPercentage,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(4),
+                          gradient: LinearGradient(
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                            colors: [
+                              _getProgressColor(
+                                context,
+                                billData.animatedItemsTotal,
+                                billData.subtotal,
+                              ),
+                              _getProgressColor(
+                                context,
+                                billData.animatedItemsTotal,
+                                billData.subtotal,
+                              ).withValues(alpha: .8),
+                            ],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _getProgressColor(
+                                context,
+                                billData.animatedItemsTotal,
+                                billData.subtotal,
+                              ).withValues(alpha: .3),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
                             ),
-                            _getProgressColor(
-                              context,
-                              billData.animatedItemsTotal,
-                              billData.subtotal,
-                            ).withValues(alpha: .8),
                           ],
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _getProgressColor(
-                              context,
-                              billData.animatedItemsTotal,
-                              billData.subtotal,
-                            ).withValues(alpha: .3),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
                       ),
-                    ),
-                  ],
-                );
-              },
+                    ],
+                  );
+                },
+              ),
             ),
-          ),
           ),
 
           // Items list section
@@ -566,55 +572,56 @@ class _ItemsSectionState extends State<ItemsSection>
             if (shouldShowCollapseControl) ...[
               const SizedBox(height: 8),
               Semantics(
-                label: _isItemsListCollapsed
-                    ? 'Show all ${billData.items.length} items'
-                    : 'Collapse items list',
+                label:
+                    _isItemsListCollapsed
+                        ? 'Show all ${billData.items.length} items'
+                        : 'Collapse items list',
                 button: true,
                 child: GestureDetector(
-                onTap: _toggleItemsList,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 6,
-                    horizontal: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerHighest.withValues(
-                      alpha: .2,
+                  onTap: _toggleItemsList,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 6,
+                      horizontal: 12,
                     ),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: colorScheme.outline.withValues(alpha: .1),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        _isItemsListCollapsed
-                            ? 'Show All ${billData.items.length} Items'
-                            : 'Collapse List',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: colorScheme.primary,
-                        ),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerHighest.withValues(
+                        alpha: .2,
                       ),
-                      const SizedBox(width: 4),
-                      ExcludeSemantics(
-                        child: Icon(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: colorScheme.outline.withValues(alpha: .1),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
                           _isItemsListCollapsed
-                              ? Icons.keyboard_arrow_down
-                              : Icons.keyboard_arrow_up,
-                          size: 18,
-                          color: colorScheme.primary,
+                              ? 'Show All ${billData.items.length} Items'
+                              : 'Collapse List',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: colorScheme.primary,
+                          ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 4),
+                        ExcludeSemantics(
+                          child: Icon(
+                            _isItemsListCollapsed
+                                ? Icons.keyboard_arrow_down
+                                : Icons.keyboard_arrow_up,
+                            size: 18,
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
               ),
             ],
             const SizedBox(height: 12),
@@ -659,18 +666,26 @@ class _ItemsSectionState extends State<ItemsSection>
                         // Price pill with theme-colored background
                         Flexible(
                           child: Semantics(
-                            label: '${item.price.toStringAsFixed(2)} dollars',
+                            label: CurrencyFormatter.formatCurrency(
+                              item.price,
+                              currencyCode: billData.currencyCode,
+                            ),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 10,
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: colorScheme.primary.withValues(alpha: .1),
+                                color: colorScheme.primary.withValues(
+                                  alpha: .1,
+                                ),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                '\$${item.price.toStringAsFixed(2)}',
+                                CurrencyFormatter.formatCurrency(
+                                  item.price,
+                                  currencyCode: billData.currencyCode,
+                                ),
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: colorScheme.primary,

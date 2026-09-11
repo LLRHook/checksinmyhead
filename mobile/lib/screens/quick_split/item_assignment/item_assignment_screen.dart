@@ -16,6 +16,7 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import 'package:checks_frontend/screens/quick_split/item_assignment/dialogs/custom_split_dialog.dart';
+import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -183,7 +184,7 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  "There's still \$${provider.unassignedAmount.toStringAsFixed(2)} unassigned. Please assign all items before continuing.",
+                  "There's still ${CurrencyFormatter.formatCurrency(provider.unassignedAmount, currencyCode: widget.currencyCode)} unassigned. Please assign all items before continuing.",
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 15,
@@ -277,6 +278,7 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
       onAssign: provider.assignItem,
       preselectedPeople: preselectedPeople,
       birthdayPerson: provider.birthdayPerson,
+      currencyCode: widget.currencyCode,
     );
   }
 
@@ -331,12 +333,14 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
                   if (provider.unassignedAmount > 0.01)
                     UnassignedAmountBanner(
                       unassignedAmount: provider.unassignedAmount,
+                      currencyCode: widget.currencyCode,
                       onSplitEvenly: provider.splitUnassignedAmountEvenly,
                     ),
                   _buildBillInfoPanel(provider),
                   Expanded(child: _buildItemsListView(provider)),
                   AssignmentBottomBar(
                     totalBill: widget.total,
+                    currencyCode: widget.currencyCode,
                     onContinueTap: () => _continueToSummary(provider),
                   ),
                 ],
@@ -422,9 +426,15 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
                   ),
                   const SizedBox(height: 2),
                   Semantics(
-                    label: '${widget.subtotal.toStringAsFixed(2)} dollars',
+                    label: CurrencyFormatter.formatCurrency(
+                      widget.subtotal,
+                      currencyCode: widget.currencyCode,
+                    ),
                     child: Text(
-                      '\$${widget.subtotal.toStringAsFixed(2)}',
+                      CurrencyFormatter.formatCurrency(
+                        widget.subtotal,
+                        currencyCode: widget.currencyCode,
+                      ),
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -452,7 +462,10 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
                     label:
                         '${assignedAmount.toStringAsFixed(2)} dollars assigned',
                     child: Text(
-                      '\$${assignedAmount.toStringAsFixed(2)}',
+                      CurrencyFormatter.formatCurrency(
+                        assignedAmount,
+                        currencyCode: widget.currencyCode,
+                      ),
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -564,6 +577,7 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
           birthdayPerson: provider.birthdayPerson,
           onBirthdayToggle: provider.toggleBirthdayPerson,
           getPersonBillPercentage: provider.getPersonBillPercentage,
+          currencyCode: widget.currencyCode,
         );
       },
     );

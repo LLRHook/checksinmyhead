@@ -53,7 +53,10 @@ class BillTotalSection extends StatelessWidget {
           decoration: AppInputDecoration.buildInputDecoration(
             context: context,
             labelText: 'Subtotal',
-            prefixText: '\$',
+            prefixText:
+                billData.currencyCode == 'USD'
+                    ? '\$'
+                    : '${billData.currencyCode} ',
             hintText: '0.00',
           ),
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -69,7 +72,10 @@ class BillTotalSection extends StatelessWidget {
           decoration: AppInputDecoration.buildInputDecoration(
             context: context,
             labelText: 'Tax',
-            prefixText: '\$',
+            prefixText:
+                billData.currencyCode == 'USD'
+                    ? '\$'
+                    : '${billData.currencyCode} ',
             hintText: '0.00',
           ),
           keyboardType: const TextInputType.numberWithOptions(decimal: true),

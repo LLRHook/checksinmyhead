@@ -358,7 +358,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
   }
 
   double _calculateTotal() {
-    return _tabBills.fold(0.0, (sum, bill) => sum + bill.total);
+    return _tabBills.fold(0.0, (sum, bill) => sum + bill.usdTotal);
   }
 
   // Known limitation: Person equality uses both name and color, so the same
@@ -369,7 +369,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
     final Map<String, String> nameMapping = {};
 
     for (final bill in _tabBills) {
-      final billShares = bill.generatePersonShares();
+      final billShares = bill.generateUSDPersonShares();
 
       billShares.forEach((person, amount) {
         final nameLower = person.name.toLowerCase();

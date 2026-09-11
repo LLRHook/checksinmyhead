@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/models/bill_item.dart';
 import 'package:checks_frontend/models/tab.dart';
+import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 
 // Import refactored components
 import 'models/bill_summary_data.dart';
@@ -238,7 +239,10 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
                                     _toggleOwnerItem(item, value ?? false),
                             title: Text(item.name),
                             subtitle: Text(
-                              '\$${item.price.toStringAsFixed(2)}',
+                              CurrencyFormatter.formatCurrency(
+                                item.price,
+                                currencyCode: widget.currencyCode,
+                              ),
                             ),
                             contentPadding: EdgeInsets.zero,
                             controlAffinity: ListTileControlAffinity.leading,

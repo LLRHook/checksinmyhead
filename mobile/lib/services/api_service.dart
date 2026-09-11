@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:checks_frontend/services/api_config.dart';
 import 'package:checks_frontend/models/bill_item.dart';
 import 'package:checks_frontend/models/person.dart';
+import 'package:checks_frontend/models/exchange_rate_quote.dart';
 
 /// Exception thrown when an API request fails.
 class ApiException implements Exception {
@@ -101,11 +102,13 @@ class ApiService {
         if (data == null) {
           throw ApiException('Failed to parse bill upload response');
         }
-        return BillUploadResponse(
-          billId: data['bill_id'] as int? ?? 0,
-          accessToken: data['access_token'] as String? ?? '',
-          shareUrl: data['share_url'] as String? ?? '',
-        );
+        final result = BillUploadResponse.fromJson(data);
+        if (!result.isAuthoritativeFor(currencyCode)) {
+          throw ApiException(
+            'The server did not confirm this daily conversion. Nothing was saved; retry or use USD.',
+          );
+        }
+        return result;
       } else {
         throw ApiException(
           'Failed to upload bill',
@@ -124,6 +127,77 @@ class ApiService {
     } catch (e) {
       throw ApiException('An unexpected error occurred.');
     }
+  }
+
+  Future<ExchangeRateQuote> getExchangeRate(String currencyCode) async {
+    final normalized = currencyCode.toUpperCase();
+    if (normalized == 'USD') return const ExchangeRateQuote.usd();
+    try {
+      final response = await http
+          .get(Uri.parse('$baseUrl/api/exchange-rates/$normalized'))
+          .timeout(_timeout);
+      if (response.statusCode != 200) {
+        throw ApiException(
+          'Daily exchange rate unavailable. Retry or use USD.',
+          statusCode: response.statusCode,
+        );
+      }
+      final data = jsonDecode(response.body) as Map<String, dynamic>?;
+      if (data == null) throw ApiException('Invalid exchange rate response.');
+      final quote = ExchangeRateQuote.fromJson(data);
+      if (!quote.isValid || quote.currencyCode != normalized) {
+        throw ApiException('Invalid exchange rate response.');
+      }
+      return quote;
+    } on ApiException {
+      rethrow;
+    } on TimeoutException {
+      throw ApiException(
+        'Daily exchange rate timed out. Retry or use USD.',
+        isTimeout: true,
+      );
+    } on SocketException {
+      throw ApiException(
+        'Could not load the daily rate. Retry or use USD.',
+        isNetworkError: true,
+      );
+    } catch (_) {
+      throw ApiException('Invalid exchange rate response.');
+    }
+  }
+
+  Map<String, dynamic> buildBillRequest({
+    required String billName,
+    required List<Person> participants,
+    required Map<Person, double> personShares,
+    required List<BillItem> items,
+    required double subtotal,
+    required double tax,
+    required double tipAmount,
+    required double tipPercentage,
+    required double total,
+    required List<Map<String, String>> paymentMethods,
+    required String currencyCode,
+  }) {
+    return {
+      'name': billName,
+      'subtotal': subtotal,
+      'tax': tax,
+      'tip_amount': tipAmount,
+      'tip_percentage': tipPercentage,
+      'total': total,
+      'currency_code': currencyCode,
+      'participants': participants.map((p) => {'name': p.name}).toList(),
+      'items': _buildItemsJson(items, participants),
+      'person_shares': _buildPersonSharesJson(
+        personShares,
+        items,
+        tax,
+        tipAmount,
+        total,
+      ),
+      'payment_methods': paymentMethods,
+    };
   }
 
   /// Builds the items JSON structure with assignments
@@ -644,12 +718,45 @@ class BillUploadResponse {
   final int billId;
   final String accessToken;
   final String shareUrl;
+  final ExchangeRateQuote exchangeRateQuote;
+  final double usdTotal;
 
   BillUploadResponse({
     required this.billId,
     required this.accessToken,
     required this.shareUrl,
+    this.exchangeRateQuote = const ExchangeRateQuote.usd(),
+    this.usdTotal = 0,
   });
+
+  factory BillUploadResponse.fromJson(Map<String, dynamic> json) {
+    final currencyCode = json['currency_code'] as String? ?? 'USD';
+    final quote = ExchangeRateQuote(
+      currencyCode: currencyCode,
+      usdRate: (json['usd_exchange_rate'] as num?)?.toDouble() ?? 1,
+      rateDate: json['exchange_rate_date'] as String? ?? '',
+      source: json['exchange_rate_source'] as String? ?? 'native-usd',
+    );
+    return BillUploadResponse(
+      billId: json['bill_id'] as int? ?? 0,
+      accessToken: json['access_token'] as String? ?? '',
+      shareUrl: json['share_url'] as String? ?? '',
+      exchangeRateQuote: quote,
+      usdTotal: (json['usd_total'] as num?)?.toDouble() ?? 0,
+    );
+  }
+
+  bool isAuthoritativeFor(String requestedCurrencyCode) {
+    final requested = requestedCurrencyCode.trim().toUpperCase();
+    if (requested.isEmpty || requested == 'USD') {
+      return exchangeRateQuote.currencyCode == 'USD' &&
+          exchangeRateQuote.usdRate == 1;
+    }
+    return exchangeRateQuote.currencyCode == requested &&
+        exchangeRateQuote.isValid &&
+        usdTotal.isFinite &&
+        usdTotal > 0;
+  }
 }
 
 /// Response object for tab settlements

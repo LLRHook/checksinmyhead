@@ -40,22 +40,8 @@ class CurrencyFormatter {
   /// Formats the given value with the selected currency symbol and exactly
   /// two decimal places. Unknown codes use the ISO code as a safe prefix.
   static String formatCurrency(double value, {String currencyCode = 'USD'}) {
-    const symbols = {
-      'USD': '\$',
-      'PEN': 'S/',
-      'EUR': '€',
-      'GBP': '£',
-      'CAD': 'C\$',
-      'AUD': 'A\$',
-      'MXN': 'MX\$',
-      'BRL': 'R\$',
-      'JPY': '¥',
-      'CNY': '¥',
-      'INR': '₹',
-      'CHF': 'CHF ',
-    };
     final code = currencyCode.trim().toUpperCase();
-    final prefix = symbols[code] ?? '$code ';
+    final prefix = code == 'USD' ? '\$' : '$code ';
     return '$prefix${value.toStringAsFixed(2)}';
   }
 }
