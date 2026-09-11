@@ -560,6 +560,25 @@ class _TabDetailScreenState extends State<TabDetailScreen>
                 ),
               ),
             ),
+            if (_currentTab.shareUrl != null) ...[
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _shareTab,
+                icon: const Icon(Icons.person_add_alt_1_outlined),
+                label: const Text('Invite People'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: colorScheme.primary,
+                  side: BorderSide(color: colorScheme.primary),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
