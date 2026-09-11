@@ -32,6 +32,7 @@ class _TabDetailScreenState extends State<TabDetailScreen>
   List<TabMemberResponse> _members = [];
   bool _isLoading = true;
   bool _isFinalizing = false;
+  bool _isRetryingInvite = false;
   late AppTab _currentTab;
   late AnimationController _animController;
 
@@ -332,6 +333,31 @@ class _TabDetailScreenState extends State<TabDetailScreen>
     }
   }
 
+  Future<void> _retryInviteSetup() async {
+    if (_currentTab.id == null || _isRetryingInvite) return;
+    setState(() => _isRetryingInvite = true);
+
+    final displayName = await PreferencesService().getDisplayName();
+    final refreshed = await _tabManager.retryTabSync(
+      _currentTab.id!,
+      creatorDisplayName: displayName,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _isRetryingInvite = false;
+      if (refreshed != null) _currentTab = refreshed;
+    });
+    if (_currentTab.shareUrl != null) {
+      _showSnackBar('Invite link ready');
+    } else {
+      _showSnackBar(
+        'Could not create an invite link. Check your connection.',
+        isError: true,
+      );
+    }
+  }
+
   void _showSnackBar(String message, {bool isError = false}) {
     if (!mounted) return;
 
@@ -566,6 +592,28 @@ class _TabDetailScreenState extends State<TabDetailScreen>
                 onPressed: _shareTab,
                 icon: const Icon(Icons.person_add_alt_1_outlined),
                 label: const Text('Invite People'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: colorScheme.primary,
+                  side: BorderSide(color: colorScheme.primary),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            ] else ...[
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _isRetryingInvite ? null : _retryInviteSetup,
+                icon: const Icon(Icons.link_outlined),
+                label: Text(
+                  _isRetryingInvite
+                      ? 'Setting Up Invite Link…'
+                      : 'Set Up Invite Link',
+                ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: colorScheme.primary,
                   side: BorderSide(color: colorScheme.primary),
