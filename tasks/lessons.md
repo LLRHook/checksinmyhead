@@ -11,3 +11,4 @@
 - Treat currency as a general bill attribute, not a one-country exception: default to USD, allow explicit selection, and preserve the original currency alongside any converted display total.
 - When a user reports an old version label, verify all source version authorities and the installed artifact before changing version numbers; stale builds can make correct source look incorrect.
 - Payment handles can remain privacy-preserving without a user database when they are local by default and copied only into the specific shared bill/tab the user intentionally publishes.
+- Treat a release-version correction as a coordinated change: update Flutter metadata, native iOS marketing version, and the visible Settings label, then build TestFlight from the merged commit.
