@@ -133,6 +133,21 @@
 - The exchange-rate key remains server-only and is documented in `backend/README.md`; production secret configuration still needs to be confirmed in the deployment provider.
 - Two-device smoke test remains a manual launch check: create a tab on device A, invite device B, join, add a bill from each device, edit the same item to confirm conflict handling, mark a settlement paid, then leave on device B.
 
+## 2.0.3 collaboration hardening
+
+- [x] Prevent settlement updates from crossing tab boundaries and require a member credential for collaborative writes.
+- [x] Pull a joined tab's backend bills into the local receipt cache so its dashboard is genuinely shared across devices.
+- [x] Keep failed bill attachments retryable instead of showing them as attached locally.
+- [x] Preserve the owner's selected display currency when a member joins.
+- [x] Guard malformed cached bill IDs and prevent imported trip-cache receipts from being attached to another tab.
+- [x] Run mobile and backend regression suites, review the final diff, then ship as 2.0.3.
+
+### Verification review
+
+- `flutter analyze` passed and all 176 Flutter tests passed.
+- `go test ./internal/tab ./internal/bill ./internal/currency` passed with an isolated Go cache.
+- A local unsigned iOS build could not start because this workstation's Xcode installation and CocoaPods setup are incomplete; the signed CI/TestFlight runner remains the authoritative iOS build verification.
+
 ## Product decisions — approved for implementation
 
 - [x] Tabs become the primary collaborative product: a trip/event has members, shared bills, balances, and settlement actions in the mobile app.

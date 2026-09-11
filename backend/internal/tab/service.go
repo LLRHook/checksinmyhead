@@ -21,7 +21,7 @@ type TabService interface {
 	UpdateBillPersonSharePaid(tabID uint, billID uint, shareID uint, paid bool) error
 	FinalizeTab(id uint) ([]models.TabSettlement, error)
 	GetSettlements(tabID uint) ([]models.TabSettlement, error)
-	UpdateSettlementPaid(id uint, paid bool) error
+	UpdateSettlementPaid(tabID uint, id uint, paid bool) error
 	JoinTab(tabID uint, displayName string) (*models.TabMember, error)
 	JoinTabAsCreator(tabID uint, displayName string) (*models.TabMember, error)
 	GetMemberByToken(token string) (*models.TabMember, error)
@@ -137,8 +137,8 @@ func (s *tabService) GetSettlements(tabID uint) ([]models.TabSettlement, error) 
 	return s.repo.GetSettlements(tabID)
 }
 
-func (s *tabService) UpdateSettlementPaid(id uint, paid bool) error {
-	return s.repo.UpdateSettlementPaid(id, paid)
+func (s *tabService) UpdateSettlementPaid(tabID uint, id uint, paid bool) error {
+	return s.repo.UpdateSettlementPaid(tabID, id, paid)
 }
 
 func (s *tabService) JoinTab(tabID uint, displayName string) (*models.TabMember, error) {

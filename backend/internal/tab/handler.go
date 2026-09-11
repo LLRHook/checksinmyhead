@@ -136,6 +136,25 @@ func (h *TabHandler) getMemberFromQuery(c *gin.Context, tabID uint) *models.TabM
 	return member
 }
 
+// requireMemberForWrite allows legacy memberless tabs to keep working, while
+// requiring a per-installation member token once a tab has collaborators.
+func (h *TabHandler) requireMemberForWrite(c *gin.Context, tabID uint) (*models.TabMember, bool) {
+	if member := h.getMemberFromQuery(c, tabID); member != nil {
+		return member, true
+	}
+	members, err := h.service.GetMembers(tabID)
+	if err != nil {
+		log.Printf("internal error: %v", err)
+		c.JSON(500, gin.H{"error": "an internal error occurred"})
+		return nil, false
+	}
+	if len(members) == 0 {
+		return nil, true
+	}
+	c.JSON(403, gin.H{"error": "member token required"})
+	return nil, false
+}
+
 func (h *TabHandler) CreateTab(c *gin.Context) {
 	var body struct {
 		Name               string `json:"name"`
@@ -222,8 +241,12 @@ func (h *TabHandler) AddBillToTab(c *gin.Context) {
 		return
 	}
 
+	member, allowed := h.requireMemberForWrite(c, tab.ID)
+	if !allowed {
+		return
+	}
 	var memberID *uint
-	if member := h.getMemberFromQuery(c, tab.ID); member != nil {
+	if member != nil {
 		memberID = &member.ID
 	}
 
@@ -249,6 +272,9 @@ func (h *TabHandler) UpdateBillItemAssignments(c *gin.Context) {
 
 	if tab.Finalized {
 		c.JSON(400, gin.H{"error": "tab is finalized"})
+		return
+	}
+	if _, allowed := h.requireMemberForWrite(c, tab.ID); !allowed {
 		return
 	}
 
@@ -491,6 +517,9 @@ func (h *TabHandler) UpdateSettlement(c *gin.Context) {
 	if tab == nil {
 		return
 	}
+	if _, allowed := h.requireMemberForWrite(c, tab.ID); !allowed {
+		return
+	}
 
 	settlementID, err := strconv.ParseUint(c.Param("settlementId"), 10, 32)
 	if err != nil {
@@ -506,7 +535,11 @@ func (h *TabHandler) UpdateSettlement(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.UpdateSettlementPaid(uint(settlementID), *body.Paid); err != nil {
+	if err := h.service.UpdateSettlementPaid(tab.ID, uint(settlementID), *body.Paid); err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(404, gin.H{"error": "settlement not found"})
+			return
+		}
 		log.Printf("internal error: %v", err)
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return

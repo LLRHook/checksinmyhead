@@ -37,6 +37,10 @@ void main() {
     test('returns empty list for empty string', () {
       expect(AppTab.parseBillIds(''), equals([]));
     });
+
+    test('ignores malformed and duplicate persisted ids', () {
+      expect(AppTab.parseBillIds('1, bad, 2, 1, , 3'), equals([1, 2, 3]));
+    });
   });
 
   group('AppTab.billIdsJson', () {
