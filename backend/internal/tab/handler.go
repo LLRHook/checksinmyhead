@@ -521,6 +521,18 @@ func (h *TabHandler) JoinTab(c *gin.Context) {
 		return
 	}
 
+	// A persisted member token makes retries idempotent. This prevents a
+	// repeated invite tap from creating a second member for the same install.
+	if existing := h.getMemberFromQuery(c, tab.ID); existing != nil {
+		c.JSON(200, gin.H{
+			"member_id":    existing.ID,
+			"member_token": existing.MemberToken,
+			"display_name": existing.DisplayName,
+			"role":         existing.Role,
+		})
+		return
+	}
+
 	var body struct {
 		DisplayName string `json:"display_name"`
 	}
@@ -548,6 +560,34 @@ func (h *TabHandler) JoinTab(c *gin.Context) {
 		"display_name": member.DisplayName,
 		"role":         member.Role,
 	})
+}
+
+func (h *TabHandler) LeaveTab(c *gin.Context) {
+	tab := h.getTabAuthAndValidate(c)
+	if tab == nil {
+		return
+	}
+
+	member := h.getMemberFromQuery(c, tab.ID)
+	if member == nil {
+		c.JSON(403, gin.H{"error": "member token required"})
+		return
+	}
+	if member.Role == "creator" {
+		c.JSON(400, gin.H{"error": "the tab creator cannot leave the tab"})
+		return
+	}
+
+	if err := h.service.DeleteMember(tab.ID, member.ID); err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(404, gin.H{"error": "member not found"})
+			return
+		}
+		log.Printf("internal error: %v", err)
+		c.JSON(500, gin.H{"error": "an internal error occurred"})
+		return
+	}
+	c.JSON(200, gin.H{"status": "ok"})
 }
 
 func (h *TabHandler) GetMembers(c *gin.Context) {
