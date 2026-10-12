@@ -332,19 +332,35 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
       'CHF': 'Swiss Franc',
     };
 
-    final selected = await showDialog<String>(
+    final selected = await showModalBottomSheet<String>(
       context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
       builder:
-          (context) => SimpleDialog(
-            title: const Text('Tab display currency'),
-            children:
-                currencies.entries
-                    .map(
-                      (entry) => SimpleDialogOption(
-                        onPressed: () => Navigator.pop(context, entry.key),
-                        child: Row(
-                          children: [
-                            SizedBox(
+          (sheetContext) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Tab display currency',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                ),
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    children:
+                        currencies.entries.map((entry) {
+                          final isSelected =
+                              entry.key == _currentTab.displayCurrency;
+                          return ListTile(
+                            title: Text(entry.value),
+                            leading: SizedBox(
                               width: 48,
                               child: Text(
                                 entry.key,
@@ -353,14 +369,17 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
                                 ),
                               ),
                             ),
-                            Expanded(child: Text(entry.value)),
-                            if (entry.key == _currentTab.displayCurrency)
-                              const Icon(Icons.check, size: 18),
-                          ],
-                        ),
-                      ),
-                    )
-                    .toList(),
+                            trailing:
+                                isSelected
+                                    ? const Icon(Icons.check, size: 18)
+                                    : null,
+                            onTap: () => Navigator.pop(sheetContext, entry.key),
+                          );
+                        }).toList(),
+                  ),
+                ),
+              ],
+            ),
           ),
     );
 

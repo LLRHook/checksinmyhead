@@ -2,6 +2,7 @@ package bill
 
 import (
 	"backend/pkg/models"
+	"sort"
 	"strings"
 	"time"
 
@@ -14,6 +15,13 @@ type BillRepository interface {
 	GetById(id uint) (bill *models.Bill, err error)
 	UpdatePersonSharePaid(id uint, paid bool) error
 	UpdateItemAssignments(billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error
+	UpdateItemAssignmentsBatch(billID uint, updates []ItemAssignmentsUpdate) error
+}
+
+type ItemAssignmentsUpdate struct {
+	ItemID            uint
+	Assignments       []models.ItemAssignment
+	ExpectedUpdatedAt *time.Time
 }
 
 type billRepository struct {
@@ -40,32 +48,27 @@ func (b *billRepository) UpdatePersonSharePaid(id uint, paid bool) error {
 }
 
 func (b *billRepository) UpdateItemAssignments(billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error {
+	return b.UpdateItemAssignmentsBatch(billID, []ItemAssignmentsUpdate{{
+		ItemID: itemID, Assignments: assignments, ExpectedUpdatedAt: expectedUpdatedAt,
+	}})
+}
+
+func (b *billRepository) UpdateItemAssignmentsBatch(billID uint, updates []ItemAssignmentsUpdate) error {
+	updates = append([]ItemAssignmentsUpdate(nil), updates...)
+	sort.Slice(updates, func(i, j int) bool { return updates[i].ItemID < updates[j].ItemID })
+	for i := 1; i < len(updates); i++ {
+		if updates[i-1].ItemID == updates[i].ItemID {
+			return gorm.ErrInvalidData
+		}
+	}
+	if len(updates) == 0 {
+		return nil
+	}
+
 	return b.db.Transaction(func(tx *gorm.DB) error {
 		var bill models.Bill
-		if err := tx.Where("id = ? AND lazy_mode = ?", billID, true).First(&bill).Error; err != nil {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND lazy_mode = ?", billID, true).First(&bill).Error; err != nil {
 			return err
-		}
-
-		var item models.BillItem
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND bill_id = ?", itemID, billID).First(&item).Error; err != nil {
-			return err
-		}
-		if expectedUpdatedAt != nil && !item.UpdatedAt.Equal(*expectedUpdatedAt) {
-			return ErrAssignmentConflict
-		}
-
-		var currentAssignments []models.ItemAssignment
-		if err := tx.Where("bill_item_id = ?", itemID).Find(&currentAssignments).Error; err != nil {
-			return err
-		}
-		for _, assignment := range currentAssignments {
-			var paidCount int64
-			if err := tx.Model(&models.PersonShare{}).Where("bill_id = ? AND LOWER(person_name) = LOWER(?) AND paid = ?", billID, assignment.PersonName, true).Count(&paidCount).Error; err != nil {
-				return err
-			}
-			if paidCount > 0 {
-				return ErrItemAlreadyPaid
-			}
 		}
 
 		var existingShares []models.PersonShare
@@ -77,15 +80,35 @@ func (b *billRepository) UpdateItemAssignments(billID uint, itemID uint, assignm
 			paidByName[strings.ToLower(share.PersonName)] = share.Paid
 		}
 
-		if err := tx.Where("bill_item_id = ?", itemID).Delete(&models.ItemAssignment{}).Error; err != nil {
-			return err
-		}
-		for i := range assignments {
-			assignments[i].BillItemID = itemID
-		}
-		if len(assignments) > 0 {
-			if err := tx.Create(&assignments).Error; err != nil {
+		for _, update := range updates {
+			var item models.BillItem
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND bill_id = ?", update.ItemID, billID).First(&item).Error; err != nil {
 				return err
+			}
+			if update.ExpectedUpdatedAt != nil && !item.UpdatedAt.Equal(*update.ExpectedUpdatedAt) {
+				return ErrAssignmentConflict
+			}
+
+			var currentAssignments []models.ItemAssignment
+			if err := tx.Where("bill_item_id = ?", update.ItemID).Find(&currentAssignments).Error; err != nil {
+				return err
+			}
+			for _, assignment := range currentAssignments {
+				if paidByName[strings.ToLower(assignment.PersonName)] {
+					return ErrItemAlreadyPaid
+				}
+			}
+
+			if err := tx.Where("bill_item_id = ?", update.ItemID).Delete(&models.ItemAssignment{}).Error; err != nil {
+				return err
+			}
+			for i := range update.Assignments {
+				update.Assignments[i].BillItemID = update.ItemID
+			}
+			if len(update.Assignments) > 0 {
+				if err := tx.Create(&update.Assignments).Error; err != nil {
+					return err
+				}
 			}
 		}
 
@@ -105,7 +128,13 @@ func (b *billRepository) UpdateItemAssignments(billID uint, itemID uint, assignm
 				return err
 			}
 		}
-		return tx.Model(&models.BillItem{}).Where("id = ?", itemID).Update("updated_at", time.Now()).Error
+		now := time.Now()
+		for _, update := range updates {
+			if err := tx.Model(&models.BillItem{}).Where("id = ?", update.ItemID).Update("updated_at", now).Error; err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 }
 

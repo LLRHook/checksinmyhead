@@ -33,6 +33,7 @@ type mockBillRepository struct {
 	updatedBillID    uint
 	updatedItemID    uint
 	updatedItems     []models.ItemAssignment
+	updatedBatch     []ItemAssignmentsUpdate
 	assignmentErr    error
 }
 
@@ -75,6 +76,12 @@ func (m *mockBillRepository) UpdateItemAssignments(billID uint, itemID uint, ass
 	return m.assignmentErr
 }
 
+func (m *mockBillRepository) UpdateItemAssignmentsBatch(billID uint, updates []ItemAssignmentsUpdate) error {
+	m.updatedBillID = billID
+	m.updatedBatch = updates
+	return m.assignmentErr
+}
+
 // ── Tests ───────────────────────────────────────────────────────
 
 func TestUpdatePersonSharePaid_Success(t *testing.T) {
@@ -101,6 +108,22 @@ func TestUpdatePersonSharePaid_Error(t *testing.T) {
 	err := svc.UpdatePersonSharePaid(5, true)
 	if err == nil {
 		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestUpdateItemAssignmentsBatch_PassesAllItemsTogether(t *testing.T) {
+	repo := newMockRepo()
+	svc := NewBillService(repo)
+	updates := []ItemAssignmentsUpdate{
+		{ItemID: 8, Assignments: []models.ItemAssignment{{PersonName: "Alex", Percentage: 100}}},
+		{ItemID: 9, Assignments: []models.ItemAssignment{{PersonName: "Alex", Percentage: 100}}},
+	}
+
+	if err := svc.UpdateItemAssignmentsBatch(33, updates); err != nil {
+		t.Fatalf("expected batch update success, got %v", err)
+	}
+	if repo.updatedBillID != 33 || len(repo.updatedBatch) != 2 {
+		t.Fatalf("unexpected batch write: bill=%d updates=%#v", repo.updatedBillID, repo.updatedBatch)
 	}
 }
 
