@@ -10,6 +10,9 @@ const base62Charset = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstu
 
 func base62Encode(data []byte) string {
 	num := new(big.Int).SetBytes(data)
+	if num.Sign() == 0 {
+		return "0"
+	}
 	base := big.NewInt(62)
 	zero := big.NewInt(0)
 	mod := new(big.Int)

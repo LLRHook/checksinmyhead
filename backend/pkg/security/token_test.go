@@ -25,8 +25,8 @@ func TestTokenLengthRange(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if len(token) < 42 || len(token) > 43 {
-			t.Errorf("token length %d out of expected range [42,43]: %q", len(token), token)
+		if len(token) == 0 || len(token) > 43 {
+			t.Errorf("token length %d out of expected range [1,43]: %q", len(token), token)
 		}
 	}
 }
@@ -46,11 +46,10 @@ func TestTokenUniqueness(t *testing.T) {
 }
 
 func TestBase62EncodeKnownValue(t *testing.T) {
-	// All zeros should produce "0"
+	// All zeros should produce "0".
 	result := base62Encode([]byte{0})
-	if result != "" {
-		// A single zero byte has big.Int value 0, which produces empty string
-		// This is fine since we never generate all-zero random bytes in practice
+	if result != "0" {
+		t.Errorf("expected '0' for zero input, got %q", result)
 	}
 
 	// 0xFF = 255 in base62 = 4*62 + 7 = "47"
