@@ -467,3 +467,43 @@
 - `npm audit --omit=dev` is clean after compatible Next.js/sharp/source-map-js lockfile updates. `govulncheck` reports no reachable Go vulnerabilities; one vulnerability remains in a required module but no vulnerable symbol is called. Flutter's dependency set has no dedicated advisory scan configured in this repository.
 - Full Go tests passed on Go 1.27.2 after updating the module and both Go builder images. Web tests (26), lint, typecheck, and production build passed; mobile analyzer and all 187 Flutter tests passed.
 - Production deployment and in-store verification are still required before raising the minimum in production or confirming the hosted flow.
+# Privacy policy refresh (proposed)
+
+## Scope
+
+- Rewrite `docs/privacy.md` around the actual mobile app, API, and web viewer data flows.
+- Add a public `/privacy` page to the web viewer and a clear link from the viewer.
+- Remove unsupported claims (fully local, no third parties, no identifiers/logging, persistent receipt image storage, and competitor comparisons).
+- State what is verified in code; mark hosting/provider retention and contact details as needing owner confirmation instead of inventing them.
+
+## Audit findings
+
+- Bills, tab details, member display names/tokens, payment handles, and settlements are sent to and stored by the backend in PostgreSQL.
+- The app also keeps bill history and preferences locally; browser localStorage holds lazy-bill claims/member credentials.
+- Optional receipt scanning uploads the selected image through the backend to Anthropic Claude. The current parser returns extracted fields; this route does not persist the uploaded image.
+- Currency features call Frankfurter and, when configured, ExchangeRate-API from the backend.
+- Backend request logs include client IP, path, status, and timing; slow SQL logs may include statement values. Web share links contain access tokens and the web host receives the link. The web app is deployed via Vercel per deployment docs, but provider log retention and current production configuration are not verified here.
+- No analytics SDK was found in app source. Avoid extending that claim to hosting/provider telemetry.
+- No policy page currently exists in the web viewer.
+
+## Steps
+
+- [x] Confirm this scope before implementation; product owner authorized proceeding.
+- [x] Rewrite the policy in concise, plain language and include data, purposes, service providers, sharing/token risks, storage/retention, user choices/deletion limits, and contact.
+- [x] Add the policy route and viewer link using the existing design system; correct the app's false local-only privacy statement and link to the full policy.
+- [x] Verify formatting, static checks, and page routing; inspect final diff and update this review.
+
+## Review
+
+- Replaced the old privacy comparison and incorrect local-only/no-third-party claims with an account-free but cloud-backed description. Named the real receipt provider (Anthropic Claude), currency providers, request log fields, token-sharing risk, local storage, retention limitations, removal request contact, and known hosting platforms. Clarified Anthropic API retention with a link to Anthropic's current terms.
+- Published `/privacy`, added a global web footer link, and linked to it from Settings. Updated current README/API/technical docs whose Gemini and stored-image descriptions no longer matched the implementation; labeled old local-only planning and market-analysis notes historical.
+- Verification: `dart format` completed; `flutter analyze`, web Biome lint, web TypeScript, `git diff --check`, and `next build --webpack` passed. The production build includes the static `/privacy` route. Default Turbopack build hits the known sandbox restriction when its CSS worker binds a port.
+- The configured database vendor is environment-specific and isn't named in source, so the policy says so rather than naming a provider without deployment confirmation.
+
+## Privacy release 2.0.5 (active)
+
+- [x] Bump Flutter version to 2.0.5+30 and align iOS marketing version and Settings label.
+- [ ] Commit the privacy, stale-documentation, lazy-flow, deployment workflow, and version changes on the active branch.
+- [ ] Open and merge the PR without waiting for CI, as authorized by the product owner.
+- [ ] Confirm main deploy workflow, dispatch TestFlight 2.0.5 build 30, and monitor upload/processing.
+- [ ] Record PR, deployment, and TestFlight run results here.

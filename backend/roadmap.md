@@ -1,5 +1,7 @@
 # Billington Backend Development Roadmap
 
+> This file records the product's development history; completed milestones can describe earlier implementations. Current receipt scanning sends images to Anthropic Claude for parsing and does not save them in Billington's database. See [the current privacy policy](../docs/privacy.md) and [technical overview](../docs/technical-overview.md).
+
 ## Project Overview
 Transform Billington from a local Flutter app into a Splitwise competitor with group trip features, image uploads, and collaborative bill splitting - all while maintaining privacy-first principles.
 
