@@ -504,6 +504,26 @@
 
 - [x] Bump Flutter version to 2.0.5+30 and align iOS marketing version and Settings label.
 - [ ] Commit the privacy, stale-documentation, lazy-flow, deployment workflow, and version changes on the active branch.
-- [ ] Open and merge the PR without waiting for CI, as authorized by the product owner.
-- [ ] Confirm main deploy workflow, dispatch TestFlight 2.0.5 build 30, and monitor upload/processing.
+- [x] Open and merge PR #148 without waiting for CI, as authorized by the product owner.
+- [x] Merge started backend deploy run 38299836630; dispatch TestFlight workflow 38299861823 on main with 2.0.5 privacy notes.
+- [ ] Monitor production deploy and TestFlight upload/processing.
 - [ ] Record PR, deployment, and TestFlight run results here.
+
+## Lazy Mode lag and paid-state correction
+
+- [x] Keep item taps local and submit changed claims as one bill-locked transaction when the user selects Review; update the selection optimistically and reject stale or duplicate writes.
+- [x] Refresh open lazy bill viewers on focus and every 10 seconds; visibly mark fully paid receipt items with readable dark-mode contrast.
+- [x] After payment, return to the picker with paid items locked and hide the Review action and stale total.
+- [x] Change the tab currency chooser to a scrollable bottom sheet.
+- [x] Add focused regression coverage for batch claim validation and paid-item detection; run targeted backend, web, and mobile verification.
+
+## Review
+
+- Backend batch writes lock the bill and then affected items in ascending ID order, check each item's expected update time, reject paid claims, and rebuild shares in the same transaction.
+- Mobile taps only change local selection. Review submits the full set of changed assignments once; a conflict reloads the latest bill and keeps the user on the picker with an error.
+- Web bill viewers refresh when focused/visible and every 10 seconds while visible. Receipt rows show a Paid badge when all assigned people have paid.
+- Verification: `go test ./internal/bill ./internal/tab`, `npm test -- --run` (35 tests), targeted Biome checks, `flutter analyze` on changed mobile files, `flutter test` (190 tests), web production build, `npx tsc --noEmit`, Dart formatting check for changed feature files, and `git diff --check` passed.
+- [x] Bump Flutter/iOS/Settings version to 2.0.7 (build 32) and add matching release notes.
+- [ ] Commit the verified Lazy Mode changes and open a PR; merge without waiting for CI as previously authorized.
+- [ ] Dispatch TestFlight build 32 with the 2.0.7 Lazy Mode notes; monitor upload and processing.
+- [ ] Record PR, TestFlight run, and processing results.

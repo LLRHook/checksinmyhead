@@ -72,32 +72,34 @@ class ApiService {
     return data;
   }
 
-  Future<void> updateLazyBillItemAssignments({
+  Future<Map<String, dynamic>> updateLazyBillItemAssignments({
     required String billId,
-    required int itemId,
     required String token,
-    required List<Map<String, dynamic>> assignments,
-    String? expectedUpdatedAt,
+    required List<Map<String, dynamic>> updates,
   }) async {
     final response = await http
         .patch(
-          Uri.parse('$baseUrl/api/bills/$billId/items/$itemId/assignments'),
+          Uri.parse('$baseUrl/api/bills/$billId/assignments'),
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer $token',
           },
-          body: jsonEncode({
-            'assignments': assignments,
-            'expected_updated_at': expectedUpdatedAt,
-          }),
+          body: jsonEncode({'updates': updates}),
         )
         .timeout(_timeout);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw ApiException(
-        'Could not save item selection',
+        response.statusCode == 409
+            ? 'Someone changed the item selection. Refresh and try again.'
+            : 'Could not save item selection',
         statusCode: response.statusCode,
       );
     }
+    final data = jsonDecode(response.body);
+    if (data is! Map<String, dynamic>) {
+      throw ApiException('Invalid bill response');
+    }
+    return data;
   }
 
   Future<void> updateSharedBillPaid({

@@ -257,6 +257,113 @@ func (h *BillHandler) UpdateLazyItemAssignments(c *gin.Context) {
 	c.JSON(200, gin.H{"status": "ok"})
 }
 
+func (h *BillHandler) UpdateLazyItemAssignmentsBatch(c *gin.Context) {
+	bill := h.getBillAndValidate(c)
+	if bill == nil {
+		return
+	}
+	if !requireBillToken(c, bill) {
+		return
+	}
+	if !bill.LazyMode || bill.TabID != nil {
+		c.JSON(400, gin.H{"error": "item claiming is only available on standalone lazy bills"})
+		return
+	}
+
+	var body struct {
+		Updates []struct {
+			ItemID            uint    `json:"item_id"`
+			ExpectedUpdatedAt *string `json:"expected_updated_at"`
+			Assignments       []struct {
+				PersonName string  `json:"person_name"`
+				Percentage float64 `json:"percentage"`
+			} `json:"assignments"`
+		} `json:"updates"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil || len(body.Updates) == 0 {
+		c.JSON(400, gin.H{"error": "item updates are required"})
+		return
+	}
+
+	updates := make([]ItemAssignmentsUpdate, 0, len(body.Updates))
+	seenItems := make(map[uint]struct{}, len(body.Updates))
+	for _, itemUpdate := range body.Updates {
+		if itemUpdate.ItemID == 0 {
+			c.JSON(400, gin.H{"error": "invalid item id"})
+			return
+		}
+		if _, exists := seenItems[itemUpdate.ItemID]; exists {
+			c.JSON(400, gin.H{"error": "duplicate item update"})
+			return
+		}
+		seenItems[itemUpdate.ItemID] = struct{}{}
+		if itemUpdate.Assignments == nil {
+			c.JSON(400, gin.H{"error": "assignments are required"})
+			return
+		}
+
+		assignments := make([]models.ItemAssignment, 0, len(itemUpdate.Assignments))
+		seenPeople := make(map[string]struct{}, len(itemUpdate.Assignments))
+		totalPercentage := 0.0
+		for _, assignment := range itemUpdate.Assignments {
+			name := security.SanitizeString(assignment.PersonName)
+			key := strings.ToLower(name)
+			if name == "" || len([]rune(name)) > 30 || assignment.Percentage <= 0 || assignment.Percentage > 100 || math.IsNaN(assignment.Percentage) || math.IsInf(assignment.Percentage, 0) {
+				c.JSON(400, gin.H{"error": "invalid item assignment"})
+				return
+			}
+			if _, exists := seenPeople[key]; exists {
+				c.JSON(400, gin.H{"error": "duplicate person assignment"})
+				return
+			}
+			seenPeople[key] = struct{}{}
+			totalPercentage += assignment.Percentage
+			assignments = append(assignments, models.ItemAssignment{PersonName: name, Percentage: assignment.Percentage})
+		}
+		if len(assignments) > 0 && math.Abs(totalPercentage-100) > 0.01 {
+			c.JSON(400, gin.H{"error": "item assignments must total 100 percent"})
+			return
+		}
+
+		var expectedUpdatedAt *time.Time
+		if itemUpdate.ExpectedUpdatedAt != nil && *itemUpdate.ExpectedUpdatedAt != "" {
+			parsed, err := time.Parse(time.RFC3339Nano, *itemUpdate.ExpectedUpdatedAt)
+			if err != nil {
+				c.JSON(400, gin.H{"error": "invalid expected_updated_at"})
+				return
+			}
+			expectedUpdatedAt = &parsed
+		}
+		updates = append(updates, ItemAssignmentsUpdate{
+			ItemID: itemUpdate.ItemID, Assignments: assignments, ExpectedUpdatedAt: expectedUpdatedAt,
+		})
+	}
+
+	if err := h.service.UpdateItemAssignmentsBatch(bill.ID, updates); err != nil {
+		switch {
+		case errors.Is(err, ErrAssignmentConflict):
+			c.JSON(409, gin.H{"error": "item changed; refresh and try again"})
+		case errors.Is(err, ErrItemAlreadyPaid):
+			c.JSON(409, gin.H{"error": "this item is part of a paid share"})
+		case errors.Is(err, gorm.ErrRecordNotFound):
+			c.JSON(404, gin.H{"error": "bill item not found"})
+		default:
+			log.Printf("internal error: %v", err)
+			c.JSON(500, gin.H{"error": "an internal error occurred"})
+		}
+		return
+	}
+
+	updatedBill, err := h.service.GetBill(bill.ID)
+	if err != nil {
+		log.Printf("internal error: %v", err)
+		c.JSON(500, gin.H{"error": "an internal error occurred"})
+		return
+	}
+	updatedBill.AccessToken = ""
+	c.JSON(200, updatedBill)
+}
+
 func (h *BillHandler) UpdatePersonSharePaid(c *gin.Context) {
 	bill := h.getBillAndValidate(c)
 	if bill == nil {
