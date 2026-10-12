@@ -19,7 +19,6 @@ import 'package:checks_frontend/screens/quick_split/bill_summary/models/bill_sum
 import 'package:checks_frontend/screens/quick_split/bill_summary/widgets/bill_name_sheet.dart';
 import 'package:checks_frontend/screens/quick_split/bill_summary/widgets/enhanced_share_sheet.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
-import 'package:checks_frontend/screens/lazy_bill_claim_screen.dart';
 import 'package:checks_frontend/database/database_provider.dart';
 import 'package:checks_frontend/screens/settings/services/preferences_service.dart';
 import 'package:checks_frontend/services/api_service.dart';
@@ -354,23 +353,6 @@ class DoneButtonHandler {
       // Return to home
       if (navigator.mounted) {
         navigator.popUntil((route) => route.isFirst);
-        if (lazyMode && shareUrl != null) {
-          final lazyBillUri = Uri.tryParse(shareUrl);
-          final segments = lazyBillUri?.pathSegments ?? const <String>[];
-          final token = lazyBillUri?.queryParameters['t'];
-          if (segments.length >= 2 &&
-              segments.first == 'b' &&
-              token != null &&
-              token.isNotEmpty) {
-            navigator.push(
-              MaterialPageRoute(
-                builder:
-                    (_) =>
-                        LazyBillClaimScreen(billId: segments[1], token: token),
-              ),
-            );
-          }
-        }
       }
     } finally {
       _isSaving = false;

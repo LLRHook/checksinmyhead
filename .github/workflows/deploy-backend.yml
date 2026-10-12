@@ -2,19 +2,22 @@ name: Deploy backend to production
 
 # Ships the Go backend to Render.
 #
-# Trigger: push a tag shaped `backend-v<version>`, e.g. `backend-v1.4.0`.
+# Trigger: merge backend changes to main, push a `backend-v*` tag, or dispatch manually.
 #
 #   git tag backend-v1.4.0
 #   git push origin backend-v1.4.0
 #
-# Setup (optional): add a repository secret RENDER_DEPLOY_HOOK_URL
+# Setup: repository secret RENDER_DEPLOY_HOOK_URL
 #   Render dashboard -> service -> Settings -> Deploy Hook -> copy URL
 #
-# If that secret is absent, Render's Git auto-deploy is used and the workflow
-# waits for the configured production URL to become healthy.
+# The workflow verifies that the production health endpoint serves the deployed commit.
 
 on:
   push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-backend.yml'
     tags:
       - 'backend-v*'
   workflow_dispatch:
