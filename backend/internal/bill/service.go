@@ -8,11 +8,14 @@ import (
 	"math"
 	"regexp"
 	"strings"
+	"time"
 )
 
 var (
 	ErrInvalidCurrency         = errors.New("invalid currency code")
 	ErrExchangeRateUnavailable = errors.New("exchange rate unavailable")
+	ErrAssignmentConflict      = errors.New("item changed; refresh and try again")
+	ErrItemAlreadyPaid         = errors.New("item belongs to a paid share")
 )
 
 var currencyCodePattern = regexp.MustCompile(`^[A-Z]{3}$`)
@@ -35,6 +38,7 @@ type BillService interface {
 	GetUSDExchangeRate(ctx context.Context, currency string) (models.ExchangeRateQuote, error)
 	GetBill(id uint) (bill *models.Bill, err error)
 	UpdatePersonSharePaid(id uint, paid bool) error
+	UpdateItemAssignments(billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error
 }
 
 type billService struct {
@@ -92,6 +96,10 @@ func (b *billService) GetBill(id uint) (bill *models.Bill, err error) {
 
 func (b *billService) UpdatePersonSharePaid(id uint, paid bool) error {
 	return b.repo.UpdatePersonSharePaid(id, paid)
+}
+
+func (b *billService) UpdateItemAssignments(billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error {
+	return b.repo.UpdateItemAssignments(billID, itemID, assignments, expectedUpdatedAt)
 }
 
 func NewBillService(repo BillRepository, providers ...ExchangeRateProvider) BillService {

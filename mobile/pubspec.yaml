@@ -10,27 +10,27 @@ dependencies:
   flutter:
     sdk: flutter
 
-  cupertino_icons: ^1.0.8
   shared_preferences: ^2.5.3
-  share_plus: ^13.1.0
+  share_plus: ^13.3.1
   provider: ^6.1.4
-  drift: ^2.15.0
-  sqlite3_flutter_libs: ^0.5.20
-  path_provider: ^2.1.2
+  drift: ^2.34.4
+  sqlite3_flutter_libs: ^0.5.42
+  path_provider: ^2.1.6
   path: ^1.8.3
   url_launcher: ^6.3.1
   http: ^1.5.0
-  logger: ^2.6.2
-  image_picker: ^1.1.2
+  logger: ^2.8.0
+  image_picker: ^1.2.3
   app_links: ^6.4.1
+  package_info_plus: ^10.2.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
   flutter_lints: ^6.0.0
-  drift_dev: ^2.15.0
-  build_runner: ^2.4.8
+  drift_dev: ^2.34.0
+  build_runner: ^2.15.1
 
 flutter:
   uses-material-design: true

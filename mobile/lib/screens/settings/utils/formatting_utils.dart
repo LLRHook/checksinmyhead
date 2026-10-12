@@ -14,31 +14,26 @@
 
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-/// Utility methods for formatting text values
+import 'package:checks_frontend/screens/settings/models/payment_method.dart';
+
 class FormattingUtils {
-  /// Formats a phone number in a standard way (XXX) XXX-XXXX
   static String formatPhoneNumber(String phoneNumber) {
-    // Remove any non-digit characters
     final digitsOnly = phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
 
-    // Handle US numbers with or without country code
     String digits;
     if (digitsOnly.length == 11 && digitsOnly.startsWith('1')) {
-      digits = digitsOnly.substring(1); // Remove country code
+      digits = digitsOnly.substring(1);
     } else {
       digits = digitsOnly;
     }
 
-    // Only format if we have exactly 10 digits
     if (digits.length == 10) {
       return '(${digits.substring(0, 3)}) ${digits.substring(3, 6)}-${digits.substring(6)}';
     }
 
-    // Otherwise return original input
     return phoneNumber;
   }
 
-  /// Ensures a Venmo username starts with @
   static String formatVenmoUsername(String username) {
     if (username.startsWith('@')) {
       return username;
@@ -46,11 +41,19 @@ class FormattingUtils {
     return '@$username';
   }
 
-  /// Ensures a Cash App cashtag starts with $
   static String formatCashtag(String cashtag) {
     if (cashtag.startsWith('\$')) {
       return cashtag;
     }
     return '\$$cashtag';
+  }
+
+  static String formatPaymentIdentifier(String method, String value) {
+    if (PaymentMethod.requiresPhoneNumber(method)) {
+      return formatPhoneNumber(value);
+    }
+    if (method == 'Venmo') return formatVenmoUsername(value);
+    if (method == 'Cash App') return formatCashtag(value);
+    return value;
   }
 }

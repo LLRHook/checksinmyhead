@@ -2,13 +2,15 @@ package bill
 
 import (
 	"backend/internal/currency"
+	"backend/pkg/config"
 	"backend/pkg/models"
+	"backend/pkg/safehttp"
 	"backend/pkg/security"
 	"crypto/subtle"
 	"errors"
 	"fmt"
 	"log"
-	"os"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -16,13 +18,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
-
-func appDomain() string {
-	if d := os.Getenv("APP_DOMAIN"); d != "" {
-		return d
-	}
-	return "https://billingtonapp.vercel.app"
-}
 
 type BillHandler struct {
 	service BillService
@@ -40,7 +35,6 @@ func NewBillHandler(service BillService, rates ...*currency.Service) *BillHandle
 func (h *BillHandler) CreateBill(c *gin.Context) {
 	var bill models.Bill
 
-	//Parse JSON from request body
 	if err := c.ShouldBindJSON(&bill); err != nil {
 		c.JSON(400, gin.H{"error": "bad request"})
 		return
@@ -87,10 +81,8 @@ func (h *BillHandler) CreateBill(c *gin.Context) {
 		return
 	}
 	bill.AccessToken = token
-	//Call service
 	err = h.service.CreateBill(c.Request.Context(), &bill)
 
-	//Return response based on result
 	if err != nil {
 		if errors.Is(err, ErrInvalidCurrency) {
 			c.JSON(400, gin.H{"error": "unsupported currency code"})
@@ -105,11 +97,10 @@ func (h *BillHandler) CreateBill(c *gin.Context) {
 		return
 	}
 
-	// Return created bill with ID
 	c.JSON(201, gin.H{
 		"bill_id":              bill.ID,
 		"access_token":         token,
-		"share_url":            fmt.Sprintf("%s/b/%d?t=%s", appDomain(), bill.ID, token),
+		"share_url":            fmt.Sprintf("%s/b/%d?t=%s", config.AppDomain(), bill.ID, token),
 		"currency_code":        bill.CurrencyCode,
 		"usd_exchange_rate":    bill.USDExchangeRate,
 		"exchange_rate_date":   bill.ExchangeRateDate,
@@ -136,14 +127,7 @@ func (h *BillHandler) GetExchangeRate(c *gin.Context) {
 func (h *BillHandler) getBillAndValidate(c *gin.Context) *models.Bill {
 	id := c.Param("id")
 
-	// Try Authorization header first, fall back to query param
-	token := ""
-	authHeader := c.GetHeader("Authorization")
-	if strings.HasPrefix(authHeader, "Bearer ") {
-		token = strings.TrimPrefix(authHeader, "Bearer ")
-	} else {
-		token = c.Query("t")
-	}
+	token := safehttp.AccessToken(c)
 
 	if id == "" {
 		c.JSON(400, gin.H{"error": "bad id"})
@@ -166,12 +150,23 @@ func (h *BillHandler) getBillAndValidate(c *gin.Context) *models.Bill {
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return nil
 	}
-	if subtle.ConstantTimeCompare([]byte(token), []byte(bill.AccessToken)) != 1 {
+	validBillToken := token != "" && subtle.ConstantTimeCompare([]byte(token), []byte(bill.AccessToken)) == 1
+	validTabToken := token != "" && bill.Tab != nil && subtle.ConstantTimeCompare([]byte(token), []byte(bill.Tab.AccessToken)) == 1
+	if !validBillToken && !validTabToken {
 		c.JSON(403, gin.H{"error": "token mismatch"})
 		return nil
 	}
 
 	return bill
+}
+
+func requireBillToken(c *gin.Context, bill *models.Bill) bool {
+	token := safehttp.AccessToken(c)
+	if token != "" && subtle.ConstantTimeCompare([]byte(token), []byte(bill.AccessToken)) == 1 {
+		return true
+	}
+	c.JSON(403, gin.H{"error": "bill token required for this action"})
+	return false
 }
 
 func (h *BillHandler) GetBill(c *gin.Context) {
@@ -184,9 +179,90 @@ func (h *BillHandler) GetBill(c *gin.Context) {
 	c.JSON(200, bill)
 }
 
+func (h *BillHandler) UpdateLazyItemAssignments(c *gin.Context) {
+	bill := h.getBillAndValidate(c)
+	if bill == nil {
+		return
+	}
+	if !requireBillToken(c, bill) {
+		return
+	}
+	if !bill.LazyMode || bill.TabID != nil {
+		c.JSON(400, gin.H{"error": "item claiming is only available on standalone lazy bills"})
+		return
+	}
+	itemID, err := strconv.ParseUint(c.Param("itemId"), 10, 32)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid item id"})
+		return
+	}
+	var body struct {
+		ExpectedUpdatedAt *string `json:"expected_updated_at"`
+		Assignments       []struct {
+			PersonName string  `json:"person_name"`
+			Percentage float64 `json:"percentage"`
+		} `json:"assignments"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil || body.Assignments == nil {
+		c.JSON(400, gin.H{"error": "assignments are required"})
+		return
+	}
+
+	assignments := make([]models.ItemAssignment, 0, len(body.Assignments))
+	seen := make(map[string]struct{}, len(body.Assignments))
+	totalPercentage := 0.0
+	for _, assignment := range body.Assignments {
+		name := security.SanitizeString(assignment.PersonName)
+		key := strings.ToLower(name)
+		if name == "" || len([]rune(name)) > 30 || assignment.Percentage <= 0 || assignment.Percentage > 100 || math.IsNaN(assignment.Percentage) || math.IsInf(assignment.Percentage, 0) {
+			c.JSON(400, gin.H{"error": "invalid item assignment"})
+			return
+		}
+		if _, exists := seen[key]; exists {
+			c.JSON(400, gin.H{"error": "duplicate person assignment"})
+			return
+		}
+		seen[key] = struct{}{}
+		totalPercentage += assignment.Percentage
+		assignments = append(assignments, models.ItemAssignment{PersonName: name, Percentage: assignment.Percentage})
+	}
+	if len(assignments) > 0 && math.Abs(totalPercentage-100) > 0.01 {
+		c.JSON(400, gin.H{"error": "item assignments must total 100 percent"})
+		return
+	}
+
+	var expectedUpdatedAt *time.Time
+	if body.ExpectedUpdatedAt != nil && *body.ExpectedUpdatedAt != "" {
+		parsed, parseErr := time.Parse(time.RFC3339Nano, *body.ExpectedUpdatedAt)
+		if parseErr != nil {
+			c.JSON(400, gin.H{"error": "invalid expected_updated_at"})
+			return
+		}
+		expectedUpdatedAt = &parsed
+	}
+	if err := h.service.UpdateItemAssignments(bill.ID, uint(itemID), assignments, expectedUpdatedAt); err != nil {
+		switch {
+		case errors.Is(err, ErrAssignmentConflict):
+			c.JSON(409, gin.H{"error": "item changed; refresh and try again"})
+		case errors.Is(err, ErrItemAlreadyPaid):
+			c.JSON(409, gin.H{"error": "this item is part of a paid share"})
+		case errors.Is(err, gorm.ErrRecordNotFound):
+			c.JSON(404, gin.H{"error": "bill item not found"})
+		default:
+			log.Printf("internal error: %v", err)
+			c.JSON(500, gin.H{"error": "an internal error occurred"})
+		}
+		return
+	}
+	c.JSON(200, gin.H{"status": "ok"})
+}
+
 func (h *BillHandler) UpdatePersonSharePaid(c *gin.Context) {
 	bill := h.getBillAndValidate(c)
 	if bill == nil {
+		return
+	}
+	if !requireBillToken(c, bill) {
 		return
 	}
 

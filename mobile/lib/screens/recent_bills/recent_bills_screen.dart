@@ -23,6 +23,7 @@ import 'package:flutter/services.dart';
 import 'components/empty_bills_state.dart';
 import 'components/loading_bills_state.dart';
 import 'components/recent_bill_card.dart';
+import 'package:checks_frontend/screens/settings/services/preferences_service.dart';
 
 /// RecentBillsScreen
 ///
@@ -60,6 +61,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
 
   /// Tracks if the refresh button was clicked to control animation state
   bool _isRefreshButtonClicked = false;
+  bool _showBillTotalsInUSD = false;
 
   /// Instance of RecentBillsManager for managing bill data
   final _billsManager = RecentBillsManager();
@@ -99,11 +101,14 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
 
       // Fetch bills from local database via the manager
       final bills = await _billsManager.getRecentBills();
+      final showBillTotalsInUSD =
+          await PreferencesService().getShowBillTotalsInUSD();
 
       // Update state if widget is still mounted
       if (mounted) {
         setState(() {
           _bills = bills;
+          _showBillTotalsInUSD = showBillTotalsInUSD;
           _isLoading = false;
           _isRefreshButtonClicked = false;
         });
@@ -698,6 +703,7 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
               .map(
                 (bill) => RecentBillCard(
                   bill: bill,
+                  showBillTotalsInUSD: _showBillTotalsInUSD,
                   onDeleted: () => _handleBillDeleted(bill.id),
                   onRefreshNeeded:
                       () => _handleBillDeleted(-1), // Special refresh signal

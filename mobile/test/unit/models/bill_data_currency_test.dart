@@ -43,4 +43,19 @@ void main() {
     expect(data.hasUsableExchangeRate, isFalse);
     expect(data.exchangeRateError, 'Daily rate unavailable');
   });
+
+  test('invalid amount text falls back to zero', () {
+    final data = BillData();
+    addTearDown(data.dispose);
+
+    data.useCustomTipAmount = true;
+    data.subtotalController.text = 'not a number';
+    data.taxController.text = 'also invalid';
+    data.customTipController.text = 'still invalid';
+
+    expect(data.subtotal, 0);
+    expect(data.tax, 0);
+    expect(data.tipAmount, 0);
+    expect(data.total, 0);
+  });
 }

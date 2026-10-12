@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { formatMoney } from "@/lib/api";
+import { formatMoney } from "@/lib/currency";
 
 interface BillHeaderProps {
   name: string;

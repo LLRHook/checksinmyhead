@@ -29,7 +29,9 @@ func base62Encode(data []byte) string {
 }
 
 func GenerateSecureToken() (string, error) {
-	b := make([]byte, 8)
+	// Use 256 bits of entropy so public bearer-token endpoints remain
+	// infeasible to guess even if an attacker can make many requests.
+	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
 		return "", fmt.Errorf("crypto/rand failed: %w", err)
 	}

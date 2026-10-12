@@ -3,6 +3,7 @@ import type { Bill } from "./api";
 import {
   billCurrencyCode,
   billUSDTotal,
+  formatMoney,
   formatOriginalMoney,
   formatUSDExchangeRate,
   formatUSDMoney,
@@ -27,6 +28,23 @@ function bill(overrides: Partial<Bill> = {}): Bill {
 }
 
 describe("bill currency display", () => {
+  it("formats generic bill and trip amounts through one formatter", () => {
+    expect(formatMoney(12, "usd")).toBe(
+      new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 2,
+      }).format(12),
+    );
+    expect(formatMoney(12.345, "EUR")).toBe(
+      new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency: "EUR",
+        maximumFractionDigits: 2,
+      }).format(12.345),
+    );
+  });
+
   it("shows the original EUR amount and its frozen USD value", () => {
     const eurBill = bill({
       currency_code: "EUR",

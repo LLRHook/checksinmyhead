@@ -24,8 +24,7 @@ class TabDetailScreen extends StatefulWidget {
   State<TabDetailScreen> createState() => _TabDetailScreenState();
 }
 
-class _TabDetailScreenState extends State<TabDetailScreen>
-    with SingleTickerProviderStateMixin {
+class _TabDetailScreenState extends State<TabDetailScreen> {
   final _billsManager = RecentBillsManager();
   final _tabManager = TabManager();
   final _apiService = ApiService();
@@ -37,22 +36,16 @@ class _TabDetailScreenState extends State<TabDetailScreen>
   bool _isFinalizing = false;
   bool _isRetryingInvite = false;
   late AppTab _currentTab;
-  late AnimationController _animController;
 
   @override
   void initState() {
     super.initState();
     _currentTab = widget.tab;
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
     _loadBills();
   }
 
   @override
   void dispose() {
-    _animController.dispose();
     super.dispose();
   }
 

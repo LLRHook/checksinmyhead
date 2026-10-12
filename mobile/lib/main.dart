@@ -18,11 +18,14 @@
 import 'package:flutter/material.dart';
 import 'screens/splash_screen.dart';
 import 'screens/landing_screen.dart';
+import 'screens/lazy_bill_claim_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/onboarding/onboarding_screen.dart';
+import 'package:checks_frontend/screens/tabs/tabs_screen.dart';
 import 'screens/settings/services/preferences_service.dart';
 import 'config/theme.dart';
 import 'services/invite_link_service.dart';
+import 'services/version_policy_service.dart';
 
 // Purpose: Entry point for the Billington bill-splitting application.
 // This file initializes the app and sets up the global theme and navigation routes.
@@ -44,14 +47,63 @@ void main() async {
     AppTheme.setPrimaryColor(Color(savedColor));
   }
 
+  final updatePolicyFuture = VersionPolicyService().check();
   await InviteLinkService().initialize();
 
-  runApp(const MyApp());
+  runApp(MyApp(versionPolicyFuture: updatePolicyFuture));
+  InviteLinkService.pendingShareLink.addListener(_routePendingShareLink);
+  WidgetsBinding.instance.addPostFrameCallback((_) => _routePendingShareLink());
+}
+
+bool _isRoutingShareLink = false;
+bool _appReadyForShareLinks = false;
+
+void _markAppReadyForShareLinks() {
+  _appReadyForShareLinks = true;
+  WidgetsBinding.instance.addPostFrameCallback((_) => _routePendingShareLink());
+}
+
+Future<void> _routePendingShareLink() async {
+  if (_isRoutingShareLink) return;
+  if (!_appReadyForShareLinks) return;
+  final link = InviteLinkService.pendingShareLink.value;
+  final navigator = _rootNavigatorKey.currentState;
+  if (link == null || navigator == null) return;
+  final uri = Uri.tryParse(link);
+  final segments = uri?.pathSegments ?? const <String>[];
+  if (uri == null || segments.length < 2 || uri.queryParameters['t'] == null) {
+    await InviteLinkService().clearPendingInvite();
+    return;
+  }
+
+  _isRoutingShareLink = true;
+  try {
+    await InviteLinkService().clearPendingInvite();
+    if (segments.first == 'b') {
+      navigator.push(
+        MaterialPageRoute(
+          builder:
+              (_) => LazyBillClaimScreen(
+                billId: segments[1],
+                token: uri.queryParameters['t']!,
+              ),
+        ),
+      );
+    } else if (segments.first == 't') {
+      navigator.push(
+        MaterialPageRoute(builder: (_) => TabsScreen(initialInviteUrl: link)),
+      );
+    }
+  } finally {
+    _isRoutingShareLink = false;
+  }
 }
 
 /// Root application widget that configures global app settings
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final Future<VersionPolicyDecision> versionPolicyFuture;
+
+  const MyApp({super.key, required this.versionPolicyFuture});
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +111,7 @@ class MyApp extends StatelessWidget {
       valueListenable: AppTheme.primaryColorNotifier,
       builder: (context, _, child) {
         return MaterialApp(
+          navigatorKey: _rootNavigatorKey,
           title: 'Billington',
           // Theme configuration
           theme: AppTheme.lightTheme,
@@ -66,11 +119,16 @@ class MyApp extends StatelessWidget {
           themeMode: ThemeMode.system, // Follow system light/dark preference
           debugShowCheckedModeBanner: false,
           // Initial screen is always the splash screen
-          home: const SplashScreen(),
+          home: SplashScreen(
+            versionPolicyFuture: versionPolicyFuture,
+            onStartupReady: _markAppReadyForShareLinks,
+          ),
 
           // Named routes for navigation throughout the app
           routes: {
-            '/landing': (context) => const LandingScreen(),
+            '/landing':
+                (context) =>
+                    LandingScreen(onStartupReady: _markAppReadyForShareLinks),
             '/settings': (context) => const SettingsScreen(),
             '/onboarding': (context) => const OnboardingScreen(),
           },
@@ -79,3 +137,5 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+
+final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();

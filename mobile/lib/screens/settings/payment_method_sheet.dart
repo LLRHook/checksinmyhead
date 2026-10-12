@@ -52,8 +52,7 @@ class PaymentMethodSheet extends StatefulWidget {
   State<PaymentMethodSheet> createState() => _PaymentMethodSheetState();
 }
 
-class _PaymentMethodSheetState extends State<PaymentMethodSheet>
-    with SingleTickerProviderStateMixin {
+class _PaymentMethodSheetState extends State<PaymentMethodSheet> {
   /// The list of selected payment methods
   late List<String> _selectedPayments;
 
@@ -97,13 +96,13 @@ class _PaymentMethodSheetState extends State<PaymentMethodSheet>
             Center(
               child: ExcludeSemantics(
                 child: Container(
-                width: 36,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
             ),
@@ -232,8 +231,8 @@ class _PaymentMethodSheetState extends State<PaymentMethodSheet>
                       style: FilledButton.styleFrom(
                         backgroundColor:
                             Theme.of(context).brightness == Brightness.dark
-                                ? AppTheme.defaultPrimary:
-                                 Colors.white,
+                                ? AppTheme.defaultPrimary
+                                : Colors.white,
                         foregroundColor:
                             Theme.of(context).brightness == Brightness.dark
                                 ? Colors.white
@@ -273,13 +272,13 @@ class _PaymentMethodSheetState extends State<PaymentMethodSheet>
               Center(
                 child: ExcludeSemantics(
                   child: Container(
-                  width: 36,
-                  height: 4,
-                  margin: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+                    width: 36,
+                    height: 4,
+                    margin: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
               ),
@@ -319,225 +318,22 @@ class _PaymentMethodSheetState extends State<PaymentMethodSheet>
 
   /// Shows input field for entering/editing a payment identifier
   void _showIdentifierInput(String paymentMethod) {
-    // Create controller with existing value if available
-    final TextEditingController controller = TextEditingController();
-    controller.text = _paymentIdentifiers[paymentMethod] ?? '';
-
-    // State for tracking validation error
-    String? errorText;
-
-    // Select appropriate keyboard type based on payment method
-    TextInputType keyboardType = TextInputType.text;
-    if (PaymentMethod.requiresPhoneNumber(paymentMethod)) {
-      keyboardType = TextInputType.phone;
-    } else if (paymentMethod == 'PayPal' ||
-        paymentMethod == 'Venmo' ||
-        paymentMethod == 'Cash App') {
-      keyboardType = TextInputType.emailAddress;
-    }
-
-    showModalBottomSheet(
+    showPaymentMethodEditor(
       context: context,
-      isScrollControlled: true, // Allow modal to resize with keyboard
-      builder: (context) {
-        // Use StatefulBuilder to manage the error state within the modal
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            return Padding(
-              // Adjust padding to avoid keyboard overlap
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-                top: 20,
-                left: 16,
-                right: 16,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Drag handle
-                  Center(
-                    child: Container(
-                      width: 36,
-                      height: 4,
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-
-                  // Title
-                  Text(
-                    'Set Up $paymentMethod',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Input field
-                  TextField(
-                    controller: controller,
-                    keyboardType: keyboardType,
-                    autofocus: true, // Automatically show keyboard
-                    onChanged: (value) {
-                      // Clear error when user types
-                      if (errorText != null) {
-                        setSheetState(() {
-                          errorText = null;
-                        });
-                      }
-                    },
-                    inputFormatters:
-                        PaymentMethod.requiresPhoneNumber(paymentMethod)
-                            ? [
-                              FilteringTextInputFormatter.allow(
-                                RegExp(r'[0-9\(\)\-\s+]'),
-                              ),
-                            ]
-                            : null, // Allow only numbers and formatting for phone numbers
-                    style: TextStyle(
-                      color:
-                          Theme.of(context).brightness == Brightness.dark
-                              ? Colors.white
-                              : Colors.black,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: PaymentMethod.hintTextFor(paymentMethod),
-                      filled: true,
-                      fillColor:
-                          Theme.of(context).brightness == Brightness.dark
-                              ? Colors.white.withValues(alpha: .1)
-                              : Colors.black.withValues(alpha: .05),
-                      errorText: errorText,
-                      errorStyle: const TextStyle(
-                        color: Colors.redAccent,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      // Use explicit borders for all states to ensure they show properly
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide:
-                            errorText != null
-                                ? const BorderSide(
-                                  color: Colors.redAccent,
-                                  width: 2,
-                                )
-                                : BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide:
-                            errorText != null
-                                ? const BorderSide(
-                                  color: Colors.redAccent,
-                                  width: 2,
-                                )
-                                : BorderSide.none,
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide:
-                            errorText != null
-                                ? const BorderSide(
-                                  color: Colors.redAccent,
-                                  width: 2,
-                                )
-                                : const BorderSide(
-                                  color: AppTheme.defaultPrimary,
-                                  width: 2,
-                                ),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Save button
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () async {
-                        final value = controller.text.trim();
-
-                        // Validate phone numbers
-                        if (PaymentMethod.requiresPhoneNumber(paymentMethod) &&
-                            !ValidationUtils.isValidPhoneNumber(value)) {
-                          // Trigger error haptic feedback
-                          HapticFeedback.heavyImpact();
-
-                          // Show error in the input field
-                          setSheetState(() {
-                            errorText =
-                                'Please enter a valid 10-digit phone number';
-                          });
-
-                          return; // Don't proceed with saving
-                        }
-
-                        if (value.isNotEmpty) {
-                          setState(() {
-                            // Add method to selected list if not already there
-                            if (!_selectedPayments.contains(paymentMethod)) {
-                              _selectedPayments.add(paymentMethod);
-                            }
-
-                            // Format phone numbers before saving
-                            if (PaymentMethod.requiresPhoneNumber(
-                              paymentMethod,
-                            )) {
-                              _paymentIdentifiers[paymentMethod] =
-                                  FormattingUtils.formatPhoneNumber(value);
-                            } else if (paymentMethod == 'Venmo') {
-                              _paymentIdentifiers[paymentMethod] =
-                                  FormattingUtils.formatVenmoUsername(value);
-                            } else if (paymentMethod == 'Cash App') {
-                              _paymentIdentifiers[paymentMethod] =
-                                  FormattingUtils.formatCashtag(value);
-                            } else {
-                              _paymentIdentifiers[paymentMethod] = value;
-                            }
-
-                            // Success haptic feedback (feels satisfying)
-                            HapticFeedback.mediumImpact();
-                            _hasChanges = true;
-                          });
-
-                          // Auto-save changes immediately (without toast)
-                          widget.onSave(_selectedPayments, _paymentIdentifiers);
-                        }
-
-                        Navigator.pop(context);
-                      },
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size.fromHeight(50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'Done',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-              ),
-            );
-          },
-        );
+      paymentMethod: paymentMethod,
+      selectedMethods: _selectedPayments,
+      identifiers: _paymentIdentifiers,
+      onSave: (methods, identifiers) {
+        setState(() {
+          _selectedPayments
+            ..clear()
+            ..addAll(methods);
+          _paymentIdentifiers
+            ..clear()
+            ..addAll(identifiers);
+          _hasChanges = true;
+        });
+        widget.onSave(_selectedPayments, _paymentIdentifiers);
       },
     );
   }
@@ -754,18 +550,11 @@ Future<void> showPaymentMethodEditor({
                         }
 
                         // Format phone numbers before saving
-                        if (PaymentMethod.requiresPhoneNumber(paymentMethod)) {
-                          updatedIdentifiers[paymentMethod] =
-                              FormattingUtils.formatPhoneNumber(value);
-                        } else if (paymentMethod == 'Venmo') {
-                          updatedIdentifiers[paymentMethod] =
-                              FormattingUtils.formatVenmoUsername(value);
-                        } else if (paymentMethod == 'Cash App') {
-                          updatedIdentifiers[paymentMethod] =
-                              FormattingUtils.formatCashtag(value);
-                        } else {
-                          updatedIdentifiers[paymentMethod] = value;
-                        }
+                        updatedIdentifiers[paymentMethod] =
+                            FormattingUtils.formatPaymentIdentifier(
+                              paymentMethod,
+                              value,
+                            );
 
                         // Success haptic feedback (feels satisfying)
                         HapticFeedback.mediumImpact();

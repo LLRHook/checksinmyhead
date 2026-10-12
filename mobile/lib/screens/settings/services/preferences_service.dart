@@ -19,7 +19,6 @@ import 'package:checks_frontend/screens/settings/models/payment_method.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Service class for handling app preferences storage
 class PreferencesService {
   static const String _firstLaunchKey = 'is_first_launch';
   static const String _selectedPaymentsKey = 'selectedPayments';
@@ -28,58 +27,42 @@ class PreferencesService {
   static const String _autoAddSelfKey = 'auto_add_self';
   static const String _accentColorKey = 'accent_color';
   static const String _tabCurrencyPrefix = 'tab_currency_';
+  static const String _showBillTotalsInUSDKey = 'show_bill_totals_in_usd';
 
-  /// Returns a singleton instance
-  static final PreferencesService _instance = PreferencesService._internal();
-
-  factory PreferencesService() {
-    return _instance;
-  }
-
-  PreferencesService._internal();
-
-  /// Checks if this is the first launch of the app
   Future<bool> isFirstLaunch() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getBool(_firstLaunchKey) ?? true;
     } catch (e) {
-      // Assume first launch on error
       return true;
     }
   }
 
-  /// Marks the onboarding as complete
   Future<void> completeOnboarding() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_firstLaunchKey, false);
   }
 
-  /// Saves the user's display name
   Future<void> saveDisplayName(String name) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_displayNameKey, name);
   }
 
-  /// Gets the user's display name
   Future<String?> getDisplayName() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_displayNameKey);
   }
 
-  /// Gets the auto-add self preference (defaults to true)
   Future<bool> getAutoAddSelf() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_autoAddSelfKey) ?? true;
   }
 
-  /// Saves the auto-add self preference
   Future<void> setAutoAddSelf(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_autoAddSelfKey, value);
   }
 
-  /// Saves the list of selected payment methods
   Future<void> saveSelectedPaymentMethods(List<String> methods) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -89,49 +72,39 @@ class PreferencesService {
     }
   }
 
-  /// Gets the list of selected payment methods
   Future<List<String>> getSelectedPaymentMethods() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getStringList(_selectedPaymentsKey) ?? [];
     } catch (e) {
-      // Return empty list on error
       return [];
     }
   }
 
-  /// Saves the identifier for a payment method
   Future<void> savePaymentIdentifier(String method, String identifier) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('$_paymentPrefix$method', identifier);
   }
 
-  /// Gets the identifier for a payment method
   Future<String?> getPaymentIdentifier(String method) async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('$_paymentPrefix$method');
   }
 
-  /// Removes a payment method identifier
   Future<void> removePaymentMethod(String method) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('$_paymentPrefix$method');
 
-    // Also remove from selected list
     final selected = await getSelectedPaymentMethods();
     selected.remove(method);
     await saveSelectedPaymentMethods(selected);
   }
 
-  /// Loads all configured payment identifiers for selected methods only
   Future<Map<String, String>> getAllPaymentIdentifiers() async {
     final prefs = await SharedPreferences.getInstance();
     final Map<String, String> results = {};
 
-    // Get currently selected methods
     final selectedMethods = await getSelectedPaymentMethods();
-
-    // Only load identifiers for selected methods
     for (final method in selectedMethods) {
       final identifier = prefs.getString('$_paymentPrefix$method');
       if (identifier != null && identifier.isNotEmpty) {
@@ -142,7 +115,6 @@ class PreferencesService {
     return results;
   }
 
-  /// Saves all payment settings at once
   Future<void> saveAllPaymentSettings({
     required List<String> selectedMethods,
     required Map<String, String> identifiers,
@@ -150,15 +122,11 @@ class PreferencesService {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // Save selected methods list
       await prefs.setStringList(_selectedPaymentsKey, selectedMethods);
-
-      // First, remove all payment identifiers to ensure cleanup
       for (final method in PaymentMethod.availablePaymentMethods) {
         await prefs.remove('$_paymentPrefix$method');
       }
 
-      // Then save only the identifiers for selected methods
       for (final entry in identifiers.entries) {
         if (selectedMethods.contains(entry.key)) {
           await prefs.setString('$_paymentPrefix${entry.key}', entry.value);
@@ -169,19 +137,16 @@ class PreferencesService {
     }
   }
 
-  /// Gets the custom accent color value (returns null for default)
   Future<int?> getAccentColor() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getInt(_accentColorKey);
   }
 
-  /// Saves the custom accent color
   Future<void> setAccentColor(int colorValue) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_accentColorKey, colorValue);
   }
 
-  /// Resets to default color
   Future<void> resetAccentColor() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_accentColorKey);
@@ -198,5 +163,15 @@ class PreferencesService {
       '$_tabCurrencyPrefix$tabId',
       currencyCode.trim().toUpperCase(),
     );
+  }
+
+  Future<bool> getShowBillTotalsInUSD() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_showBillTotalsInUSDKey) ?? false;
+  }
+
+  Future<void> setShowBillTotalsInUSD(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_showBillTotalsInUSDKey, value);
   }
 }

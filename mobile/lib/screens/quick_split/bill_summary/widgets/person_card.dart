@@ -115,13 +115,11 @@ class _PersonCardState extends State<PersonCard>
     // Get person's calculated amounts (subtotal, tax, tip, total)
     final personAmounts = CalculationUtils.calculatePersonAmounts(
       person: widget.person,
-      participants: widget.data.participants,
       personShares: widget.data.personShares,
       items: widget.data.items,
       subtotal: widget.data.subtotal,
       tax: widget.data.tax,
       tipAmount: widget.data.tipAmount,
-      birthdayPerson: widget.data.birthdayPerson,
     );
 
     final double totalShare =

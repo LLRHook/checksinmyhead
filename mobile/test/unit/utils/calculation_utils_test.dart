@@ -18,13 +18,11 @@ void main() {
 
       final result = CalculationUtils.calculatePersonAmounts(
         person: alice,
-        participants: [alice, bob],
         personShares: {alice: 10.0, bob: 10.0},
         items: [item],
         subtotal: 20.00,
         tax: 2.00,
         tipAmount: 4.00,
-        birthdayPerson: null,
       );
 
       expect(result['subtotal'], closeTo(10.00, 0.01));
@@ -42,13 +40,11 @@ void main() {
 
       final result = CalculationUtils.calculatePersonAmounts(
         person: bob,
-        participants: [alice, bob],
         personShares: {alice: 50.0, bob: 0.0},
         items: [item],
         subtotal: 50.00,
         tax: 5.00,
         tipAmount: 10.00,
-        birthdayPerson: null,
       );
 
       expect(result['subtotal'], equals(0.0));
@@ -71,13 +67,11 @@ void main() {
 
       final result = CalculationUtils.calculatePersonAmounts(
         person: alice,
-        participants: [alice, bob],
         personShares: {alice: 30.0, bob: 0.0},
         items: [pizza, salad],
         subtotal: 30.00,
         tax: 3.00,
         tipAmount: 6.00,
-        birthdayPerson: null,
       );
 
       expect(result['subtotal'], closeTo(30.00, 0.01));
@@ -87,18 +81,15 @@ void main() {
     });
   });
 
-  group('CalculationUtils.calculatePersonAmounts - proportional (no items)',
-      () {
+  group('CalculationUtils.calculatePersonAmounts - proportional (no items)', () {
     test('calculates correct proportional split', () {
       final result = CalculationUtils.calculatePersonAmounts(
         person: alice,
-        participants: [alice, bob],
         personShares: {alice: 15.0, bob: 15.0},
         items: [],
         subtotal: 20.00,
         tax: 2.00,
         tipAmount: 8.00,
-        birthdayPerson: null,
       );
 
       expect(result['total'], closeTo(15.0, 0.01));
@@ -107,13 +98,11 @@ void main() {
     test('handles zero subtotal without division error', () {
       final result = CalculationUtils.calculatePersonAmounts(
         person: alice,
-        participants: [alice, bob],
         personShares: {alice: 0.0, bob: 0.0},
         items: [],
         subtotal: 0.0,
         tax: 0.0,
         tipAmount: 0.0,
-        birthdayPerson: null,
       );
 
       expect(result['subtotal'], equals(0.0));
@@ -127,13 +116,11 @@ void main() {
       // but guards against division by zero in proportion calculation)
       final result = CalculationUtils.calculatePersonAmounts(
         person: alice,
-        participants: [alice, bob],
         personShares: {alice: 5.0, bob: 5.0},
         items: [],
         subtotal: 0.0,
         tax: 2.0,
         tipAmount: 3.0,
-        birthdayPerson: null,
       );
 
       // With zero subtotal, personSubtotal is 0, proportion is 0
@@ -143,16 +130,14 @@ void main() {
       expect(result['total'], equals(0.0));
     });
 
-    test('birthday person gets zero', () {
+    test('zero-share participant gets zero', () {
       final result = CalculationUtils.calculatePersonAmounts(
         person: alice,
-        participants: [alice, bob],
         personShares: {alice: 0.0, bob: 30.0},
         items: [],
         subtotal: 20.00,
         tax: 2.00,
         tipAmount: 8.00,
-        birthdayPerson: alice,
       );
 
       expect(result['subtotal'], equals(0.0));

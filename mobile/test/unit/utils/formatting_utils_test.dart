@@ -55,4 +55,22 @@ void main() {
       expect(FormattingUtils.formatCashtag('john'), equals('\$john'));
     });
   });
+
+  group('FormattingUtils.formatPaymentIdentifier', () {
+    test('formats supported identifiers and passes others through', () {
+      expect(
+        FormattingUtils.formatPaymentIdentifier('Zelle', '2125551234'),
+        '(212) 555-1234',
+      );
+      expect(FormattingUtils.formatPaymentIdentifier('Venmo', 'john'), '@john');
+      expect(
+        FormattingUtils.formatPaymentIdentifier('Cash App', 'john'),
+        '\$john',
+      );
+      expect(
+        FormattingUtils.formatPaymentIdentifier('Other', 'account'),
+        'account',
+      );
+    });
+  });
 }

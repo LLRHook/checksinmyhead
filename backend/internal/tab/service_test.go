@@ -1,6 +1,7 @@
 package tab
 
 import (
+	billpkg "backend/internal/bill"
 	"backend/pkg/models"
 	"errors"
 	"testing"
@@ -17,7 +18,6 @@ type mockTabRepository struct {
 	createErr            error
 	getByIdErr           error
 	updateErr            error
-	deleteErr            error
 	addBillErr           error
 	finalizeErr          error
 	getSettlementsErr    error
@@ -75,8 +75,6 @@ func (m *mockTabRepository) GetForFinalization(id uint) (*models.Tab, error) {
 }
 
 func (m *mockTabRepository) Update(tab *models.Tab) error { return m.updateErr }
-func (m *mockTabRepository) Delete(id uint) error         { return m.deleteErr }
-
 func (m *mockTabRepository) AddBill(tabID uint, billID uint, billToken string, memberID *uint) error {
 	m.addBillTabID = tabID
 	m.addBillBillID = billID
@@ -437,7 +435,7 @@ func TestBuildPersonShares_FromAssignments(t *testing.T) {
 		},
 	}
 
-	shares := buildPersonShares(bill)
+	shares := billpkg.BuildPersonShares(bill)
 	if len(shares) != 2 {
 		t.Fatalf("expected 2 shares, got %d", len(shares))
 	}

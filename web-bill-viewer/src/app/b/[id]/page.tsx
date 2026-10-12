@@ -7,8 +7,8 @@ export async function generateMetadata({
   params,
   searchParams,
 }: {
-  params: { id: string };
-  searchParams: { t?: string };
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ t?: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
   const { t: token } = await searchParams;
@@ -25,8 +25,8 @@ export default async function BillPage({
   params,
   searchParams,
 }: {
-  params: { id: string };
-  searchParams: { t?: string };
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ t?: string }>;
 }) {
   const { id } = await params;
   const { t: token } = await searchParams;

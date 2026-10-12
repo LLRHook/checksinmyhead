@@ -74,26 +74,22 @@ class RecentBillBottomBar extends StatelessWidget {
           BoxShadow(
             color: shadowColor,
             blurRadius: 6,
-            offset: const Offset(0, -2), // Shadow appears above the bar
+            offset: const Offset(0, -2),
           ),
         ],
       ),
-      // SafeArea ensures the content doesn't overlap with system UI elements
       child: SafeArea(
         child: Row(
           children: [
-            // Share button spans the full width of the container
             Expanded(
               child: OutlinedButton.icon(
-                // When pressed, use the utility class to handle the share functionality
-                onPressed: () => RecentBillShareUtils.shareBill(context, bill),
+                onPressed: () => RecentBillShareUtils.shareBill(bill),
                 icon: const Icon(Icons.ios_share, size: 18),
                 label: const Text('Share'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: outlineColor,
                   side: BorderSide(color: outlineColor),
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  // Rounded corners for better visual appeal
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),

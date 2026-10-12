@@ -20,9 +20,34 @@ void main() {
       );
 
       expect(request['currency_code'], 'EUR');
+      expect(request['lazy_mode'], isFalse);
       expect(request.containsKey('usd_exchange_rate'), isFalse);
       expect(request.containsKey('exchange_rate_date'), isFalse);
       expect(request.containsKey('exchange_rate_source'), isFalse);
+    },
+  );
+
+  test(
+    'lazy bill request keeps the bill standalone and flagged as claimable',
+    () {
+      final request = ApiService().buildBillRequest(
+        billName: 'Dinner',
+        participants: const [],
+        personShares: const {},
+        items: const [],
+        subtotal: 10,
+        tax: 1,
+        tipAmount: 2,
+        tipPercentage: 20,
+        total: 13,
+        paymentMethods: const [],
+        currencyCode: 'USD',
+        lazyMode: true,
+      );
+
+      expect(request['lazy_mode'], isTrue);
+      expect(request['participants'], isEmpty);
+      expect(request['person_shares'], isEmpty);
     },
   );
 
