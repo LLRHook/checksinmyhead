@@ -527,3 +527,10 @@
 - [ ] Commit the verified Lazy Mode changes and open a PR; merge without waiting for CI as previously authorized.
 - [ ] Dispatch TestFlight build 32 with the 2.0.7 Lazy Mode notes; monitor upload and processing.
 - [ ] Record PR, TestFlight run, and processing results.
+
+## Lazy Mode remaining balance after payment
+
+- [x] Subtract paid shares, including their allocated tax and tip, from the Lazy Mode remaining balance in the receipt and bill header.
+- [x] Keep the original receipt items visible with their paid status.
+- [x] Cover paid, unpaid, unclaimed, converted-currency, and zero-floor balance cases.
+- [x] Verify web tests, lint, TypeScript, production build, and diff formatting.
