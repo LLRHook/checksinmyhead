@@ -15,31 +15,11 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import 'package:checks_frontend/models/bill_item.dart';
-import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.dart';
 
-/// BillCalculations
-///
-/// A comprehensive utility class that handles all bill-related calculations for a given bill.
-/// This class is responsible for generating person shares, calculating item totals,
-/// determining tax and tip distributions, and providing various bill analytics.
-///
-/// The class implements caching for performance optimization, storing calculation results
-/// to avoid redundant computations when the same data is requested multiple times.
-///
-/// Key responsibilities:
-/// - Converting bill data into person-specific payment amounts
-/// - Calculating how items, tax, and tip are distributed among participants
-/// - Generating BillItem objects from serialized bill data
-/// - Providing utility methods for bill analysis (equal shares, assignment verification)
-///
-/// All monetary values are handled as double and represent currency amounts.
 class BillCalculations {
   final RecentBillModel bill;
 
-  /// Cache for calculation results to avoid redundant calculations
-  /// These are lazily initialized and stored for the lifetime of this object
   Map<String, double>?
   _personItemTotals; // Person name -> sum of their assigned item costs
   Map<String, double>?
@@ -47,67 +27,7 @@ class BillCalculations {
   Map<String, double>?
   _personTotals; // Person name -> their total bill share (items + tax/tip)
 
-  /// Constructor that takes a RecentBillModel as input
   BillCalculations(this.bill);
-
-  /// Generates a mapping of Person objects to their total bill shares
-  ///
-  /// This method creates Person objects from the bill's participant names
-  /// and associates each person with their calculated total amount to pay.
-  ///
-  /// Returns:
-  /// - A Map where keys are Person objects and values are the total amounts each person owes
-  ///
-  /// Note: If calculations fail for a participant, they will be assigned an equal share of the total
-  Map<Person, double> generatePersonShares() {
-    final personTotals = calculatePersonTotals();
-    Map<Person, double> shares = {};
-
-    for (String name in bill.participantNames) {
-      // Use calculated amount or fall back to equal share if calculation failed
-      final amount =
-          personTotals[name] ?? (bill.participantNames.isNotEmpty ? bill.total / bill.participantNames.length : 0.0);
-
-      // Create a Person object with name and the bill's color
-      shares[Person(name: name, color: bill.color)] = amount;
-    }
-
-    return shares;
-  }
-
-  /// Converts serialized bill item data into BillItem objects
-  ///
-  /// This method transforms the raw item data (typically from JSON or database)
-  /// into proper BillItem objects with their associated person assignments.
-  ///
-  /// Returns:
-  /// - A List of BillItem objects reconstructed from the bill data
-  /// - Empty list if no items are found in the bill
-  List<BillItem> generateBillItems() {
-    if (bill.items == null) return [];
-
-    return bill.items!.map((itemData) {
-      // Extract item properties with fallbacks for data integrity
-      final name = itemData['name'] as String? ?? 'Unknown Item';
-      final price = (itemData['price'] as num?)?.toDouble() ?? 0.0;
-      final assignments = itemData['assignments'] as Map<String, dynamic>?;
-
-      // Convert string-based assignments to Person-based assignments
-      // This translates from {personName: percentageValue} to {Person: percentageValue}
-      Map<Person, double> personAssignments = {};
-      if (assignments != null) {
-        assignments.forEach((personName, percentage) {
-          // Only include valid percentage assignments (must be numeric and positive)
-          if (percentage is num && percentage > 0) {
-            personAssignments[Person(name: personName, color: bill.color)] =
-                percentage.toDouble();
-          }
-        });
-      }
-
-      return BillItem(name: name, price: price, assignments: personAssignments);
-    }).toList();
-  }
 
   /// Calculates the total cost of items assigned to each person
   ///
@@ -190,7 +110,10 @@ class BillCalculations {
 
     // If no items were assigned or sum is zero, distribute tax and tip equally
     if (assignedItemsTotal <= 0 || personItemTotals.isEmpty) {
-      final equalShare = bill.participantNames.isNotEmpty ? totalTaxAndTip / bill.participantNames.length : 0.0;
+      final equalShare =
+          bill.participantNames.isNotEmpty
+              ? totalTaxAndTip / bill.participantNames.length
+              : 0.0;
 
       for (final name in bill.participantNames) {
         results[name] = equalShare;

@@ -21,6 +21,8 @@ import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'landing_screen.dart';
 import 'onboarding/onboarding_screen.dart';
+import '../services/version_policy_service.dart';
+import 'update_required_screen.dart';
 
 /// A custom page route that provides a smooth fade transition between screens
 class FadePageRoute<T> extends PageRouteBuilder<T> {
@@ -68,7 +70,14 @@ class FadePageRoute<T> extends PageRouteBuilder<T> {
 // - If returning user: Redirects to Landing screen
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+  final Future<VersionPolicyDecision>? versionPolicyFuture;
+  final VoidCallback? onStartupReady;
+
+  const SplashScreen({
+    super.key,
+    this.versionPolicyFuture,
+    this.onStartupReady,
+  });
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -147,7 +156,11 @@ class _SplashScreenState extends State<SplashScreen>
     // Announce loading state for screen readers
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final view = View.of(context);
-      SemanticsService.sendAnnouncement(view, 'Loading Billington', TextDirection.ltr);
+      SemanticsService.sendAnnouncement(
+        view,
+        'Loading Billington',
+        TextDirection.ltr,
+      );
     });
 
     // Check if this is first app launch and prepare navigation
@@ -160,6 +173,10 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _checkFirstLaunch() async {
     // Get shared preferences instance to read/write app state
     final prefs = await SharedPreferences.getInstance();
+
+    final policy =
+        await (widget.versionPolicyFuture ?? VersionPolicyService().check());
+    if (!mounted) return;
 
     // Check if first launch flag exists, default to true if not found
     final isFirstLaunch = prefs.getBool('is_first_launch') ?? true;
@@ -176,7 +193,15 @@ class _SplashScreenState extends State<SplashScreen>
         _navigationTimer = Timer(const Duration(milliseconds: 250), () {
           // Check again if widget is still mounted before navigating
           if (mounted) {
-            if (isFirstLaunch) {
+            if (policy.updateRequired) {
+              Navigator.of(context).pushReplacement(
+                FadePageRoute(
+                  builder:
+                      (context) =>
+                          UpdateRequiredScreen(storeUrl: policy.storeUrl),
+                ),
+              );
+            } else if (isFirstLaunch) {
               // First launch - go to onboarding with fade transition
               Navigator.of(context).pushReplacement(
                 FadePageRoute(builder: (context) => const OnboardingScreen()),
@@ -184,7 +209,11 @@ class _SplashScreenState extends State<SplashScreen>
             } else {
               // Returning user - go directly to main landing screen with fade transition
               Navigator.of(context).pushReplacement(
-                FadePageRoute(builder: (context) => const LandingScreen()),
+                FadePageRoute(
+                  builder:
+                      (context) =>
+                          LandingScreen(onStartupReady: widget.onStartupReady),
+                ),
               );
             }
           }

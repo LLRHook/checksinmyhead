@@ -93,10 +93,10 @@ class ReceiptApiService {
       throw ReceiptParseException(
         'Could not connect to server. Check your connection.',
       );
-    } catch (e) {
+    } catch (_) {
       _logger.d('Receipt parse error');
       throw ReceiptParseException(
-        'Could not connect to server. Check your connection.',
+        'Could not process the receipt. Please try again.',
       );
     }
   }

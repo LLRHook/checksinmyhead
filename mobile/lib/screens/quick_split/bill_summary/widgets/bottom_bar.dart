@@ -19,6 +19,7 @@ import 'package:checks_frontend/screens/quick_split/bill_summary/models/bill_sum
 import 'package:checks_frontend/screens/quick_split/bill_summary/widgets/bill_name_sheet.dart';
 import 'package:checks_frontend/screens/quick_split/bill_summary/widgets/enhanced_share_sheet.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
+import 'package:checks_frontend/screens/lazy_bill_claim_screen.dart';
 import 'package:checks_frontend/database/database_provider.dart';
 import 'package:checks_frontend/screens/settings/services/preferences_service.dart';
 import 'package:checks_frontend/services/api_service.dart';
@@ -227,9 +228,7 @@ class DoneButtonHandler {
         tax: updatedData.tax,
         tipAmount: updatedData.tipAmount,
         total: updatedData.total,
-        birthdayPerson: updatedData.birthdayPerson,
         tipPercentage: updatedData.tipPercentage,
-        isCustomTipAmount: updatedData.isCustomTipAmount,
         billName: updatedData.billName,
       );
 
@@ -257,61 +256,14 @@ class DoneButtonHandler {
           total: updatedData.total,
           paymentMethods: apiPaymentMethods,
           currencyCode: updatedData.currencyCode,
+          displayCurrency: lazyMode ? null : tab?.displayCurrency,
+          lazyMode: lazyMode,
         );
 
         if (lazyMode) {
-          final creatorDisplayName = await _prefsService.getDisplayName();
-          final tabResponse = await _apiService.createTab(
-            billName,
-            'Created w/ Lazy Mode',
-            creatorDisplayName:
-                creatorDisplayName != null &&
-                        creatorDisplayName.trim().isNotEmpty
-                    ? creatorDisplayName.trim()
-                    : null,
-          );
-
-          final response = await _apiService.uploadBill(
-            billName: billName,
-            participants: const [],
-            personShares: const {},
-            items: updatedData.items,
-            subtotal: updatedData.subtotal,
-            tax: updatedData.tax,
-            tipAmount: updatedData.tipAmount,
-            tipPercentage: updatedData.tipPercentage,
-            total: updatedData.total,
-            paymentMethods: apiPaymentMethods,
-            currencyCode: updatedData.currencyCode,
-            displayCurrency: tab?.displayCurrency,
-          );
-
-          await _apiService.addBillToTab(
-            tabResponse.tabId,
-            response.billId,
-            tabResponse.accessToken,
-            billToken: response.accessToken,
-            memberToken: tabResponse.memberToken,
-          );
-
-          shareUrl = tabResponse.shareUrl;
+          shareUrl = response.shareUrl;
           logger.d('Lazy bill uploaded successfully: $shareUrl');
         } else {
-          final response = await _apiService.uploadBill(
-            billName: billName,
-            participants: updatedData.participants,
-            personShares: updatedData.personShares,
-            items: updatedData.items,
-            subtotal: updatedData.subtotal,
-            tax: updatedData.tax,
-            tipAmount: updatedData.tipAmount,
-            tipPercentage: updatedData.tipPercentage,
-            total: updatedData.total,
-            paymentMethods: apiPaymentMethods,
-            currencyCode: updatedData.currencyCode,
-            displayCurrency: tab?.displayCurrency,
-          );
-
           shareUrl = response.shareUrl;
           logger.d('Bill uploaded successfully: $shareUrl');
 
@@ -335,9 +287,7 @@ class DoneButtonHandler {
           tax: updatedData.tax,
           tipAmount: updatedData.tipAmount,
           total: updatedData.total,
-          birthdayPerson: updatedData.birthdayPerson,
           tipPercentage: updatedData.tipPercentage,
-          isCustomTipAmount: updatedData.isCustomTipAmount,
           billName: updatedData.billName,
           shareUrl: shareUrl,
           currencyCode: response.exchangeRateQuote.currencyCode,
@@ -404,6 +354,23 @@ class DoneButtonHandler {
       // Return to home
       if (navigator.mounted) {
         navigator.popUntil((route) => route.isFirst);
+        if (lazyMode && shareUrl != null) {
+          final lazyBillUri = Uri.tryParse(shareUrl);
+          final segments = lazyBillUri?.pathSegments ?? const <String>[];
+          final token = lazyBillUri?.queryParameters['t'];
+          if (segments.length >= 2 &&
+              segments.first == 'b' &&
+              token != null &&
+              token.isNotEmpty) {
+            navigator.push(
+              MaterialPageRoute(
+                builder:
+                    (_) =>
+                        LazyBillClaimScreen(billId: segments[1], token: token),
+              ),
+            );
+          }
+        }
       }
     } finally {
       _isSaving = false;
@@ -419,9 +386,7 @@ class DoneButtonHandler {
       tax: data.tax,
       tipAmount: data.tipAmount,
       total: data.total,
-      birthdayPerson: data.birthdayPerson,
       tipPercentage: data.tipPercentage,
-      isCustomTipAmount: data.isCustomTipAmount,
       billName: data.billName,
     );
   }

@@ -21,61 +21,20 @@ import 'package:checks_frontend/models/bill_item.dart';
 import 'package:checks_frontend/models/person.dart';
 import 'package:flutter/material.dart';
 
-/// RecentBillModel
-///
-/// A model class that represents a saved bill retrieved from persistent storage.
-/// This class encapsulates all the data associated with a bill, including financial
-/// information, participants, items, assignments, and display properties.
-///
-/// The model provides methods to:
-/// - Parse raw database data into a usable model object
-/// - Format bill data for display
-/// - Generate derived data such as participant lists and bill item assignments
-/// - Calculate share amounts for each person
-///
-/// This model serves as the core data structure for displaying and manipulating
-/// saved bills throughout the bill history and detail screens.
 class RecentBillModel {
-  /// Unique identifier for the bill
   final int id;
-
-  /// Name of the bill for display purposes
   final String billName;
-
-  /// List of participant names
   final List<String> participantNames;
-
-  /// Number of participants in the bill
   final int participantCount;
-
-  /// Total bill amount (subtotal + tax + tip)
   final double total;
-
-  /// Date when the bill was created/saved
   final DateTime date;
-
-  /// Sum of all item prices before tax and tip
   final double subtotal;
-
-  /// Tax amount applied to the bill
   final double tax;
-
-  /// Tip amount added to the bill
   final double tipAmount;
-
-  /// Tip percentage relative to subtotal
   final double tipPercentage;
-
-  /// List of individual bill items with prices and assignments
   final List<Map<String, dynamic>>? items;
-
-  /// Theme color associated with this bill
   final Color color;
-
-  /// Map of item names to person assignments with percentages
   final Map<String, Map<String, double>>? itemAssignments;
-
-  /// Shareable web URL for this bill (null if never uploaded)
   final String? shareUrl;
 
   /// Original receipt currency and the immutable daily conversion audit.
@@ -105,18 +64,7 @@ class RecentBillModel {
     this.exchangeRateSource = 'native-usd',
   });
 
-  /// Creates a RecentBillModel from raw database data
-  ///
-  /// This factory method parses the database record into a structured model,
-  /// handling JSON deserialization, type conversions, and default values.
-  ///
-  /// Parameters:
-  /// - data: Raw RecentBill database object
-  ///
-  /// Returns:
-  /// - A properly formatted RecentBillModel with all fields populated
   factory RecentBillModel.fromData(RecentBill data) {
-    // Parse participant names from JSON string
     List<String> names = [];
     try {
       final List<dynamic> decoded = jsonDecode(data.participants);
@@ -125,16 +73,13 @@ class RecentBillModel {
       debugPrint('Error parsing participants: $e');
     }
 
-    // Parse items and assignments from JSON if available
     List<Map<String, dynamic>>? itemsList;
     Map<String, Map<String, double>>? assignmentsMap;
     if (data.items != null) {
       try {
-        // Parse items array
         final List<dynamic> decodedItems = jsonDecode(data.items!);
         itemsList = decodedItems.cast<Map<String, dynamic>>();
 
-        // Extract item assignments into a more accessible structure
         assignmentsMap = {};
         for (var item in itemsList) {
           final itemName = item['name'] as String? ?? 'Unknown Item';
@@ -143,13 +88,11 @@ class RecentBillModel {
           if (assignments != null) {
             Map<String, double> personAssignments = {};
             assignments.forEach((personName, percentage) {
-              // Convert percentage to double (handles both int and double values)
               if (percentage is num) {
                 personAssignments[personName] = percentage.toDouble();
               }
             });
 
-            // Only add to map if there are actual assignments
             if (personAssignments.isNotEmpty) {
               assignmentsMap[itemName] = personAssignments;
             }
@@ -160,25 +103,20 @@ class RecentBillModel {
       }
     }
 
-    // Parse date with fallback to creation timestamp
     DateTime billDate;
     try {
       billDate = DateTime.parse(data.date);
     } catch (e) {
-      billDate = data.createdAt; // Use database creation timestamp as fallback
+      billDate = data.createdAt;
     }
 
-    // Calculate or retrieve tip percentage
     double tipPercentage = 0;
     if (data.tipPercentage != null) {
-      // Use stored value if available from newer database records
       tipPercentage = data.tipPercentage!;
     } else if (data.subtotal > 0) {
-      // Calculate for older records that might not have the field
       tipPercentage = (data.tipAmount / data.subtotal) * 100;
     }
 
-    // Construct and return the model
     return RecentBillModel(
       id: data.id,
       billName: data.billName,
@@ -192,7 +130,7 @@ class RecentBillModel {
       tipPercentage: tipPercentage,
       items: itemsList,
       itemAssignments: assignmentsMap,
-      color: Color(data.colorValue), // Convert stored integer to Color
+      color: Color(data.colorValue),
       shareUrl: data.shareUrl,
       currencyCode: data.currencyCode,
       usdExchangeRate: data.usdExchangeRate,

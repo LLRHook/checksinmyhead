@@ -62,6 +62,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   /// Auto-add self to bills toggle
   bool _autoAddSelf = true;
+  bool _showBillTotalsInUSD = false;
 
   /// Debounce timer for display name saving
   Timer? _debounceTimer;
@@ -117,6 +118,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       // Load auto-add self preference
       final autoAdd = await _prefsService.getAutoAddSelf();
+      final showBillTotalsInUSD = await _prefsService.getShowBillTotalsInUSD();
 
       // Load accent color preference
       final savedAccentColor = await _prefsService.getAccentColor();
@@ -127,6 +129,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _selectedPayments = savedPayments;
         _paymentIdentifiers = savedIdentifiers;
         _autoAddSelf = autoAdd;
+        _showBillTotalsInUSD = showBillTotalsInUSD;
         if (savedAccentColor != null) {
           _selectedAccentColor = Color(savedAccentColor);
           // Check if saved color is a custom one (not in presets)
@@ -466,6 +469,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
                                   ],
                                 ),
+                              ),
+
+                              const SizedBox(height: 16),
+                              SwitchListTile(
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                                tileColor: Colors.white.withValues(alpha: .15),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                title: const Text(
+                                  'Show bill totals in USD',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                                subtitle: const Text(
+                                  'Receipt details stay in their original currency. Trips keep their own setting.',
+                                  style: TextStyle(color: Colors.white70),
+                                ),
+                                value: _showBillTotalsInUSD,
+                                onChanged: (value) async {
+                                  setState(() => _showBillTotalsInUSD = value);
+                                  await _prefsService.setShowBillTotalsInUSD(
+                                    value,
+                                  );
+                                  HapticFeedback.selectionClick();
+                                },
+                                activeThumbColor: Colors.white,
                               ),
 
                               const SizedBox(height: 16),

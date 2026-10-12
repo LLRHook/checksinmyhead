@@ -25,8 +25,8 @@ func TestTokenLengthRange(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if len(token) < 8 || len(token) > 11 {
-			t.Errorf("token length %d out of expected range [8,11]: %q", len(token), token)
+		if len(token) < 42 || len(token) > 43 {
+			t.Errorf("token length %d out of expected range [42,43]: %q", len(token), token)
 		}
 	}
 }

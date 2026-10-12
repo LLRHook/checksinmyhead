@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 )
 
 type fakeExchangeRateProvider struct {
@@ -25,12 +26,14 @@ type mockBillRepository struct {
 
 	createErr          error
 	getByIdErr         error
-	updateErr          error
-	deleteErr          error
 	updateSharePaidErr error
 
 	updatedShareID   uint
 	updatedSharePaid bool
+	updatedBillID    uint
+	updatedItemID    uint
+	updatedItems     []models.ItemAssignment
+	assignmentErr    error
 }
 
 func newMockRepo() *mockBillRepository {
@@ -59,13 +62,17 @@ func (m *mockBillRepository) GetById(id uint) (*models.Bill, error) {
 	return bill, nil
 }
 
-func (m *mockBillRepository) Update(bill *models.Bill) error { return m.updateErr }
-func (m *mockBillRepository) Delete(id uint) error           { return m.deleteErr }
-
 func (m *mockBillRepository) UpdatePersonSharePaid(id uint, paid bool) error {
 	m.updatedShareID = id
 	m.updatedSharePaid = paid
 	return m.updateSharePaidErr
+}
+
+func (m *mockBillRepository) UpdateItemAssignments(billID uint, itemID uint, assignments []models.ItemAssignment, _ *time.Time) error {
+	m.updatedBillID = billID
+	m.updatedItemID = itemID
+	m.updatedItems = assignments
+	return m.assignmentErr
 }
 
 // ── Tests ───────────────────────────────────────────────────────
@@ -94,6 +101,40 @@ func TestUpdatePersonSharePaid_Error(t *testing.T) {
 	err := svc.UpdatePersonSharePaid(5, true)
 	if err == nil {
 		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestBuildLazyPersonShares_KeepEarlierSharesStableAsItemsAreClaimed(t *testing.T) {
+	bill := &models.Bill{
+		ID:        42,
+		Subtotal:  30,
+		Tax:       3,
+		TipAmount: 6,
+		Items: []models.BillItem{
+			{ID: 1, Price: 10, Assignments: []models.ItemAssignment{{PersonName: "Alex", Percentage: 100}}},
+		},
+	}
+	firstClaim := BuildLazyPersonShares(bill)
+	if len(firstClaim) != 1 {
+		t.Fatalf("expected one initial share, got %d", len(firstClaim))
+	}
+
+	bill.Items = append(bill.Items, models.BillItem{
+		ID: 2, Price: 20,
+		Assignments: []models.ItemAssignment{{PersonName: "Bob", Percentage: 100}},
+	})
+	allClaims := BuildLazyPersonShares(bill)
+	var alex *models.PersonShare
+	for i := range allClaims {
+		if allClaims[i].PersonName == "Alex" {
+			alex = &allClaims[i]
+		}
+	}
+	if alex == nil {
+		t.Fatal("expected Alex's share to remain present")
+	}
+	if alex.TaxShare != firstClaim[0].TaxShare || alex.TipShare != firstClaim[0].TipShare || alex.Total != firstClaim[0].Total {
+		t.Fatalf("Alex's due changed after Bob claimed an item: before=%+v after=%+v", firstClaim[0], *alex)
 	}
 }
 

@@ -63,7 +63,9 @@ type PersonShare struct {
 
 type Bill struct {
 	ID                 uint            `gorm:"primaryKey" json:"id"`
+	LazyMode           bool            `gorm:"not null;default:false" json:"lazy_mode"`
 	TabID              *uint           `gorm:"index" json:"tab_id,omitempty"`
+	Tab                *Tab            `gorm:"foreignKey:TabID" json:"-"`
 	AddedByMemberID    *uint           `gorm:"index" json:"added_by_member_id,omitempty"`
 	PaidByMemberID     *uint           `gorm:"index" json:"paid_by_member_id,omitempty"`
 	Name               string          `gorm:"not null" json:"name"`
@@ -106,11 +108,6 @@ func (b *Bill) NormalizeCurrency() {
 	if b.USDExchangeRate > 0 && b.USDTotal == 0 && b.Total != 0 {
 		b.USDTotal = math.Round(b.Total*b.USDExchangeRate*100) / 100
 	}
-}
-
-func (b *Bill) USDValue(value float64) float64 {
-	b.NormalizeCurrency()
-	return math.Round(value*b.USDExchangeRate*100) / 100
 }
 
 // BeforeCreate hook to set default values before creating a Bill.

@@ -1,12 +1,13 @@
 package tab
 
 import (
+	"backend/pkg/config"
 	"backend/pkg/models"
+	"backend/pkg/safehttp"
 	"backend/pkg/security"
 	"crypto/subtle"
 	"fmt"
 	"log"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -14,13 +15,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
-
-func appDomain() string {
-	if d := os.Getenv("APP_DOMAIN"); d != "" {
-		return d
-	}
-	return "https://billingtonapp.vercel.app"
-}
 
 type TabHandler struct {
 	service TabService
@@ -33,59 +27,21 @@ func NewTabHandler(service TabService) *TabHandler {
 // getTabAndValidate parses the ID, fetches the tab, and validates the token.
 // Returns the tab on success or writes an error and returns nil.
 func (h *TabHandler) getTabAndValidate(c *gin.Context) *models.Tab {
-	id := c.Param("id")
-
-	// Try Authorization header first, fall back to query param
-	token := ""
-	authHeader := c.GetHeader("Authorization")
-	if strings.HasPrefix(authHeader, "Bearer ") {
-		token = strings.TrimPrefix(authHeader, "Bearer ")
-	} else {
-		token = c.Query("t")
-	}
-	urlToken := token
-
-	if id == "" {
-		c.JSON(400, gin.H{"error": "bad id"})
-		return nil
-	}
-
-	idUint, err := strconv.ParseUint(id, 10, 32)
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid id format"})
-		return nil
-	}
-
-	tab, err := h.service.GetTab(uint(idUint))
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(404, gin.H{"error": "tab not found"})
-			return nil
-		}
-		log.Printf("internal error: %v", err)
-		c.JSON(500, gin.H{"error": "an internal error occurred"})
-		return nil
-	}
-
-	if subtle.ConstantTimeCompare([]byte(urlToken), []byte(tab.AccessToken)) != 1 {
-		c.JSON(403, gin.H{"error": "token mismatch"})
-		return nil
-	}
-
-	return tab
+	return h.getTabWithLookup(c, h.service.GetTab)
 }
 
 // getTabAuthAndValidate validates access using a lightweight tab lookup.
 func (h *TabHandler) getTabAuthAndValidate(c *gin.Context) *models.Tab {
+	return h.getTabWithLookup(c, h.service.GetTabAuth)
+}
+
+func (h *TabHandler) getTabWithLookup(
+	c *gin.Context,
+	lookup func(uint) (*models.Tab, error),
+) *models.Tab {
 	id := c.Param("id")
 
-	token := ""
-	authHeader := c.GetHeader("Authorization")
-	if strings.HasPrefix(authHeader, "Bearer ") {
-		token = strings.TrimPrefix(authHeader, "Bearer ")
-	} else {
-		token = c.Query("t")
-	}
+	token := safehttp.AccessToken(c)
 
 	if id == "" {
 		c.JSON(400, gin.H{"error": "bad id"})
@@ -98,7 +54,7 @@ func (h *TabHandler) getTabAuthAndValidate(c *gin.Context) *models.Tab {
 		return nil
 	}
 
-	tab, err := h.service.GetTabAuth(uint(idUint))
+	tab, err := lookup(uint(idUint))
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(404, gin.H{"error": "tab not found"})
@@ -196,7 +152,7 @@ func (h *TabHandler) CreateTab(c *gin.Context) {
 	resp := gin.H{
 		"tab_id":       tab.ID,
 		"access_token": token,
-		"share_url":    fmt.Sprintf("%s/t/%d?t=%s", appDomain(), tab.ID, token),
+		"share_url":    fmt.Sprintf("%s/t/%d?t=%s", config.AppDomain(), tab.ID, token),
 	}
 
 	creatorName := security.SanitizeString(body.CreatorDisplayName)
@@ -401,7 +357,7 @@ func (h *TabHandler) UpdateTab(c *gin.Context) {
 	if tab == nil {
 		return
 	}
-	if !h.requireCreator(c, tab.ID) {
+	if !h.requireCreator(c, tab.ID, "update tab settings") {
 		return
 	}
 
@@ -448,7 +404,7 @@ func (h *TabHandler) UpdateTab(c *gin.Context) {
 	c.JSON(200, gin.H{"status": "ok"})
 }
 
-func (h *TabHandler) requireCreator(c *gin.Context, tabID uint) bool {
+func (h *TabHandler) requireCreator(c *gin.Context, tabID uint, action string) bool {
 	members, err := h.service.GetMembers(tabID)
 	if err != nil {
 		log.Printf("internal error: %v", err)
@@ -460,7 +416,7 @@ func (h *TabHandler) requireCreator(c *gin.Context, tabID uint) bool {
 	}
 	member := h.getMemberFromQuery(c, tabID)
 	if member == nil || member.Role != "creator" {
-		c.JSON(403, gin.H{"error": "only the tab creator can update tab settings"})
+		c.JSON(403, gin.H{"error": "only the tab creator can " + action})
 		return false
 	}
 	return true
@@ -472,19 +428,8 @@ func (h *TabHandler) FinalizeTab(c *gin.Context) {
 		return
 	}
 
-	// If tab has members, only the creator can finalize
-	members, err := h.service.GetMembers(tab.ID)
-	if err != nil {
-		log.Printf("internal error: %v", err)
-		c.JSON(500, gin.H{"error": "an internal error occurred"})
+	if !h.requireCreator(c, tab.ID, "finalize") {
 		return
-	}
-	if len(members) > 0 {
-		member := h.getMemberFromQuery(c, tab.ID)
-		if member == nil || member.Role != "creator" {
-			c.JSON(403, gin.H{"error": "only the tab creator can finalize"})
-			return
-		}
 	}
 
 	settlements, err := h.service.FinalizeTab(tab.ID)

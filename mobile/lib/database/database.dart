@@ -28,7 +28,6 @@ import 'package:flutter/material.dart' hide Table, Tab;
 // Generated with dart run build_runner build --delete-conflicting-outputs
 part 'database.g.dart';
 
-// Database table for storing person information
 class People extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text()();
@@ -38,7 +37,6 @@ class People extends Table {
   IntColumn get useCount => integer().withDefault(const Constant(1))();
 }
 
-// Database table for storing people groups
 class PeopleGroups extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text()();
@@ -50,7 +48,6 @@ class PeopleGroups extends Table {
       dateTime().withDefault(Constant(DateTime.now()))();
 }
 
-// Junction table linking people to groups
 class PeopleGroupMembers extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get groupId =>
@@ -59,7 +56,6 @@ class PeopleGroupMembers extends Table {
       integer().references(People, #id, onDelete: KeyAction.cascade)();
 }
 
-// Database table for tracking tutorial completion status
 class TutorialStates extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get tutorialKey => text().unique()();
@@ -67,7 +63,6 @@ class TutorialStates extends Table {
   DateTimeColumn get lastShownDate => dateTime().nullable()();
 }
 
-// Database table for user preferences
 class UserPreferences extends Table {
   IntColumn get id => integer().autoIncrement()();
   BoolColumn get showAllItems => boolean().withDefault(const Constant(true))();
@@ -78,7 +73,6 @@ class UserPreferences extends Table {
       dateTime().withDefault(Constant(DateTime.now()))();
 }
 
-// Database table for storing tabs (group trips)
 class Tabs extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text()();
@@ -95,7 +89,6 @@ class Tabs extends Table {
       dateTime().withDefault(Constant(DateTime.now()))();
 }
 
-// Database table for storing bill history
 class RecentBills extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get billName => text().withDefault(const Constant(''))();
@@ -120,7 +113,6 @@ class RecentBills extends Table {
       text().withDefault(const Constant('native-usd'))();
 }
 
-// Main database class handling all database operations
 @DriftDatabase(
   tables: [
     People,
@@ -191,9 +183,7 @@ class AppDatabase extends _$AppDatabase {
     },
   );
 
-  // Converts database person entry to Person model
   Person peopleDataToPerson(PeopleData entry) {
-    // Properly capitalize each word in the name for display purposes
     String displayName =
         entry.name.isNotEmpty
             ? entry.name
@@ -288,7 +278,6 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
-  // Tutorial tracking methods
   Future<bool> hasTutorialBeenSeen(String tutorialKey) async {
     final query = select(tutorialStates)
       ..where((t) => t.tutorialKey.equals(tutorialKey));
@@ -322,7 +311,6 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
-  // User preferences management
   Future<ShareOptions> getShareOptions() async {
     final prefs =
         await (select(userPreferences)
@@ -354,7 +342,6 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
-  // Recent bills management (max 30 bills stored)
   static const int maxRecentBills = 30;
 
   // Stores a new bill in history
@@ -484,22 +471,12 @@ class AppDatabase extends _$AppDatabase {
     await delete(recentBills).go();
   }
 
-  /// Updates the name of a bill in the database
-  ///
-  /// This method allows renaming an existing bill by its ID.
-  ///
-  /// Parameters:
-  /// - id: The unique identifier of the bill to update
-  /// - newName: The new name to assign to the bill
-  ///
-  /// Returns a Future that completes when the operation is finished.
   Future<void> updateBillName(int id, String newName) async {
     await (update(recentBills)..where(
       (t) => t.id.equals(id),
     )).write(RecentBillsCompanion(billName: Value(newName)));
   }
 
-  /// Gets the most recently created bill
   Future<RecentBill?> getMostRecentBill() async {
     final query =
         select(recentBills)
@@ -508,21 +485,12 @@ class AppDatabase extends _$AppDatabase {
     return query.getSingleOrNull();
   }
 
-  /// Updates the share URL of a bill in the database
   Future<void> updateBillShareUrl(int id, String shareUrl) async {
     await (update(recentBills)..where(
       (t) => t.id.equals(id),
     )).write(RecentBillsCompanion(shareUrl: Value(shareUrl)));
   }
 
-  /// Gets a single bill by its ID
-  ///
-  /// This method retrieves a specific bill from the database by its ID.
-  ///
-  /// Parameters:
-  /// - id: The unique identifier of the bill to retrieve
-  ///
-  /// Returns the bill if found, or null if it doesn't exist.
   Future<RecentBill?> getBillById(int id) async {
     final query = select(recentBills)..where((b) => b.id.equals(id));
 
@@ -537,8 +505,6 @@ class AppDatabase extends _$AppDatabase {
     final query = select(recentBills)..where((b) => b.shareUrl.isNull());
     return query.get();
   }
-
-  // Tab management methods
 
   Future<List<Tab>> getAllTabs() async {
     final query = select(tabs)
@@ -563,8 +529,6 @@ class AppDatabase extends _$AppDatabase {
     return query.getSingleOrNull();
   }
 
-  // --- Group operations ---
-
   Future<int> createGroup(
     String name,
     List<int> personIds,
@@ -579,6 +543,11 @@ class AppDatabase extends _$AppDatabase {
         lastUsed: Value(DateTime.now()),
       ),
     );
+    await _addGroupMembers(groupId, personIds);
+    return groupId;
+  }
+
+  Future<void> _addGroupMembers(int groupId, List<int> personIds) async {
     for (final personId in personIds) {
       await into(peopleGroupMembers).insert(
         PeopleGroupMembersCompanion(
@@ -587,7 +556,6 @@ class AppDatabase extends _$AppDatabase {
         ),
       );
     }
-    return groupId;
   }
 
   Future<List<PeopleGroup>> getSavedGroups() async {
@@ -633,14 +601,7 @@ class AppDatabase extends _$AppDatabase {
   Future<void> updateGroupMembers(int groupId, List<int> personIds) async {
     await (delete(peopleGroupMembers)
       ..where((m) => m.groupId.equals(groupId))).go();
-    for (final personId in personIds) {
-      await into(peopleGroupMembers).insert(
-        PeopleGroupMembersCompanion(
-          groupId: Value(groupId),
-          personId: Value(personId),
-        ),
-      );
-    }
+    await _addGroupMembers(groupId, personIds);
   }
 
   Future<void> deleteGroup(int groupId) async {
@@ -674,14 +635,7 @@ class AppDatabase extends _$AppDatabase {
         lastUsed: Value(DateTime.now()),
       ),
     );
-    for (final personId in personIds) {
-      await into(peopleGroupMembers).insert(
-        PeopleGroupMembersCompanion(
-          groupId: Value(groupId),
-          personId: Value(personId),
-        ),
-      );
-    }
+    await _addGroupMembers(groupId, personIds);
     return groupId;
   }
 
@@ -692,7 +646,6 @@ class AppDatabase extends _$AppDatabase {
   }
 }
 
-// Database connection initialization
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();

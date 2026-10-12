@@ -2,13 +2,15 @@
 
 import { FaChevronDown, FaReceipt } from "react-icons/fa6";
 import { useCollapsible } from "@/hooks/useCollapsible";
-import { type Bill, formatMoney } from "@/lib/api";
+import type { Bill } from "@/lib/api";
+import { formatMoney } from "@/lib/currency";
 
 interface TabBillListProps {
   bills: Bill[];
+  tabToken: string;
 }
 
-function BillCard({ bill }: { bill: Bill }) {
+function BillCard({ bill, tabToken }: { bill: Bill; tabToken: string }) {
   const { isOpen, toggle, contentRef, height } = useCollapsible();
   return (
     <div className="bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-2xl overflow-hidden shadow-sm dark:shadow-none dark:border dark:border-[var(--border-dark)] transition-all duration-200">
@@ -74,13 +76,19 @@ function BillCard({ bill }: { bill: Bill }) {
               ))}
             </tbody>
           </table>
+          <a
+            href={`/b/${bill.id}?t=${encodeURIComponent(tabToken)}`}
+            className="mt-3 inline-flex text-xs font-semibold text-[var(--primary-dark)] underline dark:text-[var(--primary)]"
+          >
+            Open bill
+          </a>
         </div>
       </div>
     </div>
   );
 }
 
-export default function TabBillList({ bills }: TabBillListProps) {
+export default function TabBillList({ bills, tabToken }: TabBillListProps) {
   if (bills.length === 0) return null;
 
   return (
@@ -90,7 +98,7 @@ export default function TabBillList({ bills }: TabBillListProps) {
       </h2>
       <div className="space-y-3">
         {bills.map((bill) => (
-          <BillCard key={bill.id} bill={bill} />
+          <BillCard key={bill.id} bill={bill} tabToken={tabToken} />
         ))}
       </div>
     </div>

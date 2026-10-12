@@ -1,6 +1,7 @@
 package tab
 
 import (
+	billpkg "backend/internal/bill"
 	"backend/pkg/models"
 	"errors"
 	"time"
@@ -17,7 +18,6 @@ type TabRepository interface {
 	GetAuthById(id uint) (tab *models.Tab, err error)
 	GetForFinalization(id uint) (tab *models.Tab, err error)
 	Update(tab *models.Tab) error
-	Delete(id uint) error
 	AddBill(tabID uint, billID uint, billToken string, memberID *uint) error
 	UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error
 	UpdateBillPersonSharePaid(tabID uint, billID uint, shareID uint, paid bool) error
@@ -74,10 +74,6 @@ func (r *tabRepository) Update(tab *models.Tab) error {
 	}).Error
 }
 
-func (r *tabRepository) Delete(id uint) error {
-	return r.db.Delete(&models.Tab{}, id).Error
-}
-
 func (r *tabRepository) AddBill(tabID uint, billID uint, billToken string, memberID *uint) error {
 	updates := map[string]interface{}{"tab_id": tabID}
 	if memberID != nil {
@@ -109,9 +105,6 @@ func (r *tabRepository) UpdateBillItemAssignments(tabID uint, billID uint, itemI
 
 		var item models.BillItem
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND bill_id = ?", itemID, billID).First(&item).Error; err != nil {
-			if err == gorm.ErrRecordNotFound {
-				return err
-			}
 			return err
 		}
 		if expectedUpdatedAt != nil && !item.UpdatedAt.Equal(*expectedUpdatedAt) {
@@ -143,12 +136,11 @@ func (r *tabRepository) UpdateBillItemAssignments(tabID uint, billID uint, itemI
 			return err
 		}
 
-		shares := buildPersonShares(&refreshed)
-		if len(shares) == 0 {
-			return tx.Model(&models.BillItem{}).Where("id = ?", itemID).Update("updated_at", time.Now()).Error
-		}
-		if err := tx.Create(&shares).Error; err != nil {
-			return err
+		shares := billpkg.BuildPersonShares(&refreshed)
+		if len(shares) > 0 {
+			if err := tx.Create(&shares).Error; err != nil {
+				return err
+			}
 		}
 		return tx.Model(&models.BillItem{}).Where("id = ?", itemID).Update("updated_at", time.Now()).Error
 	})
