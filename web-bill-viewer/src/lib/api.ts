@@ -37,6 +37,7 @@ export interface PaymentMethod {
 
 export interface Bill {
   id: number;
+  lazy_mode?: boolean;
   name: string;
   subtotal: number;
   tax: number;
@@ -105,49 +106,30 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 export { API_BASE_URL };
 
-export function formatMoney(amount: number, currency = "USD"): string {
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency: currency.toUpperCase(),
-      maximumFractionDigits: 2,
-    }).format(amount);
-  } catch {
-    return `${currency.toUpperCase()} ${amount.toFixed(2)}`;
-  }
-}
-
 export async function getBill(id: string, token: string): Promise<Bill> {
-  const response = await fetch(`${API_BASE_URL}/api/bills/${id}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (!response.ok) {
-    if (response.status === 403) {
-      throw new Error("Invalid access token");
-    }
-    if (response.status === 404) {
-      throw new Error("Bill not found");
-    }
-    throw new Error("Failed to fetch bill");
-  }
-
-  return response.json();
+  return getAuthorizedResource<Bill>(`/api/bills/${id}`, token, "bill");
 }
 
 export async function getTab(id: string, token: string): Promise<Tab> {
-  const response = await fetch(`${API_BASE_URL}/api/tabs/${id}`, {
+  return getAuthorizedResource<Tab>(`/api/tabs/${id}`, token, "tab");
+}
+
+async function getAuthorizedResource<T>(
+  path: string,
+  token: string,
+  resourceName: "bill" | "tab",
+): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-
   if (!response.ok) {
-    if (response.status === 403) {
-      throw new Error("Invalid access token");
-    }
+    if (response.status === 403) throw new Error("Invalid access token");
     if (response.status === 404) {
-      throw new Error("Tab not found");
+      throw new Error(
+        resourceName === "bill" ? "Bill not found" : "Tab not found",
+      );
     }
-    throw new Error("Failed to fetch tab");
+    throw new Error(`Failed to fetch ${resourceName}`);
   }
 
   return response.json();
@@ -157,7 +139,22 @@ export async function getSettlements(
   id: string,
   token: string,
 ): Promise<TabSettlement[]> {
-  const response = await fetch(`${API_BASE_URL}/api/tabs/${id}/settlements`, {
+  return getTabCollection<TabSettlement>(id, "settlements", token);
+}
+
+export async function getTabMembers(
+  id: string,
+  token: string,
+): Promise<TabMember[]> {
+  return getTabCollection<TabMember>(id, "members", token);
+}
+
+async function getTabCollection<T>(
+  id: string,
+  collection: "settlements" | "members",
+  token: string,
+): Promise<T[]> {
+  const response = await fetch(`${API_BASE_URL}/api/tabs/${id}/${collection}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 
@@ -168,18 +165,20 @@ export async function getSettlements(
   return response.json();
 }
 
-export async function getTabMembers(
+export async function joinTab(
   id: string,
   token: string,
-): Promise<TabMember[]> {
-  const response = await fetch(`${API_BASE_URL}/api/tabs/${id}/members`, {
-    headers: { Authorization: `Bearer ${token}` },
+  displayName: string,
+): Promise<{ display_name: string; member_token: string }> {
+  const response = await fetch(`${API_BASE_URL}/api/tabs/${id}/join`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ display_name: displayName }),
   });
-
-  if (!response.ok) {
-    return [];
-  }
-
+  if (!response.ok) throw new Error("Failed to join tab");
   return response.json();
 }
 
@@ -189,21 +188,12 @@ export async function updatePersonSharePaid(
   paid: boolean,
   token: string,
 ): Promise<void> {
-  const response = await fetch(
-    `${API_BASE_URL}/api/bills/${billId}/shares/${shareId}`,
-    {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ paid }),
-    },
+  await patchPaidStatus(
+    `/api/bills/${billId}/shares/${shareId}`,
+    paid,
+    token,
+    "Failed to update share paid status",
   );
-
-  if (!response.ok) {
-    throw new Error("Failed to update share paid status");
-  }
 }
 
 export async function updateTabPersonSharePaid(
@@ -214,23 +204,13 @@ export async function updateTabPersonSharePaid(
   token: string,
   memberToken?: string,
 ): Promise<void> {
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-  if (memberToken) headers["X-Member-Token"] = memberToken;
-  const response = await fetch(
-    `${API_BASE_URL}/api/tabs/${tabId}/bills/${billId}/shares/${shareId}/paid`,
-    {
-      method: "PATCH",
-      headers,
-      body: JSON.stringify({ paid }),
-    },
+  await patchPaidStatus(
+    `/api/tabs/${tabId}/bills/${billId}/shares/${shareId}/paid`,
+    paid,
+    token,
+    "Failed to update lazy payment status",
+    memberToken,
   );
-
-  if (!response.ok) {
-    throw new Error("Failed to update lazy payment status");
-  }
 }
 
 export async function updateSettlementPaid(
@@ -239,20 +219,33 @@ export async function updateSettlementPaid(
   paid: boolean,
   token: string,
 ): Promise<void> {
-  const response = await fetch(
-    `${API_BASE_URL}/api/tabs/${tabId}/settlements/${settlementId}`,
-    {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ paid }),
-    },
+  await patchPaidStatus(
+    `/api/tabs/${tabId}/settlements/${settlementId}`,
+    paid,
+    token,
+    "Failed to update settlement paid status",
   );
+}
 
+async function patchPaidStatus(
+  path: string,
+  paid: boolean,
+  token: string,
+  failureMessage: string,
+  memberToken?: string,
+): Promise<void> {
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+  if (memberToken) headers["X-Member-Token"] = memberToken;
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({ paid }),
+  });
   if (!response.ok) {
-    throw new Error("Failed to update settlement paid status");
+    throw new Error(failureMessage);
   }
 }
 
@@ -263,26 +256,57 @@ export async function updateTabBillItemAssignments(
   assignments: ItemAssignment[],
   token: string,
   expectedUpdatedAt?: string,
+  memberToken?: string,
 ): Promise<void> {
-  const response = await fetch(
-    `${API_BASE_URL}/api/tabs/${tabId}/bills/${billId}/items/${itemId}/assignments`,
-    {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        assignments,
-        expected_updated_at: expectedUpdatedAt,
-      }),
-    },
+  await updateItemAssignments(
+    `/api/tabs/${tabId}/bills/${billId}/items/${itemId}/assignments`,
+    assignments,
+    token,
+    expectedUpdatedAt,
+    memberToken,
   );
+}
 
+export async function updateLazyBillItemAssignments(
+  billId: number,
+  itemId: number,
+  assignments: ItemAssignment[],
+  token: string,
+  expectedUpdatedAt?: string,
+): Promise<void> {
+  await updateItemAssignments(
+    `/api/bills/${billId}/items/${itemId}/assignments`,
+    assignments,
+    token,
+    expectedUpdatedAt,
+  );
+}
+
+async function updateItemAssignments(
+  path: string,
+  assignments: ItemAssignment[],
+  token: string,
+  expectedUpdatedAt: string | undefined,
+  memberToken?: string,
+): Promise<void> {
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+  if (memberToken) headers["X-Member-Token"] = memberToken;
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({
+      assignments,
+      expected_updated_at: expectedUpdatedAt,
+    }),
+  });
+
+  if (response.status === 409) {
+    throw new Error("item changed; refresh and try again");
+  }
   if (!response.ok) {
-    if (response.status === 409) {
-      throw new Error("item changed; refresh and try again");
-    }
     throw new Error("Failed to update item assignments");
   }
 }

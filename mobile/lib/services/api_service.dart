@@ -32,6 +32,95 @@ class ApiService {
 
   String get baseUrl => ApiConfig.baseUrl;
 
+  Future<T> _withStandardErrors<T>(Future<T> Function() request) async {
+    try {
+      return await request();
+    } on ApiException {
+      rethrow;
+    } on TimeoutException {
+      throw ApiException(
+        'Request timed out. Check your connection.',
+        isTimeout: true,
+      );
+    } on SocketException {
+      throw ApiException('Could not connect to server.', isNetworkError: true);
+    } catch (_) {
+      throw ApiException('An unexpected error occurred.');
+    }
+  }
+
+  Future<Map<String, dynamic>> getSharedBill(
+    String billId,
+    String token,
+  ) async {
+    final response = await http
+        .get(
+          Uri.parse('$baseUrl/api/bills/$billId'),
+          headers: {'Authorization': 'Bearer $token'},
+        )
+        .timeout(_timeout);
+    if (response.statusCode != 200) {
+      throw ApiException(
+        'Could not load this bill',
+        statusCode: response.statusCode,
+      );
+    }
+    final data = jsonDecode(response.body);
+    if (data is! Map<String, dynamic>) {
+      throw ApiException('Invalid bill response');
+    }
+    return data;
+  }
+
+  Future<void> updateLazyBillItemAssignments({
+    required String billId,
+    required int itemId,
+    required String token,
+    required List<Map<String, dynamic>> assignments,
+    String? expectedUpdatedAt,
+  }) async {
+    final response = await http
+        .patch(
+          Uri.parse('$baseUrl/api/bills/$billId/items/$itemId/assignments'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode({
+            'assignments': assignments,
+            'expected_updated_at': expectedUpdatedAt,
+          }),
+        )
+        .timeout(_timeout);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(
+        'Could not save item selection',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  Future<void> updateSharedBillPaid({
+    required String billId,
+    required int shareId,
+    required String token,
+    required bool paid,
+  }) async {
+    final response = await http
+        .patch(
+          Uri.parse('$baseUrl/api/bills/$billId/shares/$shareId'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode({'paid': paid}),
+        )
+        .timeout(_timeout);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException('Could not update payment status');
+    }
+  }
+
   Future<double> getCurrencyRate(String from, String to) async {
     final uri = Uri.parse(
       '$baseUrl/api/currency/rate?from=${from.toUpperCase()}&to=${to.toUpperCase()}',
@@ -65,29 +154,24 @@ class ApiService {
     required List<Map<String, String>> paymentMethods,
     String currencyCode = 'USD',
     String? displayCurrency,
+    bool lazyMode = false,
   }) async {
-    try {
-      // Build the request body matching backend's CreateBillRequest
-      final requestBody = {
-        'name': billName,
-        'subtotal': subtotal,
-        'tax': tax,
-        'tip_amount': tipAmount,
-        'tip_percentage': tipPercentage,
-        'total': total,
-        'participants': participants.map((p) => {'name': p.name}).toList(),
-        'items': _buildItemsJson(items, participants),
-        'person_shares': _buildPersonSharesJson(
-          personShares,
-          items,
-          tax,
-          tipAmount,
-          total,
-        ),
-        'payment_methods': paymentMethods,
-        'currency_code': currencyCode,
-        'display_currency': displayCurrency ?? currencyCode,
-      };
+    return _withStandardErrors(() async {
+      final requestBody = buildBillRequest(
+        billName: billName,
+        participants: participants,
+        personShares: personShares,
+        items: items,
+        subtotal: subtotal,
+        tax: tax,
+        tipAmount: tipAmount,
+        tipPercentage: tipPercentage,
+        total: total,
+        paymentMethods: paymentMethods,
+        currencyCode: currencyCode,
+        displayCurrency: displayCurrency,
+        lazyMode: lazyMode,
+      );
 
       final response = await http
           .post(
@@ -115,18 +199,7 @@ class ApiService {
           statusCode: response.statusCode,
         );
       }
-    } on ApiException {
-      rethrow;
-    } on TimeoutException {
-      throw ApiException(
-        'Request timed out. Check your connection.',
-        isTimeout: true,
-      );
-    } on SocketException {
-      throw ApiException('Could not connect to server.', isNetworkError: true);
-    } catch (e) {
-      throw ApiException('An unexpected error occurred.');
-    }
+    });
   }
 
   Future<ExchangeRateQuote> getExchangeRate(String currencyCode) async {
@@ -178,6 +251,8 @@ class ApiService {
     required double total,
     required List<Map<String, String>> paymentMethods,
     required String currencyCode,
+    String? displayCurrency,
+    bool lazyMode = false,
   }) {
     return {
       'name': billName,
@@ -187,8 +262,10 @@ class ApiService {
       'tip_percentage': tipPercentage,
       'total': total,
       'currency_code': currencyCode,
+      'display_currency': displayCurrency ?? currencyCode,
+      'lazy_mode': lazyMode,
       'participants': participants.map((p) => {'name': p.name}).toList(),
-      'items': _buildItemsJson(items, participants),
+      'items': _buildItemsJson(items),
       'person_shares': _buildPersonSharesJson(
         personShares,
         items,
@@ -200,11 +277,7 @@ class ApiService {
     };
   }
 
-  /// Builds the items JSON structure with assignments
-  List<Map<String, dynamic>> _buildItemsJson(
-    List<BillItem> items,
-    List<Person> participants,
-  ) {
+  List<Map<String, dynamic>> _buildItemsJson(List<BillItem> items) {
     return items.map((item) {
       // Map person assignments using person names
       final assignments = <Map<String, dynamic>>[];
@@ -228,7 +301,7 @@ class ApiService {
     String? creatorDisplayName,
     String displayCurrency = 'USD',
   }) async {
-    try {
+    return _withStandardErrors(() async {
       final body = <String, dynamic>{
         'name': name,
         'description': description,
@@ -264,18 +337,7 @@ class ApiService {
           statusCode: response.statusCode,
         );
       }
-    } on ApiException {
-      rethrow;
-    } on TimeoutException {
-      throw ApiException(
-        'Request timed out. Check your connection.',
-        isTimeout: true,
-      );
-    } on SocketException {
-      throw ApiException('Could not connect to server.', isNetworkError: true);
-    } catch (e) {
-      throw ApiException('An unexpected error occurred.');
-    }
+    });
   }
 
   Future<void> updateTabDisplayCurrency(
@@ -307,14 +369,14 @@ class ApiService {
   }
 
   /// Adds a bill to a tab on the backend
-  Future<bool> addBillToTab(
+  Future<void> addBillToTab(
     int tabId,
     int billId,
     String accessToken, {
     required String billToken,
     String? memberToken,
   }) async {
-    try {
+    await _withStandardErrors(() async {
       final headers = <String, String>{
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $accessToken',
@@ -331,26 +393,13 @@ class ApiService {
           )
           .timeout(_timeout);
 
-      if (response.statusCode == 200) {
-        return true;
-      } else {
+      if (response.statusCode != 200) {
         throw ApiException(
           'Failed to add bill to tab',
           statusCode: response.statusCode,
         );
       }
-    } on ApiException {
-      rethrow;
-    } on TimeoutException {
-      throw ApiException(
-        'Request timed out. Check your connection.',
-        isTimeout: true,
-      );
-    } on SocketException {
-      throw ApiException('Could not connect to server.', isNetworkError: true);
-    } catch (e) {
-      throw ApiException('An unexpected error occurred.');
-    }
+    });
   }
 
   /// Finalizes a tab, locking it from further edits and creating settlements
@@ -359,7 +408,7 @@ class ApiService {
     String accessToken, {
     String? memberToken,
   }) async {
-    try {
+    return _withStandardErrors(() async {
       final headers = <String, String>{'Authorization': 'Bearer $accessToken'};
       if (memberToken != null) {
         headers['X-Member-Token'] = memberToken;
@@ -386,18 +435,7 @@ class ApiService {
           statusCode: response.statusCode,
         );
       }
-    } on ApiException {
-      rethrow;
-    } on TimeoutException {
-      throw ApiException(
-        'Request timed out. Check your connection.',
-        isTimeout: true,
-      );
-    } on SocketException {
-      throw ApiException('Could not connect to server.', isNetworkError: true);
-    } catch (e) {
-      throw ApiException('An unexpected error occurred.');
-    }
+    });
   }
 
   /// Gets settlements for a finalized tab
@@ -405,7 +443,7 @@ class ApiService {
     int tabId,
     String accessToken,
   ) async {
-    try {
+    return _withStandardErrors(() async {
       final response = await http
           .get(
             Uri.parse('$baseUrl/api/tabs/$tabId/settlements'),
@@ -427,29 +465,18 @@ class ApiService {
           statusCode: response.statusCode,
         );
       }
-    } on ApiException {
-      rethrow;
-    } on TimeoutException {
-      throw ApiException(
-        'Request timed out. Check your connection.',
-        isTimeout: true,
-      );
-    } on SocketException {
-      throw ApiException('Could not connect to server.', isNetworkError: true);
-    } catch (e) {
-      throw ApiException('An unexpected error occurred.');
-    }
+    });
   }
 
   /// Toggles the paid status of a settlement
-  Future<bool> updateSettlement(
+  Future<void> updateSettlement(
     int tabId,
     int settlementId,
     String accessToken,
     bool paid, {
     String? memberToken,
   }) async {
-    try {
+    await _withStandardErrors(() async {
       final headers = <String, String>{
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $accessToken',
@@ -464,26 +491,13 @@ class ApiService {
             body: jsonEncode({'paid': paid}),
           )
           .timeout(_timeout);
-      if (response.statusCode == 200) {
-        return true;
-      } else {
+      if (response.statusCode != 200) {
         throw ApiException(
           'Failed to update settlement',
           statusCode: response.statusCode,
         );
       }
-    } on ApiException {
-      rethrow;
-    } on TimeoutException {
-      throw ApiException(
-        'Request timed out. Check your connection.',
-        isTimeout: true,
-      );
-    } on SocketException {
-      throw ApiException('Could not connect to server.', isNetworkError: true);
-    } catch (e) {
-      throw ApiException('An unexpected error occurred.');
-    }
+    });
   }
 
   /// Joins a tab as a new member
@@ -493,7 +507,7 @@ class ApiService {
     String displayName, {
     String? memberToken,
   }) async {
-    try {
+    return _withStandardErrors(() async {
       final headers = <String, String>{
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $accessToken',
@@ -529,18 +543,7 @@ class ApiService {
                 : 'Failed to join tab';
         throw ApiException(message, statusCode: response.statusCode);
       }
-    } on ApiException {
-      rethrow;
-    } on TimeoutException {
-      throw ApiException(
-        'Request timed out. Check your connection.',
-        isTimeout: true,
-      );
-    } on SocketException {
-      throw ApiException('Could not connect to server.', isNetworkError: true);
-    } catch (e) {
-      throw ApiException('An unexpected error occurred.');
-    }
+    });
   }
 
   Future<void> leaveTab(
@@ -548,7 +551,7 @@ class ApiService {
     String accessToken,
     String memberToken,
   ) async {
-    try {
+    await _withStandardErrors(() async {
       final response = await http
           .delete(
             Uri.parse('$baseUrl/api/tabs/$tabId/members/me'),
@@ -566,18 +569,7 @@ class ApiService {
           statusCode: response.statusCode,
         );
       }
-    } on ApiException {
-      rethrow;
-    } on TimeoutException {
-      throw ApiException(
-        'Request timed out. Check your connection.',
-        isTimeout: true,
-      );
-    } on SocketException {
-      throw ApiException('Could not connect to server.', isNetworkError: true);
-    } catch (_) {
-      throw ApiException('An unexpected error occurred.');
-    }
+    });
   }
 
   /// Gets members of a tab
@@ -585,7 +577,7 @@ class ApiService {
     int tabId,
     String accessToken,
   ) async {
-    try {
+    return _withStandardErrors(() async {
       final response = await http
           .get(
             Uri.parse('$baseUrl/api/tabs/$tabId/members'),
@@ -607,23 +599,12 @@ class ApiService {
           statusCode: response.statusCode,
         );
       }
-    } on ApiException {
-      rethrow;
-    } on TimeoutException {
-      throw ApiException(
-        'Request timed out. Check your connection.',
-        isTimeout: true,
-      );
-    } on SocketException {
-      throw ApiException('Could not connect to server.', isNetworkError: true);
-    } catch (e) {
-      throw ApiException('An unexpected error occurred.');
-    }
+    });
   }
 
   /// Fetches full tab data from the backend
   Future<Map<String, dynamic>> getTabData(int tabId, String accessToken) async {
-    try {
+    return _withStandardErrors(() async {
       final response = await http
           .get(
             Uri.parse('$baseUrl/api/tabs/$tabId'),
@@ -643,18 +624,7 @@ class ApiService {
           statusCode: response.statusCode,
         );
       }
-    } on ApiException {
-      rethrow;
-    } on TimeoutException {
-      throw ApiException(
-        'Request timed out. Check your connection.',
-        isTimeout: true,
-      );
-    } on SocketException {
-      throw ApiException('Could not connect to server.', isNetworkError: true);
-    } catch (e) {
-      throw ApiException('An unexpected error occurred.');
-    }
+    });
   }
 
   /// Builds the person_shares JSON structure

@@ -42,6 +42,7 @@ import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_fo
 class RecentBillCard extends StatefulWidget {
   /// The bill model containing data to display
   final RecentBillModel bill;
+  final bool showBillTotalsInUSD;
 
   /// Callback function to notify parent when this bill is deleted
   final VoidCallback onDeleted;
@@ -55,6 +56,7 @@ class RecentBillCard extends StatefulWidget {
   const RecentBillCard({
     super.key,
     required this.bill,
+    this.showBillTotalsInUSD = false,
     required this.onDeleted,
     required this.onRefreshNeeded,
     this.onRetryUpload,
@@ -114,7 +116,11 @@ class _RecentBillCardState extends State<RecentBillCard> {
     final wasUpdated = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (context) => BillDetailsScreen(bill: widget.bill),
+        builder:
+            (context) => BillDetailsScreen(
+              bill: widget.bill,
+              showBillTotalsInUSD: widget.showBillTotalsInUSD,
+            ),
       ),
     );
 
@@ -323,8 +329,13 @@ class _RecentBillCardState extends State<RecentBillCard> {
                                 fit: BoxFit.scaleDown,
                                 child: Text(
                                   CurrencyFormatter.formatCurrency(
-                                    widget.bill.total,
-                                    currencyCode: widget.bill.currencyCode,
+                                    widget.showBillTotalsInUSD
+                                        ? widget.bill.usdTotal
+                                        : widget.bill.total,
+                                    currencyCode:
+                                        widget.showBillTotalsInUSD
+                                            ? 'USD'
+                                            : widget.bill.currencyCode,
                                   ),
                                   style: TextStyle(
                                     fontSize: 18,

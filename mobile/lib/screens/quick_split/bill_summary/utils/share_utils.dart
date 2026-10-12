@@ -24,13 +24,11 @@ import 'calculation_utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 
-/// ShareUtils - Utility for generating and sharing bill summaries
-///
-/// Contains methods for retrieving payment information, generating formatted
-/// bill summary text (with multiple options), and sharing the summary with others.
 class ShareUtils {
-  /// Retrieves payment method information from shared preferences
-  static Future<Map<String, dynamic>> getPaymentInfo() async {
+  static Future<
+    ({List<String> selectedPayments, Map<String, String> identifiers})
+  >
+  getPaymentInfo() async {
     final prefs = await SharedPreferences.getInstance();
 
     final selectedPayments = prefs.getStringList('selectedPayments') ?? [];
@@ -43,10 +41,10 @@ class ShareUtils {
       }
     }
 
-    return {
-      'selectedPayments': selectedPayments,
-      'paymentIdentifiers': paymentIdentifiers,
-    };
+    return (
+      selectedPayments: selectedPayments,
+      identifiers: paymentIdentifiers,
+    );
   }
 
   /// Generates formatted text for bill summary with person-based lookups
@@ -69,7 +67,6 @@ class ShareUtils {
   }) async {
     String money(double value) =>
         CurrencyFormatter.formatCurrency(value, currencyCode: currencyCode);
-    // Sort participants by payment amount (highest first)
     final sortedParticipants = List<Person>.from(participants);
     sortedParticipants.sort((a, b) {
       final aShare = personShares[a] ?? 0;
@@ -77,15 +74,12 @@ class ShareUtils {
       return bShare.compareTo(aShare);
     });
 
-    // Get payment information
     final paymentInfo = await getPaymentInfo();
-    final selectedPayments = paymentInfo['selectedPayments'] as List<String>;
-    final paymentIdentifiers =
-        paymentInfo['paymentIdentifiers'] as Map<String, String>;
+    final selectedPayments = paymentInfo.selectedPayments;
+    final paymentIdentifiers = paymentInfo.identifiers;
 
     StringBuffer text = StringBuffer();
 
-    // Add bill name if provided
     if (billName != null && billName.isNotEmpty) {
       text.writeln(billName.toUpperCase());
       text.writeln('───────────────');
@@ -121,13 +115,10 @@ class ShareUtils {
 
     text.writeln('INDIVIDUAL SHARES:');
 
-    bool anySharesWritten = false;
-
     for (var person in sortedParticipants) {
       final share = personShares[person] ?? 0;
 
       if (share > 0 || person == birthdayPerson) {
-        anySharesWritten = true;
         if (person == birthdayPerson) {
           text.writeln('• 🎂 ${person.name}: ${money(share)}');
         } else {
@@ -135,16 +126,13 @@ class ShareUtils {
         }
 
         if (showPersonItems && items.isNotEmpty) {
-          // Use calculation utils to get personal breakdown
           final amounts = CalculationUtils.calculatePersonAmounts(
             person: person,
-            participants: participants,
             personShares: personShares,
             items: items,
             subtotal: subtotal,
             tax: tax,
             tipAmount: tipAmount,
-            birthdayPerson: birthdayPerson,
           );
           List<String> personItems = [];
 
@@ -171,156 +159,6 @@ class ShareUtils {
             text.writeln(
               "  + Tax & tip: ${money(amounts['tax']! + amounts['tip']!)}",
             );
-
-            text.writeln('');
-          }
-        }
-      }
-    }
-
-    if (!anySharesWritten) {
-      // Keep this as an error log
-      debugPrint("ERROR: No individual shares were written!");
-    }
-
-    // Add payment details if available
-    if (selectedPayments.isNotEmpty && paymentIdentifiers.isNotEmpty) {
-      text.writeln('───────────────');
-      text.writeln('PAYMENT DETAILS:');
-
-      for (var i = 0; i < selectedPayments.length; i++) {
-        final method = selectedPayments[i];
-        final identifier = paymentIdentifiers[method];
-
-        if (identifier != null && identifier.isNotEmpty) {
-          text.writeln('$method: $identifier');
-        }
-      }
-    }
-
-    text.writeln('───────────────');
-    text.writeln('Split with Billington');
-
-    return text.toString();
-  }
-
-  /// Alternative implementation using name-based lookups for more reliable matching
-  /// when Person object equality may fail (e.g., after serialization/deserialization)
-  static Future<String> generateShareTextWithNameLookup({
-    required List<Person> participants,
-    required Map<String, double> personSharesByName,
-    required List<BillItem> items,
-    required double subtotal,
-    required double tax,
-    required double tipAmount,
-    required double total,
-    required double tipPercentage,
-    required bool isCustomTipAmount,
-    required bool showAllItems,
-    required bool showPersonItems,
-    required bool showBreakdown,
-    String? billName,
-    String currencyCode = 'USD',
-  }) async {
-    String money(double value) =>
-        CurrencyFormatter.formatCurrency(value, currencyCode: currencyCode);
-    // Sort participants by payment amount (highest first)
-    final sortedParticipants = List<Person>.from(participants);
-    sortedParticipants.sort((a, b) {
-      final aShare = personSharesByName[a.name] ?? 0;
-      final bShare = personSharesByName[b.name] ?? 0;
-      return bShare.compareTo(aShare);
-    });
-
-    final paymentInfo = await getPaymentInfo();
-    final selectedPayments = paymentInfo['selectedPayments'] as List<String>;
-    final paymentIdentifiers =
-        paymentInfo['paymentIdentifiers'] as Map<String, String>;
-
-    StringBuffer text = StringBuffer();
-
-    // Add bill name if provided
-    if (billName != null && billName.isNotEmpty) {
-      text.writeln(billName.toUpperCase());
-      text.writeln('───────────────');
-    }
-
-    text.writeln('BILL SUMMARY');
-    text.writeln('Total: ${money(total)}');
-    text.writeln('───────────────');
-
-    if (showAllItems && items.isNotEmpty) {
-      text.writeln('ITEMS:');
-      for (var item in items) {
-        text.writeln('• ${item.name}: ${money(item.price)}');
-      }
-      text.writeln('───────────────');
-    }
-
-    if (showBreakdown) {
-      text.writeln('BREAKDOWN:');
-      text.writeln('Subtotal: ${money(subtotal)}');
-      text.writeln('Tax: ${money(tax)}');
-
-      if (isCustomTipAmount) {
-        text.writeln('Tip: ${money(tipAmount)}');
-      } else {
-        text.writeln(
-          'Tip (${tipPercentage.toStringAsFixed(0)}%): ${money(tipAmount)}',
-        );
-      }
-
-      text.writeln('───────────────');
-    }
-
-    text.writeln('INDIVIDUAL SHARES:');
-
-    for (var person in sortedParticipants) {
-      final share = personSharesByName[person.name] ?? 0;
-
-      if (share > 0) {
-        text.writeln('• ${person.name}: ${money(share)}');
-
-        if (showPersonItems && items.isNotEmpty) {
-          List<String> personItems = [];
-
-          for (var item in items) {
-            // Find assignments by matching person name instead of object reference
-            bool hasAssignment = false;
-            double percentage = 0.0;
-            double amount = 0.0;
-
-            item.assignments.forEach((assignedPerson, assignedPercentage) {
-              if (assignedPerson.name == person.name &&
-                  assignedPercentage > 0) {
-                hasAssignment = true;
-                percentage = assignedPercentage / 100.0;
-                amount = item.price * percentage;
-              }
-            });
-
-            if (hasAssignment) {
-              String sharedText = "";
-              if (percentage < 0.99) {
-                sharedText = " (shared)";
-              }
-
-              personItems.add('  - ${item.name}: ${money(amount)}$sharedText');
-            }
-          }
-
-          if (personItems.isNotEmpty) {
-            for (var itemText in personItems) {
-              text.writeln(itemText);
-            }
-
-            if (!showBreakdown) {
-              // Calculate tax and tip based on proportion of total
-              final proportion = share / total;
-              final taxAndTipPortion = proportion * (tax + tipAmount);
-
-              text.writeln('  + Tax & tip: ${money(taxAndTipPortion)}');
-            }
 
             text.writeln('');
           }

@@ -5,7 +5,9 @@ import (
 	"backend/internal/currency"
 	"backend/internal/receipt"
 	"backend/internal/tab"
+	"backend/internal/versionpolicy"
 	"backend/pkg/database"
+	"backend/pkg/safehttp"
 	"fmt"
 	"log"
 	"net/http"
@@ -43,7 +45,8 @@ func main() {
 		receiptHandler = receipt.NewHandler(receiptService)
 	}
 
-	r := gin.Default()
+	r := gin.New()
+	r.Use(safehttp.RequestLogger(), gin.Recovery())
 
 	// Security headers
 	r.Use(func(c *gin.Context) {
@@ -70,11 +73,13 @@ func main() {
 		ExposeHeaders: []string{"Content-Length"},
 	}))
 	r.GET("/health", getHealth)
+	r.GET("/api/app/version-policy", versionpolicy.Handler())
 	r.GET("/api/currency/rate", currencyHandler.GetRate)
 	r.GET("/api/bills/:id", handler.GetBill)
 	r.POST("/api/bills", handler.CreateBill)
 	r.GET("/api/exchange-rates/:currency", handler.GetExchangeRate)
 	r.PATCH("/api/bills/:id/shares/:shareId", handler.UpdatePersonSharePaid)
+	r.PATCH("/api/bills/:id/items/:itemId/assignments", handler.UpdateLazyItemAssignments)
 	r.POST("/api/tabs", tabHandler.CreateTab)
 	r.GET("/api/tabs/:id", tabHandler.GetTab)
 	r.POST("/api/tabs/:id/bills", tabHandler.AddBillToTab)

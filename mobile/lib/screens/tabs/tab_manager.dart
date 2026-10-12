@@ -33,7 +33,7 @@ class TabManager extends ChangeNotifier {
         _tabsStreamController.add(tabs);
       }
       return tabs;
-    } catch (e) {
+    } catch (_) {
       debugPrint('Error fetching tabs');
       return [];
     }
@@ -67,7 +67,7 @@ class TabManager extends ChangeNotifier {
       final tab = await _tabDataToAppTab(tabData);
       notifyListeners();
       return tab;
-    } catch (e) {
+    } catch (_) {
       debugPrint('Error creating tab');
       return null;
     }
@@ -78,7 +78,7 @@ class TabManager extends ChangeNotifier {
       await DatabaseProvider.db.deleteTab(id);
       await getAllTabs();
       notifyListeners();
-    } catch (e) {
+    } catch (_) {
       debugPrint('Error deleting tab');
     }
   }
@@ -168,8 +168,6 @@ class TabManager extends ChangeNotifier {
       );
       await DatabaseProvider.db.updateTab(localId, companion);
       notifyListeners();
-    } on ApiException {
-      debugPrint('Error syncing tab to backend');
     } catch (_) {
       debugPrint('Error syncing tab to backend');
     }
@@ -250,9 +248,6 @@ class TabManager extends ChangeNotifier {
 
       notifyListeners();
       return true;
-    } on ApiException {
-      debugPrint('Error finalizing tab');
-      return false;
     } catch (_) {
       debugPrint('Error finalizing tab');
       return false;
@@ -355,8 +350,6 @@ class TabManager extends ChangeNotifier {
       await getAllTabs();
       notifyListeners();
       return true;
-    } on ApiException {
-      return false;
     } catch (_) {
       return false;
     }

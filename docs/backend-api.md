@@ -2,7 +2,7 @@
 
 Base URL: `http://localhost:8080` (development)
 
-All tab and bill endpoints require an access token passed as the `t` query parameter. Member attribution uses the optional `m` query parameter.
+Bill reads accept the bill's `t` token, or the containing tab's token for a read-only bill view. Bill writes require the bill token. Tab writes may also require an `X-Member-Token` header; member attribution uses the optional `m` query parameter.
 
 ## Health
 
@@ -14,6 +14,19 @@ Returns service status.
 ```json
 { "status": "bill service - ok" }
 ```
+
+### `GET /api/app/version-policy`
+
+Returns the public mobile compatibility policy. Response headers include `Cache-Control: no-store` so operators can raise the minimum without stale client caches. The mobile client fails open if the endpoint is unavailable; this is not an API authorization mechanism.
+
+```json
+{
+  "minimum_supported_version": "2.0.3",
+  "store_url": "https://apps.apple.com/app/id6746379502"
+}
+```
+
+Set `MINIMUM_SUPPORTED_APP_VERSION` on the bill service to a numeric `major.minor.patch` value only after the new release is available in the store. Invalid values fall back to `2.0.3`.
 
 ---
 
@@ -27,6 +40,7 @@ Create a new bill.
 ```json
 {
   "name": "Dinner at Chilis",
+  "lazy_mode": false,
   "subtotal": 138.00,
   "tax": 8.28,
   "tip_amount": 27.60,
@@ -63,6 +77,8 @@ Create a new bill.
   ]
 }
 ```
+
+Set `lazy_mode` to `true` for an item-claim bill. The bill remains standalone and is shared at `/b/:id`; creating it does not create a tab. Participants and person shares may be empty while people claim receipt items.
 
 **Response** `201`
 ```json
@@ -113,6 +129,26 @@ Get a bill by ID.
 |--------|------|---------|
 | 403 | `{"error": "token mismatch"}` | Invalid access token |
 | 404 | `{"error": "bill not found"}` | Bill does not exist |
+
+### `PATCH /api/bills/:id/items/:itemId/assignments`
+
+Update one item's claim on a standalone lazy bill. Supply the bill access token as `Authorization: Bearer <token>` or `?t=<token>`. The item timestamp is an optimistic concurrency precondition; stale writes return `409` and should refresh the bill.
+
+**Request Body**
+```json
+{
+  "expected_updated_at": "2026-10-10T17:30:54.055105Z",
+  "assignments": [
+    { "person_name": "Alex", "percentage": 100 }
+  ]
+}
+```
+
+Assignments must use unique, non-empty names of at most 30 characters and total 100 percent. An empty array releases an unpaid item's claim. Items in a paid share are locked. This endpoint rejects ordinary bills and bills already attached to a trip.
+
+**Response** `200`: `{"status":"ok"}`
+
+**Errors** `400` for invalid assignments/non-lazy bills, `403` for an invalid token, `404` for a missing bill item, and `409` for stale or paid-item conflicts.
 
 ---
 

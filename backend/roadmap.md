@@ -455,3 +455,11 @@ railway up
 # Frontend to Vercel
 vercel --prod
 ```
+
+## 2.0.4 — Standalone Lazy Bills
+
+- [x] Create lazy bills as standalone bills with bill-level item selection.
+- [x] Keep historical lazy-mode trip links interactive and preserve normal trip summaries.
+- [x] Route bill and trip deep links to their respective viewers.
+- [ ] Deploy backend and web changes, then verify the hosted legacy sample and a new standalone lazy bill.
+- [x] Add the mobile bill-history currency preference and minimum supported app-version policy; see `tasks/todo.md` for verification and launch steps.

@@ -1,6 +1,5 @@
-# Keep the image toolchain aligned with backend/go.mod. Go 1.25.13 includes
-# the standard-library security fixes required by govulncheck.
-FROM golang:1.25.13 AS build
+# Keep the image toolchain aligned with backend/go.mod and current security fixes.
+FROM golang:1.27.2 AS build
 
 WORKDIR /app
 COPY . .

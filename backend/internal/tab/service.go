@@ -258,14 +258,10 @@ func allocateUSDShareCents(bill models.Bill) []int64 {
 // and returns simplified "who owes whom" transactions using greedy settlement.
 func ComputeNetBalances(tab *models.Tab) []models.NetBalance {
 	memberNames := make(map[uint]string)
-	for _, m := range tab.Members {
-		memberNames[m.ID] = m.DisplayName
-	}
-
 	displayNames := make(map[string]string)
 	for _, m := range tab.Members {
-		key := strings.ToLower(m.DisplayName)
-		displayNames[key] = m.DisplayName
+		memberNames[m.ID] = m.DisplayName
+		displayNames[strings.ToLower(m.DisplayName)] = m.DisplayName
 	}
 
 	nets := make(map[string]int64)

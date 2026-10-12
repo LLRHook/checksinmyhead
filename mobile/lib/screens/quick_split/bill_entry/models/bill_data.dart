@@ -62,7 +62,7 @@ class BillData extends ChangeNotifier {
           _exchangeRateQuote.isValid);
   double get usdTotal => _exchangeRateQuote.convertToUSD(total);
 
-  void setCurrencyCode(String value) {
+  void selectCurrency(String value) {
     currencyCode = value.toUpperCase();
     _exchangeRateQuote =
         currencyCode == defaultCurrencyCode
@@ -77,8 +77,6 @@ class BillData extends ChangeNotifier {
     _exchangeRateError = null;
     notifyListeners();
   }
-
-  void selectCurrency(String value) => setCurrencyCode(value);
 
   void setExchangeRateLoading() {
     _isLoadingExchangeRate = true;
@@ -158,27 +156,12 @@ class BillData extends ChangeNotifier {
 
   /// Calculates bill totals based on current input values
   void calculateBill() {
-    // Parse subtotal with error handling
-    try {
-      subtotal = double.tryParse(subtotalController.text) ?? 0.0;
-    } catch (_) {
-      subtotal = 0.0;
-    }
-
-    // Parse tax with error handling
-    try {
-      tax = double.tryParse(taxController.text) ?? 0.0;
-    } catch (_) {
-      tax = 0.0;
-    }
+    subtotal = double.tryParse(subtotalController.text) ?? 0.0;
+    tax = double.tryParse(taxController.text) ?? 0.0;
 
     // Calculate tip based on mode (percentage or custom amount)
     if (useCustomTipAmount) {
-      try {
-        tipAmount = double.tryParse(customTipController.text) ?? 0.0;
-      } catch (_) {
-        tipAmount = 0.0;
-      }
+      tipAmount = double.tryParse(customTipController.text) ?? 0.0;
     } else {
       tipAmount = subtotal * (tipPercentage / 100);
     }

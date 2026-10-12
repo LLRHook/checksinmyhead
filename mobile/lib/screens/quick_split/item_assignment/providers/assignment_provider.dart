@@ -144,7 +144,6 @@ class AssignmentProvider extends ChangeNotifier {
     double unassignedAmount = _data.subtotal - assignedAmount;
 
     // Calculate tax and tip distribution proportionally
-    Map<Person, double> personTaxAndTip = {};
     Map<Person, double> personFinalShares = {};
 
     double totalTaxAndTip = _data.tax + _data.tipAmount;
@@ -154,12 +153,9 @@ class AssignmentProvider extends ChangeNotifier {
         // Calculate proportional tax and tip
         double proportion = entry.value / assignedAmount;
         double taxAndTipShare = totalTaxAndTip * proportion;
-        personTaxAndTip[entry.key] = taxAndTipShare;
-
         // Final share includes items plus tax and tip
         personFinalShares[entry.key] = entry.value + taxAndTipShare;
       } else {
-        personTaxAndTip[entry.key] = 0.0;
         personFinalShares[entry.key] = 0.0;
       }
     }
@@ -263,7 +259,7 @@ class AssignmentProvider extends ChangeNotifier {
     if (assignedPeople.isEmpty) return;
 
     Map<Person, double> newAssignments =
-        AssignmentUtils.balanceItemBetweenAssignees(item, assignedPeople);
+        AssignmentUtils.balanceItemBetweenAssignees(assignedPeople);
     assignItem(item, newAssignments);
   }
 
