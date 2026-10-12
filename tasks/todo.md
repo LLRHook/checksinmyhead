@@ -157,11 +157,12 @@
 
 ## Post-merge CI fix and TestFlight release (active)
 
-- [ ] Confirm the audit PR merge and resolve its failing backend race check in a focused follow-up.
-- [ ] Bump the app version and build number consistently across Flutter, iOS, and the visible Settings label.
-- [ ] Run backend, mobile, and relevant release checks; review the exact follow-up diff.
-- [ ] Open a new PR, wait for required checks, and merge the verified release change.
-- [ ] Trigger the TestFlight workflow from the merged release commit and confirm upload/processing status.
+- [x] Confirm audit PR #144 merged; correct the base62 zero encoding and remove the token test's invalid probabilistic lower bound.
+- [x] Bump Flutter and iOS marketing version to 2.0.4 and build number to 29; align the Settings label.
+- [x] Run backend race tests/vet and Flutter analyzer/tests; all passed. PR #145 CI passed backend, mobile, web, and release automation.
+- [x] Merge PR #145 as `5996b12810bc7b3d43532841e38e05e19e4621c0`.
+- [x] TestFlight workflow [38289317025](https://github.com/LLRHook/checksinmyhead/actions/runs/38289317025) built, validated, uploaded, and waited for Apple processing successfully; tagged `v2.0.4+29`.
+- [x] Confirm web dependencies remain current at Next.js 16.4.0 and React/ReactDOM 19.3.0.
 
 - [x] Map the tabs finalize/share flow in mobile and web
 - [x] Verify whether local SQLite is still used and where
