@@ -155,6 +155,14 @@
 - `git diff --check` passed. All pre-existing feature changes remain preserved.
 - No deployed environments or stored data were changed.
 
+## Post-merge CI fix and TestFlight release (active)
+
+- [ ] Confirm the audit PR merge and resolve its failing backend race check in a focused follow-up.
+- [ ] Bump the app version and build number consistently across Flutter, iOS, and the visible Settings label.
+- [ ] Run backend, mobile, and relevant release checks; review the exact follow-up diff.
+- [ ] Open a new PR, wait for required checks, and merge the verified release change.
+- [ ] Trigger the TestFlight workflow from the merged release commit and confirm upload/processing status.
+
 - [x] Map the tabs finalize/share flow in mobile and web
 - [x] Verify whether local SQLite is still used and where
 - [x] Trace finalize API behavior and math calculations
