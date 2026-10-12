@@ -5,9 +5,57 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
+
+type assignmentValidationService struct {
+	TabService
+	updated bool
+}
+
+func (s *assignmentValidationService) GetTabAuth(uint) (*models.Tab, error) {
+	return &models.Tab{ID: 7, AccessToken: "secret"}, nil
+}
+
+func (s *assignmentValidationService) GetMembers(uint) ([]models.TabMember, error) {
+	return nil, nil
+}
+
+func (s *assignmentValidationService) UpdateBillItemAssignments(uint, uint, uint, []models.ItemAssignment, *time.Time) error {
+	s.updated = true
+	return nil
+}
+
+func TestUpdateBillItemAssignmentsRejectsInvalidSplits(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	for _, test := range []struct {
+		name string
+		body string
+	}{
+		{name: "over one hundred percent", body: `{"assignments":[{"person_name":"Alex","percentage":150}]}`},
+		{name: "sum exceeds one hundred percent", body: `{"assignments":[{"person_name":"Alex","percentage":60},{"person_name":"Sam","percentage":60}]}`},
+		{name: "duplicate person", body: `{"assignments":[{"person_name":"Alex","percentage":50},{"person_name":"alex","percentage":50}]}`},
+		{name: "empty assignment name", body: `{"assignments":[{"person_name":" ","percentage":100}]}`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			service := &assignmentValidationService{}
+			recorder := httptest.NewRecorder()
+			ctx, _ := gin.CreateTestContext(recorder)
+			ctx.Params = gin.Params{{Key: "id", Value: "7"}, {Key: "billId", Value: "9"}, {Key: "itemId", Value: "11"}}
+			ctx.Request = httptest.NewRequest("PATCH", "/tabs/7/bills/9/items/11?t=secret", strings.NewReader(test.body))
+			ctx.Request.Header.Set("Content-Type", "application/json")
+
+			NewTabHandler(service).UpdateBillItemAssignments(ctx)
+
+			if recorder.Code != 400 || service.updated {
+				t.Fatalf("status = %d, update called = %t; want 400 without update", recorder.Code, service.updated)
+			}
+		})
+	}
+}
 
 type creatorCheckService struct {
 	TabService

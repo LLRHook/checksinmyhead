@@ -49,6 +49,47 @@ void main() {
   });
 
   test(
+    'replaces an imported trip bill in place when refreshing its snapshot',
+    () async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+
+      await db.saveBill(
+        participants: const [],
+        personShares: const {},
+        items: const [],
+        subtotal: 10,
+        tax: 0,
+        tipAmount: 0,
+        total: 10,
+        billName: 'Trip receipt',
+        shareUrl: 'billington://tab/9/bill/27',
+        skipDuplicateCheck: true,
+      );
+      final id = (await db.getRecentBills()).single.id;
+
+      await db.saveBill(
+        billId: id,
+        participants: const [],
+        personShares: const {},
+        items: const [],
+        subtotal: 12,
+        tax: 0,
+        tipAmount: 0,
+        total: 12,
+        billName: 'Trip receipt',
+        shareUrl: 'billington://tab/9/bill/27',
+        skipDuplicateCheck: true,
+      );
+
+      final bills = await db.getRecentBills();
+      expect(bills, hasLength(1));
+      expect(bills.single.id, id);
+      expect(bills.single.total, 12);
+    },
+  );
+
+  test(
     'same numeric total in different currencies is not a duplicate',
     () async {
       final db = AppDatabase.forTesting(NativeDatabase.memory());

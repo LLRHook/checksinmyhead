@@ -8,6 +8,7 @@ import (
 	"crypto/subtle"
 	"fmt"
 	"log"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -258,7 +259,13 @@ func (h *TabHandler) UpdateBillItemAssignments(c *gin.Context) {
 		return
 	}
 
+	if body.Assignments == nil {
+		c.JSON(400, gin.H{"error": "assignments are required"})
+		return
+	}
 	assignments := make([]models.ItemAssignment, 0, len(body.Assignments))
+	seen := make(map[string]struct{}, len(body.Assignments))
+	var totalPercentage float64
 	var expectedUpdatedAt *time.Time
 	if body.ExpectedUpdatedAt != nil && *body.ExpectedUpdatedAt != "" {
 		parsed, parseErr := time.Parse(time.RFC3339Nano, *body.ExpectedUpdatedAt)
@@ -270,18 +277,34 @@ func (h *TabHandler) UpdateBillItemAssignments(c *gin.Context) {
 	}
 	for _, assignment := range body.Assignments {
 		name := security.SanitizeString(assignment.PersonName)
-		if name == "" || assignment.Percentage <= 0 {
-			continue
+		if name == "" || len([]rune(name)) > 30 || assignment.Percentage <= 0 || assignment.Percentage > 100 || math.IsNaN(assignment.Percentage) || math.IsInf(assignment.Percentage, 0) {
+			c.JSON(400, gin.H{"error": "invalid item assignment"})
+			return
 		}
+		key := strings.ToLower(name)
+		if _, ok := seen[key]; ok {
+			c.JSON(400, gin.H{"error": "duplicate person assignment"})
+			return
+		}
+		seen[key] = struct{}{}
+		totalPercentage += assignment.Percentage
 		assignments = append(assignments, models.ItemAssignment{
 			PersonName: name,
 			Percentage: assignment.Percentage,
 		})
 	}
+	if len(assignments) > 0 && math.Abs(totalPercentage-100) > 0.01 {
+		c.JSON(400, gin.H{"error": "item assignments must total 100 percent"})
+		return
+	}
 
 	if err := h.service.UpdateBillItemAssignments(tab.ID, uint(billID), uint(itemID), assignments, expectedUpdatedAt); err != nil {
 		if err == ErrAssignmentConflict {
 			c.JSON(409, gin.H{"error": "item changed; refresh and try again"})
+			return
+		}
+		if err == ErrItemAlreadyPaid {
+			c.JSON(409, gin.H{"error": "paid shares cannot be changed"})
 			return
 		}
 		if err == gorm.ErrRecordNotFound {
