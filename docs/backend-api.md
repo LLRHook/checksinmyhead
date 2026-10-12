@@ -317,67 +317,11 @@ List all members of a tab.
 
 ---
 
-## Images
-
-### `POST /api/tabs/:id/images?t=token&m=memberToken`
-
-Upload a receipt image. Multipart form data with `image` field.
-
-- Max file size: 10MB
-- Accepted MIME types: `image/jpeg`, `image/png`, `image/gif`, `image/webp`
-- Rate limit: 20 uploads per hour per tab
-- Blocked if tab is finalized
-
-**Response** `201`
-```json
-{
-  "id": 1,
-  "tab_id": 1,
-  "filename": "abc123.jpg",
-  "url": "/uploads/abc123.jpg",
-  "size": 245760,
-  "mime_type": "image/jpeg",
-  "processed": false,
-  "uploaded_by": "Alice"
-}
-```
-
-### `GET /api/tabs/:id/images?t=token`
-
-List all images for a tab.
-
-**Response** `200` — Array of TabImage objects.
-
-### `PATCH /api/tabs/:id/images/:imageId?t=token`
-
-Update image metadata (e.g. mark as processed).
-
-**Request Body**
-```json
-{ "processed": true }
-```
-
-**Response** `200`
-```json
-{ "status": "ok" }
-```
-
-### `DELETE /api/tabs/:id/images/:imageId?t=token`
-
-Delete an image. Blocked if tab is finalized.
-
-**Response** `200`
-```json
-{ "status": "ok" }
-```
-
----
-
 ## Receipt Parsing
 
 ### `POST /api/receipts/parse`
 
-Parse a receipt image using Gemini 2.0 Flash Vision API. No authentication required.
+Parse a receipt image using Anthropic's Claude Messages API. No user authentication is required. The image is processed for the request and is not saved in Billington's database. Requests are limited to 10 per minute per client IP.
 
 **Request**: Multipart form data with `image` field.
 
@@ -388,6 +332,9 @@ Parse a receipt image using Gemini 2.0 Flash Vision API. No authentication requi
 ```json
 {
   "vendor": "Olive Garden",
+  "currency_code": "USD",
+  "currency_symbol": "$",
+  "currency_confidence": 0.98,
   "items": [
     { "name": "Chicken Alfredo", "price": 18.99, "quantity": 1 },
     { "name": "Breadsticks", "price": 0.00, "quantity": 1 }
@@ -403,6 +350,9 @@ Parse a receipt image using Gemini 2.0 Flash Vision API. No authentication requi
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
 | `vendor` | string | No | Store/restaurant name |
+| `currency_code` | string | No | ISO 4217 currency code when detected |
+| `currency_symbol` | string | No | Printed currency symbol when detected |
+| `currency_confidence` | number | No | Model confidence for detected currency |
 | `items` | array | Yes | Always present (may be empty) |
 | `items[].name` | string | Yes | Cleaned to Title Case |
 | `items[].price` | number | Yes | Can be negative for discounts |
@@ -417,19 +367,11 @@ Parse a receipt image using Gemini 2.0 Flash Vision API. No authentication requi
 |--------|------|---------|
 | 400 | `{"error": "image field is required"}` | Missing `image` in form data |
 | 400 | `{"error": "unsupported image type: ..."}` | Invalid MIME type |
-| 400 | `{"error": "receipt parsing is not configured"}` | `GEMINI_API_KEY` not set |
-| 429 | `{"error": "rate limit exceeded"}` | Too many requests |
-| 500 | `{"error": "failed to parse receipt"}` | Gemini API or parsing failure |
+| 429 | `{"error": "Too many scans. Please wait a moment and try again.", "code": "rate_limited"}` | Too many requests from this IP |
+| 503 | Scanner unavailable response | Anthropic credentials, capacity, or service unavailable |
+| 422 | Receipt parsing error response | Image could not be parsed |
 
-**Environment**: Requires `GEMINI_API_KEY` environment variable. Endpoint returns 400 gracefully if the key is not configured.
-
----
-
-## Static Files
-
-### `GET /uploads/:filename`
-
-Serves uploaded images from the upload directory.
+**Environment**: Requires the backend-only `ANTHROPIC_API_KEY`. When it is missing, the receipt parsing route is not registered.
 
 ---
 
@@ -449,5 +391,5 @@ Common HTTP status codes:
 | 400 | Bad request / validation error / business rule violation |
 | 403 | Invalid or missing access token |
 | 404 | Resource not found |
-| 429 | Rate limit exceeded (image uploads) |
+| 429 | Receipt scanning rate limit exceeded |
 | 500 | Internal server error |

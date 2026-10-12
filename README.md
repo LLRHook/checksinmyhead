@@ -55,11 +55,10 @@ flutter run -d simulator
 billington/
 ├── backend/                  # Go API server
 │   ├── cmd/bill-service/     # Main entrypoint
-│   ├── internal/             # Business logic (bill, tab, image)
+│   ├── internal/             # Business logic (bill, tab, receipt, currency)
 │   │   ├── bill/             #   Bill CRUD (handler/service/repo)
-│   │   ├── receipt/          #   Receipt OCR via Gemini Vision API
+│   │   ├── receipt/          #   Receipt OCR via Anthropic Claude API
 │   │   ├── tab/              #   Tabs, members, settlements
-│   │   └── image/            #   Image upload + rate limiting
 │   ├── pkg/                  # Shared packages
 │   │   ├── models/           #   GORM data models
 │   │   ├── database/         #   PostgreSQL connection
@@ -70,6 +69,7 @@ billington/
 │   ├── src/app/              # App Router pages
 │   │   ├── b/[id]/           #   Bill viewer (/b/:id?t=token)
 │   │   └── t/[id]/           #   Tab viewer (/t/:id?t=token)
+│   │   └── privacy/          #   Public privacy policy
 │   ├── src/components/       # React components
 │   └── src/lib/api.ts        # API client + types
 ├── mobile/                   # Flutter iOS app
@@ -88,10 +88,10 @@ billington/
 A Tab is a group expense tracker (e.g. "Beach Trip 2025"). Multiple bills are added to a tab, and per-person totals are calculated across all bills. When the trip is done, the creator finalizes the tab to lock it and generate settlement amounts.
 
 ### Anonymous Member Tokens
-No accounts needed. When someone creates a tab, they get a creator token. Others join via a shared link and receive their own member token. Tokens are stored locally and used to attribute bill additions and image uploads.
+No accounts needed. When someone creates a tab, they get an access token. Others join via a shared link and receive a member token. Tokens are stored locally and used to authorize shared-tab access and attribute bill contributions.
 
 ### Finalization & Settlements
-Once all receipt images are marked as processed, the tab creator can finalize. This aggregates person shares across all bills (case-insensitive name merge) and creates settlement records showing who owes what. Settlements can be toggled as paid.
+The tab creator can finalize a trip to aggregate each person's shares across its bills and create settlements. Settlements can be toggled as paid.
 
 ## Testing
 
@@ -114,7 +114,7 @@ cd mobile && flutter test
 | Web | Next.js 16 / React 19 | Server-rendered bill & tab viewer |
 | API | Go / Gin | REST API with layered architecture |
 | Database | PostgreSQL 17 | Primary data store via GORM |
-| AI/OCR | Gemini 2.0 Flash | Receipt scanning via Vision API |
+| AI/OCR | Anthropic Claude | Receipt scanning via Messages API |
 | Infra | Docker Compose | Local development environment |
 
 ## Roadmap
@@ -122,18 +122,18 @@ cd mobile && flutter test
 - [x] Foundation — Go API, PostgreSQL, Bill CRUD
 - [x] Bill Sharing — Web viewer, Venmo deep links
 - [x] Tabs & Group Trips — Multi-bill tabs, per-person totals
-- [x] Image Uploads — Receipt photos with rate limiting
+- [x] Receipt Scanning — Selected receipt images parsed through Anthropic Claude
 - [x] Finalization — Settlements, paid tracking
 - [x] Account-less Collaboration — Anonymous member tokens
 - [x] Documentation & Testing — Tests, docs, dev script
-- [x] Receipt OCR — Gemini 2.0 Flash Vision API for receipt scanning
+- [x] Receipt OCR — Anthropic Claude API for receipt scanning
 - [ ] Production Deployment — Cloud hosting, CDN, monitoring
 
 ## Documentation
 
 - [Technical Overview](docs/technical-overview.md) — Architecture, data models, design decisions
 - [Backend API Reference](docs/backend-api.md) — Full endpoint documentation
-- [Privacy](docs/privacy.md) — How Billington protects user privacy
+- [Privacy](docs/privacy.md) — What Billington stores and sends to service providers
 - [Market Analysis](docs/market-analysis.md) — Competitive landscape
 - [Contributing](docs/contribution.md) — Development guidelines
 
