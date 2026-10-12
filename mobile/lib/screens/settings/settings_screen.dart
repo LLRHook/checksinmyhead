@@ -875,7 +875,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           onPressed:
                                               () => launchUrl(
                                                 Uri.parse(
-                                                  'https://billingtonapp.vercel.app/privacy',
+                                                  'https://getbillington.vercel.app/#privacy',
                                                 ),
                                                 mode:
                                                     LaunchMode
@@ -1009,7 +1009,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                               const Center(
                                 child: Text(
-                                  'Version 2.0.5',
+                                  'Version 2.0.6',
                                   style: TextStyle(
                                     color: Colors.white60,
                                     fontSize: 14,
