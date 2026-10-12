@@ -19,6 +19,7 @@ import {
   getTabMembers,
   type Tab,
 } from "@/lib/api";
+import { lazyBillRemainingTotal } from "@/lib/lazy-bill";
 
 export async function generateMetadata({
   params,
@@ -111,8 +112,9 @@ export default async function TabPage({
       {isLegacyLazyTab && primaryBill ? (
         <BillHeader
           name={primaryBill.name}
-          total={primaryBill.display_total ?? primaryBill.total}
+          total={lazyBillRemainingTotal(primaryBill)}
           currency={primaryBill.display_currency ?? primaryBill.currency_code}
+          totalLabel="Remaining"
         />
       ) : (
         <TabHeader
