@@ -56,4 +56,14 @@ void main() {
       expect(canChangeLazyBillSelection(saving: false, paid: false), isTrue);
     });
   });
+
+  group('lazySelectionHasChanges', () {
+    test('allows saving after clearing the final assigned item', () {
+      expect(lazySelectionHasChanges({}, {12}), isTrue);
+    });
+
+    test('does not request review when selection matches the saved items', () {
+      expect(lazySelectionHasChanges({12, 15}, {15, 12}), isFalse);
+    });
+  });
 }

@@ -19,4 +19,7 @@
 
 - Receipt rows may share the same display name and price; selection must be keyed by row identity, never a user-visible name.
 - A paid share must block item changes both in the UI and in the tap handler. Disable every row after payment, not only rows currently assigned to that person.
+- Enforce paid-share immutability on the server for both removals and new assignments, and serialize payment writes with bill assignment transactions.
+- Show Review when the local selection differs from saved assignments, even when the changed selection is empty.
+- Allocate item, tax, and tip rounding remainders across shares so the cents add back to the billed totals.
 - After successfully marking a shared bill paid, return the user to the app landing page instead of leaving them in a picker that invites more selection.

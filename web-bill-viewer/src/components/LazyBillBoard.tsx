@@ -18,7 +18,11 @@ import {
   updateTabPersonSharePaid,
 } from "@/lib/api";
 import { formatMoney } from "@/lib/currency";
-import { isLazyItemPaid, lazyBillRemainingTotal } from "@/lib/lazy-bill";
+import {
+  isLazyItemPaid,
+  isLazyItemSelectionLocked,
+  lazyBillRemainingTotal,
+} from "@/lib/lazy-bill";
 import { buildVenmoPayUrl } from "@/lib/venmo";
 
 interface LazyBillBoardProps {
@@ -337,7 +341,10 @@ export default function LazyBillBoard({
                   entry.person_name.toLowerCase() === name.toLowerCase(),
               );
               const unavailable = assignments.length > 0 && !mine;
-              const locked = paid || Boolean(currentShare?.paid && mine);
+              const locked = isLazyItemSelectionLocked(
+                paid,
+                Boolean(currentShare?.paid),
+              );
               return (
                 <div
                   key={item.id}
