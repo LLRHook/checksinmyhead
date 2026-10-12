@@ -38,3 +38,10 @@ export function isLazyItemPaid(
     paidPeople.has(assignment.person_name.trim().toLowerCase()),
   );
 }
+
+export function isLazyItemSelectionLocked(
+  itemPaid: boolean,
+  currentSharePaid: boolean,
+): boolean {
+  return itemPaid || currentSharePaid;
+}

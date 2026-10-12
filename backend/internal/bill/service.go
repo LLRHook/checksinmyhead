@@ -16,6 +16,7 @@ var (
 	ErrExchangeRateUnavailable = errors.New("exchange rate unavailable")
 	ErrAssignmentConflict      = errors.New("item changed; refresh and try again")
 	ErrItemAlreadyPaid         = errors.New("item belongs to a paid share")
+	ErrPersonShareNotFound     = errors.New("person share not found")
 )
 
 var currencyCodePattern = regexp.MustCompile(`^[A-Z]{3}$`)
@@ -37,7 +38,7 @@ type BillService interface {
 	CreateBill(ctx context.Context, bill *models.Bill) error
 	GetUSDExchangeRate(ctx context.Context, currency string) (models.ExchangeRateQuote, error)
 	GetBill(id uint) (bill *models.Bill, err error)
-	UpdatePersonSharePaid(id uint, paid bool) error
+	UpdatePersonSharePaid(billID uint, personName string, paid bool) error
 	UpdateItemAssignments(billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error
 	UpdateItemAssignmentsBatch(billID uint, updates []ItemAssignmentsUpdate) error
 }
@@ -95,8 +96,8 @@ func (b *billService) GetBill(id uint) (bill *models.Bill, err error) {
 	return bill, err
 }
 
-func (b *billService) UpdatePersonSharePaid(id uint, paid bool) error {
-	return b.repo.UpdatePersonSharePaid(id, paid)
+func (b *billService) UpdatePersonSharePaid(billID uint, personName string, paid bool) error {
+	return b.repo.UpdatePersonSharePaid(billID, personName, paid)
 }
 
 func (b *billService) UpdateItemAssignments(billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error {
