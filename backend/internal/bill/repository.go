@@ -2,6 +2,7 @@ package bill
 
 import (
 	"backend/pkg/models"
+	"errors"
 	"sort"
 	"strings"
 	"time"
@@ -13,7 +14,7 @@ import (
 type BillRepository interface {
 	Create(bill *models.Bill) error
 	GetById(id uint) (bill *models.Bill, err error)
-	UpdatePersonSharePaid(id uint, paid bool) error
+	UpdatePersonSharePaid(billID uint, personName string, paid bool) error
 	UpdateItemAssignments(billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error
 	UpdateItemAssignmentsBatch(billID uint, updates []ItemAssignmentsUpdate) error
 }
@@ -43,8 +44,25 @@ func (b *billRepository) GetById(id uint) (bill *models.Bill, err error) {
 	return bill, err
 }
 
-func (b *billRepository) UpdatePersonSharePaid(id uint, paid bool) error {
-	return b.db.Model(&models.PersonShare{}).Where("id = ?", id).Update("paid", paid).Error
+func (b *billRepository) UpdatePersonSharePaid(billID uint, personName string, paid bool) error {
+	return b.db.Transaction(func(tx *gorm.DB) error {
+		var bill models.Bill
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Select("id").First(&bill, billID).Error; err != nil {
+			return err
+		}
+
+		var share models.PersonShare
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("bill_id = ? AND LOWER(person_name) = ?", billID, strings.ToLower(personName)).
+			First(&share).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrPersonShareNotFound
+			}
+			return err
+		}
+		return tx.Model(&share).Update("paid", paid).Error
+	})
 }
 
 func (b *billRepository) UpdateItemAssignments(billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error {
@@ -94,6 +112,11 @@ func (b *billRepository) UpdateItemAssignmentsBatch(billID uint, updates []ItemA
 				return err
 			}
 			for _, assignment := range currentAssignments {
+				if paidByName[strings.ToLower(assignment.PersonName)] {
+					return ErrItemAlreadyPaid
+				}
+			}
+			for _, assignment := range update.Assignments {
 				if paidByName[strings.ToLower(assignment.PersonName)] {
 					return ErrItemAlreadyPaid
 				}

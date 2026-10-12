@@ -540,9 +540,13 @@
 
 - [x] Key the in-app owner's claimed receipt rows by original row position so duplicate names remain independently selectable.
 - [x] Prevent all item changes after the viewer marks a share paid, in both row controls and the selection handler.
+- [x] Prevent a paid share from gaining unclaimed items through the web viewer or assignment API.
+- [x] Serialize paid-state writes with assignment batches and update the refreshed share by bill/person identity.
+- [x] Allow a changed empty selection to be reviewed and saved, releasing the final claimed item.
+- [x] Allocate item, tax, and tip rounding pennies across shares so complete share totals match the bill total.
 - [x] Return to the landing page after successful payment marking.
-- [x] Add focused regression coverage for duplicate owner item selection and the paid selection guard.
-- [x] Run formatter, focused Flutter tests (4 passed), Flutter analysis (no issues), and diff checks.
+- [x] Add focused regression coverage for duplicate rows, paid guards, empty selection, payment/share races, and penny allocation.
+- [x] Verify full Go suite, Flutter analysis and 196 tests, web 39 tests, targeted lint/TypeScript, formatters, and diff checks.
 - [x] Review final diff and record verification.
 - [x] Bump Flutter/iOS/Settings version to 2.0.8 (build 33) and add release notes.
 - [ ] Commit, open and merge the release PR.

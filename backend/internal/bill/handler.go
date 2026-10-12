@@ -245,7 +245,7 @@ func (h *BillHandler) UpdateLazyItemAssignments(c *gin.Context) {
 		case errors.Is(err, ErrAssignmentConflict):
 			c.JSON(409, gin.H{"error": "item changed; refresh and try again"})
 		case errors.Is(err, ErrItemAlreadyPaid):
-			c.JSON(409, gin.H{"error": "this item is part of a paid share"})
+			c.JSON(409, gin.H{"error": "paid shares cannot be changed"})
 		case errors.Is(err, gorm.ErrRecordNotFound):
 			c.JSON(404, gin.H{"error": "bill item not found"})
 		default:
@@ -344,7 +344,7 @@ func (h *BillHandler) UpdateLazyItemAssignmentsBatch(c *gin.Context) {
 		case errors.Is(err, ErrAssignmentConflict):
 			c.JSON(409, gin.H{"error": "item changed; refresh and try again"})
 		case errors.Is(err, ErrItemAlreadyPaid):
-			c.JSON(409, gin.H{"error": "this item is part of a paid share"})
+			c.JSON(409, gin.H{"error": "paid shares cannot be changed"})
 		case errors.Is(err, gorm.ErrRecordNotFound):
 			c.JSON(404, gin.H{"error": "bill item not found"})
 		default:
@@ -380,14 +380,14 @@ func (h *BillHandler) UpdatePersonSharePaid(c *gin.Context) {
 	}
 
 	// Verify the share belongs to this bill
-	found := false
+	var personName string
 	for _, s := range bill.PersonShares {
 		if s.ID == uint(shareID) {
-			found = true
+			personName = s.PersonName
 			break
 		}
 	}
-	if !found {
+	if personName == "" {
 		c.JSON(404, gin.H{"error": "share not found on this bill"})
 		return
 	}
@@ -400,7 +400,11 @@ func (h *BillHandler) UpdatePersonSharePaid(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.UpdatePersonSharePaid(uint(shareID), *body.Paid); err != nil {
+	if err := h.service.UpdatePersonSharePaid(bill.ID, personName, *body.Paid); err != nil {
+		if errors.Is(err, ErrPersonShareNotFound) {
+			c.JSON(404, gin.H{"error": "share not found on this bill"})
+			return
+		}
 		log.Printf("internal error: %v", err)
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return

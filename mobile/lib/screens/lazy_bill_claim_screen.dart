@@ -95,6 +95,11 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
   Set<int> get _selectedItems =>
       _selectedItemIds ?? _assignedItemIds(_bill ?? {}, _name);
 
+  bool get _selectionChanged {
+    final assigned = _assignedItemIds(_bill ?? {}, _name);
+    return lazySelectionHasChanges(_selectedItems, assigned);
+  }
+
   Map<String, dynamic>? get _myShare {
     for (final share in _shares) {
       if ((share['person_name'] as String? ?? '').toLowerCase() ==
@@ -427,7 +432,7 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
                   style: TextStyle(color: theme.colorScheme.error),
                 ),
               ),
-            if (_selectedItems.isNotEmpty && !isPaid) ...[
+            if (_selectionChanged && !isPaid) ...[
               const SizedBox(height: 18),
               FilledButton(
                 onPressed: _saving ? null : _reviewSelection,
