@@ -28,6 +28,7 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
   bool _paying = false;
   String? _error;
   bool _showPayment = false;
+  Set<int>? _selectedItemIds;
 
   String get _nameKey => 'lazy_bill_name_${widget.billId}';
 
@@ -49,6 +50,7 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
       setState(() {
         _bill = bill;
         _name = prefs.getString(_nameKey) ?? profileName ?? '';
+        _selectedItemIds = _assignedItemIds(bill, _name);
         _loading = false;
         _error = null;
       });
@@ -71,6 +73,26 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
       ((_bill?['person_shares'] as List<dynamic>?) ?? const [])
           .whereType<Map<String, dynamic>>()
           .toList();
+
+  Set<int> _assignedItemIds(Map<String, dynamic> bill, String name) {
+    if (name.isEmpty) return {};
+    return ((bill['items'] as List<dynamic>?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .where((item) {
+          final assignments =
+              (item['assignments'] as List<dynamic>?) ?? const [];
+          return assignments.whereType<Map<String, dynamic>>().any(
+            (assignment) =>
+                (assignment['person_name'] as String? ?? '').toLowerCase() ==
+                name.toLowerCase(),
+          );
+        })
+        .map((item) => item['id'] as int)
+        .toSet();
+  }
+
+  Set<int> get _selectedItems =>
+      _selectedItemIds ?? _assignedItemIds(_bill ?? {}, _name);
 
   Map<String, dynamic>? get _myShare {
     for (final share in _shares) {
@@ -115,10 +137,14 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_nameKey, name.trim());
     if (!mounted) return;
-    setState(() => _name = name.trim());
+    setState(() {
+      _name = name.trim();
+      _selectedItemIds = _assignedItemIds(_bill ?? {}, _name);
+    });
   }
 
   Future<void> _toggleItem(Map<String, dynamic> item) async {
+    if (_saving) return;
     if (_name.isEmpty) {
       await _chooseName();
       if (_name.isEmpty) return;
@@ -127,30 +153,77 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
         ((item['assignments'] as List<dynamic>?) ?? const [])
             .whereType<Map<String, dynamic>>()
             .toList();
-    final mine = assignments.any(
+    final assignedToMe = assignments.any(
       (assignment) =>
           (assignment['person_name'] as String? ?? '').toLowerCase() ==
           _name.toLowerCase(),
     );
-    if (!mine && assignments.isNotEmpty) return;
-    if (mine && assignments.length > 1) return;
+    final mine = _selectedItems.contains(item['id'] as int);
+    if (!mine && assignments.isNotEmpty && !assignedToMe) return;
+    if (assignedToMe && assignments.length > 1) return;
 
-    setState(() => _saving = true);
-    try {
-      await _api.updateLazyBillItemAssignments(
-        billId: widget.billId,
-        itemId: item['id'] as int,
-        token: widget.token,
-        expectedUpdatedAt: item['updated_at'] as String?,
-        assignments:
-            mine
-                ? []
-                : [
-                  {'person_name': _name, 'percentage': 100},
-                ],
+    final selected = _selectedItems.toSet();
+    setState(() {
+      if (mine) {
+        selected.remove(item['id'] as int);
+      } else {
+        selected.add(item['id'] as int);
+      }
+      _selectedItemIds = selected;
+      _error = null;
+    });
+  }
+
+  Future<void> _reviewSelection() async {
+    if (_saving || _myShare?['paid'] == true) return;
+    final selected = _selectedItems.toSet();
+    final updates = <Map<String, dynamic>>[];
+    for (final item in _items) {
+      final assignments =
+          ((item['assignments'] as List<dynamic>?) ?? const [])
+              .whereType<Map<String, dynamic>>()
+              .toList();
+      final currentlyMine = assignments.any(
+        (assignment) =>
+            (assignment['person_name'] as String? ?? '').toLowerCase() ==
+            _name.toLowerCase(),
       );
-      await _loadBill();
+      final shouldBeMine = selected.contains(item['id'] as int);
+      if (currentlyMine == shouldBeMine) continue;
+      updates.add({
+        'item_id': item['id'],
+        'expected_updated_at': item['updated_at'],
+        'assignments':
+            shouldBeMine
+                ? [
+                  {'person_name': _name, 'percentage': 100},
+                ]
+                : <Map<String, dynamic>>[],
+      });
+    }
+    if (updates.isEmpty) {
+      setState(() => _showPayment = true);
+      return;
+    }
+
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      final updatedBill = await _api.updateLazyBillItemAssignments(
+        billId: widget.billId,
+        token: widget.token,
+        updates: updates,
+      );
+      if (!mounted) return;
+      setState(() {
+        _bill = updatedBill;
+        _selectedItemIds = selected;
+        _showPayment = true;
+      });
     } catch (error) {
+      await _loadBill();
       if (mounted) {
         setState(
           () =>
@@ -176,7 +249,21 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
         token: widget.token,
         paid: true,
       );
-      if (mounted) setState(() => _showPayment = false);
+      if (mounted && _bill != null) {
+        final updatedShares =
+            _shares
+                .map(
+                  (candidate) =>
+                      candidate['id'] == share['id']
+                          ? {...candidate, 'paid': true}
+                          : candidate,
+                )
+                .toList();
+        setState(() {
+          _bill = {..._bill!, 'person_shares': updatedShares};
+          _showPayment = false;
+        });
+      }
       await _loadBill();
     } catch (_) {
       if (mounted) {
@@ -232,6 +319,7 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
     }
     final bill = _bill!;
     final total = (_myShare?['total'] as num?)?.toDouble() ?? 0;
+    final isPaid = _myShare?['paid'] == true;
     final venmoExists = ((_bill?['payment_methods'] as List<dynamic>?) ??
             const [])
         .whereType<Map<String, dynamic>>()
@@ -256,7 +344,9 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              _name.isEmpty
+              isPaid
+                  ? 'Your share is marked paid. Your items are locked.'
+                  : _name.isEmpty
                   ? 'Tap an item to get started.'
                   : 'Picking as $_name',
               style: theme.textTheme.bodyMedium,
@@ -274,15 +364,14 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
                                     const [])
                                 .whereType<Map<String, dynamic>>()
                                 .toList();
-                        final mine = assignments.any(
+                        final mine = _selectedItems.contains(item['id'] as int);
+                        final unavailable = assignments.any(
                           (assignment) =>
                               (assignment['person_name'] as String? ?? '')
-                                  .toLowerCase() ==
+                                  .toLowerCase() !=
                               _name.toLowerCase(),
                         );
-                        final locked =
-                            (_myShare?['paid'] as bool? ?? false) && mine;
-                        final unavailable = assignments.isNotEmpty && !mine;
+                        final locked = isPaid && mine;
                         return ListTile(
                           enabled:
                               !_saving &&
@@ -325,13 +414,11 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
                   style: TextStyle(color: theme.colorScheme.error),
                 ),
               ),
-            if (total > 0) ...[
+            if (_selectedItems.isNotEmpty && !isPaid) ...[
               const SizedBox(height: 18),
               FilledButton(
-                onPressed: () => setState(() => _showPayment = true),
-                child: Text(
-                  'Review ${CurrencyFormatter.formatCurrency(total, currencyCode: _currency)}',
-                ),
+                onPressed: _saving ? null : _reviewSelection,
+                child: Text(_saving ? 'Saving selection…' : 'Review total'),
               ),
             ],
           ] else ...[

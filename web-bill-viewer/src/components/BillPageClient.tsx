@@ -85,6 +85,41 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
     fetchBill();
   }, [fetchBill]);
 
+  const isLazyBill =
+    state.status === "success" && state.bill.lazy_mode === true;
+
+  useEffect(() => {
+    if (!isLazyBill) return;
+    let refreshing = false;
+    const refresh = async () => {
+      if (refreshing || document.visibilityState !== "visible") return;
+      refreshing = true;
+      try {
+        const bill = await getBill(id, token);
+        setState((current) =>
+          current.status === "success" && current.bill.lazy_mode
+            ? { ...current, bill }
+            : current,
+        );
+      } catch {
+        // Keep showing the last loaded receipt when a background refresh fails.
+      } finally {
+        refreshing = false;
+      }
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    const interval = window.setInterval(refresh, 10_000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [id, isLazyBill, token]);
+
   // --- Loading state ---
   if (state.status === "loading") {
     return (

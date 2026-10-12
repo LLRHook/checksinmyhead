@@ -154,6 +154,45 @@ func TestUpdateLazyItemAssignmentsRejectsNonLazyBill(t *testing.T) {
 	}
 }
 
+func TestUpdateLazyItemAssignmentsBatchValidatesAndReturnsBill(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	repo := newMockRepo()
+	repo.bills[33] = &models.Bill{
+		ID:          33,
+		LazyMode:    true,
+		AccessToken: "secret",
+		Name:        "Dinner",
+	}
+	handler := NewBillHandler(NewBillService(repo))
+	router := gin.New()
+	router.PATCH("/api/bills/:id/assignments", handler.UpdateLazyItemAssignmentsBatch)
+	request := httptest.NewRequest(http.MethodPatch, "/api/bills/33/assignments", bytes.NewBufferString(`{"updates":[{"item_id":8,"expected_updated_at":"2026-10-12T20:00:00Z","assignments":[{"person_name":"Alex","percentage":100}]},{"item_id":9,"expected_updated_at":"2026-10-12T20:00:00Z","assignments":[{"person_name":"Alex","percentage":100}]}]}`))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "Bearer secret")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("expected batch success, got %d: %s", response.Code, response.Body.String())
+	}
+	if len(repo.updatedBatch) != 2 || repo.updatedBatch[0].ItemID != 8 || repo.updatedBatch[1].ItemID != 9 {
+		t.Fatalf("unexpected batch updates: %#v", repo.updatedBatch)
+	}
+	if strings.Contains(response.Body.String(), "secret") {
+		t.Fatal("batch response exposed the bill access token")
+	}
+
+	// The mock returns the stored pointer; a real GetBill call loads a fresh row.
+	repo.bills[33].AccessToken = "secret"
+	duplicate := httptest.NewRequest(http.MethodPatch, "/api/bills/33/assignments", bytes.NewBufferString(`{"updates":[{"item_id":8,"assignments":[]},{"item_id":8,"assignments":[]}]}`))
+	duplicate.Header.Set("Content-Type", "application/json")
+	duplicate.Header.Set("Authorization", "Bearer secret")
+	duplicateResponse := httptest.NewRecorder()
+	router.ServeHTTP(duplicateResponse, duplicate)
+	if duplicateResponse.Code != http.StatusBadRequest {
+		t.Fatalf("expected duplicate item update rejection, got %d", duplicateResponse.Code)
+	}
+}
+
 func TestTripTokenCanOpenAttachedBillReadOnly(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	repo := newMockRepo()

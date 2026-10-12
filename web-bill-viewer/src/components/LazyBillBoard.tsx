@@ -18,6 +18,7 @@ import {
   updateTabPersonSharePaid,
 } from "@/lib/api";
 import { formatMoney } from "@/lib/currency";
+import { isLazyItemPaid } from "@/lib/lazy-bill";
 import { buildVenmoPayUrl } from "@/lib/venmo";
 
 interface LazyBillBoardProps {
@@ -260,12 +261,27 @@ export default function LazyBillBoard({
             <div className="mt-4 divide-y divide-[var(--border-light)] dark:divide-[var(--border-dark)]">
               {bill.items.map((item) => (
                 <div
-                  className="flex justify-between py-3 text-sm"
+                  className="flex items-center justify-between gap-3 py-3 text-sm text-[var(--accent)] dark:text-white"
                   key={item.id}
                 >
-                  <span>{item.name}</span>
-                  <span className="font-mono">
-                    {formatMoney(item.price, currency)}
+                  <span
+                    className={
+                      isLazyItemPaid(item.assignments, bill.person_shares)
+                        ? "line-through opacity-60"
+                        : ""
+                    }
+                  >
+                    {item.name}
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    {isLazyItemPaid(item.assignments, bill.person_shares) && (
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                        Paid
+                      </span>
+                    )}
+                    <span className="font-mono">
+                      {formatMoney(item.price, currency)}
+                    </span>
                   </span>
                 </div>
               ))}
@@ -315,12 +331,13 @@ export default function LazyBillBoard({
           <div className="overflow-hidden rounded-3xl bg-[var(--card-bg-light)] shadow-sm dark:bg-[var(--card-bg-dark)] dark:border dark:border-[var(--border-dark)]">
             {bill.items.map((item) => {
               const assignments = item.assignments ?? [];
+              const paid = isLazyItemPaid(assignments, bill.person_shares);
               const mine = assignments.some(
                 (entry) =>
                   entry.person_name.toLowerCase() === name.toLowerCase(),
               );
               const unavailable = assignments.length > 0 && !mine;
-              const locked = Boolean(currentShare?.paid && mine);
+              const locked = paid || Boolean(currentShare?.paid && mine);
               return (
                 <div
                   key={item.id}
@@ -361,7 +378,9 @@ export default function LazyBillBoard({
                     </p>
                     <p className="text-xs text-[var(--text-secondary)]">
                       {locked
-                        ? "Paid"
+                        ? paid
+                          ? "Paid"
+                          : "Your share paid"
                         : unavailable
                           ? `Taken by ${assignments[0]?.person_name ?? "someone"}`
                           : formatMoney(item.price, currency)}

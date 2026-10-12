@@ -80,6 +80,7 @@ func main() {
 	r.GET("/api/exchange-rates/:currency", handler.GetExchangeRate)
 	r.PATCH("/api/bills/:id/shares/:shareId", handler.UpdatePersonSharePaid)
 	r.PATCH("/api/bills/:id/items/:itemId/assignments", handler.UpdateLazyItemAssignments)
+	r.PATCH("/api/bills/:id/assignments", handler.UpdateLazyItemAssignmentsBatch)
 	r.POST("/api/tabs", tabHandler.CreateTab)
 	r.GET("/api/tabs/:id", tabHandler.GetTab)
 	r.POST("/api/tabs/:id/bills", tabHandler.AddBillToTab)

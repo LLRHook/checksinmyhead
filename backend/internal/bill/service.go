@@ -39,6 +39,7 @@ type BillService interface {
 	GetBill(id uint) (bill *models.Bill, err error)
 	UpdatePersonSharePaid(id uint, paid bool) error
 	UpdateItemAssignments(billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error
+	UpdateItemAssignmentsBatch(billID uint, updates []ItemAssignmentsUpdate) error
 }
 
 type billService struct {
@@ -100,6 +101,10 @@ func (b *billService) UpdatePersonSharePaid(id uint, paid bool) error {
 
 func (b *billService) UpdateItemAssignments(billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error {
 	return b.repo.UpdateItemAssignments(billID, itemID, assignments, expectedUpdatedAt)
+}
+
+func (b *billService) UpdateItemAssignmentsBatch(billID uint, updates []ItemAssignmentsUpdate) error {
+	return b.repo.UpdateItemAssignmentsBatch(billID, updates)
 }
 
 func NewBillService(repo BillRepository, providers ...ExchangeRateProvider) BillService {
