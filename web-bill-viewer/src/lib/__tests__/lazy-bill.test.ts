@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isLazyItemPaid,
   isLazyItemSelectionLocked,
+  lazyBillRemainingCurrency,
   lazyBillRemainingTotal,
 } from "../lazy-bill";
 
@@ -35,6 +36,20 @@ describe("lazyBillRemainingTotal", () => {
         person_shares: [{ total: 25, paid: true }],
       }),
     ).toBe(0);
+  });
+});
+
+describe("lazyBillRemainingCurrency", () => {
+  it("uses the currency that the remaining total was converted into", () => {
+    expect(
+      lazyBillRemainingCurrency({
+        total: 50,
+        display_total: 46,
+        currency_code: "USD",
+        display_currency: "EUR",
+        person_shares: [],
+      }),
+    ).toBe("EUR");
   });
 });
 

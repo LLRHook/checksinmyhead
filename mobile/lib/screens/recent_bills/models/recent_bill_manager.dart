@@ -62,6 +62,7 @@ class RecentBillsManager extends ChangeNotifier {
   }
 
   Future<void> saveBill({
+    int? billId,
     required List<Person> participants,
     required Map<Person, double> personShares,
     required List<BillItem> items,
@@ -80,6 +81,7 @@ class RecentBillsManager extends ChangeNotifier {
   }) async {
     try {
       await DatabaseProvider.db.saveBill(
+        billId: billId,
         participants: participants,
         personShares: personShares,
         items: items,
@@ -120,10 +122,7 @@ class RecentBillsManager extends ChangeNotifier {
 
       final marker = _remoteTabBillMarker(tabId, remoteBillId);
       final existing = _findLocalCopy(localBills, remoteBillId, marker);
-      if (existing != null) {
-        localIds.add(existing.id);
-        continue;
-      }
+      final localBillId = existing?.id;
 
       final people = _peopleFromRemoteBill(rawBill);
       final peopleByName = {
@@ -133,6 +132,7 @@ class RecentBillsManager extends ChangeNotifier {
       final shares = _sharesFromRemoteBill(rawBill, peopleByName);
 
       await DatabaseProvider.db.saveBill(
+        billId: localBillId,
         participants: people,
         personShares: shares,
         items: items,
@@ -142,7 +142,7 @@ class RecentBillsManager extends ChangeNotifier {
         tipPercentage: (rawBill['tip_percentage'] as num?)?.toDouble() ?? 0,
         total: (rawBill['total'] as num?)?.toDouble() ?? 0,
         billName: rawBill['name'] as String? ?? 'Trip receipt',
-        shareUrl: marker,
+        shareUrl: existing?.shareUrl ?? marker,
         currencyCode: rawBill['currency_code'] as String? ?? 'USD',
         usdExchangeRate:
             (rawBill['usd_exchange_rate'] as num?)?.toDouble() ?? 1,

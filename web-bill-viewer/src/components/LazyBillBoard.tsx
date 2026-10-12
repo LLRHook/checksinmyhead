@@ -21,6 +21,7 @@ import { formatMoney } from "@/lib/currency";
 import {
   isLazyItemPaid,
   isLazyItemSelectionLocked,
+  lazyBillRemainingCurrency,
   lazyBillRemainingTotal,
 } from "@/lib/lazy-bill";
 import { buildVenmoPayUrl } from "@/lib/venmo";
@@ -56,6 +57,7 @@ export default function LazyBillBoard({
   const [isPaying, setIsPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const currency = bill.currency_code ?? "USD";
+  const remainingCurrency = lazyBillRemainingCurrency(bill);
 
   useEffect(() => {
     const storageKey = tabId
@@ -70,6 +72,21 @@ export default function LazyBillBoard({
       localStorage.removeItem(storageKey);
     }
   }, [bill.id, tabId]);
+
+  useEffect(() => {
+    if (!tabId) return;
+    const refresh = () => {
+      if (document.visibilityState === "visible") router.refresh();
+    };
+    const interval = window.setInterval(refresh, 10_000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [router, tabId]);
 
   const name = member?.display_name?.trim() ?? "";
   const currentShare = bill.person_shares.find(
@@ -294,7 +311,7 @@ export default function LazyBillBoard({
               <div className="flex justify-between text-[var(--text-secondary)]">
                 <span>Remaining balance</span>
                 <span className="font-mono">
-                  {formatMoney(lazyBillRemainingTotal(bill), currency)}
+                  {formatMoney(lazyBillRemainingTotal(bill), remainingCurrency)}
                 </span>
               </div>
             </div>

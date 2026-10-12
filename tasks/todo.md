@@ -1,5 +1,25 @@
 # Investigation Plan
 
+## Trip / Lazy Bill / Open in Billington bug fixes
+
+- [x] Protect paid legacy trip Lazy shares when assignments change; validate trip assignments like standalone Lazy bills.
+- [x] Refresh legacy trip Lazy bill state in the web viewer and preserve display currency for remaining balance.
+- [x] Refresh cached remote trip bills in mobile; calculate and label trip totals in the selected display currency.
+- [x] Ensure rapid successive app share links are routed without dropping one.
+- [x] Add focused regression coverage, run backend/mobile/web verification, and inspect the complete diff.
+- [x] Bump release version to 2.0.9 (build 34) and prepare release notes.
+- [ ] Commit, open and merge the PR, then dispatch TestFlight.
+
+### Review
+
+Audit found seven reproducible issues across trip bill persistence, request validation, stale web/mobile views, currency labeling, and app deep-link routing. Work is limited to these reported paths and their regressions; existing user changes are preserved.
+
+- The trip endpoint now validates assignment inputs and protects paid shares; assignment/payment writes serialize on the bill row, and rebuilt shares keep their paid flags.
+- Legacy trip Lazy receipts refresh while visible and format the remaining amount in its display currency.
+- Mobile refresh updates cached trip bills in place. Trip totals, person totals, settlements, and bill rows convert from USD into the selected display currency; if the rate service is unavailable, they display in USD.
+- Pending-link clearing is conditional on the routed link, and routing retries a newer link received during navigation.
+- Verification: all Go tests passed; Flutter analysis and all 198 tests passed; web tests (40), lint, TypeScript, and webpack production build passed. `git diff --check` passed. Turbopack could not bind its CSS worker port in the sandbox.
+
 ## Codebase-wide KISS cleanup (proposed)
 
 ### Goal and guardrails
@@ -548,7 +568,11 @@
 - [x] Add focused regression coverage for duplicate rows, paid guards, empty selection, payment/share races, and penny allocation.
 - [x] Verify full Go suite, Flutter analysis and 196 tests, web 39 tests, targeted lint/TypeScript, formatters, and diff checks.
 - [x] Review final diff and record verification.
-- [x] Bump Flutter/iOS/Settings version to 2.0.8 (build 33) and add release notes.
+- [x] Bump Flutter/iOS/Settings version to 2.0.9 (build 34) and add release notes.
+- [x] Protect paid shares and validate splits in legacy trip Lazy APIs; add trip receipt polling and matching remaining-balance currency.
+- [x] Refresh imported trip bills on mobile and convert trip totals into the selected display currency.
+- [x] Preserve multiple incoming trip/bill links during app routing and add regression coverage.
+- [x] Verify all Go tests, Flutter analysis and 198 tests, web 40 tests/lint/TypeScript/webpack build, and diff checks.
 - [ ] Commit, open and merge the release PR.
 - [ ] Dispatch TestFlight and monitor upload and Apple processing.
 - [ ] Record PR, run, and processing results.

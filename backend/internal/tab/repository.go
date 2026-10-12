@@ -4,6 +4,7 @@ import (
 	billpkg "backend/internal/bill"
 	"backend/pkg/models"
 	"errors"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -11,6 +12,7 @@ import (
 )
 
 var ErrAssignmentConflict = errors.New("bill item changed since it was loaded")
+var ErrItemAlreadyPaid = errors.New("item belongs to a paid share")
 
 type TabRepository interface {
 	Create(tab *models.Tab) error
@@ -97,7 +99,7 @@ func (r *tabRepository) AddBill(tabID uint, billID uint, billToken string, membe
 func (r *tabRepository) UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		var bill models.Bill
-		if err := tx.
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where("id = ? AND tab_id = ?", billID, tabID).
 			First(&bill).Error; err != nil {
 			return err
@@ -109,6 +111,29 @@ func (r *tabRepository) UpdateBillItemAssignments(tabID uint, billID uint, itemI
 		}
 		if expectedUpdatedAt != nil && !item.UpdatedAt.Equal(*expectedUpdatedAt) {
 			return ErrAssignmentConflict
+		}
+
+		var existingShares []models.PersonShare
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("bill_id = ?", billID).Find(&existingShares).Error; err != nil {
+			return err
+		}
+		paidByName := make(map[string]bool, len(existingShares))
+		for _, share := range existingShares {
+			paidByName[strings.ToLower(share.PersonName)] = share.Paid
+		}
+		var currentAssignments []models.ItemAssignment
+		if err := tx.Where("bill_item_id = ?", itemID).Find(&currentAssignments).Error; err != nil {
+			return err
+		}
+		for _, assignment := range currentAssignments {
+			if paidByName[strings.ToLower(assignment.PersonName)] {
+				return ErrItemAlreadyPaid
+			}
+		}
+		for _, assignment := range assignments {
+			if paidByName[strings.ToLower(assignment.PersonName)] {
+				return ErrItemAlreadyPaid
+			}
 		}
 
 		if err := tx.Where("bill_item_id = ?", itemID).Delete(&models.ItemAssignment{}).Error; err != nil {
@@ -137,6 +162,9 @@ func (r *tabRepository) UpdateBillItemAssignments(tabID uint, billID uint, itemI
 		}
 
 		shares := billpkg.BuildPersonShares(&refreshed)
+		for i := range shares {
+			shares[i].Paid = paidByName[strings.ToLower(shares[i].PersonName)]
+		}
 		if len(shares) > 0 {
 			if err := tx.Create(&shares).Error; err != nil {
 				return err
@@ -148,6 +176,10 @@ func (r *tabRepository) UpdateBillItemAssignments(tabID uint, billID uint, itemI
 
 func (r *tabRepository) UpdateBillPersonSharePaid(tabID uint, billID uint, shareID uint, paid bool) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
+		var bill models.Bill
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND tab_id = ?", billID, tabID).First(&bill).Error; err != nil {
+			return err
+		}
 		var share models.PersonShare
 		if err := tx.Joins("JOIN bills ON bills.id = person_shares.bill_id").Where("person_shares.id = ? AND person_shares.bill_id = ? AND bills.tab_id = ?", shareID, billID, tabID).First(&share).Error; err != nil {
 			return err

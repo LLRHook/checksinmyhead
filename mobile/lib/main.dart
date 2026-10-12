@@ -72,13 +72,13 @@ Future<void> _routePendingShareLink() async {
   final uri = Uri.tryParse(link);
   final segments = uri?.pathSegments ?? const <String>[];
   if (uri == null || segments.length < 2 || uri.queryParameters['t'] == null) {
-    await InviteLinkService().clearPendingInvite();
+    await InviteLinkService().clearPendingInvite(expectedLink: link);
     return;
   }
 
   _isRoutingShareLink = true;
   try {
-    await InviteLinkService().clearPendingInvite();
+    await InviteLinkService().clearPendingInvite(expectedLink: link);
     if (segments.first == 'b') {
       navigator.push(
         MaterialPageRoute(
@@ -96,6 +96,11 @@ Future<void> _routePendingShareLink() async {
     }
   } finally {
     _isRoutingShareLink = false;
+    if (InviteLinkService.pendingShareLink.value != null) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _routePendingShareLink(),
+      );
+    }
   }
 }
 
