@@ -111,23 +111,6 @@ type TabSettlement struct {
 }
 ```
 
-### TabImage
-
-Receipt photos attached to a tab. Must be marked as processed before finalization.
-
-```go
-type TabImage struct {
-    ID         uint
-    TabID      uint
-    Filename   string
-    URL        string
-    Size       int64
-    MimeType   string
-    Processed  bool      // Must be true to finalize
-    UploadedBy string    // Member attribution
-}
-```
-
 ## Backend Service Layer
 
 Each domain module follows the **Handler → Service → Repository** pattern:
@@ -140,16 +123,11 @@ internal/
 │   └── repository.go   # Database queries via GORM
 ├── receipt/
 │   ├── handler.go      # Multipart upload, MIME validation
-│   └── service.go      # Gemini 2.0 Flash Vision API integration
+│   └── service.go      # Anthropic Claude Messages API integration
 ├── tab/
 │   ├── handler.go      # Tab CRUD, join, finalize, settlements
 │   ├── service.go      # Finalization logic, member management
 │   └── repository.go   # Tab queries with eager loading
-└── image/
-    ├── handler.go       # Multipart upload, MIME validation
-    ├── service.go       # Image business logic
-    ├── repository.go    # Image CRUD
-    └── ratelimit.go     # 20 uploads/hour per tab
 ```
 
 **Handler** — Parses HTTP requests, validates access tokens, calls service methods, returns JSON responses. No business logic lives here.
@@ -165,13 +143,13 @@ internal/
 - **State Management**: Provider pattern for unidirectional data flow
 - **Local Database**: Drift ORM (SQLite) for offline bill storage and tab metadata
 - **API Client**: HTTP service for backend communication with fire-and-forget sync
-- **Schema Migrations**: Drift schema v5 with member token and role columns
+- **Schema Migrations**: Drift schema v8
 
 ### Next.js (Web Viewer)
 
 - **Rendering**: App Router with React Server Components for initial data fetch
 - **Pages**: `/b/[id]` for bill viewing, `/t/[id]` for tab viewing
-- **Client Components**: JoinTabButton (with localStorage persistence), MemberList, SettlementCard, TabImageGallery with lightbox
+- **Client Components**: LazyBillBoard, MemberList, SettlementCard, and bill/tab breakdowns
 - **API Client**: `src/lib/api.ts` with typed fetch functions and `computeTabPersonTotals` aggregation
 
 ## Key Technical Decisions
@@ -185,25 +163,24 @@ Users never create accounts. Access is controlled by 64-character cryptographic 
 ### Monolith Over Microservices
 A single `bill-service` binary handles all endpoints. The layered architecture (handler/service/repository) provides separation of concerns without the operational overhead of multiple services.
 
-### Gemini Vision for Receipt OCR
-Receipt scanning uses Google's Gemini 2.0 Flash model via the REST API. The mobile app captures and compresses the image (1500px, 75% quality), sends it to the backend, which base64-encodes it and calls Gemini with a structured JSON prompt. The model returns parsed items, prices, tax, tip, and totals directly as JSON (`responseMimeType: application/json`). This replaced an earlier on-device ML Kit OCR approach that couldn't handle the layout diversity of real receipts.
+### Anthropic Claude for Receipt OCR
+Receipt scanning sends a selected image from the mobile app to the backend. The backend sends the image to Anthropic's Claude Messages API with an extraction prompt and returns parsed receipt fields. The receipt parsing endpoint does not persist the uploaded image.
 
 ### Local-First Mobile
 The Flutter app maintains its own Drift database for offline access and fast reads. Backend sync is fire-and-forget — the app works without network access for local bills.
 
 ## Security Model
 
-- **Token-based access**: Every tab and bill has a unique access token. No request succeeds without a valid `?t=` parameter.
-- **No PII stored**: Display names are user-chosen and not verified. No emails, passwords, or phone numbers.
+- **Token-based access**: Every tab and bill has a unique access token. Protected reads accept a bearer token or the legacy `?t=` link parameter.
+- **No accounts**: Billington does not ask users to create accounts, but shared bills and tabs contain user-provided names and payment handles and are stored online.
 - **Member attribution**: Write operations optionally accept `?m=memberToken` for attribution without authentication.
-- **CORS**: Open to all origins (designed for public link sharing).
-- **Rate limiting**: Image uploads limited to 20 per hour per tab.
-- **File validation**: Uploads restricted to image MIME types, max 10MB.
+- **CORS**: Restricted to configured browser origins; CORS is not an authorization control.
+- **Receipt scan limits**: Receipt parsing is limited to 10 requests per minute per client IP and images are limited to 10MB.
 
 ## Testing Strategy
 
 ### Backend (Go)
-Unit tests for the service layer using manual mocks of repository and image querier interfaces. Tests cover business logic: finalization validation, settlement calculation, member creation, error paths.
+Unit tests for the service layer use manual repository mocks and cover finalization validation, settlement calculation, member creation, and error paths.
 
 ```bash
 cd backend && go test -v -race ./internal/... ./pkg/...
