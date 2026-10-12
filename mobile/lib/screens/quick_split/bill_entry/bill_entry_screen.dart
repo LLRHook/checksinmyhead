@@ -336,6 +336,20 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
               onPressed: () => Navigator.of(context).pop(),
               tooltip: 'Back',
             ),
+            actions: [
+              Consumer<BillData>(
+                builder:
+                    (context, billData, _) => IconButton(
+                      icon: const Icon(Icons.more_vert),
+                      tooltip: 'Receipt currency: ${billData.currencyCode}',
+                      onPressed:
+                          () => CurrencySection.show(
+                            context: context,
+                            billData: billData,
+                          ),
+                    ),
+              ),
+            ],
           ),
           body: GestureDetector(
             // Dismiss keyboard when tapping outside input fields
@@ -368,11 +382,6 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
                         : const SizedBox.shrink();
                   },
                 ),
-
-                const SizedBox(height: AppSpacing.large),
-
-                // Keep source-currency selection with its verified daily rate.
-                const CurrencySection(),
 
                 const SizedBox(height: AppSpacing.large),
 
