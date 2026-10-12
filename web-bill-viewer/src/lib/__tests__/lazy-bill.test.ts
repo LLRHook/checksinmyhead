@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { isLazyItemPaid, lazyBillRemainingTotal } from "../lazy-bill";
+import {
+  isLazyItemPaid,
+  isLazyItemSelectionLocked,
+  lazyBillRemainingTotal,
+} from "../lazy-bill";
 
 describe("lazyBillRemainingTotal", () => {
   it("subtracts paid shares while keeping unclaimed amounts due", () => {
@@ -59,5 +63,11 @@ describe("isLazyItemPaid", () => {
         shares,
       ),
     ).toBe(false);
+  });
+});
+
+describe("isLazyItemSelectionLocked", () => {
+  it("locks unclaimed items after the current share is paid", () => {
+    expect(isLazyItemSelectionLocked(false, true)).toBe(true);
   });
 });

@@ -28,7 +28,8 @@ type mockBillRepository struct {
 	getByIdErr         error
 	updateSharePaidErr error
 
-	updatedShareID   uint
+	updatedShareBill uint
+	updatedShareName string
 	updatedSharePaid bool
 	updatedBillID    uint
 	updatedItemID    uint
@@ -63,8 +64,9 @@ func (m *mockBillRepository) GetById(id uint) (*models.Bill, error) {
 	return bill, nil
 }
 
-func (m *mockBillRepository) UpdatePersonSharePaid(id uint, paid bool) error {
-	m.updatedShareID = id
+func (m *mockBillRepository) UpdatePersonSharePaid(billID uint, personName string, paid bool) error {
+	m.updatedShareBill = billID
+	m.updatedShareName = personName
 	m.updatedSharePaid = paid
 	return m.updateSharePaidErr
 }
@@ -88,12 +90,12 @@ func TestUpdatePersonSharePaid_Success(t *testing.T) {
 	repo := newMockRepo()
 	svc := NewBillService(repo)
 
-	err := svc.UpdatePersonSharePaid(5, true)
+	err := svc.UpdatePersonSharePaid(27, "Alex", true)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if repo.updatedShareID != 5 {
-		t.Errorf("expected share ID 5, got %d", repo.updatedShareID)
+	if repo.updatedShareBill != 27 || repo.updatedShareName != "Alex" {
+		t.Errorf("unexpected share identity: bill=%d person=%q", repo.updatedShareBill, repo.updatedShareName)
 	}
 	if !repo.updatedSharePaid {
 		t.Error("expected paid to be true")
@@ -105,7 +107,7 @@ func TestUpdatePersonSharePaid_Error(t *testing.T) {
 	repo.updateSharePaidErr = errors.New("db error")
 	svc := NewBillService(repo)
 
-	err := svc.UpdatePersonSharePaid(5, true)
+	err := svc.UpdatePersonSharePaid(27, "Alex", true)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}

@@ -87,7 +87,7 @@ class BillSummaryScreen extends StatefulWidget {
 class _BillSummaryScreenState extends State<BillSummaryScreen> {
   // Bill summary data
   late BillSummaryData _summaryData;
-  final Set<String> _ownerClaimedItems = <String>{};
+  final Set<int> _ownerClaimedItems = <int>{};
 
   @override
   void initState() {
@@ -120,18 +120,18 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
     );
   }
 
-  void _toggleOwnerItem(BillItem item, bool selected) {
+  void _toggleOwnerItem(int itemIndex, bool selected) {
     setState(() {
       if (selected) {
-        _ownerClaimedItems.add(item.name);
+        _ownerClaimedItems.add(itemIndex);
       } else {
-        _ownerClaimedItems.remove(item.name);
+        _ownerClaimedItems.remove(itemIndex);
       }
 
-      final remaining =
-          widget.items
-              .where((entry) => !_ownerClaimedItems.contains(entry.name))
-              .toList();
+      final remaining = <BillItem>[
+        for (var index = 0; index < widget.items.length; index++)
+          if (!_ownerClaimedItems.contains(index)) widget.items[index],
+      ];
       final remainingSubtotal = remaining.fold<double>(
         0,
         (sum, entry) => sum + entry.price,
@@ -231,23 +231,26 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
                               ?.copyWith(color: colorScheme.onSurfaceVariant),
                         ),
                         const SizedBox(height: 10),
-                        ...widget.items.map(
-                          (item) => CheckboxListTile(
-                            value: _ownerClaimedItems.contains(item.name),
+                        for (
+                          var index = 0;
+                          index < widget.items.length;
+                          index++
+                        )
+                          CheckboxListTile(
+                            value: _ownerClaimedItems.contains(index),
                             onChanged:
                                 (value) =>
-                                    _toggleOwnerItem(item, value ?? false),
-                            title: Text(item.name),
+                                    _toggleOwnerItem(index, value ?? false),
+                            title: Text(widget.items[index].name),
                             subtitle: Text(
                               CurrencyFormatter.formatCurrency(
-                                item.price,
+                                widget.items[index].price,
                                 currencyCode: widget.currencyCode,
                               ),
                             ),
                             contentPadding: EdgeInsets.zero,
                             controlAffinity: ListTileControlAffinity.leading,
                           ),
-                        ),
                         const SizedBox(height: 16),
                       ],
 
