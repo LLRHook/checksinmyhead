@@ -1,8 +1,10 @@
 # Scaling Considerations
 
-This document explores how Billington's architecture could evolve to support growth beyond its current local-only implementation while balancing privacy concerns with scalability needs.
+> Historical planning document. Its local-only architecture description has been superseded: Billington now stores shared bills and tabs online and supports web sharing. See [the current privacy policy](privacy.md) and [technical overview](technical-overview.md).
 
-## Current Local-Only Architecture
+This document explores a proposed transition from the earlier local-only app to a shared service.
+
+## Earlier Local-Only Architecture
 
 Billington's privacy-first approach provides key advantages:
 - Complete data privacy (no data ever leaves the device)
@@ -157,6 +159,6 @@ Moving from local-only to cloud would introduce costs:
 
 ## Conclusion
 
-Scaling Billington beyond its current local-only architecture would require significant architectural changes, most notably the introduction of user accounts and cloud synchronization. While this would add complexity and infrastructure costs, it could be implemented in a way that maintains a strong privacy focus through client-side encryption and data minimization.
+At the time this plan was written, scaling beyond local storage was expected to require accounts and cloud synchronization. The current product instead provides shared bills and tabs without accounts.
 
 The key insight is that scaling isn't just about handling more users—it's about making thoughtful architectural trade-offs that balance privacy, functionality, complexity, and cost. This understanding of system design principles would be crucial for any evolution of the application beyond its current scope.

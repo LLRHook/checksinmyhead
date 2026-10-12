@@ -859,13 +859,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       16,
                                       16,
                                     ),
-                                    children: const [
+                                    children: [
                                       Text(
-                                        'Your data never leaves your device. Billington is designed with privacy-first principles—zero cloud storage and zero accounts. All information is stored locally and removed completely when you uninstall.',
-                                        style: TextStyle(
+                                        'Billington has no accounts, but shared bills and tabs are stored online. Receipt scans are sent to Anthropic for extraction. Local data is removed when you clear app data or uninstall; shared data is not.',
+                                        style: const TextStyle(
                                           color: Colors.white70,
                                           fontSize: 14,
                                           height: 1.5,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: TextButton(
+                                          onPressed:
+                                              () => launchUrl(
+                                                Uri.parse(
+                                                  'https://billingtonapp.vercel.app/privacy',
+                                                ),
+                                                mode:
+                                                    LaunchMode
+                                                        .externalApplication,
+                                              ),
+                                          style: TextButton.styleFrom(
+                                            foregroundColor: Colors.white,
+                                            padding: EdgeInsets.zero,
+                                          ),
+                                          child: const Text(
+                                            'Read the full privacy policy',
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -987,7 +1009,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                               const Center(
                                 child: Text(
-                                  'Version 2.0.4',
+                                  'Version 2.0.5',
                                   style: TextStyle(
                                     color: Colors.white60,
                                     fontSize: 14,

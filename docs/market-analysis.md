@@ -1,5 +1,7 @@
 # Origin Story & Market Analysis
 
+> This market analysis records assumptions from before Billington added online bill sharing. Its local-only architecture notes describe that earlier concept, not the current product.
+
 ## Origin Story
 
 Billington started with a real problem we faced during a group trip to Utah. Our group of seven friends decided to simplify restaurant visits by having just one person pay the entire bill—making things easier for restaurant staff and streamlining our dining experience.
