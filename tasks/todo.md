@@ -164,6 +164,16 @@
 - [x] TestFlight workflow [38289317025](https://github.com/LLRHook/checksinmyhead/actions/runs/38289317025) built, validated, uploaded, and waited for Apple processing successfully; tagged `v2.0.4+29`.
 - [x] Confirm web dependencies remain current at Next.js 16.4.0 and React/ReactDOM 19.3.0.
 
+## Lazy-bill production flow (active)
+
+- [x] Confirm mobile sends `lazy_mode: true`, backend/web source handles it, and the creator's pre-share item picker remains present.
+- [x] Confirm production health was still serving backend commit `b998dcb` from 2026-08-29, before the lazy-bill backend implementation merged.
+- [x] Stop opening the creator's claim screen automatically when the share sheet closes after copying a link.
+- [x] Trigger Render deployment automatically after backend/workflow changes merge into `main`; preserve tests and verify the live commit.
+- [x] Run Flutter analyzer and all 190 mobile tests after the mobile flow/UI changes.
+- [ ] Open and merge the PR containing the workflow and mobile changes.
+- [ ] Merge the fix and confirm the backend deploy workflow reports the new live commit; create a new lazy bill and verify the friend-facing item-claim page.
+
 - [x] Map the tabs finalize/share flow in mobile and web
 - [x] Verify whether local SQLite is still used and where
 - [x] Trace finalize API behavior and math calculations
