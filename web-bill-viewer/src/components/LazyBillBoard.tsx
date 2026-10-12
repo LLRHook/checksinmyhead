@@ -18,7 +18,7 @@ import {
   updateTabPersonSharePaid,
 } from "@/lib/api";
 import { formatMoney } from "@/lib/currency";
-import { isLazyItemPaid } from "@/lib/lazy-bill";
+import { isLazyItemPaid, lazyBillRemainingTotal } from "@/lib/lazy-bill";
 import { buildVenmoPayUrl } from "@/lib/venmo";
 
 interface LazyBillBoardProps {
@@ -288,9 +288,9 @@ export default function LazyBillBoard({
             </div>
             <div className="mt-3 border-t border-[var(--border-light)] pt-3 text-sm dark:border-[var(--border-dark)]">
               <div className="flex justify-between text-[var(--text-secondary)]">
-                <span>Subtotal · tax · tip</span>
+                <span>Remaining balance</span>
                 <span className="font-mono">
-                  {formatMoney(bill.total, currency)}
+                  {formatMoney(lazyBillRemainingTotal(bill), currency)}
                 </span>
               </div>
             </div>

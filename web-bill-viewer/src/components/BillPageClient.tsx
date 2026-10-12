@@ -10,6 +10,7 @@ import LazyBillBoard from "@/components/LazyBillBoard";
 import PaymentDetails from "@/components/PaymentDetails";
 import PersonShare from "@/components/PersonShare";
 import { type Bill, getBill } from "@/lib/api";
+import { lazyBillRemainingTotal } from "@/lib/lazy-bill";
 
 interface BillPageClientProps {
   id: string;
@@ -237,8 +238,9 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
           <>
             <BillHeader
               name={bill.name}
-              total={bill.display_total ?? bill.total}
+              total={lazyBillRemainingTotal(bill)}
               currency={bill.display_currency ?? bill.currency_code ?? "USD"}
+              totalLabel="Remaining"
             />
             <PaymentDetails paymentMethods={bill.payment_methods} />
             <BillAppHandoff billId={bill.id} token={token} />
