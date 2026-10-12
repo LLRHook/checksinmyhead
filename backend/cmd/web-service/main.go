@@ -4,6 +4,7 @@ import (
 	"backend/internal/bill"
 	"backend/internal/web"
 	"backend/pkg/database"
+	"backend/pkg/safehttp"
 	"fmt"
 	"log"
 	"net/http"
@@ -21,7 +22,14 @@ func main() {
 	service := bill.NewBillService(repo)
 	handler := web.NewWebpageHandler(service)
 
-	r := gin.Default()
+	r := gin.New()
+	r.Use(safehttp.RequestLogger(), gin.Recovery())
+	r.Use(func(c *gin.Context) {
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.Header("X-Frame-Options", "DENY")
+		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
+		c.Next()
+	})
 	r.LoadHTMLGlob("internal/web/templates/*")
 	r.GET("/health", getHealth)
 	r.GET("/b/:id", handler.CreateHTML)

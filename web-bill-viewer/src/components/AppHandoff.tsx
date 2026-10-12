@@ -27,7 +27,7 @@ export default function AppHandoff({ tabId, token }: AppHandoffProps) {
         Open in Billington
       </a>
       <a
-        href="https://billingtonapp.vercel.app"
+        href="https://apps.apple.com/app/id6746379502"
         className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border-light)] dark:border-[var(--border-dark)] px-4 py-2.5 text-xs font-semibold text-[var(--text-secondary)] no-underline transition-colors hover:bg-black/5 dark:hover:bg-white/5"
       >
         <FaDownload size={12} />

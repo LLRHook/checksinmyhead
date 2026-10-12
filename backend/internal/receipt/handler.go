@@ -75,7 +75,7 @@ func (h *Handler) ParseReceipt(c *gin.Context) {
 
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxReceiptSize)
 
-	file, header, err := c.Request.FormFile("image")
+	file, _, err := c.Request.FormFile("image")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "image file required"})
 		return
@@ -114,8 +114,6 @@ func (h *Handler) ParseReceipt(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to read image"})
 		return
 	}
-
-	_ = header // used for FormFile call, not needed beyond that
 
 	receipt, err := h.service.Parse(imageData, mimeType)
 	if err != nil {

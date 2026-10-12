@@ -355,54 +355,23 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
 
                 const SizedBox(height: AppSpacing.large),
 
-                // Confirm the transaction currency before entering amounts.
+                // Preview the bill in the tab's display currency.
                 Consumer<BillData>(
                   builder: (context, billData, _) {
-                    return Column(
-                      children: [
-                        DropdownButtonFormField<String>(
-                          initialValue:
-                              BillData.supportedCurrencies.containsKey(
-                                    billData.currencyCode,
-                                  )
-                                  ? billData.currencyCode
-                                  : BillData.defaultCurrencyCode,
-                          decoration: const InputDecoration(
-                            labelText: 'Receipt currency',
-                            prefixIcon: Icon(Icons.currency_exchange_outlined),
-                            helperText: 'Confirm this before saving the bill',
-                          ),
-                          items:
-                              BillData.supportedCurrencies.entries
-                                  .map(
-                                    (entry) => DropdownMenuItem<String>(
-                                      value: entry.key,
-                                      child: Text(
-                                        '${entry.key} · ${entry.value}',
-                                      ),
-                                    ),
-                                  )
-                                  .toList(),
-                          onChanged: (value) {
-                            if (value != null) billData.setCurrencyCode(value);
-                          },
-                        ),
-                        if (widget.tab != null &&
-                            widget.tab!.displayCurrency !=
-                                billData.currencyCode)
-                          CurrencyConversionPreview(
-                            amount: billData.total,
-                            fromCurrency: billData.currencyCode,
-                            toCurrency: widget.tab!.displayCurrency,
-                          ),
-                      ],
-                    );
+                    return widget.tab != null &&
+                            widget.tab!.displayCurrency != billData.currencyCode
+                        ? CurrencyConversionPreview(
+                          amount: billData.total,
+                          fromCurrency: billData.currencyCode,
+                          toCurrency: widget.tab!.displayCurrency,
+                        )
+                        : const SizedBox.shrink();
                   },
                 ),
 
                 const SizedBox(height: AppSpacing.large),
 
-                // Subtotal and tax input fields
+                // Keep source-currency selection with its verified daily rate.
                 const CurrencySection(),
 
                 const SizedBox(height: AppSpacing.large),

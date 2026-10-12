@@ -147,29 +147,20 @@ void main() {
 
   group('AssignmentUtils.balanceItemBetweenAssignees', () {
     test('splits evenly between 2 people', () {
-      final item = BillItem(
-        name: 'Pizza',
-        price: 20.0,
-        assignments: {alice: 70.0, bob: 30.0},
-      );
-      final balanced = AssignmentUtils.balanceItemBetweenAssignees(
-        item,
-        [alice, bob],
-      );
+      final balanced = AssignmentUtils.balanceItemBetweenAssignees([
+        alice,
+        bob,
+      ]);
       expect(balanced[alice], equals(50.0));
       expect(balanced[bob], equals(50.0));
     });
 
     test('splits evenly between 3 people', () {
-      final item = BillItem(
-        name: 'Pizza',
-        price: 30.0,
-        assignments: {alice: 100.0},
-      );
-      final balanced = AssignmentUtils.balanceItemBetweenAssignees(
-        item,
-        [alice, bob, charlie],
-      );
+      final balanced = AssignmentUtils.balanceItemBetweenAssignees([
+        alice,
+        bob,
+        charlie,
+      ]);
       // First person absorbs remainder: 100 - 33.33*2 = 33.34
       expect(balanced[alice], equals(33.34));
       expect(balanced[bob], equals(33.33));
@@ -180,21 +171,12 @@ void main() {
     });
 
     test('returns empty map for empty list', () {
-      final item = BillItem(name: 'Pizza', price: 20.0, assignments: {});
-      final balanced = AssignmentUtils.balanceItemBetweenAssignees(item, []);
+      final balanced = AssignmentUtils.balanceItemBetweenAssignees([]);
       expect(balanced, isEmpty);
     });
 
     test('assigns 100% to single person', () {
-      final item = BillItem(
-        name: 'Pizza',
-        price: 20.0,
-        assignments: {alice: 100.0},
-      );
-      final balanced = AssignmentUtils.balanceItemBetweenAssignees(
-        item,
-        [alice],
-      );
+      final balanced = AssignmentUtils.balanceItemBetweenAssignees([alice]);
       expect(balanced[alice], equals(100.0));
     });
   });
@@ -208,9 +190,12 @@ void main() {
 
     test('splits 100% between 4 people', () {
       final dana = Person(name: 'Dana', color: Colors.purple);
-      final result = AssignmentUtils.splitItemEvenly(
-        [alice, bob, charlie, dana],
-      );
+      final result = AssignmentUtils.splitItemEvenly([
+        alice,
+        bob,
+        charlie,
+        dana,
+      ]);
       expect(result[alice], equals(25.0));
       expect(result[bob], equals(25.0));
       expect(result[charlie], equals(25.0));

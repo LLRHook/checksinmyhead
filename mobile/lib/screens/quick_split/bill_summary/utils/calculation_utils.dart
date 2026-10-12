@@ -24,25 +24,14 @@ import 'package:checks_frontend/screens/quick_split/item_assignment/utils/assign
 /// Calculates each person's portion of a bill (subtotal, tax, tip, total)
 /// based on either itemized assignments or proportional shares.
 ///
-/// Inputs:
-///   - person: Person to calculate for
-///   - participants: All people involved in the bill
-///   - personShares: Map of each person to their share amount
-///   - items: Bill items with person assignments (optional)
-///   - subtotal, tax, tipAmount: Bill totals
-///   - birthdayPerson: Person receiving special birthday handling (optional)
-///
-/// Returns: Map with 'subtotal', 'tax', 'tip', and 'total' amounts
 class CalculationUtils {
   static Map<String, double> calculatePersonAmounts({
     required Person person,
-    required List<Person> participants,
     required Map<Person, double> personShares,
     required List<BillItem> items,
     required double subtotal,
     required double tax,
     required double tipAmount,
-    required Person? birthdayPerson,
   }) {
     double personSubtotal = 0.0;
 
@@ -57,7 +46,6 @@ class CalculationUtils {
       final totalWithoutExtras = subtotal;
       final extras = tax + tipAmount;
 
-      // Special case: birthday person or anyone with $0 share
       if (personTotal <= 0) {
         return {'subtotal': 0.0, 'tax': 0.0, 'tip': 0.0, 'total': 0.0};
       }
@@ -92,7 +80,6 @@ class CalculationUtils {
     required double tax,
     required double tipAmount,
     required double total,
-    required Person? birthdayPerson,
   }) {
     // First, calculate raw amounts for each person
     final rawAmounts = <Person, Map<String, double>>{};
@@ -101,20 +88,21 @@ class CalculationUtils {
     for (final person in participants) {
       final amounts = calculatePersonAmounts(
         person: person,
-        participants: participants,
         personShares: personShares,
         items: items,
         subtotal: subtotal,
         tax: tax,
         tipAmount: tipAmount,
-        birthdayPerson: birthdayPerson,
       );
       rawAmounts[person] = amounts;
       rawTotals[person] = amounts['total']!;
     }
 
     // Apply largest-remainder correction on the totals
-    final correctedTotals = AssignmentUtils.applyLargestRemainder(rawTotals, total);
+    final correctedTotals = AssignmentUtils.applyLargestRemainder(
+      rawTotals,
+      total,
+    );
 
     // Merge corrected totals back into per-person maps
     final result = <Person, Map<String, double>>{};
@@ -130,5 +118,4 @@ class CalculationUtils {
 
     return result;
   }
-
 }

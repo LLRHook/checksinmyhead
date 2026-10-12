@@ -23,7 +23,6 @@ import 'package:flutter/services.dart';
 import 'package:checks_frontend/screens/tabs/tabs_screen.dart';
 import 'quick_split/bill_entry/bill_entry_screen.dart';
 import 'quick_split/participant_selection/participant_selection_sheet.dart';
-import '../services/invite_link_service.dart';
 
 // Purpose: Serves as the main entry point/home screen for the Billington bill-splitting app.
 // This screen provides navigation to core app features with an animated interface.
@@ -39,7 +38,9 @@ import '../services/invite_link_service.dart';
 //
 
 class LandingScreen extends StatefulWidget {
-  const LandingScreen({super.key});
+  final VoidCallback? onStartupReady;
+
+  const LandingScreen({super.key, this.onStartupReady});
 
   @override
   State<LandingScreen> createState() => _LandingScreenState();
@@ -73,18 +74,9 @@ class _LandingScreenState extends State<LandingScreen>
 
     // Silently retry uploading bills missing share URLs
     RecentBillsManager().retryPendingUploads();
-    _openPendingInvite();
-  }
-
-  Future<void> _openPendingInvite() async {
-    final invite = await InviteLinkService().getPendingInvite();
-    if (invite == null || !mounted) return;
-    await Future<void>.delayed(const Duration(milliseconds: 700));
-    if (!mounted) return;
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => TabsScreen(initialInviteUrl: invite)),
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onStartupReady?.call();
+    });
   }
 
   @override

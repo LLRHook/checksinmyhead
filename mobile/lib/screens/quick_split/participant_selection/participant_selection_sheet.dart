@@ -137,7 +137,7 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
 
   /// Persists participants to recents for future use
   Future<void> _saveParticipantsToRecent(List<Person> participants) async {
-    await RecentPeopleManager.saveRecentPeople(participants, _recentPeople);
+    await RecentPeopleManager.saveRecentPeople(participants);
     GroupManager.refreshSuggestions(); // fire-and-forget
   }
 

@@ -29,32 +29,25 @@ class PeopleGroupWithMembers {
 }
 
 class GroupManager {
-  static Future<List<PeopleGroupWithMembers>> loadSavedGroups() async {
-    try {
-      final db = DatabaseProvider.db;
-      final groups = await db.getSavedGroups();
-      final result = <PeopleGroupWithMembers>[];
-      for (final group in groups) {
-        final members = await db.getGroupMembers(group.id);
-        result.add(PeopleGroupWithMembers(group: group, members: members));
-      }
-      return result;
-    } catch (e) {
-      return [];
-    }
-  }
+  static Future<List<PeopleGroupWithMembers>> loadSavedGroups() =>
+      _loadGroups(DatabaseProvider.db.getSavedGroups);
 
-  static Future<List<PeopleGroupWithMembers>> loadSuggestedGroups() async {
+  static Future<List<PeopleGroupWithMembers>> loadSuggestedGroups() =>
+      _loadGroups(DatabaseProvider.db.getSuggestedGroups);
+
+  static Future<List<PeopleGroupWithMembers>> _loadGroups(
+    Future<List<PeopleGroup>> Function() fetchGroups,
+  ) async {
     try {
       final db = DatabaseProvider.db;
-      final groups = await db.getSuggestedGroups();
+      final groups = await fetchGroups();
       final result = <PeopleGroupWithMembers>[];
       for (final group in groups) {
         final members = await db.getGroupMembers(group.id);
         result.add(PeopleGroupWithMembers(group: group, members: members));
       }
       return result;
-    } catch (e) {
+    } catch (_) {
       return [];
     }
   }
@@ -62,17 +55,11 @@ class GroupManager {
   static Future<int?> createGroup(String name, List<Person> members) async {
     try {
       final db = DatabaseProvider.db;
-      final personIds = <int>[];
-      for (final member in members) {
-        final personData = await db.getPersonByName(member.name);
-        if (personData != null) {
-          personIds.add(personData.id);
-        }
-      }
+      final personIds = await _personIds(members);
       if (personIds.length < 2) return null;
       final colorValue = members.first.color.toARGB32();
       return await db.createGroup(name, personIds, colorValue);
-    } catch (e) {
+    } catch (_) {
       return null;
     }
   }
@@ -93,22 +80,27 @@ class GroupManager {
     }
   }
 
-  static Future<void> updateGroupMembers(int groupId, List<Person> members) async {
+  static Future<void> updateGroupMembers(
+    int groupId,
+    List<Person> members,
+  ) async {
     try {
-      final db = DatabaseProvider.db;
-      final personIds = <int>[];
-      for (final member in members) {
-        final personData = await db.getPersonByName(member.name);
-        if (personData != null) {
-          personIds.add(personData.id);
-        }
-      }
+      final personIds = await _personIds(members);
       if (personIds.length >= 2) {
-        await db.updateGroupMembers(groupId, personIds);
+        await DatabaseProvider.db.updateGroupMembers(groupId, personIds);
       }
     } catch (e) {
       debugPrint('Error updating group members: $e');
     }
+  }
+
+  static Future<List<int>> _personIds(List<Person> people) async {
+    final ids = <int>[];
+    for (final person in people) {
+      final data = await DatabaseProvider.db.getPersonByName(person.name);
+      if (data != null) ids.add(data.id);
+    }
+    return ids;
   }
 
   static Future<void> markGroupUsed(int groupId) async {
@@ -139,10 +131,11 @@ class GroupManager {
       final billParticipants = <List<String>>[];
       for (final bill in bills) {
         try {
-          final names = (jsonDecode(bill.participants) as List)
-              .cast<String>()
-              .map((n) => n.toLowerCase())
-              .toList();
+          final names =
+              (jsonDecode(bill.participants) as List)
+                  .cast<String>()
+                  .map((n) => n.toLowerCase())
+                  .toList();
           if (names.length >= 2) {
             billParticipants.add(names);
           }
@@ -152,28 +145,30 @@ class GroupManager {
       final coOccurrences = <String, int>{};
       for (final names in billParticipants) {
         final sorted = List<String>.from(names)..sort();
-        final subsets = _generateSubsets(sorted, 2, 5);
+        final subsets = generateSubsets(sorted, 2, 5);
         for (final subset in subsets) {
           final key = subset.join(',');
           coOccurrences[key] = (coOccurrences[key] ?? 0) + 1;
         }
       }
 
-      final frequent = coOccurrences.entries
-          .where((e) => e.value >= 3)
-          .toList()
-        ..sort((a, b) => b.value.compareTo(a.value));
+      final frequent =
+          coOccurrences.entries.where((e) => e.value >= 3).toList()
+            ..sort((a, b) => b.value.compareTo(a.value));
 
       final savedGroups = await loadSavedGroups();
-      final savedMemberSets = savedGroups.map((g) {
-        final names = g.members.map((m) => m.name.toLowerCase()).toList()..sort();
-        return names.join(',');
-      }).toSet();
+      final savedMemberSets =
+          savedGroups.map((g) {
+            final names =
+                g.members.map((m) => m.name.toLowerCase()).toList()..sort();
+            return names.join(',');
+          }).toSet();
 
-      final suggestions = frequent
-          .where((e) => !savedMemberSets.contains(e.key))
-          .take(3)
-          .toList();
+      final suggestions =
+          frequent
+              .where((e) => !savedMemberSets.contains(e.key))
+              .take(3)
+              .toList();
 
       // Remove suggestions that are subsets of other suggestions
       final filteredSuggestions = <MapEntry<String, int>>[];
@@ -182,7 +177,8 @@ class GroupManager {
         final isSubset = suggestions.any((other) {
           if (other.key == suggestion.key) return false;
           final otherNames = other.key.split(',').toSet();
-          return names.every(otherNames.contains) && other.value >= suggestion.value;
+          return names.every(otherNames.contains) &&
+              other.value >= suggestion.value;
         });
         if (!isSubset) {
           filteredSuggestions.add(suggestion);
@@ -211,8 +207,11 @@ class GroupManager {
     }
   }
 
-  static List<List<String>> _generateSubsets(
-    List<String> sorted, int minSize, int maxSize,
+  /// Returns every subset between [minSize] and [maxSize].
+  static List<List<String>> generateSubsets(
+    List<String> sorted,
+    int minSize,
+    int maxSize,
   ) {
     final results = <List<String>>[];
     final n = sorted.length;
@@ -224,8 +223,11 @@ class GroupManager {
   }
 
   static void _combine(
-    List<String> list, int size, int start,
-    List<String> current, List<List<String>> results,
+    List<String> list,
+    int size,
+    int start,
+    List<String> current,
+    List<List<String>> results,
   ) {
     if (current.length == size) {
       results.add(List<String>.from(current));

@@ -17,22 +17,16 @@ class TabsScreen extends StatefulWidget {
   State<TabsScreen> createState() => _TabsScreenState();
 }
 
-class _TabsScreenState extends State<TabsScreen>
-    with SingleTickerProviderStateMixin {
+class _TabsScreenState extends State<TabsScreen> {
   List<AppTab> _tabs = [];
   bool _isLoading = false;
   bool _initialInviteShown = false;
-  late AnimationController _animController;
   final _tabManager = TabManager();
   final _prefsService = PreferencesService();
 
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
     _loadTabs().then((_) {
       if (widget.initialInviteUrl != null && !_initialInviteShown && mounted) {
         _initialInviteShown = true;
@@ -45,7 +39,6 @@ class _TabsScreenState extends State<TabsScreen>
 
   @override
   void dispose() {
-    _animController.dispose();
     super.dispose();
   }
 

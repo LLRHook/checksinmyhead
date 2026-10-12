@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { FaTriangleExclamation } from "react-icons/fa6";
+import BillAppHandoff from "@/components/BillAppHandoff";
 import BillBreakdown from "@/components/BillBreakdown";
 import BillHeader from "@/components/BillHeader";
 import DesktopLayout from "@/components/DesktopLayout";
+import LazyBillBoard from "@/components/LazyBillBoard";
 import PaymentDetails from "@/components/PaymentDetails";
 import PersonShare from "@/components/PersonShare";
-import { API_BASE_URL, type Bill } from "@/lib/api";
+import { type Bill, getBill } from "@/lib/api";
 
 interface BillPageClientProps {
   id: string;
@@ -32,28 +34,22 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
 
     for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/bills/${id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (response.status === 403) {
+        const bill = await getBill(id, token);
+        setState({ status: "success", bill });
+        return;
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message === "Invalid access token"
+        ) {
           setState({ status: "error", errorType: "invalid_token" });
           return;
         }
-
-        if (response.status === 404) {
+        if (error instanceof Error && error.message === "Bill not found") {
           setState({ status: "error", errorType: "not_found" });
           return;
         }
 
-        if (!response.ok) {
-          throw new Error(`Server error: ${response.status}`);
-        }
-
-        const bill: Bill = await response.json();
-        setState({ status: "success", bill });
-        return;
-      } catch {
         // If we have retries left, wait and try again
         if (attempt < RETRY_DELAYS.length) {
           const delay = RETRY_DELAYS[attempt];
@@ -198,6 +194,38 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
   const hasVenmo =
     bill.payment_methods?.find((pm) => pm.name?.toLowerCase().includes("venmo"))
       ?.identifier || null;
+
+  if (bill.lazy_mode) {
+    return (
+      <DesktopLayout
+        sidebar={
+          <>
+            <BillHeader
+              name={bill.name}
+              total={bill.display_total ?? bill.total}
+              currency={bill.display_currency ?? bill.currency_code ?? "USD"}
+            />
+            <PaymentDetails paymentMethods={bill.payment_methods} />
+            <div className="mt-5 rounded-2xl border border-[var(--border-light)] bg-[var(--card-bg-light)] p-4 text-center text-xs text-[var(--text-secondary)] dark:border-[var(--border-dark)] dark:bg-[var(--card-bg-dark)]">
+              <BillAppHandoff billId={bill.id} token={token} />
+              Bill better with Billington
+            </div>
+          </>
+        }
+      >
+        <LazyBillBoard bill={bill} token={token} refreshBill={fetchBill} />
+        <p className="mt-5 text-center text-xs text-[var(--text-secondary)]">
+          Bill better with Billington ·{" "}
+          <a
+            href="https://apps.apple.com/app/id6746379502"
+            className="underline"
+          >
+            Get the app
+          </a>
+        </p>
+      </DesktopLayout>
+    );
+  }
 
   const sidebar = (
     <>

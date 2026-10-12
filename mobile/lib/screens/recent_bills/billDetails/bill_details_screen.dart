@@ -44,8 +44,13 @@ import 'utils/bill_calculations.dart';
 class BillDetailsScreen extends StatefulWidget {
   /// The bill model containing all bill data to display
   final RecentBillModel bill;
+  final bool showBillTotalsInUSD;
 
-  const BillDetailsScreen({super.key, required this.bill});
+  const BillDetailsScreen({
+    super.key,
+    required this.bill,
+    this.showBillTotalsInUSD = false,
+  });
 
   @override
   State<BillDetailsScreen> createState() => _BillDetailsScreenState();
@@ -54,6 +59,11 @@ class BillDetailsScreen extends StatefulWidget {
 class _BillDetailsScreenState extends State<BillDetailsScreen> {
   // Local copy of the bill to track updates
   late RecentBillModel _bill;
+
+  double get _displayedTotal =>
+      widget.showBillTotalsInUSD ? _bill.usdTotal : _bill.total;
+  String get _displayedCurrencyCode =>
+      widget.showBillTotalsInUSD ? 'USD' : _bill.currencyCode;
 
   // Track if the bill name was updated
   bool _wasNameUpdated = false;
@@ -557,11 +567,11 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
               },
               child: Semantics(
                 label:
-                    'Bill total: ${CurrencyFormatter.formatCurrency(_bill.total, currencyCode: _bill.currencyCode)}',
+                    'Bill total: ${CurrencyFormatter.formatCurrency(_displayedTotal, currencyCode: _displayedCurrencyCode)}',
                 child: Text(
                   CurrencyFormatter.formatCurrency(
-                    _bill.total,
-                    currencyCode: _bill.currencyCode,
+                    _displayedTotal,
+                    currencyCode: _displayedCurrencyCode,
                   ),
                   style: const TextStyle(
                     color: Colors.white,

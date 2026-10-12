@@ -276,7 +276,6 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
                                 tax: _summaryData.tax,
                                 tipAmount: _summaryData.tipAmount,
                                 total: _summaryData.total,
-                                birthdayPerson: _summaryData.birthdayPerson,
                               );
                           return sortedParticipants.map(
                             (person) => PersonCard(

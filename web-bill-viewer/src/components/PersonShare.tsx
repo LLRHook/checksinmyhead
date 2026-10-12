@@ -6,11 +6,15 @@ import { SiVenmo } from "react-icons/si";
 import { useCollapsible } from "@/hooks/useCollapsible";
 import {
   type Bill,
-  formatMoney,
   type PersonShare as PersonShareType,
   updatePersonSharePaid,
 } from "@/lib/api";
-import { billCurrencyCode, formatUSDMoney, toUSD } from "@/lib/currency";
+import {
+  billCurrencyCode,
+  formatMoney,
+  formatUSDMoney,
+  toUSD,
+} from "@/lib/currency";
 import { buildVenmoPayUrl } from "@/lib/venmo";
 
 interface PersonShareProps {

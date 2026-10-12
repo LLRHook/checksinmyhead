@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { FaCircleCheck, FaReceipt } from "react-icons/fa6";
-import { formatMoney } from "@/lib/api";
+import { formatMoney } from "@/lib/currency";
 
 interface TabHeaderProps {
   name: string;

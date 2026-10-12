@@ -41,8 +41,7 @@ class TutorialOverlay extends StatefulWidget {
   State<TutorialOverlay> createState() => _TutorialOverlayState();
 }
 
-class _TutorialOverlayState extends State<TutorialOverlay>
-    with SingleTickerProviderStateMixin {
+class _TutorialOverlayState extends State<TutorialOverlay> {
   // Current step index being displayed
   int _currentStep = 0;
 

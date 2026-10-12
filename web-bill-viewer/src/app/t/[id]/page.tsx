@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { FaLock, FaTriangleExclamation } from "react-icons/fa6";
 import AppHandoff from "@/components/AppHandoff";
+import BillHeader from "@/components/BillHeader";
 import DesktopLayout from "@/components/DesktopLayout";
+import LazyBillBoard from "@/components/LazyBillBoard";
 import MemberList from "@/components/MemberList";
 import NetBalances from "@/components/NetBalances";
 import PaymentDetails from "@/components/PaymentDetails";
@@ -22,8 +24,8 @@ export async function generateMetadata({
   params,
   searchParams,
 }: {
-  params: { id: string };
-  searchParams: { t?: string };
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ t?: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
   const { t: token } = await searchParams;
@@ -40,8 +42,8 @@ export default async function TabPage({
   params,
   searchParams,
 }: {
-  params: { id: string };
-  searchParams: { t?: string };
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ t?: string }>;
 }) {
   const { id } = await params;
   const { t: token } = await searchParams;
@@ -85,6 +87,8 @@ export default async function TabPage({
   }
 
   const personTotals = computeTabPersonTotals(tab);
+  const primaryBill = tab.bills[0] ?? null;
+  const isLegacyLazyTab = tab.description.toLowerCase().includes("lazy mode");
   const settlements = tab.finalized ? await getSettlements(id, token) : [];
   const members = await getTabMembers(id, token);
   const paymentMethods = Array.from(
@@ -104,18 +108,28 @@ export default async function TabPage({
 
   const sidebar = (
     <>
-      <TabHeader
-        name={tab.name}
-        description={tab.description}
-        total={tab.total_amount}
-        billCount={tab.bills.length}
-        finalized={tab.finalized}
-        currency={tab.display_currency}
-      />
+      {isLegacyLazyTab && primaryBill ? (
+        <BillHeader
+          name={primaryBill.name}
+          total={primaryBill.display_total ?? primaryBill.total}
+          currency={primaryBill.display_currency ?? primaryBill.currency_code}
+        />
+      ) : (
+        <TabHeader
+          name={tab.name}
+          description={tab.description}
+          total={tab.total_amount}
+          billCount={tab.bills.length}
+          finalized={tab.finalized}
+          currency={tab.display_currency}
+        />
+      )}
 
-      {members.length > 0 && <MemberList members={members} />}
+      {!isLegacyLazyTab && members.length > 0 && (
+        <MemberList members={members} />
+      )}
 
-      <AppHandoff tabId={id} token={token} />
+      {!isLegacyLazyTab && <AppHandoff tabId={id} token={token} />}
 
       {paymentMethods.length > 0 && (
         <PaymentDetails paymentMethods={paymentMethods} />
@@ -125,36 +139,42 @@ export default async function TabPage({
 
   return (
     <DesktopLayout sidebar={sidebar}>
-      {(tab.net_balances ?? []).length > 0 && (
-        <NetBalances
-          balances={tab.net_balances ?? []}
-          finalized={tab.finalized}
-          venmoId={venmoId}
-          currentMemberName={null}
-          currency={tab.display_currency}
-        />
-      )}
-
-      {tab.finalized && settlements.length > 0 ? (
-        <SettlementCard
-          settlements={settlements}
-          venmoId={venmoId}
-          tabId={id}
-          token={token}
-          currency={tab.display_currency}
-          readOnly
-        />
+      {isLegacyLazyTab && primaryBill ? (
+        <LazyBillBoard bill={primaryBill} token={token} tabId={id} />
       ) : (
-        personTotals.length > 0 && (
-          <TabPersonTotals
-            personTotals={personTotals}
-            venmoId={venmoId}
-            currency={tab.display_currency}
-          />
-        )
-      )}
+        <>
+          {(tab.net_balances ?? []).length > 0 && (
+            <NetBalances
+              balances={tab.net_balances ?? []}
+              finalized={tab.finalized}
+              venmoId={venmoId}
+              currentMemberName={null}
+              currency={tab.display_currency}
+            />
+          )}
 
-      <TabBillList bills={tab.bills} />
+          {tab.finalized && settlements.length > 0 ? (
+            <SettlementCard
+              settlements={settlements}
+              venmoId={venmoId}
+              tabId={id}
+              token={token}
+              currency={tab.display_currency}
+              readOnly
+            />
+          ) : (
+            personTotals.length > 0 && (
+              <TabPersonTotals
+                personTotals={personTotals}
+                venmoId={venmoId}
+                currency={tab.display_currency}
+              />
+            )
+          )}
+
+          <TabBillList bills={tab.bills} tabToken={token} />
+        </>
+      )}
     </DesktopLayout>
   );
 }
