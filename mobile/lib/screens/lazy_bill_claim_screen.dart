@@ -1,5 +1,6 @@
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 import 'package:checks_frontend/services/api_service.dart';
+import 'package:checks_frontend/screens/lazy_bill_claim_state.dart';
 import 'package:checks_frontend/screens/settings/services/preferences_service.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -144,7 +145,12 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
   }
 
   Future<void> _toggleItem(Map<String, dynamic> item) async {
-    if (_saving) return;
+    if (!canChangeLazyBillSelection(
+      saving: _saving,
+      paid: _myShare?['paid'] == true,
+    )) {
+      return;
+    }
     if (_name.isEmpty) {
       await _chooseName();
       if (_name.isEmpty) return;
@@ -264,7 +270,12 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
           _showPayment = false;
         });
       }
-      await _loadBill();
+      if (mounted) {
+        Navigator.of(
+          context,
+          rootNavigator: true,
+        ).pushNamedAndRemoveUntil('/landing', (route) => false);
+      }
     } catch (_) {
       if (mounted) {
         setState(() => _error = 'Could not save payment status. Try again.');
@@ -371,20 +382,22 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
                                   .toLowerCase() !=
                               _name.toLowerCase(),
                         );
-                        final locked = isPaid && mine;
+                        final canChange = canChangeLazyBillSelection(
+                          saving: _saving,
+                          paid: isPaid,
+                        );
+                        final locked = isPaid;
                         return ListTile(
                           enabled:
-                              !_saving &&
+                              canChange &&
                               !unavailable &&
-                              !locked &&
                               !(mine && assignments.length > 1),
                           onTap: () => _toggleItem(item),
                           leading: Checkbox(
                             value: mine,
                             onChanged:
-                                _saving ||
+                                !canChange ||
                                         unavailable ||
-                                        locked ||
                                         (mine && assignments.length > 1)
                                     ? null
                                     : (_) => _toggleItem(item),

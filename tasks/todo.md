@@ -524,9 +524,9 @@
 - Web bill viewers refresh when focused/visible and every 10 seconds while visible. Receipt rows show a Paid badge when all assigned people have paid.
 - Verification: `go test ./internal/bill ./internal/tab`, `npm test -- --run` (35 tests), targeted Biome checks, `flutter analyze` on changed mobile files, `flutter test` (190 tests), web production build, `npx tsc --noEmit`, Dart formatting check for changed feature files, and `git diff --check` passed.
 - [x] Bump Flutter/iOS/Settings version to 2.0.7 (build 32) and add matching release notes.
-- [ ] Commit the verified Lazy Mode changes and open a PR; merge without waiting for CI as previously authorized.
-- [ ] Dispatch TestFlight build 32 with the 2.0.7 Lazy Mode notes; monitor upload and processing.
-- [ ] Record PR, TestFlight run, and processing results.
+- [x] Commit the verified Lazy Mode changes in [PR #151](https://github.com/LLRHook/checksinmyhead/pull/151), merged without waiting for CI.
+- [x] Dispatch TestFlight build 32 with the 2.0.7 Lazy Mode notes; upload and Apple processing completed successfully.
+- [x] Record release results: backend deploy run 38304261937 passed its health check and smoke test; TestFlight run 38304277579 completed and created tag `v2.0.7+32`.
 
 ## Lazy Mode remaining balance after payment
 
@@ -534,3 +534,17 @@
 - [x] Keep the original receipt items visible with their paid status.
 - [x] Cover paid, unpaid, unclaimed, converted-currency, and zero-floor balance cases.
 - [x] Verify web tests, lint, TypeScript, production build, and diff formatting.
+- [x] Merge [PR #152](https://github.com/LLRHook/checksinmyhead/pull/152); Vercel sync run 38305143413 and CI run 38305143399 passed.
+
+## Lazy Mode duplicate item and paid picker fixes
+
+- [x] Key the in-app owner's claimed receipt rows by original row position so duplicate names remain independently selectable.
+- [x] Prevent all item changes after the viewer marks a share paid, in both row controls and the selection handler.
+- [x] Return to the landing page after successful payment marking.
+- [x] Add focused regression coverage for duplicate owner item selection and the paid selection guard.
+- [x] Run formatter, focused Flutter tests (4 passed), Flutter analysis (no issues), and diff checks.
+- [x] Review final diff and record verification.
+- [x] Bump Flutter/iOS/Settings version to 2.0.8 (build 33) and add release notes.
+- [ ] Commit, open and merge the release PR.
+- [ ] Dispatch TestFlight and monitor upload and Apple processing.
+- [ ] Record PR, run, and processing results.

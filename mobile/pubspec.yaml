@@ -1,7 +1,7 @@
 name: checks_frontend
 description: "Billington — privacy-first receipt splitting"
 publish_to: 'none'
-version: 2.0.7+32
+version: 2.0.8+33
 
 environment:
   sdk: ^3.7.2
