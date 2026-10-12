@@ -5,6 +5,8 @@ type LazyBillBalance = {
   person_shares: Pick<PersonShare, "total" | "paid">[];
   exchange_rate?: number;
   display_total?: number;
+  display_currency?: string;
+  currency_code?: string;
 };
 
 export function lazyBillRemainingTotal(bill: LazyBillBalance): number {
@@ -22,6 +24,10 @@ export function lazyBillRemainingTotal(bill: LazyBillBalance): number {
         ? bill.display_total / bill.total
         : 1;
   return Math.round((remaining * rate + Number.EPSILON) * 100) / 100;
+}
+
+export function lazyBillRemainingCurrency(bill: LazyBillBalance): string {
+  return bill.display_currency ?? bill.currency_code ?? "USD";
 }
 
 export function isLazyItemPaid(

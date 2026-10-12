@@ -346,6 +346,7 @@ class AppDatabase extends _$AppDatabase {
 
   // Stores a new bill in history
   Future<void> saveBill({
+    int? billId,
     required List<Person> participants,
     required Map<Person, double> personShares,
     required List<BillItem> items,
@@ -406,6 +407,7 @@ class AppDatabase extends _$AppDatabase {
     }
 
     final companion = RecentBillsCompanion(
+      id: billId == null ? const Value.absent() : Value(billId),
       billName: Value(billName),
       participants: Value(participantsJson),
       participantCount: Value(participants.length),
@@ -430,7 +432,7 @@ class AppDatabase extends _$AppDatabase {
 
     final count = await select(recentBills).get().then((bills) => bills.length);
 
-    if (count >= maxRecentBills) {
+    if (billId == null && count >= maxRecentBills) {
       final oldest =
           await (select(recentBills)
                 ..orderBy([(t) => OrderingTerm.asc(t.createdAt)])
@@ -441,7 +443,11 @@ class AppDatabase extends _$AppDatabase {
       await (delete(recentBills)..where((t) => t.id.equals(oldest.id))).go();
     }
 
-    await into(recentBills).insert(companion);
+    if (billId == null) {
+      await into(recentBills).insert(companion);
+    } else {
+      await into(recentBills).insertOnConflictUpdate(companion);
+    }
   }
 
   Future<List<RecentBill>> getRecentBills() async {
