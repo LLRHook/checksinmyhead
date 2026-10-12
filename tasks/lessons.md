@@ -14,3 +14,9 @@
 - Treat a release-version correction as a coordinated change: update Flutter metadata, native iOS marketing version, and the visible Settings label, then build TestFlight from the merged commit.
 - For a reported regression, inspect the feature's history before concluding the old behavior was never supported; separate a removed interaction from a changed data model, and preserve both compatibility and the intended new boundary.
 - For codebase cleanup, apply KISS literally across implementation and tests: delete unnecessary comments and duplicate test logic, share behavior through small helpers/generics when semantics match, and keep code only when a live product path or compatibility requirement needs it.
+
+# Lazy Mode item identity and paid-state interactions
+
+- Receipt rows may share the same display name and price; selection must be keyed by row identity, never a user-visible name.
+- A paid share must block item changes both in the UI and in the tap handler. Disable every row after payment, not only rows currently assigned to that person.
+- After successfully marking a shared bill paid, return the user to the app landing page instead of leaving them in a picker that invites more selection.
