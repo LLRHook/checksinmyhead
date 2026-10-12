@@ -35,6 +35,8 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
   bool _isLoading = true;
   bool _isFinalizing = false;
   bool _isRetryingInvite = false;
+  double _usdToDisplayRate = 1;
+  String _rateCurrency = 'USD';
   late AppTab _currentTab;
 
   @override
@@ -51,8 +53,14 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
 
   String _formatCurrency(double value) {
     return CurrencyFormatter.formatCurrency(
-      value,
-      currencyCode: _currentTab.displayCurrency,
+      value *
+          (_rateCurrency == _currentTab.displayCurrency
+              ? _usdToDisplayRate
+              : 1),
+      currencyCode:
+          _rateCurrency == _currentTab.displayCurrency
+              ? _currentTab.displayCurrency
+              : 'USD',
     );
   }
 
@@ -100,6 +108,8 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
             .where((bill) => _currentTab.billIds.contains(bill.id))
             .toList();
 
+    await _loadDisplayCurrencyRate();
+
     await _loadSettlements();
     await _loadMembers();
 
@@ -109,6 +119,23 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
         _tabBills = tabBills;
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _loadDisplayCurrencyRate() async {
+    final currency = _currentTab.displayCurrency.toUpperCase();
+    if (currency == 'USD') {
+      _usdToDisplayRate = 1;
+      _rateCurrency = 'USD';
+      return;
+    }
+    try {
+      final rate = await _apiService.getCurrencyRate('USD', currency);
+      _usdToDisplayRate = rate;
+      _rateCurrency = currency;
+    } catch (_) {
+      _usdToDisplayRate = 1;
+      _rateCurrency = 'USD';
     }
   }
 
@@ -406,6 +433,8 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
     setState(() {
       _currentTab = _currentTab.copyWith(displayCurrency: selected);
     });
+    await _loadDisplayCurrencyRate();
+    if (mounted) setState(() {});
     _showSnackBar('Tab totals will display in $selected');
   }
 
@@ -1330,7 +1359,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          _formatCurrency(bill.total),
+                          _formatCurrency(bill.usdTotal),
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
