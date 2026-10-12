@@ -206,10 +206,7 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
               currency={bill.display_currency ?? bill.currency_code ?? "USD"}
             />
             <PaymentDetails paymentMethods={bill.payment_methods} />
-            <div className="mt-5 rounded-2xl border border-[var(--border-light)] bg-[var(--card-bg-light)] p-4 text-center text-xs text-[var(--text-secondary)] dark:border-[var(--border-dark)] dark:bg-[var(--card-bg-dark)]">
-              <BillAppHandoff billId={bill.id} token={token} />
-              Bill better with Billington
-            </div>
+            <BillAppHandoff billId={bill.id} token={token} />
           </>
         }
       >
