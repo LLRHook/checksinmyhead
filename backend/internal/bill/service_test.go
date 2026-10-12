@@ -106,9 +106,9 @@ func TestUpdatePersonSharePaid_Error(t *testing.T) {
 
 func TestBuildLazyPersonShares_KeepEarlierSharesStableAsItemsAreClaimed(t *testing.T) {
 	bill := &models.Bill{
-		ID:       42,
-		Subtotal: 30,
-		Tax:      3,
+		ID:        42,
+		Subtotal:  30,
+		Tax:       3,
 		TipAmount: 6,
 		Items: []models.BillItem{
 			{ID: 1, Price: 10, Assignments: []models.ItemAssignment{{PersonName: "Alex", Percentage: 100}}},
