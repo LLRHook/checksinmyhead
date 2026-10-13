@@ -154,16 +154,10 @@ func (r *tabRepository) UpdateBillItemAssignmentsBatch(tabID uint, billID uint, 
 			if err := tx.Where("bill_item_id = ?", update.ItemID).Find(&currentAssignments).Error; err != nil {
 				return err
 			}
-			for _, assignment := range currentAssignments {
-				if paidByName[strings.ToLower(assignment.PersonName)] {
-					return ErrItemAlreadyPaid
-				}
+			if !billpkg.PreservesPaidAssignments(currentAssignments, update.Assignments, paidByName) {
+				return ErrItemAlreadyPaid
 			}
-			for _, assignment := range update.Assignments {
-				if paidByName[strings.ToLower(assignment.PersonName)] {
-					return ErrItemAlreadyPaid
-				}
-			}
+			update.Assignments = billpkg.PreserveAssignmentClaimTimes(currentAssignments, update.Assignments)
 
 			if err := tx.Where("bill_item_id = ?", update.ItemID).Delete(&models.ItemAssignment{}).Error; err != nil {
 				return err
@@ -192,6 +186,9 @@ func (r *tabRepository) UpdateBillItemAssignmentsBatch(tabID uint, billID uint, 
 		}
 
 		shares := billpkg.BuildPersonShares(&refreshed)
+		if bill.LazyMode {
+			shares = billpkg.BuildLazyPersonShares(&refreshed)
+		}
 		for i := range shares {
 			shares[i].Paid = paidByName[strings.ToLower(shares[i].PersonName)]
 		}

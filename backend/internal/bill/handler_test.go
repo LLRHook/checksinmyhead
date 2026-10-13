@@ -110,7 +110,7 @@ func TestUpdateLazyItemAssignmentsRequiresLazyBillAndValidToken(t *testing.T) {
 		t.Fatalf("unexpected assignment write: %#v", repo.updatedItems)
 	}
 
-	invalidReq := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/api/bills/%d/items/7/assignments", id), bytes.NewBufferString(`{"assignments":[{"person_name":"Alex","percentage":75}]}`))
+	invalidReq := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/api/bills/%d/items/7/assignments", id), bytes.NewBufferString(`{"assignments":[{"person_name":"Alex","percentage":101}]}`))
 	invalidReq.Header.Set("Content-Type", "application/json")
 	invalidReq.Header.Set("Authorization", "Bearer "+token)
 	invalidRes := httptest.NewRecorder()
