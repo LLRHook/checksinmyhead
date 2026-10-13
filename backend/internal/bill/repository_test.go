@@ -22,6 +22,18 @@ func newBillRepositoryTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
+func TestPreservesPaidAssignmentsRejectsPercentageChanges(t *testing.T) {
+	paid := map[string]bool{"alex": true}
+	current := []models.ItemAssignment{{PersonName: "Alex", Percentage: 50}}
+
+	if !PreservesPaidAssignments(current, []models.ItemAssignment{{PersonName: "Alex", Percentage: 50}}, paid) {
+		t.Fatal("unchanged paid assignment should be allowed")
+	}
+	if PreservesPaidAssignments(current, []models.ItemAssignment{{PersonName: "Alex", Percentage: 50.009}}, paid) {
+		t.Fatal("paid assignment percentage change should be rejected")
+	}
+}
+
 func TestUpdateItemAssignmentsBatchRejectsAddingToPaidShare(t *testing.T) {
 	db := newBillRepositoryTestDB(t)
 	bill := models.Bill{LazyMode: true, Name: "Dinner", Subtotal: 12, Total: 12, Date: time.Now()}
