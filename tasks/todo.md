@@ -1,5 +1,20 @@
 # Investigation Plan
 
+## Lazy claim conflict and paid-share validation
+
+- [x] Preserve the item version captured when a web draft is first edited, so background refreshes cannot make stale choices appear current.
+- [x] Tighten paid-assignment immutability and aggregate percentage validation to reject real overclaims while allowing only floating-point noise.
+- [x] Add regression coverage and review the diff.
+- [x] Run focused backend/web verification.
+- [x] Commit, push, and open a PR.
+
+### Review
+
+- Web drafts now keep the first observed `updated_at` through later refreshes and submit that version to the existing atomic API; the server rejects stale edits and the viewer refreshes into the existing reselection flow.
+- Paid assignment changes are rejected beyond 1e-9 percentage points, matching mobile's paid-selection lock. All four assignment handlers now reject totals above 100% except 1e-9 floating-point noise.
+- Verification: focused Go tests passed for bill, tab, and models; web tests passed (52), TypeScript, targeted Biome checks, and `git diff --check` passed.
+- Submitted as [PR #158](https://github.com/LLRHook/checksinmyhead/pull/158), commit `e417d78`.
+
 ## TestFlight version bump
 
 - [x] Confirm the last TestFlight run uploaded successfully and reached Apple processing state `VALID`.

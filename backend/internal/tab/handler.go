@@ -294,7 +294,7 @@ func (h *TabHandler) UpdateBillItemAssignments(c *gin.Context) {
 			Percentage: assignment.Percentage,
 		})
 	}
-	if totalPercentage > 100.01 {
+	if !models.ItemAssignmentTotalIsValid(totalPercentage) {
 		c.JSON(400, gin.H{"error": "item assignments cannot exceed 100 percent"})
 		return
 	}
@@ -395,7 +395,7 @@ func (h *TabHandler) UpdateBillItemAssignmentsBatch(c *gin.Context) {
 			totalPercentage += assignment.Percentage
 			assignments = append(assignments, models.ItemAssignment{PersonName: name, Percentage: assignment.Percentage})
 		}
-		if totalPercentage > 100.01 {
+		if !models.ItemAssignmentTotalIsValid(totalPercentage) {
 			c.JSON(400, gin.H{"error": "item assignments cannot exceed 100 percent"})
 			return
 		}

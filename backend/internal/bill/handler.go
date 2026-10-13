@@ -226,7 +226,7 @@ func (h *BillHandler) UpdateLazyItemAssignments(c *gin.Context) {
 		totalPercentage += assignment.Percentage
 		assignments = append(assignments, models.ItemAssignment{PersonName: name, Percentage: assignment.Percentage})
 	}
-	if totalPercentage > 100.01 {
+	if !models.ItemAssignmentTotalIsValid(totalPercentage) {
 		c.JSON(400, gin.H{"error": "item assignments cannot exceed 100 percent"})
 		return
 	}
@@ -320,7 +320,7 @@ func (h *BillHandler) UpdateLazyItemAssignmentsBatch(c *gin.Context) {
 			totalPercentage += assignment.Percentage
 			assignments = append(assignments, models.ItemAssignment{PersonName: name, Percentage: assignment.Percentage})
 		}
-		if totalPercentage > 100.01 {
+		if !models.ItemAssignmentTotalIsValid(totalPercentage) {
 			c.JSON(400, gin.H{"error": "item assignments cannot exceed 100 percent"})
 			return
 		}
