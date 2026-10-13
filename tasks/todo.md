@@ -1,5 +1,17 @@
 # Investigation Plan
 
+## TestFlight version bump
+
+- [x] Confirm the last TestFlight run uploaded successfully and reached Apple processing state `VALID`.
+- [x] Bump marketing version and source build number in Flutter metadata; synchronize the native Runner marketing version and Settings label.
+- [x] Record the release rule in `AGENTS.md` and `tasks/lessons.md`.
+- [ ] Verify version metadata consistency and create a follow-up PR.
+
+### Review
+
+- The last upload used marketing version `2.0.9` and operator-supplied build number `2.0.10`; Apple marked it valid. The source marketing version had not changed, which made the app version appear unchanged.
+- The next source release is `2.0.10+35`; the workflow will resolve a newer App Store Connect build number when uploaded.
+
 ## Lazy item percentage splitting
 
 - [x] Replace the web lazy picker’s immediate equal-name split with a staged per-item percentage editor.

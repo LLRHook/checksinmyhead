@@ -12,6 +12,7 @@
 - When a user reports an old version label, verify all source version authorities and the installed artifact before changing version numbers; stale builds can make correct source look incorrect.
 - Payment handles can remain privacy-preserving without a user database when they are local by default and copied only into the specific shared bill/tab the user intentionally publishes.
 - Treat a release-version correction as a coordinated change: update Flutter metadata, native iOS marketing version, and the visible Settings label, then build TestFlight from the merged commit.
+- For every TestFlight release, bump both the Flutter marketing version and source build number; verify the workflow's resolved App Store Connect build number is also new.
 - For a reported regression, inspect the feature's history before concluding the old behavior was never supported; separate a removed interaction from a changed data model, and preserve both compatibility and the intended new boundary.
 - For codebase cleanup, apply KISS literally across implementation and tests: delete unnecessary comments and duplicate test logic, share behavior through small helpers/generics when semantics match, and keep code only when a live product path or compatibility requirement needs it.
 
