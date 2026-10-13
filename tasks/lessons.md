@@ -25,3 +25,4 @@
 - After successfully marking a shared bill paid, return the user to the app landing page instead of leaving them in a picker that invites more selection.
 - Keep item selection local while the user is choosing; persist the changed set once on Review, matching mobile and avoiding a refresh after every tap.
 - For multi-item review, use one server-side transaction; on a stale or unavailable item, roll back the whole selection and return the refreshed picker so the user can choose again.
+- Treat unpriced, indented receipt lines after a priced row as possible modifiers/continuations; never assign them a duplicated price as a separate item.
