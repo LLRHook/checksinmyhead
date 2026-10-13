@@ -16,6 +16,7 @@
 - For a reported regression, inspect the feature's history before concluding the old behavior was never supported; separate a removed interaction from a changed data model, and preserve both compatibility and the intended new boundary.
 - For codebase cleanup, apply KISS literally across implementation and tests: delete unnecessary comments and duplicate test logic, share behavior through small helpers/generics when semantics match, and keep code only when a live product path or compatibility requirement needs it.
 - When a split should leave a portion open for later claims, represent that as unassigned percentage end to end; don't invent a named remainder owner or let one paid share lock the whole item.
+- Preserve the original item version alongside web picker drafts; a background refresh must not pair stale assignments with a fresh version token. Keep paid-assignment server locks as strict as the mobile UI lock, allowing only negligible floating-point noise.
 
 # Lazy Mode item identity and paid-state interactions
 

@@ -9,6 +9,29 @@ type LazyBillBalance = {
   currency_code?: string;
 };
 
+export type LazyAssignmentDraft = {
+  assignments: ItemAssignment[];
+  expectedUpdatedAt?: string;
+};
+
+export function updateLazyAssignmentDraft(
+  drafts: Record<number, LazyAssignmentDraft> | null,
+  itemId: number,
+  assignments: ItemAssignment[],
+  currentUpdatedAt?: string,
+): Record<number, LazyAssignmentDraft> {
+  return {
+    ...drafts,
+    [itemId]: {
+      assignments,
+      expectedUpdatedAt:
+        drafts && itemId in drafts
+          ? drafts[itemId].expectedUpdatedAt
+          : currentUpdatedAt,
+    },
+  };
+}
+
 export function lazyBillRemainingTotal(bill: LazyBillBalance): number {
   const paidTotal = bill.person_shares
     .filter((share) => share.paid)

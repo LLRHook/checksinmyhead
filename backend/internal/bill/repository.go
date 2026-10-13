@@ -168,12 +168,12 @@ func PreservesPaidAssignments(current, next []models.ItemAssignment, paidByName 
 		nextByName[strings.ToLower(candidate.PersonName)] = candidate.Percentage
 	}
 	for name, percentage := range currentByName {
-		if paidByName[name] && math.Abs(nextByName[name]-percentage) >= 0.01 {
+		if paidByName[name] && math.Abs(nextByName[name]-percentage) > 1e-9 {
 			return false
 		}
 	}
 	for name, percentage := range nextByName {
-		if paidByName[name] && math.Abs(currentByName[name]-percentage) >= 0.01 {
+		if paidByName[name] && math.Abs(currentByName[name]-percentage) > 1e-9 {
 			return false
 		}
 	}
