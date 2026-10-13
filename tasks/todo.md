@@ -1,5 +1,23 @@
 # Investigation Plan
 
+## Lazy item percentage splitting
+
+- [x] Replace the web lazy picker’s immediate equal-name split with a staged per-item percentage editor.
+- [x] Add the same staged per-item split option to the mobile lazy bill picker.
+- [x] Save selections and splits together on Review using the existing atomic batch APIs.
+- [x] Replace the Git branch icon with a people/split icon and show each viewer’s item share clearly.
+- [x] Add regression coverage for percentage drafts and run relevant web/mobile verification.
+
+### Audit findings
+
+- The normal mobile item assignment flow supports custom participant percentages; the mobile lazy picker only assigns 100% to one person.
+- The web lazy picker immediately splits evenly among comma-separated names; it does not let the viewer choose a percentage and bypasses the Review batch save.
+- Existing assignment records and batch endpoints already store and validate percentage shares, so this should not require a backend schema change.
+- Scope clarification: a lazy receipt line is split proportionally as one line item; it does not expose individual units of a quantity greater than one.
+- KISS pass: draft maps store only modified item IDs; the old boolean-selection helper and per-item immediate save path were removed.
+- Prevent edits when any participant on the item has paid, matching the backend's immutable-paid-assignment rule.
+- Verification: all web tests pass (50), `npx tsc --noEmit` passes, full Flutter test suite passes (202), targeted Flutter analysis passes, and `git diff --check` passes.
+
 ## Receipt parsing accuracy and Sonnet 5.5
 
 - [x] Rewrite the receipt extraction prompt to prioritize visible evidence and prevent guessed details.

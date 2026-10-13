@@ -57,13 +57,89 @@ void main() {
     });
   });
 
-  group('lazySelectionHasChanges', () {
-    test('allows saving after clearing the final assigned item', () {
-      expect(lazySelectionHasChanges({}, {12}), isTrue);
+  group('lazyAssignmentsEqual', () {
+    test('compares splits without depending on participant order', () {
+      expect(
+        lazyAssignmentsEqual(
+          [
+            {'person_name': 'Alex', 'percentage': 40},
+            {'person_name': 'Sam', 'percentage': 60},
+          ],
+          [
+            {'person_name': 'sam', 'percentage': 60},
+            {'person_name': 'alex', 'percentage': 40},
+          ],
+        ),
+        isTrue,
+      );
     });
 
-    test('does not request review when selection matches the saved items', () {
-      expect(lazySelectionHasChanges({12, 15}, {15, 12}), isFalse);
+    test('detects a changed share percentage', () {
+      expect(
+        lazyAssignmentsEqual(
+          [
+            {'person_name': 'Alex', 'percentage': 35},
+            {'person_name': 'Sam', 'percentage': 65},
+          ],
+          [
+            {'person_name': 'Alex', 'percentage': 40},
+            {'person_name': 'Sam', 'percentage': 60},
+          ],
+        ),
+        isFalse,
+      );
     });
+  });
+
+  test('a partially paid split is locked before assignment edits', () {
+    expect(
+      hasPaidLazyAssignment(
+        [
+          {'person_name': 'Alex', 'percentage': 40},
+          {'person_name': 'Sam', 'percentage': 60},
+        ],
+        [
+          {'person_name': 'Alex', 'paid': true},
+          {'person_name': 'Sam', 'paid': false},
+        ],
+      ),
+      isTrue,
+    );
+  });
+
+  group('createLazySplitAssignments', () {
+    test('assigns the chosen share and divides the remainder evenly', () {
+      expect(createLazySplitAssignments('Me', 'Alex, Sam', 70), [
+        {'person_name': 'Me', 'percentage': 70.0},
+        {'person_name': 'Alex', 'percentage': 15.0},
+        {'person_name': 'Sam', 'percentage': 15.0},
+      ]);
+    });
+
+    test('deduplicates names and requires someone else to share with', () {
+      expect(createLazySplitAssignments('Me', 'Me, Alex, alex', 25), [
+        {'person_name': 'Me', 'percentage': 25.0},
+        {'person_name': 'Alex', 'percentage': 75.0},
+      ]);
+      expect(createLazySplitAssignments('Me', 'Me', 50), isNull);
+    });
+  });
+
+  test('removing one person reallocates the whole item to the others', () {
+    final remaining = removeLazyAssignment([
+      {'person_name': 'Me', 'percentage': 35},
+      {'person_name': 'Alex', 'percentage': 25},
+      {'person_name': 'Sam', 'percentage': 40},
+    ], 'Me');
+    expect(remaining[0]['person_name'], 'Alex');
+    expect(remaining[0]['percentage'], closeTo(38.4615, 0.001));
+    expect(remaining[1]['person_name'], 'Sam');
+    expect(remaining[1]['percentage'], closeTo(61.5385, 0.001));
+    expect(
+      removeLazyAssignment([
+        {'person_name': 'Me', 'percentage': 100},
+      ], 'Me'),
+      isEmpty,
+    );
   });
 }

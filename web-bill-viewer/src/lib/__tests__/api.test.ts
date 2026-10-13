@@ -619,7 +619,10 @@ describe("updateTabBillItemAssignmentsBatch", () => {
       {
         item_id: 159,
         expected_updated_at: "2026-10-10T17:30:54.055105Z",
-        assignments: [{ person_name: "Alex", percentage: 100 }],
+        assignments: [
+          { person_name: "Alex", percentage: 65 },
+          { person_name: "Sam", percentage: 35 },
+        ],
       },
     ];
 
