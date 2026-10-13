@@ -1,10 +1,10 @@
 package receipt
 
 import (
-	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
-	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -120,116 +120,98 @@ func TestParseResponseText_NegativePrice(t *testing.T) {
 	}
 }
 
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return f(request)
+}
+
 func TestServiceParse_MockAnthropic(t *testing.T) {
-	mockReceipt := ParsedReceipt{
-		Vendor: "Test Store",
-		Items: []ParsedItem{
-			{Name: "Widget", Price: 9.99, Quantity: 1},
-		},
-	}
-	total := 10.79
-	mockReceipt.Total = &total
+	receiptJSON, _ := json.Marshal(map[string]any{
+		"vendor": "Test Store", "currency_code": "USD", "currency_symbol": "$",
+		"currency_confidence": 0.99,
+		"items":               []map[string]any{{"name": "Widget", "price": 9.99, "quantity": 1}},
+		"subtotal":            9.99, "tax": 0.8, "tip": nil, "total": 10.79,
+	})
 
-	receiptJSON, _ := json.Marshal(mockReceipt)
-
-	// Create a mock Anthropic server
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Verify Anthropic auth headers
-		if r.Header.Get("x-api-key") != "test-key" {
-			t.Errorf("expected x-api-key test-key, got %q", r.Header.Get("x-api-key"))
+	client := &http.Client{Transport: roundTripFunc(func(httpReq *http.Request) (*http.Response, error) {
+		if httpReq.URL.String() != anthropicEndpoint {
+			t.Errorf("request URL = %q, want %q", httpReq.URL, anthropicEndpoint)
 		}
-		if r.Header.Get("anthropic-version") != anthropicVersion {
-			t.Errorf("expected anthropic-version %s, got %q", anthropicVersion, r.Header.Get("anthropic-version"))
+		if httpReq.Header.Get("x-api-key") != "test-key" {
+			t.Errorf("x-api-key = %q, want test-key", httpReq.Header.Get("x-api-key"))
 		}
-
-		resp := messagesResponse{
+		if httpReq.Header.Get("anthropic-version") != anthropicVersion {
+			t.Errorf("anthropic-version = %q, want %q", httpReq.Header.Get("anthropic-version"), anthropicVersion)
+		}
+		var request messagesRequest
+		if err := json.NewDecoder(httpReq.Body).Decode(&request); err != nil {
+			t.Errorf("decode request: %v", err)
+			return nil, err
+		}
+		if request.Model != "claude-sonnet-5-5" {
+			t.Errorf("model = %q, want claude-sonnet-5-5", request.Model)
+		}
+		if request.OutputConfig.Format.Type != "json_schema" {
+			t.Errorf("output format = %q, want json_schema", request.OutputConfig.Format.Type)
+		}
+		if len(request.Messages) != 1 || len(request.Messages[0].Content) != 2 {
+			t.Errorf("unexpected message content: %#v", request.Messages)
+		} else {
+			image := request.Messages[0].Content[0]
+			if image.Type != "image" || image.Source == nil || image.Source.MediaType != "image/jpeg" {
+				t.Errorf("unexpected image content: %#v", image)
+			}
+			prompt := request.Messages[0].Content[1].Text
+			if !strings.Contains(prompt, "do not expand abbreviations") {
+				t.Errorf("request did not include conservative naming guidance")
+			}
+			if !strings.Contains(prompt, `"2 Well Gin" followed by "Diet Coke"`) || !strings.Contains(prompt, "clearly legible handwritten values") {
+				t.Errorf("request did not include multi-line item and handwritten total guidance")
+			}
+		}
+		if request.OutputConfig.Format.Schema["additionalProperties"] != false {
+			t.Errorf("root schema must reject additional properties")
+		}
+		responseBody, err := json.Marshal(messagesResponse{
 			Content: []struct {
 				Type string `json:"type"`
 				Text string `json:"text"`
-			}{
-				{
-					Type: "text",
-					Text: string(receiptJSON),
-				},
-			},
+			}{{Type: "text", Text: string(receiptJSON)}},
+		})
+		if err != nil {
+			return nil, err
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
-	}))
-	defer server.Close()
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     make(http.Header),
+			Body:       io.NopCloser(strings.NewReader(string(responseBody))),
+			Request:    httpReq,
+		}, nil
+	})}
 
-	// Temporarily override the endpoint for testing
-	origEndpoint := anthropicEndpoint
-	defer func() {
-		// Can't reassign const, so we test via the httptest approach below
-		_ = origEndpoint
-	}()
-
-	// Since anthropicEndpoint is a const, we test Parse indirectly via parseResponseText
-	// and test the HTTP wiring by calling the server directly
-	client := server.Client()
-	svc := &Service{
-		apiKey:     "test-key",
-		httpClient: client,
-	}
-
-	// Make the request manually to the test server (same logic as Parse but with test URL)
-	b64Image := "ZmFrZS1pbWFnZS1kYXRh" // base64 of "fake-image-data"
-	reqBody := messagesRequest{
-		Model:     anthropicModel,
-		MaxTokens: 4096,
-		Messages: []anthropicMsg{
-			{
-				Role: "user",
-				Content: []anthropicContent{
-					{
-						Type: "image",
-						Source: &imageSource{
-							Type:      "base64",
-							MediaType: "image/jpeg",
-							Data:      b64Image,
-						},
-					},
-					{
-						Type: "text",
-						Text: receiptPrompt,
-					},
-				},
-			},
-		},
-	}
-
-	jsonBody, _ := json.Marshal(reqBody)
-	req, _ := http.NewRequest("POST", server.URL, bytes.NewReader(jsonBody))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-api-key", svc.apiKey)
-	req.Header.Set("anthropic-version", anthropicVersion)
-
-	resp, err := client.Do(req)
+	svc := &Service{apiKey: "test-key", httpClient: client}
+	result, err := svc.Parse([]byte("fake-image-data"), "image/jpeg")
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("Parse returned error: %v", err)
 	}
-	defer resp.Body.Close()
-
-	var msgResp messagesResponse
-	json.NewDecoder(resp.Body).Decode(&msgResp)
-
-	result, err := parseResponseText(msgResp.Content[0].Text)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if result.Vendor != "Test Store" {
-		t.Errorf("vendor = %q, want %q", result.Vendor, "Test Store")
-	}
-	if len(result.Items) != 1 {
-		t.Fatalf("items count = %d, want 1", len(result.Items))
-	}
-	if result.Items[0].Name != "Widget" {
-		t.Errorf("items[0].name = %q, want %q", result.Items[0].Name, "Widget")
+	if result.Vendor != "Test Store" || len(result.Items) != 1 || result.Items[0].Name != "Widget" {
+		t.Fatalf("unexpected parsed receipt: %#v", result)
 	}
 	if result.Total == nil || *result.Total != 10.79 {
 		t.Errorf("total = %v, want 10.79", result.Total)
+	}
+}
+
+func TestReceiptOutputSchemaHasExpectedReceiptFields(t *testing.T) {
+	properties, ok := receiptOutputSchema["properties"].(map[string]any)
+	if !ok {
+		t.Fatal("receipt output schema properties are missing")
+	}
+	for _, field := range []string{"vendor", "currency_code", "currency_symbol", "currency_confidence", "items", "subtotal", "tax", "tip", "total"} {
+		if _, exists := properties[field]; !exists {
+			t.Errorf("schema is missing %q", field)
+		}
 	}
 }
 

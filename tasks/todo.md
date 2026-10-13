@@ -1,5 +1,20 @@
 # Investigation Plan
 
+## Receipt parsing accuracy and Sonnet 5.5
+
+- [x] Rewrite the receipt extraction prompt to prioritize visible evidence and prevent guessed details.
+- [x] Upgrade the Anthropic model ID to Sonnet 5.5 and constrain responses to the existing receipt schema.
+- [x] Test the actual HTTP request model, prompt, schema, and parsed output.
+- [x] Run backend verification and review the diff.
+- [x] Record outcomes and any provider/build limits.
+
+### Review
+
+- The receipt prompt now preserves printed item descriptions, distinguishes count from weight, handles extended prices and line-level discounts, and leaves unreadable/absent values unknown rather than asking the model to infer them.
+- Requests now use Claude Sonnet 5.5 (`claude-sonnet-5-5`) with Anthropic JSON-schema output matching the app's receipt fields. A request-level test verifies the model, prompt guidance, image payload, and schema; response parsing remains covered.
+- Verification: `go test ./...` passed using the local temporary Go module/build caches. No live Anthropic receipt image was available for a before/after quality comparison.
+- Prompt follow-up from the supplied bar receipt: added an explicit unpriced continuation-line example (`2 Well Gin` + `Diet Coke` + `$12.00` is one item) and support for legible handwritten Tip/Total fields. The request test asserts both rules.
+
 ## Web Lazy Bill picker reload bug
 
 - [x] Keep draft selections local and save changed items together when the user chooses Review, matching the mobile claim flow.
