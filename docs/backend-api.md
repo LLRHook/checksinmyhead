@@ -144,7 +144,7 @@ Update one item's claim on a standalone lazy bill. Supply the bill access token 
 }
 ```
 
-Assignments must use unique, non-empty names of at most 30 characters and total 100 percent. An empty array releases an unpaid item's claim. Items in a paid share are locked. This endpoint rejects ordinary bills and bills already attached to a trip.
+Assignments must use unique, non-empty names of at most 30 characters and total no more than 100 percent; any unassigned percentage remains available to claim. An empty array releases an unpaid item's claim. Paid assignments cannot be removed or changed, while the unclaimed remainder may still be claimed. This endpoint rejects ordinary bills and bills already attached to a trip.
 
 **Response** `200`: `{"status":"ok"}`
 

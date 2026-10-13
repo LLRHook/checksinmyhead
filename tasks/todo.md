@@ -593,6 +593,21 @@ Audit found seven reproducible issues across trip bill persistence, request vali
 - Verification: `dart format` completed; `flutter analyze`, web Biome lint, web TypeScript, `git diff --check`, and `next build --webpack` passed. The production build includes the static `/privacy` route. Default Turbopack build hits the known sandbox restriction when its CSS worker binds a port.
 - The configured database vendor is environment-specific and isn't named in source, so the policy says so rather than naming a provider without deployment confirmation.
 
+# Lazy viewer split and review contrast correction
+
+- [x] Let a viewer assign their own percentage while leaving the remainder unclaimed; allow another viewer to claim only the available remainder.
+- [x] Preserve paid portions while allowing unclaimed portions of the same item to be claimed.
+- [x] Keep the mobile and web Lazy Mode split dialogs consistent and remove the forced “share the rest with” name entry.
+- [x] Fix dark-mode contrast for the web review/pay breakdown.
+- [x] Bump Flutter version/build to 2.0.11+36, sync all Runner marketing versions, and update the visible Settings version.
+- [x] Review the diff and record the implementation details; tests were not run.
+
+## Review
+
+- Replaced the required remainder-name field in mobile and web with a percentage slider that leaves the balance open. Checkboxes claim only the remaining percentage, and deselecting a claim leaves others' shares unchanged.
+- Assignment APIs now allow totals from 0 through 100 percent. Paid portions and their claim timestamps remain unchanged, while a new person can claim the unpaid remainder; a receipt item is marked fully paid only after its full 100 percent is allocated to paid people.
+- Added explicit dark-mode foreground color to the web total breakdown. Formatters and `git diff --check` passed; tests were not run.
+
 ## Privacy release 2.0.5 (active)
 
 - [x] Bump Flutter version to 2.0.5+30 and align iOS marketing version and Settings label.
