@@ -267,6 +267,36 @@ export async function updateTabBillItemAssignments(
   );
 }
 
+export async function updateTabBillItemAssignmentsBatch(
+  tabId: string,
+  billId: number,
+  updates: {
+    item_id: number;
+    expected_updated_at?: string;
+    assignments: ItemAssignment[];
+  }[],
+  token: string,
+  memberToken?: string,
+): Promise<void> {
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+  if (memberToken) headers["X-Member-Token"] = memberToken;
+  const response = await fetch(
+    `${API_BASE_URL}/api/tabs/${tabId}/bills/${billId}/assignments`,
+    {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ updates }),
+    },
+  );
+  if (response.status === 409 || response.status === 404) {
+    throw new Error("item changed; refresh and try again");
+  }
+  if (!response.ok) throw new Error("Failed to update item assignments");
+}
+
 export async function updateLazyBillItemAssignments(
   billId: number,
   itemId: number,
@@ -280,6 +310,33 @@ export async function updateLazyBillItemAssignments(
     token,
     expectedUpdatedAt,
   );
+}
+
+export async function updateLazyBillItemAssignmentsBatch(
+  billId: number,
+  updates: {
+    item_id: number;
+    expected_updated_at?: string;
+    assignments: ItemAssignment[];
+  }[],
+  token: string,
+): Promise<Bill> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/bills/${billId}/assignments`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ updates }),
+    },
+  );
+  if (response.status === 409 || response.status === 404) {
+    throw new Error("item changed; refresh and try again");
+  }
+  if (!response.ok) throw new Error("Failed to update item assignments");
+  return response.json() as Promise<Bill>;
 }
 
 async function updateItemAssignments(

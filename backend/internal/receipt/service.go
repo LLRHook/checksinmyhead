@@ -77,64 +77,77 @@ func NewService() (*Service, error) {
 	}, nil
 }
 
-const receiptPrompt = `You are a receipt-parsing expert. Extract EVERY piece of structured data from this receipt image with extreme precision.
+const receiptPrompt = `Extract receipt data from the supplied image for a bill-splitting app. The image is the only source of truth. Be literal and conservative: do not invent, infer, or silently correct details that are not clearly visible.
 
-Return ONLY valid JSON — no explanation, no markdown, no text outside the JSON object.
+Read the receipt from top to bottom. Distinguish purchased items from headings, subtotals, taxes, payment details, and other transaction metadata. Preserve each purchased item separately, including repeated items.
 
-Schema (follow EXACTLY):
-{
-  "vendor": "Store Name",
-  "currency_code": "USD",
-  "currency_symbol": "$",
-  "currency_confidence": 0.98,
-  "items": [
-    {"name": "Item Name", "price": 5.98, "quantity": 2}
-  ],
-  "subtotal": 10.00,
-  "tax": 0.80,
-  "tip": 0.00,
-  "total": 10.80
-}
+Some receipts wrap one item across multiple lines. When an unpriced, indented line immediately follows a priced item, treat it as part of that item's description (for example, "2 Well Gin" followed by "Diet Coke" and one "$12.00" amount is one item, not separate Gin and Diet Coke items). Attach continuation text to the preceding item and use its price only once. Start another item only when a new item row is indicated by its own quantity/description and price. Never create a separately priced item from an unpriced modifier or mixer.
 
-CRITICAL RULES — read carefully:
+For each item:
+- Use the printed description. Correct only obvious OCR or casing noise; do not expand abbreviations or guess a brand or product variant.
+- Set price to the signed extended amount charged for that line, not the unit price. If quantity and unit price are shown with no extended amount, multiply them. For weighed goods, use the printed charged amount and set quantity to 1.
+- Set quantity to the printed count, including counts shown as QTY, N x price, or N @ price. Use 1 when no count is shown. Never treat a weight as a piece count.
+- Include a printed discount, coupon, refund, or deposit as its own line only when it is a distinct charged/credited line. Represent credits with a negative price. Do not duplicate a discount already included in an item's printed amount.
+- Do not include subtotal, tax, tip, total, tender, change, card/account details, loyalty identifiers, cashier details, barcodes, or transaction IDs as items.
 
-1. QUANTITIES: Receipts show quantity in many formats. You MUST detect all of them:
-   - "2 @ 2.99" or "2 x 2.99" or "2x2.99" → quantity: 2, price: 5.98 (total line price)
-   - "QTY: 4" or "QTY 4" on a separate line above/below the item
-   - A number before the item name like "3 Bananas  2.67" → quantity: 3
-   - "ORANGE JUICE  4.49" followed by "4 @ 4.49 = 17.96" → quantity: 4, price: 17.96
-   - If the line price is clearly quantity × unit price, set quantity and price = line total
-   - The "price" field must ALWAYS be the total price paid for that line (quantity × unit price), NOT the per-unit price
+For vendor, currency, and totals, use only clearly visible evidence. Read printed values and clearly legible handwritten values in labeled fields such as Tip and Total. Return null when a value is absent or unreadable. Do not calculate a missing tip from the total or a missing total from other values. Return the currency as an ISO 4217 code; do not infer a currency from an ambiguous symbol alone. Set currency_confidence between 0 and 1 to reflect the evidence.
 
-2. PRICES: Every price must be a JSON number, never a string. Negative prices are valid (discounts, coupons).
+Copy subtotal, tax, tip, and total as shown; do not calculate missing values or alter them to make the item sum match. Use the amounts as shown, including negative values where printed. If the receipt is not readable enough to identify any items, return an empty items array rather than fabricating entries.
 
-3. ITEM NAMES: Convert ALL-CAPS or abbreviated text to readable Title Case.
-   - "FL ORNG JUICE PULP FR" → "Florida Orange Juice Pulp Free"
-   - "GV 2% MILK GAL" → "Great Value 2% Milk Gallon"
-   - "BNLS SKNLS CHKN BRST" → "Boneless Skinless Chicken Breast"
-   Use your best judgment to expand common grocery/retail abbreviations.
-
-4. INCLUDE: Every printed line item — products, weighted items, discounts, coupons, bottle deposits.
-
-5. EXCLUDE: Payment methods, card numbers, change due, cashier info, barcodes, loyalty card numbers, transaction IDs.
-
-6. CURRENCY: Identify the receipt's transaction currency and return its ISO 4217 code and printed symbol. Support every currency shown on the receipt, not only USD. Examples include "$" → USD only when the receipt context confirms United States dollars, "S/" or "S/." → PEN, "€" → EUR, "£" → GBP, and "¥" → JPY or CNY based on context. If a symbol is ambiguous, set currency_code to null and lower currency_confidence; never guess silently.
-
-7. TOTALS: Extract subtotal, tax, tip, and total if visible. Omit any you cannot find. The "items" array is always required even if empty.
-
-8. VALIDATION: Before responding, verify that your item prices sum close to the subtotal or total. If they don't, re-examine the receipt for missed quantities or items.
-
-Think step by step: first identify the vendor, then read every line item carefully checking for quantity indicators, then extract totals.`
+Return only the schema-constrained receipt object. Do not include analysis or explanation.`
 
 const anthropicEndpoint = "https://api.anthropic.com/v1/messages"
-const anthropicModel = "claude-sonnet-4-5-20250929"
+
+const anthropicModel = "claude-sonnet-5-5"
 const anthropicVersion = "2023-06-01"
+
+var receiptOutputSchema = map[string]any{
+	"type": "object",
+	"properties": map[string]any{
+		"vendor":              map[string]any{"type": []string{"string", "null"}},
+		"currency_code":       map[string]any{"type": []string{"string", "null"}},
+		"currency_symbol":     map[string]any{"type": []string{"string", "null"}},
+		"currency_confidence": map[string]any{"type": []string{"number", "null"}},
+		"items": map[string]any{
+			"type": "array",
+			"items": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"name":     map[string]any{"type": "string"},
+					"price":    map[string]any{"type": "number"},
+					"quantity": map[string]any{"type": "integer"},
+				},
+				"required":             []string{"name", "price", "quantity"},
+				"additionalProperties": false,
+			},
+		},
+		"subtotal": map[string]any{"type": []string{"number", "null"}},
+		"tax":      map[string]any{"type": []string{"number", "null"}},
+		"tip":      map[string]any{"type": []string{"number", "null"}},
+		"total":    map[string]any{"type": []string{"number", "null"}},
+	},
+	"required": []string{
+		"vendor", "currency_code", "currency_symbol", "currency_confidence",
+		"items", "subtotal", "tax", "tip", "total",
+	},
+	"additionalProperties": false,
+}
 
 // messagesRequest is the Anthropic Messages API request body.
 type messagesRequest struct {
-	Model     string         `json:"model"`
-	MaxTokens int            `json:"max_tokens"`
-	Messages  []anthropicMsg `json:"messages"`
+	Model        string         `json:"model"`
+	MaxTokens    int            `json:"max_tokens"`
+	Messages     []anthropicMsg `json:"messages"`
+	OutputConfig outputConfig   `json:"output_config"`
+}
+
+type outputConfig struct {
+	Format outputFormat `json:"format"`
+}
+
+type outputFormat struct {
+	Type   string         `json:"type"`
+	Schema map[string]any `json:"schema"`
 }
 
 type anthropicMsg struct {
@@ -173,6 +186,9 @@ func (s *Service) Parse(imageData []byte, mimeType string) (*ParsedReceipt, erro
 	reqBody := messagesRequest{
 		Model:     anthropicModel,
 		MaxTokens: 4096,
+		OutputConfig: outputConfig{
+			Format: outputFormat{Type: "json_schema", Schema: receiptOutputSchema},
+		},
 		Messages: []anthropicMsg{
 			{
 				Role: "user",
