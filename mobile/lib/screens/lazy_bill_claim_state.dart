@@ -46,6 +46,77 @@ bool hasPaidLazyAssignment(
   );
 }
 
+bool isLazyItemFullyPaid(
+  List<Map<String, dynamic>> assignments,
+  List<Map<String, dynamic>> shares,
+) {
+  if (assignments.isEmpty) return false;
+  final assignedPercentage = assignments.fold<double>(
+    0,
+    (sum, assignment) => sum + (assignment['percentage'] as num).toDouble(),
+  );
+  if (assignedPercentage < 99.99) return false;
+  final paidNames =
+      shares
+          .where((share) => share['paid'] == true)
+          .map((share) => (share['person_name'] as String).toLowerCase())
+          .toSet();
+  return assignments.every(
+    (assignment) =>
+        paidNames.contains((assignment['person_name'] as String).toLowerCase()),
+  );
+}
+
+double remainingLazyPercentage(
+  List<Map<String, dynamic>> assignments, {
+  String? excludingPerson,
+}) {
+  final assigned = assignments.fold<double>(
+    0,
+    (sum, assignment) =>
+        (assignment['person_name'] as String).toLowerCase() ==
+                excludingPerson?.toLowerCase()
+            ? sum
+            : sum + (assignment['percentage'] as num).toDouble(),
+  );
+  return (100 - assigned).clamp(0, 100).toDouble();
+}
+
+List<Map<String, dynamic>> setLazyAssignmentPercentage(
+  List<Map<String, dynamic>> assignments,
+  String personName,
+  double percentage,
+) {
+  final others =
+      assignments
+          .where(
+            (assignment) =>
+                (assignment['person_name'] as String).toLowerCase() !=
+                personName.toLowerCase(),
+          )
+          .toList();
+  final available = remainingLazyPercentage(others);
+  if (available < 1) return others;
+  final share = percentage.round().clamp(1, available.floor());
+  if (share < 1) return others;
+  return [
+    ...others,
+    {'person_name': personName, 'percentage': share.toDouble()},
+  ];
+}
+
+List<Map<String, dynamic>> removeLazyAssignmentLeavingRemainder(
+  List<Map<String, dynamic>> assignments,
+  String personName,
+) =>
+    assignments
+        .where(
+          (assignment) =>
+              (assignment['person_name'] as String).toLowerCase() !=
+              personName.toLowerCase(),
+        )
+        .toList();
+
 List<Map<String, dynamic>>? createLazySplitAssignments(
   String personName,
   String otherNames,

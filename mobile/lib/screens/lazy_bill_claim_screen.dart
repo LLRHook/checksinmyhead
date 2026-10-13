@@ -159,14 +159,14 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
           (assignment['person_name'] as String? ?? '').toLowerCase() ==
           _name.toLowerCase(),
     );
-    if (!assignedToMe && assignments.isNotEmpty) return;
-    if (hasPaidLazyAssignment(assignments, _shares)) return;
     final nextAssignments =
         assignedToMe
-            ? removeLazyAssignment(assignments, _name)
-            : [
-              {'person_name': _name, 'percentage': 100},
-            ];
+            ? removeLazyAssignmentLeavingRemainder(assignments, _name)
+            : setLazyAssignmentPercentage(
+              assignments,
+              _name,
+              remainingLazyPercentage(assignments),
+            );
     setState(() {
       _setDraftAssignments(item['id'] as int, nextAssignments);
       _error = null;
@@ -187,7 +187,6 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
       if (_name.isEmpty || !mounted) return;
     }
     final assignments = _assignmentsFor(item);
-    if (hasPaidLazyAssignment(assignments, _shares)) return;
     Map<String, dynamic>? myAssignment;
     for (final assignment in assignments) {
       if ((assignment['person_name'] as String? ?? '').toLowerCase() ==
@@ -196,21 +195,17 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
         break;
       }
     }
-    final otherNames = assignments
-        .where(
-          (assignment) =>
-              (assignment['person_name'] as String? ?? '').toLowerCase() !=
-              _name.toLowerCase(),
-        )
-        .map((assignment) => assignment['person_name'] as String)
-        .join(', ');
-    final controller = TextEditingController(text: otherNames);
+    final available = remainingLazyPercentage(
+      assignments,
+      excludingPerson: _name,
+    );
+    if (available < 1 && myAssignment == null) return;
+    final maximum = available.floor().clamp(1, 100);
     var percentage =
         myAssignment == null
-            ? 50
-            : (myAssignment['percentage'] as num).round().clamp(1, 99);
-    String? dialogError;
-    final result = await showDialog<List<Map<String, dynamic>>>(
+            ? maximum
+            : (myAssignment['percentage'] as num).round().clamp(1, maximum);
+    final result = await showDialog<int>(
       context: context,
       builder:
           (context) => StatefulBuilder(
@@ -221,46 +216,30 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Choose your share.'),
+                      const Text(
+                        'Choose how much you had. The rest stays available for someone else to claim.',
+                      ),
                       const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text('You · $percentage%'),
-                          Text('Others · ${100 - percentage}%'),
+                          Text(
+                            '${(available - percentage).round()}% unclaimed',
+                          ),
                         ],
                       ),
                       Slider(
                         value: percentage.toDouble(),
                         min: 1,
-                        max: 99,
-                        divisions: 98,
+                        max: maximum.toDouble(),
+                        divisions: maximum > 1 ? maximum - 1 : null,
                         label: '$percentage%',
                         onChanged:
                             (value) => setDialogState(
                               () => percentage = value.round(),
                             ),
                       ),
-                      TextField(
-                        controller: controller,
-                        maxLength: 80,
-                        textCapitalization: TextCapitalization.words,
-                        decoration: const InputDecoration(
-                          labelText: 'Share the rest with',
-                          hintText: 'Alex',
-                          helperText:
-                              'Separate names with commas to split evenly.',
-                        ),
-                        onChanged:
-                            (_) => setDialogState(() => dialogError = null),
-                      ),
-                      if (dialogError != null)
-                        Text(
-                          dialogError!,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                        ),
                     ],
                   ),
                   actions: [
@@ -269,32 +248,19 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
                       child: const Text('Cancel'),
                     ),
                     FilledButton(
-                      onPressed: () {
-                        final split = createLazySplitAssignments(
-                          _name,
-                          controller.text,
-                          percentage.toDouble(),
-                        );
-                        if (split == null) {
-                          setDialogState(
-                            () =>
-                                dialogError =
-                                    'Add someone to share the rest with.',
-                          );
-                          return;
-                        }
-                        Navigator.pop(context, split);
-                      },
+                      onPressed: () => Navigator.pop(context, percentage),
                       child: const Text('Apply split'),
                     ),
                   ],
                 ),
           ),
     );
-    controller.dispose();
     if (result == null || !mounted) return;
     setState(() {
-      _setDraftAssignments(item['id'] as int, result);
+      _setDraftAssignments(
+        item['id'] as int,
+        setLazyAssignmentPercentage(assignments, _name, result.toDouble()),
+      );
       _error = null;
     });
   }
@@ -494,19 +460,10 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
                                 ? 0.0
                                 : (myAssignment.first['percentage'] as num)
                                     .toDouble();
-                        final unavailable =
-                            assignments.any(
-                              (assignment) =>
-                                  (assignment['person_name'] as String? ?? '')
-                                      .toLowerCase() !=
-                                  _name.toLowerCase(),
-                            ) &&
-                            !mine;
-                        final paid = hasPaidLazyAssignment(
-                          assignments,
-                          _shares,
-                        );
+                        final paid = isLazyItemFullyPaid(assignments, _shares);
                         final locked = isPaid || paid;
+                        final available = remainingLazyPercentage(assignments);
+                        final unavailable = !mine && available < 1;
                         final canChange = canChangeLazyBillSelection(
                           saving: _saving,
                           paid: locked,
@@ -531,6 +488,8 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
                                 ? 'Taken by ${assignments.first['person_name']}'
                                 : mine && myPercentage < 100
                                 ? '${myPercentage.round()}% · ${CurrencyFormatter.formatCurrency((((item['price'] as num?)?.toDouble() ?? 0) * myPercentage / 100), currencyCode: _currency)}'
+                                : assignments.isNotEmpty && available < 100
+                                ? '${available.floor()}% unclaimed'
                                 : CurrencyFormatter.formatCurrency(
                                   (item['price'] as num?)?.toDouble() ?? 0,
                                   currencyCode: _currency,

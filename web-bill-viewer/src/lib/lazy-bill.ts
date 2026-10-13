@@ -35,6 +35,11 @@ export function isLazyItemPaid(
   shares: Pick<PersonShare, "person_name" | "paid">[],
 ): boolean {
   if (!assignments?.length) return false;
+  const assignedPercentage = assignments.reduce(
+    (sum, assignment) => sum + assignment.percentage,
+    0,
+  );
+  if (assignedPercentage < 99.99) return false;
   const paidPeople = new Set(
     shares
       .filter((share) => share.paid)
@@ -111,6 +116,45 @@ export function removeLazyAssignment(
     assigned += percentage;
     return { ...entry, percentage };
   });
+}
+
+export function remainingLazyPercentage(
+  assignments: ItemAssignment[] | undefined,
+  excludingPerson?: string,
+): number {
+  const assigned = (assignments ?? []).reduce(
+    (sum, assignment) =>
+      assignment.person_name.toLowerCase() === excludingPerson?.toLowerCase()
+        ? sum
+        : sum + assignment.percentage,
+    0,
+  );
+  return Math.max(0, Math.min(100, 100 - assigned));
+}
+
+export function setLazyAssignmentPercentage(
+  assignments: ItemAssignment[] | undefined,
+  personName: string,
+  percentage: number,
+): ItemAssignment[] {
+  const others = (assignments ?? []).filter(
+    (assignment) =>
+      assignment.person_name.toLowerCase() !== personName.toLowerCase(),
+  );
+  const available = remainingLazyPercentage(others);
+  const share = Math.min(available, Math.max(1, Math.round(percentage)));
+  if (share < 1) return others;
+  return [...others, { person_name: personName, percentage: share }];
+}
+
+export function removeLazyAssignmentLeavingRemainder(
+  assignments: ItemAssignment[],
+  personName: string,
+): ItemAssignment[] {
+  return assignments.filter(
+    (assignment) =>
+      assignment.person_name.toLowerCase() !== personName.toLowerCase(),
+  );
 }
 
 export function createLazySplitAssignments(

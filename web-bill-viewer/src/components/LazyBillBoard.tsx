@@ -20,14 +20,14 @@ import {
 } from "@/lib/api";
 import { formatMoney } from "@/lib/currency";
 import {
-  createLazySplitAssignments,
-  hasPaidLazyAssignment,
   isLazyItemPaid,
   isLazyItemSelectionLocked,
   lazyAssignmentsEqual,
   lazyBillRemainingCurrency,
   lazyBillRemainingTotal,
-  removeLazyAssignment,
+  remainingLazyPercentage,
+  removeLazyAssignmentLeavingRemainder,
+  setLazyAssignmentPercentage,
 } from "@/lib/lazy-bill";
 import { buildVenmoPayUrl } from "@/lib/venmo";
 
@@ -63,9 +63,9 @@ export default function LazyBillBoard({
   const [nameInput, setNameInput] = useState("");
   const [showJoin, setShowJoin] = useState(false);
   const [splitItemId, setSplitItemId] = useState<number | null>(null);
-  const [splitNames, setSplitNames] = useState("");
-  const [splitError, setSplitError] = useState<string | null>(null);
   const [splitPercentage, setSplitPercentage] = useState(50);
+  const [splitMaximum, setSplitMaximum] = useState(100);
+  const [splitUnclaimedCapacity, setSplitUnclaimedCapacity] = useState(100);
   const [draftAssignments, setDraftAssignments] = useState<Record<
     number,
     ItemAssignment[]
@@ -176,9 +176,18 @@ export default function LazyBillBoard({
         assignment.person_name.toLowerCase() === name.toLowerCase(),
     );
     if (mine) {
-      updateDraftAssignments(item.id, removeLazyAssignment(assignments, name));
-    } else if (assignments.length === 0) {
-      updateDraftAssignments(item.id, [{ person_name: name, percentage: 100 }]);
+      updateDraftAssignments(
+        item.id,
+        removeLazyAssignmentLeavingRemainder(assignments, name),
+      );
+    } else {
+      const available = remainingLazyPercentage(assignments);
+      if (available > 0) {
+        updateDraftAssignments(
+          item.id,
+          setLazyAssignmentPercentage(assignments, name, available),
+        );
+      }
     }
     setError(null);
   };
@@ -308,39 +317,26 @@ export default function LazyBillBoard({
   const openSplit = (item: Bill["items"][number]) => {
     const assignments = getAssignments(item);
     setSplitItemId(item.id);
-    setSplitNames(
-      assignments
-        .filter(
-          (entry) => entry.person_name.toLowerCase() !== name.toLowerCase(),
-        )
-        .map((entry) => entry.person_name)
-        .join(", "),
-    );
+    const available = remainingLazyPercentage(assignments, name);
+    const maximum = Math.max(1, Math.floor(available));
+    setSplitMaximum(maximum);
+    setSplitUnclaimedCapacity(available);
     const mine = assignments.find(
       (entry) => entry.person_name.toLowerCase() === name.toLowerCase(),
     );
     setSplitPercentage(
-      mine && mine.percentage < 100 ? Math.round(mine.percentage) : 50,
+      Math.min(maximum, Math.max(1, Math.round(mine?.percentage ?? available))),
     );
-    setSplitError(null);
   };
 
   const setSplit = () => {
     const item = bill.items.find((entry) => entry.id === splitItemId);
     if (!item) return;
-    const assignments = createLazySplitAssignments(
-      name,
-      splitNames,
-      splitPercentage,
+    updateDraftAssignments(
+      item.id,
+      setLazyAssignmentPercentage(getAssignments(item), name, splitPercentage),
     );
-    if (!assignments) {
-      setSplitError("Add someone to share the rest with.");
-      return;
-    }
-    updateDraftAssignments(item.id, assignments);
     setSplitItemId(null);
-    setSplitNames("");
-    setSplitError(null);
     setError(null);
   };
 
@@ -460,19 +456,16 @@ export default function LazyBillBoard({
               const assignments = getAssignments(item);
               const paid = isLazyItemPaid(assignments, bill.person_shares);
               const mine = assignedItemIds.has(item.id);
+              const available = remainingLazyPercentage(assignments, name);
               const myAssignment = assignments.find(
                 (entry) =>
                   entry.person_name.toLowerCase() === name.toLowerCase(),
               );
-              const unavailable =
-                assignments.some(
-                  (entry) =>
-                    entry.person_name.toLowerCase() !== name.toLowerCase(),
-                ) && !mine;
               const locked = isLazyItemSelectionLocked(
-                hasPaidLazyAssignment(assignments, bill.person_shares),
+                paid,
                 Boolean(currentShare?.paid),
               );
+              const unavailable = !mine && available < 1;
               return (
                 <div
                   key={item.id}
@@ -506,7 +499,9 @@ export default function LazyBillBoard({
                               myAssignment &&
                               myAssignment.percentage < 100
                             ? `${myAssignment.percentage}% · ${formatMoney((item.price * myAssignment.percentage) / 100, currency)} of ${formatMoney(item.price, currency)}`
-                            : formatMoney(item.price, currency)}
+                            : available < 100
+                              ? `${Math.floor(available)}% unclaimed · ${formatMoney((item.price * available) / 100, currency)}`
+                              : formatMoney(item.price, currency)}
                     </p>
                   </div>
                   <button
@@ -552,7 +547,7 @@ export default function LazyBillBoard({
             <p className="mt-2 text-5xl font-bold tracking-tight text-[var(--accent)] dark:text-white">
               {formatMoney(totals.total, currency)}
             </p>
-            <div className="mt-6 space-y-2 border-t border-[var(--border-light)] pt-4 text-sm dark:border-[var(--border-dark)]">
+            <div className="mt-6 space-y-2 border-t border-[var(--border-light)] pt-4 text-sm text-[var(--accent)] dark:border-[var(--border-dark)] dark:text-white">
               <div className="flex justify-between">
                 <span>Your items</span>
                 <span>{formatMoney(totals.subtotal, currency)}</span>
@@ -657,17 +652,21 @@ export default function LazyBillBoard({
               {`Split ${bill.items.find((item) => item.id === splitItemId)?.name ?? "item"}`}
             </h2>
             <p className="mt-2 text-sm text-[var(--text-secondary)]">
-              Choose your share. The rest is divided between the people below.
+              Choose how much you had. The rest stays available for someone else
+              to claim.
             </p>
             <div className="mt-2 flex items-center justify-between text-sm font-semibold text-[var(--accent)] dark:text-white">
-              <span>{splitPercentage}%</span>
-              <span>{100 - splitPercentage}% shared</span>
+              <span>You · {splitPercentage}%</span>
+              <span>
+                {Math.max(0, splitUnclaimedCapacity - splitPercentage)}%
+                unclaimed
+              </span>
             </div>
             <input
               aria-label="Your share percentage"
               type="range"
               min="1"
-              max="99"
+              max={splitMaximum}
               step="1"
               value={splitPercentage}
               onChange={(event) =>
@@ -675,34 +674,11 @@ export default function LazyBillBoard({
               }
               className="mt-2 w-full accent-[var(--primary)]"
             />
-            <label
-              htmlFor="lazy-split-names"
-              className="mt-4 block text-sm font-medium text-[var(--accent)] dark:text-white"
-            >
-              Share the rest with
-            </label>
-            <input
-              id="lazy-split-names"
-              value={splitNames}
-              onChange={(event) => {
-                setSplitNames(event.target.value);
-                setSplitError(null);
-              }}
-              placeholder="Alex"
-              aria-label="People sharing the remainder"
-              className="mt-5 w-full rounded-2xl border border-[var(--border-light)] bg-white px-4 py-3 dark:border-[var(--border-dark)] dark:bg-black/20 dark:text-white"
-            />
-            {splitError && (
-              <p role="alert" className="mt-2 text-sm text-red-600">
-                {splitError}
-              </p>
-            )}
             <div className="mt-5 flex gap-3">
               <button
                 type="button"
                 onClick={() => {
                   setSplitItemId(null);
-                  setSplitError(null);
                 }}
                 className="flex-1 rounded-2xl border border-[var(--border-light)] px-4 py-3 text-sm font-semibold text-[var(--text-secondary)]"
               >
@@ -711,6 +687,7 @@ export default function LazyBillBoard({
               <button
                 type="button"
                 onClick={setSplit}
+                disabled={splitMaximum < 1}
                 className="flex-1 rounded-2xl bg-[var(--primary)] px-4 py-3 text-sm font-semibold text-white"
               >
                 Apply split
