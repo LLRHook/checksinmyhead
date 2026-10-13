@@ -8,7 +8,37 @@ import {
   lazyBillRemainingCurrency,
   lazyBillRemainingTotal,
   removeLazyAssignment,
+  updateLazyAssignmentDraft,
 } from "../lazy-bill";
+
+describe("updateLazyAssignmentDraft", () => {
+  it("keeps the item version from the first edit through later refreshes", () => {
+    const first = updateLazyAssignmentDraft(null, 7, [], "version-1");
+    const refreshed = updateLazyAssignmentDraft(
+      first,
+      7,
+      [{ person_name: "Alex", percentage: 50 }],
+      "version-2",
+    );
+
+    expect(refreshed[7]).toEqual({
+      assignments: [{ person_name: "Alex", percentage: 50 }],
+      expectedUpdatedAt: "version-1",
+    });
+  });
+
+  it("does not treat a later refreshed version as the original when missing", () => {
+    const first = updateLazyAssignmentDraft(null, 7, [], undefined);
+    const refreshed = updateLazyAssignmentDraft(
+      first,
+      7,
+      [{ person_name: "Alex", percentage: 50 }],
+      "version-2",
+    );
+
+    expect(refreshed[7].expectedUpdatedAt).toBeUndefined();
+  });
+});
 
 describe("lazyBillRemainingTotal", () => {
   it("subtracts paid shares while keeping unclaimed amounts due", () => {

@@ -22,12 +22,14 @@ import { formatMoney } from "@/lib/currency";
 import {
   isLazyItemPaid,
   isLazyItemSelectionLocked,
+  type LazyAssignmentDraft,
   lazyAssignmentsEqual,
   lazyBillRemainingCurrency,
   lazyBillRemainingTotal,
   remainingLazyPercentage,
   removeLazyAssignmentLeavingRemainder,
   setLazyAssignmentPercentage,
+  updateLazyAssignmentDraft,
 } from "@/lib/lazy-bill";
 import { buildVenmoPayUrl } from "@/lib/venmo";
 
@@ -40,7 +42,6 @@ interface LazyBillBoardProps {
 
 type StoredMember = { display_name: string; member_token?: string };
 type Stage = "receipt" | "picker" | "pay";
-
 function round(value: number) {
   return Math.round(value * 100) / 100;
 }
@@ -68,7 +69,7 @@ export default function LazyBillBoard({
   const [splitUnclaimedCapacity, setSplitUnclaimedCapacity] = useState(100);
   const [draftAssignments, setDraftAssignments] = useState<Record<
     number,
-    ItemAssignment[]
+    LazyAssignmentDraft
   > | null>(null);
   const [isSavingSelection, setIsSavingSelection] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
@@ -110,7 +111,7 @@ export default function LazyBillBoard({
     (share) => share.person_name.toLowerCase() === name.toLowerCase(),
   );
   const getAssignments = (item: Bill["items"][number]) =>
-    draftAssignments?.[item.id] ?? item.assignments ?? [];
+    draftAssignments?.[item.id]?.assignments ?? item.assignments ?? [];
   const assignedItemIds = new Set(
     bill.items
       .filter((item) =>
@@ -160,13 +161,12 @@ export default function LazyBillBoard({
   })();
 
   const updateDraftAssignments = (
-    itemId: number,
+    item: Bill["items"][number],
     assignments: ItemAssignment[],
   ) => {
-    setDraftAssignments((draft) => ({
-      ...draft,
-      [itemId]: assignments,
-    }));
+    setDraftAssignments((draft) =>
+      updateLazyAssignmentDraft(draft, item.id, assignments, item.updated_at),
+    );
   };
 
   const toggleItem = (item: Bill["items"][number]) => {
@@ -177,14 +177,14 @@ export default function LazyBillBoard({
     );
     if (mine) {
       updateDraftAssignments(
-        item.id,
+        item,
         removeLazyAssignmentLeavingRemainder(assignments, name),
       );
     } else {
       const available = remainingLazyPercentage(assignments);
       if (available > 0) {
         updateDraftAssignments(
-          item.id,
+          item,
           setLazyAssignmentPercentage(assignments, name, available),
         );
       }
@@ -234,11 +234,17 @@ export default function LazyBillBoard({
       return [
         {
           itemId: item.id,
-          expectedUpdatedAt: item.updated_at,
+          expectedUpdatedAt: draftAssignments?.[item.id]?.expectedUpdatedAt,
           assignments,
         },
       ];
     });
+    if (updates.some((update) => !update.expectedUpdatedAt)) {
+      setError("Could not verify the receipt version. Refresh and try again.");
+      await refreshViewerBill();
+      setDraftAssignments(null);
+      return;
+    }
     setIsSavingSelection(true);
     setError(null);
     try {
@@ -333,7 +339,7 @@ export default function LazyBillBoard({
     const item = bill.items.find((entry) => entry.id === splitItemId);
     if (!item) return;
     updateDraftAssignments(
-      item.id,
+      item,
       setLazyAssignmentPercentage(getAssignments(item), name, splitPercentage),
     );
     setSplitItemId(null);

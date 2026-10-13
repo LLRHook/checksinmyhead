@@ -8,6 +8,13 @@ import (
 	"gorm.io/gorm"
 )
 
+const assignmentPercentageTolerance = 1e-9
+
+// ItemAssignmentTotalIsValid allows only floating-point noise above 100%.
+func ItemAssignmentTotalIsValid(total float64) bool {
+	return total <= 100+assignmentPercentageTolerance
+}
+
 // PaymentMethod represents the bill creator's payment method.
 type PaymentMethod struct {
 	Name       string `json:"name"`
