@@ -10,11 +10,14 @@ import {
 } from "react-icons/fa6";
 import {
   type Bill,
+  getTab,
   type ItemAssignment,
   joinTab,
   updateLazyBillItemAssignments,
+  updateLazyBillItemAssignmentsBatch,
   updatePersonSharePaid,
   updateTabBillItemAssignments,
+  updateTabBillItemAssignmentsBatch,
   updateTabPersonSharePaid,
 } from "@/lib/api";
 import { formatMoney } from "@/lib/currency";
@@ -30,7 +33,7 @@ interface LazyBillBoardProps {
   bill: Bill;
   token: string;
   tabId?: string;
-  refreshBill?: () => void;
+  refreshBill?: (updatedBill?: Bill) => Promise<void>;
 }
 
 type StoredMember = { display_name: string; member_token?: string };
@@ -41,12 +44,18 @@ function round(value: number) {
 }
 
 export default function LazyBillBoard({
-  bill,
+  bill: initialBill,
   token,
   tabId,
   refreshBill,
 }: LazyBillBoardProps) {
   const router = useRouter();
+  const [billOverride, setBillOverride] = useState<{
+    source: Bill;
+    bill: Bill;
+  } | null>(null);
+  const bill =
+    billOverride?.source === initialBill ? billOverride.bill : initialBill;
   const [stage, setStage] = useState<Stage>("receipt");
   const [member, setMember] = useState<StoredMember | null>(null);
   const [nameInput, setNameInput] = useState("");
@@ -54,6 +63,10 @@ export default function LazyBillBoard({
   const [splitItemId, setSplitItemId] = useState<number | null>(null);
   const [splitNames, setSplitNames] = useState("");
   const [savingItemId, setSavingItemId] = useState<number | null>(null);
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<number> | null>(
+    null,
+  );
+  const [isSavingSelection, setIsSavingSelection] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const currency = bill.currency_code ?? "USD";
@@ -92,6 +105,20 @@ export default function LazyBillBoard({
   const currentShare = bill.person_shares.find(
     (share) => share.person_name.toLowerCase() === name.toLowerCase(),
   );
+  const assignedItemIds = new Set(
+    bill.items
+      .filter((item) =>
+        (item.assignments ?? []).some(
+          (assignment) =>
+            assignment.person_name.toLowerCase() === name.toLowerCase(),
+        ),
+      )
+      .map((item) => item.id),
+  );
+  const selectedIds = selectedItemIds ?? assignedItemIds;
+  const selectionChanged =
+    selectedIds.size !== assignedItemIds.size ||
+    [...selectedIds].some((itemId) => !assignedItemIds.has(itemId));
   const totals = useMemo(() => {
     if (!name) return null;
     if (currentShare) return currentShare;
@@ -155,25 +182,116 @@ export default function LazyBillBoard({
           item.updated_at,
         );
       }
-      if (refreshBill) refreshBill();
-      else router.refresh();
+      await refreshViewerBill();
     } catch (caught) {
       setError(
         caught instanceof Error && caught.message.includes("item changed")
           ? "Someone updated that item. The receipt has been refreshed."
           : "Could not save that selection. Try again.",
       );
-      if (refreshBill) refreshBill();
-      else router.refresh();
+      await refreshViewerBill();
     } finally {
       setSavingItemId(null);
     }
+  };
+
+  const refreshViewerBill = async (updatedBill?: Bill) => {
+    if (refreshBill) {
+      await refreshBill(updatedBill);
+      return;
+    }
+    if (updatedBill) {
+      setBillOverride({ source: initialBill, bill: updatedBill });
+      return;
+    }
+    if (tabId) {
+      try {
+        const tab = await getTab(tabId, token);
+        const refreshedBill = tab.bills.find((entry) => entry.id === bill.id);
+        if (refreshedBill) {
+          setBillOverride({ source: initialBill, bill: refreshedBill });
+          return;
+        }
+      } catch {
+        // Fall back to the route refresh if the tab read fails.
+      }
+    }
+    router.refresh();
   };
 
   const beginPicking = () => {
     setError(null);
     if (!name) setShowJoin(true);
     else setStage("picker");
+  };
+
+  const reviewSelection = async () => {
+    if (isSavingSelection || currentShare?.paid) return;
+    if (!selectionChanged) {
+      setStage("pay");
+      return;
+    }
+    const updates = bill.items.flatMap((item) => {
+      const assignments = item.assignments ?? [];
+      const currentlyMine = assignments.some(
+        (assignment) =>
+          assignment.person_name.toLowerCase() === name.toLowerCase(),
+      );
+      const shouldBeMine = selectedIds.has(item.id);
+      if (currentlyMine === shouldBeMine) return [];
+      return [
+        {
+          itemId: item.id,
+          expectedUpdatedAt: item.updated_at,
+          assignments: shouldBeMine
+            ? [{ person_name: name, percentage: 100 }]
+            : [],
+        },
+      ];
+    });
+    setIsSavingSelection(true);
+    setError(null);
+    try {
+      let updatedBill: Bill | undefined;
+      if (tabId) {
+        if (updates.length) {
+          await updateTabBillItemAssignmentsBatch(
+            tabId,
+            bill.id,
+            updates.map(({ itemId, expectedUpdatedAt, assignments }) => ({
+              item_id: itemId,
+              expected_updated_at: expectedUpdatedAt,
+              assignments,
+            })),
+            token,
+            member?.member_token,
+          );
+        }
+      } else if (updates.length) {
+        updatedBill = await updateLazyBillItemAssignmentsBatch(
+          bill.id,
+          updates.map(({ itemId, expectedUpdatedAt, assignments }) => ({
+            item_id: itemId,
+            expected_updated_at: expectedUpdatedAt,
+            assignments,
+          })),
+          token,
+        );
+      }
+      await refreshViewerBill(updatedBill);
+      setSelectedItemIds(null);
+      setStage("pay");
+    } catch (caught) {
+      setError(
+        caught instanceof Error && caught.message.includes("item changed")
+          ? "Someone updated an item. The receipt has been refreshed."
+          : "Could not save your choices. Try again.",
+      );
+      await refreshViewerBill();
+      setSelectedItemIds(null);
+    } finally {
+      setIsSavingSelection(false);
+    }
   };
 
   const saveName = async () => {
@@ -255,8 +373,7 @@ export default function LazyBillBoard({
         await updatePersonSharePaid(bill.id, currentShare.id, true, token);
       }
       setStage("receipt");
-      if (refreshBill) refreshBill();
-      else router.refresh();
+      await refreshViewerBill();
     } catch {
       setError("We could not save that payment yet.");
     } finally {
@@ -353,11 +470,11 @@ export default function LazyBillBoard({
             {bill.items.map((item) => {
               const assignments = item.assignments ?? [];
               const paid = isLazyItemPaid(assignments, bill.person_shares);
-              const mine = assignments.some(
+              const mine = selectedIds.has(item.id);
+              const unavailable = assignments.some(
                 (entry) =>
-                  entry.person_name.toLowerCase() === name.toLowerCase(),
+                  entry.person_name.toLowerCase() !== name.toLowerCase(),
               );
-              const unavailable = assignments.length > 0 && !mine;
               const locked = isLazyItemSelectionLocked(
                 paid,
                 Boolean(currentShare?.paid),
@@ -373,23 +490,18 @@ export default function LazyBillBoard({
                     disabled={
                       unavailable ||
                       locked ||
+                      isSavingSelection ||
                       savingItemId === item.id ||
-                      (mine && assignments.length > 1)
+                      (mine && assignments.length > 1) ||
+                      (assignments.length > 1 && !mine)
                     }
-                    onClick={() =>
-                      mine
-                        ? void saveAssignments(
-                            item.id,
-                            assignments.filter(
-                              (entry) =>
-                                entry.person_name.toLowerCase() !==
-                                name.toLowerCase(),
-                            ),
-                          )
-                        : void saveAssignments(item.id, [
-                            { person_name: name, percentage: 100 },
-                          ])
-                    }
+                    onClick={() => {
+                      const next = new Set(selectedIds);
+                      if (mine) next.delete(item.id);
+                      else next.add(item.id);
+                      setSelectedItemIds(next);
+                      setError(null);
+                    }}
                     className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 ${mine ? "border-[var(--primary)] bg-[var(--primary)] text-white" : "border-[var(--border-light)] dark:border-[var(--border-dark)]"}`}
                   >
                     {mine && <FaCheck size={12} />}
@@ -412,7 +524,12 @@ export default function LazyBillBoard({
                   </div>
                   <button
                     type="button"
-                    disabled={unavailable || locked || savingItemId === item.id}
+                    disabled={
+                      unavailable ||
+                      locked ||
+                      isSavingSelection ||
+                      savingItemId === item.id
+                    }
                     onClick={() => {
                       setSplitItemId(item.id);
                       setSplitNames(
@@ -439,13 +556,15 @@ export default function LazyBillBoard({
               );
             })}
           </div>
-          {(totals?.total ?? 0) > 0 && (
+          {((totals?.total ?? 0) > 0 || selectionChanged) && (
             <button
               type="button"
-              onClick={() => setStage("pay")}
-              className="flex w-full items-center justify-center gap-3 rounded-2xl bg-[var(--primary)] px-5 py-4 font-bold text-white shadow-md"
+              disabled={isSavingSelection}
+              onClick={() => void reviewSelection()}
+              className="flex w-full items-center justify-center gap-3 rounded-2xl bg-[var(--primary)] px-5 py-4 font-bold text-white shadow-md disabled:opacity-70"
             >
-              Review my total <FaArrowRight size={14} />
+              {isSavingSelection ? "Saving choices…" : "Review my total"}
+              {!isSavingSelection && <FaArrowRight size={14} />}
             </button>
           )}
         </>

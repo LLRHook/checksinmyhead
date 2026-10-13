@@ -6,6 +6,7 @@ import (
 	"backend/pkg/safehttp"
 	"backend/pkg/security"
 	"crypto/subtle"
+	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -316,6 +317,106 @@ func (h *TabHandler) UpdateBillItemAssignments(c *gin.Context) {
 		return
 	}
 
+	c.JSON(200, gin.H{"status": "ok"})
+}
+
+func (h *TabHandler) UpdateBillItemAssignmentsBatch(c *gin.Context) {
+	tab := h.getTabAuthAndValidate(c)
+	if tab == nil {
+		return
+	}
+	if tab.Finalized {
+		c.JSON(400, gin.H{"error": "tab is finalized"})
+		return
+	}
+	if _, allowed := h.requireMemberForWrite(c, tab.ID); !allowed {
+		return
+	}
+	billID, err := strconv.ParseUint(c.Param("billId"), 10, 32)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid bill id"})
+		return
+	}
+	var body struct {
+		Updates []struct {
+			ItemID            uint    `json:"item_id"`
+			ExpectedUpdatedAt *string `json:"expected_updated_at"`
+			Assignments       []struct {
+				PersonName string  `json:"person_name"`
+				Percentage float64 `json:"percentage"`
+			} `json:"assignments"`
+		} `json:"updates"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil || len(body.Updates) == 0 {
+		c.JSON(400, gin.H{"error": "item updates are required"})
+		return
+	}
+
+	updates := make([]BillItemAssignmentsUpdate, 0, len(body.Updates))
+	seenItems := make(map[uint]struct{}, len(body.Updates))
+	for _, itemUpdate := range body.Updates {
+		if itemUpdate.ItemID == 0 {
+			c.JSON(400, gin.H{"error": "invalid item id"})
+			return
+		}
+		if _, exists := seenItems[itemUpdate.ItemID]; exists {
+			c.JSON(400, gin.H{"error": "duplicate item update"})
+			return
+		}
+		seenItems[itemUpdate.ItemID] = struct{}{}
+		if itemUpdate.Assignments == nil {
+			c.JSON(400, gin.H{"error": "assignments are required"})
+			return
+		}
+		var expectedUpdatedAt *time.Time
+		if itemUpdate.ExpectedUpdatedAt != nil && *itemUpdate.ExpectedUpdatedAt != "" {
+			parsed, parseErr := time.Parse(time.RFC3339Nano, *itemUpdate.ExpectedUpdatedAt)
+			if parseErr != nil {
+				c.JSON(400, gin.H{"error": "invalid expected_updated_at"})
+				return
+			}
+			expectedUpdatedAt = &parsed
+		}
+		assignments := make([]models.ItemAssignment, 0, len(itemUpdate.Assignments))
+		seenPeople := make(map[string]struct{}, len(itemUpdate.Assignments))
+		var totalPercentage float64
+		for _, assignment := range itemUpdate.Assignments {
+			name := security.SanitizeString(assignment.PersonName)
+			key := strings.ToLower(name)
+			if name == "" || len([]rune(name)) > 30 || assignment.Percentage <= 0 || assignment.Percentage > 100 || math.IsNaN(assignment.Percentage) || math.IsInf(assignment.Percentage, 0) {
+				c.JSON(400, gin.H{"error": "invalid item assignment"})
+				return
+			}
+			if _, exists := seenPeople[key]; exists {
+				c.JSON(400, gin.H{"error": "duplicate person assignment"})
+				return
+			}
+			seenPeople[key] = struct{}{}
+			totalPercentage += assignment.Percentage
+			assignments = append(assignments, models.ItemAssignment{PersonName: name, Percentage: assignment.Percentage})
+		}
+		if len(assignments) > 0 && math.Abs(totalPercentage-100) > 0.01 {
+			c.JSON(400, gin.H{"error": "item assignments must total 100 percent"})
+			return
+		}
+		updates = append(updates, BillItemAssignmentsUpdate{
+			ItemID: itemUpdate.ItemID, Assignments: assignments, ExpectedUpdatedAt: expectedUpdatedAt,
+		})
+	}
+	if err := h.service.UpdateBillItemAssignmentsBatch(tab.ID, uint(billID), updates); err != nil {
+		switch {
+		case errors.Is(err, ErrAssignmentConflict):
+			c.JSON(409, gin.H{"error": "item changed; refresh and try again"})
+		case errors.Is(err, ErrItemAlreadyPaid):
+			c.JSON(409, gin.H{"error": "paid shares cannot be changed"})
+		case errors.Is(err, gorm.ErrRecordNotFound):
+			c.JSON(404, gin.H{"error": "bill item not found"})
+		default:
+			log.Printf("internal error: %v", err)
+			c.JSON(500, gin.H{"error": "an internal error occurred"})
+		}
+		return
+	}
 	c.JSON(200, gin.H{"status": "ok"})
 }
 

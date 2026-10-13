@@ -82,6 +82,28 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
     setState({ status: "error", errorType: "failed" });
   }, [id, token]);
 
+  const refreshBill = useCallback(
+    async (updatedBill?: Bill) => {
+      if (updatedBill) {
+        setState((current) =>
+          current.status === "success"
+            ? { ...current, bill: updatedBill }
+            : current,
+        );
+        return;
+      }
+      try {
+        const bill = await getBill(id, token);
+        setState((current) =>
+          current.status === "success" ? { ...current, bill } : current,
+        );
+      } catch {
+        // Keep the current viewer and its interaction state if refresh fails.
+      }
+    },
+    [id, token],
+  );
+
   useEffect(() => {
     fetchBill();
   }, [fetchBill]);
@@ -247,7 +269,7 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
           </>
         }
       >
-        <LazyBillBoard bill={bill} token={token} refreshBill={fetchBill} />
+        <LazyBillBoard bill={bill} token={token} refreshBill={refreshBill} />
         <p className="mt-5 text-center text-xs text-[var(--text-secondary)]">
           Bill better with Billington ·{" "}
           <a
