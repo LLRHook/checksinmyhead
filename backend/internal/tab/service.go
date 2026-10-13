@@ -18,6 +18,7 @@ type TabService interface {
 	UpdateTab(tab *models.Tab) error
 	AddBillToTab(tabID uint, billID uint, billToken string, memberID *uint) error
 	UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error
+	UpdateBillItemAssignmentsBatch(tabID uint, billID uint, updates []BillItemAssignmentsUpdate) error
 	UpdateBillPersonSharePaid(tabID uint, billID uint, shareID uint, paid bool) error
 	FinalizeTab(id uint) ([]models.TabSettlement, error)
 	GetSettlements(tabID uint) ([]models.TabSettlement, error)
@@ -73,6 +74,10 @@ func (s *tabService) AddBillToTab(tabID uint, billID uint, billToken string, mem
 
 func (s *tabService) UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error {
 	return s.repo.UpdateBillItemAssignments(tabID, billID, itemID, assignments, expectedUpdatedAt)
+}
+
+func (s *tabService) UpdateBillItemAssignmentsBatch(tabID uint, billID uint, updates []BillItemAssignmentsUpdate) error {
+	return s.repo.UpdateBillItemAssignmentsBatch(tabID, billID, updates)
 }
 
 func (s *tabService) UpdateBillPersonSharePaid(tabID uint, billID uint, shareID uint, paid bool) error {

@@ -45,9 +45,99 @@ export function isLazyItemPaid(
   );
 }
 
+export function hasPaidLazyAssignment(
+  assignments: ItemAssignment[] | undefined,
+  shares: Pick<PersonShare, "person_name" | "paid">[],
+): boolean {
+  const paidPeople = new Set(
+    shares
+      .filter((share) => share.paid)
+      .map((share) => share.person_name.trim().toLowerCase()),
+  );
+  return (assignments ?? []).some((assignment) =>
+    paidPeople.has(assignment.person_name.trim().toLowerCase()),
+  );
+}
+
 export function isLazyItemSelectionLocked(
   itemPaid: boolean,
   currentSharePaid: boolean,
 ): boolean {
   return itemPaid || currentSharePaid;
+}
+
+export function lazyAssignmentsEqual(
+  left: ItemAssignment[] | undefined,
+  right: ItemAssignment[] | undefined,
+): boolean {
+  const a = [...(left ?? [])].sort((x, y) =>
+    x.person_name.localeCompare(y.person_name, undefined, {
+      sensitivity: "base",
+    }),
+  );
+  const b = [...(right ?? [])].sort((x, y) =>
+    x.person_name.localeCompare(y.person_name, undefined, {
+      sensitivity: "base",
+    }),
+  );
+  return (
+    a.length === b.length &&
+    a.every(
+      (assignment, index) =>
+        assignment.person_name.toLowerCase() ===
+          b[index].person_name.toLowerCase() &&
+        Math.abs(assignment.percentage - b[index].percentage) < 0.01,
+    )
+  );
+}
+
+export function removeLazyAssignment(
+  assignments: ItemAssignment[],
+  personName: string,
+): ItemAssignment[] {
+  const remaining = assignments.filter(
+    (assignment) =>
+      assignment.person_name.toLowerCase() !== personName.toLowerCase(),
+  );
+  if (!remaining.length) return [];
+  const total = remaining.reduce((sum, entry) => sum + entry.percentage, 0);
+  if (total <= 0) return [];
+  let assigned = 0;
+  return remaining.map((entry, index) => {
+    const percentage =
+      index === remaining.length - 1
+        ? 100 - assigned
+        : (entry.percentage / total) * 100;
+    assigned += percentage;
+    return { ...entry, percentage };
+  });
+}
+
+export function createLazySplitAssignments(
+  personName: string,
+  otherNames: string,
+  personPercentage: number,
+): ItemAssignment[] | null {
+  const names = new Map<string, string>();
+  for (const part of otherNames.split(",")) {
+    const person = part.trim().slice(0, 30);
+    const key = person.toLowerCase();
+    if (person && key !== personName.toLowerCase() && !names.has(key)) {
+      names.set(key, person);
+    }
+  }
+  if (!names.size || !Number.isFinite(personPercentage)) return null;
+  const percentage = Math.min(99, Math.max(1, Math.round(personPercentage)));
+  const people = [...names.values()];
+  const eachOtherPercentage = (100 - percentage) / people.length;
+  return [
+    { person_name: personName, percentage },
+    ...people.map((person, index) => ({
+      person_name: person,
+      percentage:
+        index === people.length - 1
+          ? 100 - percentage - eachOtherPercentage * (people.length - 1)
+          : eachOtherPercentage,
+    })),
+  ];
 }

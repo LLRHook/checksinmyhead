@@ -29,7 +29,7 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
   bool _paying = false;
   String? _error;
   bool _showPayment = false;
-  Set<int>? _selectedItemIds;
+  Map<int, List<Map<String, dynamic>>>? _draftAssignments;
 
   String get _nameKey => 'lazy_bill_name_${widget.billId}';
 
@@ -51,7 +51,7 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
       setState(() {
         _bill = bill;
         _name = prefs.getString(_nameKey) ?? profileName ?? '';
-        _selectedItemIds = _assignedItemIds(bill, _name);
+        _draftAssignments = null;
         _loading = false;
         _error = null;
       });
@@ -75,29 +75,22 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
           .whereType<Map<String, dynamic>>()
           .toList();
 
-  Set<int> _assignedItemIds(Map<String, dynamic> bill, String name) {
-    if (name.isEmpty) return {};
-    return ((bill['items'] as List<dynamic>?) ?? const [])
-        .whereType<Map<String, dynamic>>()
-        .where((item) {
-          final assignments =
-              (item['assignments'] as List<dynamic>?) ?? const [];
-          return assignments.whereType<Map<String, dynamic>>().any(
-            (assignment) =>
-                (assignment['person_name'] as String? ?? '').toLowerCase() ==
-                name.toLowerCase(),
-          );
-        })
-        .map((item) => item['id'] as int)
-        .toSet();
-  }
+  List<Map<String, dynamic>> _assignmentsFor(Map<String, dynamic> item) =>
+      _draftAssignments?[item['id'] as int] ?? _originalAssignments(item);
 
-  Set<int> get _selectedItems =>
-      _selectedItemIds ?? _assignedItemIds(_bill ?? {}, _name);
+  List<Map<String, dynamic>> _originalAssignments(Map<String, dynamic> item) =>
+      ((item['assignments'] as List<dynamic>?) ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .toList();
 
   bool get _selectionChanged {
-    final assigned = _assignedItemIds(_bill ?? {}, _name);
-    return lazySelectionHasChanges(_selectedItems, assigned);
+    return _items.any(
+      (item) =>
+          !lazyAssignmentsEqual(
+            _assignmentsFor(item),
+            _originalAssignments(item),
+          ),
+    );
   }
 
   Map<String, dynamic>? get _myShare {
@@ -145,7 +138,7 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
     if (!mounted) return;
     setState(() {
       _name = name.trim();
-      _selectedItemIds = _assignedItemIds(_bill ?? {}, _name);
+      _draftAssignments = null;
     });
   }
 
@@ -160,56 +153,164 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
       await _chooseName();
       if (_name.isEmpty) return;
     }
-    final assignments =
-        ((item['assignments'] as List<dynamic>?) ?? const [])
-            .whereType<Map<String, dynamic>>()
-            .toList();
+    final assignments = _assignmentsFor(item);
     final assignedToMe = assignments.any(
       (assignment) =>
           (assignment['person_name'] as String? ?? '').toLowerCase() ==
           _name.toLowerCase(),
     );
-    final mine = _selectedItems.contains(item['id'] as int);
-    if (!mine && assignments.isNotEmpty && !assignedToMe) return;
-    if (assignedToMe && assignments.length > 1) return;
-
-    final selected = _selectedItems.toSet();
+    if (!assignedToMe && assignments.isNotEmpty) return;
+    if (hasPaidLazyAssignment(assignments, _shares)) return;
+    final nextAssignments =
+        assignedToMe
+            ? removeLazyAssignment(assignments, _name)
+            : [
+              {'person_name': _name, 'percentage': 100},
+            ];
     setState(() {
-      if (mine) {
-        selected.remove(item['id'] as int);
-      } else {
-        selected.add(item['id'] as int);
+      _setDraftAssignments(item['id'] as int, nextAssignments);
+      _error = null;
+    });
+  }
+
+  void _setDraftAssignments(
+    int itemId,
+    List<Map<String, dynamic>> assignments,
+  ) {
+    _draftAssignments = {...?_draftAssignments, itemId: assignments};
+  }
+
+  Future<void> _editSplit(Map<String, dynamic> item) async {
+    if (_saving || _myShare?['paid'] == true) return;
+    if (_name.isEmpty) {
+      await _chooseName();
+      if (_name.isEmpty || !mounted) return;
+    }
+    final assignments = _assignmentsFor(item);
+    if (hasPaidLazyAssignment(assignments, _shares)) return;
+    Map<String, dynamic>? myAssignment;
+    for (final assignment in assignments) {
+      if ((assignment['person_name'] as String? ?? '').toLowerCase() ==
+          _name.toLowerCase()) {
+        myAssignment = assignment;
+        break;
       }
-      _selectedItemIds = selected;
+    }
+    final otherNames = assignments
+        .where(
+          (assignment) =>
+              (assignment['person_name'] as String? ?? '').toLowerCase() !=
+              _name.toLowerCase(),
+        )
+        .map((assignment) => assignment['person_name'] as String)
+        .join(', ');
+    final controller = TextEditingController(text: otherNames);
+    var percentage =
+        myAssignment == null
+            ? 50
+            : (myAssignment['percentage'] as num).round().clamp(1, 99);
+    String? dialogError;
+    final result = await showDialog<List<Map<String, dynamic>>>(
+      context: context,
+      builder:
+          (context) => StatefulBuilder(
+            builder:
+                (context, setDialogState) => AlertDialog(
+                  title: Text('Split ${item['name'] as String? ?? 'item'}'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Choose your share.'),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('You · $percentage%'),
+                          Text('Others · ${100 - percentage}%'),
+                        ],
+                      ),
+                      Slider(
+                        value: percentage.toDouble(),
+                        min: 1,
+                        max: 99,
+                        divisions: 98,
+                        label: '$percentage%',
+                        onChanged:
+                            (value) => setDialogState(
+                              () => percentage = value.round(),
+                            ),
+                      ),
+                      TextField(
+                        controller: controller,
+                        maxLength: 80,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: const InputDecoration(
+                          labelText: 'Share the rest with',
+                          hintText: 'Alex',
+                          helperText:
+                              'Separate names with commas to split evenly.',
+                        ),
+                        onChanged:
+                            (_) => setDialogState(() => dialogError = null),
+                      ),
+                      if (dialogError != null)
+                        Text(
+                          dialogError!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton(
+                      onPressed: () {
+                        final split = createLazySplitAssignments(
+                          _name,
+                          controller.text,
+                          percentage.toDouble(),
+                        );
+                        if (split == null) {
+                          setDialogState(
+                            () =>
+                                dialogError =
+                                    'Add someone to share the rest with.',
+                          );
+                          return;
+                        }
+                        Navigator.pop(context, split);
+                      },
+                      child: const Text('Apply split'),
+                    ),
+                  ],
+                ),
+          ),
+    );
+    controller.dispose();
+    if (result == null || !mounted) return;
+    setState(() {
+      _setDraftAssignments(item['id'] as int, result);
       _error = null;
     });
   }
 
   Future<void> _reviewSelection() async {
     if (_saving || _myShare?['paid'] == true) return;
-    final selected = _selectedItems.toSet();
     final updates = <Map<String, dynamic>>[];
     for (final item in _items) {
-      final assignments =
-          ((item['assignments'] as List<dynamic>?) ?? const [])
-              .whereType<Map<String, dynamic>>()
-              .toList();
-      final currentlyMine = assignments.any(
-        (assignment) =>
-            (assignment['person_name'] as String? ?? '').toLowerCase() ==
-            _name.toLowerCase(),
-      );
-      final shouldBeMine = selected.contains(item['id'] as int);
-      if (currentlyMine == shouldBeMine) continue;
+      final assignments = _assignmentsFor(item);
+      if (lazyAssignmentsEqual(assignments, _originalAssignments(item))) {
+        continue;
+      }
       updates.add({
         'item_id': item['id'],
         'expected_updated_at': item['updated_at'],
-        'assignments':
-            shouldBeMine
-                ? [
-                  {'person_name': _name, 'percentage': 100},
-                ]
-                : <Map<String, dynamic>>[],
+        'assignments': assignments,
       });
     }
     if (updates.isEmpty) {
@@ -230,7 +331,7 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
       if (!mounted) return;
       setState(() {
         _bill = updatedBill;
-        _selectedItemIds = selected;
+        _draftAssignments = null;
         _showPayment = true;
       });
     } catch (error) {
@@ -375,48 +476,73 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
                   for (final item in _items)
                     Builder(
                       builder: (context) {
-                        final assignments =
-                            ((item['assignments'] as List<dynamic>?) ??
-                                    const [])
-                                .whereType<Map<String, dynamic>>()
-                                .toList();
-                        final mine = _selectedItems.contains(item['id'] as int);
-                        final unavailable = assignments.any(
+                        final assignments = _assignmentsFor(item);
+                        final mine = assignments.any(
                           (assignment) =>
                               (assignment['person_name'] as String? ?? '')
-                                  .toLowerCase() !=
+                                  .toLowerCase() ==
                               _name.toLowerCase(),
                         );
+                        final myAssignment = assignments.where(
+                          (assignment) =>
+                              (assignment['person_name'] as String? ?? '')
+                                  .toLowerCase() ==
+                              _name.toLowerCase(),
+                        );
+                        final myPercentage =
+                            myAssignment.isEmpty
+                                ? 0.0
+                                : (myAssignment.first['percentage'] as num)
+                                    .toDouble();
+                        final unavailable =
+                            assignments.any(
+                              (assignment) =>
+                                  (assignment['person_name'] as String? ?? '')
+                                      .toLowerCase() !=
+                                  _name.toLowerCase(),
+                            ) &&
+                            !mine;
+                        final paid = hasPaidLazyAssignment(
+                          assignments,
+                          _shares,
+                        );
+                        final locked = isPaid || paid;
                         final canChange = canChangeLazyBillSelection(
                           saving: _saving,
-                          paid: isPaid,
+                          paid: locked,
                         );
-                        final locked = isPaid;
                         return ListTile(
-                          enabled:
-                              canChange &&
-                              !unavailable &&
-                              !(mine && assignments.length > 1),
+                          enabled: canChange && !unavailable,
                           onTap: () => _toggleItem(item),
                           leading: Checkbox(
                             value: mine,
                             onChanged:
-                                !canChange ||
-                                        unavailable ||
-                                        (mine && assignments.length > 1)
+                                !canChange || unavailable
                                     ? null
                                     : (_) => _toggleItem(item),
                           ),
                           title: Text(item['name'] as String? ?? 'Item'),
                           subtitle: Text(
                             locked
-                                ? 'Paid'
+                                ? isPaid
+                                    ? 'Paid'
+                                    : 'Part of this item paid'
                                 : unavailable
                                 ? 'Taken by ${assignments.first['person_name']}'
+                                : mine && myPercentage < 100
+                                ? '${myPercentage.round()}% · ${CurrencyFormatter.formatCurrency((((item['price'] as num?)?.toDouble() ?? 0) * myPercentage / 100), currencyCode: _currency)}'
                                 : CurrencyFormatter.formatCurrency(
                                   (item['price'] as num?)?.toDouble() ?? 0,
                                   currencyCode: _currency,
                                 ),
+                          ),
+                          trailing: IconButton(
+                            tooltip: 'Edit split for ${item['name']}',
+                            onPressed:
+                                !canChange || unavailable
+                                    ? null
+                                    : () => _editSplit(item),
+                            icon: const Icon(Icons.people_alt_outlined),
                           ),
                         );
                       },

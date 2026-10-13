@@ -8,9 +8,11 @@ import {
   getTabMembers,
   joinTab,
   updateLazyBillItemAssignments,
+  updateLazyBillItemAssignmentsBatch,
   updatePersonSharePaid,
   updateSettlementPaid,
   updateTabBillItemAssignments,
+  updateTabBillItemAssignmentsBatch,
   updateTabPersonSharePaid,
 } from "../api";
 
@@ -609,6 +611,52 @@ describe("updateTabBillItemAssignments", () => {
   });
 });
 
+describe("updateTabBillItemAssignmentsBatch", () => {
+  it("uses the authorized tab bill batch route", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal("fetch", mockFetch);
+    const updates = [
+      {
+        item_id: 159,
+        expected_updated_at: "2026-10-10T17:30:54.055105Z",
+        assignments: [
+          { person_name: "Alex", percentage: 65 },
+          { person_name: "Sam", percentage: 35 },
+        ],
+      },
+    ];
+
+    await updateTabBillItemAssignmentsBatch(
+      "19",
+      27,
+      updates,
+      "tab-token",
+      "member-token",
+    );
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/api/tabs/19/bills/27/assignments"),
+      expect.objectContaining({
+        method: "PATCH",
+        headers: expect.objectContaining({
+          Authorization: "Bearer tab-token",
+          "X-Member-Token": "member-token",
+        }),
+        body: JSON.stringify({ updates }),
+      }),
+    );
+  });
+
+  it("treats a removed item as a stale selection", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ status: 404, ok: false }),
+    );
+    await expect(
+      updateTabBillItemAssignmentsBatch("19", 27, [], "tab-token"),
+    ).rejects.toThrow("item changed; refresh and try again");
+  });
+});
+
 describe("updateLazyBillItemAssignments", () => {
   it("writes claims to the standalone bill route with its share token", async () => {
     const mockFetch = vi.fn().mockResolvedValue({ ok: true });
@@ -635,6 +683,53 @@ describe("updateLazyBillItemAssignments", () => {
         }),
       }),
     );
+  });
+});
+
+describe("updateLazyBillItemAssignmentsBatch", () => {
+  it("saves all changed items in one request and returns the updated bill", async () => {
+    const bill = makeBill({ id: 27 });
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => bill,
+    });
+    vi.stubGlobal("fetch", mockFetch);
+    const updates = [
+      {
+        item_id: 159,
+        expected_updated_at: "2026-10-10T17:30:54.055105Z",
+        assignments: [{ person_name: "Alex", percentage: 100 }],
+      },
+      {
+        item_id: 160,
+        expected_updated_at: "2026-10-10T17:30:54.055105Z",
+        assignments: [],
+      },
+    ];
+
+    await expect(
+      updateLazyBillItemAssignmentsBatch(27, updates, "bill-token"),
+    ).resolves.toEqual(bill);
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/api/bills/27/assignments"),
+      expect.objectContaining({
+        method: "PATCH",
+        headers: expect.objectContaining({
+          Authorization: "Bearer bill-token",
+        }),
+        body: JSON.stringify({ updates }),
+      }),
+    );
+  });
+
+  it("treats a removed item as a stale selection", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ status: 404, ok: false }),
+    );
+    await expect(
+      updateLazyBillItemAssignmentsBatch(27, [], "bill-token"),
+    ).rejects.toThrow("item changed; refresh and try again");
   });
 });
 

@@ -1,5 +1,66 @@
 # Investigation Plan
 
+## Lazy item percentage splitting
+
+- [x] Replace the web lazy picker’s immediate equal-name split with a staged per-item percentage editor.
+- [x] Add the same staged per-item split option to the mobile lazy bill picker.
+- [x] Save selections and splits together on Review using the existing atomic batch APIs.
+- [x] Replace the Git branch icon with a people/split icon and show each viewer’s item share clearly.
+- [x] Add regression coverage for percentage drafts and run relevant web/mobile verification.
+
+### Audit findings
+
+- The normal mobile item assignment flow supports custom participant percentages; the mobile lazy picker only assigns 100% to one person.
+- The web lazy picker immediately splits evenly among comma-separated names; it does not let the viewer choose a percentage and bypasses the Review batch save.
+- Existing assignment records and batch endpoints already store and validate percentage shares, so this should not require a backend schema change.
+- Scope clarification: a lazy receipt line is split proportionally as one line item; it does not expose individual units of a quantity greater than one.
+- KISS pass: draft maps store only modified item IDs; the old boolean-selection helper and per-item immediate save path were removed.
+- Prevent edits when any participant on the item has paid, matching the backend's immutable-paid-assignment rule.
+- Verification: all web tests pass (50), `npx tsc --noEmit` passes, full Flutter test suite passes (202), targeted Flutter analysis passes, and `git diff --check` passes.
+
+## Receipt parsing accuracy and Sonnet 5.5
+
+- [x] Rewrite the receipt extraction prompt to prioritize visible evidence and prevent guessed details.
+- [x] Upgrade the Anthropic model ID to Sonnet 5.5 and constrain responses to the existing receipt schema.
+- [x] Test the actual HTTP request model, prompt, schema, and parsed output.
+- [x] Run backend verification and review the diff.
+- [x] Record outcomes and any provider/build limits.
+
+### Review
+
+- The receipt prompt now preserves printed item descriptions, distinguishes count from weight, handles extended prices and line-level discounts, and leaves unreadable/absent values unknown rather than asking the model to infer them.
+- Requests now use Claude Sonnet 5.5 (`claude-sonnet-5-5`) with Anthropic JSON-schema output matching the app's receipt fields. A request-level test verifies the model, prompt guidance, image payload, and schema; response parsing remains covered.
+- Verification: `go test ./...` passed using the local temporary Go module/build caches. No live Anthropic receipt image was available for a before/after quality comparison.
+- Prompt follow-up from the supplied bar receipt: added an explicit unpriced continuation-line example (`2 Well Gin` + `Diet Coke` + `$12.00` is one item) and support for legible handwritten Tip/Total fields. The request test asserts both rules.
+
+## Web Lazy Bill picker reload bug
+
+- [x] Keep draft selections local and save changed items together when the user chooses Review, matching the mobile claim flow.
+- [x] Keep the picker mounted while choices are saved and show a saving state until the review screen is ready.
+- [x] Run focused web verification and review the diff.
+- [x] Record findings and verification.
+
+### Review
+
+- Web item taps now change a local draft only. Review locks the picker, saves standalone bill changes in one batch, refreshes the displayed bill without unmounting the viewer, and then opens the total/payment screen.
+- Tab bill selection uses the same draft and locked Review flow through a new atomic batch endpoint.
+- Verification: web tests (41), TypeScript, Biome, and `git diff --check` passed. The test runner prints an existing Vite config-loader warning. Production build remains blocked because Turbopack cannot bind its CSS worker port (`Operation not permitted`), including on the permission retry.
+
+## Atomic tab item review saves
+
+- [x] Add an authenticated tab batch route with the existing membership, finalized-tab, percentage, paid-share, and stale-item checks.
+- [x] Apply all item assignment changes, share rebuilding, and item timestamps in one database transaction.
+- [x] Use one web request for tab Review saves and direct the user to reselect after a stale conflict.
+- [x] Cover route parsing, transaction rollback, API headers/payload, and web behavior.
+- [x] Run final verification and review the complete branch diff.
+- [x] Commit the finished fix on `squashing-bugs`.
+
+### Review
+
+- If any selected tab item changed, was paid, or became unavailable before Review, the transaction rolls back all item changes. The web viewer clears the draft, refreshes the picker, and asks the user to choose available items again.
+- Repository rollback test proves an earlier item write is undone when a later item fails validation.
+- Verification: full Go suite, web tests (44), TypeScript, Biome, and `git diff --check` passed. Production build remains blocked by the previously observed Turbopack CSS worker port restriction.
+
 ## Trip / Lazy Bill / Open in Billington bug fixes
 
 - [x] Protect paid legacy trip Lazy shares when assignments change; validate trip assignments like standalone Lazy bills.

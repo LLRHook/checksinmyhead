@@ -12,7 +12,8 @@ import (
 
 type assignmentValidationService struct {
 	TabService
-	updated bool
+	updated      bool
+	batchUpdates []BillItemAssignmentsUpdate
 }
 
 func (s *assignmentValidationService) GetTabAuth(uint) (*models.Tab, error) {
@@ -26,6 +27,30 @@ func (s *assignmentValidationService) GetMembers(uint) ([]models.TabMember, erro
 func (s *assignmentValidationService) UpdateBillItemAssignments(uint, uint, uint, []models.ItemAssignment, *time.Time) error {
 	s.updated = true
 	return nil
+}
+
+func (s *assignmentValidationService) UpdateBillItemAssignmentsBatch(_, _ uint, updates []BillItemAssignmentsUpdate) error {
+	s.batchUpdates = updates
+	return nil
+}
+
+func TestUpdateBillItemAssignmentsBatchPassesAllUpdatesTogether(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service := &assignmentValidationService{}
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Params = gin.Params{{Key: "id", Value: "7"}, {Key: "billId", Value: "9"}}
+	body := `{"updates":[{"item_id":11,"expected_updated_at":"2026-10-12T20:00:00Z","assignments":[{"person_name":"Alex","percentage":100}]},{"item_id":12,"expected_updated_at":"2026-10-12T20:00:00Z","assignments":[]}]}`
+	ctx.Request = httptest.NewRequest("PATCH", "/tabs/7/bills/9/assignments?t=secret", strings.NewReader(body))
+	ctx.Request.Header.Set("Content-Type", "application/json")
+
+	NewTabHandler(service).UpdateBillItemAssignmentsBatch(ctx)
+	if recorder.Code != 200 || len(service.batchUpdates) != 2 {
+		t.Fatalf("status = %d, updates = %#v", recorder.Code, service.batchUpdates)
+	}
+	if service.batchUpdates[0].ItemID != 11 || service.batchUpdates[1].ItemID != 12 {
+		t.Fatalf("unexpected batch updates: %#v", service.batchUpdates)
+	}
 }
 
 func TestUpdateBillItemAssignmentsRejectsInvalidSplits(t *testing.T) {

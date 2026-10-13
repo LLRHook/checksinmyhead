@@ -89,6 +89,13 @@ func (m *mockTabRepository) UpdateBillItemAssignments(tabID uint, billID uint, i
 	return m.updateAssignmentsErr
 }
 
+func (m *mockTabRepository) UpdateBillItemAssignmentsBatch(_ uint, _ uint, updates []BillItemAssignmentsUpdate) error {
+	if len(updates) > 0 {
+		m.updatedAssignments = updates[0].Assignments
+	}
+	return m.updateAssignmentsErr
+}
+
 func (m *mockTabRepository) UpdateBillPersonSharePaid(tabID uint, billID uint, shareID uint, paid bool) error {
 	return nil
 }
