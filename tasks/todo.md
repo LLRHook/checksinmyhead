@@ -1,5 +1,33 @@
 # Investigation Plan
 
+## Web Lazy Bill picker reload bug
+
+- [x] Keep draft selections local and save changed items together when the user chooses Review, matching the mobile claim flow.
+- [x] Keep the picker mounted while choices are saved and show a saving state until the review screen is ready.
+- [x] Run focused web verification and review the diff.
+- [x] Record findings and verification.
+
+### Review
+
+- Web item taps now change a local draft only. Review locks the picker, saves standalone bill changes in one batch, refreshes the displayed bill without unmounting the viewer, and then opens the total/payment screen.
+- Tab bill selection uses the same draft and locked Review flow through a new atomic batch endpoint.
+- Verification: web tests (41), TypeScript, Biome, and `git diff --check` passed. The test runner prints an existing Vite config-loader warning. Production build remains blocked because Turbopack cannot bind its CSS worker port (`Operation not permitted`), including on the permission retry.
+
+## Atomic tab item review saves
+
+- [x] Add an authenticated tab batch route with the existing membership, finalized-tab, percentage, paid-share, and stale-item checks.
+- [x] Apply all item assignment changes, share rebuilding, and item timestamps in one database transaction.
+- [x] Use one web request for tab Review saves and direct the user to reselect after a stale conflict.
+- [x] Cover route parsing, transaction rollback, API headers/payload, and web behavior.
+- [x] Run final verification and review the complete branch diff.
+- [x] Commit the finished fix on `squashing-bugs`.
+
+### Review
+
+- If any selected tab item changed, was paid, or became unavailable before Review, the transaction rolls back all item changes. The web viewer clears the draft, refreshes the picker, and asks the user to choose available items again.
+- Repository rollback test proves an earlier item write is undone when a later item fails validation.
+- Verification: full Go suite, web tests (44), TypeScript, Biome, and `git diff --check` passed. Production build remains blocked by the previously observed Turbopack CSS worker port restriction.
+
 ## Trip / Lazy Bill / Open in Billington bug fixes
 
 - [x] Protect paid legacy trip Lazy shares when assignments change; validate trip assignments like standalone Lazy bills.
