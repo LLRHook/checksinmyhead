@@ -3,6 +3,7 @@ package bill
 import (
 	"backend/pkg/models"
 	"errors"
+	"math"
 	"sort"
 	"strings"
 	"time"
@@ -111,16 +112,10 @@ func (b *billRepository) UpdateItemAssignmentsBatch(billID uint, updates []ItemA
 			if err := tx.Where("bill_item_id = ?", update.ItemID).Find(&currentAssignments).Error; err != nil {
 				return err
 			}
-			for _, assignment := range currentAssignments {
-				if paidByName[strings.ToLower(assignment.PersonName)] {
-					return ErrItemAlreadyPaid
-				}
+			if !PreservesPaidAssignments(currentAssignments, update.Assignments, paidByName) {
+				return ErrItemAlreadyPaid
 			}
-			for _, assignment := range update.Assignments {
-				if paidByName[strings.ToLower(assignment.PersonName)] {
-					return ErrItemAlreadyPaid
-				}
-			}
+			update.Assignments = PreserveAssignmentClaimTimes(currentAssignments, update.Assignments)
 
 			if err := tx.Where("bill_item_id = ?", update.ItemID).Delete(&models.ItemAssignment{}).Error; err != nil {
 				return err
@@ -159,6 +154,43 @@ func (b *billRepository) UpdateItemAssignmentsBatch(billID uint, updates []ItemA
 		}
 		return nil
 	})
+}
+
+// PreservesPaidAssignments prevents changes to already-paid portions while
+// allowing unpaid percentages of the same item to remain claimable.
+func PreservesPaidAssignments(current, next []models.ItemAssignment, paidByName map[string]bool) bool {
+	currentByName := make(map[string]float64, len(current))
+	nextByName := make(map[string]float64, len(next))
+	for _, existing := range current {
+		currentByName[strings.ToLower(existing.PersonName)] = existing.Percentage
+	}
+	for _, candidate := range next {
+		nextByName[strings.ToLower(candidate.PersonName)] = candidate.Percentage
+	}
+	for name, percentage := range currentByName {
+		if paidByName[name] && math.Abs(nextByName[name]-percentage) >= 0.01 {
+			return false
+		}
+	}
+	for name, percentage := range nextByName {
+		if paidByName[name] && math.Abs(currentByName[name]-percentage) >= 0.01 {
+			return false
+		}
+	}
+	return true
+}
+
+func PreserveAssignmentClaimTimes(current, next []models.ItemAssignment) []models.ItemAssignment {
+	createdAtByName := make(map[string]time.Time, len(current))
+	for _, assignment := range current {
+		createdAtByName[strings.ToLower(assignment.PersonName)] = assignment.CreatedAt
+	}
+	for i := range next {
+		if createdAt, ok := createdAtByName[strings.ToLower(next[i].PersonName)]; ok {
+			next[i].CreatedAt = createdAt
+		}
+	}
+	return next
 }
 
 func NewBillRepository(db *gorm.DB) BillRepository {

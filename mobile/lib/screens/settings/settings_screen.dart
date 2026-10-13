@@ -1009,7 +1009,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                               const Center(
                                 child: Text(
-                                  'Version 2.0.10',
+                                  'Version 2.0.11',
                                   style: TextStyle(
                                     color: Colors.white60,
                                     fontSize: 14,
