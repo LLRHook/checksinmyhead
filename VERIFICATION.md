@@ -100,7 +100,8 @@ a successful probe for every row before proceeding.
 Use the detected CI Test Matrix below. Refresh commands from manifests/workflows after
 any tooling change. Require locked prerequisites (`npm ci`, `flutter pub get`, existing
 Go module download/toolchain) in a clean verification environment; inspect lockfile drift.
-The Go suite includes SQLite repository integration tests, not live PostgreSQL proof.
+The default Go suite includes SQLite repository integration tests. The explicit
+PostgreSQL row adds scoped authorization/attachment lock and rollback evidence.
 
 | Layer / directory | Command (verbatim CI) | Baseline count |
 |---|---|---|
@@ -110,8 +111,18 @@ The Go suite includes SQLite repository integration tests, not live PostgreSQL p
 | Web unit / `web-bill-viewer` | `npm test` | Not measured in this bootstrap |
 | Web production build / `web-bill-viewer` | `npm run build` | Build, not a test count |
 | Ruby release automation / root | `ruby .github/scripts/asc_release_test.rb` | Not yet an integrated baseline |
-| Live PostgreSQL failure/concurrency | Missing selector/harness: FEAT-1793644506 | BLOCKED until implemented |
+| Live PostgreSQL authorization / `backend` | `go test -race -tags=integration ./internal/tab` | Not yet an integrated baseline; test-only DSN required |
 | App/browser E2E, a11y, realistic load | No wired automated runner: FEAT-1793644507, FEAT-1793644512, FEAT-1793644502 | Manual stages required; automation gap remains |
+
+For the PostgreSQL row, set only `BILLINGTON_TEST_POSTGRES_DSN` to a dedicated
+loopback `billington_test` fixture, for example
+`host=127.0.0.1 port=<fixture-port> user=billington_test dbname=billington_test sslmode=disable`.
+The harness fails if the variable is absent or its host/database is unsafe. It generates
+a new `billington_auth_*` schema, refuses caller-supplied schema/options, and drops only
+that schema. It never uses production configuration or `database.InitDB`. It covers
+attachment competition/retries, committed-finalization checks, membership lock order,
+stale standalone claims and write rollback. It is an additional local row, not yet a CI
+job. Broader atomic-finalization/migration coverage remains FEAT-1793644506.
 
 - [ ] Enumerate with each runner before execution (`go test ./... -list '.*'`,
       `npm exec -- vitest list`, runner output for Flutter/Ruby); record actual tests,
