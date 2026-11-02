@@ -118,8 +118,9 @@ The Go suite includes SQLite repository integration tests, not live PostgreSQL p
       skips and failures per layer. Do not import the earlier review's 202/52 counts.
 - [ ] Run the full local gate, collect real execution counts and prove every batch
       ticket with a failing-before/passing-after regression where applicable.
-- [ ] Run affected tests twice with no flips. Record coverage of the change if measured;
-      CI has no configured changed-line coverage threshold. Never invent a percentage.
+- [ ] Rerun failures once to classify flakiness; repeat passing checks only after new
+      changes or for a specific unresolved concern. Record coverage if measured; CI has
+      no configured changed-line coverage threshold. Never invent a percentage.
 
 ## Stage 3 — integrated functional walkthrough
 
