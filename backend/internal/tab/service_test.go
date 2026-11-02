@@ -3,6 +3,7 @@ package tab
 import (
 	billpkg "backend/internal/bill"
 	"backend/pkg/models"
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -75,12 +76,10 @@ func (m *mockTabRepository) GetForFinalization(id uint) (*models.Tab, error) {
 }
 
 func (m *mockTabRepository) Update(tab *models.Tab) error { return m.updateErr }
-func (m *mockTabRepository) AddBill(tabID uint, billID uint, billToken string, memberID *uint) error {
-	m.addBillTabID = tabID
-	m.addBillBillID = billID
-	m.addBillBillToken = billToken
-	m.addBillMemberID = memberID
-	m.addBillPaidByMemberID = memberID
+func (m *mockTabRepository) AttachBill(_ context.Context, command AttachBillCommand) error {
+	m.addBillTabID = command.TabID
+	m.addBillBillID = command.BillID
+	m.addBillBillToken = command.BillToken
 	return m.addBillErr
 }
 
@@ -501,62 +500,25 @@ func TestJoinTabAsCreator_Success(t *testing.T) {
 	}
 }
 
-func TestAddBillToTab_WithMember(t *testing.T) {
+func TestAddBillToTab_RequiresIndependentProof(t *testing.T) {
+	for _, token := range []string{"", " ", "\t\n"} {
+		repo := newMockRepo()
+		err := NewTabService(repo).AddBillToTab(context.Background(), AttachBillCommand{TabID: 1, BillID: 99, TabToken: "tab", BillToken: token})
+		if !errors.Is(err, ErrInvalidAttachment) || repo.addBillBillID != 0 {
+			t.Fatalf("missing proof reached repository: %v", err)
+		}
+	}
 	repo := newMockRepo()
-
-	repo.tabs[1] = &models.Tab{ID: 1}
-
-	svc := NewTabService(repo)
-	memberID := uint(42)
-	err := svc.AddBillToTab(1, 99, "bill-token", &memberID)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
+	command := AttachBillCommand{TabID: 1, BillID: 99, TabToken: "tab", MemberToken: "member", BillToken: " source "}
+	if err := NewTabService(repo).AddBillToTab(context.Background(), command); err != nil {
+		t.Fatal(err)
 	}
-
-	if repo.addBillTabID != 1 {
-		t.Errorf("expected tabID 1, got %d", repo.addBillTabID)
+	if repo.addBillBillID != 99 || repo.addBillBillToken != " source " {
+		t.Fatal("credentials changed")
 	}
-	if repo.addBillBillID != 99 {
-		t.Errorf("expected billID 99, got %d", repo.addBillBillID)
-	}
-	if repo.addBillBillToken != "bill-token" {
-		t.Errorf("expected bill token to be passed through, got %q", repo.addBillBillToken)
-	}
-	if repo.addBillMemberID == nil || *repo.addBillMemberID != 42 {
-		t.Error("expected memberID 42 to be passed through")
-	}
-}
-
-func TestAddBillToTab_SetsPaidByMemberID(t *testing.T) {
-	repo := newMockRepo()
-
-	repo.tabs[1] = &models.Tab{ID: 1}
-
-	svc := NewTabService(repo)
-	memberID := uint(42)
-	err := svc.AddBillToTab(1, 99, "bill-token", &memberID)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	if repo.addBillPaidByMemberID == nil || *repo.addBillPaidByMemberID != 42 {
-		t.Error("expected PaidByMemberID 42 to be set when adding bill with member")
-	}
-}
-
-func TestAddBillToTab_AllowsMissingBillTokenForLegacyClients(t *testing.T) {
-	repo := newMockRepo()
-	svc := NewTabService(repo)
-
-	err := svc.AddBillToTab(1, 99, "", nil)
-	if err != nil {
-		t.Fatalf("expected no error for legacy request, got %v", err)
-	}
-	if repo.addBillBillID != 99 {
-		t.Fatalf("expected repository to receive bill id 99, got %d", repo.addBillBillID)
-	}
-	if repo.addBillBillToken != "" {
-		t.Fatalf("expected empty bill token, got %q", repo.addBillBillToken)
+	repo.addBillErr = ErrSourceUnavailable
+	if err := NewTabService(repo).AddBillToTab(context.Background(), command); !errors.Is(err, ErrSourceUnavailable) {
+		t.Fatal(err)
 	}
 }
 

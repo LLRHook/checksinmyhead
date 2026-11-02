@@ -86,7 +86,7 @@ func (b *billRepository) UpdateItemAssignmentsBatch(billID uint, updates []ItemA
 
 	return b.db.Transaction(func(tx *gorm.DB) error {
 		var bill models.Bill
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND lazy_mode = ?", billID, true).First(&bill).Error; err != nil {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND lazy_mode = ? AND tab_id IS NULL", billID, true).First(&bill).Error; err != nil {
 			return err
 		}
 
