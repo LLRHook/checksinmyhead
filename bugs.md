@@ -17,7 +17,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Read AddBillToTab and AddBill at baseline. Review reproduced synthetic victim receipt/payment disclosure; re-run as a failing regression, never against customer IDs.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Implemented in 4c146e8: mandatory independent source/destination proof in one tab-before-bill transaction, authenticated attribution, stable retries, membership serialization and stale standalone claim predicate. Red-before/green-after SQLite plus PostgreSQL locking/rollback evidence in docs/reviews/2026-11-02-authorization-batch.md. Acceptance remains in-progress: known Go/Next security rows RED and independent driver review pending.
+- **Docs:** docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-02-authorization-batch.md
 
 ### [BUG-1793644498] Restrict public bill creation to authorized input
 - [ ] **Severity:** crit
@@ -33,7 +36,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** POST synthetic negative total with victim tab_id against isolated DB, as in review reproduction. Review sibling create/update routes. UI/client compatibility must be demonstrated.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Implemented in 39d81cd: strict bounded content DTO, fresh standalone graph, service/repository identity guards, finite compatible accounting and derived non-null share breakdowns. Baseline nested IDs actually reparented victim items/assignments/shares; fixed regression preserves all rows. Ten actual mobile-builder contracts pass. See docs/reviews/2026-11-02-authorization-batch.md. Acceptance remains in-progress: known Go/Next security rows RED and independent driver review pending.
+- **Docs:** docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-02-authorization-batch.md
 
 ### [BUG-1793644499] Inject the frozen exchange-rate provider at startup
 - [ ] **Severity:** high

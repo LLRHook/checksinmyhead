@@ -34,51 +34,94 @@ Set `MINIMUM_SUPPORTED_APP_VERSION` on the bill service to a numeric `major.mino
 
 ### `POST /api/bills`
 
-Create a new bill.
+Create a new **standalone** bill from content. Attach it to a tab separately using
+the returned source-bill token.
 
 **Request Body**
 ```json
 {
-  "name": "Dinner at Chilis",
+  "name": "Dinner",
   "lazy_mode": false,
-  "subtotal": 138.00,
-  "tax": 8.28,
-  "tip_amount": 27.60,
-  "tip_percentage": 20.0,
-  "total": 173.88,
-  "currency_code": "EUR",
-  "participants": [
-    { "name": "Alice" },
-    { "name": "Bob" }
-  ],
-  "items": [
-    {
-      "name": "Pizza",
-      "price": 20.00,
-      "assignments": [
-        { "person_name": "Alice", "percentage": 50 },
-        { "person_name": "Bob", "percentage": 50 }
-      ]
-    }
-  ],
+  "subtotal": 100,
+  "tax": 10,
+  "tip_amount": 18,
+  "tip_percentage": 18,
+  "total": 128,
+  "currency_code": "USD",
+  "participants": [{"name": "Alice"}, {"name": "Bob"}],
+  "items": [{
+    "name": "Dinner",
+    "price": 100,
+    "assignments": [
+      {"person_name": "Alice", "percentage": 50},
+      {"person_name": "Bob", "percentage": 50}
+    ]
+  }],
   "person_shares": [
     {
       "person_name": "Alice",
-      "items": [{ "name": "Pizza", "amount": 10.00, "is_shared": true }],
-      "subtotal": 10.00,
-      "tax_share": 0.60,
-      "tip_share": 2.00,
-      "total": 12.60
+      "items": [{"name": "Dinner", "amount": 50, "is_shared": true}],
+      "subtotal": 50,
+      "tax_share": 5,
+      "tip_share": 9,
+      "total": 64
+    },
+    {
+      "person_name": "Bob",
+      "items": [{"name": "Dinner", "amount": 50, "is_shared": true}],
+      "subtotal": 50,
+      "tax_share": 5,
+      "tip_share": 9,
+      "total": 64
     }
   ],
-  "payment_methods": [
-    { "name": "Venmo", "identifier": "@alice" },
-    { "name": "Zelle", "identifier": "555-1234" }
-  ]
+  "payment_methods": [{"name": "Venmo", "identifier": "@alice"}]
 }
 ```
 
-Set `lazy_mode` to `true` for an item-claim bill. The bill remains standalone and is shared at `/b/:id`; creating it does not create a tab. Participants and person shares may be empty while people claim receipt items.
+Only these fields are accepted. Unknown or server-owned fields at any nesting level
+return `400`, including fields supplied as `null` or zero.
+
+| Level | Allowed fields |
+|---|---|
+| Bill | `name`, `lazy_mode`, `subtotal`, `tax`, `tip_amount`, `tip_percentage`, `total`, `currency_code`, `display_currency`, `participants`, `items`, `person_shares`, `payment_methods` |
+| Participant | `name` |
+| Item | `name`, `price`, `assignments` |
+| Assignment | `person_name`, `percentage` |
+| Legacy share projection | `person_name`, `items`, `subtotal`, `tax_share`, `tip_share`, `total` |
+| Share item detail | `name`, `amount`, `is_shared` |
+| Payment method | `name`, `identifier` |
+
+`name`, `subtotal` and `total` are required and cannot be null; item prices are required
+when items are supplied. Tax/tip default to zero, `lazy_mode` to false, receipt currency
+to USD and display currency to receipt currency. IDs, foreign keys, tab/member/payer
+associations, paid flags, tokens, dates/timestamps and derived exchange-rate fields are
+never caller input. The server generates fresh persistence identities, dates and tokens.
+
+All accounting values must be finite and bounded. Receipt totals and person obligations
+must be nonnegative. Total must equal subtotal + tax + tip, and itemized subtotal must
+equal the signed item sum, within 0.01 plus floating-point tolerance. Negative discount
+lines/details are allowed. Custom tip amounts need not match percentage metadata.
+Names are trimmed/sanitized; duplicate normalized participant/share names or duplicate
+people on one item are rejected. Assignment percentages must be in `(0,100]` and sum to
+at most `100 + 1e-9`.
+
+Share projections are optional compatibility input, validated against item assignments
+and the mobile formulas; raw fractional tax/tip and cent-rounded totals are supported.
+The server derives stored shares and non-null item breakdowns using the existing cent
+allocation. Zero-share participants and repeated item descriptions are preserved.
+Historical saved uploads with no items or no assignments can supply zero-component
+share projections whose totals cover the receipt; the server derives their breakdowns.
+
+Set `lazy_mode` to true for a standalone item-claim bill at `/b/:id`. Participants/shares
+may be empty, and partial claims retain tax/tip proportions against the full receipt
+subtotal. Creation never creates or selects a tab.
+
+Limits: 1 MiB JSON body with one document; 500 items; 100 participants/shares and
+distinct person names; 100 assignments per item and 5,000 overall; 10 payment methods.
+Person names allow 30 Unicode code points, bill/item names 255, payment names 50 and
+identifiers 256. Individual monetary magnitudes and absolute item-price sum are limited
+to 1e9 native units. Invalid input returns `400` before quoting or persistence.
 
 **Response** `201`
 ```json
@@ -86,15 +129,18 @@ Set `lazy_mode` to `true` for an item-claim bill. The bill remains standalone an
   "bill_id": 1,
   "access_token": "abc123...",
   "share_url": "https://billington.app/b/1?t=abc123...",
-  "currency_code": "EUR",
-  "usd_exchange_rate": 1.1652,
-  "exchange_rate_date": "2026-08-29",
-  "exchange_rate_source": "frankfurter-v2-blended",
-  "usd_total": 202.59
+  "currency_code": "USD",
+  "usd_exchange_rate": 1,
+  "exchange_rate_date": "",
+  "exchange_rate_source": "native-usd",
+  "usd_total": 128
 }
 ```
 
-`currency_code` defaults to `USD` for older clients. For non-USD bills the service fetches the latest available daily rate, validates it, and freezes the returned rate/date/source on the created bill. A failed or invalid provider response returns `503`; the bill is not saved. Clients must not calculate or submit their own authoritative rate.
+For supported non-USD bills the service freezes a verified daily rate/date/source.
+A failed or invalid provider quote returns `503` without saving. Original/frozen
+amounts and existing currency-provider behavior remain unchanged by this contract.
+Bill reads omit the source access token.
 
 ### `GET /api/exchange-rates/:currency`
 
@@ -211,20 +257,42 @@ Update tab name or description. Blocked if finalized.
 
 ### `POST /api/tabs/:id/bills?t=token&m=memberToken`
 
-Add an existing bill to a tab. The `m` parameter is optional and attributes the bill to a member.
+Attach an existing standalone bill using **independent** source and destination
+proof. Supply the destination token through `Authorization: Bearer <tab token>` or
+the existing `?t=` link, and the source token in the body. A destination token never
+substitutes for the source token. Opaque source-token bytes are matched unchanged.
 
-**Request Body**
+**Request Body** (one JSON document, maximum 4 KiB)
 ```json
-{ "bill_id": 5 }
+{ "bill_id": 5, "bill_token": "source-bill-token" }
 ```
+
+Once a tab has members, a matching member token within that tab is required through
+`X-Member-Token` or `?m=`. The authenticated member supplies both added-by and paid-by
+attribution. Memberless legacy tabs still accept the tab token without a member token,
+but require source proof; a supplied invalid member token fails.
+
+Authorization, finalized-state check and attachment execute in one transaction using
+destination-tab then source-bill row locks. Active same-tab retries revalidate all
+credentials and succeed without changing attribution, timestamps or quote metadata.
+A bill already in another tab cannot be moved. A failed attachment leaves its source
+bill available through the original bill token.
 
 **Response** `200`
 ```json
 { "status": "ok" }
 ```
 
-**Errors**
-- `400` if tab is finalized.
+| Status | Meaning |
+|---|---|
+| 400 | Malformed/oversized/trailing/unknown JSON, nonpositive bill ID, blank source token, or finalized destination |
+| 403 | Missing/wrong destination token, missing required member, or wrong/cross-tab member token |
+| 404 | Generic `source bill unavailable`: missing source, wrong/another source token, or source attached elsewhere |
+| 200 | Authorized first attachment or active-tab retry |
+
+The existing token API uses `403` for failed capabilities. Errors never echo tokens,
+source content or SQL. This operation does not make settlement finalization atomic;
+that separate consistency repair remains tracked.
 
 ---
 

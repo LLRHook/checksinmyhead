@@ -157,6 +157,14 @@ internal/
 ### Anonymous Tokens Instead of Accounts
 Users never create accounts. Access is controlled by 64-character cryptographic tokens generated with Go's `crypto/rand.Text()`. Tab creators and members each receive unique tokens that are stored locally on their devices.
 
+Public bill creation accepts an explicit content contract and always creates a fresh
+standalone graph. One transactional attachment operation requires independent bill/tab
+capabilities, resolves member attribution inside the destination, and locks tab before
+bill. Same-tab retries preserve original attribution. Membership writers take the same
+tab lock; standalone claims recheck `tab_id IS NULL` at their locked write boundary.
+See [API contracts](backend-api.md) for accepted fields, bounds and legacy compatibility.
+Atomic settlement finalization and stable participant identity remain separate work.
+
 ### JSONB for Flexible Data
 `PaymentMethods` and `PersonShare.Items` use PostgreSQL JSONB columns via GORM's `serializer:json` tag. This avoids extra join tables for data that is always read and written as a unit.
 
