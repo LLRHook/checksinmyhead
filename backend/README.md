@@ -47,6 +47,28 @@ make test     # Run Go unit tests (go test -v -race ./internal/... ./pkg/...)
 
 Or use the root `./dev.sh` script to start the full stack (backend + web + mobile).
 
+### Build toolchain
+
+`go.mod` requires Go 1.27.3. Local commands may use `GOTOOLCHAIN=auto` to
+select it. Both service Dockerfiles pin the same official Go builder and the
+existing Debian 12 distroless runtime by multi-platform digest. Builders use
+`GOTOOLCHAIN=local` so a mismatched module requirement fails instead of downloading
+another compiler. Update the module and both builder pins together after checking
+current security releases and image identities.
+
+Build from the `backend` context, for example from the repository root:
+
+```bash
+docker build --pull --no-cache --platform linux/amd64 -f backend/services/bill-service/Dockerfile -t billington-bill:validation backend
+docker build --pull --no-cache --platform linux/amd64 -f backend/services/web-service/Dockerfile -t billington-web:validation backend
+```
+
+`.dockerignore` excludes local environment files, private-key files, generated
+binaries/data and verification output; it retains source, test fixtures and
+`.env.example`. Pass runtime credentials through the environment, never by copying
+them into the image. These local builds do not establish the hosting platform's
+architecture or deployment identity; see [verification](../VERIFICATION.md).
+
 ## Environment Variables
 
 | Variable | Default | Description |
