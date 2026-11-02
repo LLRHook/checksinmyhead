@@ -4,7 +4,7 @@
 
 Use the current task and maintained repository as context. Preserve unrelated edits,
 untracked Android work, and screenshot artifacts. Git commits use Victor Ivanov
-<vivanov@paradigmtesting.com>.
+<victor.n.ivanov@gmail.com>.
 
 Before adding a dependency, verify its functionality, current stable release, and API
 in primary documentation. Keep architecture in [docs/technical-overview.md](docs/technical-overview.md)
