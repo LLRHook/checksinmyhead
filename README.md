@@ -112,7 +112,10 @@ Read [AGENTS.md](AGENTS.md) for shared contributor/agent rules. Use the root
 Create and update entries through `python3 .cycle/trackers.py`; see
 [.cycle/TRACKERS.md](.cycle/TRACKERS.md). Run `python3 .cycle/trackers.py lint` after
 tracker changes and merges. Complete relevant local checks and affected documentation
-before review; only integrated V&V migrates completed tickets into
+before review; [VERIFICATION.md](VERIFICATION.md) defines the exact local matrix and
+isolated receipt/save/share/claim/attach/finalize/paid journeys. Its bootstrap is an
+unexecuted procedure, with missing integration coverage explicit. Only integrated V&V
+migrates completed tickets into
 [CHANGELOG.md](CHANGELOG.md).
 
 The [foundation baseline](docs/reviews/2026-11-02-baseline.md) records the approved scope
@@ -121,9 +124,12 @@ remain authoritative. Procedure preparation does not establish release readiness
 
 ## Testing
 
+Run these from the repository root in separate shells; see [VERIFICATION.md](VERIFICATION.md)
+for static/security/build commands, prerequisites, skip accounting and full acceptance.
+
 ```bash
 # Backend (Go)
-cd backend && go test -v -race ./internal/... ./pkg/...
+cd backend && go test -race ./...
 
 # Web viewer (Vitest)
 cd web-bill-viewer && npm test
