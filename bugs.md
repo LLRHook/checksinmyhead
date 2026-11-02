@@ -112,6 +112,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Log:**
   - 2026-11-02 Approval: Driver-approved DEPENDENCY_PHASE_APPROVAL.md at f1d62374 permits exact stable Next patch and sharp security floor. Official stable registry, engine/peer API documentation, maintainer advisories and sharp release reverified November 2. Next 16.4.4; sharp already resolves 0.35.5. React and unrelated locks retained. November 3 announced security release requires a fresh check before integration/release.
   - 2026-11-02 Validation: Web-specific acceptance commands all pass. In-progress retained for complete driver acceptance: enforced Flutter lock acquisition fails twice and companion Docker scans report unresolved package/policy findings. No missing scanner, production deployment, external alert closure or full runtime protocol is counted as a pass. Driver owns clean independent validation and integration.
+  - 2026-11-02 Follow-up: Approved RUNTIME_LOCK_APPROVAL.md follow-ups: BUG-1793652308 owns four-entry Flutter lock reproducibility; BUG-1793652309 owns supported minimal/nonroot runtime and same-binary probe. Original dependency evidence remains a dated record. No Go advisory is reclassified as OpenSSL.
 
 ### [BUG-1793644503] Patch the Go build toolchain for GO-2026-6809
 - [ ] **Severity:** high
@@ -133,6 +134,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Log:**
   - 2026-11-02 Approval: Driver-approved DEPENDENCY_PHASE_APPROVAL.md at f1d62374 permits Go 1.27.3, aligned digest-pinned builders/runtime base, minimal context exclusions and full local compatibility/security checks. Official go.dev feed, advisory and registry identities reverified November 2. No application-module, API, schema, runtime distribution or publication changes.
   - 2026-11-02 Validation: Local implementation evidence recorded. In-progress retained: locked Flutter acquisition fails twice for four SDK-required entries; both retained images have root/no-healthcheck policy findings plus 1 HIGH/22 MEDIUM/14 LOW/7 UNKNOWN package findings each. Driver proposal: separate four-entry Flutter lock alignment and verified Debian 12 package/non-root follow-up. Independent review, hosting identities and full protocol remain pending; no new finding waived or source/publication gate closed.
+  - 2026-11-02 Follow-up: Approved RUNTIME_LOCK_APPROVAL.md follow-ups: BUG-1793652308 owns Flutter lock reproducibility; BUG-1793652309 owns Debian13 base-nossl/nonroot/probe repair, superseding the earlier Debian12 hold after verified deprecation. GO-2026-6809 remains the distinct Go standard-library advisory. See docs/reviews/2026-11-02-go-dependency-maintenance.md and DEPENDENCY_REVIEW.md.
 
 ### [BUG-1793644504] Finalize tabs within one retry-safe transaction
 - [ ] **Severity:** high
@@ -374,3 +376,38 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Review mechanical 17 errors/9 warnings as grouped config findings, not 17 product vulnerabilities. Mirror retirement may remove its SSH path.
 - **Bump:** patch
 - **Status:** open
+
+### [BUG-1793652308] Make the Flutter 3.41.5 committed lock reproducible
+- [ ] **Severity:** med
+- **Area:** mobile, dependencies
+- **File(s):** mobile/pubspec.lock; mobile/README.md
+- **Observation:** At f9f8fb86, Flutter 3.41.5 enforced acquisition exits 65: characters, matcher, material_color_utilities and test_api differ from the committed lock. Existing dependency evidence records the same failure twice.
+- **Expected:**
+  - Exactly the four SDK-controlled entries resolve to characters 1.4.1, matcher 0.12.19, material_color_utilities 0.13.0 and test_api 0.7.10 with pub-generated checksums.
+  - Pinned Flutter enforced acquisition, analysis and actual tests pass without unrelated lock, manifest, application, SDK or CocoaPods drift. Driver independently validates a clean committed snapshot.
+- **Req:** RUNTIME_LOCK_APPROVAL.md deliverable 1; DEPENDENCY_REVIEW.md; docs/reviews/2026-11-02-go-dependency-maintenance.md; docs/reviews/2026-11-02-web-dependency-maintenance.md
+- **Depends on:** none; follow-up evidence from BUG-1793644502 and BUG-1793644503
+- **Repro / Notes:** cd mobile && flutter pub get --enforce-lockfile under Flutter 3.41.5. Baseline .vv/local-gate/dependencies/flutter-pub{,-retry}.log reports Would change 4 dependencies, exit 65. CI enforcement belongs to BUG-1793644501.
+- **Bump:** patch
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Regenerate exactly four SDK-controlled records/checksums with Flutter 3.41.5 pub: characters 1.4.1, matcher 0.12.19, material_color_utilities 0.13.0, test_api 0.7.10. Enforced acquisition and analysis exit 0; 203 visible Flutter tests plus 21 hidden suite loads pass, zero failed/skipped. All other lock bytes, manifest, mobile source, generated databases, CocoaPods and workflow pins preserved. Lead scope=affected clean=no; retain in-progress for driver clean committed-snapshot acceptance and separate global/security gates.
+- **Docs:** mobile/README.md; docs/reviews/2026-11-02-flutter-lock-reproducibility.md. Existing dated dependency evidence preserved; follows BUG-1793644502/4503. CI enforcement remains workflow-phase work.
+- **Log:**
+  - 2026-11-02 Validation: Official writer dry-run preview shown before apply; RUNTIME_LOCK_APPROVAL.md deliverable 1 authorizes this narrow correction. Official pinned Flutter manifests and pub enforcement docs verified before pub generated the resolution. Raw reports: .vv/local-gate/runtime-lock/. No clean-checkout claim or CHANGELOG migration.
+
+### [BUG-1793652309] Use supported nonroot minimal service images with bounded local probes
+- [ ] **Severity:** high
+- **Area:** backend, security, containers
+- **File(s):** backend/services/{bill-service,web-service}/Dockerfile; backend/cmd/{bill-service,web-service}/main.go; backend/internal/healthcheck; backend/README.md
+- **Observation:** Both f9f8fb86 runtime stages use deprecated base-debian12 as root without HEALTHCHECK. Retained images each contain libssl3 CVE-2026-84782 HIGH plus other disclosed findings; policy scans report DS-0002 HIGH and DS-0026 LOW.
+- **Expected:**
+  - Both linux/amd64 targets use verified supported base-nossl-debian13:nonroot at an exact index digest and explicit USER 65532:65532, preserving Go 1.27.3 CGO/libc, CA/tzdata/tmp and legacy templates.
+  - A shared same-binary --healthcheck runs before DB initialization, makes one bounded loopback request, rejects redirects/bad status/JSON/oversize/timeouts and logs no response content or credentials; Docker uses exec form with no helpers.
+  - Actual nonroot API create/read and authorized legacy HTML pass with unique synthetic PostgreSQL data; DNS, trusted database TLS, public CA, timezone, read-only filesystem/tmp, identities/bytes/packages and unsuppressed scans are recorded. No HIGH/CRITICAL finding is silently retained.
+- **Req:** RUNTIME_LOCK_APPROVAL.md deliverables 2-3; DEPENDENCY_REVIEW.md; docs/reviews/2026-11-02-go-dependency-maintenance.md
+- **Depends on:** none; follow-up evidence from BUG-1793644503 (GO-2026-6809 is a distinct Go advisory)
+- **Repro / Notes:** Baseline .vv/local-gate/dependencies/trivy-config.json and trivy-image-{bill,web}.json: each image 1 HIGH / 22 MEDIUM / 14 LOW / 7 UNKNOWN, root HIGH, missing healthcheck LOW. Current Distroless support policy deprecates Debian12; approval explicitly supersedes prior distribution hold. Probe remains liveness; migration owns DB readiness.
+- **Bump:** patch
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress

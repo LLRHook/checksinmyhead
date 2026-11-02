@@ -89,9 +89,16 @@ This guide will help you set up Flutter for iOS development on macOS and get our
    ```
 
 2. **Install dependencies:**
+   Use Flutter **3.41.5**, matching the CI and iOS publication SDK pins. The
+   committed lock includes that SDK's exact framework/test dependencies. Verify
+   acquisition without rewriting it:
    ```bash
-   flutter pub get
+   flutter pub get --enforce-lockfile
+   flutter analyze
+   flutter test
    ```
+   For an approved dependency change, use ordinary `flutter pub get` to generate
+   the lock, review its package/checksum diff, then rerun enforced acquisition.
 
 3. **Set up iOS project:**
    ```bash
@@ -134,10 +141,6 @@ This guide will help you set up Flutter for iOS development on macOS and get our
 
 ## Updating Flutter
 
-To update Flutter to the latest version:
-
-```bash
-cd ~/development/flutter
-git pull
-flutter doctor
-```
+Coordinate SDK updates with the CI, TestFlight and App Store workflow pins, then
+regenerate and verify the lock under the chosen SDK. Use Flutter 3.41.5 for the
+current committed resolution; see the [lock verification evidence](../docs/reviews/2026-11-02-flutter-lock-reproducibility.md).
