@@ -408,3 +408,11 @@ func TestPostgresCreationAttachmentQueryShapeAndLatency(t *testing.T) {
 		})
 	}
 }
+
+func TestPostgresCreationMoneyBoundary(t *testing.T) {
+	assertCreationMoneyBoundary(t, authorizationPostgres(t))
+}
+
+func TestPostgresUnsafeShareCalculationRollsBack(t *testing.T) {
+	assertUnsafeShareCalculationRollsBack(t, authorizationPostgres(t))
+}

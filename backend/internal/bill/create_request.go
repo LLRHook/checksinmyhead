@@ -105,13 +105,6 @@ func decodeCreateBill(w http.ResponseWriter, r *http.Request) (*models.Bill, err
 	for _, p := range request.PaymentMethods {
 		b.PaymentMethods = append(b.PaymentMethods, models.PaymentMethod{Name: p.Name, Identifier: p.Identifier})
 	}
-	// Validate at the HTTP boundary before display quoting. Keep the raw client
-	// projection for the service to revalidate and replace with server shares.
-	projections := append([]models.PersonShare(nil), b.PersonShares...)
-	if err := prepareCreation(b); err != nil {
-		return nil, err
-	}
-	b.PersonShares = projections
 	return b, nil
 }
 
@@ -184,7 +177,9 @@ func prepareCreation(b *models.Bill) error {
 	if _, ok := supportedCurrencyCodes[b.CurrencyCode]; !ok {
 		return ErrInvalidCurrency
 	}
-	if _, ok := supportedCurrencyCodes[b.DisplayCurrency]; !ok {
+	// The separate display provider historically accepts any normalized three-byte
+	// code. Its supported pairs are independent of the frozen receipt whitelist.
+	if len(b.DisplayCurrency) != 3 {
 		return ErrInvalidCurrency
 	}
 	for _, v := range []float64{b.Subtotal, b.Tax, b.TipAmount, b.Total, b.TipPercentage} {
@@ -224,8 +219,6 @@ func prepareCreation(b *models.Bill) error {
 		}
 		participants[key] = true
 	}
-	details := map[string][]models.ItemDetail{}
-	raw := map[string]float64{}
 	var itemSum, absoluteSum float64
 	assignments := 0
 	for i := range b.Items {
@@ -260,9 +253,6 @@ func prepareCreation(b *models.Bill) error {
 			}
 			seen[key] = true
 			percentage += a.Percentage
-			amount := item.Price * a.Percentage / 100
-			raw[key] += amount
-			details[key] = append(details[key], models.ItemDetail{Name: item.Name, Amount: amount, IsShared: a.Percentage < 99.99})
 		}
 		if !models.ItemAssignmentTotalIsValid(percentage) {
 			return ErrInvalidCreation
@@ -323,10 +313,9 @@ func prepareCreation(b *models.Bill) error {
 			rawTotals[key] = s.Total
 			sum += s.Total
 		}
-		if !near(sum, b.Total) {
+		if !money(sum) || !near(sum, b.Total) {
 			return ErrInvalidCreation
 		}
-		totals := allocateRoundedCents(rawTotals, nil)
 		subRaw, taxRaw, tipRaw := map[string]float64{}, map[string]float64{}, map[string]float64{}
 		for key, s := range projections {
 			ratio := 0.0
@@ -336,8 +325,28 @@ func prepareCreation(b *models.Bill) error {
 			subRaw[key] = b.Subtotal * ratio
 			taxRaw[key] = b.Tax * ratio
 			tipRaw[key] = b.TipAmount * ratio
+			for _, value := range []float64{ratio, subRaw[key], taxRaw[key], tipRaw[key]} {
+				if !finite(value) {
+					return ErrInvalidCreation
+				}
+			}
 		}
-		subs, taxes, tips := allocateRoundedCents(subRaw, nil), allocateRoundedCents(taxRaw, nil), allocateRoundedCents(tipRaw, nil)
+		totals, err := allocateRoundedCents(rawTotals, nil)
+		if err != nil {
+			return err
+		}
+		subs, err := allocateRoundedCents(subRaw, nil)
+		if err != nil {
+			return err
+		}
+		taxes, err := allocateRoundedCents(taxRaw, nil)
+		if err != nil {
+			return err
+		}
+		tips, err := allocateRoundedCents(tipRaw, nil)
+		if err != nil {
+			return err
+		}
 		b.PersonShares = []models.PersonShare{}
 		for _, key := range sortedCreationKeys(names) {
 			if _, ok := projections[key]; ok {
@@ -346,16 +355,17 @@ func prepareCreation(b *models.Bill) error {
 		}
 		return nil
 	}
-	var assigned float64
-	for _, v := range raw {
-		if !money(v) || v < 0 {
-			return ErrInvalidCreation
-		}
-		assigned += v
+	calculation, err := calculatePersonShares(b, b.LazyMode)
+	if err != nil {
+		return err
 	}
-	if !finite(assigned) || assigned > b.Subtotal+moneyTolerance {
+	assigned := calculation.subtotal
+	// Absolute receipt tolerances must never enlarge a proportional denominator.
+	// Retain only relative floating-point noise at this boundary, including near zero.
+	if assigned > b.Subtotal+b.Subtotal*1e-9 || calculation.total > b.Total+moneyTolerance {
 		return ErrInvalidCreation
 	}
+	raw, details := calculation.subtotals, calculation.details
 	// The upload projection uses the receipt denominator even when saved-history
 	// totals use the assigned subtotal. Allow raw fractions and cent-rounded totals.
 	denominator := b.Total - b.Tax - b.TipAmount
@@ -388,9 +398,16 @@ func prepareCreation(b *models.Bill) error {
 	}
 	// Reuse the existing cent allocation contract. Zero-share participants are
 	// included explicitly; repeated receipt lines remain distinct by position.
-	shares := BuildPersonShares(b)
-	if b.LazyMode {
-		shares = BuildLazyPersonShares(b)
+	shares, err := calculation.rounded(0)
+	if err != nil {
+		return err
+	}
+	var obligations float64
+	for _, share := range shares {
+		obligations += share.Total
+	}
+	if !money(obligations) || obligations > b.Total+moneyTolerance {
+		return ErrInvalidCreation
 	}
 	byName := map[string]models.PersonShare{}
 	for _, s := range shares {

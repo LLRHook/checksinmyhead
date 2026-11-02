@@ -139,7 +139,10 @@ func TestBuildLazyPersonShares_KeepEarlierSharesStableAsItemsAreClaimed(t *testi
 			{ID: 1, Price: 10, Assignments: []models.ItemAssignment{{PersonName: "Alex", Percentage: 100}}},
 		},
 	}
-	firstClaim := BuildLazyPersonShares(bill)
+	firstClaim, err := BuildLazyPersonShares(bill)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(firstClaim) != 1 {
 		t.Fatalf("expected one initial share, got %d", len(firstClaim))
 	}
@@ -148,7 +151,10 @@ func TestBuildLazyPersonShares_KeepEarlierSharesStableAsItemsAreClaimed(t *testi
 		ID: 2, Price: 20,
 		Assignments: []models.ItemAssignment{{PersonName: "Bob", Percentage: 100}},
 	})
-	allClaims := BuildLazyPersonShares(bill)
+	allClaims, err := BuildLazyPersonShares(bill)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var alex *models.PersonShare
 	for i := range allClaims {
 		if allClaims[i].PersonName == "Alex" {

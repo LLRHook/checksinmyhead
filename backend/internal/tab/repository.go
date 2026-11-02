@@ -228,9 +228,15 @@ func (r *tabRepository) UpdateBillItemAssignmentsBatch(tabID uint, billID uint, 
 			return err
 		}
 
-		shares := billpkg.BuildPersonShares(&refreshed)
+		var shares []models.PersonShare
+		var err error
 		if bill.LazyMode {
-			shares = billpkg.BuildLazyPersonShares(&refreshed)
+			shares, err = billpkg.BuildLazyPersonShares(&refreshed)
+		} else {
+			shares, err = billpkg.BuildPersonShares(&refreshed)
+		}
+		if err != nil {
+			return err
 		}
 		for i := range shares {
 			shares[i].Paid = paidByName[strings.ToLower(shares[i].PersonName)]

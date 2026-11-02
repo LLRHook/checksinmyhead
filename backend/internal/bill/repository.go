@@ -140,7 +140,10 @@ func (b *billRepository) UpdateItemAssignmentsBatch(billID uint, updates []ItemA
 		if err := tx.Preload("Items.Assignments").Where("id = ?", billID).First(&refreshed).Error; err != nil {
 			return err
 		}
-		shares := BuildLazyPersonShares(&refreshed)
+		shares, err := BuildLazyPersonShares(&refreshed)
+		if err != nil {
+			return err
+		}
 		for i := range shares {
 			shares[i].Paid = paidByName[strings.ToLower(shares[i].PersonName)]
 		}

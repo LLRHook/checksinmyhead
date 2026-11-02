@@ -441,7 +441,10 @@ func TestBuildPersonShares_FromAssignments(t *testing.T) {
 		},
 	}
 
-	shares := billpkg.BuildPersonShares(bill)
+	shares, err := billpkg.BuildPersonShares(bill)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(shares) != 2 {
 		t.Fatalf("expected 2 shares, got %d", len(shares))
 	}

@@ -36,6 +36,9 @@ type ExchangeRateProvider interface {
 
 type BillService interface {
 	CreateBill(ctx context.Context, bill *models.Bill) error
+	// The HTTP path supplies display preparation after the same validation used
+	// by direct callers. Only this package can supply that trusted callback.
+	createBill(ctx context.Context, bill *models.Bill, prepareDisplay func(*models.Bill) error) error
 	GetUSDExchangeRate(ctx context.Context, currency string) (models.ExchangeRateQuote, error)
 	GetBill(id uint) (bill *models.Bill, err error)
 	UpdatePersonSharePaid(billID uint, personName string, paid bool) error
@@ -49,8 +52,17 @@ type billService struct {
 }
 
 func (b *billService) CreateBill(ctx context.Context, bill *models.Bill) error {
+	return b.createBill(ctx, bill, nil)
+}
+
+func (b *billService) createBill(ctx context.Context, bill *models.Bill, prepareDisplay func(*models.Bill) error) error {
 	if err := prepareCreation(bill); err != nil {
 		return err
+	}
+	if prepareDisplay != nil {
+		if err := prepareDisplay(bill); err != nil {
+			return err
+		}
 	}
 	quote, err := b.GetUSDExchangeRate(ctx, bill.CurrencyCode)
 	if err != nil {

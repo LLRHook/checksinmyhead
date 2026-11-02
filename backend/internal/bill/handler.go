@@ -19,13 +19,19 @@ import (
 	"gorm.io/gorm"
 )
 
-type BillHandler struct {
-	service BillService
-	rates   *currency.Service
+var errDisplayConversionUnavailable = errors.New("display conversion unavailable")
+
+type displayRateProvider interface {
+	GetRate(from, to string) (currency.Rate, error)
 }
 
-func NewBillHandler(service BillService, rates ...*currency.Service) *BillHandler {
-	var rateService *currency.Service
+type BillHandler struct {
+	service BillService
+	rates   displayRateProvider
+}
+
+func NewBillHandler(service BillService, rates ...displayRateProvider) *BillHandler {
+	var rateService displayRateProvider
 	if len(rates) > 0 {
 		rateService = rates[0]
 	}
@@ -38,29 +44,7 @@ func (h *BillHandler) CreateBill(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "invalid bill content"})
 		return
 	}
-	if bill.CurrencyCode != bill.DisplayCurrency {
-		if h.rates == nil {
-			c.JSON(503, gin.H{"error": "currency conversion is temporarily unavailable"})
-			return
-		}
-		rate, err := h.rates.GetRate(bill.CurrencyCode, bill.DisplayCurrency)
-		if err != nil {
-			c.JSON(503, gin.H{"error": "currency conversion is temporarily unavailable"})
-			return
-		}
-		displayTotal := bill.Total * rate.Value
-		if !finite(rate.Value) || rate.Value <= 0 || !finite(displayTotal) {
-			c.JSON(503, gin.H{"error": "currency conversion is temporarily unavailable"})
-			return
-		}
-		bill.DisplayTotal = &displayTotal
-		bill.ExchangeRate = &rate.Value
-		bill.ExchangeRateSource = rate.Source
-		bill.ExchangeRateDate = rate.UpdatedAt.Format(time.DateOnly)
-	} else {
-		displayTotal := bill.Total
-		bill.DisplayTotal = &displayTotal
-	}
+
 	token, err := security.GenerateSecureToken()
 	if err != nil {
 		log.Printf("internal error: %v", err)
@@ -68,9 +52,13 @@ func (h *BillHandler) CreateBill(c *gin.Context) {
 		return
 	}
 	bill.AccessToken = token
-	err = h.service.CreateBill(c.Request.Context(), bill)
+	err = h.service.createBill(c.Request.Context(), bill, h.prepareDisplay)
 
 	if err != nil {
+		if errors.Is(err, errDisplayConversionUnavailable) {
+			c.JSON(503, gin.H{"error": "currency conversion is temporarily unavailable"})
+			return
+		}
 		if errors.Is(err, ErrInvalidCreation) {
 			c.JSON(400, gin.H{"error": "invalid bill content"})
 			return
@@ -98,6 +86,32 @@ func (h *BillHandler) CreateBill(c *gin.Context) {
 		"exchange_rate_source": bill.ExchangeRateSource,
 		"usd_total":            bill.USDTotal,
 	})
+}
+
+// Display and frozen USD quoting remain separate provider contracts. Creation
+// calls this only after validating and deriving the standalone graph once.
+func (h *BillHandler) prepareDisplay(bill *models.Bill) error {
+	if bill.CurrencyCode != bill.DisplayCurrency {
+		if h.rates == nil {
+			return errDisplayConversionUnavailable
+		}
+		rate, err := h.rates.GetRate(bill.CurrencyCode, bill.DisplayCurrency)
+		if err != nil {
+			return errDisplayConversionUnavailable
+		}
+		displayTotal := bill.Total * rate.Value
+		if !finite(rate.Value) || rate.Value <= 0 || !finite(displayTotal) {
+			return errDisplayConversionUnavailable
+		}
+		bill.DisplayTotal = &displayTotal
+		bill.ExchangeRate = &rate.Value
+		bill.ExchangeRateSource = rate.Source
+		bill.ExchangeRateDate = rate.UpdatedAt.Format(time.DateOnly)
+	} else {
+		displayTotal := bill.Total
+		bill.DisplayTotal = &displayTotal
+	}
+	return nil
 }
 
 func (h *BillHandler) GetExchangeRate(c *gin.Context) {

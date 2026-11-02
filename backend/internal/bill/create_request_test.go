@@ -261,7 +261,10 @@ func TestDerivedClaimSharesKeepRepeatedItemBreakdowns(t *testing.T) {
 		{Name: "Repeated", Price: 6, Assignments: []models.ItemAssignment{{PersonName: "Alex", Percentage: 50}}},
 		{Name: "Repeated", Price: 4, Assignments: []models.ItemAssignment{{PersonName: "Alex", Percentage: 100}}},
 	}}
-	shares := BuildLazyPersonShares(b)
+	shares, err := BuildLazyPersonShares(b)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(shares) != 1 || len(shares[0].Items) != 2 || shares[0].Items[0].Amount != 3 || shares[0].Items[1].Amount != 4 || shares[0].Total != 7 {
 		t.Fatalf("lost detail/partial amount: %#v", shares)
 	}
