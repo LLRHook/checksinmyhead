@@ -7,7 +7,9 @@ COPY . .
 RUN go build -o bill-service ./cmd/bill-service
 
 
-FROM gcr.io/distroless/base-debian12@sha256:fabbf1c0c357a3d42550111351daed089b20a2c954df13ee2fcff60602515e84
+FROM gcr.io/distroless/base-nossl-debian13:nonroot@sha256:e6b0f82595aa1edde72c8054de7a9dca30f0f8f54820c37a167c0ddfc21c5c67
+COPY --from=build /app/bill-service /app/bill-service
 WORKDIR /app
-COPY --from=build /app/bill-service .
+USER 65532:65532
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 CMD ["./bill-service", "--healthcheck"]
 CMD ["./bill-service"]

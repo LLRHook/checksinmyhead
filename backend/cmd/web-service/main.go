@@ -2,6 +2,7 @@ package main
 
 import (
 	"backend/internal/bill"
+	"backend/internal/healthcheck"
 	"backend/internal/web"
 	"backend/pkg/database"
 	"backend/pkg/safehttp"
@@ -14,6 +15,9 @@ import (
 )
 
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "--healthcheck" {
+		os.Exit(healthcheck.ExitCode("http://127.0.0.1:8081/health", "web service - ok"))
+	}
 	db, err := database.InitDB()
 	if err != nil {
 		log.Fatal(err)

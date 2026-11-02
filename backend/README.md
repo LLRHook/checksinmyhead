@@ -50,8 +50,10 @@ Or use the root `./dev.sh` script to start the full stack (backend + web + mobil
 ### Build toolchain
 
 `go.mod` requires Go 1.27.3. Local commands may use `GOTOOLCHAIN=auto` to
-select it. Both service Dockerfiles pin the same official Go builder and the
-existing Debian 12 distroless runtime by multi-platform digest. Builders use
+select it. Both service Dockerfiles pin the same official Go builder and supported
+`gcr.io/distroless/base-nossl-debian13:nonroot` runtime by multi-platform digest.
+The runtime retains libc for the existing CGO build, CA certificates and timezone
+data, and omits OpenSSL. Builders use
 `GOTOOLCHAIN=local` so a mismatched module requirement fails instead of downloading
 another compiler. Update the module and both builder pins together after checking
 current security releases and image identities.
@@ -68,6 +70,28 @@ binaries/data and verification output; it retains source, test fixtures and
 `.env.example`. Pass runtime credentials through the environment, never by copying
 them into the image. These local builds do not establish the hosting platform's
 architecture or deployment identity; see [verification](../VERIFICATION.md).
+
+### Container liveness
+
+Both images execute as UID/GID **65532:65532**. Application binaries/directories
+remain root-owned and readable/executable; the legacy viewer retains its relative
+`internal/web/templates` path under `/app`. Containers can use a read-only root
+filesystem with a writable `/tmp` tmpfs (mode 1777, UID/GID 65532).
+
+The default commands remain `./bill-service` (8080) and `./web-service` (8081).
+Each binary also supports `--healthcheck`, dispatched before database setup.
+It makes one GET to its fixed `127.0.0.1` `/health` address, requires HTTP 200
+and the service's expected JSON status, limits the whole request to two seconds
+and the body to 4096 bytes, rejects redirects, bypasses proxies, and exits 0/1
+without printing responses or transport errors.
+
+Docker's exec-form `HEALTHCHECK` calls that same binary every 30 seconds with a
+three-second outer timeout, a ten-second start period and three retries. No
+helper runtime packages are required. This is HTTP liveness after startup;
+`/health` does not query the database on each request. Hosting health/readiness
+configuration and operator-injected commit values require separate verification.
+See the [runtime validation evidence](../docs/reviews/2026-11-02-runtime-lock-images.md)
+for image identities, signature checks and retained vulnerability findings.
 
 ## Environment Variables
 

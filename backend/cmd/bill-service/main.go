@@ -3,6 +3,7 @@ package main
 import (
 	"backend/internal/bill"
 	"backend/internal/currency"
+	"backend/internal/healthcheck"
 	"backend/internal/receipt"
 	"backend/internal/tab"
 	"backend/internal/versionpolicy"
@@ -22,6 +23,9 @@ import (
 var db *gorm.DB
 
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "--healthcheck" {
+		os.Exit(healthcheck.ExitCode("http://127.0.0.1:8080/health", "bill service - ok"))
+	}
 	var err error
 	db, err = database.InitDB()
 	if err != nil {

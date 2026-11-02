@@ -30,6 +30,12 @@ Billington is a distributed bill-splitting system with three components: a Go ba
               └─────────────────────────┘
 ```
 
+Both retained Go service images use a digest-pinned Distroless
+`base-nossl-debian13:nonroot` runtime, with libc retained and execution as UID/GID
+65532. Their shared same-binary `--healthcheck` mode probes the established local
+HTTP health endpoint before database initialization. The default server commands
+and ports are unchanged; see [container liveness](../backend/README.md#container-liveness).
+
 ### Request Flow
 
 1. Client sends HTTP request with access token (`?t=token`)
