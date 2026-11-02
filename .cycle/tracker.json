@@ -1,0 +1,8 @@
+{
+  "format": 2,
+  "bundle": {
+    "ignore": [
+      "claude-block"
+    ]
+  }
+}
