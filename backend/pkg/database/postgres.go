@@ -33,12 +33,12 @@ func InitDB() (*gorm.DB, error) {
 		Logger: NewSQLLogger(),
 	})
 	if err != nil {
-		return nil, err
+		return nil, safeStartupError(err)
 	}
 
 	sqlDB, err := db.DB()
 	if err != nil {
-		return nil, err
+		return nil, safeStartupError(err)
 	}
 	sqlDB.SetMaxOpenConns(envInt("DB_MAX_OPEN_CONNS", 10))
 	sqlDB.SetMaxIdleConns(envInt("DB_MAX_IDLE_CONNS", 5))
@@ -48,7 +48,7 @@ func InitDB() (*gorm.DB, error) {
 	// Migrate parent tables first (Tab before Bill, since Bill has FK to Tab)
 	err = db.AutoMigrate(&models.Tab{}, &models.TabMember{}, &models.TabSettlement{}, &models.Bill{}, &models.Person{}, &models.BillItem{}, &models.ItemAssignment{}, &models.PersonShare{})
 	if err != nil {
-		return nil, err
+		return nil, safeStartupError(err)
 	}
 
 	// Backfill: set paid_by_member_id = added_by_member_id for existing tab bills

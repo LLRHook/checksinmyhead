@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -21,10 +22,7 @@ type sqlLogger struct {
 }
 
 func NewSQLLogger() logger.Interface {
-	return &sqlLogger{
-		level:         logger.Warn,
-		slowThreshold: slowQueryThreshold(),
-	}
+	return &sqlLogger{level: logger.Warn, slowThreshold: slowQueryThreshold()}
 }
 
 func slowQueryThreshold() time.Duration {
@@ -32,10 +30,10 @@ func slowQueryThreshold() time.Duration {
 	if raw == "" {
 		return defaultSlowQueryThreshold
 	}
-
-	ms, err := strconv.Atoi(raw)
-	if err != nil || ms <= 0 {
-		log.Printf("db logger: invalid DB_SLOW_QUERY_MS=%q, using %s", raw, defaultSlowQueryThreshold)
+	ms, err := strconv.ParseInt(raw, 10, 64)
+	// Bound conversion before multiplication; config text must never reach logs.
+	if err != nil || ms <= 0 || ms > int64((1<<63-1)/time.Millisecond) {
+		log.Print("db logger: invalid DB_SLOW_QUERY_MS, using 500ms")
 		return defaultSlowQueryThreshold
 	}
 	return time.Duration(ms) * time.Millisecond
@@ -47,95 +45,143 @@ func (l *sqlLogger) LogMode(level logger.LogLevel) logger.Interface {
 	return &copy
 }
 
-func (l *sqlLogger) Info(ctx context.Context, msg string, args ...interface{}) {
+// GORM may supply parameter-bearing errors through these methods, including
+// connection failures. Message strings and arguments are deliberately discarded.
+func (l *sqlLogger) Info(_ context.Context, _ string, _ ...interface{}) {
 	if l.level >= logger.Info {
-		log.Printf("db info: "+msg, args...)
+		log.Print("db event level=info")
 	}
 }
-
-func (l *sqlLogger) Warn(ctx context.Context, msg string, args ...interface{}) {
+func (l *sqlLogger) Warn(_ context.Context, _ string, _ ...interface{}) {
 	if l.level >= logger.Warn {
-		log.Printf("db warn: "+msg, args...)
+		log.Print("db event level=warn")
 	}
 }
-
-func (l *sqlLogger) Error(ctx context.Context, msg string, args ...interface{}) {
+func (l *sqlLogger) Error(_ context.Context, _ string, _ ...interface{}) {
 	if l.level >= logger.Error {
-		log.Printf("db error: "+msg, args...)
+		log.Print("db event level=error")
 	}
 }
 
-func (l *sqlLogger) Trace(ctx context.Context, begin time.Time, fc func() (string, int64), err error) {
+// ParamsFilter prevents GORM from interpolating bind values for this logger.
+// Trace still treats the resulting query as untrusted (raw SQL may have literals).
+func (l *sqlLogger) ParamsFilter(_ context.Context, sql string, _ ...interface{}) (string, []interface{}) {
+	return sql, nil
+}
+
+func (l *sqlLogger) Trace(_ context.Context, begin time.Time, fc func() (string, int64), err error) {
 	if l.level <= logger.Silent {
 		return
 	}
-
 	elapsed := time.Since(begin)
-
-	if err != nil && err != gorm.ErrRecordNotFound && l.level >= logger.Error {
-		sql, rows := fc()
-		op, table := classifySQL(sql)
-		log.Printf("db query error elapsed=%s rows=%s op=%s table=%s err=%q sql=%q",
-			elapsed.Round(time.Millisecond),
-			formatRows(rows),
-			op,
-			table,
-			err,
-			sql,
-		)
+	event := "query"
+	switch {
+	case err != nil && !errors.Is(err, gorm.ErrRecordNotFound) && l.level >= logger.Error:
+		event = "error"
+	case elapsed >= l.slowThreshold && l.level >= logger.Warn:
+		event = "slow"
+	case l.level < logger.Info:
 		return
 	}
-
-	if elapsed >= l.slowThreshold && l.level >= logger.Warn {
-		sql, rows := fc()
-		op, table := classifySQL(sql)
-		log.Printf("db slow query elapsed=%s threshold=%s rows=%s op=%s table=%s sql=%q",
-			elapsed.Round(time.Millisecond),
-			l.slowThreshold,
-			formatRows(rows),
-			op,
-			table,
-			sql,
-		)
-	}
+	sql, rows := fc()
+	op, table := classifySQL(sql)
+	class, state := errorMetadata(err)
+	log.Printf("db event=%s elapsed=%s rows=%s op=%s table=%s class=%s sqlstate=%s",
+		event, elapsed.Round(time.Millisecond), formatRows(rows), op, table, class, state)
 }
 
+// Only exact, finite categories can escape classification. Never return a token
+// from SQL or a driver's error/message/detail/hint, even if it looks like an identifier.
 func classifySQL(sql string) (string, string) {
+	if len(sql) > 4096 {
+		return "unknown", "unknown"
+	}
 	fields := strings.Fields(sql)
 	if len(fields) == 0 {
 		return "unknown", "unknown"
 	}
-
 	op := strings.ToLower(fields[0])
+	switch op {
+	case "select", "insert", "update", "delete", "create", "alter", "drop", "begin", "commit", "rollback":
+	default:
+		return "unknown", "unknown"
+	}
 	for i, field := range fields {
-		normalized := strings.ToLower(strings.Trim(field, " \t\n\r(),"))
-		switch {
-		case op == "select" && normalized == "from" && i+1 < len(fields):
-			return op, cleanIdentifier(fields[i+1])
-		case op == "insert" && normalized == "into" && i+1 < len(fields):
-			return op, cleanIdentifier(fields[i+1])
-		case op == "update" && i == 0 && i+1 < len(fields):
-			return op, cleanIdentifier(fields[i+1])
-		case op == "delete" && normalized == "from" && i+1 < len(fields):
-			return op, cleanIdentifier(fields[i+1])
+		word := strings.ToLower(field)
+		if (op == "select" || op == "delete") && word == "from" || op == "insert" && word == "into" || op == "update" && i == 0 {
+			if i+1 < len(fields) {
+				return op, cleanIdentifier(fields[i+1])
+			}
 		}
 	}
-
 	return op, "unknown"
 }
 
 func cleanIdentifier(identifier string) string {
-	cleaned := strings.Trim(identifier, " \t\n\r,;()")
-	cleaned = strings.Trim(cleaned, `"`)
-	if cleaned == "" {
+	switch strings.Trim(identifier, `"`) {
+	case "bills":
+		return "bills"
+	case "bill_items":
+		return "bill_items"
+	case "people":
+		return "people"
+	case "bill_participants":
+		return "bill_participants"
+	case "item_assignments":
+		return "item_assignments"
+	case "person_shares":
+		return "person_shares"
+	case "tabs":
+		return "tabs"
+	case "tab_members":
+		return "tab_members"
+	case "tab_settlements":
+		return "tab_settlements"
+	case "schema_migrations":
+		return "schema_migrations"
+	default:
 		return "unknown"
 	}
-	return cleaned
+}
+
+func errorMetadata(err error) (string, string) {
+	switch {
+	case err == nil:
+		return "none", "none"
+	case errors.Is(err, context.Canceled):
+		return "canceled", "none"
+	case errors.Is(err, context.DeadlineExceeded):
+		return "timeout", "none"
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		return "not_found", "none"
+	}
+	var pg interface{ SQLState() string }
+	if errors.As(err, &pg) {
+		// SQLSTATE-shaped arbitrary strings are not safe either: exact allowlist only.
+		switch state := pg.SQLState(); state {
+		case "23502", "23503", "23505", "23514", "23P01":
+			return "constraint", state
+		case "40001", "40P01":
+			return "transaction", state
+		case "55P03", "57014":
+			return "timeout", state
+		case "08000", "08001", "08003", "08004", "08006", "08007", "08P01", "57P01", "57P02", "57P03", "53300":
+			return "connection", state
+		case "42P01", "42703", "42501", "42601":
+			return "schema", state
+		}
+	}
+	return "database", "unknown"
+}
+
+func safeStartupError(err error) error {
+	class, state := errorMetadata(err)
+	return fmt.Errorf("database initialization failed: class=%s sqlstate=%s", class, state)
 }
 
 func formatRows(rows int64) string {
 	if rows < 0 {
 		return "unknown"
 	}
-	return fmt.Sprintf("%d", rows)
+	return strconv.FormatInt(rows, 10)
 }

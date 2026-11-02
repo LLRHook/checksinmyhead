@@ -213,9 +213,9 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** open
 
 ### [BUG-1793644509] Redact credentials and payment data from SQL logs
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** backend, privacy
-- **File(s):** backend/pkg/database/logger.go; backend/pkg/safehttp/logging.go; backend/pkg/safehttp/logging_test.go
+- **File(s):** backend/pkg/database/logger.go; backend/pkg/database/logger_test.go; backend/pkg/database/postgres.go; backend/pkg/safehttp/logging.go; backend/pkg/safehttp/logging_test.go
 - **Observation:** Slow/error GORM logger emits interpolated SQL values; routine query-free HTTP logging does not remove that risk.
 - **Expected:**
   - Error and slow SQL paths expose no bearer tokens or payment handles; useful operation/timing context remains.
@@ -224,7 +224,11 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Read logger Trace around lines 68-99. Existing HTTP-query sanitization is already shipped and must be preserved.
 - **Bump:** patch
-- **Status:** open
+- **Status:** fixed-pending-migration
+- **Fix:** Suppress SQL text, bind values and arbitrary GORM messages; emit exact allowlisted operation/table/error/SQLSTATE metadata. Sanitize shared InitDB errors, preserve static missing-env guard, and reject slow-threshold overflow without echoing config. Race tests and six control-removal experiments verify leakage controls; auth and health CLI regressions preserved.
+- **Docs:** backend/README.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-02-sql-log-secrecy.md
+- **Log:**
+  - 2026-11-02 Verification: Scoped logging gate: default Go 116 top-level/356 leaf cases; tagged tab PostgreSQL 52 top-level/157 leaf (overlaps default), zero failures/skips. All six overlay control removals fail executed assertions. Gitleaks/Semgrep/gosec zero candidates. Migration/readiness FEAT-1793644505 and overall security/integrated acceptance remain incomplete/RED.
 
 ### [BUG-1793644510] Reconcile public privacy disclosures with released behavior
 - [ ] **Severity:** high
