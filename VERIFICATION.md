@@ -121,7 +121,11 @@ The harness fails if the variable is absent or its host/database is unsafe. It g
 a new `billington_auth_*` schema, refuses caller-supplied schema/options, and drops only
 that schema. It never uses production configuration or `database.InitDB`. It covers
 attachment competition/retries, committed-finalization checks, membership lock order,
-stale standalone claims and write rollback. It is an additional local row, not yet a CI
+stale standalone claims, safe near-zero/tolerance creation and calculation-error write
+rollback. The creation controls first require `201` for matching receipt/item amounts,
+then reject the inconsistent item with no inserted graph. Extreme-denominator arithmetic
+is tested only through bounded pure calculations; never submit it to the historical
+HTTP implementation. It is an additional local row, not yet a CI
 job. Broader atomic-finalization/migration coverage remains FEAT-1793644506.
 
 - [ ] Enumerate with each runner before execution (`go test ./... -list '.*'`,

@@ -19,8 +19,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Implemented in 4c146e8: mandatory independent source/destination proof in one tab-before-bill transaction, authenticated attribution, stable retries, membership serialization and stale standalone claim predicate. Red-before/green-after SQLite plus PostgreSQL locking/rollback evidence in docs/reviews/2026-11-02-authorization-batch.md. Acceptance remains in-progress: known Go/Next security rows RED and independent driver review pending.
-- **Docs:** docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-02-authorization-batch.md
+- **Fix:** Transactional attachment remains implemented: independent source/destination proof, authenticated membership attribution, tab-before-bill locks, stable retries and stale standalone guards. Correction 28eab76 preserves these controls; 316 Go leaf cases and 157 integration-tagged tab leaf cases (16 PostgreSQL-specific), zero failures/skips. docs/reviews/2026-11-02-authorization-corrections.md records scope and proof. Full acceptance remains RED for recorded Flutter locked-acquisition and retained-image findings; independent driver review pending.
+- **Docs:** docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-02-authorization-batch.md; docs/reviews/2026-11-02-authorization-corrections.md
+- **Log:**
+  - 2026-11-02 Validation: Approved authorization corrections preserve all attachment controls. Current race/real-PostgreSQL suites have zero skips; 21 task-owned generated schemas removed and shared fixture retained. Source 28eab76; in-progress retained for independent acceptance and separate full-gate blockers.
 
 ### [BUG-1793644498] Restrict public bill creation to authorized input
 - [ ] **Severity:** crit
@@ -38,8 +40,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Implemented in 39d81cd: strict bounded content DTO, fresh standalone graph, service/repository identity guards, finite compatible accounting and derived non-null share breakdowns. Baseline nested IDs actually reparented victim items/assignments/shares; fixed regression preserves all rows. Ten actual mobile-builder contracts pass. See docs/reviews/2026-11-02-authorization-batch.md. Acceptance remains in-progress: known Go/Next security rows RED and independent driver review pending.
-- **Docs:** docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-02-authorization-batch.md
+- **Fix:** Correction 28eab76 validates raw per-person components and aggregate obligations before cent allocation, prevents tolerance denominator amplification, checks cent/int64 arithmetic and bounds remainder work by participant count. Creation prepares once before separate display/frozen quoting. Historical display-provider validation restored, including all twelve mobile choices and ZAR; receipt policy unchanged. Nested share tests require successful clean controls; ten actual builder fixtures assert every person and item detail. Safe before failures and five control-removal failures recorded; 316 Go and 157 integration-tagged tab leaf cases pass with zero skips. Full acceptance remains RED for recorded Flutter locked-acquisition and retained-image findings; independent review pending.
+- **Docs:** docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-02-authorization-batch.md; docs/reviews/2026-11-02-authorization-corrections.md
+- **Log:**
+  - 2026-11-02 Validation: Driver-approved AUTH_CORRECTION_APPROVAL.md findings 1-3 implemented in 28eab76. Six safe before leaf failures; five temporary overlay variants yield 18 expected failing leaf cases. Extreme-denominator arithmetic tested only as bounded pure calculation, never HTTP. Real PostgreSQL covers safe money boundaries and calculation-error rollback. Five actual mobile-builder tests pass with --no-pub; this does not resolve locked acquisition. Keep in-progress; no CHANGELOG migration.
 
 ### [BUG-1793644499] Inject the frozen exchange-rate provider at startup
 - [ ] **Severity:** high

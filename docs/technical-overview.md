@@ -162,7 +162,13 @@ standalone graph. One transactional attachment operation requires independent bi
 capabilities, resolves member attribution inside the destination, and locks tab before
 bill. Same-tab retries preserve original attribution. Membership writers take the same
 tab lock; standalone claims recheck `tab_id IS NULL` at their locked write boundary.
-See [API contracts](backend-api.md) for accepted fields, bounds and legacy compatibility.
+Creation validates and derives shares once in the service before display or frozen
+quoting. Raw share components and aggregate obligations are checked before the shared
+cent allocator; remainder work is bounded by participant count. Calculation failures
+propagate through claim transactions so assignments and old shares roll back together.
+The separate display provider retains its own code/pair contract independently of the
+six frozen receipt currencies. See [API contracts](backend-api.md) for accepted fields,
+bounds and legacy compatibility.
 Atomic settlement finalization and stable participant identity remain separate work.
 
 ### JSONB for Flexible Data

@@ -94,7 +94,11 @@ return `400`, including fields supplied as `null` or zero.
 
 `name`, `subtotal` and `total` are required and cannot be null; item prices are required
 when items are supplied. Tax/tip default to zero, `lazy_mode` to false, receipt currency
-to USD and display currency to receipt currency. IDs, foreign keys, tab/member/payer
+to USD and display currency to receipt currency. Display codes are normalized and
+checked for three-byte length, as in the separate display provider; its available pairs
+are independent of the six supported frozen receipt currencies. USD receipts can use
+PEN, AUD and the other mobile display choices when that provider is available. A failed
+display quote returns `503` without saving. IDs, foreign keys, tab/member/payer
 associations, paid flags, tokens, dates/timestamps and derived exchange-rate fields are
 never caller input. The server generates fresh persistence identities, dates and tokens.
 
@@ -102,6 +106,12 @@ All accounting values must be finite and bounded. Receipt totals and person obli
 must be nonnegative. Total must equal subtotal + tax + tip, and itemized subtotal must
 equal the signed item sum, within 0.01 plus floating-point tolerance. Negative discount
 lines/details are allowed. Custom tip amounts need not match percentage metadata.
+The assigned subtotal cannot exceed the receipt subtotal except for relative
+floating-point noise (`subtotal × 1e-9`); the absolute receipt tolerance never enlarges
+the denominator used to apportion charges. Raw per-person components and aggregate
+obligations are checked before cent conversion/allocation. Rounded aggregate obligations
+are also bounded by the receipt total within the accounting tolerance. Unsafe derived
+arithmetic is rejected rather than clamped or replaced with a zero share.
 Names are trimmed/sanitized; duplicate normalized participant/share names or duplicate
 people on one item are rejected. Assignment percentages must be in `(0,100]` and sum to
 at most `100 + 1e-9`.
@@ -109,7 +119,9 @@ at most `100 + 1e-9`.
 Share projections are optional compatibility input, validated against item assignments
 and the mobile formulas; raw fractional tax/tip and cent-rounded totals are supported.
 The server derives stored shares and non-null item breakdowns using the existing cent
-allocation. Zero-share participants and repeated item descriptions are preserved.
+allocation. Remainder distribution is bounded by participant count and retains the
+existing most-recent-claim, then alphabetical-name order. Zero-share participants and
+repeated item descriptions are preserved.
 Historical saved uploads with no items or no assignments can supply zero-component
 share projections whose totals cover the receipt; the server derives their breakdowns.
 
@@ -121,7 +133,8 @@ Limits: 1 MiB JSON body with one document; 500 items; 100 participants/shares an
 distinct person names; 100 assignments per item and 5,000 overall; 10 payment methods.
 Person names allow 30 Unicode code points, bill/item names 255, payment names 50 and
 identifiers 256. Individual monetary magnitudes and absolute item-price sum are limited
-to 1e9 native units. Invalid input returns `400` before quoting or persistence.
+to 1e9 native units, as are derived per-person and aggregate obligations. Cent conversions
+must be representable. Invalid input returns `400` before quoting or persistence.
 
 **Response** `201`
 ```json
