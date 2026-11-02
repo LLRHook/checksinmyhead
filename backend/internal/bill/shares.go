@@ -82,6 +82,7 @@ func buildPersonShares(bill *models.Bill, useReceiptSubtotal bool) []models.Pers
 	}
 
 	personItemTotals := make(map[string]float64)
+	details := make(map[string][]models.ItemDetail)
 	personDisplayNames := make(map[string]string)
 	lastClaimByPerson := make(map[string]time.Time)
 	for _, item := range bill.Items {
@@ -92,6 +93,7 @@ func buildPersonShares(bill *models.Bill, useReceiptSubtotal bool) []models.Pers
 			}
 			key := strings.ToLower(personName)
 			personItemTotals[key] += item.Price * assignment.Percentage / 100
+			details[key] = append(details[key], models.ItemDetail{Name: item.Name, Amount: item.Price * assignment.Percentage / 100, IsShared: assignment.Percentage < 99.99})
 			if assignment.CreatedAt.After(lastClaimByPerson[key]) {
 				lastClaimByPerson[key] = assignment.CreatedAt
 			}
@@ -139,7 +141,7 @@ func buildPersonShares(bill *models.Bill, useReceiptSubtotal bool) []models.Pers
 		taxShare := taxShares[key]
 		tipShare := tipShares[key]
 		shares = append(shares, models.PersonShare{
-			BillID: bill.ID, PersonName: personDisplayNames[key],
+			BillID: bill.ID, PersonName: personDisplayNames[key], Items: details[key],
 			Subtotal: subtotal, TaxShare: taxShare, TipShare: tipShare,
 			Total: math.Round((subtotal+taxShare+tipShare)*100) / 100,
 		})

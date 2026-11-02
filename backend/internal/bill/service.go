@@ -49,6 +49,9 @@ type billService struct {
 }
 
 func (b *billService) CreateBill(ctx context.Context, bill *models.Bill) error {
+	if err := prepareCreation(bill); err != nil {
+		return err
+	}
 	quote, err := b.GetUSDExchangeRate(ctx, bill.CurrencyCode)
 	if err != nil {
 		return err
@@ -58,6 +61,9 @@ func (b *billService) CreateBill(ctx context.Context, bill *models.Bill) error {
 	bill.ExchangeRateDate = quote.Date
 	bill.ExchangeRateSource = quote.Source
 	bill.USDTotal = math.Round(bill.Total*quote.Rate*100) / 100
+	if !finite(bill.USDTotal) || bill.USDTotal > float64(math.MaxInt64)/100 {
+		return ErrInvalidCreation
+	}
 	return b.repo.Create(bill)
 }
 

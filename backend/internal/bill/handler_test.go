@@ -21,7 +21,7 @@ func TestCreateBill_ReturnsExplicitUnavailableAndDoesNotPersist(t *testing.T) {
 	router := gin.New()
 	router.POST("/api/bills", handler.CreateBill)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/bills", bytes.NewBufferString(`{"name":"Cafe","total":100,"currency_code":"EUR"}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/bills", bytes.NewBufferString(`{"name":"Cafe","subtotal":100,"total":100,"currency_code":"EUR"}`))
 	req.Header.Set("Content-Type", "application/json")
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, req)
@@ -41,7 +41,7 @@ func TestCreateBill_ReturnsAuthoritativeUSDAudit(t *testing.T) {
 	router := gin.New()
 	router.POST("/api/bills", handler.CreateBill)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/bills", bytes.NewBufferString(`{"name":"Cafe","total":42.37}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/bills", bytes.NewBufferString(`{"name":"Cafe","subtotal":42.37,"total":42.37}`))
 	req.Header.Set("Content-Type", "application/json")
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, req)
@@ -85,7 +85,7 @@ func TestUpdateLazyItemAssignmentsRequiresLazyBillAndValidToken(t *testing.T) {
 	router.PATCH("/api/bills/:id/items/:itemId/assignments", handler.UpdateLazyItemAssignments)
 
 	create := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodPost, "/api/bills", bytes.NewBufferString(`{"name":"Cafe","total":20,"lazy_mode":true}`))
+	request := httptest.NewRequest(http.MethodPost, "/api/bills", bytes.NewBufferString(`{"name":"Cafe","subtotal":20,"total":20,"lazy_mode":true}`))
 	request.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(create, request)
 	if create.Code != http.StatusCreated {
@@ -137,7 +137,7 @@ func TestUpdateLazyItemAssignmentsRejectsNonLazyBill(t *testing.T) {
 	router.PATCH("/api/bills/:id/items/:itemId/assignments", handler.UpdateLazyItemAssignments)
 
 	create := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodPost, "/api/bills", bytes.NewBufferString(`{"name":"Cafe","total":20}`))
+	request := httptest.NewRequest(http.MethodPost, "/api/bills", bytes.NewBufferString(`{"name":"Cafe","subtotal":20,"total":20}`))
 	request.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(create, request)
 	var created map[string]any
