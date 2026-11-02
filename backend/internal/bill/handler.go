@@ -33,20 +33,10 @@ func NewBillHandler(service BillService, rates ...*currency.Service) *BillHandle
 }
 
 func (h *BillHandler) CreateBill(c *gin.Context) {
-	var bill models.Bill
-
-	if err := c.ShouldBindJSON(&bill); err != nil {
-		c.JSON(400, gin.H{"error": "bad request"})
+	bill, err := decodeCreateBill(c.Writer, c.Request)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid bill content"})
 		return
-	}
-
-	// Sanitize user-provided strings
-	bill.Name = security.SanitizeString(bill.Name)
-	if bill.CurrencyCode == "" {
-		bill.CurrencyCode = "USD"
-	}
-	if bill.DisplayCurrency == "" {
-		bill.DisplayCurrency = bill.CurrencyCode
 	}
 	if bill.CurrencyCode != bill.DisplayCurrency {
 		if h.rates == nil {
@@ -59,6 +49,10 @@ func (h *BillHandler) CreateBill(c *gin.Context) {
 			return
 		}
 		displayTotal := bill.Total * rate.Value
+		if !finite(rate.Value) || rate.Value <= 0 || !finite(displayTotal) {
+			c.JSON(503, gin.H{"error": "currency conversion is temporarily unavailable"})
+			return
+		}
 		bill.DisplayTotal = &displayTotal
 		bill.ExchangeRate = &rate.Value
 		bill.ExchangeRateSource = rate.Source
@@ -67,13 +61,6 @@ func (h *BillHandler) CreateBill(c *gin.Context) {
 		displayTotal := bill.Total
 		bill.DisplayTotal = &displayTotal
 	}
-	for i := range bill.Items {
-		bill.Items[i].Name = security.SanitizeString(bill.Items[i].Name)
-	}
-	for i := range bill.PersonShares {
-		bill.PersonShares[i].PersonName = security.SanitizeString(bill.PersonShares[i].PersonName)
-	}
-
 	token, err := security.GenerateSecureToken()
 	if err != nil {
 		log.Printf("internal error: %v", err)
@@ -81,9 +68,13 @@ func (h *BillHandler) CreateBill(c *gin.Context) {
 		return
 	}
 	bill.AccessToken = token
-	err = h.service.CreateBill(c.Request.Context(), &bill)
+	err = h.service.CreateBill(c.Request.Context(), bill)
 
 	if err != nil {
+		if errors.Is(err, ErrInvalidCreation) {
+			c.JSON(400, gin.H{"error": "invalid bill content"})
+			return
+		}
 		if errors.Is(err, ErrInvalidCurrency) {
 			c.JSON(400, gin.H{"error": "unsupported currency code"})
 			return

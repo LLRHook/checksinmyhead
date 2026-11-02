@@ -1,0 +1,725 @@
+[
+  {
+    "case": "normal",
+    "request": {
+      "name": "Dinner",
+      "subtotal": 100.0,
+      "tax": 10.0,
+      "tip_amount": 18.0,
+      "tip_percentage": 18.0,
+      "total": 128.0,
+      "currency_code": "USD",
+      "display_currency": "USD",
+      "lazy_mode": false,
+      "participants": [
+        {
+          "name": "Alex"
+        },
+        {
+          "name": "Sam"
+        },
+        {
+          "name": "Birthday"
+        }
+      ],
+      "items": [
+        {
+          "name": "Dinner",
+          "price": 100.0,
+          "assignments": [
+            {
+              "person_name": "Alex",
+              "percentage": 50.0
+            },
+            {
+              "person_name": "Sam",
+              "percentage": 50.0
+            }
+          ]
+        }
+      ],
+      "person_shares": [
+        {
+          "person_name": "Alex",
+          "items": [
+            {
+              "name": "Dinner",
+              "amount": 50.0,
+              "is_shared": true
+            }
+          ],
+          "subtotal": 50.0,
+          "tax_share": 5.0,
+          "tip_share": 9.0,
+          "total": 64.0
+        },
+        {
+          "person_name": "Sam",
+          "items": [
+            {
+              "name": "Dinner",
+              "amount": 50.0,
+              "is_shared": true
+            }
+          ],
+          "subtotal": 50.0,
+          "tax_share": 5.0,
+          "tip_share": 9.0,
+          "total": 64.0
+        },
+        {
+          "person_name": "Birthday",
+          "items": [],
+          "subtotal": 0.0,
+          "tax_share": 0.0,
+          "tip_share": 0.0,
+          "total": 0.0
+        }
+      ],
+      "payment_methods": [
+        {
+          "name": "Venmo",
+          "identifier": "@synthetic"
+        }
+      ]
+    }
+  },
+  {
+    "case": "custom_tip",
+    "request": {
+      "name": "Custom",
+      "subtotal": 100.0,
+      "tax": 10.0,
+      "tip_amount": 22.0,
+      "tip_percentage": 18.0,
+      "total": 132.0,
+      "currency_code": "USD",
+      "display_currency": "USD",
+      "lazy_mode": false,
+      "participants": [
+        {
+          "name": "Alex"
+        },
+        {
+          "name": "Sam"
+        },
+        {
+          "name": "Birthday"
+        }
+      ],
+      "items": [
+        {
+          "name": "Dinner",
+          "price": 100.0,
+          "assignments": [
+            {
+              "person_name": "Alex",
+              "percentage": 50.0
+            },
+            {
+              "person_name": "Sam",
+              "percentage": 50.0
+            }
+          ]
+        }
+      ],
+      "person_shares": [
+        {
+          "person_name": "Alex",
+          "items": [
+            {
+              "name": "Dinner",
+              "amount": 50.0,
+              "is_shared": true
+            }
+          ],
+          "subtotal": 50.0,
+          "tax_share": 5.0,
+          "tip_share": 11.0,
+          "total": 66.0
+        },
+        {
+          "person_name": "Sam",
+          "items": [
+            {
+              "name": "Dinner",
+              "amount": 50.0,
+              "is_shared": true
+            }
+          ],
+          "subtotal": 50.0,
+          "tax_share": 5.0,
+          "tip_share": 11.0,
+          "total": 66.0
+        },
+        {
+          "person_name": "Birthday",
+          "items": [],
+          "subtotal": 0.0,
+          "tax_share": 0.0,
+          "tip_share": 0.0,
+          "total": 0.0
+        }
+      ],
+      "payment_methods": [
+        {
+          "name": "Venmo",
+          "identifier": "@synthetic"
+        }
+      ]
+    }
+  },
+  {
+    "case": "fractional_tip",
+    "request": {
+      "name": "Fractional tip",
+      "subtotal": 100.0,
+      "tax": 10.0,
+      "tip_amount": 12.345,
+      "tip_percentage": 12.345,
+      "total": 122.345,
+      "currency_code": "USD",
+      "display_currency": "USD",
+      "lazy_mode": false,
+      "participants": [
+        {
+          "name": "Alex"
+        },
+        {
+          "name": "Sam"
+        },
+        {
+          "name": "Birthday"
+        }
+      ],
+      "items": [
+        {
+          "name": "Dinner",
+          "price": 100.0,
+          "assignments": [
+            {
+              "person_name": "Alex",
+              "percentage": 50.0
+            },
+            {
+              "person_name": "Sam",
+              "percentage": 50.0
+            }
+          ]
+        }
+      ],
+      "person_shares": [
+        {
+          "person_name": "Alex",
+          "items": [
+            {
+              "name": "Dinner",
+              "amount": 50.0,
+              "is_shared": true
+            }
+          ],
+          "subtotal": 50.0,
+          "tax_share": 5.0,
+          "tip_share": 6.1725,
+          "total": 61.17
+        },
+        {
+          "person_name": "Sam",
+          "items": [
+            {
+              "name": "Dinner",
+              "amount": 50.0,
+              "is_shared": true
+            }
+          ],
+          "subtotal": 50.0,
+          "tax_share": 5.0,
+          "tip_share": 6.1725,
+          "total": 61.18
+        },
+        {
+          "person_name": "Birthday",
+          "items": [],
+          "subtotal": 0.0,
+          "tax_share": 0.0,
+          "tip_share": 0.0,
+          "total": 0.0
+        }
+      ],
+      "payment_methods": [
+        {
+          "name": "Venmo",
+          "identifier": "@synthetic"
+        }
+      ]
+    }
+  },
+  {
+    "case": "discount",
+    "request": {
+      "name": "Discount",
+      "subtotal": 90.0,
+      "tax": 9.0,
+      "tip_amount": 16.2,
+      "tip_percentage": 18.0,
+      "total": 115.2,
+      "currency_code": "USD",
+      "display_currency": "USD",
+      "lazy_mode": false,
+      "participants": [
+        {
+          "name": "Alex"
+        },
+        {
+          "name": "Sam"
+        },
+        {
+          "name": "Birthday"
+        }
+      ],
+      "items": [
+        {
+          "name": "Dinner",
+          "price": 100.0,
+          "assignments": [
+            {
+              "person_name": "Alex",
+              "percentage": 50.0
+            },
+            {
+              "person_name": "Sam",
+              "percentage": 50.0
+            }
+          ]
+        },
+        {
+          "name": "Discount",
+          "price": -10.0,
+          "assignments": [
+            {
+              "person_name": "Alex",
+              "percentage": 50.0
+            },
+            {
+              "person_name": "Sam",
+              "percentage": 50.0
+            }
+          ]
+        }
+      ],
+      "person_shares": [
+        {
+          "person_name": "Alex",
+          "items": [
+            {
+              "name": "Dinner",
+              "amount": 50.0,
+              "is_shared": true
+            },
+            {
+              "name": "Discount",
+              "amount": -5.0,
+              "is_shared": true
+            }
+          ],
+          "subtotal": 45.0,
+          "tax_share": 4.5,
+          "tip_share": 8.1,
+          "total": 57.6
+        },
+        {
+          "person_name": "Sam",
+          "items": [
+            {
+              "name": "Dinner",
+              "amount": 50.0,
+              "is_shared": true
+            },
+            {
+              "name": "Discount",
+              "amount": -5.0,
+              "is_shared": true
+            }
+          ],
+          "subtotal": 45.0,
+          "tax_share": 4.5,
+          "tip_share": 8.1,
+          "total": 57.6
+        },
+        {
+          "person_name": "Birthday",
+          "items": [],
+          "subtotal": 0.0,
+          "tax_share": 0.0,
+          "tip_share": 0.0,
+          "total": 0.0
+        }
+      ],
+      "payment_methods": [
+        {
+          "name": "Venmo",
+          "identifier": "@synthetic"
+        }
+      ]
+    }
+  },
+  {
+    "case": "fractional",
+    "request": {
+      "name": "Fractional",
+      "subtotal": 2.0,
+      "tax": 0.2,
+      "tip_amount": 0.36,
+      "tip_percentage": 18.0,
+      "total": 2.56,
+      "currency_code": "USD",
+      "display_currency": "USD",
+      "lazy_mode": false,
+      "participants": [
+        {
+          "name": "Alex"
+        },
+        {
+          "name": "Sam"
+        },
+        {
+          "name": "Birthday"
+        }
+      ],
+      "items": [
+        {
+          "name": "Repeated",
+          "price": 1.0,
+          "assignments": [
+            {
+              "person_name": "Alex",
+              "percentage": 33.333333333333336
+            },
+            {
+              "person_name": "Sam",
+              "percentage": 66.66666666666667
+            }
+          ]
+        },
+        {
+          "name": "Repeated",
+          "price": 1.0,
+          "assignments": [
+            {
+              "person_name": "Alex",
+              "percentage": 50.0
+            },
+            {
+              "person_name": "Sam",
+              "percentage": 50.0
+            }
+          ]
+        }
+      ],
+      "person_shares": [
+        {
+          "person_name": "Alex",
+          "items": [
+            {
+              "name": "Repeated",
+              "amount": 0.33333333333333337,
+              "is_shared": true
+            },
+            {
+              "name": "Repeated",
+              "amount": 0.5,
+              "is_shared": true
+            }
+          ],
+          "subtotal": 0.8333333333333334,
+          "tax_share": 0.08333333333333334,
+          "tip_share": 0.15,
+          "total": 1.07
+        },
+        {
+          "person_name": "Sam",
+          "items": [
+            {
+              "name": "Repeated",
+              "amount": 0.6666666666666667,
+              "is_shared": true
+            },
+            {
+              "name": "Repeated",
+              "amount": 0.5,
+              "is_shared": true
+            }
+          ],
+          "subtotal": 1.1666666666666667,
+          "tax_share": 0.11666666666666668,
+          "tip_share": 0.21,
+          "total": 1.49
+        },
+        {
+          "person_name": "Birthday",
+          "items": [],
+          "subtotal": 0.0,
+          "tax_share": 0.0,
+          "tip_share": 0.0,
+          "total": 0.0
+        }
+      ],
+      "payment_methods": [
+        {
+          "name": "Venmo",
+          "identifier": "@synthetic"
+        }
+      ]
+    }
+  },
+  {
+    "case": "lazy_empty",
+    "request": {
+      "name": "Lazy",
+      "subtotal": 100.0,
+      "tax": 10.0,
+      "tip_amount": 18.0,
+      "tip_percentage": 18.0,
+      "total": 128.0,
+      "currency_code": "USD",
+      "display_currency": "USD",
+      "lazy_mode": true,
+      "participants": [],
+      "items": [
+        {
+          "name": "Dinner",
+          "price": 100.0,
+          "assignments": []
+        }
+      ],
+      "person_shares": [],
+      "payment_methods": [
+        {
+          "name": "Venmo",
+          "identifier": "@synthetic"
+        }
+      ]
+    }
+  },
+  {
+    "case": "lazy_partial",
+    "request": {
+      "name": "Partial",
+      "subtotal": 100.0,
+      "tax": 10.0,
+      "tip_amount": 18.0,
+      "tip_percentage": 18.0,
+      "total": 128.0,
+      "currency_code": "USD",
+      "display_currency": "USD",
+      "lazy_mode": true,
+      "participants": [],
+      "items": [
+        {
+          "name": "Dinner",
+          "price": 100.0,
+          "assignments": [
+            {
+              "person_name": "Alex",
+              "percentage": 25.0
+            }
+          ]
+        }
+      ],
+      "person_shares": [
+        {
+          "person_name": "Alex",
+          "items": [
+            {
+              "name": "Dinner",
+              "amount": 25.0,
+              "is_shared": true
+            }
+          ],
+          "subtotal": 25.0,
+          "tax_share": 2.5,
+          "tip_share": 4.5,
+          "total": 32.0
+        }
+      ],
+      "payment_methods": [
+        {
+          "name": "Venmo",
+          "identifier": "@synthetic"
+        }
+      ]
+    }
+  },
+  {
+    "case": "history_no_items",
+    "request": {
+      "name": "Saved history",
+      "subtotal": 100.0,
+      "tax": 10.0,
+      "tip_amount": 18.0,
+      "tip_percentage": 0.0,
+      "total": 128.0,
+      "currency_code": "USD",
+      "display_currency": "USD",
+      "lazy_mode": false,
+      "participants": [
+        {
+          "name": "Alex"
+        },
+        {
+          "name": "Sam"
+        }
+      ],
+      "items": [],
+      "person_shares": [
+        {
+          "person_name": "Alex",
+          "items": [],
+          "subtotal": 0.0,
+          "tax_share": 0.0,
+          "tip_share": 0.0,
+          "total": 64.0
+        },
+        {
+          "person_name": "Sam",
+          "items": [],
+          "subtotal": 0.0,
+          "tax_share": 0.0,
+          "tip_share": 0.0,
+          "total": 64.0
+        }
+      ],
+      "payment_methods": []
+    }
+  },
+  {
+    "case": "history_unassigned",
+    "request": {
+      "name": "Saved history",
+      "subtotal": 100.0,
+      "tax": 10.0,
+      "tip_amount": 18.0,
+      "tip_percentage": 0.0,
+      "total": 128.0,
+      "currency_code": "USD",
+      "display_currency": "USD",
+      "lazy_mode": false,
+      "participants": [
+        {
+          "name": "Alex"
+        },
+        {
+          "name": "Sam"
+        }
+      ],
+      "items": [
+        {
+          "name": "Dinner",
+          "price": 100.0,
+          "assignments": []
+        }
+      ],
+      "person_shares": [
+        {
+          "person_name": "Alex",
+          "items": [],
+          "subtotal": 0.0,
+          "tax_share": 0.0,
+          "tip_share": 0.0,
+          "total": 64.0
+        },
+        {
+          "person_name": "Sam",
+          "items": [],
+          "subtotal": 0.0,
+          "tax_share": 0.0,
+          "tip_share": 0.0,
+          "total": 64.0
+        }
+      ],
+      "payment_methods": []
+    }
+  },
+  {
+    "case": "legacy_usd",
+    "request": {
+      "name": "Dinner",
+      "subtotal": 100.0,
+      "tax": 10.0,
+      "tip_amount": 18.0,
+      "tip_percentage": 18.0,
+      "total": 128.0,
+      "participants": [
+        {
+          "name": "Alex"
+        },
+        {
+          "name": "Sam"
+        },
+        {
+          "name": "Birthday"
+        }
+      ],
+      "items": [
+        {
+          "name": "Dinner",
+          "price": 100.0,
+          "assignments": [
+            {
+              "person_name": "Alex",
+              "percentage": 50.0
+            },
+            {
+              "person_name": "Sam",
+              "percentage": 50.0
+            }
+          ]
+        }
+      ],
+      "person_shares": [
+        {
+          "person_name": "Alex",
+          "items": [
+            {
+              "name": "Dinner",
+              "amount": 50.0,
+              "is_shared": true
+            }
+          ],
+          "subtotal": 50.0,
+          "tax_share": 5.0,
+          "tip_share": 9.0,
+          "total": 64.0
+        },
+        {
+          "person_name": "Sam",
+          "items": [
+            {
+              "name": "Dinner",
+              "amount": 50.0,
+              "is_shared": true
+            }
+          ],
+          "subtotal": 50.0,
+          "tax_share": 5.0,
+          "tip_share": 9.0,
+          "total": 64.0
+        },
+        {
+          "person_name": "Birthday",
+          "items": [],
+          "subtotal": 0.0,
+          "tax_share": 0.0,
+          "tip_share": 0.0,
+          "total": 0.0
+        }
+      ],
+      "payment_methods": [
+        {
+          "name": "Venmo",
+          "identifier": "@synthetic"
+        }
+      ]
+    }
+  }
+]

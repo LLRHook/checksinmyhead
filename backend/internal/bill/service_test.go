@@ -169,7 +169,7 @@ func TestCreateBill_FreezesLatestDailyConversion(t *testing.T) {
 		Base: "EUR", Quote: "USD", Rate: 1.1652, Date: "2026-08-29", Source: "frankfurter-v2-blended",
 	}}
 	svc := NewBillService(repo, provider)
-	b := &models.Bill{CurrencyCode: "eur", Total: 85.82}
+	b := &models.Bill{Name: "Cafe", Subtotal: 85.82, CurrencyCode: "eur", Total: 85.82}
 
 	err := svc.CreateBill(context.Background(), b)
 	if err != nil {
@@ -190,7 +190,7 @@ func TestCreateBill_ProviderFailureDoesNotPersistForeignCurrencyBill(t *testing.
 	repo := newMockRepo()
 	provider := &fakeExchangeRateProvider{err: errors.New("provider unavailable")}
 	svc := NewBillService(repo, provider)
-	b := &models.Bill{CurrencyCode: "CAD", Total: 25}
+	b := &models.Bill{Name: "Cafe", Subtotal: 25, CurrencyCode: "CAD", Total: 25}
 
 	if err := svc.CreateBill(context.Background(), b); err == nil {
 		t.Fatal("expected explicit exchange-rate error")
@@ -206,7 +206,7 @@ func TestCreateBill_RejectsUnsupportedCurrencyWithoutCallingProvider(t *testing.
 		Base: "ZZZ", Quote: "USD", Rate: 2, Date: "2026-08-29", Source: "unexpected",
 	}}
 	svc := NewBillService(repo, provider)
-	b := &models.Bill{CurrencyCode: "ZZZ", Total: 25}
+	b := &models.Bill{Name: "Cafe", Subtotal: 25, CurrencyCode: "ZZZ", Total: 25}
 
 	if err := svc.CreateBill(context.Background(), b); !errors.Is(err, ErrInvalidCurrency) {
 		t.Fatalf("expected unsupported currency error, got %v", err)
@@ -222,7 +222,7 @@ func TestCreateBill_RejectsUnsupportedCurrencyWithoutCallingProvider(t *testing.
 func TestCreateBill_LegacyUSDUsesStableIdentityConversion(t *testing.T) {
 	repo := newMockRepo()
 	svc := NewBillService(repo, nil)
-	b := &models.Bill{Total: 42.37}
+	b := &models.Bill{Name: "Cafe", Subtotal: 42.37, Total: 42.37}
 
 	if err := svc.CreateBill(context.Background(), b); err != nil {
 		t.Fatalf("expected no error, got %v", err)

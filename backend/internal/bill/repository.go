@@ -31,6 +31,9 @@ type billRepository struct {
 }
 
 func (b *billRepository) Create(bill *models.Bill) error {
+	if err := guardFreshCreation(bill); err != nil {
+		return err
+	}
 	return b.db.Create(bill).Error
 }
 
