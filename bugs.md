@@ -91,7 +91,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 ### [BUG-1793644502] Resolve the three current Next.js security alerts
 - [ ] **Severity:** high
 - **Area:** web, dependencies
-- **File(s):** web-bill-viewer/package.json; web-bill-viewer/package-lock.json
+- **File(s):** web-bill-viewer/package.json; web-bill-viewer/package-lock.json; web-bill-viewer/README.md; docs/reviews/2026-11-02-web-dependency-maintenance.md
 - **Observation:** Next resolves 16.4.0. Open alerts #67 (GHSA-2464-fhr4-w9xw), #68 (GHSA-p3m5-59mp-jv5r), #69 (GHSA-673q-mjm6-r5xr) affect the same lockfile.
 - **Expected:**
   - Choose a current patched stable resolution after checking each maintainer advisory and current primary docs.
@@ -101,7 +101,13 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Alerts: https://github.com/LLRHook/checksinmyhead/security/dependabot/67 , /68 , /69. Patched 16.4.1 was reported at inspection; recheck at implementation. Exploitability in live deployment was not tested.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Pin Next 16.4.4 and raise sharp override floor to ^0.35.5; update only matching Next/env/SWC lock entries, retaining sharp 0.35.5 and React/ReactDOM 19.3.0. npm ci, lint, 52 tests, production build and full npm audit pass with zero findings, versus three advisory records before. Full gate remains RED due existing Flutter lock drift and retained-image findings; external alerts and deployed identity are unverified before integration.
+- **Docs:** web-bill-viewer/README.md; docs/reviews/2026-11-02-web-dependency-maintenance.md. Existing matrix CLI interfaces unchanged; no API/UI/schema/financial contract or historical record changed.
+- **Log:**
+  - 2026-11-02 Approval: Driver-approved DEPENDENCY_PHASE_APPROVAL.md at f1d62374 permits exact stable Next patch and sharp security floor. Official stable registry, engine/peer API documentation, maintainer advisories and sharp release reverified November 2. Next 16.4.4; sharp already resolves 0.35.5. React and unrelated locks retained. November 3 announced security release requires a fresh check before integration/release.
+  - 2026-11-02 Validation: Web-specific acceptance commands all pass. In-progress retained for complete driver acceptance: enforced Flutter lock acquisition fails twice and companion Docker scans report unresolved package/policy findings. No missing scanner, production deployment, external alert closure or full runtime protocol is counted as a pass. Driver owns clean independent validation and integration.
 
 ### [BUG-1793644503] Patch the Go build toolchain for GO-2026-6809
 - [ ] **Severity:** high
