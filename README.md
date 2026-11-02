@@ -26,6 +26,18 @@ Billington lets groups split bills, track expenses, and settle up — all withou
 
 ## Quickstart
 
+<!-- cycle:tracker-setup begin (written by trackers.py install) -->
+**Once per clone**, set up the tracker merge driver and pre-commit lint (Claude Code sessions do this automatically):
+
+```bash
+python3 .cycle/trackers.py install
+```
+
+```powershell
+python .cycle\trackers.py install
+```
+<!-- cycle:tracker-setup end -->
+
 ```bash
 # One command — starts backend, web viewer, and iOS simulator
 ./dev.sh
@@ -92,6 +104,20 @@ No accounts needed. When someone creates a tab, they get an access token. Others
 
 ### Finalization & Settlements
 The tab creator can finalize a trip to aggregate each person's shares across its bills and create settlements. Settlements can be toggled as paid.
+
+## Development workflow
+
+Read [AGENTS.md](AGENTS.md) for shared contributor/agent rules. Use the root
+[bugs.md](bugs.md) and [features.md](features.md) as the active backlog, with Jira off.
+Create and update entries through `python3 .cycle/trackers.py`; see
+[.cycle/TRACKERS.md](.cycle/TRACKERS.md). Run `python3 .cycle/trackers.py lint` after
+tracker changes and merges. Complete relevant local checks and affected documentation
+before review; only integrated V&V migrates completed tickets into
+[CHANGELOG.md](CHANGELOG.md).
+
+The [foundation baseline](docs/reviews/2026-11-02-baseline.md) records the approved scope
+and evidence reconciliation. Existing architecture and API documents linked below
+remain authoritative. Procedure preparation does not establish release readiness.
 
 ## Testing
 
