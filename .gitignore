@@ -75,10 +75,10 @@ mobile/.thymus
 .worktrees/
 
 # Shared agent entry points and cycle hooks
-!CLAUDE.md
-!.claude/
-.claude/*
-!.claude/settings.json
+!/CLAUDE.md
+!/.claude/
+/.claude/*
+!/.claude/settings.json
 
 # Local verification reports, fixtures, and backups
 .vv/
