@@ -3,6 +3,7 @@ package tab
 import (
 	"backend/pkg/models"
 	"backend/pkg/security"
+	"context"
 	"errors"
 	"fmt"
 	"math"
@@ -11,12 +12,39 @@ import (
 	"time"
 )
 
+// AttachBillCommand carries independent source and destination capabilities.
+// Attribution is resolved in the transaction; callers cannot supply member IDs.
+type AttachBillCommand struct {
+	TabID       uint
+	BillID      uint
+	TabToken    string
+	MemberToken string
+	BillToken   string
+}
+
+var (
+	ErrInvalidAttachment    = errors.New("bill id and source token are required")
+	ErrDestinationForbidden = errors.New("destination access denied")
+	ErrTabFinalized         = errors.New("tab is finalized")
+	ErrSourceUnavailable    = errors.New("source bill unavailable")
+)
+
+func validateAttach(command AttachBillCommand) error {
+	if command.TabID == 0 || command.TabID > math.MaxUint32 || command.BillID == 0 || command.BillID > math.MaxUint32 || strings.TrimSpace(command.BillToken) == "" {
+		return ErrInvalidAttachment
+	}
+	if strings.TrimSpace(command.TabToken) == "" {
+		return ErrDestinationForbidden
+	}
+	return nil
+}
+
 type TabService interface {
 	CreateTab(tab *models.Tab) error
 	GetTab(id uint) (tab *models.Tab, err error)
 	GetTabAuth(id uint) (tab *models.Tab, err error)
 	UpdateTab(tab *models.Tab) error
-	AddBillToTab(tabID uint, billID uint, billToken string, memberID *uint) error
+	AddBillToTab(ctx context.Context, command AttachBillCommand) error
 	UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error
 	UpdateBillItemAssignmentsBatch(tabID uint, billID uint, updates []BillItemAssignmentsUpdate) error
 	UpdateBillPersonSharePaid(tabID uint, billID uint, shareID uint, paid bool) error
@@ -68,8 +96,11 @@ func (s *tabService) UpdateTab(tab *models.Tab) error {
 	return s.repo.Update(tab)
 }
 
-func (s *tabService) AddBillToTab(tabID uint, billID uint, billToken string, memberID *uint) error {
-	return s.repo.AddBill(tabID, billID, billToken, memberID)
+func (s *tabService) AddBillToTab(ctx context.Context, command AttachBillCommand) error {
+	if err := validateAttach(command); err != nil {
+		return err
+	}
+	return s.repo.AttachBill(ctx, command)
 }
 
 func (s *tabService) UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error {

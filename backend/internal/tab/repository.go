@@ -3,6 +3,8 @@ package tab
 import (
 	billpkg "backend/internal/bill"
 	"backend/pkg/models"
+	"context"
+	"crypto/subtle"
 	"errors"
 	"sort"
 	"strings"
@@ -28,7 +30,7 @@ type TabRepository interface {
 	GetAuthById(id uint) (tab *models.Tab, err error)
 	GetForFinalization(id uint) (tab *models.Tab, err error)
 	Update(tab *models.Tab) error
-	AddBill(tabID uint, billID uint, billToken string, memberID *uint) error
+	AttachBill(ctx context.Context, command AttachBillCommand) error
 	UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error
 	UpdateBillItemAssignmentsBatch(tabID uint, billID uint, updates []BillItemAssignmentsUpdate) error
 	UpdateBillPersonSharePaid(tabID uint, billID uint, shareID uint, paid bool) error
@@ -85,24 +87,65 @@ func (r *tabRepository) Update(tab *models.Tab) error {
 	}).Error
 }
 
-func (r *tabRepository) AddBill(tabID uint, billID uint, billToken string, memberID *uint) error {
-	updates := map[string]interface{}{"tab_id": tabID}
-	if memberID != nil {
-		updates["added_by_member_id"] = *memberID
-		updates["paid_by_member_id"] = *memberID
+// AttachBill serializes destination policy and source ownership with the write.
+// All membership writers take this same tab lock before changing membership.
+func (r *tabRepository) AttachBill(ctx context.Context, command AttachBillCommand) error {
+	if err := validateAttach(command); err != nil {
+		return err
 	}
-	query := r.db.Model(&models.Bill{}).Where("id = ? AND (tab_id IS NULL OR tab_id = ?)", billID, tabID)
-	if billToken != "" {
-		query = query.Where("access_token = ?", billToken)
-	}
-	result := query.Updates(updates)
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
-	}
-	return nil
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var tab models.Tab
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&tab, command.TabID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrDestinationForbidden
+			}
+			return err
+		}
+		if tab.AccessToken == "" || subtle.ConstantTimeCompare([]byte(tab.AccessToken), []byte(command.TabToken)) != 1 {
+			return ErrDestinationForbidden
+		}
+		if tab.Finalized {
+			return ErrTabFinalized
+		}
+		var memberID *uint
+		if command.MemberToken != "" {
+			var member models.TabMember
+			if err := tx.Where("tab_id = ? AND member_token = ?", tab.ID, command.MemberToken).First(&member).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return ErrDestinationForbidden
+				}
+				return err
+			}
+			memberID = &member.ID
+		} else {
+			var existing models.TabMember
+			err := tx.Select("id").Where("tab_id = ?", tab.ID).Take(&existing).Error
+			if err == nil {
+				return ErrDestinationForbidden
+			}
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return err
+			}
+		}
+		var source models.Bill
+		// Source proof is unconditional, including retries and memberless destinations.
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("id = ? AND access_token = ?", command.BillID, command.BillToken).First(&source).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrSourceUnavailable
+			}
+			return err
+		}
+		if source.TabID != nil {
+			if *source.TabID == tab.ID {
+				return nil
+			}
+			return ErrSourceUnavailable
+		}
+		return tx.Model(&source).Updates(map[string]any{
+			"tab_id": tab.ID, "added_by_member_id": memberID, "paid_by_member_id": memberID,
+		}).Error
+	})
 }
 
 func (r *tabRepository) UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error {
@@ -249,7 +292,13 @@ func (r *tabRepository) UpdateSettlementPaid(tabID uint, id uint, paid bool) err
 }
 
 func (r *tabRepository) CreateMember(member *models.TabMember) error {
-	return r.db.Create(member).Error
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		var tab models.Tab
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Select("id").First(&tab, member.TabID).Error; err != nil {
+			return err
+		}
+		return tx.Create(member).Error
+	})
 }
 
 func (r *tabRepository) GetMemberByToken(token string) (*models.TabMember, error) {
@@ -265,14 +314,20 @@ func (r *tabRepository) GetMembersByTabID(tabID uint) ([]models.TabMember, error
 }
 
 func (r *tabRepository) DeleteMember(tabID uint, memberID uint) error {
-	result := r.db.Where("id = ? AND tab_id = ? AND role <> ?", memberID, tabID, "creator").Delete(&models.TabMember{})
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
-	}
-	return nil
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		var tab models.Tab
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Select("id").First(&tab, tabID).Error; err != nil {
+			return err
+		}
+		result := tx.Where("id = ? AND tab_id = ? AND role <> ?", memberID, tabID, "creator").Delete(&models.TabMember{})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+		return nil
+	})
 }
 
 func NewTabRepository(db *gorm.DB) TabRepository {

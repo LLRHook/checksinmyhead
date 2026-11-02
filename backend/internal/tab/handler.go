@@ -6,10 +6,13 @@ import (
 	"backend/pkg/safehttp"
 	"backend/pkg/security"
 	"crypto/subtle"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"math"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -180,46 +183,46 @@ func (h *TabHandler) GetTab(c *gin.Context) {
 }
 
 func (h *TabHandler) AddBillToTab(c *gin.Context) {
-	tab := h.getTabAuthAndValidate(c)
-	if tab == nil {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil || id == 0 {
+		c.JSON(400, gin.H{"error": "invalid tab id"})
 		return
 	}
-
-	if tab.Finalized {
-		c.JSON(400, gin.H{"error": "tab is finalized"})
-		return
-	}
-
 	var body struct {
 		BillID    uint   `json:"bill_id"`
 		BillToken string `json:"bill_token"`
 	}
-	if err := c.ShouldBindJSON(&body); err != nil {
+	decoder := json.NewDecoder(http.MaxBytesReader(c.Writer, c.Request.Body, 4<<10))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&body); err != nil {
 		c.JSON(400, gin.H{"error": "bad request"})
 		return
 	}
-
-	member, allowed := h.requireMemberForWrite(c, tab.ID)
-	if !allowed {
+	if err := decoder.Decode(new(any)); err != io.EOF {
+		c.JSON(400, gin.H{"error": "bad request"})
 		return
 	}
-	var memberID *uint
-	if member != nil {
-		memberID = &member.ID
+	memberToken := c.GetHeader("X-Member-Token")
+	if memberToken == "" {
+		memberToken = c.Query("m")
 	}
-
-	err := h.service.AddBillToTab(tab.ID, body.BillID, body.BillToken, memberID)
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(404, gin.H{"error": "bill not found"})
-			return
-		}
-		log.Printf("internal error: %v", err)
+	command := AttachBillCommand{TabID: uint(id), BillID: body.BillID, BillToken: body.BillToken,
+		TabToken: safehttp.AccessToken(c), MemberToken: memberToken}
+	err = h.service.AddBillToTab(c.Request.Context(), command)
+	switch {
+	case errors.Is(err, ErrInvalidAttachment):
+		c.JSON(400, gin.H{"error": "bill id and source token are required"})
+	case errors.Is(err, ErrDestinationForbidden):
+		c.JSON(403, gin.H{"error": "destination access denied"})
+	case errors.Is(err, ErrTabFinalized):
+		c.JSON(400, gin.H{"error": "tab is finalized"})
+	case errors.Is(err, ErrSourceUnavailable):
+		c.JSON(404, gin.H{"error": "source bill unavailable"})
+	case err != nil:
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
-		return
+	default:
+		c.JSON(200, gin.H{"status": "ok"})
 	}
-
-	c.JSON(200, gin.H{"status": "ok"})
 }
 
 func (h *TabHandler) UpdateBillItemAssignments(c *gin.Context) {
