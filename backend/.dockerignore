@@ -1,0 +1,21 @@
+# Local configuration and credentials never belong in the build context.
+**/.env
+**/.env.*
+!.env.example
+**/*.key
+**/*.pem
+**/*.p12
+**/*.pfx
+**/.git
+
+# Generated binaries, local data and verification output.
+.vv
+artifacts
+bin
+build
+dist
+coverage*
+**/*.test
+**/*.log
+**/*.db
+**/*.sqlite*
