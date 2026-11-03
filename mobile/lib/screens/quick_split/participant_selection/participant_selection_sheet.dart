@@ -103,9 +103,7 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
 
   /// Adds all members of a group as participants
   void _onGroupTapped(PeopleGroupWithMembers group, ParticipantsProvider provider) {
-    for (final member in group.members) {
-      provider.addRecentPerson(member);
-    }
+    if (!provider.addGroup(group.members)) return;
     GroupManager.markGroupUsed(group.group.id);
     HapticFeedback.selectionClick();
     setState(() => _selectedTab = 0); // Switch back to Recents
@@ -216,6 +214,23 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
                 ),
                 const SizedBox(height: 20),
                 _buildSheetHeader(context),
+                Consumer<ParticipantsProvider>(
+                  builder: (context, provider, _) =>
+                      provider.validationError == null
+                          ? const SizedBox.shrink()
+                          : Semantics(
+                            liveRegion: true,
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Text(
+                                provider.validationError!,
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
+                              ),
+                            ),
+                          ),
+                ),
                 const SizedBox(height: 20),
                 _buildScrollableContent(context),
                 _buildContinueButton(context),

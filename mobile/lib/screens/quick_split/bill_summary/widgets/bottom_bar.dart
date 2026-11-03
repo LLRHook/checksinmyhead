@@ -165,6 +165,27 @@ class DoneButtonHandler {
     if (_isSaving) return;
     _isSaving = true;
     try {
+      try {
+        _apiService.buildBillRequest(
+          billName: data.billName,
+          participants: lazyMode ? const [] : data.participants,
+          personShares: lazyMode ? const {} : data.personShares,
+          items: data.items,
+          subtotal: data.subtotal,
+          tax: data.tax,
+          tipAmount: data.tipAmount,
+          tipPercentage: data.tipPercentage,
+          total: data.total,
+          paymentMethods: data.paymentMethods,
+          currencyCode: data.currencyCode,
+          lazyMode: lazyMode,
+        );
+      } on BillValidationException catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message)),
+        );
+        return;
+      }
       // Capture ALL context-dependent references FIRST (before any async)
       final navigator = Navigator.of(context);
 

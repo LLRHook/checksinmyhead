@@ -130,6 +130,14 @@ Names are trimmed/sanitized; duplicate normalized participant/share names or dup
 people on one item are rejected. Assignment percentages must be in `(0,100]` and sum to
 at most `100 + 1e-9`.
 
+The mobile creation builder omits only valid exactly-zero assignment entries; it keeps
+the participants and zero-obligation share rows. Negative, non-finite, individually
+over-100 or overallocated percentages produce an actionable client validation error
+before publication. Empty and partial lazy claims remain supported. Receipt participant
+entry and upload use the 30-code-point bound, including recent people and groups;
+historical labels remain readable and are never truncated or rewritten. Tab join/member
+validation has its own contract and is not changed by this receipt-entry check.
+
 Share projections are optional compatibility input, validated against item assignments
 and the mobile formulas; raw fractional tax/tip and cent-rounded totals are supported.
 The server derives stored shares and non-null item breakdowns using the existing cent

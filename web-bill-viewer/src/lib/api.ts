@@ -213,20 +213,6 @@ export async function updateTabPersonSharePaid(
   );
 }
 
-export async function updateSettlementPaid(
-  tabId: string,
-  settlementId: number,
-  paid: boolean,
-  token: string,
-): Promise<void> {
-  await patchPaidStatus(
-    `/api/tabs/${tabId}/settlements/${settlementId}`,
-    paid,
-    token,
-    "Failed to update settlement paid status",
-  );
-}
-
 async function patchPaidStatus(
   path: string,
   paid: boolean,

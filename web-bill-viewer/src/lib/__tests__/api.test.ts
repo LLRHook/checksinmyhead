@@ -10,7 +10,6 @@ import {
   updateLazyBillItemAssignments,
   updateLazyBillItemAssignmentsBatch,
   updatePersonSharePaid,
-  updateSettlementPaid,
   updateTabBillItemAssignments,
   updateTabBillItemAssignmentsBatch,
   updateTabPersonSharePaid,
@@ -509,32 +508,6 @@ describe("updatePersonSharePaid", () => {
     );
 
     await expect(updatePersonSharePaid(1, 5, true, "token")).rejects.toThrow();
-  });
-});
-
-describe("updateSettlementPaid", () => {
-  it("sends PATCH with correct body", async () => {
-    const mockFetch = vi.fn().mockResolvedValue({ ok: true });
-    vi.stubGlobal("fetch", mockFetch);
-
-    await updateSettlementPaid("1", 3, false, "test-token");
-
-    expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining("/api/tabs/1/settlements/3"),
-      expect.objectContaining({
-        method: "PATCH",
-        body: JSON.stringify({ paid: false }),
-      }),
-    );
-  });
-
-  it("throws on failure", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({ ok: false, status: 500 }),
-    );
-
-    await expect(updateSettlementPaid("1", 3, true, "token")).rejects.toThrow();
   });
 });
 

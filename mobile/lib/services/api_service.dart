@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:checks_frontend/services/receipt_validation.dart';
 import 'package:http/http.dart' as http;
 import 'package:checks_frontend/services/api_config.dart';
 import 'package:checks_frontend/models/bill_item.dart';
@@ -25,6 +26,11 @@ class ApiException implements Exception {
 
   @override
   String toString() => message;
+}
+
+/// Local content that must be corrected before publication, rather than retried.
+class BillValidationException extends ApiException {
+  BillValidationException(super.message);
 }
 
 class ApiService {
@@ -256,6 +262,10 @@ class ApiService {
     String? displayCurrency,
     bool lazyMode = false,
   }) {
+    for (final person in [...participants, ...personShares.keys]) {
+      final error = receiptParticipantNameError(person.name);
+      if (error != null) throw BillValidationException(error);
+    }
     return {
       'name': billName,
       'subtotal': subtotal,
@@ -285,8 +295,26 @@ class ApiService {
       final assignments = <Map<String, dynamic>>[];
 
       item.assignments.forEach((person, percentage) {
+        if (!percentage.isFinite || percentage < 0 || percentage > 100) {
+          throw BillValidationException(
+            'Review item assignments: each percentage must be a finite number '
+            'between 0 and 100 before sharing.',
+          );
+        }
+        final error = receiptParticipantNameError(person.name);
+        if (error != null) throw BillValidationException(error);
+        // Zero means unassigned locally. Keep the person/share rows, but do not
+        // send an assignment that the creation endpoint correctly rejects.
+        if (percentage == 0) return;
         assignments.add({'person_name': person.name, 'percentage': percentage});
       });
+      if (item.assignments.values.fold(0.0, (sum, value) => sum + value) >
+          100 + 1e-9) {
+        throw BillValidationException(
+          'Review item assignments: the percentages for an item cannot total '
+          'more than 100 before sharing.',
+        );
+      }
 
       return {
         'name': item.name,

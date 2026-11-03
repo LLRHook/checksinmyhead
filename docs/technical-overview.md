@@ -160,11 +160,23 @@ internal/
 - **API Client**: HTTP service for backend communication with fire-and-forget sync
 - **Schema Migrations**: Drift schema v8
 
+`ApiService.buildBillRequest` remains the creation serialization owner. It omits valid
+zero assignment entries without changing Provider state, participants or zero shares,
+and rejects invalid percentages. Receipt participant entry (typed, recent, auto-added
+self and groups) and upload share the endpoint's 30-Unicode-code-point name check.
+Groups validate every member before adding any. Done validates through the builder
+before local serialization; explicit history Get Link surfaces validation errors while
+retaining the stored receipt. This does not resolve the separate save/replay operation
+or the established client/server one-cent tie mismatch.
+
 ### Next.js (Web Viewer)
 
 - **Rendering**: App Router with React Server Components for initial data fetch
 - **Pages**: `/b/[id]` for bill viewing, `/t/[id]` for tab viewing
-- **Client Components**: LazyBillBoard, MemberList, SettlementCard, and bill/tab breakdowns
+- **Client Components**: LazyBillBoard, MemberList, and bill/tab breakdowns
+- **Settlements**: Presentational `SettlementCard` shows names, amounts and paid status,
+  directs status updates to Billington, and retains the external Venmo link. The sole
+  tab-page caller has no writable browser settlement mode or mutation helper.
 - **API Client**: `src/lib/api.ts` with typed fetch functions and `computeTabPersonTotals` aggregation
 
 ## Key Technical Decisions

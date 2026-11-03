@@ -331,6 +331,8 @@ class RecentBillsManager extends ChangeNotifier {
       final apiService = ApiService();
       final paymentMethods = await _getPaymentMethods();
       return await _uploadPendingBill(bill, apiService, paymentMethods);
+    } on BillValidationException {
+      rethrow; // The explicit Get Link action must explain how to correct content.
     } catch (e) {
       debugPrint('Failed to retry upload for bill $billId: $e');
       return null;

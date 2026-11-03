@@ -21,6 +21,7 @@ import 'package:checks_frontend/screens/recent_bills/billDetails/bill_details_sc
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.dart';
 import 'package:flutter/material.dart';
+import 'package:checks_frontend/services/api_service.dart';
 import 'package:flutter/services.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 
@@ -96,6 +97,12 @@ class _RecentBillCardState extends State<RecentBillCard> {
             ),
           );
         }
+      }
+    } on BillValidationException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
+        );
       }
     } finally {
       if (mounted) {

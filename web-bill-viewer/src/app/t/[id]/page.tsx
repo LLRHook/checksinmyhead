@@ -159,10 +159,7 @@ export default async function TabPage({
             <SettlementCard
               settlements={settlements}
               venmoId={venmoId}
-              tabId={id}
-              token={token}
               currency={tab.display_currency}
-              readOnly
             />
           ) : (
             personTotals.length > 0 && (
