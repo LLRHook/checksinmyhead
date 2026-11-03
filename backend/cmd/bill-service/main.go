@@ -3,6 +3,7 @@ package main
 import (
 	"backend/internal/bill"
 	"backend/internal/currency"
+	"backend/internal/exchange"
 	"backend/internal/healthcheck"
 	"backend/internal/readiness"
 	"backend/internal/receipt"
@@ -43,14 +44,11 @@ func main() {
 		return
 	}
 	repo := bill.NewBillRepository(db)
-	service := bill.NewBillService(repo)
-	rateService := currency.NewService()
-	handler := bill.NewBillHandler(service, rateService)
+	handler, currencyHandler := newCurrencyHandlers(repo, exchange.NewClient(""))
 
 	tabRepo := tab.NewTabRepository(db)
 	tabService := tab.NewTabService(tabRepo)
 	tabHandler := tab.NewTabHandler(tabService)
-	currencyHandler := currency.NewHandler(currency.NewService())
 
 	// Receipt parsing (optional — degrades gracefully if ANTHROPIC_API_KEY is not set)
 	var receiptHandler *receipt.Handler
@@ -116,4 +114,10 @@ func main() {
 
 	fmt.Println("Bill service starting on :8080")
 	log.Fatal(http.ListenAndServe(":8080", r))
+}
+
+// newCurrencyHandlers is the production composition path, also exercised over
+// HTTP with a synthetic repository and upstream.
+func newCurrencyHandlers(repo bill.BillRepository, provider *exchange.Client) (*bill.BillHandler, *currency.Handler) {
+	return bill.NewBillHandler(bill.NewBillService(repo, provider)), currency.NewHandler(provider)
 }

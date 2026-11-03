@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 )
 
 type fakeExchangeRateProvider struct {
@@ -14,7 +15,7 @@ type fakeExchangeRateProvider struct {
 	calls int
 }
 
-func (f *fakeExchangeRateProvider) LatestUSD(_ context.Context, _ string) (models.ExchangeRateQuote, error) {
+func (f *fakeExchangeRateProvider) Latest(_ context.Context, _, _ string) (models.ExchangeRateQuote, error) {
 	f.calls++
 	return f.quote, f.err
 }
@@ -96,7 +97,7 @@ func (m *mockBillRepository) UpdateItemAssignmentsBatch(_ context.Context, c Cla
 
 func TestUpdatePersonSharePaid_Success(t *testing.T) {
 	repo := newMockRepo()
-	svc := NewBillService(repo)
+	svc := NewBillService(repo, &fakeExchangeRateProvider{})
 
 	err := svc.UpdatePersonSharePaid(context.Background(), BillSharePaidCommand{Access: BillAccess{BillID: 27, BillToken: "source"}, ShareID: 159, Paid: true})
 	if err != nil {
@@ -113,7 +114,7 @@ func TestUpdatePersonSharePaid_Success(t *testing.T) {
 func TestUpdatePersonSharePaid_Error(t *testing.T) {
 	repo := newMockRepo()
 	repo.updateSharePaidErr = errors.New("db error")
-	svc := NewBillService(repo)
+	svc := NewBillService(repo, &fakeExchangeRateProvider{})
 
 	err := svc.UpdatePersonSharePaid(context.Background(), BillSharePaidCommand{Access: BillAccess{BillID: 27, BillToken: "source"}, ShareID: 159, Paid: true})
 	if err == nil {
@@ -123,7 +124,7 @@ func TestUpdatePersonSharePaid_Error(t *testing.T) {
 
 func TestUpdateItemAssignmentsBatch_PassesAllItemsTogether(t *testing.T) {
 	repo := newMockRepo()
-	svc := NewBillService(repo)
+	svc := NewBillService(repo, &fakeExchangeRateProvider{})
 	updates := []ItemAssignmentsUpdate{
 		{ItemID: 8, Assignments: []models.ItemAssignment{{PersonName: "Alex", Percentage: 100}}},
 		{ItemID: 9, Assignments: []models.ItemAssignment{{PersonName: "Alex", Percentage: 100}}},
@@ -180,7 +181,7 @@ func TestBuildLazyPersonShares_KeepEarlierSharesStableAsItemsAreClaimed(t *testi
 func TestCreateBill_FreezesLatestDailyConversion(t *testing.T) {
 	repo := newMockRepo()
 	provider := &fakeExchangeRateProvider{quote: models.ExchangeRateQuote{
-		Base: "EUR", Quote: "USD", Rate: 1.1652, Date: "2026-08-29", Source: "frankfurter-v2-blended",
+		Base: "EUR", Quote: "USD", Rate: 1.1652, Date: time.Now().UTC().Format(time.DateOnly), Source: "frankfurter-v2-blended",
 	}}
 	svc := NewBillService(repo, provider)
 	b := &models.Bill{Name: "Cafe", Subtotal: 85.82, CurrencyCode: "eur", Total: 85.82}
@@ -189,7 +190,7 @@ func TestCreateBill_FreezesLatestDailyConversion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if b.CurrencyCode != "EUR" || b.USDExchangeRate != 1.1652 || b.ExchangeRateDate != "2026-08-29" || b.ExchangeRateSource != "frankfurter-v2-blended" {
+	if b.CurrencyCode != "EUR" || b.USDExchangeRate != 1.1652 || b.ExchangeRateDate != provider.quote.Date || b.ExchangeRateSource != "frankfurter-v2-blended" {
 		t.Fatalf("unexpected frozen conversion: %+v", b)
 	}
 	if b.USDTotal != 100.00 {
@@ -217,7 +218,7 @@ func TestCreateBill_ProviderFailureDoesNotPersistForeignCurrencyBill(t *testing.
 func TestCreateBill_RejectsUnsupportedCurrencyWithoutCallingProvider(t *testing.T) {
 	repo := newMockRepo()
 	provider := &fakeExchangeRateProvider{quote: models.ExchangeRateQuote{
-		Base: "ZZZ", Quote: "USD", Rate: 2, Date: "2026-08-29", Source: "unexpected",
+		Base: "ZZZ", Quote: "USD", Rate: 2, Date: time.Now().UTC().Format(time.DateOnly), Source: "unexpected",
 	}}
 	svc := NewBillService(repo, provider)
 	b := &models.Bill{Name: "Cafe", Subtotal: 25, CurrencyCode: "ZZZ", Total: 25}
@@ -235,7 +236,7 @@ func TestCreateBill_RejectsUnsupportedCurrencyWithoutCallingProvider(t *testing.
 
 func TestCreateBill_LegacyUSDUsesStableIdentityConversion(t *testing.T) {
 	repo := newMockRepo()
-	svc := NewBillService(repo, nil)
+	svc := NewBillService(repo, &fakeExchangeRateProvider{})
 	b := &models.Bill{Name: "Cafe", Subtotal: 42.37, Total: 42.37}
 
 	if err := svc.CreateBill(context.Background(), b); err != nil {

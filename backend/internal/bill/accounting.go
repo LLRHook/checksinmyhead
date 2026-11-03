@@ -1,6 +1,7 @@
 package bill
 
 import (
+	"backend/internal/currency"
 	"backend/pkg/models"
 	"backend/pkg/mutation"
 	"math"
@@ -31,7 +32,7 @@ func FrozenUSDShareCents(b models.Bill) ([]int64, error) {
 			frozen = float64(native) / 100
 		}
 	} else {
-		if !currencyCodePattern.MatchString(code) || !finite(rate) || rate <= 0 || strings.TrimSpace(b.ExchangeRateSource) == "" {
+		if !currency.ValidCode(code) || !finite(rate) || rate <= 0 || strings.TrimSpace(b.ExchangeRateSource) == "" {
 			return nil, mutation.Review
 		}
 		if _, err := time.Parse("2006-01-02", b.ExchangeRateDate); err != nil {

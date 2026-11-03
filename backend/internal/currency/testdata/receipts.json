@@ -1,0 +1,14 @@
+[
+ {"code":"USD","usd_rate":1},
+ {"code":"EUR","usd_rate":1.25},
+ {"code":"GBP","usd_rate":1.4},
+ {"code":"CAD","usd_rate":0.73},
+ {"code":"JPY","usd_rate":0.006},
+ {"code":"MXN","usd_rate":0.05},
+ {"code":"PEN","usd_rate":0.27},
+ {"code":"AUD","usd_rate":0.65},
+ {"code":"BRL","usd_rate":0.2},
+ {"code":"CNY","usd_rate":0.14},
+ {"code":"INR","usd_rate":0.012},
+ {"code":"CHF","usd_rate":1.1}
+]

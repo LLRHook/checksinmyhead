@@ -1,7 +1,6 @@
 package bill
 
 import (
-	"backend/internal/currency"
 	"backend/pkg/models"
 	"context"
 	"encoding/json"
@@ -42,7 +41,7 @@ func TestCreationRejectsToleranceAmplificationBeforeProviders(t *testing.T) {
 
 func TestCreationDisplayProviderFailureRetainsPENContract(t *testing.T) {
 	repo := newMockRepo()
-	h := NewBillHandler(NewBillService(repo))
+	h := NewBillHandler(NewBillService(repo, &fakeExchangeRateProvider{}))
 	w := httptest.NewRecorder()
 	ctx, _ := gin.CreateTestContext(w)
 	ctx.Request = httptest.NewRequest("POST", "/api/bills", strings.NewReader(`{"name":"Synthetic","subtotal":10,"total":10,"currency_code":"USD","display_currency":"PEN"}`))
@@ -82,21 +81,21 @@ type fakeDisplayRates struct {
 	err      error
 }
 
-func (f *fakeDisplayRates) GetRate(from, to string) (currency.Rate, error) {
+func (f *fakeDisplayRates) Latest(_ context.Context, from, to string) (models.ExchangeRateQuote, error) {
 	f.calls++
 	f.from = from
 	f.to = to
-	return currency.Rate{From: from, To: to, Value: f.value, Source: "synthetic-display", UpdatedAt: time.Date(2026, 11, 2, 0, 0, 0, 0, time.UTC)}, f.err
+	return models.ExchangeRateQuote{Base: from, Quote: to, Rate: f.value, Source: "synthetic-display", Date: time.Now().UTC().Format(time.DateOnly)}, f.err
 }
 
 func TestCreationAllMobileDisplayChoicesAndProviderDefinedPair(t *testing.T) {
-	// ZAR demonstrates that neither the twelve mobile choices nor the six frozen
-	// receipt codes are an API whitelist for the independent display provider.
+	// ZAR demonstrates that the twelve receipt/selector codes do not restrict
+	// provider-defined display pairs.
 	for _, code := range []string{"USD", "EUR", "GBP", "CAD", "JPY", "MXN", "PEN", "AUD", "BRL", "CNY", "INR", "CHF", "ZAR"} {
 		t.Run(code, func(t *testing.T) {
 			repo := newMockRepo()
 			rates := &fakeDisplayRates{value: 2.5}
-			h := NewBillHandler(NewBillService(repo), rates)
+			h := NewBillHandler(NewBillService(repo, rates))
 			w := httptest.NewRecorder()
 			ctx, _ := gin.CreateTestContext(w)
 			ctx.Request = httptest.NewRequest("POST", "/api/bills", strings.NewReader(`{"name":"Synthetic","subtotal":10,"total":10,"currency_code":"USD","display_currency":" `+strings.ToLower(code)+` "}`))
@@ -133,7 +132,7 @@ func TestCreationDisplayFailureAndInvalidMoneyNeverPersist(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := newMockRepo()
 			rates := &fakeDisplayRates{value: tc.rate, err: tc.err}
-			h := NewBillHandler(NewBillService(repo), rates)
+			h := NewBillHandler(NewBillService(repo, rates))
 			w := httptest.NewRecorder()
 			ctx, _ := gin.CreateTestContext(w)
 			ctx.Request = httptest.NewRequest("POST", "/api/bills", strings.NewReader(`{"name":"Synthetic","subtotal":10,"total":10,"display_currency":"PEN"}`))
@@ -147,10 +146,10 @@ func TestCreationDisplayFailureAndInvalidMoneyNeverPersist(t *testing.T) {
 		t.Run("invalid_before_display/"+name, func(t *testing.T) {
 			repo := newMockRepo()
 			rates := &fakeDisplayRates{value: 2.5}
-			h := NewBillHandler(NewBillService(repo), rates)
+			h := NewBillHandler(NewBillService(repo, rates))
 			b.DisplayCurrency = "PEN"
-			// Exercise the trusted preparation callback used by the HTTP handler too.
-			err := h.service.createBill(context.Background(), b, h.prepareDisplay)
+			// Exercise the same service operation used by the HTTP handler.
+			err := h.service.CreateBill(context.Background(), b)
 			if !errors.Is(err, ErrInvalidCreation) || rates.calls != 0 || len(repo.bills) != 0 {
 				t.Fatalf("err=%v calls=%d persisted=%d", err, rates.calls, len(repo.bills))
 			}

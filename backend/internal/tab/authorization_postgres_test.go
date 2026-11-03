@@ -255,7 +255,7 @@ func TestPostgresAttachmentAndCreationRollback(t *testing.T) {
 		t.Fatal(err)
 	}
 	next := &models.Bill{Name: "Rollback", AccessToken: "new", Subtotal: 10, Total: 10, Participants: []models.Person{{Name: "Alex"}}, Items: []models.BillItem{{Name: "Dinner", Price: 10, Assignments: []models.ItemAssignment{{PersonName: "Alex", Percentage: 100}}}}}
-	if err := billpkg.NewBillService(billpkg.NewBillRepository(db)).CreateBill(context.Background(), next); err == nil {
+	if err := billpkg.NewBillService(billpkg.NewBillRepository(db), authorizationQuote{}).CreateBill(context.Background(), next); err == nil {
 		t.Fatal("expected child failure")
 	}
 	for _, table := range []string{"people", "bill_participants", "bill_items", "item_assignments", "person_shares"} {

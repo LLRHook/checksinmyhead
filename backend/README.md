@@ -257,11 +257,32 @@ server once keyed clients are active. Database restore is a separate verified pr
 | `DB_NAME` | `billington_data` | Database name |
 | `DB_USER` | `billington_admin` | Database user |
 | `DB_PASSWORD` | `changeme` | Database password |
-| `EXCHANGE_RATE_API_KEY` | — | Server-only ExchangeRate-API key used for cross-currency conversion |
 | `MINIMUM_SUPPORTED_APP_VERSION` | `2.0.3` | Lowest mobile version allowed to continue after the startup policy check (numeric `major.minor.patch`) |
 | `APP_STORE_URL` | Billington App Store page | Store destination returned with the public version policy |
 
-Cross-currency bills require `EXCHANGE_RATE_API_KEY`. Same-currency bills continue to work without it; never put this key in the mobile app or web bundle.
+Currency creation, USD preview and display conversion share one required Frankfurter
+v2 pair client (`GET /v2/rate/{base}/{quote}`), with daily indicative blended rates.
+No currency API key is required. Source configuration for ExchangeRate-API is removed;
+external accounts/credentials are not changed. Receipt currencies are USD EUR GBP CAD
+JPY MXN PEN AUD BRL CNY INR CHF; provider-defined display pairs (including ZAR) are
+independent of that receipt policy.
+
+Each operation makes one attempt per distinct foreign pair under a shared five-second
+quote deadline and propagates caller cancellation. Responses are limited to 64 KiB;
+quotes require the exact pair, a positive finite rate and a strict UTC observation day
+between seven days ago and tomorrow. Accepted rate/day are retained exactly. Native
+USD uses rate 1/source `native-usd` without a market date. Historical saved quotes,
+including zero USD totals, are never refetched or freshness-rejected.
+
+Backend application TTL maps and the duplicate display provider are removed. Normal
+HTTP connection pooling and persisted accounting quotes remain. A requested foreign
+display failure returns 503 before persistence; no identity/native fallback is labeled
+as foreign. Valid `Retry-After` on upstream 429/503 is returned on the public 503; no
+immediate retry runs. Consumers should wait until that delay/date before retrying.
+See [API ownership and wire contracts](../docs/backend-api.md#currency-quotes).
+Mobile preview/display state, its `value` decoder, durable save/replay, distinct
+persisted display provenance (migration 0002) and versioned JPY precision remain
+follow-up work under BUG-1793644515/4500.
 
 The public `GET /api/app/version-policy` endpoint is consumed at app startup. Raise `MINIMUM_SUPPORTED_APP_VERSION` only after the corresponding update is available in the store, and use a three-part numeric version such as `2.1.0`. The app fails open if the endpoint times out or returns invalid data; the version check is a user-facing compatibility gate, not an authorization control. Version policy responses are sent with `Cache-Control: no-store`.
 

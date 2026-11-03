@@ -96,7 +96,7 @@ a successful probe for every row before proceeding.
 
 ## Stage 2 — builds and automated tests
 
-Refresh this CI matrix after tooling changes. Require locked acquisition (`npm ci`,
+Refresh this matrix after tooling changes. Require locked acquisition (`npm ci`,
 `flutter pub get --enforce-lockfile`, `pod install --deployment`, existing Go toolchain/modules)
 in a clean environment; inspect lock drift. Go covers SQL/startup/request-error secrecy
 and SQLite; PostgreSQL adds lifecycle, adoption, catalog guard v2, history/locks/readiness.
@@ -110,7 +110,7 @@ and SQLite; PostgreSQL adds lifecycle, adoption, catalog guard v2, history/locks
 | Web production build / `web-bill-viewer` | `npm run build` | Build, not a test count |
 | Local workflow / root | `python3 scripts/test_local_workflow.py` | Stubbed CLI/ownership regressions; not integrated baseline |
 | Ruby release automation / root | `ruby .github/scripts/asc_release_test.rb` | Not yet an integrated baseline |
-| Live PostgreSQL authorization + migrations/readiness / `backend` | `go test -race -tags=integration ./internal/bill ./internal/tab ./pkg/database ./migrations ./internal/startup ./internal/readiness ./internal/testpostgres` | Not yet an integrated baseline; test-only DSN required |
+| Live PostgreSQL authorization + migrations/readiness / `backend` | `go test -race -tags=integration ./cmd/bill-service ./internal/bill ./internal/tab ./pkg/database ./migrations ./internal/startup ./internal/readiness ./internal/testpostgres` | Not yet an integrated baseline; test-only DSN required |
 | App/browser E2E, a11y, realistic load | No wired automated runner: FEAT-1793644507, FEAT-1793644512, FEAT-1793644502 | Manual stages required; automation gap remains |
 
 For the PostgreSQL row, set only `BILLINGTON_TEST_POSTGRES_DSN` to a dedicated

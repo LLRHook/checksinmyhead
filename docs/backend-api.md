@@ -108,11 +108,10 @@ return `400`, including fields supplied as `null` or zero.
 
 `name`, `subtotal` and `total` are required and cannot be null; item prices are required
 when items are supplied. Tax/tip default to zero, `lazy_mode` to false, receipt currency
-to USD and display currency to receipt currency. Display codes are normalized and
-checked for three-byte length, as in the separate display provider; its available pairs
-are independent of the six supported frozen receipt currencies. USD receipts can use
-PEN, AUD and the other mobile display choices when that provider is available. A failed
-display quote returns `503` without saving. IDs, foreign keys, tab/member/payer
+to USD and display currency to receipt currency. Receipt currencies are USD EUR GBP
+CAD JPY MXN PEN AUD BRL CNY INR CHF. Display codes are normalized three-letter ASCII
+codes whose available pairs are provider-defined, including ZAR independently of the
+receipt policy. A failed display quote returns `503` without saving. IDs, foreign keys, tab/member/payer
 associations, paid flags, tokens, dates/timestamps and derived exchange-rate fields are
 never caller input. The server generates fresh persistence identities, dates and tokens.
 
@@ -177,13 +176,51 @@ must be representable. Invalid input returns `400` before quoting or persistence
 
 For supported non-USD bills the service freezes a verified daily rate/date/source.
 A failed or invalid provider quote returns `503` without saving. Original/frozen
-amounts and existing currency-provider behavior remain unchanged by this contract.
+amounts and the frozen USD quote keep separate ownership from display conversion.
 Bill reads omit the source access token.
+
+### Currency quotes
+
+One required Frankfurter v2 pair client supplies new frozen USD values, temporary
+preview and daily indicative display conversion. New quotes require the requested
+base/quote, positive finite rate, adapter source `frankfurter-v2-blended` and strict
+`YYYY-MM-DD` provider observation date. UTC age may be at most seven calendar days,
+with at most one day ahead. These are application freshness limits, not a provider SLA.
+Accepted rate/day are preserved exactly; reads/attachment/display changes never
+refetch or freshness-reject historical frozen quotes. Native USD has rate 1 and source
+`native-usd`, with an empty date (no invented market observation).
+
+Creation uses at most two distinct foreign pairs under one five-second provider
+budget, with one attempt per pair and caller cancellation. A requested USD display
+reuses the operation's frozen pair. There is no backend application rate cache or
+fallback provider. The 64 KiB upstream limit and finite errors prevent unbounded
+response/error handling. Upstream 429/503 returns public 503 with a validated
+`Retry-After` delay/date when supplied; callers must honor it before retrying.
+
+`currency_code`/original amounts are native receipt values. `usd_exchange_rate`,
+`usd_total`, `exchange_rate_date` and `exchange_rate_source` are frozen USD fields.
+`exchange_rate`/`display_total` describe the selected display conversion and never
+write those frozen date/source fields. Separate persisted display observation/source/
+retrieval metadata requires approved migration 0002; no schema change is made here.
+A valid frozen zero remains zero. Missing foreign data never means identity or zero.
+Current accounting precision, including fractional legacy JPY, is unchanged; the
+versioned whole-yen accounting step remains required follow-up.
+
+### `GET /api/currency/rate?from=USD&to=PEN`
+
+Public display conversion for provider-defined pairs. Response `200` keeps fields
+`from`, `to`, **`rate`**, `source`, `updated_at`. For foreign pairs, `updated_at` is
+the provider observation day at UTC midnight, not retrieval time. Same-currency
+identity returns rate 1/source `same_currency`; its `updated_at` is request time
+and does not represent a market observation. Invalid/unavailable pairs return 503
+`{"error":"exchange rates are temporarily unavailable"}`. This endpoint does not
+freeze or change any saved receipt. The mobile decoder still reading `value` is an
+explicit next-phase client correction.
 
 ### `GET /api/exchange-rates/:currency`
 
 Preview the latest verified daily conversion from the selected currency to USD before saving a receipt.
-Supported receipt currencies in 1.4.1 are `USD`, `EUR`, `GBP`, `CAD`, `JPY`, and `MXN`.
+Supported receipt currencies are `USD EUR GBP CAD JPY MXN PEN AUD BRL CNY INR CHF`.
 
 **Response** `200`
 ```json
@@ -199,7 +236,7 @@ Supported receipt currencies in 1.4.1 are `USD`, `EUR`, `GBP`, `CAD`, `JPY`, and
 **Errors**
 | Status | Body | Meaning |
 |--------|------|---------|
-| 400 | `{"error": "unsupported currency code"}` | Currency is not supported by the 1.4.1 receipt selector |
+| 400 | `{"error": "unsupported currency code"}` | Currency is not supported by the approved receipt policy |
 | 503 | `{"error": "daily exchange rate is unavailable; retry or use USD"}` | No verified daily quote is available; no conversion should be saved |
 
 ### `GET /api/bills/:id?t=token`

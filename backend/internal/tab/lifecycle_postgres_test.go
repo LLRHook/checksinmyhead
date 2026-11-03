@@ -55,7 +55,7 @@ func TestPostgresLifecyclePaidEconomicsAndRetry(t *testing.T) {
 func lifecycleRouter(db *gorm.DB) *gin.Engine {
 	r := authorizationRouter(db)
 	h := NewTabHandler(NewTabService(NewTabRepository(db)))
-	b := billpkg.NewBillHandler(billpkg.NewBillService(billpkg.NewBillRepository(db)))
+	b := billpkg.NewBillHandler(billpkg.NewBillService(billpkg.NewBillRepository(db), authorizationQuote{}))
 	r.POST("/api/tabs/:id/finalize", h.FinalizeTab)
 	r.PATCH("/api/tabs/:id", h.UpdateTab)
 	r.POST("/api/tabs/:id/join", h.JoinTab)

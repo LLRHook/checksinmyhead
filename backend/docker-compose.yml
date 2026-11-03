@@ -30,7 +30,6 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       DB_SSLMODE: ${DB_SSLMODE:-disable}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-      EXCHANGE_RATE_API_KEY: ${EXCHANGE_RATE_API_KEY}
 
   web-service:
     profiles: [legacy-web]

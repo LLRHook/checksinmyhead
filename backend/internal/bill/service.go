@@ -1,44 +1,30 @@
 package bill
 
 import (
+	"backend/internal/currency"
 	"backend/pkg/models"
 	"backend/pkg/mutation"
 	"context"
 	"errors"
 	"fmt"
 	"math"
-	"regexp"
-	"strings"
+	"time"
 )
 
 var (
-	ErrInvalidCurrency         = errors.New("invalid currency code")
-	ErrExchangeRateUnavailable = errors.New("exchange rate unavailable")
-	ErrAssignmentConflict      = errors.New("item changed; refresh and try again")
-	ErrItemAlreadyPaid         = errors.New("item belongs to a paid share")
-	ErrPersonShareNotFound     = errors.New("person share not found")
+	ErrDisplayConversionUnavailable = errors.New("display conversion unavailable")
+	ErrInvalidCurrency              = errors.New("invalid currency code")
+	ErrExchangeRateUnavailable      = errors.New("exchange rate unavailable")
+	ErrAssignmentConflict           = errors.New("item changed; refresh and try again")
+	ErrItemAlreadyPaid              = errors.New("item belongs to a paid share")
+	ErrPersonShareNotFound          = errors.New("person share not found")
 )
 
-var currencyCodePattern = regexp.MustCompile(`^[A-Z]{3}$`)
-
-var supportedCurrencyCodes = map[string]struct{}{
-	"USD": {},
-	"EUR": {},
-	"GBP": {},
-	"CAD": {},
-	"JPY": {},
-	"MXN": {},
-}
-
-type ExchangeRateProvider interface {
-	LatestUSD(ctx context.Context, currency string) (models.ExchangeRateQuote, error)
-}
+// ExchangeRateProvider is shared by frozen valuation, preview and display.
+type ExchangeRateProvider = currency.Provider
 
 type BillService interface {
 	CreateBill(ctx context.Context, bill *models.Bill) error
-	// The HTTP path supplies display preparation after the same validation used
-	// by direct callers. Only this package can supply that trusted callback.
-	createBill(ctx context.Context, bill *models.Bill, prepareDisplay func(*models.Bill) error) error
 	GetUSDExchangeRate(ctx context.Context, currency string) (models.ExchangeRateQuote, error)
 	GetBill(id uint) (bill *models.Bill, err error)
 	UpdatePersonSharePaid(context.Context, BillSharePaidCommand) error
@@ -51,21 +37,16 @@ type billService struct {
 }
 
 func (b *billService) CreateBill(ctx context.Context, bill *models.Bill) error {
-	return b.createBill(ctx, bill, nil)
-}
-
-func (b *billService) createBill(ctx context.Context, bill *models.Bill, prepareDisplay func(*models.Bill) error) error {
 	ctx, cancel := mutation.Bound(ctx)
 	defer cancel()
 	if err := prepareCreation(bill); err != nil {
 		return err
 	}
-	if prepareDisplay != nil {
-		if err := prepareDisplay(bill); err != nil {
-			return err
-		}
-	}
-	quote, err := b.GetUSDExchangeRate(ctx, bill.CurrencyCode)
+	// All distinct pairs in a creation share one deadline. The frozen quote also
+	// supplies a requested USD display; this is operation-local reuse, not a cache.
+	quoteCtx, cancelQuotes := context.WithTimeout(ctx, currency.OperationTimeout)
+	defer cancelQuotes()
+	quote, err := b.GetUSDExchangeRate(quoteCtx, bill.CurrencyCode)
 	if err != nil {
 		return err
 	}
@@ -77,32 +58,50 @@ func (b *billService) createBill(ctx context.Context, bill *models.Bill, prepare
 	if !finite(bill.USDTotal) || bill.USDTotal > float64(math.MaxInt64)/100 {
 		return ErrInvalidCreation
 	}
+	displayTotal := bill.Total
+	bill.ExchangeRate = nil
+	if bill.CurrencyCode != bill.DisplayCurrency {
+		displayQuote := quote
+		if bill.DisplayCurrency != "USD" {
+			displayQuote, err = b.rateProvider.Latest(quoteCtx, bill.CurrencyCode, bill.DisplayCurrency)
+			if err == nil {
+				err = currency.ValidateQuote(displayQuote, bill.CurrencyCode, bill.DisplayCurrency, time.Now())
+			}
+			if err != nil {
+				return fmt.Errorf("%w: %w", ErrDisplayConversionUnavailable, err)
+			}
+		}
+		displayTotal *= displayQuote.Rate
+		if !finite(displayTotal) {
+			return ErrDisplayConversionUnavailable
+		}
+		bill.ExchangeRate = &displayQuote.Rate
+	}
+	// exchange_rate_date/source belong exclusively to frozen USD. Distinct
+	// persisted display provenance awaits approved migration 0002.
+	bill.DisplayTotal = &displayTotal
 	return b.repo.Create(ctx, bill)
 }
 
-func (b *billService) GetUSDExchangeRate(ctx context.Context, currency string) (models.ExchangeRateQuote, error) {
-	currency = strings.ToUpper(strings.TrimSpace(currency))
-	if currency == "" {
-		currency = "USD"
+func (b *billService) GetUSDExchangeRate(ctx context.Context, currencyCode string) (models.ExchangeRateQuote, error) {
+	currencyCode = currency.Normalize(currencyCode)
+	if currencyCode == "" {
+		currencyCode = "USD"
 	}
-	if !currencyCodePattern.MatchString(currency) {
+	if !currency.ReceiptSupported(currencyCode) {
 		return models.ExchangeRateQuote{}, ErrInvalidCurrency
 	}
-	if _, supported := supportedCurrencyCodes[currency]; !supported {
-		return models.ExchangeRateQuote{}, ErrInvalidCurrency
-	}
-	if currency == "USD" {
+	if currencyCode == "USD" {
 		return models.ExchangeRateQuote{Base: "USD", Quote: "USD", Rate: 1, Source: "native-usd"}, nil
 	}
-	if b.rateProvider == nil {
-		return models.ExchangeRateQuote{}, ErrExchangeRateUnavailable
+	ctx, cancel := context.WithTimeout(ctx, currency.OperationTimeout)
+	defer cancel()
+	quote, err := b.rateProvider.Latest(ctx, currencyCode, "USD")
+	if err == nil {
+		err = currency.ValidateQuote(quote, currencyCode, "USD", time.Now())
 	}
-	quote, err := b.rateProvider.LatestUSD(ctx, currency)
 	if err != nil {
-		return models.ExchangeRateQuote{}, fmt.Errorf("%w: %v", ErrExchangeRateUnavailable, err)
-	}
-	if quote.Base != currency || quote.Quote != "USD" || quote.Date == "" || quote.Source == "" || quote.Rate <= 0 || math.IsNaN(quote.Rate) || math.IsInf(quote.Rate, 0) {
-		return models.ExchangeRateQuote{}, ErrExchangeRateUnavailable
+		return models.ExchangeRateQuote{}, fmt.Errorf("%w: %w", ErrExchangeRateUnavailable, err)
 	}
 	return quote, nil
 }
@@ -122,10 +121,9 @@ func (b *billService) UpdateItemAssignmentsBatch(ctx context.Context, c ClaimCom
 	return b.repo.UpdateItemAssignmentsBatch(ctx, c)
 }
 
-func NewBillService(repo BillRepository, providers ...ExchangeRateProvider) BillService {
-	var provider ExchangeRateProvider
-	if len(providers) > 0 {
-		provider = providers[0]
+func NewBillService(repo BillRepository, provider ExchangeRateProvider) BillService {
+	if provider == nil {
+		panic("currency provider is required")
 	}
 	return &billService{repo: repo, rateProvider: provider}
 }

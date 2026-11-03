@@ -37,7 +37,7 @@ func TestCreateBill_ReturnsExplicitUnavailableAndDoesNotPersist(t *testing.T) {
 func TestCreateBill_ReturnsAuthoritativeUSDAudit(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	repo := newMockRepo()
-	handler := NewBillHandler(NewBillService(repo))
+	handler := NewBillHandler(NewBillService(repo, &fakeExchangeRateProvider{}))
 	router := gin.New()
 	router.POST("/api/bills", handler.CreateBill)
 
@@ -79,7 +79,7 @@ func TestGetExchangeRate_RejectsUnsupportedCurrencyBeforeProvider(t *testing.T) 
 func TestUpdateLazyItemAssignmentsRequiresLazyBillAndValidToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	repo := newMockRepo()
-	handler := NewBillHandler(NewBillService(repo))
+	handler := NewBillHandler(NewBillService(repo, &fakeExchangeRateProvider{}))
 	router := gin.New()
 	router.POST("/api/bills", handler.CreateBill)
 	router.PATCH("/api/bills/:id/items/:itemId/assignments", handler.UpdateLazyItemAssignments)
@@ -131,7 +131,7 @@ func TestUpdateLazyItemAssignmentsRequiresLazyBillAndValidToken(t *testing.T) {
 func TestUpdateLazyItemAssignmentsRejectsNonLazyBill(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	repo := newMockRepo()
-	handler := NewBillHandler(NewBillService(repo))
+	handler := NewBillHandler(NewBillService(repo, &fakeExchangeRateProvider{}))
 	router := gin.New()
 	router.POST("/api/bills", handler.CreateBill)
 	router.PATCH("/api/bills/:id/items/:itemId/assignments", handler.UpdateLazyItemAssignments)
@@ -163,7 +163,7 @@ func TestUpdateLazyItemAssignmentsBatchValidatesAndReturnsBill(t *testing.T) {
 		AccessToken: "secret",
 		Name:        "Dinner",
 	}
-	handler := NewBillHandler(NewBillService(repo))
+	handler := NewBillHandler(NewBillService(repo, &fakeExchangeRateProvider{}))
 	router := gin.New()
 	router.PATCH("/api/bills/:id/assignments", handler.UpdateLazyItemAssignmentsBatch)
 	request := httptest.NewRequest(http.MethodPatch, "/api/bills/33/assignments", bytes.NewBufferString(`{"updates":[{"item_id":8,"expected_updated_at":"2026-10-12T20:00:00Z","assignments":[{"person_name":"Alex","percentage":100}]},{"item_id":9,"expected_updated_at":"2026-10-12T20:00:00Z","assignments":[{"person_name":"Alex","percentage":100}]}]}`))
@@ -208,7 +208,7 @@ func TestTripTokenCanOpenAttachedBillReadOnly(t *testing.T) {
 			PersonName: "Alex",
 		}},
 	}
-	handler := NewBillHandler(NewBillService(repo))
+	handler := NewBillHandler(NewBillService(repo, &fakeExchangeRateProvider{}))
 	router := gin.New()
 	router.GET("/api/bills/:id", handler.GetBill)
 	router.PATCH("/api/bills/:id/shares/:shareId", handler.UpdatePersonSharePaid)

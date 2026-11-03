@@ -13,6 +13,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestAuthorizationPublicCreateCannotChooseVictimTab(t *testing.T) {
@@ -372,7 +373,7 @@ func TestAuthorizationForeignCreationFreezesQuoteOrPersistsNothing(t *testing.T)
 			if err := db.First(&b).Error; err != nil {
 				t.Fatal(err)
 			}
-			if b.Total != 128 || b.CurrencyCode != "EUR" || b.USDExchangeRate != 1.2 || b.USDTotal != 153.6 || b.ExchangeRateDate != "2026-11-02" || b.ExchangeRateSource != "synthetic" {
+			if b.Total != 128 || b.CurrencyCode != "EUR" || b.USDExchangeRate != 1.2 || b.USDTotal != 153.6 || b.ExchangeRateDate != time.Now().UTC().Format(time.DateOnly) || b.ExchangeRateSource != "synthetic" {
 				t.Fatal("quote/native accounting changed")
 			}
 		})
@@ -381,11 +382,11 @@ func TestAuthorizationForeignCreationFreezesQuoteOrPersistsNothing(t *testing.T)
 
 type authorizationQuote struct{ fail bool }
 
-func (p authorizationQuote) LatestUSD(context.Context, string) (models.ExchangeRateQuote, error) {
+func (p authorizationQuote) Latest(context.Context, string, string) (models.ExchangeRateQuote, error) {
 	if p.fail {
 		return models.ExchangeRateQuote{}, errors.New("synthetic provider unavailable")
 	}
-	return models.ExchangeRateQuote{Base: "EUR", Quote: "USD", Rate: 1.2, Date: "2026-11-02", Source: "synthetic"}, nil
+	return models.ExchangeRateQuote{Base: "EUR", Quote: "USD", Rate: 1.2, Date: time.Now().UTC().Format(time.DateOnly), Source: "synthetic"}, nil
 }
 
 func assertCreationMoneyBoundary(t *testing.T, db *gorm.DB) {

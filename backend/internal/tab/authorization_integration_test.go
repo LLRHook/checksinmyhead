@@ -39,7 +39,11 @@ func authorizationDB(t *testing.T) *gorm.DB {
 func authorizationRouter(db *gorm.DB, providers ...billpkg.ExchangeRateProvider) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	b := billpkg.NewBillHandler(billpkg.NewBillService(billpkg.NewBillRepository(db), providers...))
+	var provider billpkg.ExchangeRateProvider = authorizationQuote{}
+	if len(providers) > 0 {
+		provider = providers[0]
+	}
+	b := billpkg.NewBillHandler(billpkg.NewBillService(billpkg.NewBillRepository(db), provider))
 	h := NewTabHandler(NewTabService(NewTabRepository(db)))
 	r.POST("/api/bills", b.CreateBill)
 	r.GET("/api/bills/:id", b.GetBill)
@@ -259,7 +263,7 @@ func assertStaleStandaloneClaim(t *testing.T, db *gorm.DB, batch bool) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	service := billpkg.NewBillService(billpkg.NewBillRepository(db))
+	service := billpkg.NewBillService(billpkg.NewBillRepository(db), authorizationQuote{})
 	var resume sync.Once
 	t.Cleanup(func() { resume.Do(func() { close(resumeClaim) }) })
 	h := billpkg.NewBillHandler(service)

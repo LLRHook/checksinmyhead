@@ -1,6 +1,7 @@
 package bill
 
 import (
+	"backend/internal/currency"
 	"backend/pkg/models"
 	"backend/pkg/security"
 	"encoding/json"
@@ -166,20 +167,19 @@ func prepareCreation(b *models.Bill) error {
 	if b.Name, err = cleanName(b.Name, 255); err != nil {
 		return err
 	}
-	b.CurrencyCode = strings.ToUpper(strings.TrimSpace(b.CurrencyCode))
+	b.CurrencyCode = currency.Normalize(b.CurrencyCode)
 	if b.CurrencyCode == "" {
 		b.CurrencyCode = "USD"
 	}
-	b.DisplayCurrency = strings.ToUpper(strings.TrimSpace(b.DisplayCurrency))
+	b.DisplayCurrency = currency.Normalize(b.DisplayCurrency)
 	if b.DisplayCurrency == "" {
 		b.DisplayCurrency = b.CurrencyCode
 	}
-	if _, ok := supportedCurrencyCodes[b.CurrencyCode]; !ok {
+	if !currency.ReceiptSupported(b.CurrencyCode) {
 		return ErrInvalidCurrency
 	}
-	// The separate display provider historically accepts any normalized three-byte
-	// code. Its supported pairs are independent of the frozen receipt whitelist.
-	if len(b.DisplayCurrency) != 3 {
+	// Provider-defined display pairs are independent of the receipt whitelist.
+	if !currency.ValidCode(b.DisplayCurrency) {
 		return ErrInvalidCurrency
 	}
 	for _, v := range []float64{b.Subtotal, b.Tax, b.TipAmount, b.Total, b.TipPercentage} {

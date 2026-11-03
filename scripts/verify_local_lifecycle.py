@@ -108,8 +108,8 @@ def main():
         assert run([docker,'volume','inspect',volume],check=False).returncode != 0
         # Quiet config validation: inspect only names, never resolved env values.
         synthetic=output/'stack.env'
-        synthetic.write_text('DB_HOST=postgres\nDB_PORT=5432\nDB_USER=billington_test\nDB_NAME=billington_test\nDB_PASSWORD=synthetic-local-only\nANTHROPIC_API_KEY=\nEXCHANGE_RATE_API_KEY=\n')
-        env_config={**os.environ,'DB_HOST':'postgres','DB_PORT':'5432','DB_USER':'billington_test','DB_NAME':'billington_test','DB_PASSWORD':'synthetic-local-only','ANTHROPIC_API_KEY':'','EXCHANGE_RATE_API_KEY':'','COMPOSE_PROFILES':''}
+        synthetic.write_text('DB_HOST=postgres\nDB_PORT=5432\nDB_USER=billington_test\nDB_NAME=billington_test\nDB_PASSWORD=synthetic-local-only\nANTHROPIC_API_KEY=\n')
+        env_config={**os.environ,'DB_HOST':'postgres','DB_PORT':'5432','DB_USER':'billington_test','DB_NAME':'billington_test','DB_PASSWORD':'synthetic-local-only','ANTHROPIC_API_KEY':'','COMPOSE_PROFILES':''}
         actual=[docker,'compose','--env-file',str(synthetic),'-f',str(ROOT/'backend/docker-compose.yml')]
         run(actual+['config','--quiet'],env=env_config)
         assert set(run(actual+['config','--services'],env=env_config).stdout.split())=={'postgres','bill-service'}

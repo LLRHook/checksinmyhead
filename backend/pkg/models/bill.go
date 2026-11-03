@@ -102,6 +102,9 @@ type Bill struct {
 // NormalizeCurrency keeps legacy rows safe and gives every bill a deterministic
 // USD audit value for tab totals and settlement calculations.
 func (b *Bill) NormalizeCurrency() {
+	// An explicit saved audit, including a legitimate zero, is immutable. Only
+	// legacy rows lacking provenance receive the compatibility backfill below.
+	hasFrozenQuote := b.ExchangeRateSource != "" || b.ExchangeRateDate != ""
 	b.CurrencyCode = strings.ToUpper(strings.TrimSpace(b.CurrencyCode))
 	if b.CurrencyCode == "" {
 		b.CurrencyCode = "USD"
@@ -112,7 +115,7 @@ func (b *Bill) NormalizeCurrency() {
 			b.ExchangeRateSource = "native-usd"
 		}
 	}
-	if b.USDExchangeRate > 0 && b.USDTotal == 0 && b.Total != 0 {
+	if !hasFrozenQuote && b.USDExchangeRate > 0 && b.USDTotal == 0 && b.Total != 0 {
 		b.USDTotal = math.Round(b.Total*b.USDExchangeRate*100) / 100
 	}
 }

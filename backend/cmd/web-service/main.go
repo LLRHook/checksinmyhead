@@ -2,6 +2,7 @@ package main
 
 import (
 	"backend/internal/bill"
+	"backend/internal/exchange"
 	"backend/internal/healthcheck"
 	"backend/internal/readiness"
 	"backend/internal/startup"
@@ -38,7 +39,7 @@ func main() {
 		return
 	}
 	repo := bill.NewBillRepository(db)
-	service := bill.NewBillService(repo)
+	service := bill.NewBillService(repo, exchange.NewClient(""))
 	handler := web.NewWebpageHandler(service)
 
 	r := gin.New()

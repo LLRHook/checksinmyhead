@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestCreateBillRejectsInvalidAccountingBeforeProvidersOrWrites(t *testing.T) {
@@ -178,7 +179,7 @@ func TestCreateBillDirectServiceAndRepositoryGuards(t *testing.T) {
 
 func TestCreateBillConversionOverflowDoesNotPersist(t *testing.T) {
 	repo := newMockRepo()
-	provider := &fakeExchangeRateProvider{quote: models.ExchangeRateQuote{Base: "EUR", Quote: "USD", Rate: math.MaxFloat64, Date: "2026-11-02", Source: "synthetic"}}
+	provider := &fakeExchangeRateProvider{quote: models.ExchangeRateQuote{Base: "EUR", Quote: "USD", Rate: math.MaxFloat64, Date: time.Now().UTC().Format(time.DateOnly), Source: "synthetic"}}
 	err := NewBillService(repo, provider).CreateBill(context.Background(), &models.Bill{Name: "Positive", Subtotal: 10, Total: 10, CurrencyCode: "EUR"})
 	if err == nil || len(repo.bills) != 0 {
 		t.Fatal("overflow persisted")
@@ -213,7 +214,7 @@ func TestCreateBillRejectsNonfiniteNestedAndDirectAmounts(t *testing.T) {
 					b.DisplayTotal = &value
 				}
 				repo := newMockRepo()
-				if err := NewBillService(repo).CreateBill(context.Background(), b); !errors.Is(err, ErrInvalidCreation) || len(repo.bills) != 0 {
+				if err := NewBillService(repo, &fakeExchangeRateProvider{}).CreateBill(context.Background(), b); !errors.Is(err, ErrInvalidCreation) || len(repo.bills) != 0 {
 					t.Fatalf("nonfinite %s: %v", field, err)
 				}
 			})
