@@ -40,10 +40,11 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Correction 28eab76 validates raw per-person components and aggregate obligations before cent allocation, prevents tolerance denominator amplification, checks cent/int64 arithmetic and bounds remainder work by participant count. Creation prepares once before separate display/frozen quoting. Historical display-provider validation restored, including all twelve mobile choices and ZAR; receipt policy unchanged. Nested share tests require successful clean controls; ten actual builder fixtures assert every person and item detail. Safe before failures and five control-removal failures recorded; 316 Go and 157 integration-tagged tab leaf cases pass with zero skips. Full acceptance remains RED for recorded Flutter locked-acquisition and retained-image findings; independent review pending.
-- **Docs:** docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-02-authorization-batch.md; docs/reviews/2026-11-02-authorization-corrections.md
+- **Fix:** 28eab76 original Fix retained verbatim in docs/reviews/2026-11-03-client-v1-bridge.md. 43772a7 supplies the valid-client upload/name slice; 228 Flutter/54 web pass without skips. Broader acceptance remains RED.
+- **Docs:** docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-02-authorization-batch.md; docs/reviews/2026-11-02-authorization-corrections.md; docs/reviews/2026-11-03-client-v1-bridge.md
 - **Log:**
   - 2026-11-02 Validation: Driver-approved AUTH_CORRECTION_APPROVAL.md findings 1-3 implemented in 28eab76. Six safe before leaf failures; five temporary overlay variants yield 18 expected failing leaf cases. Extreme-denominator arithmetic tested only as bounded pure calculation, never HTTP. Real PostgreSQL covers safe money boundaries and calculation-error rollback. Five actual mobile-builder tests pass with --no-pub; this does not resolve locked acquisition. Keep in-progress; no CHANGELOG migration.
+  - 2026-11-03 Validation: 43772a7 client slice: real widget/provider upload plus 30/31-rune entry/builder and validation checks; 228 Flutter/54 web pass, zero skips. See docs/reviews/2026-11-03-client-v1-bridge.md; broader acceptance unchanged.
 
 ### [BUG-1793644499] Inject the frozen exchange-rate provider at startup
 - [ ] **Severity:** high
@@ -75,6 +76,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Trace bottom_bar initial/second save and Drift duplicate rule. Review reproduced USD+EUR rows. Extract one save operation with bounded UI changes rather than cosmetic file splitting.
 - **Bump:** patch
 - **Status:** open
+- **Log:**
+  - 2026-11-03 Evidence: Driver fb6b4b9 actual provider penny capture: client Alex=.01/Sam=0; v1 server Alex=0/Sam=.01 with .005 raw details. No math change in 43772a7. Preserve server/historical contracts; deliberately align local/published allocation in currency/save scope. See docs/reviews/2026-11-03-client-v1-bridge.md.
 
 ### [BUG-1793644501] Require the complete revision gate before publication
 - [ ] **Severity:** high

@@ -168,6 +168,9 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Out of scope:** Unrelated redesign, new framework, live destructive operations, unapproved publication.
 - **Bump:** minor
 - **Status:** open
+- **Docs:** docs/reviews/2026-11-03-client-v1-bridge.md; VERIFICATION.md
+- **Log:**
+  - 2026-11-03 Validation: 43772a7 adds real ItemCard/provider upload, receipt-name/percentage and read-only settlement/Venmo tests; preserved source/member callers verified. 228 Flutter/54 web pass, zero skips. Scoped evidence: docs/reviews/2026-11-03-client-v1-bridge.md. Public signed bridge and full journeys unverified; remain open.
 
 ### [FEAT-1793644508] Bind release evidence to tested artifacts
 - [ ] **Priority:** med

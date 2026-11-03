@@ -127,7 +127,7 @@ The row retains migration preservation/catalog/history/locks/rollback, startup a
 Lifecycle coverage adds concurrent/lost-response/paid finalize retries, insert/update/
 deferred-commit rollback, sibling writers in both arrival orders and rollback, current
 authority, exact paid share IDs, paid economics, claim priority and legacy containment.
-HTTP/mobile fixtures cover full/partial/zero/discount/custom-tip/history conservation.
+HTTP/mobile conservation covers full/partial/zero/discount/custom-tip/history; [client bridge](docs/reviews/2026-11-03-client-v1-bridge.md).
 Three runs of 100 samples measure query/latency targets at 10 bills/8 people,
 100 bills/10,000 shares, paid/attachment and 500 items/5,000 assignments. Report misses
 and transaction control separately. Compare raw IDs/children/money/quotes/flags/times;
