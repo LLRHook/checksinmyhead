@@ -145,7 +145,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** minor
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Implementation:** PostgreSQL lifecycle races, rollback, exact IDs, paid economics and 3x100 query/latency evidence implemented. Twelve added HTTP/PG Unicode cases prove seven expected ambiguity failures become passing; five valid controls remain passing. Fresh committed gate and independent correction review pending; stable identity and integrated acceptance remain separate.
+- **Implementation:** PG lifecycle races, rollback, exact IDs, paid economics and query budgets implemented. Twelve added HTTP/PG Unicode cases resolve seven expected before failures. Driver fresh af43655:414 default/557 PG,635 distinct,zero failed/skipped; six-query paid budget preserved. Independent correction review, stable identity and integrated acceptance pending.
 - **Docs:** docs/backend-api.md; docs/technical-overview.md; backend/README.md; VERIFICATION.md; docs/reviews/2026-11-03-atomic-lifecycle.md; docs/reviews/2026-11-03-unicode-share-ambiguity.md
 - **Log:** 2026-11-03 Verification: Migration/readiness evidence remains in docs/reviews/2026-11-03-migration-readiness.md. Lifecycle implementation evidence is in docs/reviews/2026-11-03-atomic-lifecycle.md; scoped checks do not establish stable identity, production adoption, old-writer exclusion or integrated acceptance.
 

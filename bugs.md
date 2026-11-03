@@ -152,7 +152,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Atomic lifecycle and competing writes implemented; accounting review APPROVE at fb6b4b9. Corrected the authorization review Unicode ambiguity gap: one share-name projection now uses EqualFold consistently under existing locks. Real HTTP/PG regression: seven expected before failures and five passing controls; all twelve pass after correction. Fresh committed gate and independent correction review pending; source/signed-client/deployment gates remain. See docs/reviews/2026-11-03-atomic-lifecycle.md and 2026-11-03-unicode-share-ambiguity.md.
+- **Fix:** Atomic lifecycle and competing writes implemented; original accounting review approved. Corrected the P2 Unicode ambiguity guard with one EqualFold name projection under existing locks. Twelve HTTP/PG regressions pass after seven expected before failures. Driver fresh af43655:414 default/557 PG leaves,635 distinct,zero failures/skips; build/vet/format/govulncheck and scoped scanners pass; six-query paid budget retained. Independent correction review pending; signed-client/deployment and integrated gates remain.
 - **Docs:** docs/backend-api.md; docs/technical-overview.md; backend/README.md; VERIFICATION.md; docs/reviews/2026-11-03-atomic-lifecycle.md; docs/reviews/2026-11-03-unicode-share-ambiguity.md
 
 ### [BUG-1793644505] Authorize accounting by stable participant identity
