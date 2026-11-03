@@ -56,3 +56,32 @@ func TestFrozenUSDEvidenceAndConservation(t *testing.T) {
 		t.Fatal("unrepresentable stored cents accepted")
 	}
 }
+
+func TestFrozenUSDCheckedTieCompatibility(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		names []string
+		total float64
+		want  []int64
+	}{
+		{"ordinal", []string{"ä", "z", "Ω"}, .80, []int64{33, 34, 33}},
+		{"supplementary", []string{"😀", "Ａ"}, .008, []int64{0, 1}},
+		{"stable index", []string{"Same", "Same", "Same"}, .80, []int64{34, 33, 33}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			b := models.Bill{Total: tc.total, CurrencyCode: "EUR", USDExchangeRate: 1.25, USDTotal: math.Round(tc.total*1.25*100) / 100, ExchangeRateSource: "fixture", ExchangeRateDate: "2026-11-03"}
+			for _, name := range tc.names {
+				b.PersonShares = append(b.PersonShares, models.PersonShare{PersonName: name, Total: tc.total / float64(len(tc.names))})
+			}
+			got, err := FrozenUSDShareCents(b)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for i, want := range tc.want {
+				if got[i] != want {
+					t.Fatalf("checked tie %v want %v", got, tc.want)
+				}
+			}
+		})
+	}
+}

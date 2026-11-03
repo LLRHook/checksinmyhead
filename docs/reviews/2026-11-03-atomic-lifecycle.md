@@ -7,8 +7,7 @@ local result, not integrated V&V, release approval or a deployed guarantee.
 Starting branch: `chore/billington-foundation-program`; local and remote starting head
 `13be27bd6c2ec763c21e7ce1cbc44719f5f90e69`; origin
 `https://github.com/LLRHook/checksinmyhead.git`. Existing draft PR: <https://github.com/LLRHook/checksinmyhead/pull/159>.
-The evidence follow-up will record the implementation commit and independent remote proof
-below, after the normal authorized push. No checkout/worktree/branch switch, force push,
+The implementation commit and independent remote proof are recorded below. No checkout/worktree/branch switch, force push,
 main/mirror/tag push, provider action, customer operation or upload occurred.
 
 ## Delivered behavior and ownership
@@ -80,8 +79,8 @@ npm test -- --reporter=json --outputFile=../.vv/local-gate/atomic-lifecycle/fina
 ```
 
 CI's gofmt guard and Git whitespace/tracker lint pass. Build/vet/govulncheck exit0;
-govulncheck says no vulnerabilities. Default Go has128 roots/411 passing leaves;
-PostgreSQL has136 roots/540 passing leaves. There are333 overlapping leaves and618
+govulncheck says no vulnerabilities. Default Go has129 roots/414 passing leaves;
+PostgreSQL has138 roots/545 passing leaves. There are336 overlapping leaves and623
 distinct union leaves. Every run ID has one terminal event, with no duplicate runs,
 failed/skipped test leaves, build failures, race report or cached-result marker.
 Four default package-level no-test-file skips are not skipped test cases. Flutter has
@@ -109,9 +108,11 @@ No source worktree was changed for controls. Early development NaN snapshot seri
 and a typed-nil assertion bug were test defects, corrected before the accepted pass; their
 failed logs are retained and are not counted as controls. A log rename raced a redirected
 command; the completed second full PostgreSQL stream is retained as `final/postgres.jsonl`
-(start10:57:16-05:00, duration190.017s for tab), with all terminals. No initial run is added
-to the final counts. Only HTTP assertions were refined afterwards; their uncached targeted
-rerun passes and overlaps existing IDs, rather than adding a second unique count.
+(final follow-up run; duration190.395s for tab), with all terminals. Earlier runs remain separate from final counts. After c5a9ba1, a test/evidence follow-up
+adds checked UTF-8/index tie tests and source-payment-first races against attachment and
+recreation. Their targeted run and both complete uncached Go rows pass. Application source
+is unchanged from c5a9ba1; earlier HTTP assertions/refinements are included in this final row.
+`final/*-implementation.jsonl` retains the earlier complete implementation selections.
 
 ## Measured query shape and latency
 
@@ -124,18 +125,18 @@ All targets below are local targets, and none missed in this run.
 
 | Operation | Observed data statements | p95 across runs1 /2 /3 (ms) | Approved target |
 |---|---:|---|---|
-| Fresh10 bills/8 people |7|4.760 /4.687 /4.371|≤9; ≤200ms|
-| Retry10 bills/8 people |3; zero writes|1.874 /1.809 /1.666|≤4; ≤100ms|
-| Fresh100 bills/10,000 shares |7|163.048 /162.153 /161.754|≤750ms|
-| Retry large tab |3; zero writes|4.689 /4.184 /4.665|≤4; ≤100ms|
-| Source paid, attached |5|3.326 /1.708 /1.844|≤6 plus at most one discovery restart; ≤100ms|
-| Tab-share paid |6|2.081 /2.089 /2.133|≤6; ≤100ms|
-| Attachment |4|1.650 /1.622 /1.549|Bounded shape (no separate latency target)|
-| Assignment500 items/5,000 allocations |13 including5 insert chunks|232.056 /233.810 /266.394|≤14 plus bounded insert chunks; no separate latency target|
+| Fresh10 bills/8 people |7|4.917 /4.472 /4.554|≤9; ≤200ms|
+| Retry10 bills/8 people |3; zero writes|1.848 /1.610 /2.013|≤4; ≤100ms|
+| Fresh100 bills/10,000 shares |7|169.667 /175.270 /172.985|≤750ms|
+| Retry large tab |3; zero writes|4.333 /4.927 /5.417|≤4; ≤100ms|
+| Source paid, attached |5|1.936 /1.902 /1.810|≤6 plus at most one discovery restart; ≤100ms|
+| Tab-share paid |6|2.233 /2.159 /2.201|≤6; ≤100ms|
+| Attachment |4|1.700 /1.705 /1.576|Bounded shape (no separate latency target)|
+| Assignment500 items/5,000 allocations |13 including5 insert chunks|281.781 /263.561 /241.932|≤14 plus bounded insert chunks; no separate latency target|
 
 The deterministic attachment-discovery race proves the single restart path separately;
 normal timed paid samples have no restart. Readiness remains unchanged: exactly one live
-ledger query/request, 3×100 samples, p95 .354 /.342 /.369ms and the existing1s deadline.
+ledger query/request, 3×100 samples, p95 0.325 /0.349 /0.387ms and the existing1s deadline.
 No per-person query, cache, item/payment/participant graph or provider call is in finalize.
 
 ## Scoped security and cleanup
@@ -216,3 +217,26 @@ Neither existing paid flag confirms payment. No Vercel/Render auth/inventory/con
 deploy/hook/rollback, customer data operation, publication workflow mutation or other
 provider action occurred. The parent owns public checks. Local scoped success does not
 change whole-program acceptance or authorize deployment.
+
+## Commit and remote binding
+
+Implementation commit: `c5a9ba1199b1484faa66b99530c034272bbe121a`, sole parent
+`13be27bd6c2ec763c21e7ce1cbc44719f5f90e69`,31 authorized paths. Effective author and
+committer were verified before commit; stored identities are both Victor Ivanov
+<victor.n.ivanov@gmail.com>. The commit hook reports zero tracker errors/warnings.
+The staged diff SHA256 is `c07907496a38358e20f4795ba95e5168f309bd45aefb84efa45952b80fbed6e0`;
+the content manifest pins each source/doc file. Source hashes match scoped scanner inputs.
+
+A normal push advanced only `refs/heads/chore/billington-foundation-program` from
+13be27b to c5a9ba1. The very next tool action linked the existing PR159 successfully.
+Independent `git ls-remote origin refs/heads/chore/billington-foundation-program` then
+returned `c5a9ba1199b1484faa66b99530c034272bbe121a`, equal to local HEAD. Raw remote proof
+and effective/stored identities are in `final/implementation-remote-proof.json` and
+`final/commit-identity-*`. This test/evidence follow-up records that observed
+source binding; the driver's complete ATOMIC_LIFECYCLE_RESULT.md records the final
+follow-up SHA and post-push equality. No application source changed after c5a9ba1.
+
+The push server reported three vulnerabilities on the repository's **default branch**
+(two critical, one high). Branch-scoped govulncheck reports none. These are distinct
+scopes; the banner is retained, not represented as a whole-program security pass.
+Public application/deployment checks remain parent-owned and were not performed here.

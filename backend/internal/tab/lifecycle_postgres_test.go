@@ -806,3 +806,63 @@ func TestPostgresLifecycleActualMobileCreationThenFinalize(t *testing.T) {
 		})
 	}
 }
+
+func TestPostgresLifecycleSourcePaidFirstAgainstAttachmentAndRecreation(t *testing.T) {
+	for _, op := range []string{"attach", "recreate"} {
+		t.Run(op, func(t *testing.T) {
+			db := authorizationPostgres(t)
+			dst, b, a := seedLifecycle(t, db)
+			if op == "attach" {
+				if err := db.Model(&models.Bill{}).Where("id = ?", b.ID).Update("tab_id", nil).Error; err != nil {
+					t.Fatal(err)
+				}
+			}
+			owner := db.Begin()
+			t.Cleanup(func() { owner.Rollback() })
+			if err := billpkg.NewBillRepository(owner).UpdatePersonSharePaid(context.Background(), billpkg.BillSharePaidCommand{Access: billpkg.BillAccess{BillID: b.ID, BillToken: "source"}, ShareID: b.PersonShares[0].ID, Paid: true}); err != nil {
+				t.Fatal(err)
+			}
+			var paid models.PersonShare
+			if err := owner.First(&paid, b.PersonShares[0].ID).Error; err != nil {
+				t.Fatal(err)
+			}
+			before := lifecycleSnapshot(t, owner)
+			ch := make(chan error, 1)
+			go func() {
+				if op == "attach" {
+					ch <- NewTabRepository(db).AttachBill(context.Background(), AttachBillCommand{TabID: dst.ID, TabToken: "tab", BillID: b.ID, BillToken: "source"})
+				} else {
+					ch <- NewTabRepository(db).UpdateBillItemAssignmentsBatch(context.Background(), AssignmentCommand{Access: a, BillID: b.ID, Updates: []BillItemAssignmentsUpdate{{ItemID: b.Items[0].ID, Assignments: []models.ItemAssignment{{PersonName: "Alex", Percentage: 50}, {PersonName: "Sam", Percentage: 50}}}}})
+				}
+			}()
+			waitForPostgresLocks(t, db, 1)
+			if err := owner.Commit().Error; err != nil {
+				t.Fatal(err)
+			}
+			err := receiveAuthResult(t, ch)
+			if op == "attach" {
+				if err != nil {
+					t.Fatal(err)
+				}
+				var got models.Bill
+				if err := db.Session(&gorm.Session{SkipHooks: true}).First(&got, b.ID).Error; err != nil || got.TabID == nil || *got.TabID != dst.ID {
+					t.Fatalf("attachment after paid failed: %v", err)
+				}
+				if got.Total != b.Total || got.CurrencyCode != b.CurrencyCode || got.USDTotal != b.USDTotal || got.USDExchangeRate != b.USDExchangeRate || got.ExchangeRateSource != b.ExchangeRateSource || got.ExchangeRateDate != b.ExchangeRateDate {
+					t.Fatal("attachment changed frozen accounting")
+				}
+			} else {
+				if !errors.Is(err, ErrItemAlreadyPaid) {
+					t.Fatalf("paid-first assignment succeeded: %v", err)
+				}
+				if lifecycleSnapshot(t, db) != before {
+					t.Fatal("rejected recreation changed state")
+				}
+			}
+			var got models.PersonShare
+			if err := db.First(&got, paid.ID).Error; err != nil || !reflect.DeepEqual(got, paid) {
+				t.Fatalf("paid-first ID/economic projection changed: %v", err)
+			}
+		})
+	}
+}
