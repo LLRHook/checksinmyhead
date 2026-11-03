@@ -44,6 +44,10 @@ volume identity. Next.js is the ordinary local viewer; the retained Go HTML serv
 requires the explicit `legacy-web` profile on its unchanged 8081 URLs. Source,
 templates, Dockerfile and test coverage remain; external consumers/hosting retirement
 are unverified. See [local workflow](../README.md#quickstart).
+The Bash entrypoint owns exact container/process cleanup and supervises both local
+clients. A Python stdlib helper owns cancellable command deadlines and terminal
+handoff. Failed inventory is an error; unresolved partial ownership requires manual
+inspection. See the [correction evidence](reviews/2026-11-03-local-workflow-correction.md).
 
 ### Request Flow
 

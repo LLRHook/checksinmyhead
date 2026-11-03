@@ -86,10 +86,16 @@ python3 scripts/verify_local_lifecycle.py --postgres-image sha256:<local-image-i
 ```
 
 The stub suite never runs real acquisition, Docker, Flutter or simulator operations.
+It includes real PTY/process-group checks for interactive quit, driver cancellation,
+web failure, blocked probes and failed inventory. `scripts/dev_runtime.py` supplies
+only bounded command execution and terminal handoff; `dev.sh` owns service policy.
+If inventory remains unavailable after a partial start, follow the printed Compose
+inspection instruction; cleanup does not guess an ID or stop the whole project.
 The separate lifecycle harness executes the actual Makefile command through a fixture
 CLI adapter, proves a real sentinel survives down/restart, then tests guarded reset
 rejection and authorized deletion. It validates Compose quietly and lists only service/
-volume names. See [dated evidence](../docs/reviews/2026-11-03-local-workflow.md).
+volume names. See [original evidence](../docs/reviews/2026-11-03-local-workflow.md)
+and [review corrections](../docs/reviews/2026-11-03-local-workflow-correction.md).
 
 ### Build toolchain
 

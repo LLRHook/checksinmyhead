@@ -300,8 +300,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Ordinary Compose down preserves volumes and project identity. Separate reset-test validates explicit isolated project plus all resource/data ownership labels and mounts before deleting exact owned resources. Real PG lifecycle passes; remains in-progress for independent acceptance.
-- **Docs:** README.md; backend/README.md; mobile/README.md; web-bill-viewer/README.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-03-local-workflow.md
+- **Fix:** Ordinary down preserves volumes. Guarded reset validates exact isolated resource ownership. Review correction propagates inventory errors, retains pending ownership and gives bounded manual inspection on uncertainty. Driver55 CLI tests and5 real PG groups pass; independent correction acceptance pending.
+- **Docs:** README.md; backend/README.md; mobile/README.md; web-bill-viewer/README.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-03-local-workflow.md; docs/reviews/2026-11-03-local-workflow-correction.md
 
 ### [BUG-1793644514] Make local dependency startup reproducible
 - [ ] **Severity:** med
@@ -318,8 +318,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Explicit pinned setup uses npm ci, enforced Flutter lock and deployment-only pods; startup installs nothing. Bounded readiness, occupied-port refusal, explicit simulator selection, private logs, exact container/group cleanup and original status. Driver independent acceptance pending.
-- **Docs:** README.md; backend/README.md; mobile/README.md; web-bill-viewer/README.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-03-local-workflow.md
+- **Fix:** Locked setup and install-free startup retained. Review correction adds cancellable remaining-stage probe budgets, supervised interactive Flutter/web and exact bounded cleanup with original statuses. Driver55 distinct CLI tests pass; independent correction acceptance pending.
+- **Docs:** README.md; backend/README.md; mobile/README.md; web-bill-viewer/README.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-03-local-workflow.md; docs/reviews/2026-11-03-local-workflow-correction.md
 
 ### [BUG-1793644515] Separate frozen quotes from display conversion contracts
 - [ ] **Severity:** med

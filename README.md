@@ -59,7 +59,13 @@ For iOS, use the sole booted available simulator, or select one explicitly:
 start; no simulator is erased or shut down. Flutter keeps terminal hot reload/quit.
 
 Readiness waits are bounded (90 seconds per stage; `BILLINGTON_READY_TIMEOUT=1..180`
-can adjust this). Occupied ports are refused. Ctrl-C stops only containers/process
+can adjust this), including blocked Docker/simulator commands and their children.
+Failed container inventory stops startup; cleanup retries a pending exact lookup and
+prints a manual inspection instruction if ownership remains unknown. Flutter keeps
+its terminal while the driver supervises both Flutter and Next.js. Direct driver
+INT/TERM preserves exit130/143; a web failure preserves its own status. Owned development
+process groups get two seconds to stop before forced cleanup. Occupied ports are refused.
+Ctrl-C stops only containers/process
 groups started by this invocation; pre-existing running backend services keep running.
 Stopped containers are reused; rebuild intentionally with `make -C backend up` when
 source/config changes. Private web logs remain at the unique path printed by startup;

@@ -100,13 +100,15 @@ def alive(pid):
     return result.returncode == 0 and result.stdout.strip() and not result.stdout.strip().startswith('Z')
 
 
-class StartupTests(unittest.TestCase):
+class StartupFixture(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(prefix='billington-cli-test-')
         self.root = Path(self.tmp.name).resolve()
         for folder in ('bin', 'backend', 'web-bill-viewer/node_modules/.bin', '.github/workflows', 'mobile/.dart_tool', 'mobile/ios/Pods'):
             (self.root/folder).mkdir(parents=True)
         shutil.copy(ROOT/'dev.sh', self.root/'dev.sh')
+        (self.root/'scripts').mkdir()
+        shutil.copy(ROOT/'scripts/dev_runtime.py', self.root/'scripts/dev_runtime.py')
         (self.root/'backend/.env.example').write_text('DB_NAME=synthetic_only\n')
         # This must remain bytes, never executable shell input.
         self.env_bytes = b'DB_NAME=synthetic\nDONT_EVAL=$(touch NEVER_EVAL)\n'
@@ -181,6 +183,7 @@ class StartupTests(unittest.TestCase):
         self.assertFalse(self.stopped())
         self.assertFalse(any(c[0]=='docker' and any(a in ('up','start','down') for a in c[1]) for c in self.calls()))
 
+class StartupTests(StartupFixture):
     def test_missing_flutter_has_no_cleanup(self):
         (self.root/'bin/flutter').unlink()
         rc,out=self.run_cli(())
@@ -446,4 +449,8 @@ class ResetGuardTests(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    # Let the process/PTY regressions share fixtures without inheriting and
+    # executing the original startup test cases a second time.
+    sys.modules['test_local_workflow'] = sys.modules[__name__]
+    from test_local_workflow_probes import ProbeTests
     unittest.main(verbosity=2)
