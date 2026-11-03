@@ -2,9 +2,9 @@ package web
 
 import (
 	"backend/internal/bill"
+	"backend/pkg/database"
 	"backend/pkg/safehttp"
 	"crypto/subtle"
-	"log"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -42,7 +42,7 @@ func (h *WebpageHandler) CreateHTML(c *gin.Context) {
 			c.JSON(404, gin.H{"error": "bill not found"})
 			return
 		}
-		log.Printf("internal error: %v", err)
+		database.LogRequestError(err)
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return
 	}

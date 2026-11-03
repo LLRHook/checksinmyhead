@@ -169,7 +169,7 @@ The public `GET /api/app/version-policy` endpoint is consumed at app startup. Ra
 
 Request logs intentionally omit query strings because share and member bearer tokens may appear in them. Do not change the request logger to include `RequestURI`, `RawQuery`, or Gin's default `Path` field.
 
-SQL logs omit query text, bind values and driver messages at every log level, including startup failures. They retain only elapsed time, row counts, allowlisted operation/table/error categories and known SQLSTATE codes; unknown values become `unknown`. `DB_SLOW_QUERY_MS` sets the slow threshold (default 500 ms); invalid or overflowing values use that default with a fixed warning that omits the supplied value. The missing-database-env guard remains static. These controls do not redact unrelated provider or application logs.
+SQL logs omit query text, bind values and driver messages at every log level, including startup failures. They retain only elapsed time, row counts, allowlisted operation/table/error categories and known SQLSTATE codes; unknown values become `unknown`. `DB_SLOW_QUERY_MS` sets the slow threshold (default 500 ms); invalid or overflowing values use that default with a fixed warning that omits the supplied value. The missing-database-env guard remains static. API and legacy-web request-error logs use the same finite error categories without printing the original error; typed errors remain available for status decisions. Unrelated provider logging remains outside this database-error policy.
 
 ## Testing
 

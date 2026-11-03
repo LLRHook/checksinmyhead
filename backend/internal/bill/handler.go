@@ -3,13 +3,13 @@ package bill
 import (
 	"backend/internal/currency"
 	"backend/pkg/config"
+	"backend/pkg/database"
 	"backend/pkg/models"
 	"backend/pkg/safehttp"
 	"backend/pkg/security"
 	"crypto/subtle"
 	"errors"
 	"fmt"
-	"log"
 	"math"
 	"strconv"
 	"strings"
@@ -47,7 +47,7 @@ func (h *BillHandler) CreateBill(c *gin.Context) {
 
 	token, err := security.GenerateSecureToken()
 	if err != nil {
-		log.Printf("internal error: %v", err)
+		database.LogRequestError(err)
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return
 	}
@@ -71,7 +71,7 @@ func (h *BillHandler) CreateBill(c *gin.Context) {
 			c.JSON(503, gin.H{"error": "daily exchange rate is unavailable; retry or use USD"})
 			return
 		}
-		log.Printf("internal error: %v", err)
+		database.LogRequestError(err)
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return
 	}
@@ -151,7 +151,7 @@ func (h *BillHandler) getBillAndValidate(c *gin.Context) *models.Bill {
 			c.JSON(404, gin.H{"error": "bill not found"})
 			return nil
 		}
-		log.Printf("internal error: %v", err)
+		database.LogRequestError(err)
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return nil
 	}
@@ -254,7 +254,7 @@ func (h *BillHandler) UpdateLazyItemAssignments(c *gin.Context) {
 		case errors.Is(err, gorm.ErrRecordNotFound):
 			c.JSON(404, gin.H{"error": "bill item not found"})
 		default:
-			log.Printf("internal error: %v", err)
+			database.LogRequestError(err)
 			c.JSON(500, gin.H{"error": "an internal error occurred"})
 		}
 		return
@@ -353,7 +353,7 @@ func (h *BillHandler) UpdateLazyItemAssignmentsBatch(c *gin.Context) {
 		case errors.Is(err, gorm.ErrRecordNotFound):
 			c.JSON(404, gin.H{"error": "bill item not found"})
 		default:
-			log.Printf("internal error: %v", err)
+			database.LogRequestError(err)
 			c.JSON(500, gin.H{"error": "an internal error occurred"})
 		}
 		return
@@ -361,7 +361,7 @@ func (h *BillHandler) UpdateLazyItemAssignmentsBatch(c *gin.Context) {
 
 	updatedBill, err := h.service.GetBill(bill.ID)
 	if err != nil {
-		log.Printf("internal error: %v", err)
+		database.LogRequestError(err)
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return
 	}
@@ -410,7 +410,7 @@ func (h *BillHandler) UpdatePersonSharePaid(c *gin.Context) {
 			c.JSON(404, gin.H{"error": "share not found on this bill"})
 			return
 		}
-		log.Printf("internal error: %v", err)
+		database.LogRequestError(err)
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return
 	}

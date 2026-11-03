@@ -2,6 +2,7 @@ package tab
 
 import (
 	"backend/pkg/config"
+	"backend/pkg/database"
 	"backend/pkg/models"
 	"backend/pkg/safehttp"
 	"backend/pkg/security"
@@ -10,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"math"
 	"net/http"
 	"strconv"
@@ -65,7 +65,7 @@ func (h *TabHandler) getTabWithLookup(
 			c.JSON(404, gin.H{"error": "tab not found"})
 			return nil
 		}
-		log.Printf("internal error: %v", err)
+		database.LogRequestError(err)
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return nil
 	}
@@ -105,7 +105,7 @@ func (h *TabHandler) requireMemberForWrite(c *gin.Context, tabID uint) (*models.
 	}
 	members, err := h.service.GetMembers(tabID)
 	if err != nil {
-		log.Printf("internal error: %v", err)
+		database.LogRequestError(err)
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return nil, false
 	}
@@ -141,7 +141,7 @@ func (h *TabHandler) CreateTab(c *gin.Context) {
 
 	token, err := security.GenerateSecureToken()
 	if err != nil {
-		log.Printf("internal error: %v", err)
+		database.LogRequestError(err)
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return
 	}
@@ -149,7 +149,7 @@ func (h *TabHandler) CreateTab(c *gin.Context) {
 
 	err = h.service.CreateTab(&tab)
 	if err != nil {
-		log.Printf("internal error: %v", err)
+		database.LogRequestError(err)
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return
 	}
@@ -315,7 +315,7 @@ func (h *TabHandler) UpdateBillItemAssignments(c *gin.Context) {
 			c.JSON(404, gin.H{"error": "bill item not found"})
 			return
 		}
-		log.Printf("internal error: %v", err)
+		database.LogRequestError(err)
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return
 	}
@@ -415,7 +415,7 @@ func (h *TabHandler) UpdateBillItemAssignmentsBatch(c *gin.Context) {
 		case errors.Is(err, gorm.ErrRecordNotFound):
 			c.JSON(404, gin.H{"error": "bill item not found"})
 		default:
-			log.Printf("internal error: %v", err)
+			database.LogRequestError(err)
 			c.JSON(500, gin.H{"error": "an internal error occurred"})
 		}
 		return
@@ -472,7 +472,7 @@ func (h *TabHandler) UpdateBillPersonSharePaid(c *gin.Context) {
 			c.JSON(404, gin.H{"error": "share not found"})
 			return
 		}
-		log.Printf("internal error: %v", err)
+		database.LogRequestError(err)
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return
 	}
@@ -523,7 +523,7 @@ func (h *TabHandler) UpdateTab(c *gin.Context) {
 
 	err := h.service.UpdateTab(update)
 	if err != nil {
-		log.Printf("internal error: %v", err)
+		database.LogRequestError(err)
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return
 	}
@@ -534,7 +534,7 @@ func (h *TabHandler) UpdateTab(c *gin.Context) {
 func (h *TabHandler) requireCreator(c *gin.Context, tabID uint, action string) bool {
 	members, err := h.service.GetMembers(tabID)
 	if err != nil {
-		log.Printf("internal error: %v", err)
+		database.LogRequestError(err)
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return false
 	}
@@ -576,7 +576,7 @@ func (h *TabHandler) GetSettlements(c *gin.Context) {
 
 	settlements, err := h.service.GetSettlements(tab.ID)
 	if err != nil {
-		log.Printf("internal error: %v", err)
+		database.LogRequestError(err)
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return
 	}
@@ -612,7 +612,7 @@ func (h *TabHandler) UpdateSettlement(c *gin.Context) {
 			c.JSON(404, gin.H{"error": "settlement not found"})
 			return
 		}
-		log.Printf("internal error: %v", err)
+		database.LogRequestError(err)
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return
 	}
@@ -654,7 +654,7 @@ func (h *TabHandler) JoinTab(c *gin.Context) {
 
 	member, err := h.service.JoinTab(tab.ID, name)
 	if err != nil {
-		log.Printf("internal error: %v", err)
+		database.LogRequestError(err)
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return
 	}
@@ -688,7 +688,7 @@ func (h *TabHandler) LeaveTab(c *gin.Context) {
 			c.JSON(404, gin.H{"error": "member not found"})
 			return
 		}
-		log.Printf("internal error: %v", err)
+		database.LogRequestError(err)
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return
 	}
@@ -703,7 +703,7 @@ func (h *TabHandler) GetMembers(c *gin.Context) {
 
 	members, err := h.service.GetMembers(tab.ID)
 	if err != nil {
-		log.Printf("internal error: %v", err)
+		database.LogRequestError(err)
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return
 	}

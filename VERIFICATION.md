@@ -101,7 +101,8 @@ Use the detected CI Test Matrix below. Refresh commands from manifests/workflows
 any tooling change. Require locked prerequisites (`npm ci`, `flutter pub get`, existing
 Go module download/toolchain) in a clean verification environment; inspect lockfile drift.
 The default Go suite includes SQL-log secrecy tests at every GORM level, hostile
-configuration/identifier/driver-error cases and sanitized startup errors, plus SQLite
+configuration/identifier/driver-error cases and sanitized startup errors, HTTP bill/tab/
+legacy-web driver-error confidentiality and not-found controls, plus SQLite
 repository integration tests. The explicit
 PostgreSQL row adds scoped authorization/attachment plus migration/readiness lock,
 rollback, compatibility and interruption evidence.

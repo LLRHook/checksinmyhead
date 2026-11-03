@@ -213,9 +213,9 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** open
 
 ### [BUG-1793644509] Redact credentials and payment data from SQL logs
-- [x] **Severity:** med
+- [ ] **Severity:** med
 - **Area:** backend, privacy
-- **File(s):** backend/pkg/database/logger.go; backend/pkg/database/logger_test.go; backend/pkg/database/postgres.go; backend/pkg/safehttp/logging.go; backend/pkg/safehttp/logging_test.go
+- **File(s):** backend/pkg/database/; backend/internal/bill/handler.go; backend/internal/tab/handler.go; backend/internal/web/handler.go; backend/pkg/safehttp/
 - **Observation:** Slow/error GORM logger emits interpolated SQL values; routine query-free HTTP logging does not remove that risk.
 - **Expected:**
   - Error and slow SQL paths expose no bearer tokens or payment handles; useful operation/timing context remains.
@@ -224,11 +224,14 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Read logger Trace around lines 68-99. Existing HTTP-query sanitization is already shipped and must be preserved.
 - **Bump:** patch
-- **Status:** fixed-pending-migration
-- **Fix:** Suppress SQL text, bind values and arbitrary GORM messages; emit exact allowlisted operation/table/error/SQLSTATE metadata. Sanitize shared InitDB errors, preserve static missing-env guard, and reject slow-threshold overflow without echoing config. Race tests and six control-removal experiments verify leakage controls; auth and health CLI regressions preserved.
-- **Docs:** backend/README.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-02-sql-log-secrecy.md
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Suppress SQL/bind/driver text with finite operation/table/error/SQLSTATE metadata. Sanitize startup and all 22 API/legacy-web request-error sinks without changing typed errors or status decisions. Preserve static configuration guards. Six logger controls and nine HTTP failure controls prove confidentiality boundaries; correction review pending.
+- **Docs:** backend/README.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-02-sql-log-secrecy.md; docs/reviews/2026-11-03-request-log-secrecy.md
 - **Log:**
   - 2026-11-02 Verification: Scoped logging gate: default Go 116 top-level/356 leaf cases; tagged tab PostgreSQL 52 top-level/157 leaf (overlaps default), zero failures/skips. All six overlay control removals fail executed assertions. Gitleaks/Semgrep/gosec zero candidates. Migration/readiness FEAT-1793644505 and overall security/integrated acceptance remain incomplete/RED.
+  - 2026-11-03 Review: Independent review confirmed existing bill/tab/legacy-web request logs bypassed SQL-log sanitization. Reopened for a finite-metadata correction; nine HTTP confidentiality cases failed before the fix and three not-found controls passed.
+  - 2026-11-03 Verification: Driver correction:385 default/413 PostgreSQL leaves pass uncached (481 distinct), zero failures/skips;12 HTTP cases pass, nine before failures; scoped scanners zero. Independent re-review pending; full program RED.
 
 ### [BUG-1793644510] Reconcile public privacy disclosures with released behavior
 - [ ] **Severity:** high
