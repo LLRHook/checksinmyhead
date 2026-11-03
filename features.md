@@ -100,7 +100,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** open
 
 ### [FEAT-1793644505] Define ordered PostgreSQL migration readiness
-- [ ] **Priority:** high
+- [x] **Priority:** high
 - **Area:** backend, persistence
 - **File(s):** backend/pkg/database/postgres.go; backend/pkg/models/; backend/migrations/; docs/technical-overview.md
 - **Req:** SR ORDER; SR schema ownership; docs/reviews/2026-11-02-baseline.md
@@ -116,7 +116,11 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Test plan:** PostgreSQL upgrade/retry/failure tests from prior schema; never use existing developer or production data as destructive fixtures.
 - **Out of scope:** Unrelated redesign, new framework, live destructive operations, unapproved publication.
 - **Bump:** minor
-- **Status:** open
+- **Status:** shipped-pending-migration
+- **Implementation:** Implement immutable embedded 0001 and separately pinned catalog/ledger recognizer; schema-scoped transaction lock before history, atomic checked pending SQL/ledger commit and rollback, strict released-baseline adoption and compatible same-epoch prefix validation. Share apply/migrate-only/verify startup and bounded one-query readiness across API/retained web; retire payer backfill without rewriting historical rows. Commit 53d1e1ce79807e80dc57a600735ec282517aa003; exact local proof and retained operational/security gates in docs/reviews/2026-11-03-migration-readiness.md.
+- **Docs:** README.md; backend/README.md; docs/technical-overview.md; docs/backend-api.md; VERIFICATION.md; docs/reviews/2026-11-03-migration-readiness.md
+- **Log:**
+  - 2026-11-03 Verification: Scoped Go race gate: default 122 top-level/373 leaf, explicit PostgreSQL 119 top-level/413 leaf, 91/317 overlap; distinct union 150 top-level/469 leaf, zero failures/skips, -count=1. Nine overlay control removals fail executed assertions; all rollback/commit/lock/interruption/mode/health cases run on owned PG17.11 schemas. Build/vet pass; pinned govulncheck finds zero reachable advisories (three uncalled required-module advisories). Unsuppressed source scanners retain existing HTTP listener/audit conditions; no new confirmed migration issue. Production footprint adoption, backup restore, predeploy/privileges, old-writer drain and integrated V&V remain unproven. No CHANGELOG migration.
 
 ### [FEAT-1793644506] Exercise accounting transactions against PostgreSQL
 - [ ] **Priority:** high
@@ -136,6 +140,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Out of scope:** Unrelated redesign, new framework, live destructive operations, unapproved publication.
 - **Bump:** minor
 - **Status:** open
+- **Log:**
+  - 2026-11-03 Verification: Migration/readiness slice delivered at 53d1e1c: one strict loopback billington_test owned-schema harness, current-schema fixtures use actual runner, separately pinned released SQL proves adoption, real observed lock waits and DDL/DML/ledger/deferred-commit rollback, interruption/retry and binary/readiness coverage. Default 122/373 and tagged selection 119/413 top-level/leaf overlap 91/317; distinct union 150/469, zero failures/skips. Existing authorization/money/display tests preserved. Status remains open: atomic finalization/competing writes and stable-identity PostgreSQL coverage still require their separately assigned phases; no overall accounting or integrated acceptance claim. See docs/reviews/2026-11-03-migration-readiness.md.
 
 ### [FEAT-1793644507] Verify complete mobile-to-browser collaboration journeys
 - [ ] **Priority:** high

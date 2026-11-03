@@ -127,32 +127,21 @@ schema and drops only that schema with bounded cleanup. It never initializes pub
 Current-schema authorization fixtures execute the actual runner; legacy adoption uses
 independently pinned frozen SQL, never current models. No selected test skips.
 
-This local row preserves attachment competition/retry, committed-finalization checks,
-membership lock order, stale standalone claims, near-zero/tolerance creation and
-calculation-error rollback. It additionally proves fresh/legacy/no-op migrations,
-IDs/JSONB/capabilities/quote/display/null-dangling-cross-tab-payer preservation, strict
-catalog definitions and immutable checksums/recognizer/history/epoch, compatible additive
-prefixes, observed advisory lock waits and schema scope, five-second lock timeout,
-DDL/DML/ledger/deferred-commit failures, full pending-batch rollback, connection termination/
-context interruption and one-time retry. Actual binaries prove migrate-only and failed
-verify startup; both health handlers prove healthy status/commit and generic invalid/
-unavailable database responses. The 60s total ceiling and 1s health deadline are enforced;
-an earlier caller deadline also interrupts real pending SQL and rolls it back.
+The row retains attachment/membership/claim/money rollback tests and adds fresh/legacy/
+no-op preservation (IDs, JSONB, tokens, quotes, display, payer anomalies, sequence state),
+catalog/checksum/history/epoch and additive-prefix checks, observed schema-scoped
+lock waits, DDL/DML/ledger/commit rollback, interruption and retry once. Binary/health
+tests enforce 5s lock, 60s total and 1s health limits, and caller deadlines.
+Compare raw persisted values for D5; ORM normalization is not the preservation oracle.
 
-Migration default: apply/verify before serving; `--migrate-only` applies and exits;
-`--schema-mode=verify` checks without applying then serves. Every applicable command must
-use isolated synthetic fixtures. Never try these against hosted data as part of local QA.
-Catalogs are checked at startup; health performs one live ledger query, not a full schema
-or accounting scan. Remove/alter one control only in an isolated Go overlay to prove a
-regression; preserve the shared writer's source. The harness row remains local, not a CI
-job. Atomic finalization, stable identity and full accounting PostgreSQL coverage remain
-open under FEAT-1793644506 and its dependencies. No integrated count/green is recorded here.
-
-For migration D5, compare raw persisted values and sequence state before/after adoption;
-never invoke an ORM normalization hook as the preservation oracle. No historical payer
-backfill runs. Preserve additive ledger/columns on application rollback; separately verify
-production footprint, backup restore, predeploy privileges and drained old writers before
-production adoption or stronger financial/replay guarantees.
+Default applies/verifies then serves; `--migrate-only` applies/exits;
+`--schema-mode=verify` checks without applying then serves. Health is one live ledger
+query; rerun startup verify after out-of-band DDL. No payer backfill runs. Use owned
+synthetic schemas/isolated overlays; retain additive schema/ledger on rollback.
+Production footprint, backup restore, predeploy and old-writer drain need separate proof:
+[backend operations](backend/README.md#postgresql-schema-startup). This is local,
+not an integrated pass. FEAT-1793644506's atomic-finalization/identity coverage and
+financial/replay rollout gates remain open.
 
 - [ ] Enumerate with each runner before execution (`go test ./... -list '.*'`,
       `npm exec -- vitest list`, runner output for Flutter/Ruby); record actual tests,
