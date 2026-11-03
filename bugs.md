@@ -291,7 +291,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** open
 
 ### [BUG-1793644513] Preserve the database during ordinary local shutdown
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** tooling
 - **File(s):** backend/Makefile; dev.sh; backend/docker-compose.yml
 - **Observation:** Pinned13be27b exact make down invoked down -v on an owned real PostgreSQL fixture; its volume and sentinel were lost. Source fix implemented; independent driver acceptance pending.
@@ -304,9 +304,11 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Retained executed before-proof and fixed sentinel/restart/reset journey: docs/reviews/2026-11-03-local-workflow.md. Normal project and wrong/unconfirmed ownership reject before deletion; shared driver PG/normal volumes preserved.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
-- **Fix:** Ordinary down preserves volumes. Guarded reset validates exact isolated resource ownership. Review correction propagates inventory errors, retains pending ownership and gives bounded manual inspection on uncertainty. Driver55 CLI tests and5 real PG groups pass; independent correction acceptance pending.
+- **Status:** fixed-pending-migration
+- **Fix:** Ordinary down preserves volumes; guarded reset deletes only exact confirmed synthetic resources. Independent source review at79a8568 approves the correction with0 Standards/Spec findings; clean55CLI and5realPG assertion groups support driver acceptance. Integrated migration remains pending.
 - **Docs:** README.md; backend/README.md; mobile/README.md; web-bill-viewer/README.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-03-local-workflow.md; docs/reviews/2026-11-03-local-workflow-correction.md
+- **Log:**
+  - 2026-11-03 Review: Driver accepts scoped source correction after REVIEW_CORRECTIONS_REVIEW.md (SHA2562e0560d359b8593541381d0d5e9e99078f48e6b3ddecea14516381e2c63f80c8): all15paths and388input hashes reconciled;5realPGgroups pass. No production/data-recovery or integrated V&V claim.
 
 ### [BUG-1793644514] Make local dependency startup reproducible
 - [ ] **Severity:** med
