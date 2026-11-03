@@ -103,7 +103,8 @@ Go module download/toolchain) in a clean verification environment; inspect lockf
 The default Go suite includes SQL-log secrecy tests at every GORM level, hostile
 configuration/identifier/driver-error cases and sanitized startup errors, plus SQLite
 repository integration tests. The explicit
-PostgreSQL row adds scoped authorization/attachment lock and rollback evidence.
+PostgreSQL row adds scoped authorization/attachment plus migration/readiness lock,
+rollback, compatibility and interruption evidence.
 
 | Layer / directory | Command (verbatim CI) | Baseline count |
 |---|---|---|
@@ -113,22 +114,45 @@ PostgreSQL row adds scoped authorization/attachment lock and rollback evidence.
 | Web unit / `web-bill-viewer` | `npm test` | Not measured in this bootstrap |
 | Web production build / `web-bill-viewer` | `npm run build` | Build, not a test count |
 | Ruby release automation / root | `ruby .github/scripts/asc_release_test.rb` | Not yet an integrated baseline |
-| Live PostgreSQL authorization / `backend` | `go test -race -tags=integration ./internal/tab` | Not yet an integrated baseline; test-only DSN required |
+| Live PostgreSQL authorization + migrations/readiness / `backend` | `go test -race -tags=integration ./internal/bill ./internal/tab ./pkg/database ./migrations ./internal/startup ./internal/readiness ./internal/testpostgres` | Not yet an integrated baseline; test-only DSN required |
 | App/browser E2E, a11y, realistic load | No wired automated runner: FEAT-1793644507, FEAT-1793644512, FEAT-1793644502 | Manual stages required; automation gap remains |
 
 For the PostgreSQL row, set only `BILLINGTON_TEST_POSTGRES_DSN` to a dedicated
 loopback `billington_test` fixture, for example
 `host=127.0.0.1 port=<fixture-port> user=billington_test dbname=billington_test sslmode=disable`.
-The harness fails if the variable is absent or its host/database is unsafe. It generates
-a new `billington_auth_*` schema, refuses caller-supplied schema/options, and drops only
-that schema. It never uses production configuration or `database.InitDB`. It covers
-attachment competition/retries, committed-finalization checks, membership lock order,
-stale standalone claims, safe near-zero/tolerance creation and calculation-error write
-rollback. The creation controls first require `201` for matching receipt/item amounts,
-then reject the inconsistent item with no inserted graph. Extreme-denominator arithmetic
-is tested only through bounded pure calculations; never submit it to the historical
-HTTP implementation. It is an additional local row, not yet a CI
-job. Broader atomic-finalization/migration coverage remains FEAT-1793644506.
+The shared `internal/testpostgres` harness fails if the variable is absent, primary or
+fallback host is not loopback, database/user is not `billington_test`, or caller supplies
+schema/options (even empty overrides). It creates an owned random `billington_test_*`
+schema and drops only that schema with bounded cleanup. It never initializes public.
+Current-schema authorization fixtures execute the actual runner; legacy adoption uses
+independently pinned frozen SQL, never current models. No selected test skips.
+
+This local row preserves attachment competition/retry, committed-finalization checks,
+membership lock order, stale standalone claims, near-zero/tolerance creation and
+calculation-error rollback. It additionally proves fresh/legacy/no-op migrations,
+IDs/JSONB/capabilities/quote/display/null-dangling-cross-tab-payer preservation, strict
+catalog definitions and immutable checksums/recognizer/history/epoch, compatible additive
+prefixes, observed advisory lock waits and schema scope, five-second lock timeout,
+DDL/DML/ledger/deferred-commit failures, full pending-batch rollback, connection termination/
+context interruption and one-time retry. Actual binaries prove migrate-only and failed
+verify startup; both health handlers prove healthy status/commit and generic invalid/
+unavailable database responses. The 60s total ceiling and 1s health deadline are enforced;
+an earlier caller deadline also interrupts real pending SQL and rolls it back.
+
+Migration default: apply/verify before serving; `--migrate-only` applies and exits;
+`--schema-mode=verify` checks without applying then serves. Every applicable command must
+use isolated synthetic fixtures. Never try these against hosted data as part of local QA.
+Catalogs are checked at startup; health performs one live ledger query, not a full schema
+or accounting scan. Remove/alter one control only in an isolated Go overlay to prove a
+regression; preserve the shared writer's source. The harness row remains local, not a CI
+job. Atomic finalization, stable identity and full accounting PostgreSQL coverage remain
+open under FEAT-1793644506 and its dependencies. No integrated count/green is recorded here.
+
+For migration D5, compare raw persisted values and sequence state before/after adoption;
+never invoke an ORM normalization hook as the preservation oracle. No historical payer
+backfill runs. Preserve additive ledger/columns on application rollback; separately verify
+production footprint, backup restore, predeploy privileges and drained old writers before
+production adoption or stronger financial/replay guarantees.
 
 - [ ] Enumerate with each runner before execution (`go test ./... -list '.*'`,
       `npm exec -- vitest list`, runner output for Flutter/Ruby); record actual tests,

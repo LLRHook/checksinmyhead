@@ -1,6 +1,7 @@
 package database
 
 import (
+	"backend/migrations"
 	"bytes"
 	"context"
 	"errors"
@@ -150,7 +151,7 @@ func TestInitDBErrorsAreSafe(t *testing.T) {
 	for _, k := range []string{"DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD", "DB_SSLMODE"} {
 		t.Setenv(k, "")
 	}
-	if _, err := InitDB(); err == nil || err.Error() != "missing required database environment variables" {
+	if _, _, err := InitDB(context.Background(), migrations.Apply); err == nil || err.Error() != "missing required database environment variables" {
 		t.Fatal("static missing-env guard changed")
 	}
 	// A parse failure occurs before any network operation, and embeds hostile env
@@ -162,7 +163,7 @@ func TestInitDBErrorsAreSafe(t *testing.T) {
 	t.Setenv("DB_PASSWORD", sensitive)
 	t.Setenv("DB_SSLMODE", "disable")
 	output := captureLogs(t, func() {
-		db, err := InitDB()
+		db, _, err := InitDB(context.Background(), migrations.Apply)
 		if db != nil || err == nil {
 			t.Fatal("expected invalid configuration failure")
 		}

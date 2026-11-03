@@ -4,11 +4,14 @@ import (
 	"backend/internal/bill"
 	"backend/internal/currency"
 	"backend/internal/healthcheck"
+	"backend/internal/readiness"
 	"backend/internal/receipt"
+	"backend/internal/startup"
 	"backend/internal/tab"
 	"backend/internal/versionpolicy"
 	"backend/pkg/database"
 	"backend/pkg/safehttp"
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -17,19 +20,27 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
-var db *gorm.DB
-
 func main() {
-	if len(os.Args) == 2 && os.Args[1] == "--healthcheck" {
-		os.Exit(healthcheck.ExitCode("http://127.0.0.1:8080/health", "bill service - ok"))
-	}
-	var err error
-	db, err = database.InitDB()
+	options, err := startup.Parse(os.Args[1:])
 	if err != nil {
 		log.Fatal(err)
+	}
+	if options.Healthcheck {
+		os.Exit(healthcheck.ExitCode("http://127.0.0.1:8080/health", "bill service - ok"))
+	}
+	db, state, err := database.InitDB(context.Background(), options.SchemaMode)
+	if err != nil {
+		log.Fatal(err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		log.Fatal("database initialization failed")
+	}
+	defer sqlDB.Close()
+	if options.MigrateOnly {
+		return
 	}
 	repo := bill.NewBillRepository(db)
 	service := bill.NewBillService(repo)
@@ -76,7 +87,7 @@ func main() {
 		AllowHeaders:  []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Member-Token"},
 		ExposeHeaders: []string{"Content-Length"},
 	}))
-	r.GET("/health", getHealth)
+	r.GET("/health", readiness.Handler(state, "bill service - ok"))
 	r.GET("/api/app/version-policy", versionpolicy.Handler())
 	r.GET("/api/currency/rate", currencyHandler.GetRate)
 	r.GET("/api/bills/:id", handler.GetBill)
@@ -105,14 +116,4 @@ func main() {
 
 	fmt.Println("Bill service starting on :8080")
 	log.Fatal(http.ListenAndServe(":8080", r))
-}
-
-func getHealth(c *gin.Context) {
-	// RENDER_GIT_COMMIT is injected by Render at runtime. Surfacing it lets a
-	// deploy pipeline tell "the new revision is serving" apart from "the old
-	// one is still up", which a bare status string cannot express.
-	c.JSON(http.StatusOK, gin.H{
-		"status": "bill service - ok",
-		"commit": os.Getenv("RENDER_GIT_COMMIT"),
-	})
 }

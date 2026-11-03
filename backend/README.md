@@ -17,7 +17,7 @@ internal/
 │   └── repository.go         #   Tab queries with eager loading
 pkg/
 ├── models/                   # GORM data models (Tab, Bill, TabMember, etc.)
-├── database/postgres.go      # DB connection + AutoMigrate
+├── database/postgres.go      # DB connection + checked schema startup
 └── security/token.go         # Cryptographic token generation
 ```
 
@@ -42,7 +42,7 @@ curl localhost:8080/health
 make up       # Start services (docker-compose up --build)
 make down     # Stop services and remove volumes
 make logs     # Tail service logs
-make test     # Run Go unit tests (go test -v -race ./internal/... ./pkg/...)
+make test     # Run default Go suite (go test -v -race ./...)
 ```
 
 Or use the root `./dev.sh` script to start the full stack (backend + web + mobile).
@@ -87,11 +87,68 @@ without printing responses or transport errors.
 
 Docker's exec-form `HEALTHCHECK` calls that same binary every 30 seconds with a
 three-second outer timeout, a ten-second start period and three retries. No
-helper runtime packages are required. This is HTTP liveness after startup;
-`/health` does not query the database on each request. Hosting health/readiness
+helper runtime packages are required. `/health` checks the live database and required
+ledger prefix on each request, with a one-second deadline. Hosting health/readiness
 configuration and operator-injected commit values require separate verification.
 See the [runtime validation evidence](../docs/reviews/2026-11-02-runtime-lock-images.md)
 for image identities, signature checks and retained vulnerability findings.
+
+## PostgreSQL schema startup
+
+Both maintained binaries apply/verify `migrations/0001_baseline.sql` before serving;
+production startup no longer uses GORM AutoMigrate. The SQL and its catalog recognizer
+have independent immutable SHA-256 pins and provenance. Version 0002 is reserved for
+separately approved receipt replay/display metadata; it is not implemented here.
+
+```bash
+# Existing command: apply pending migrations, then serve
+./bill-service
+# Same binary, apply and exit without routes/provider initialization
+./bill-service --migrate-only
+# Verify the required schema/history without applying, then serve
+./bill-service --schema-mode=verify
+```
+
+`web-service` supports the same options. `--schema-mode` accepts only `apply` (default)
+or `verify`; invalid flags/values/combinations fail with a generic error. Verify mode
+requires an initialized ledger. `--migrate-only` requires apply mode. There is no
+migration environment alias or separate binary. `--healthcheck` remains a separate,
+silent loopback probe and cannot be combined with startup options.
+
+One Read Committed transaction takes an application/target-schema advisory lock **before
+reading or creating the ledger**. Lock acquisition is limited to five seconds, total
+startup schema work to sixty seconds. All pending DDL/DML, catalog validation and ledger
+inserts commit together; every error, including commit, prevents serving. A competing
+starter rereads history after acquiring the lock. No automatic retries hide failures.
+
+Fresh targets receive the frozen released `81a564f`/`f1d62374` footprint. Unledgered
+legacy targets must match its actual tables, columns/types/nullability/defaults,
+sequences, keys, FKs and index definitions. Partial/unknown definitions fail closed;
+unrelated extension tables/objects are ignored. The structured PostgreSQL 17 catalog
+manifest avoids dependence on pg_dump formatting and physical column order. Do not
+regenerate the baseline or recognizer from current models; append a reviewed migration
+or separately versioned recognizer. `schema_migrations` records contiguous version,
+name, SQL checksum, independent validation checksum, epoch and database timestamp.
+Known history is immutable; same-epoch additive later versions may extend the known
+prefix and are retained by older schema-aware binaries. Unknown epochs or a changed
+known prefix fail startup/readiness. This does not authorize arbitrary later DDL.
+
+The historical unconditional payer backfill is **retired**. Startup never fills or
+recalculates historical rows: IDs, tokens, JSONB, quote/display provenance, payment
+flags, null, dangling and cross-tab payer references remain as recorded. Those payer
+anomalies need explicit review/containment in later financial operations; successful
+schema startup does not make them financially valid.
+
+Readiness performs one live ledger query within one second, retaining healthy `status`
+and `commit` fields and returning generic HTTP 503 otherwise. Catalogs are checked at
+startup, not on every health call; rerun verify after out-of-band schema changes.
+There are no accounting scans, provider calls or readiness cache.
+
+Before production adoption, separately verify the actual schema, backups and isolated
+restore, hosting command/privileges and rollout bridge/drain of older uncooperative
+writers. No production migration or predeploy configuration has been performed here.
+Keep additive schema/ledger history on application rollback; never run a replay-ignorant
+server once keyed clients are active. Database restore is a separate verified procedure.
 
 ## Environment Variables
 
@@ -117,10 +174,18 @@ SQL logs omit query text, bind values and driver messages at every log level, in
 ## Testing
 
 ```bash
-go test -v -race ./internal/... ./pkg/...
+go test -race ./...
+# Explicit loopback billington_test fixture, owned random schemas; see VERIFICATION.md:
+go test -race -tags=integration ./internal/bill ./internal/tab ./pkg/database ./migrations ./internal/startup ./internal/readiness ./internal/testpostgres
 ```
 
-Tests use manual mocks of repository interfaces — no database required.
+The default suite combines mocks and SQLite fixtures. The explicit PostgreSQL layer
+uses one strict shared harness and the real runner for current schemas, with a separate
+frozen SQL fixture for legacy adoption. Missing/unsafe DSNs fail instead of skipping.
+It covers migration history/definitions, observed lock waits, rollback/commit failure,
+interruption/retry, binary startup modes and bounded live health, alongside existing
+authorization/money tests. Synthetic test-only pending versions are never embedded in
+the production registry. No whole-product V&V pass is implied.
 
 ## API Documentation
 

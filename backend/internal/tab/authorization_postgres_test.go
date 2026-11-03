@@ -4,22 +4,19 @@ package tab
 
 import (
 	billpkg "backend/internal/bill"
+	"backend/internal/testpostgres"
+	"backend/migrations"
 	"backend/pkg/models"
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"runtime"
 	"sort"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/stdlib"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -27,55 +24,14 @@ import (
 
 func authorizationPostgres(t *testing.T) *gorm.DB {
 	t.Helper()
-	dsn := os.Getenv("BILLINGTON_TEST_POSTGRES_DSN")
-	if dsn == "" {
-		t.Fatal("explicit integration selection requires BILLINGTON_TEST_POSTGRES_DSN; no skip-to-green")
-	}
-	cfg, err := pgx.ParseConfig(dsn)
-	if err != nil {
-		t.Fatal("invalid test-only PostgreSQL DSN")
-	}
-	local := func(host string) bool { return host == "127.0.0.1" || host == "::1" || host == "localhost" }
-	if !local(cfg.Host) || cfg.Database != "billington_test" {
-		t.Fatal("refuse nonlocal host or non-test database")
-	}
-	for _, fallback := range cfg.Fallbacks {
-		if !local(fallback.Host) {
-			t.Fatal("refuse nonlocal fallback")
-		}
-	}
-	if cfg.RuntimeParams["options"] != "" || cfg.RuntimeParams["search_path"] != "" {
-		t.Fatal("refuse caller-supplied schema/options")
-	}
-	nonce := make([]byte, 12)
-	if _, err := rand.Read(nonce); err != nil {
+	sql := testpostgres.Open(t)
+	if _, err := migrations.Run(context.Background(), sql, migrations.Apply); err != nil {
 		t.Fatal(err)
 	}
-	schema := "billington_auth_" + hex.EncodeToString(nonce)
-	cfg.RuntimeParams["application_name"] = schema
-	admin := stdlib.OpenDB(*cfg)
-	t.Cleanup(func() { _ = admin.Close() })
-	// A collision fails; this harness never reuses public or a developer schema.
-	if _, err := admin.Exec("CREATE SCHEMA " + schema); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if _, err := admin.Exec("DROP SCHEMA " + schema + " CASCADE"); err != nil {
-			t.Errorf("own schema cleanup: %v", err)
-		}
-	})
-	cfg.RuntimeParams["search_path"] = schema
-	sql := stdlib.OpenDB(*cfg)
-	sql.SetMaxOpenConns(12)
-	t.Cleanup(func() { _ = sql.Close() })
 	db, err := gorm.Open(postgres.New(postgres.Config{Conn: sql}), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.AutoMigrate(&models.Tab{}, &models.TabMember{}, &models.Bill{}, &models.Person{}, &models.BillItem{}, &models.ItemAssignment{}, &models.PersonShare{}); err != nil {
-		t.Fatal(err)
-	}
-	t.Logf("PostgreSQL isolated schema %s", schema)
 	return db
 }
 

@@ -182,6 +182,48 @@ Atomic settlement finalization and stable participant identity remain separate w
 
 Both database-using binaries share the SQL logger and sanitized database initialization errors. The logger suppresses SQL text, parameters, arbitrary messages and invalid configuration text; it emits bounded operation/table/error categories, known SQLSTATE codes, timing and row counts. Bind interpolation is disabled for logging. Unknown identifiers and error codes never pass through as text.
 
+### Immutable PostgreSQL Schema and Readiness
+
+Both `bill-service` and the retained `web-service` use `migrations.Run` through the
+shared database initializer. One embedded ordered registry replaces runtime AutoMigrate.
+Only `0001_baseline.sql` is implemented: its released `81a564f`/`f1d62374` DDL checksum
+and the independent catalog recognizer/manifest/ledger checksums are pinned with provenance.
+Version 0002 is reserved for later receipt replay/display metadata.
+
+A schema-scoped transaction advisory lock precedes ledger inspection/creation. At Read
+Committed, the next starter rereads committed history after waiting. The checked transaction
+covers all pending SQL, validation and ledger entries; commit/rollback errors fail startup.
+Limits are 5s for lock acquisition and 60s total. Empty targets receive frozen DDL;
+unledgered legacy targets must match actual catalog definitions (including defaults,
+sequence ownership, FK actions and index keys/uniqueness/predicates), not object names.
+Unrelated tables/extension objects are excluded. Unknown/partial footprints fail closed.
+
+The append-only `schema_migrations` ledger stores version/name, exact SQL and validation
+SHA-256 digests, compatibility epoch and database timestamp. Known prefix changes, gaps
+and unsupported epochs fail. Same-epoch reviewed additive later versions may coexist
+with an older schema-aware binary without downgrading history; no destructive downgrade
+runs. Registry/recognizer v1 must not be regenerated from evolving models.
+
+The unchecked payer backfill is retired, with no historical rewrite or financial
+recalculation. Null/dangling/cross-tab payer references, old IDs, capabilities, JSONB,
+quotes, display values and payment flags remain unchanged. Later financial operations
+must contain/review legacy payer anomalies explicitly.
+
+Default invocation applies/verifies and serves; `--migrate-only` applies and exits;
+`--schema-mode=verify` checks without applying before serving. Invalid arguments fail
+closed. Readiness requires successful startup validation plus one bounded live ledger
+query (1s) with a compatible known prefix; it has no accounting preload/provider/cache.
+Catalogs are revalidated at startup, so out-of-band DDL requires rerunning verify.
+`/health` preserves status/commit on success and returns generic 503 otherwise.
+
+The shared integration-tagged `internal/testpostgres` harness rejects missing, nonlocal,
+wrong-user/database and caller schema/options DSNs; it owns/deletes only random schemas.
+Current-schema authorization tests execute the actual runner; independent frozen legacy
+fixtures prove adoption. Local schema proof is separate from production catalog adoption,
+backup/restore, host predeploy/privileges and draining old writers. Retain additive schema
+and ledger on application rollback. Never return to replay-ignorant servers after keyed
+clients activate; see [backend operations](../backend/README.md#postgresql-schema-startup).
+
 ### Monolith Over Microservices
 A single `bill-service` binary handles all endpoints. The layered architecture (handler/service/repository) provides separation of concerns without the operational overhead of multiple services.
 
@@ -205,7 +247,7 @@ The Flutter app maintains its own Drift database for offline access and fast rea
 Unit tests for the service layer use manual repository mocks and cover finalization validation, settlement calculation, member creation, and error paths.
 
 ```bash
-cd backend && go test -v -race ./internal/... ./pkg/...
+cd backend && go test -race ./...
 ```
 
 ### Web Viewer (Vitest)

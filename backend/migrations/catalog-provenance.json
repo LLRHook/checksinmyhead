@@ -1,0 +1,19 @@
+{
+  "format": 1,
+  "source_baseline_sql_sha256": "d46084b1caae072be155d7e38c71eba986774853e7d004b08d19daa411992f55",
+  "postgres_version": "17.11",
+  "objects": 147,
+  "payload_sha256": {
+    "catalogQueryChecksum": "2fa9e34ee3048976dade7444d1e7d86887ee6b864b3614a83ec594fe6ca5daab",
+    "catalogManifestChecksum": "a33946343bd74b19c25e785a62d53a74a3cd8a104f75e50319e71aecd32201b3",
+    "ledgerChecksum": "ec6ea56e073f3b05694131049fd05865516c4e3a433b1a4a17c46c4291cafc8b",
+    "recognizerChecksum": "999401db1dfad04253c02dc5fa6b5730d69df6492d949436afb04176d8933b40"
+  },
+  "derivation": "Create frozen 0001 plus ledger.sql in an owned temporary schema inside a rolled-back transaction; run catalog.sql with the exact target-only search_path. Capture structured definitions without OIDs, physical column ordering, sequence current values, owners, or pg_dump formatting. Builtin expression deparsing uses PostgreSQL 17 catalogs. Compare all required definitions; strict unledgered adoption also rejects extra application columns/constraints/indexes. Ignore unrelated relations.",
+  "capture_tool": "driver scratch capture-catalog.py (local Docker psql -X -v ON_ERROR_STOP=1; rolled back schema)",
+  "sources": [
+    "https://www.postgresql.org/docs/17/catalog-pg-index.html",
+    "https://www.postgresql.org/docs/17/catalog-pg-constraint.html"
+  ],
+  "immutability": "v1 query, manifest, ledger DDL and checksums are frozen. Add an independently reviewed recognizer to support another released footprint; never regenerate v1 from evolving models."
+}

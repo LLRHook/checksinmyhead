@@ -10,7 +10,7 @@ logs: ## View logs
 	docker-compose logs -f
 
 test: ## Run Go unit tests
-	go test -v -race ./internal/... ./pkg/...
+	go test -v -race ./...
 
 dev: ## Start full stack (use root dev.sh instead)
 	@echo "Run ./dev.sh from the project root to start all services."

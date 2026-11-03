@@ -8,12 +8,26 @@ Bill reads accept the bill's `t` token, or the containing tab's token for a read
 
 ### `GET /health`
 
-Returns service status.
+Returns readiness after successful startup schema validation and one live PostgreSQL
+ledger-prefix query, bounded to one second. No authentication is required. Healthy status
+and the operator-injected revision are preserved. Startup failure prevents serving.
+Catalog definitions are checked at startup; health does not rescan accounting/catalogs.
 
 **Response** `200`
 ```json
-{ "status": "bill service - ok" }
+{ "status": "bill service - ok", "commit": "<RENDER_GIT_COMMIT or empty>" }
 ```
+
+**Response** `503` for unavailable database, invalid/missing required ledger history or
+unvalidated startup; database/driver details never enter the response:
+```json
+{ "status": "service unavailable", "commit": "<RENDER_GIT_COMMIT or empty>" }
+```
+
+The retained legacy web service uses the same readiness check and fields, with healthy
+status `web service - ok`. The `--healthcheck` loopback command treats HTTP 503 as failure.
+See [schema startup modes](../backend/README.md#postgresql-schema-startup) for migration-only
+and verify startup behavior. No receipt/quote/payment payload changes are introduced.
 
 ### `GET /api/app/version-policy`
 

@@ -61,6 +61,13 @@ cd mobile
 flutter run -d simulator
 ```
 
+Backend startup applies/verifies the immutable PostgreSQL migration registry before
+serving. The existing binary also supports `--migrate-only` (apply and exit) and
+`--schema-mode=verify` (verify without applying, then serve). Both maintained service
+binaries share the policy; `/health` checks the live database/ledger within one second.
+See [backend startup and rollback](backend/README.md#postgresql-schema-startup) for strict
+legacy adoption, preserved historical payer data and unresolved production rollout gates.
+
 ## Project Structure
 
 ```
@@ -75,6 +82,7 @@ billington/
 │   │   ├── models/           #   GORM data models
 │   │   ├── database/         #   PostgreSQL connection
 │   │   └── security/         #   Token generation
+│   ├── migrations/           # Immutable ordered PostgreSQL SQL + catalog recognizer
 │   ├── docker-compose.yml    # PostgreSQL + bill-service
 │   └── Makefile
 ├── web-bill-viewer/          # Next.js web client
