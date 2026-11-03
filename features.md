@@ -100,7 +100,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** open
 
 ### [FEAT-1793644505] Define ordered PostgreSQL migration readiness
-- [x] **Priority:** high
+- [ ] **Priority:** high
 - **Area:** backend, persistence
 - **File(s):** backend/pkg/database/postgres.go; backend/pkg/models/; backend/migrations/; docs/technical-overview.md
 - **Req:** SR ORDER; SR schema ownership; docs/reviews/2026-11-02-baseline.md
@@ -116,11 +116,14 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Test plan:** PostgreSQL upgrade/retry/failure tests from prior schema; never use existing developer or production data as destructive fixtures.
 - **Out of scope:** Unrelated redesign, new framework, live destructive operations, unapproved publication.
 - **Bump:** minor
-- **Status:** shipped-pending-migration
-- **Implementation:** Implement immutable embedded 0001 and separately pinned catalog/ledger recognizer; schema-scoped transaction lock before history, atomic checked pending SQL/ledger commit and rollback, strict released-baseline adoption and compatible same-epoch prefix validation. Share apply/migrate-only/verify startup and bounded one-query readiness across API/retained web; retire payer backfill without rewriting historical rows. Commit 53d1e1ce79807e80dc57a600735ec282517aa003; exact local proof and retained operational/security gates in docs/reviews/2026-11-03-migration-readiness.md.
-- **Docs:** README.md; backend/README.md; docs/technical-overview.md; docs/backend-api.md; VERIFICATION.md; docs/reviews/2026-11-03-migration-readiness.md
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Implementation:** Use immutable 0001 with frozen v1 and atomic schema-scoped startup/readiness (53d1e1c). Add checksummed guard v2 for related inheritance and ineffective FKs without rewriting v1/history or adding health queries. Payer backfill stays retired; correction re-review pending.
+- **Docs:** README.md; backend/README.md; docs/technical-overview.md; docs/backend-api.md; VERIFICATION.md; docs/reviews/2026-11-03-migration-readiness.md; docs/reviews/2026-11-03-catalog-safety.md
 - **Log:**
-  - 2026-11-03 Verification: Scoped Go race gate: default 122 top-level/373 leaf, explicit PostgreSQL 119 top-level/413 leaf, 91/317 overlap; distinct union 150 top-level/469 leaf, zero failures/skips, -count=1. Nine overlay control removals fail executed assertions; all rollback/commit/lock/interruption/mode/health cases run on owned PG17.11 schemas. Build/vet pass; pinned govulncheck finds zero reachable advisories (three uncalled required-module advisories). Unsuppressed source scanners retain existing HTTP listener/audit conditions; no new confirmed migration issue. Production footprint adoption, backup restore, predeploy/privileges, old-writer drain and integrated V&V remain unproven. No CHANGELOG migration.
+  - 2026-11-03 Verification: Initial 53d1e1c/c541e7e scope:469 distinct cases,9 controls. Full original proof remains in the dated migration-readiness note.
+  - 2026-11-03 Review: Reopened for inherited descendants and ineffective FK triggers; supplemental v2 preserves frozen v1/history; correction re-review pending.
+  - 2026-11-03 Verification: V2:504 distinct cases pass,20 before failures/22 targets,4 controls;scans clean. Full proof in the catalog-safety note; fresh review pending.
 
 ### [FEAT-1793644506] Exercise accounting transactions against PostgreSQL
 - [ ] **Priority:** high

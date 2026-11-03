@@ -141,6 +141,13 @@ production startup no longer uses GORM AutoMigrate. The SQL and its catalog reco
 have independent immutable SHA-256 pins and provenance. Version 0002 is reserved for
 separately approved receipt replay/display metadata; it is not implemented here.
 
+Supplemental startup guard v2 has its own immutable checksum and preserves v1
+ledger digests. It rejects inheritance involving required application/ledger
+tables (including cross-schema descendants), ineffective internal FK triggers,
+and replica-mode sessions. Ordinary/always-enabled FK enforcement and unrelated
+standalone inheritance remain compatible. Catalog checks run at startup; live
+readiness keeps its single ledger query.
+
 ```bash
 # Existing command: apply pending migrations, then serve
 ./bill-service

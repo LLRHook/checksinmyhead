@@ -201,6 +201,11 @@ unledgered legacy targets must match actual catalog definitions (including defau
 sequence ownership, FK actions and index keys/uniqueness/predicates), not object names.
 Unrelated tables/extension objects are excluded. Unknown/partial footprints fail closed.
 
+Independently pinned startup guard v2 also rejects related inheritance, disabled or
+replica-only internal FK enforcement and replica sessions. It supplements frozen v1
+recognition without changing its SQL/manifest/ledger checksums or recorded history.
+Unrelated inheritance and ordinary/always-enabled FK triggers remain compatible.
+
 The append-only `schema_migrations` ledger stores version/name, exact SQL and validation
 SHA-256 digests, compatibility epoch and database timestamp. Known prefix changes, gaps
 and unsupported epochs fail. Same-epoch reviewed additive later versions may coexist
