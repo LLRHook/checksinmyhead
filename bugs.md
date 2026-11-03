@@ -323,8 +323,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Locked setup and install-free startup retained. Review correction adds cancellable remaining-stage probe budgets, supervised interactive Flutter/web and exact bounded cleanup with original statuses. Driver55 distinct CLI tests pass; independent correction acceptance pending.
-- **Docs:** README.md; backend/README.md; mobile/README.md; web-bill-viewer/README.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-03-local-workflow.md; docs/reviews/2026-11-03-local-workflow-correction.md
+- **Fix:** Runtime workflow correction independently approved at79a8568. A readiness-fixture follow-up separates ordinary lifecycle5s setup from1s timeout tests and covers a healthy2.1s response;55distinct cases pass. Fixture re-review/integrated gates remain.
+- **Docs:** README.md; backend/README.md; mobile/README.md; web-bill-viewer/README.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-03-local-workflow.md; docs/reviews/2026-11-03-local-workflow-correction.md; docs/reviews/2026-11-03-workflow-readiness-fixture.md
+- **Log:**
+  - 2026-11-03 Validation: Lead retained54pass/1readiness timing failure and its passing rerun. Driver controlled2.1s healthy API reproduces quit-test false negative under fixture2s; ordinary fixture5s and explicit1s timeout cases now55pass without retries. Runtime unchanged.
 
 ### [BUG-1793644515] Separate frozen quotes from display conversion contracts
 - [ ] **Severity:** med

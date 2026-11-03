@@ -92,6 +92,7 @@ elif tool=='curl':
     if ':3100' in args[-1]:
         if case=='web-timeout' or not (root/'descendants').exists(): sys.exit(22)
     elif case=='api-http-failure': sys.stderr.write('SYNTHETIC_CURL_DETAIL\n'); sys.exit(22)
+    elif case=='flutter-quit': time.sleep(2.1)
 '''
 
 
@@ -126,7 +127,10 @@ class StartupFixture(unittest.TestCase):
             path.write_text('#!'+sys.executable+'\n'+STUB)
             path.chmod(0o700)
         (self.root/'bin/python3').symlink_to(sys.executable)
-        self.env = dict(os.environ, FIXTURE=str(self.root), PATH=str(self.root/'bin')+':/usr/bin:/bin:/usr/sbin', BILLINGTON_READY_TIMEOUT='2', TMPDIR=str(self.root))
+        # Ordinary lifecycle cases are not short-deadline benchmarks. The healthy
+        # quit case includes a2.1s API response, within curl's three-second limit.
+        # Timeout-specific cases below select their own one-second stage budget.
+        self.env = dict(os.environ, FIXTURE=str(self.root), PATH=str(self.root/'bin')+':/usr/bin:/bin:/usr/sbin', BILLINGTON_READY_TIMEOUT='5', TMPDIR=str(self.root))
         self.env.pop('BILLINGTON_SIMULATOR_ID', None)
         self.process = None
 
@@ -264,6 +268,7 @@ class StartupTests(StartupFixture):
         self.assertEqual(rc,1); self.assertIn('not healthy',out); self.assertEqual(self.stopped(),['owned-postgres'])
 
     def test_health_wait_is_bounded(self):
+        self.env['BILLINGTON_READY_TIMEOUT']='1'
         start=time.monotonic(); rc,out=self.run_cli(case='health-timeout')
         self.assertEqual(rc,1); self.assertIn('timed out',out); self.assertLess(time.monotonic()-start,7)
         self.assertEqual(self.stopped(),['owned-postgres'])
@@ -366,6 +371,7 @@ class StartupTests(StartupFixture):
         self.assertEqual(self.stopped(),['owned-bill-service','owned-postgres'])
 
     def test_simulator_wait_is_bounded(self):
+        self.env['BILLINGTON_READY_TIMEOUT']='1'
         start=time.monotonic(); rc,out=self.run_cli((),case='sim-timeout')
         self.assertEqual(rc,1,out); self.assertIn('simulator readiness timed out',out)
         self.assertLess(time.monotonic()-start,12)
@@ -385,6 +391,7 @@ class StartupTests(StartupFixture):
         for pid in map(int,(self.root/'descendants').read_text().split()): self.assertFalse(alive(pid))
 
     def test_web_readiness_timeout_is_bounded(self):
+        self.env['BILLINGTON_READY_TIMEOUT']='1'
         start=time.monotonic(); rc,out=self.run_cli(case='web-timeout')
         self.assertEqual(rc,1,out); self.assertIn('Next.js readiness timed out',out)
         self.assertLess(time.monotonic()-start,10)
