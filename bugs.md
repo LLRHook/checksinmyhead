@@ -422,3 +422,20 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Docs:** backend/README.md; docs/technical-overview.md; docs/reviews/2026-11-02-runtime-lock-images.md. Dated dependency evidence and baseline preserved. Health remains liveness; later migration owns stronger DB readiness. Exact identities, before/after bytes/packages, signature, scanner/revert/journey evidence and diagnostic corrections recorded.
 - **Log:**
   - 2026-11-02 Validation: RUNTIME_LOCK_APPROVAL.md deliverables 2-3 explicitly supersede the Debian12 hold using current official deprecation/support docs. Runtime digest and amd64/arm64 manifests reverified before build; Cosign3.1.4 keyless verification exit0 with exact official issuer/identity and transparency-log proof. No CGO, framework, provider, schema, auth, cloud or publication change. Own TLS fixture resources/certificates fully cleaned; shared PG17.11 fixture retained. Lead scope=affected clean=no. Raw .vv/local-gate/runtime-lock/ records retain initial diagnostic failures, control experiments and final passing journeys; package findings and preexisting BUG-1793644507 remain unwaived.
+
+### [BUG-1793714791] Clear unused advisory matches in the required Go module inventory
+- [ ] **Severity:** med
+- **Area:** backend, dependencies, security
+- **File(s):** backend/go.mod; backend/go.sum
+- **Observation:** At 95553f7 the required x/net v0.60.0 and x/crypto v0.57.0 match GO-2026-6860, GO-2026-6866 and GO-2026-5932. A fresh November 3 govulncheck JSON run confirms three module-only findings, zero imported-package or reachable-symbol findings. These are inventory findings, not proven application exploitability.
+- **Expected:** Resolve x/net v0.62.0 plus its minimum graph delta and approved x/crypto v0.58.1-0.20261009181718-2f1f834330b2 boundary (or a verified containing stable tag). No OpenPGP submodule/replacement or unrelated upgrade. All three module records clear; both production graphs remain OpenPGP-free; actual backend CI and isolated PostgreSQL race selection pass uncached without skipped tests.
+- **Req:** SECURITY_INVENTORY_APPROVAL.md Module decision; GO-2026-5932; GO-2026-6860; GO-2026-6866
+- **Depends on:** none; GO-2026-6809 toolchain repair remains BUG-1793644503
+- **Repro / Notes:** https://vuln.go.dev/ID/GO-2026-5932.json ; https://vuln.go.dev/ID/GO-2026-6860.json ; https://vuln.go.dev/ID/GO-2026-6866.json . Upstream crypto 2f1f834330b2 adds only openpgp/go.mod; this separates unsafe unused OpenPGP, not repaired cryptography. Raw .vv/local-gate/security-inventory/baseline-vuln.log. Fingerprint: required-go-modules-net-html-crypto-openpgp-20261103. No suppression or overall acceptance.
+- **Bump:** patch
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Pin x/net 0.62.0 and the explicitly approved x/crypto v0.58.1-0.20261009181718-2f1f834330b2 boundary; retain only necessary graph floors (sys/text/sync plus graph-only term/tools). Fresh govulncheck clears all three module-only records, imported0/reachable0. CGO1 default385/PG413 uncached leaf cases pass with fail0/skip0 (unique union481); preserve initial invalid-fixture run and scanner setup errors. No OpenPGP module/replacement, application/schema/framework change or global pass. Independent review pending; keep in-progress.
+- **Docs:** docs/reviews/2026-11-03-go-module-inventory.md; no living docs quote changed module versions. Historical reviews/baseline and CHANGELOG preserved.
+- **Log:**
+  - 2026-11-03 Validation: SECURITY_INVENTORY_APPROVAL.md authorizes the exact crypto pseudo-version exception. Current official proxy/tag/commit/manifests/signed sums and Go stable feed reverified before resolution. Raw .vv/local-gate/security-inventory/ preserves actual counts, seven necessary graph version changes, no module additions/removals, fixture correction and all unsuppressed scanner results. Scoped source result only; independent review/integrated acceptance pending.
