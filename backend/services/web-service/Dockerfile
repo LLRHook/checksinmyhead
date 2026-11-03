@@ -4,10 +4,10 @@ ENV GOTOOLCHAIN=local
 
 WORKDIR /app
 COPY . .
-RUN go build -o web-service ./cmd/web-service
+RUN CGO_ENABLED=0 go build -o web-service ./cmd/web-service
 
 
-FROM gcr.io/distroless/base-nossl-debian13:nonroot@sha256:e6b0f82595aa1edde72c8054de7a9dca30f0f8f54820c37a167c0ddfc21c5c67
+FROM gcr.io/distroless/static-debian13:nonroot@sha256:25ac8f0c3b2334a9eb05452266bd4697864a8c8ef0ef71e5e6480d7f92868329
 COPY --from=build /app/web-service /app/web-service
 WORKDIR /app
 COPY --from=build /app/internal/web/templates ./internal/web/templates

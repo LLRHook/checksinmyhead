@@ -51,9 +51,10 @@ Or use the root `./dev.sh` script to start the full stack (backend + web + mobil
 
 `go.mod` requires Go 1.27.3. Local commands may use `GOTOOLCHAIN=auto` to
 select it. Both service Dockerfiles pin the same official Go builder and supported
-`gcr.io/distroless/base-nossl-debian13:nonroot` runtime by multi-platform digest.
-The runtime retains libc for the existing CGO build, CA certificates and timezone
-data, and omits OpenSSL. Builders use
+`gcr.io/distroless/static-debian13:nonroot` runtime by multi-platform digest.
+Both production builds set `CGO_ENABLED=0`; the runtime retains CA certificates
+and timezone data without libc or OpenSSL. Test/tooling builds retain CGO for
+race detection and SQLite. Builders use
 `GOTOOLCHAIN=local` so a mismatched module requirement fails instead of downloading
 another compiler. Update the module and both builder pins together after checking
 current security releases and image identities.
@@ -90,8 +91,48 @@ three-second outer timeout, a ten-second start period and three retries. No
 helper runtime packages are required. `/health` checks the live database and required
 ledger prefix on each request, with a one-second deadline. Hosting health/readiness
 configuration and operator-injected commit values require separate verification.
-See the [runtime validation evidence](../docs/reviews/2026-11-02-runtime-lock-images.md)
-for image identities, signature checks and retained vulnerability findings.
+See the [static runtime evidence](../docs/reviews/2026-11-03-static-runtime.md)
+for current image identities, signature checks and findings; the
+[earlier CGO runtime record](../docs/reviews/2026-11-02-runtime-lock-images.md)
+remains historical evidence.
+
+### Static runtime verification
+
+CGO-disabled builds select Go's resolver and file-based user lookup instead of
+libc/NSS. Production imports use PostgreSQL/pgx and Go TLS; SQLite is test-only.
+The local harness below checks the actual service ELF/build information and
+package inventory, then runs both images with read-only roots, owned `/tmp`, fresh
+owned schemas and generated TLS/DNS fixtures. Its diagnostic executable is mounted
+for verification and is absent from the production images.
+
+After building both validation images above, set
+`BILLINGTON_RUNTIME_TEST_POSTGRES_IMAGE` to an approved **local immutable PostgreSQL
+fixture image ID**, then run from the repository root:
+
+```bash
+python3 scripts/verify_static_runtime.py \
+  --bill-image billington-bill:validation \
+  --web-image billington-web:validation \
+  --postgres-image "$BILLINGTON_RUNTIME_TEST_POSTGRES_IMAGE" \
+  --output ".vv/static-runtime-$(date +%s)"
+```
+
+Requires local Docker, Go, OpenSSL and Python 3; the harness adds no Python packages
+or Go modules. It creates only labelled ephemeral containers/networks and
+synthetic certificates, uses unique schemas (never public), removes its fixture
+resources, and retains local evidence. It never connects to an existing database.
+It verifies hosts/service/search/failed DNS lookup and bounded cancellation,
+strict database trust/hostname rejection, public CA trust, timezone, actual startup
+modes, one-query live readiness, API/authorized HTML, Docker health failure and
+recovery during a paused database. Public HTTPS uses a host-resolved `example.com`
+address injected into the fixture hosts file; the dedicated DNS fixture handles
+synthetic names only. Failed controls stay failures; no selected test skips.
+
+Verify the base's official keyless signature before building; the harness itself
+does not authenticate registry signatures or replace an unsuppressed image scan.
+Actual hosting resolver/NSS settings, mounted credentials, platform and deployment
+identity require separate evidence. Local success establishes no program-branch
+deployment or production compatibility with unknown hosting settings.
 
 ## PostgreSQL schema startup
 

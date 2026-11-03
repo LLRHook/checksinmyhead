@@ -144,6 +144,11 @@ Production footprint, backup restore, predeploy and old-writer drain need separa
 not an integrated pass. FEAT-1793644506's atomic-finalization/identity coverage and
 financial/replay rollout gates remain open.
 
+For runtime changes, run the [static image harness](backend/README.md#static-runtime-verification)
+against both immutable service images and an owned fixture image. Retain controls,
+raw results and cleanup; reverify signatures and scan exact saved artifacts without
+suppressions. This local gate is not wired into CI and proves no hosting settings.
+
 - [ ] Enumerate with each runner before execution (`go test ./... -list '.*'`,
       `npm exec -- vitest list`, runner output for Flutter/Ruby); record actual tests,
       skips and failures per layer. Do not import the earlier review's 202/52 counts.
