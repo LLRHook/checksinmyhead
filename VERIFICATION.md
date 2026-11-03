@@ -2,11 +2,10 @@
 
 Last verified: never — bootstrap only; no integrated V&V run has been recorded.
 
-Use Flutter/Provider/Drift, the Go/Gin API with PostgreSQL, and the Next.js viewer.
-Keep [architecture](docs/technical-overview.md), [API contracts](docs/backend-api.md),
-[privacy](docs/privacy.md) and [design](DESIGN_SYSTEM.md) as their authoritative references.
-Use the root [bugs](bugs.md)/[features](features.md) for live work and
-[CHANGELOG.md](CHANGELOG.md) for verified history. VERIFICATION.md budget: 20 KB.
+Stack: Flutter/Provider/Drift, Go/Gin/PostgreSQL, Next.js. Authoritative:
+[architecture](docs/technical-overview.md), [API](docs/backend-api.md),
+[privacy](docs/privacy.md), [design](DESIGN_SYSTEM.md), live [bugs](bugs.md)/[features](features.md),
+verified [history](CHANGELOG.md). File budget: 20 KiB.
 
 ## Execution rules
 
@@ -15,12 +14,10 @@ Use the root [bugs](bugs.md)/[features](features.md) for live work and
    Use `local-gate` with `scope=full` and `clean` for Stage 2 when executing the protocol.
 2. Keep logs, fixture credentials, backups and `.vv/last-run.md` under ignored `.vv/`.
    Keep this file procedural; overwrite baseline counts and Last verified only on green.
-3. Use synthetic data and a dedicated `billington-vv-*` Compose project. Preserve all
-   existing developer/production data and normal-shutdown volumes. Inventory and back up
-   the verification project's needed state before an explicitly authorized reset.
-4. Hard-block on failures in Stages 0, 1, 2 or 5; hard-block on migration failure or
-   critical/high performance breaches in Stage 4. File failures/gaps through
-   `python3 .cycle/trackers.py` and reuse an existing canonical ticket where appropriate.
+3. Use synthetic data in `billington-vv-*`. Preserve existing developer/production data
+   and shutdown volumes. Inventory/back up verification state before authorized reset.
+4. Block on Stage 0/1/2/5 failures, Stage 4 migration failure or critical/high performance
+   breaches. File gaps via `python3 .cycle/trackers.py`; reuse canonical tickets.
 5. Record any missing fixture/integration harness as BLOCKED. Follow
    FEAT-1793644506 (PostgreSQL tests) and FEAT-1793644507 (whole journeys) for missing
    automation; this bootstrap does not invent commands for them.
@@ -51,8 +48,9 @@ a successful probe for every row before proceeding.
       Inspect existing verification data against D1–D5 and back up needed verification
       state to `.vv/backups/`. Record incidental/unknown data before any reset.
 - [ ] Prepare Appendix A with local-only DB settings and confirm its project identity.
-      Reset only that project's verified synthetic state after authorization. Never use
-      `make down` at the baseline: BUG-1793644513 tracks its destructive `-v` behavior.
+      Reset only labelled synthetic state via `make -C backend reset-test
+      TEST_PROJECT="$VV_PROJECT" TEST_OWNER="$VV_OWNER"` after inventory/backup.
+      Ordinary `make -C backend down` preserves volumes; never use `down -v`.
 - [ ] Run `vv_compose up --build -d postgres bill-service`. Confirm PostgreSQL readiness
       with `vv_compose exec -T postgres pg_isready -U billington_vv -d billington_vv`.
       Run `curl --fail --silent http://localhost:8080/health`; require status OK and the
@@ -90,6 +88,7 @@ a successful probe for every row before proceeding.
 | `mobile` | `flutter analyze` | No issues |
 | `web-bill-viewer` | `npm run lint` | No issues |
 | `web-bill-viewer` | `npm audit --audit-level=moderate` | Exit 0, including all three current web alerts |
+| root | `/bin/bash -n dev.sh` | Bash syntax (also check maintained Bash) |
 | root | `ruby -c .github/scripts/asc_api.rb` | Syntax OK |
 | root | `ruby -c .github/scripts/asc_next_build.rb` | Syntax OK |
 | root | `ruby -c .github/scripts/asc_release.rb` | Syntax OK |
@@ -97,19 +96,19 @@ a successful probe for every row before proceeding.
 
 ## Stage 2 — builds and automated tests
 
-Use the detected CI Test Matrix below. Refresh commands from manifests/workflows after
-any tooling change. Require locked prerequisites (`npm ci`, `flutter pub get`, existing
-Go module download/toolchain) in a clean verification environment; inspect lockfile drift.
-Default Go includes SQL/startup/request-error secrecy and SQLite integration. PostgreSQL
-adds lifecycle, immutable adoption, catalog guard v2, history, locks and live readiness.
+Refresh this CI matrix after tooling changes. Require locked acquisition (`npm ci`,
+`flutter pub get --enforce-lockfile`, `pod install --deployment`, existing Go toolchain/modules)
+in a clean environment; inspect lock drift. Go covers SQL/startup/request-error secrecy
+and SQLite; PostgreSQL adds lifecycle, adoption, catalog guard v2, history/locks/readiness.
 
-| Layer / directory | Command (verbatim CI) | Baseline count |
+| Layer / directory | Command (CI where wired) | Baseline count |
 |---|---|---|
 | Go unit + SQLite integration / `backend` | `go test -race ./...` | Not measured in this bootstrap |
 | Go build / `backend` | `go build ./...` | Build, not a test count |
 | Flutter unit/widget + Drift / `mobile` | `flutter test` | Not measured in this bootstrap |
 | Web unit / `web-bill-viewer` | `npm test` | Not measured in this bootstrap |
 | Web production build / `web-bill-viewer` | `npm run build` | Build, not a test count |
+| Local workflow / root | `python3 scripts/test_local_workflow.py` | Stubbed CLI/ownership regressions; not integrated baseline |
 | Ruby release automation / root | `ruby .github/scripts/asc_release_test.rb` | Not yet an integrated baseline |
 | Live PostgreSQL authorization + migrations/readiness / `backend` | `go test -race -tags=integration ./internal/bill ./internal/tab ./pkg/database ./migrations ./internal/startup ./internal/readiness ./internal/testpostgres` | Not yet an integrated baseline; test-only DSN required |
 | App/browser E2E, a11y, realistic load | No wired automated runner: FEAT-1793644507, FEAT-1793644512, FEAT-1793644502 | Manual stages required; automation gap remains |
@@ -142,19 +141,22 @@ Production footprint, backup restore, predeploy and old-writer drain need separa
 [backend operations](backend/README.md#postgresql-schema-startup). This is local,
 not an integrated pass. Lifecycle acceptance, identity and rollout gates remain open.
 
+For local workflow changes, also run `python3 scripts/verify_local_lifecycle.py
+--postgres-image sha256:<local-image-id> --output .vv/local-lifecycle-<unique-run>`.
+It creates only labelled fixture resources, proves real down/restart preservation and
+guarded reset, and retains cleanup. No real simulator/app mutation in stub tests.
+
 For runtime changes, run the [static image harness](backend/README.md#static-runtime-verification)
 against both immutable service images and an owned fixture image. Retain controls,
 raw results and cleanup; reverify signatures and scan exact saved artifacts without
 suppressions. This local gate is not wired into CI and proves no hosting settings.
 
-- [ ] Enumerate with each runner before execution (`go test ./... -list '.*'`,
-      `npm exec -- vitest list`, runner output for Flutter/Ruby); record actual tests,
-      skips and failures per layer. Do not import the earlier review's 202/52 counts.
+- [ ] Enumerate (`go test ./... -list '.*'`, `npm exec -- vitest list`, Flutter/Ruby
+      runner output); record actual tests/skips/failures, never historical 202/52 counts.
 - [ ] Run the full local gate, collect real execution counts and prove every batch
       ticket with a failing-before/passing-after regression where applicable.
-- [ ] Rerun failures once to classify flakiness; repeat passing checks only after new
-      changes or for a specific unresolved concern. Record coverage if measured; CI has
-      no configured changed-line coverage threshold. Never invent a percentage.
+- [ ] Rerun failures once for flakiness; repeat passes only for changes/unresolved concerns.
+      Record measured coverage; CI has no changed-line threshold. Never invent one.
 
 ## Stage 3 — integrated functional walkthrough
 
@@ -235,16 +237,14 @@ suppressions. This local gate is not wired into CI and proves no hosting setting
 
 ## Appendix A — isolated local stack recipe
 
-Run from the repository root in Bash. Create local scratch files only when executing
-the protocol; this bootstrap has not run these commands. Block if existing services own
-the ports or the selected project contains unknown data. The repository has no separate
-production Compose profile; use its production API Dockerfile plus a built Next viewer.
-Retain the legacy Go viewer only for an explicitly scoped compatibility check.
+Run in Bash from root; block on port conflicts/unknown data. Use the production API
+Dockerfile/built Next; `legacy-web` is explicit compatibility coverage. Back up before reset.
 
 ```bash
 mkdir -p .vv
 export VV_SHA="$(git rev-parse HEAD)"
 export VV_PROJECT="billington-vv-${VV_SHA:0:12}"
+export VV_OWNER="$(python3 -c 'import uuid; print(uuid.uuid4())')"
 cat > .vv/stack.env <<'ENV'
 DB_HOST=postgres
 DB_PORT=5432
@@ -254,10 +254,22 @@ DB_PASSWORD=vv_synthetic_fixture
 DB_SSLMODE=disable
 ENV
 cat > .vv/compose.override.yml <<'YAML'
+x-test-labels: &test-labels
+  io.billington.test-owner: ${VV_OWNER:?set VV_OWNER}
+  io.billington.test-data: synthetic
 services:
+  postgres:
+    labels: *test-labels
   bill-service:
+    labels: *test-labels
     environment:
       RENDER_GIT_COMMIT: ${VV_SHA:?set VV_SHA}
+volumes:
+  postgres_data:
+    labels: *test-labels
+networks:
+  default:
+    labels: *test-labels
 YAML
 vv_compose() {
   case "${VV_PROJECT:?set VV_PROJECT}" in
@@ -270,20 +282,19 @@ vv_compose() {
     --env-file .vv/stack.env -f backend/docker-compose.yml \
     -f .vv/compose.override.yml "$@"
 }
+vv_compose config --quiet
 vv_compose ps
 ```
 
-Keep the explicit DB assignments in `vv_compose`; exported host variables must never
-redirect this recipe to an external database. Provide provider keys through the approved
-secure environment only for provider checks;
-keep them out of logs. Verify rendered configuration without printing secret values.
-Use `vv_compose logs --no-color bill-service` only with synthetic data and sanitized logs.
-For a database count/probe, use `vv_compose exec -T postgres psql -U billington_vv -d
-billington_vv` and read-only queries. Back up only the isolated verification DB with
-`vv_compose exec -T postgres pg_dump -U billington_vv billington_vv` into ignored backups.
+Keep explicit DB assignments: host exports must not redirect this to an external DB.
+Provider checks use approved secure env only. Never print resolved config/secrets.
+Read synthetic logs with `vv_compose logs --no-color bill-service`; query via
+`vv_compose exec -T postgres psql -U billington_vv -d billington_vv`. Back up the
+isolated DB with `vv_compose exec -T postgres pg_dump -U billington_vv billington_vv`
+into ignored `.vv/backups/`.
 
-Use `vv_compose down` for normal shutdown (preserves the volume). After inventory,
-backup and explicit reset authorization, verify the `billington-vv-*` project identity
-and use `vv_compose down --volumes --remove-orphans` solely for its synthetic reset.
-Keep existing developer Compose projects/volumes untouched. Restore D1–D5 through the
-supported API/UI after rebuilding; block on absent idempotent fixture/migration support.
+Use `vv_compose down` normally. After inventory/backup and explicit reset authorization,
+use `make -C backend reset-test TEST_PROJECT="$VV_PROJECT" TEST_OWNER="$VV_OWNER"`.
+All project resources/mounts must pass [ownership checks](backend/README.md#local-test-data-reset)
+before deletion; unlabelled pre-existing data is rejected. Preserve normal projects.
+Restore/probe D1–D5 after rebuilding; missing fixture support remains BLOCKED.

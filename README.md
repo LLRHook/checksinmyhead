@@ -38,28 +38,49 @@ python .cycle\trackers.py install
 ```
 <!-- cycle:tracker-setup end -->
 
-```bash
-# One command — starts backend, web viewer, and iOS simulator
-./dev.sh
-```
-
-Or start each service manually:
+Use Node **24**, npm **11**, Docker with `docker compose`, Python 3, curl and
+lsof. Full iOS development also needs Flutter **3.41.5**, CocoaPods **1.16.2**,
+Xcode and an available iOS simulator. Pins come from the web `.node-version`, CI
+Flutter pin and committed `Podfile.lock`.
 
 ```bash
-# Terminal 1: Backend
-cd backend
-cp .env.example .env
-docker-compose up --build
-
-# Terminal 2: Web viewer
-cd web-bill-viewer
-echo "NEXT_PUBLIC_API_URL=http://localhost:8080" > .env.local
-npm install && npm run dev
-
-# Terminal 3: Flutter
-cd mobile
-flutter run -d simulator
+./dev.sh setup             # Explicit locked acquisition; preserves existing env files
+./dev.sh                   # PostgreSQL + API + Next.js + Flutter
+# Backend/web only (no Flutter, CocoaPods or simulator required):
+./dev.sh setup --no-mobile
+./dev.sh --no-mobile
 ```
+
+Setup uses `npm ci`, `flutter pub get --enforce-lockfile` and
+`pod install --deployment`. It creates only missing local environment examples.
+Normal startup installs nothing; missing/stale prerequisites point back to setup.
+For iOS, use the sole booted available simulator, or select one explicitly:
+`BILLINGTON_SIMULATOR_ID=<UDID> ./dev.sh`. Ambiguous selection fails before services
+start; no simulator is erased or shut down. Flutter keeps terminal hot reload/quit.
+
+Readiness waits are bounded (90 seconds per stage; `BILLINGTON_READY_TIMEOUT=1..180`
+can adjust this). Occupied ports are refused. Ctrl-C stops only containers/process
+groups started by this invocation; pre-existing running backend services keep running.
+Stopped containers are reused; rebuild intentionally with `make -C backend up` when
+source/config changes. Private web logs remain at the unique path printed by startup;
+inspect/remove that run directory when finished. Acquisition errors retain their
+original diagnostics and status.
+
+For manual operation after setup:
+
+```bash
+make -C backend up        # PostgreSQL/API, foreground
+# In another terminal:
+(cd web-bill-viewer && npm run dev)  # http://localhost:3100
+# Normal shutdown, preserving PostgreSQL data:
+make -C backend down
+```
+
+The retained Go HTML viewer runs only with `docker compose --profile legacy-web up
+--build` from `backend`, on its original port 8081. Its source, templates, image and
+tests remain supported for compatibility; external consumers have not been ruled out.
+See [local reset and verification](backend/README.md#local-test-data-reset) for the
+separate guarded destructive operation. Never use a volume reset for ordinary shutdown.
 
 Backend startup applies/verifies the immutable PostgreSQL migration registry before
 serving. The existing binary also supports `--migrate-only` (apply and exit) and

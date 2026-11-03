@@ -12,19 +12,20 @@ successful local checks do not establish the deployed Vercel revision.
 
 ## Getting Started
 
-First, run the development server:
+From the repository root, prepare explicitly, then start the backend and viewer:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+./dev.sh setup --no-mobile  # npm ci; create only missing local env examples
+./dev.sh --no-mobile        # PostgreSQL/API + Next.js, no dependency installation
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+For manual startup after setup, run `npm run dev` here and open
+[http://localhost:3100](http://localhost:3100). The package script fixes that port.
+Keep `NEXT_PUBLIC_API_URL=http://localhost:8080` in `.env.local` for the local API;
+existing files are preserved. The root script refuses occupied ports, waits for HTTP
+readiness, retains private per-run logs, and stops its exact npm/Next process group on
+exit. See the [root workflow](../README.md#quickstart). The legacy Go renderer on
+8081 is retained under the explicit `legacy-web` Compose profile.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

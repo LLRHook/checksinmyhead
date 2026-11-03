@@ -1,16 +1,19 @@
-.PHONY: setup up down logs clean test
+.PHONY: up down logs test dev reset-test
 
-up: ## Start services
-	docker-compose up --build
+up: ## Start PostgreSQL and API (legacy viewer requires its explicit profile)
+	docker compose up --build
 
-down: ## Stop services
-	docker-compose down -v
+down: ## Stop services; preserve all data volumes, including legacy profile data
+	docker compose --profile legacy-web down
 
 logs: ## View logs
-	docker-compose logs -f
+	docker compose logs -f
 
 test: ## Run Go unit tests
 	go test -v -race ./...
 
-dev: ## Start full stack (use root dev.sh instead)
-	@echo "Run ./dev.sh from the project root to start all services."
+dev: ## Start full stack from root
+	../dev.sh
+
+reset-test: ## Destroy only explicitly selected, ownership-labelled synthetic test data
+	python3 ../scripts/reset_local_test.py --project "$(TEST_PROJECT)" --owner "$(TEST_OWNER)"

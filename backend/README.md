@@ -26,26 +26,70 @@ Each module follows the **Handler → Service → Repository** pattern. Services
 ## Quick Start
 
 ```bash
-# 1. Set up environment
-cp .env.example .env
-
-# 2. Start PostgreSQL + API server
-docker-compose up --build
-
-# 3. Verify
-curl localhost:8080/health
+# From the repository root, explicitly prepare backend/web dependencies and env examples:
+./dev.sh setup --no-mobile
+make -C backend up
+curl --fail http://localhost:8080/health
 ```
 
 ## Development Commands
 
 ```bash
-make up       # Start services (docker-compose up --build)
-make down     # Stop services and remove volumes
+# From backend/ (Docker Compose subcommand required):
+make up       # docker compose up --build: PostgreSQL + API
+make down     # docker compose --profile legacy-web down: preserve data volumes
 make logs     # Tail service logs
-make test     # Run default Go suite (go test -v -race ./...)
+make test     # Default Go suite (go test -v -race ./...)
+make dev      # Root dev.sh: full stack after explicit setup
+# Retained Go HTML renderer, original 8081 URLs/templates:
+docker compose --profile legacy-web up --build
 ```
 
-Or use the root `./dev.sh` script to start the full stack (backend + web + mobile).
+Default Compose starts only PostgreSQL and the API. The existing default project
+identity and `postgres_data` volume are unchanged. The Next.js viewer is the ordinary
+local web client on 3100; legacy HTML source/build/test coverage remains in place.
+This profile change establishes no cloud retirement or external-link usage evidence.
+
+The root [startup instructions](../README.md#quickstart) cover locked setup, toolchain
+checks, simulator selection and exact ownership cleanup. Existing running services are
+preserved; stopped containers are reused, so use `make up` for an intentional rebuild.
+No normal command removes PostgreSQL data.
+
+### Local test data reset
+
+`make down` and dev-script cleanup preserve volumes. A destructive test reset requires
+an explicitly selected `billington-test-*` or `billington-vv-*` project and a 16–80
+character owner token. Before **any** deletion, every project container, network and
+volume must have matching `com.docker.compose.project`, `io.billington.test-owner`
+and `io.billington.test-data=synthetic` labels. Container mounts must use only those
+owned volumes (or tmpfs); bind/foreign mounts reject the reset. At least one owned
+volume is required. There is no bypass/force option for unconfirmed data.
+
+```bash
+make -C backend reset-test TEST_PROJECT=billington-test-<unique-suffix> TEST_OWNER=<owner-token>
+```
+
+Run that from the root only after inventorying/backing up the selected synthetic state.
+Provision labels when creating the isolated fixture, as in [Appendix A](../VERIFICATION.md#appendix-a--isolated-local-stack-recipe).
+The helper removes exact owned container/network IDs and rechecks volume metadata before
+removal; data mounted by other containers is rejected by Docker. It never evaluates
+local dotenv or selects the ordinary backend project. A failed partial reset remains
+an error requiring inspection; it is not an invitation to use a broader reset.
+
+Regression commands (root):
+
+```bash
+/bin/bash -n dev.sh
+python3 scripts/test_local_workflow.py
+# Requires a local immutable PostgreSQL image ID; creates/removes only owned fixtures:
+python3 scripts/verify_local_lifecycle.py --postgres-image sha256:<local-image-id> --output .vv/local-lifecycle-<unique-run>
+```
+
+The stub suite never runs real acquisition, Docker, Flutter or simulator operations.
+The separate lifecycle harness executes the actual Makefile command through a fixture
+CLI adapter, proves a real sentinel survives down/restart, then tests guarded reset
+rejection and authorized deletion. It validates Compose quietly and lists only service/
+volume names. See [dated evidence](../docs/reviews/2026-11-03-local-workflow.md).
 
 ### Build toolchain
 

@@ -33,7 +33,8 @@ services:
       EXCHANGE_RATE_API_KEY: ${EXCHANGE_RATE_API_KEY}
 
   web-service:
-    build: 
+    profiles: [legacy-web]
+    build:
       context: .
       dockerfile: services/web-service/Dockerfile
     ports:

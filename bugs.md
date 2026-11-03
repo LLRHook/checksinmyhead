@@ -286,31 +286,37 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - [ ] **Severity:** med
 - **Area:** tooling
 - **File(s):** backend/Makefile; dev.sh; backend/docker-compose.yml
-- **Observation:** Makefile down is labeled Stop services but executes docker-compose down -v, deleting postgres_data.
+- **Observation:** Pinned13be27b exact make down invoked down -v on an owned real PostgreSQL fixture; its volume and sentinel were lost. Source fix implemented; independent driver acceptance pending.
 - **Expected:**
   - Ordinary stop/down preserves existing volume and survives restart with a synthetic sentinel.
   - Destructive reset is a separate explicit operation restricted to confirmed isolated test data.
   - Documented stop/start commands agree with scripts; no existing developer data is reset.
 - **Req:** SR local database operations; docs/reviews/2026-11-02-baseline.md
 - **Depends on:** none
-- **Repro / Notes:** Read Makefile down vs dev.sh cleanup. Verify lifecycle using a separately named Compose project, never the current developer volume.
+- **Repro / Notes:** Retained executed before-proof and fixed sentinel/restart/reset journey: docs/reviews/2026-11-03-local-workflow.md. Normal project and wrong/unconfirmed ownership reject before deletion; shared driver PG/normal volumes preserved.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Ordinary Compose down preserves volumes and project identity. Separate reset-test validates explicit isolated project plus all resource/data ownership labels and mounts before deleting exact owned resources. Real PG lifecycle passes; remains in-progress for independent acceptance.
+- **Docs:** README.md; backend/README.md; mobile/README.md; web-bill-viewer/README.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-03-local-workflow.md
 
 ### [BUG-1793644514] Make local dependency startup reproducible
 - [ ] **Severity:** med
 - **Area:** tooling
-- **File(s):** dev.sh; README.md; web-bill-viewer/package-lock.json
-- **Observation:** dev.sh runs npm install --silent with stderr discarded on every startup, hiding errors and mutating resolution.
+- **File(s):** dev.sh; backend/Makefile; scripts/{reset_local_test,test_local_workflow,verify_local_lifecycle}.py; local workflow docs
+- **Observation:** Exact13be27b stub runs executed shutdown on missing Flutter before stack startup and discarded npm failure detail while retaining exit42. Source fix implemented; independent acceptance pending.
 - **Expected:**
   - Use locked npm ci in explicit setup; normal startup avoids unnecessary installs and exposes failures.
   - Prerequisite/runtime errors identify the failed stage; docs and CI use compatible package/toolchain commands.
   - Shell/static checks plus isolated success/failure startup smoke prove behavior without touching existing DB.
 - **Req:** SR local startup; docs/reviews/2026-11-02-baseline.md
 - **Depends on:** none
-- **Repro / Notes:** Read dev.sh npm install and pod install stderr suppression. No new package is necessary.
+- **Repro / Notes:** Before records preserved; lasting stubbed setup/startup/health/signal/descendant/ownership/status tests and isolated real lifecycle: docs/reviews/2026-11-03-local-workflow.md. No real simulator/app mutation or secret-env reads.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Explicit pinned setup uses npm ci, enforced Flutter lock and deployment-only pods; startup installs nothing. Bounded readiness, occupied-port refusal, explicit simulator selection, private logs, exact container/group cleanup and original status. Driver independent acceptance pending.
+- **Docs:** README.md; backend/README.md; mobile/README.md; web-bill-viewer/README.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-03-local-workflow.md
 
 ### [BUG-1793644515] Separate frozen quotes from display conversion contracts
 - [ ] **Severity:** med

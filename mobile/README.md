@@ -103,9 +103,16 @@ This guide will help you set up Flutter for iOS development on macOS and get our
 3. **Set up iOS project:**
    ```bash
    cd ios
-   pod install
+   pod install --deployment
    cd ..
    ```
+
+The root `./dev.sh setup` performs all three locked acquisitions explicitly using
+Flutter 3.41.5 and CocoaPods 1.16.2 (the committed Podfile.lock version). It preserves
+existing environment files. Ordinary `./dev.sh` uses `--no-pub` and guards against
+implicit CocoaPods acquisition; rerun setup if Flutter detects changed native state.
+It chooses the sole booted iOS simulator or `BILLINGTON_SIMULATOR_ID`, reports ambiguity,
+and never erases/shuts down a device. Use `./dev.sh --no-mobile` for backend/web only.
 
 ## Running the Application
 
@@ -126,18 +133,17 @@ This guide will help you set up Flutter for iOS development on macOS and get our
 
 3. **Run the application from the command line:**
    ```bash
-   # For iPhone simulator
-   flutter run -d simulator
-   
-   # Or if you have configured a specific device in Xcode
-   flutter run
+   # From the repository root after locked ./dev.sh setup:
+   BILLINGTON_SIMULATOR_ID=<available-iOS-UDID> ./dev.sh
+   # Or from mobile/ with an explicitly selected, already prepared target:
+   flutter run --no-pub -d <device-id>
    ```
 
 ## Troubleshooting
 
 - If you encounter signing issues, ensure you've properly configured the signing settings in Xcode
 - Run `flutter doctor -v` to diagnose any setup issues
-- For CocoaPods issues, try running `pod repo update` in the `ios` directory
+- For missing/stale CocoaPods state, use CocoaPods 1.16.2 and rerun root `./dev.sh setup`; it uses `pod install --deployment` and reports lock mismatches
 
 ## Updating Flutter
 

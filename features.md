@@ -98,6 +98,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Out of scope:** Unrelated redesign, new framework, live destructive operations, unapproved publication.
 - **Bump:** minor
 - **Status:** open
+- **Implementation:** Local slice only: default Compose now selects PostgreSQL/API; retained Go HTML service requires legacy-web profile on original8081 URLs. Source/templates/Dockerfile and existing test/build coverage remain. External consumers/hosting retirement unverified; feature stays open.
+- **Docs:** README.md; backend/README.md; web-bill-viewer/README.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-03-local-workflow.md
 
 ### [FEAT-1793644505] Define ordered PostgreSQL migration readiness
 - [ ] **Priority:** high

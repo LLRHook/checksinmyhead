@@ -39,6 +39,12 @@ HTTP health endpoint before database initialization. The default server commands
 and ports are unchanged; see [container liveness](../backend/README.md#container-liveness)
 and the [local runtime harness](../backend/README.md#static-runtime-verification).
 
+Local Compose defaults to PostgreSQL and the API, keeping its existing project and
+volume identity. Next.js is the ordinary local viewer; the retained Go HTML service
+requires the explicit `legacy-web` profile on its unchanged 8081 URLs. Source,
+templates, Dockerfile and test coverage remain; external consumers/hosting retirement
+are unverified. See [local workflow](../README.md#quickstart).
+
 ### Request Flow
 
 1. Client sends HTTP request with access token (`?t=token`)
