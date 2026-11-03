@@ -59,7 +59,12 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Trace main.go:31 to GetUSDExchangeRate nil provider; the review temporary composition repro returned 503 for EUR. Do not require live provider access to prove wiring.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Provider phase ee125d1 requires one pair client at production construction; EUR/PEN and twelve-currency HTTP controls, native USD, failures and PG persistence pass. Independent driver acceptance remains pending; no rollout claim.
+- **Docs:** backend/README.md; docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-03-currency-provider-phase1.md
+- **Log:**
+  - 2026-11-03 Verification: Actual-construction before: EUR503/no write; USD and injected EUR201 controls. After: Go511/PG586 passing leaves, overlap360/union737, zero skips/missing roots; affected gate retains one CLI timing flake. See phase evidence.
 
 ### [BUG-1793644500] Persist one currency-correct bill through save retries
 - [ ] **Severity:** high
@@ -332,10 +337,15 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - Reuse identical service/cache instances; retain distinct adapters where contracts differ.
   - Tests cover supported non-USD, same currency, ambiguous/PEN policy, outage/cache and historical immutability.
 - **Req:** SR currency contracts; TR financial correctness; docs/reviews/2026-11-02-baseline.md
-- **Depends on:** BUG-1793644499
+- **Depends on:** BUG-1793644499; BUG-1793644500; FEAT-1793644505 (ordered display metadata0002)
 - **Repro / Notes:** Read exchange.LatestUSD vs currency.GetRate, supportedCurrencyCodes and CreateBill metadata. PEN behavior needs explicit reconciliation; do not silently expand currencies or replace providers.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Phase1 ee125d1: approved twelve-code receipt policy, independent ZAR display, one bounded Frankfurter pair adapter, no backend TTL maps/key dependency. Frozen source/date/zero stay immutable. This does not finish mobile save, display metadata or precision.
+- **Docs:** backend/README.md; docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-03-currency-provider-phase1.md
+- **Log:**
+  - 2026-11-03 Scope: Approved one-adapter/no-TTL decision supersedes old dual-provider/cache proposal. Keep open: display provenance0002; mobile rate decoder/quote state/save/replay/Keychain; required versioned JPY step. Global security/integrated acceptance RED.
 
 ### [BUG-1793644516] Correct App Store branding and unsupported feature copy
 - [ ] **Severity:** med
