@@ -100,10 +100,8 @@ a successful probe for every row before proceeding.
 Use the detected CI Test Matrix below. Refresh commands from manifests/workflows after
 any tooling change. Require locked prerequisites (`npm ci`, `flutter pub get`, existing
 Go module download/toolchain) in a clean verification environment; inspect lockfile drift.
-Default Go covers SQL/startup/request-error confidentiality and SQLite integration.
-PostgreSQL adds authorization, attachment, immutable adoption/catalog enforcement,
-history, locks, rollback, interruption and live readiness. Catalog guard v2 preserves
-v1/history while rejecting related inheritance and ineffective FK enforcement.
+Default Go includes SQL/startup/request-error secrecy and SQLite integration. PostgreSQL
+adds lifecycle, immutable adoption, catalog guard v2, history, locks and live readiness.
 
 | Layer / directory | Command (verbatim CI) | Baseline count |
 |---|---|---|
@@ -126,12 +124,15 @@ schema and drops only that schema with bounded cleanup. It never initializes pub
 Current-schema authorization fixtures execute the actual runner; legacy adoption uses
 independently pinned frozen SQL, never current models. No selected test skips.
 
-The row retains attachment/membership/claim/money rollback tests and adds fresh/legacy/
-no-op preservation (IDs, JSONB, tokens, quotes, display, payer anomalies, sequence state),
-catalog/checksum/history/epoch and additive-prefix checks, observed schema-scoped
-lock waits, DDL/DML/ledger/commit rollback, interruption and retry once. Binary/health
-tests enforce 5s lock, 60s total and 1s health limits, and caller deadlines.
-Compare raw persisted values for D5; ORM normalization is not the preservation oracle.
+The row retains migration preservation/catalog/history/locks/rollback, startup and health.
+Lifecycle coverage adds concurrent/lost-response/paid finalize retries, insert/update/
+deferred-commit rollback, sibling writers in both arrival orders and rollback, current
+authority, exact paid share IDs, paid economics, claim priority and legacy containment.
+HTTP/mobile fixtures cover full/partial/zero/discount/custom-tip/history conservation.
+Three runs of 100 samples measure query/latency targets at 10 bills/8 people,
+100 bills/10,000 shares, paid/attachment and 500 items/5,000 assignments. Report misses
+and transaction control separately. Compare raw IDs/children/money/quotes/flags/times;
+use PG lock waits/channels. See [evidence](docs/reviews/2026-11-03-atomic-lifecycle.md).
 
 Default applies/verifies then serves; `--migrate-only` applies/exits;
 `--schema-mode=verify` checks without applying then serves. Health is one live ledger
@@ -139,8 +140,7 @@ query; rerun startup verify after out-of-band DDL. No payer backfill runs. Use o
 synthetic schemas/isolated overlays; retain additive schema/ledger on rollback.
 Production footprint, backup restore, predeploy and old-writer drain need separate proof:
 [backend operations](backend/README.md#postgresql-schema-startup). This is local,
-not an integrated pass. FEAT-1793644506's atomic-finalization/identity coverage and
-financial/replay rollout gates remain open.
+not an integrated pass. Lifecycle acceptance, identity and rollout gates remain open.
 
 For runtime changes, run the [static image harness](backend/README.md#static-runtime-verification)
 against both immutable service images and an owned fixture image. Retain controls,

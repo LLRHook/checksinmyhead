@@ -5,12 +5,14 @@ import (
 	"backend/pkg/config"
 	"backend/pkg/database"
 	"backend/pkg/models"
+	"backend/pkg/mutation"
 	"backend/pkg/safehttp"
 	"backend/pkg/security"
 	"crypto/subtle"
 	"errors"
 	"fmt"
 	"math"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -165,15 +167,6 @@ func (h *BillHandler) getBillAndValidate(c *gin.Context) *models.Bill {
 	return bill
 }
 
-func requireBillToken(c *gin.Context, bill *models.Bill) bool {
-	token := safehttp.AccessToken(c)
-	if token != "" && subtle.ConstantTimeCompare([]byte(token), []byte(bill.AccessToken)) == 1 {
-		return true
-	}
-	c.JSON(403, gin.H{"error": "bill token required for this action"})
-	return false
-}
-
 func (h *BillHandler) GetBill(c *gin.Context) {
 	bill := h.getBillAndValidate(c)
 	if bill == nil {
@@ -185,15 +178,10 @@ func (h *BillHandler) GetBill(c *gin.Context) {
 }
 
 func (h *BillHandler) UpdateLazyItemAssignments(c *gin.Context) {
-	bill := h.getBillAndValidate(c)
-	if bill == nil {
-		return
-	}
-	if !requireBillToken(c, bill) {
-		return
-	}
-	if !bill.LazyMode || bill.TabID != nil {
-		c.JSON(400, gin.H{"error": "item claiming is only available on standalone lazy bills"})
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 4<<20)
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil || id == 0 {
+		c.JSON(400, gin.H{"error": "invalid bill id"})
 		return
 	}
 	itemID, err := strconv.ParseUint(c.Param("itemId"), 10, 32)
@@ -245,7 +233,7 @@ func (h *BillHandler) UpdateLazyItemAssignments(c *gin.Context) {
 		}
 		expectedUpdatedAt = &parsed
 	}
-	if err := h.service.UpdateItemAssignments(bill.ID, uint(itemID), assignments, expectedUpdatedAt); err != nil {
+	if err := h.service.UpdateItemAssignmentsBatch(c.Request.Context(), ClaimCommand{Access: BillAccess{BillID: uint(id), BillToken: safehttp.AccessToken(c)}, Updates: []ItemAssignmentsUpdate{{ItemID: uint(itemID), Assignments: assignments, ExpectedUpdatedAt: expectedUpdatedAt}}}); err != nil {
 		switch {
 		case errors.Is(err, ErrAssignmentConflict):
 			c.JSON(409, gin.H{"error": "item changed; refresh and try again"})
@@ -254,8 +242,7 @@ func (h *BillHandler) UpdateLazyItemAssignments(c *gin.Context) {
 		case errors.Is(err, gorm.ErrRecordNotFound):
 			c.JSON(404, gin.H{"error": "bill item not found"})
 		default:
-			database.LogRequestError(err)
-			c.JSON(500, gin.H{"error": "an internal error occurred"})
+			mutation.WriteError(c, err)
 		}
 		return
 	}
@@ -263,18 +250,12 @@ func (h *BillHandler) UpdateLazyItemAssignments(c *gin.Context) {
 }
 
 func (h *BillHandler) UpdateLazyItemAssignmentsBatch(c *gin.Context) {
-	bill := h.getBillAndValidate(c)
-	if bill == nil {
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 4<<20)
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil || id == 0 {
+		c.JSON(400, gin.H{"error": "invalid bill id"})
 		return
 	}
-	if !requireBillToken(c, bill) {
-		return
-	}
-	if !bill.LazyMode || bill.TabID != nil {
-		c.JSON(400, gin.H{"error": "item claiming is only available on standalone lazy bills"})
-		return
-	}
-
 	var body struct {
 		Updates []struct {
 			ItemID            uint    `json:"item_id"`
@@ -344,7 +325,7 @@ func (h *BillHandler) UpdateLazyItemAssignmentsBatch(c *gin.Context) {
 		})
 	}
 
-	if err := h.service.UpdateItemAssignmentsBatch(bill.ID, updates); err != nil {
+	if err := h.service.UpdateItemAssignmentsBatch(c.Request.Context(), ClaimCommand{Access: BillAccess{BillID: uint(id), BillToken: safehttp.AccessToken(c)}, Updates: updates}); err != nil {
 		switch {
 		case errors.Is(err, ErrAssignmentConflict):
 			c.JSON(409, gin.H{"error": "item changed; refresh and try again"})
@@ -353,13 +334,12 @@ func (h *BillHandler) UpdateLazyItemAssignmentsBatch(c *gin.Context) {
 		case errors.Is(err, gorm.ErrRecordNotFound):
 			c.JSON(404, gin.H{"error": "bill item not found"})
 		default:
-			database.LogRequestError(err)
-			c.JSON(500, gin.H{"error": "an internal error occurred"})
+			mutation.WriteError(c, err)
 		}
 		return
 	}
 
-	updatedBill, err := h.service.GetBill(bill.ID)
+	updatedBill, err := h.service.GetBill(uint(id))
 	if err != nil {
 		database.LogRequestError(err)
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
@@ -370,30 +350,15 @@ func (h *BillHandler) UpdateLazyItemAssignmentsBatch(c *gin.Context) {
 }
 
 func (h *BillHandler) UpdatePersonSharePaid(c *gin.Context) {
-	bill := h.getBillAndValidate(c)
-	if bill == nil {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil || id == 0 {
+		c.JSON(400, gin.H{"error": "invalid bill id"})
 		return
 	}
-	if !requireBillToken(c, bill) {
-		return
-	}
-
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 4<<10)
 	shareID, err := strconv.ParseUint(c.Param("shareId"), 10, 32)
 	if err != nil {
 		c.JSON(400, gin.H{"error": "invalid share id"})
-		return
-	}
-
-	// Verify the share belongs to this bill
-	var personName string
-	for _, s := range bill.PersonShares {
-		if s.ID == uint(shareID) {
-			personName = s.PersonName
-			break
-		}
-	}
-	if personName == "" {
-		c.JSON(404, gin.H{"error": "share not found on this bill"})
 		return
 	}
 
@@ -405,13 +370,12 @@ func (h *BillHandler) UpdatePersonSharePaid(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.UpdatePersonSharePaid(bill.ID, personName, *body.Paid); err != nil {
+	if err := h.service.UpdatePersonSharePaid(c.Request.Context(), BillSharePaidCommand{Access: BillAccess{BillID: uint(id), BillToken: safehttp.AccessToken(c)}, ShareID: uint(shareID), Paid: *body.Paid}); err != nil {
 		if errors.Is(err, ErrPersonShareNotFound) {
 			c.JSON(404, gin.H{"error": "share not found on this bill"})
 			return
 		}
-		database.LogRequestError(err)
-		c.JSON(500, gin.H{"error": "an internal error occurred"})
+		mutation.WriteError(c, err)
 		return
 	}
 

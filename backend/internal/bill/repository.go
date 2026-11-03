@@ -2,164 +2,149 @@ package bill
 
 import (
 	"backend/pkg/models"
+	"backend/pkg/mutation"
+	"context"
+	"database/sql"
 	"errors"
-	"math"
-	"sort"
-	"strings"
-	"time"
-
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"math"
+	"strings"
+	"time"
 )
 
-type BillRepository interface {
-	Create(bill *models.Bill) error
-	GetById(id uint) (bill *models.Bill, err error)
-	UpdatePersonSharePaid(billID uint, personName string, paid bool) error
-	UpdateItemAssignments(billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error
-	UpdateItemAssignmentsBatch(billID uint, updates []ItemAssignmentsUpdate) error
+type BillAccess struct {
+	BillID    uint
+	BillToken string
 }
-
+type BillSharePaidCommand struct {
+	Access  BillAccess
+	ShareID uint
+	Paid    bool
+}
+type ClaimCommand struct {
+	Access  BillAccess
+	Updates []ItemAssignmentsUpdate
+}
+type BillRepository interface {
+	Create(context.Context, *models.Bill) error
+	GetById(uint) (*models.Bill, error)
+	UpdatePersonSharePaid(context.Context, BillSharePaidCommand) error
+	UpdateItemAssignmentsBatch(context.Context, ClaimCommand) error
+}
 type ItemAssignmentsUpdate struct {
 	ItemID            uint
 	Assignments       []models.ItemAssignment
 	ExpectedUpdatedAt *time.Time
 }
+type billRepository struct{ db *gorm.DB }
 
-type billRepository struct {
-	db *gorm.DB
-}
-
-func (b *billRepository) Create(bill *models.Bill) error {
-	if err := guardFreshCreation(bill); err != nil {
+func (b *billRepository) Create(ctx context.Context, v *models.Bill) error {
+	ctx, cancel := mutation.Bound(ctx)
+	defer cancel()
+	if err := guardFreshCreation(v); err != nil {
 		return err
 	}
-	return b.db.Create(bill).Error
+	return b.db.WithContext(ctx).Create(v).Error
+}
+func (b *billRepository) GetById(id uint) (*models.Bill, error) {
+	v := &models.Bill{}
+	err := b.db.Preload("Tab").Preload("Items.Assignments").Preload("Participants").Preload("PersonShares").First(v, id).Error
+	return v, err
 }
 
-func (b *billRepository) GetById(id uint) (bill *models.Bill, err error) {
-	bill = &models.Bill{}
-	err = b.db.
-		Preload("Tab").
-		Preload("Items.Assignments").
-		Preload("Participants").
-		Preload("PersonShares").
-		First(bill, id).Error
-	return bill, err
-}
-
-func (b *billRepository) UpdatePersonSharePaid(billID uint, personName string, paid bool) error {
-	return b.db.Transaction(func(tx *gorm.DB) error {
-		var bill models.Bill
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Select("id").First(&bill, billID).Error; err != nil {
-			return err
+// Association discovery holds no row lock. An attachment winning the standalone
+// predicate causes rollback and one fresh discovery, under the same deadline.
+func (b *billRepository) UpdatePersonSharePaid(ctx context.Context, c BillSharePaidCommand) error {
+	ctx, cancel := mutation.Bound(ctx)
+	defer cancel()
+	restart := errors.New("association changed")
+	for attempt := 0; attempt < 2; attempt++ {
+		var association struct {
+			ID    uint
+			TabID *uint
 		}
-
-		var share models.PersonShare
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("bill_id = ? AND LOWER(person_name) = ?", billID, strings.ToLower(personName)).
-			First(&share).Error; err != nil {
+		if c.Access.BillToken == "" {
+			return mutation.Forbidden
+		}
+		err := b.db.WithContext(ctx).Table("bills").Select("id,tab_id").Where("id = ? AND access_token = ?", c.Access.BillID, c.Access.BillToken).Take(&association).Error
+		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return ErrPersonShareNotFound
+				return mutation.Forbidden
 			}
 			return err
 		}
-		return tx.Model(&share).Update("paid", paid).Error
-	})
-}
-
-func (b *billRepository) UpdateItemAssignments(billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error {
-	return b.UpdateItemAssignmentsBatch(billID, []ItemAssignmentsUpdate{{
-		ItemID: itemID, Assignments: assignments, ExpectedUpdatedAt: expectedUpdatedAt,
-	}})
-}
-
-func (b *billRepository) UpdateItemAssignmentsBatch(billID uint, updates []ItemAssignmentsUpdate) error {
-	updates = append([]ItemAssignmentsUpdate(nil), updates...)
-	sort.Slice(updates, func(i, j int) bool { return updates[i].ItemID < updates[j].ItemID })
-	for i := 1; i < len(updates); i++ {
-		if updates[i-1].ItemID == updates[i].ItemID {
-			return gorm.ErrInvalidData
-		}
-	}
-	if len(updates) == 0 {
-		return nil
-	}
-
-	return b.db.Transaction(func(tx *gorm.DB) error {
-		var bill models.Bill
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND lazy_mode = ? AND tab_id IS NULL", billID, true).First(&bill).Error; err != nil {
-			return err
-		}
-
-		var existingShares []models.PersonShare
-		if err := tx.Where("bill_id = ?", billID).Find(&existingShares).Error; err != nil {
-			return err
-		}
-		paidByName := make(map[string]bool, len(existingShares))
-		for _, share := range existingShares {
-			paidByName[strings.ToLower(share.PersonName)] = share.Paid
-		}
-
-		for _, update := range updates {
-			var item models.BillItem
-			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND bill_id = ?", update.ItemID, billID).First(&item).Error; err != nil {
-				return err
-			}
-			if update.ExpectedUpdatedAt != nil && !item.UpdatedAt.Equal(*update.ExpectedUpdatedAt) {
-				return ErrAssignmentConflict
-			}
-
-			var currentAssignments []models.ItemAssignment
-			if err := tx.Where("bill_item_id = ?", update.ItemID).Find(&currentAssignments).Error; err != nil {
-				return err
-			}
-			if !PreservesPaidAssignments(currentAssignments, update.Assignments, paidByName) {
-				return ErrItemAlreadyPaid
-			}
-			update.Assignments = PreserveAssignmentClaimTimes(currentAssignments, update.Assignments)
-
-			if err := tx.Where("bill_item_id = ?", update.ItemID).Delete(&models.ItemAssignment{}).Error; err != nil {
-				return err
-			}
-			for i := range update.Assignments {
-				update.Assignments[i].BillItemID = update.ItemID
-			}
-			if len(update.Assignments) > 0 {
-				if err := tx.Create(&update.Assignments).Error; err != nil {
+		err = b.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			if association.TabID != nil {
+				var t models.Tab
+				if err := tx.Select("id").Clauses(clause.Locking{Strength: "UPDATE"}).First(&t, *association.TabID).Error; err != nil {
 					return err
 				}
 			}
-		}
-
-		if err := tx.Where("bill_id = ?", billID).Delete(&models.PersonShare{}).Error; err != nil {
-			return err
-		}
-		var refreshed models.Bill
-		if err := tx.Preload("Items.Assignments").Where("id = ?", billID).First(&refreshed).Error; err != nil {
-			return err
-		}
-		shares, err := BuildLazyPersonShares(&refreshed)
-		if err != nil {
-			return err
-		}
-		for i := range shares {
-			shares[i].Paid = paidByName[strings.ToLower(shares[i].PersonName)]
-		}
-		if len(shares) > 0 {
-			if err := tx.Create(&shares).Error; err != nil {
+			var locked struct{ ID uint }
+			q := tx.Table("bills").Select("id").Where("id = ? AND access_token = ?", c.Access.BillID, c.Access.BillToken).Clauses(clause.Locking{Strength: "UPDATE"})
+			if association.TabID == nil {
+				q = q.Where("tab_id IS NULL")
+			} else {
+				q = q.Where("tab_id = ?", *association.TabID)
+			}
+			if err := q.Take(&locked).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return restart
+				}
 				return err
 			}
-		}
-		now := time.Now()
-		for _, update := range updates {
-			if err := tx.Model(&models.BillItem{}).Where("id = ?", update.ItemID).Update("updated_at", now).Error; err != nil {
+			var share models.PersonShare
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND bill_id = ?", c.ShareID, c.Access.BillID).First(&share).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return ErrPersonShareNotFound
+				}
 				return err
 			}
+			if share.Paid == c.Paid {
+				return nil
+			}
+			return tx.Model(&share).Update("paid", c.Paid).Error
+		}, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+		if !errors.Is(err, restart) {
+			return err
 		}
-		return nil
-	})
+	}
+	return mutation.Review
+}
+func (b *billRepository) UpdateItemAssignmentsBatch(ctx context.Context, c ClaimCommand) error {
+	if err := ValidateAssignmentUpdates(c.Updates); err != nil {
+		return err
+	}
+	ctx, cancel := mutation.Bound(ctx)
+	defer cancel()
+	if c.Access.BillToken == "" {
+		return mutation.Forbidden
+	}
+	var eligibility struct {
+		ID       uint
+		LazyMode bool
+		TabID    *uint
+	}
+	if err := b.db.WithContext(ctx).Table("bills").Select("id,lazy_mode,tab_id").Where("id = ? AND access_token = ?", c.Access.BillID, c.Access.BillToken).Take(&eligibility).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return mutation.Forbidden
+		}
+		return err
+	}
+	if !eligibility.LazyMode || eligibility.TabID != nil {
+		return mutation.StandaloneOnly
+	}
+	return b.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if c.Access.BillToken == "" {
+			return mutation.Forbidden
+		}
+		var v models.Bill
+		if err := tx.Session(&gorm.Session{SkipHooks: true}).Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND access_token = ? AND lazy_mode = ? AND tab_id IS NULL", c.Access.BillID, c.Access.BillToken, true).First(&v).Error; err != nil {
+			return err
+		}
+		return ReplaceAssignmentsLocked(tx, v, c.Updates)
+	}, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 }
 
 // PreservesPaidAssignments prevents changes to already-paid portions while

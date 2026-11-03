@@ -139,7 +139,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 ### [BUG-1793644504] Finalize tabs within one retry-safe transaction
 - [ ] **Severity:** high
 - **Area:** backend, persistence
-- **File(s):** backend/internal/tab/{service,repository}.go; backend/pkg/models/tab_settlement.go; backend/internal/tab/{service,repository}_test.go
+- **File(s):** backend/internal/{bill,tab}/{handler,service,repository}.go; bill/{accounting,assignments}.go; tab/{commands,settlement}.go; backend/pkg/mutation/; related tests
 - **Observation:** FinalizeTab reads tab, creates settlements and marks finalized in separate operations. Competing assignment mutations check state outside the common boundary.
 - **Expected:**
   - Lock/read, settlement snapshot creation and finalized state commit or roll back together on PostgreSQL.
@@ -148,9 +148,12 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - PostgreSQL failure injection and finalize/edit race tests preserve original bills, links and totals.
 - **Req:** TR engineering 6; TR fix 7; SR atomic finalization; docs/reviews/2026-11-02-baseline.md
 - **Depends on:** none
-- **Repro / Notes:** Read FinalizeTab, CreateSettlements and Finalize. Structural risk is confirmed; review did not induce production concurrency failures.
+- **Repro / Notes:** Actual pre-fix PostgreSQL HTTP regression failed four assertions (paid 6->5.50, child/time changes, retry 400 and changed result); seven removed-control overlays fail executed assertions. Raw evidence: .vv/local-gate/atomic-lifecycle/. Independent review/driver acceptance pending.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Implemented one authorized FinalizeOnce transaction and tab-root sibling protocol; checked gross USD projection, stable paid snapshot retries, paid economic/ID protection and finite errors. Scoped Go/PostgreSQL/client gates pass; independent review/driver acceptance pending. Evidence: docs/reviews/2026-11-03-atomic-lifecycle.md.
+- **Docs:** docs/backend-api.md; docs/technical-overview.md; backend/README.md; VERIFICATION.md; docs/reviews/2026-11-03-atomic-lifecycle.md
 
 ### [BUG-1793644505] Authorize accounting by stable participant identity
 - [ ] **Severity:** high

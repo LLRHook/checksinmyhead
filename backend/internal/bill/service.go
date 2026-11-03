@@ -2,13 +2,13 @@ package bill
 
 import (
 	"backend/pkg/models"
+	"backend/pkg/mutation"
 	"context"
 	"errors"
 	"fmt"
 	"math"
 	"regexp"
 	"strings"
-	"time"
 )
 
 var (
@@ -41,9 +41,8 @@ type BillService interface {
 	createBill(ctx context.Context, bill *models.Bill, prepareDisplay func(*models.Bill) error) error
 	GetUSDExchangeRate(ctx context.Context, currency string) (models.ExchangeRateQuote, error)
 	GetBill(id uint) (bill *models.Bill, err error)
-	UpdatePersonSharePaid(billID uint, personName string, paid bool) error
-	UpdateItemAssignments(billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error
-	UpdateItemAssignmentsBatch(billID uint, updates []ItemAssignmentsUpdate) error
+	UpdatePersonSharePaid(context.Context, BillSharePaidCommand) error
+	UpdateItemAssignmentsBatch(context.Context, ClaimCommand) error
 }
 
 type billService struct {
@@ -56,6 +55,8 @@ func (b *billService) CreateBill(ctx context.Context, bill *models.Bill) error {
 }
 
 func (b *billService) createBill(ctx context.Context, bill *models.Bill, prepareDisplay func(*models.Bill) error) error {
+	ctx, cancel := mutation.Bound(ctx)
+	defer cancel()
 	if err := prepareCreation(bill); err != nil {
 		return err
 	}
@@ -76,7 +77,7 @@ func (b *billService) createBill(ctx context.Context, bill *models.Bill, prepare
 	if !finite(bill.USDTotal) || bill.USDTotal > float64(math.MaxInt64)/100 {
 		return ErrInvalidCreation
 	}
-	return b.repo.Create(bill)
+	return b.repo.Create(ctx, bill)
 }
 
 func (b *billService) GetUSDExchangeRate(ctx context.Context, currency string) (models.ExchangeRateQuote, error) {
@@ -114,16 +115,11 @@ func (b *billService) GetBill(id uint) (bill *models.Bill, err error) {
 	return bill, err
 }
 
-func (b *billService) UpdatePersonSharePaid(billID uint, personName string, paid bool) error {
-	return b.repo.UpdatePersonSharePaid(billID, personName, paid)
+func (b *billService) UpdatePersonSharePaid(ctx context.Context, c BillSharePaidCommand) error {
+	return b.repo.UpdatePersonSharePaid(ctx, c)
 }
-
-func (b *billService) UpdateItemAssignments(billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error {
-	return b.repo.UpdateItemAssignments(billID, itemID, assignments, expectedUpdatedAt)
-}
-
-func (b *billService) UpdateItemAssignmentsBatch(billID uint, updates []ItemAssignmentsUpdate) error {
-	return b.repo.UpdateItemAssignmentsBatch(billID, updates)
+func (b *billService) UpdateItemAssignmentsBatch(ctx context.Context, c ClaimCommand) error {
+	return b.repo.UpdateItemAssignmentsBatch(ctx, c)
 }
 
 func NewBillService(repo BillRepository, providers ...ExchangeRateProvider) BillService {

@@ -2,6 +2,7 @@ package tab
 
 import (
 	"backend/pkg/models"
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -16,7 +17,7 @@ func newTabRepositoryTestDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.AutoMigrate(&models.Tab{}, &models.Bill{}, &models.BillItem{}, &models.ItemAssignment{}, &models.PersonShare{}); err != nil {
+	if err := db.AutoMigrate(&models.Tab{}, &models.TabMember{}, &models.Bill{}, &models.BillItem{}, &models.ItemAssignment{}, &models.PersonShare{}); err != nil {
 		t.Fatal(err)
 	}
 	return db
@@ -24,7 +25,7 @@ func newTabRepositoryTestDB(t *testing.T) *gorm.DB {
 
 func TestUpdateBillItemAssignmentsRejectsChangesToPaidShares(t *testing.T) {
 	db := newTabRepositoryTestDB(t)
-	tab := models.Tab{Name: "Trip"}
+	tab := models.Tab{Name: "Trip", AccessToken: "test"}
 	if err := db.Create(&tab).Error; err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +41,7 @@ func TestUpdateBillItemAssignmentsRejectsChangesToPaidShares(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := (&tabRepository{db: db}).UpdateBillItemAssignments(tab.ID, bill.ID, item.ID, []models.ItemAssignment{{PersonName: "Sam", Percentage: 100}}, nil)
+	err := (&tabRepository{db: db}).UpdateBillItemAssignmentsBatch(context.Background(), AssignmentCommand{Access: testTabAccess(t, db, tab.ID), BillID: bill.ID, Updates: []BillItemAssignmentsUpdate{{ItemID: item.ID, Assignments: []models.ItemAssignment{{PersonName: "Sam", Percentage: 100}}, ExpectedUpdatedAt: nil}}})
 	if !errors.Is(err, ErrItemAlreadyPaid) {
 		t.Fatalf("expected paid share assignment rejection, got %v", err)
 	}
@@ -55,7 +56,7 @@ func TestUpdateBillItemAssignmentsRejectsChangesToPaidShares(t *testing.T) {
 
 func TestUpdateBillItemAssignmentsBatchRollsBackEveryItemOnFailure(t *testing.T) {
 	db := newTabRepositoryTestDB(t)
-	tab := models.Tab{Name: "Trip"}
+	tab := models.Tab{Name: "Trip", AccessToken: "test"}
 	if err := db.Create(&tab).Error; err != nil {
 		t.Fatal(err)
 	}
@@ -75,10 +76,10 @@ func TestUpdateBillItemAssignmentsBatchRollsBackEveryItemOnFailure(t *testing.T)
 		t.Fatal(err)
 	}
 
-	err := (&tabRepository{db: db}).UpdateBillItemAssignmentsBatch(tab.ID, bill.ID, []BillItemAssignmentsUpdate{
+	err := (&tabRepository{db: db}).UpdateBillItemAssignmentsBatch(context.Background(), AssignmentCommand{Access: testTabAccess(t, db, tab.ID), BillID: bill.ID, Updates: []BillItemAssignmentsUpdate{
 		{ItemID: first.ID, Assignments: []models.ItemAssignment{{PersonName: "Sam", Percentage: 100}}},
 		{ItemID: second.ID, Assignments: []models.ItemAssignment{}},
-	})
+	}})
 	if !errors.Is(err, ErrItemAlreadyPaid) {
 		t.Fatalf("expected paid share rejection, got %v", err)
 	}
@@ -96,4 +97,13 @@ func TestUpdateBillItemAssignmentsBatchRollsBackEveryItemOnFailure(t *testing.T)
 	if len(secondAssignments) != 1 || secondAssignments[0].PersonName != "Paid person" {
 		t.Fatalf("paid item changed despite batch failure: %#v", secondAssignments)
 	}
+}
+
+func testTabAccess(t *testing.T, db *gorm.DB, id uint) TabAccess {
+	t.Helper()
+	var tab models.Tab
+	if err := db.First(&tab, id).Error; err != nil {
+		t.Fatal(err)
+	}
+	return TabAccess{TabID: id, TabToken: tab.AccessToken}
 }

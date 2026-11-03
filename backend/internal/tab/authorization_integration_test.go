@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -242,28 +243,25 @@ func TestAuthorizationAttachMalformedBodiesAndIDs(t *testing.T) {
 	}
 }
 
-type pausedBillRead struct {
-	billpkg.BillService
-	loaded chan struct{}
-	resume chan struct{}
-	once   sync.Once
-}
-
-func (s *pausedBillRead) GetBill(id uint) (*models.Bill, error) {
-	b, err := s.BillService.GetBill(id)
-	s.once.Do(func() { close(s.loaded); <-s.resume })
-	return b, err
-}
-
 func assertStaleStandaloneClaim(t *testing.T, db *gorm.DB, batch bool) {
 	t.Helper()
 	source := models.Bill{Name: "Lazy", LazyMode: true, AccessToken: "source", Subtotal: 10, Total: 10, Items: []models.BillItem{{Name: "Dinner", Price: 10, Assignments: []models.ItemAssignment{{PersonName: "Alex", Percentage: 50}}}}, PersonShares: []models.PersonShare{{PersonName: "Alex", Subtotal: 5, Total: 5, Items: []models.ItemDetail{{Name: "Dinner", Amount: 5, IsShared: true}}}}}
 	saveAuthFixture(t, db, &source)
 	dst := models.Tab{Name: "Destination", AccessToken: "dest"}
 	saveAuthFixture(t, db, &dst)
-	service := &pausedBillRead{BillService: billpkg.NewBillService(billpkg.NewBillRepository(db)), loaded: make(chan struct{}), resume: make(chan struct{})}
+	loaded, resumeClaim := make(chan struct{}), make(chan struct{})
+	var paused atomic.Bool
+	if err := db.Callback().Query().After("gorm:query").Register("test:claim_discovery", func(tx *gorm.DB) {
+		if tx.Statement.Table == "bills" && paused.CompareAndSwap(false, true) {
+			close(loaded)
+			<-resumeClaim
+		}
+	}); err != nil {
+		t.Fatal(err)
+	}
+	service := billpkg.NewBillService(billpkg.NewBillRepository(db))
 	var resume sync.Once
-	t.Cleanup(func() { resume.Do(func() { close(service.resume) }) })
+	t.Cleanup(func() { resume.Do(func() { close(resumeClaim) }) })
 	h := billpkg.NewBillHandler(service)
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
@@ -278,7 +276,7 @@ func assertStaleStandaloneClaim(t *testing.T, db *gorm.DB, batch bool) {
 	result := make(chan *httptest.ResponseRecorder, 1)
 	go func() { result <- authRequest(r, "PATCH", path, body, "source", "") }()
 	select {
-	case <-service.loaded:
+	case <-loaded:
 	case <-time.After(10 * time.Second):
 		t.Fatal("claim did not reach read barrier")
 	}
@@ -287,7 +285,7 @@ func assertStaleStandaloneClaim(t *testing.T, db *gorm.DB, batch bool) {
 	}
 	// Snapshot after attachment: the stale request must not change any row.
 	before := authSnapshot(t, db)
-	resume.Do(func() { close(service.resume) })
+	resume.Do(func() { close(resumeClaim) })
 	select {
 	case w := <-result:
 		if w.Code != 404 {

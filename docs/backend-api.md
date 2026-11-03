@@ -223,13 +223,36 @@ Assignments must use unique, non-empty names of at most 30 characters and total 
 
 **Errors** `400` for invalid assignments/non-lazy bills, `403` for an invalid token, `404` for a missing bill item, and `409` for stale or paid-item conflicts.
 
+### Receipt and tab mutation policy
+
+Tab item assignment (single/batch) checks current membership, active state, exact
+bill/item scope and expected timestamps in the transaction. Standalone claims retain
+source-bill proof and locked `tab_id IS NULL`; attaching first makes a stale claim fail.
+Batches support at most 500 items/100 assignments per item, within a 4 MiB body.
+They preserve claim priority and unchanged economic share IDs. Changing a paid share's
+percentages, components, total, ordered item details or frozen USD cents returns `409`
+and rolls back the complete batch. Changed/removed shares cannot be paid via stale IDs.
+
+Source-bill `PATCH /api/bills/:id/shares/:shareId` uses the exact bill/share IDs and
+bill capability; a tab token cannot substitute. Attached source payment locks tab
+before bill and is allowed after finalization. Tab-share payment also checks current
+membership and the existing case-insensitive name rule under lock, rejecting detectable
+ambiguity. This contains observable collisions; stable identity remains separate work.
+Both payment routes change only the selected receipt paid flag, with scoped `404` for
+stale IDs. Generic `503`/`500` responses never expose database messages.
+
+All attached writers use Tab → Bills by ID → Items by ID → Shares; settlement writes
+use Tab → Settlement. Membership/settings take Tab first. Mutations use the request
+context with a 10-second maximum (earlier caller deadlines win). This protocol requires
+all deployed writers to cooperate. It does not establish rollout or signed-client proof.
+
 ---
 
 ## Tabs
 
 ### `POST /api/tabs`
 
-Create a new tab. Optionally creates the creator as a member.
+Create a new tab. When supplied, the initial creator and tab commit together; a creator insertion failure leaves no tab. Creator membership cannot be added to an existing tab through join.
 
 **Request Body**
 ```json
@@ -267,7 +290,7 @@ Get a tab with all bills, items, assignments, person shares, and members.
 
 ### `PATCH /api/tabs/:id?t=token`
 
-Update tab name or description. Blocked if finalized.
+Update tab name, description or `display_currency`, with current creator or genuinely memberless authority checked under the tab lock. Blocked if finalized. Omitted/empty name and description retain their existing values. Only these settings can change; receipt quotes remain frozen.
 
 **Request Body**
 ```json
@@ -318,8 +341,8 @@ bill available through the original bill token.
 | 200 | Authorized first attachment or active-tab retry |
 
 The existing token API uses `403` for failed capabilities. Errors never echo tokens,
-source content or SQL. This operation does not make settlement finalization atomic;
-that separate consistency repair remains tracked.
+source content or SQL. Attachment participates in the tab-root protocol shared with
+finalization and all competing attached writes.
 
 ---
 
@@ -327,11 +350,24 @@ that separate consistency repair remains tracked.
 
 ### `POST /api/tabs/:id/finalize?t=token&m=memberToken`
 
-Finalize a tab: validate all images are processed, compute per-person settlement amounts, lock the tab.
+Finalize once in one authorized Read Committed transaction: lock the tab, resolve
+current creator or genuinely memberless authority, read persisted accounting/shares,
+insert gross USD settlements and mark finalized. A supplied invalid member token
+fails even on a memberless tab. No quote lookup, item graph or revaluation occurs.
 
-If the tab has members, only the creator (`role: "creator"`) can finalize.
+An authorized repeat returns the stored snapshot, ordered by `amount DESC, id ASC`,
+with the same IDs, amounts, creation/finalization times and current settlement paid
+flags. A lost successful response can be retried. The operation returns success only
+after commit. Gross allocations, receipt-share paid flags, settlement paid flags and
+net payer balances are distinct; neither flag proves an external transfer.
 
-**Response** `200` — Array of created settlements.
+Foreign accounting needs valid frozen rate/date/source/total evidence. Legitimate
+frozen USD zero and known legacy USD identity are supported without backfill.
+No bills or no allocated share rows leaves the tab active; explicit zero participant
+rows count as allocations. Detectable duplicate member labels or normalized share
+keys within one bill require review, without guessing participant ownership.
+
+**Response** `200` — Array of persisted gross USD settlements (first transition or retry).
 ```json
 [
   { "id": 1, "tab_id": 1, "person_name": "Alice", "amount": 90.00, "paid": false },
@@ -340,12 +376,17 @@ If the tab has members, only the creator (`role: "creator"`) can finalize.
 ```
 
 **Errors**
-| Status | Body | Meaning |
-|--------|------|---------|
-| 400 | `{"error": "tab is already finalized"}` | Already finalized |
-| 400 | `{"error": "tab has no bills"}` | No bills to settle |
-| 400 | `{"error": "all images must be marked as processed before finalizing"}` | Unprocessed images |
-| 403 | `{"error": "only the tab creator can finalize"}` | Non-creator attempted finalize |
+
+| Status | Meaning |
+|---|---|
+| 400 | `no_bills` or `no_allocation`; the tab remains active |
+| 403 | Missing/wrong tab capability, invalid supplied member token, or current non-creator |
+| 409 | `accounting_review_required`: active orphan settlements, missing/ambiguous finalized results, duplicate labels/shares, invalid frozen evidence or unsafe money |
+| 503 | Generic temporary unavailability; retry |
+| 500 | Generic unexpected failure; no database text |
+
+Review errors preserve stored history. Authorized reads remain available. Production
+adoption and exclusion of old writers still need separate deployment evidence.
 
 ### `GET /api/tabs/:id/settlements?t=token`
 
@@ -360,7 +401,10 @@ Get all settlements for a tab.
 
 ### `PATCH /api/tabs/:id/settlements/:settlementId?t=token`
 
-Toggle a settlement's paid status.
+Set the selected finalized snapshot's paid flag using a current same-tab member,
+or genuinely memberless authority. Repeating the same boolean succeeds without a
+write. Active orphan results require `409 accounting_review_required`; a settlement
+outside this finalized tab returns `404`. Amounts and receipt-share flags do not change.
 
 **Request Body**
 ```json
@@ -377,6 +421,14 @@ Toggle a settlement's paid status.
 ## Members
 
 ### `POST /api/tabs/:id/join?t=token`
+
+Join serializes with the tab and remains allowed after finalization for access and
+payment recovery. A valid supplied same-tab member token returns that membership
+without writing (`200`); an invalid supplied token returns `403` and cannot create a
+replacement. Ordinary new joining returns `201` and grants no accounting reassignment.
+Leaving cannot remove the creator (`400`) or any member whose recorded ID appears as
+bill payer/adder (`409 member_referenced`), including historical cross-tab references.
+Unreferenced members may leave. No name-based recovery or provenance repair occurs.
 
 Join a tab as a member. Returns a member token for future attribution.
 

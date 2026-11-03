@@ -152,7 +152,7 @@ func TestCreateBillDirectServiceAndRepositoryGuards(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = sql.Close() })
-			if err := (&billRepository{db: db}).Create(b); !errors.Is(err, ErrInvalidCreation) {
+			if err := (&billRepository{db: db}).Create(context.Background(), b); !errors.Is(err, ErrInvalidCreation) {
 				t.Errorf("repository guard: %v", err)
 			}
 			for _, table := range []string{"bills", "people", "bill_participants", "bill_items", "item_assignments", "person_shares"} {

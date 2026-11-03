@@ -108,7 +108,7 @@ type TabMember struct {
 
 ### TabSettlement
 
-Created when a tab is finalized. Tracks who owes what.
+Created once when a tab is finalized. Stores gross allocated USD by legacy name key; net payer balances and the two independent paid flags retain their separate meanings.
 
 ```go
 type TabSettlement struct {
@@ -141,9 +141,9 @@ internal/
 
 **Handler** — Parses HTTP requests, validates access tokens, calls service methods, returns JSON responses. No business logic lives here.
 
-**Service** — Defines interfaces for testability. Contains all business logic: finalization validation, settlement calculation, member token generation.
+**Service** — Validates typed commands and delegates a complete mutation to its repository. Handlers parse capabilities and DTOs; current authority/state decisions live inside the locked transaction.
 
-**Repository** — Wraps GORM queries. Uses `Preload` for eager loading of nested associations (e.g. `Bills.Items.Assignments`).
+**Repository** — Owns authorization, lock ordering and commit for each database transition. Read endpoints may preload nested associations. Finalization batch-projects frozen accounting and persisted share components without Bill normalization or item/participant/payment graphs.
 
 ## Frontend Architecture
 
@@ -178,7 +178,29 @@ propagate through claim transactions so assignments and old shares roll back tog
 The separate display provider retains its own code/pair contract independently of the
 six frozen receipt currencies. See [API contracts](backend-api.md) for accepted fields,
 bounds and legacy compatibility.
-Atomic settlement finalization and stable participant identity remain separate work.
+`FinalizeOnce` is the sole production finalization seam: tab capability, current creator
+or memberless policy, stored-result validation, gross allocation, bounded inserts and
+one checked active-state update commit together. Authorized retries read the stored
+snapshot without writes/recalculation. Ambiguous legacy results and unsafe accounting
+return `409 accounting_review_required` while historical reads remain available.
+
+Every attached writer uses Tab → ascending Bills → ascending Items → Shares; settlement
+writes use Tab → Settlement. Join/leave/settings take Tab first. Fresh tab/creator creation
+is atomic. Source-share payment discovers association without locks and permits at most
+one standalone-to-attached restart under the same 10-second request context. Lifecycle monetary projections
+use checked cent conversion/sums and the existing bounded remainder semantics.
+
+`bill.ReplaceAssignmentsLocked` owns single/batch share refresh for both contexts. It
+batch-loads/locks/persists, preserves claim timestamps and unchanged economic share IDs,
+and rejects paid percentage/component/total/ordered-item/frozen-USD changes. Paid routes
+use exact scoped share IDs; flags remain editable after finalization without recalculation.
+Leaving cannot delete creator or recorded payer/adder provenance. Join retries cannot
+turn an invalid supplied capability into replacement membership.
+
+Stable participant identity, the positive-only USD read fallback, legacy missing-payer/net
+presentation and receipt replay/save remain separately owned. Schema compatibility does
+not establish the guarantee during overlap with old uncooperative writers. No deployment,
+production adoption, signed-client bridge or whole-product acceptance is claimed.
 
 ### JSONB for Flexible Data
 `PaymentMethods` and `PersonShare.Items` use PostgreSQL JSONB columns via GORM's `serializer:json` tag. This avoids extra join tables for data that is always read and written as a unit.
@@ -252,7 +274,7 @@ The Flutter app maintains its own Drift database for offline access and fast rea
 ## Testing Strategy
 
 ### Backend (Go)
-Unit tests for the service layer use manual repository mocks and cover finalization validation, settlement calculation, member creation, and error paths.
+Unit tests cover command forwarding, checked gross projections/rounding, finite errors and creation contracts. PostgreSQL tests use the strict owned-schema harness for HTTP, observed lock waits, both arrival orders and rollback, commit failures, paid protection, authority changes and 3×100-sample query/latency measurements. SQLite tests remain useful without claiming PostgreSQL lock semantics.
 
 ```bash
 cd backend && go test -race ./...

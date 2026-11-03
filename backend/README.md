@@ -232,7 +232,13 @@ uses one strict shared harness and the real runner for current schemas, with a s
 frozen SQL fixture for legacy adoption. Missing/unsafe DSNs fail instead of skipping.
 It covers migration history/definitions, observed lock waits, rollback/commit failure,
 interruption/retry, binary startup modes and bounded live health, alongside existing
-authorization/money tests. Synthetic test-only pending versions are never embedded in
+authorization/money tests. Atomic lifecycle coverage adds concurrent/lost-response and paid
+snapshot retries, insertion/update/deferred-commit rollback, both arrival orders and rollback
+for attached/membership/settings writers, current authority, exact share IDs and paid economic
+protection. Local query/latency tests use 100 samples per run across three runs, reporting
+misses separately. See [lifecycle evidence](../docs/reviews/2026-11-03-atomic-lifecycle.md)
+and [mutation contracts](../docs/backend-api.md#receipt-and-tab-mutation-policy).
+Synthetic test-only pending versions are never embedded in
 the production registry. No whole-product V&V pass is implied.
 
 ## API Documentation

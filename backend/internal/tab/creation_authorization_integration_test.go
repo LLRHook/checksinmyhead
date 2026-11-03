@@ -450,9 +450,9 @@ func assertUnsafeShareCalculationRollsBack(t *testing.T, db *gorm.DB) {
 			assignments := []models.ItemAssignment{{PersonName: "New claim", Percentage: 100}}
 			var err error
 			if attached {
-				err = NewTabRepository(db).UpdateBillItemAssignments(dst.ID, b.ID, b.Items[0].ID, assignments, nil)
+				err = NewTabRepository(db).UpdateBillItemAssignmentsBatch(context.Background(), AssignmentCommand{Access: testTabAccess(t, db, dst.ID), BillID: b.ID, Updates: []BillItemAssignmentsUpdate{{ItemID: b.Items[0].ID, Assignments: assignments, ExpectedUpdatedAt: nil}}})
 			} else {
-				err = billpkg.NewBillRepository(db).UpdateItemAssignments(b.ID, b.Items[0].ID, assignments, nil)
+				err = billpkg.NewBillRepository(db).UpdateItemAssignmentsBatch(context.Background(), billpkg.ClaimCommand{Access: billpkg.BillAccess{BillID: b.ID, BillToken: b.AccessToken}, Updates: []billpkg.ItemAssignmentsUpdate{{ItemID: b.Items[0].ID, Assignments: assignments, ExpectedUpdatedAt: nil}}})
 			}
 			if !errors.Is(err, billpkg.ErrInvalidCreation) {
 				t.Fatalf("expected calculation error, got %v", err)

@@ -7,6 +7,7 @@ import (
 	"backend/internal/testpostgres"
 	"backend/migrations"
 	"backend/pkg/models"
+	"backend/pkg/mutation"
 	"context"
 	"encoding/json"
 	"errors"
@@ -185,16 +186,17 @@ func TestPostgresMembershipWritersUseDestinationLock(t *testing.T) {
 			result := make(chan error, 1)
 			go func() {
 				if operation == "create" {
-					result <- NewTabRepository(db).CreateMember(&models.TabMember{TabID: a.ID, DisplayName: "New", MemberToken: "new"})
+					_, _, err := NewTabRepository(db).Join(context.Background(), JoinCommand{Access: TabAccess{TabID: a.ID, TabToken: "a"}, DisplayName: "New"})
+					result <- err
 				} else {
-					result <- NewTabRepository(db).DeleteMember(a.ID, member.ID)
+					result <- NewTabRepository(db).Leave(context.Background(), LeaveCommand{Access: TabAccess{TabID: a.ID, TabToken: "a", MemberToken: "existing"}})
 				}
 			}()
 			waitForPostgresLocks(t, db, 1)
 			if err := tx.Commit().Error; err != nil {
 				t.Fatal(err)
 			}
-			if err := receiveAuthResult(t, result); err != nil {
+			if err := receiveAuthResult(t, result); (operation == "create" && err != nil) || (operation == "delete" && !errors.Is(err, mutation.Referenced)) {
 				t.Fatal(err)
 			}
 			var got models.Bill
@@ -211,7 +213,7 @@ func TestPostgresMembershipTransitionIsRecheckedByWaitingAttachment(t *testing.T
 	a, _, source := seedPostgresAttachment(t, db)
 	tx := db.Begin()
 	t.Cleanup(func() { tx.Rollback() })
-	if err := NewTabRepository(tx).CreateMember(&models.TabMember{TabID: a.ID, DisplayName: "New", MemberToken: "new"}); err != nil {
+	if _, _, err := NewTabRepository(tx).Join(context.Background(), JoinCommand{Access: TabAccess{TabID: a.ID, TabToken: "a"}, DisplayName: "New"}); err != nil {
 		t.Fatal(err)
 	}
 	result := make(chan error, 1)

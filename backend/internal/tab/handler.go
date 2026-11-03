@@ -4,6 +4,7 @@ import (
 	"backend/pkg/config"
 	"backend/pkg/database"
 	"backend/pkg/models"
+	"backend/pkg/mutation"
 	"backend/pkg/safehttp"
 	"backend/pkg/security"
 	"crypto/subtle"
@@ -78,44 +79,6 @@ func (h *TabHandler) getTabWithLookup(
 	return tab
 }
 
-// getMemberFromQuery reads the member token from X-Member-Token header or ?m= query param.
-func (h *TabHandler) getMemberFromQuery(c *gin.Context, tabID uint) *models.TabMember {
-	memberToken := c.GetHeader("X-Member-Token")
-	if memberToken == "" {
-		memberToken = c.Query("m")
-	}
-	if memberToken == "" {
-		return nil
-	}
-	member, err := h.service.GetMemberByToken(memberToken)
-	if err != nil {
-		return nil
-	}
-	if member.TabID != tabID {
-		return nil
-	}
-	return member
-}
-
-// requireMemberForWrite allows legacy memberless tabs to keep working, while
-// requiring a per-installation member token once a tab has collaborators.
-func (h *TabHandler) requireMemberForWrite(c *gin.Context, tabID uint) (*models.TabMember, bool) {
-	if member := h.getMemberFromQuery(c, tabID); member != nil {
-		return member, true
-	}
-	members, err := h.service.GetMembers(tabID)
-	if err != nil {
-		database.LogRequestError(err)
-		c.JSON(500, gin.H{"error": "an internal error occurred"})
-		return nil, false
-	}
-	if len(members) == 0 {
-		return nil, true
-	}
-	c.JSON(403, gin.H{"error": "member token required"})
-	return nil, false
-}
-
 func (h *TabHandler) CreateTab(c *gin.Context) {
 	var body struct {
 		Name               string `json:"name"`
@@ -147,7 +110,7 @@ func (h *TabHandler) CreateTab(c *gin.Context) {
 	}
 	tab.AccessToken = token
 
-	err = h.service.CreateTab(&tab)
+	creator, err := h.service.CreateTab(c.Request.Context(), &tab, security.SanitizeString(body.CreatorDisplayName))
 	if err != nil {
 		database.LogRequestError(err)
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
@@ -160,13 +123,9 @@ func (h *TabHandler) CreateTab(c *gin.Context) {
 		"share_url":    fmt.Sprintf("%s/t/%d?t=%s", config.AppDomain(), tab.ID, token),
 	}
 
-	creatorName := security.SanitizeString(body.CreatorDisplayName)
-	if creatorName != "" {
-		member, err := h.service.JoinTabAsCreator(tab.ID, creatorName)
-		if err == nil {
-			resp["member_token"] = member.MemberToken
-			resp["member_id"] = member.ID
-		}
+	if creator != nil {
+		resp["member_token"] = creator.MemberToken
+		resp["member_id"] = creator.ID
 	}
 
 	c.JSON(201, resp)
@@ -219,26 +178,17 @@ func (h *TabHandler) AddBillToTab(c *gin.Context) {
 	case errors.Is(err, ErrSourceUnavailable):
 		c.JSON(404, gin.H{"error": "source bill unavailable"})
 	case err != nil:
-		c.JSON(500, gin.H{"error": "an internal error occurred"})
+		mutation.WriteError(c, err)
 	default:
 		c.JSON(200, gin.H{"status": "ok"})
 	}
 }
 
 func (h *TabHandler) UpdateBillItemAssignments(c *gin.Context) {
-	tab := h.getTabAuthAndValidate(c)
-	if tab == nil {
+	access := writeAccess(c)
+	if access == nil {
 		return
 	}
-
-	if tab.Finalized {
-		c.JSON(400, gin.H{"error": "tab is finalized"})
-		return
-	}
-	if _, allowed := h.requireMemberForWrite(c, tab.ID); !allowed {
-		return
-	}
-
 	billID, err := strconv.ParseUint(c.Param("billId"), 10, 32)
 	if err != nil {
 		c.JSON(400, gin.H{"error": "invalid bill id"})
@@ -302,7 +252,7 @@ func (h *TabHandler) UpdateBillItemAssignments(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.UpdateBillItemAssignments(tab.ID, uint(billID), uint(itemID), assignments, expectedUpdatedAt); err != nil {
+	if err := h.service.UpdateBillItemAssignmentsBatch(c.Request.Context(), AssignmentCommand{Access: *access, BillID: uint(billID), Updates: []BillItemAssignmentsUpdate{{ItemID: uint(itemID), Assignments: assignments, ExpectedUpdatedAt: expectedUpdatedAt}}}); err != nil {
 		if err == ErrAssignmentConflict {
 			c.JSON(409, gin.H{"error": "item changed; refresh and try again"})
 			return
@@ -315,8 +265,7 @@ func (h *TabHandler) UpdateBillItemAssignments(c *gin.Context) {
 			c.JSON(404, gin.H{"error": "bill item not found"})
 			return
 		}
-		database.LogRequestError(err)
-		c.JSON(500, gin.H{"error": "an internal error occurred"})
+		mutation.WriteError(c, err)
 		return
 	}
 
@@ -324,15 +273,8 @@ func (h *TabHandler) UpdateBillItemAssignments(c *gin.Context) {
 }
 
 func (h *TabHandler) UpdateBillItemAssignmentsBatch(c *gin.Context) {
-	tab := h.getTabAuthAndValidate(c)
-	if tab == nil {
-		return
-	}
-	if tab.Finalized {
-		c.JSON(400, gin.H{"error": "tab is finalized"})
-		return
-	}
-	if _, allowed := h.requireMemberForWrite(c, tab.ID); !allowed {
+	access := writeAccess(c)
+	if access == nil {
 		return
 	}
 	billID, err := strconv.ParseUint(c.Param("billId"), 10, 32)
@@ -406,7 +348,7 @@ func (h *TabHandler) UpdateBillItemAssignmentsBatch(c *gin.Context) {
 			ItemID: itemUpdate.ItemID, Assignments: assignments, ExpectedUpdatedAt: expectedUpdatedAt,
 		})
 	}
-	if err := h.service.UpdateBillItemAssignmentsBatch(tab.ID, uint(billID), updates); err != nil {
+	if err := h.service.UpdateBillItemAssignmentsBatch(c.Request.Context(), AssignmentCommand{Access: *access, BillID: uint(billID), Updates: updates}); err != nil {
 		switch {
 		case errors.Is(err, ErrAssignmentConflict):
 			c.JSON(409, gin.H{"error": "item changed; refresh and try again"})
@@ -415,8 +357,7 @@ func (h *TabHandler) UpdateBillItemAssignmentsBatch(c *gin.Context) {
 		case errors.Is(err, gorm.ErrRecordNotFound):
 			c.JSON(404, gin.H{"error": "bill item not found"})
 		default:
-			database.LogRequestError(err)
-			c.JSON(500, gin.H{"error": "an internal error occurred"})
+			mutation.WriteError(c, err)
 		}
 		return
 	}
@@ -424,11 +365,10 @@ func (h *TabHandler) UpdateBillItemAssignmentsBatch(c *gin.Context) {
 }
 
 func (h *TabHandler) UpdateBillPersonSharePaid(c *gin.Context) {
-	tab := h.getTabAndValidate(c)
-	if tab == nil {
+	access := writeAccess(c)
+	if access == nil {
 		return
 	}
-
 	billID, err := strconv.ParseUint(c.Param("billId"), 10, 32)
 	if err != nil {
 		c.JSON(400, gin.H{"error": "invalid bill id"})
@@ -446,53 +386,22 @@ func (h *TabHandler) UpdateBillPersonSharePaid(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "paid field required"})
 		return
 	}
-	member := h.getMemberFromQuery(c, tab.ID)
-	if member == nil {
-		c.JSON(403, gin.H{"error": "member token required"})
-		return
-	}
-	var matchingShare *models.PersonShare
-	for i := range tab.Bills {
-		if tab.Bills[i].ID != uint(billID) {
-			continue
-		}
-		for j := range tab.Bills[i].PersonShares {
-			if tab.Bills[i].PersonShares[j].ID == uint(shareID) {
-				matchingShare = &tab.Bills[i].PersonShares[j]
-				break
-			}
-		}
-	}
-	if matchingShare == nil || !strings.EqualFold(matchingShare.PersonName, member.DisplayName) {
-		c.JSON(403, gin.H{"error": "share does not belong to member"})
-		return
-	}
-	if err := h.service.UpdateBillPersonSharePaid(tab.ID, uint(billID), uint(shareID), *body.Paid); err != nil {
+	if err := h.service.UpdateBillPersonSharePaid(c.Request.Context(), SharePaidCommand{Access: *access, BillID: uint(billID), ShareID: uint(shareID), Paid: *body.Paid}); err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(404, gin.H{"error": "share not found"})
 			return
 		}
-		database.LogRequestError(err)
-		c.JSON(500, gin.H{"error": "an internal error occurred"})
+		mutation.WriteError(c, err)
 		return
 	}
 	c.JSON(200, gin.H{"status": "ok"})
 }
 
 func (h *TabHandler) UpdateTab(c *gin.Context) {
-	tab := h.getTabAuthAndValidate(c)
-	if tab == nil {
+	access := writeAccess(c)
+	if access == nil {
 		return
 	}
-	if !h.requireCreator(c, tab.ID, "update tab settings") {
-		return
-	}
-
-	if tab.Finalized {
-		c.JSON(400, gin.H{"error": "tab is finalized"})
-		return
-	}
-
 	var body struct {
 		Name            *string `json:"name"`
 		Description     *string `json:"description"`
@@ -503,14 +412,14 @@ func (h *TabHandler) UpdateTab(c *gin.Context) {
 		return
 	}
 
-	update := &models.Tab{ID: tab.ID}
+	update := SettingsCommand{Access: *access}
 	if body.Name != nil {
 		sanitized := security.SanitizeString(*body.Name)
-		update.Name = sanitized
+		update.Name = &sanitized
 	}
 	if body.Description != nil {
 		sanitized := security.SanitizeString(*body.Description)
-		update.Description = sanitized
+		update.Description = &sanitized
 	}
 	if body.DisplayCurrency != nil {
 		currency := strings.ToUpper(strings.TrimSpace(*body.DisplayCurrency))
@@ -518,54 +427,29 @@ func (h *TabHandler) UpdateTab(c *gin.Context) {
 			c.JSON(400, gin.H{"error": "invalid display currency"})
 			return
 		}
-		update.DisplayCurrency = currency
+		update.DisplayCurrency = &currency
 	}
 
-	err := h.service.UpdateTab(update)
+	err := h.service.UpdateTab(c.Request.Context(), update)
 	if err != nil {
-		database.LogRequestError(err)
-		c.JSON(500, gin.H{"error": "an internal error occurred"})
+		mutation.WriteError(c, err)
 		return
 	}
 
 	c.JSON(200, gin.H{"status": "ok"})
 }
 
-func (h *TabHandler) requireCreator(c *gin.Context, tabID uint, action string) bool {
-	members, err := h.service.GetMembers(tabID)
-	if err != nil {
-		database.LogRequestError(err)
-		c.JSON(500, gin.H{"error": "an internal error occurred"})
-		return false
-	}
-	if len(members) == 0 {
-		return true
-	}
-	member := h.getMemberFromQuery(c, tabID)
-	if member == nil || member.Role != "creator" {
-		c.JSON(403, gin.H{"error": "only the tab creator can " + action})
-		return false
-	}
-	return true
-}
-
 func (h *TabHandler) FinalizeTab(c *gin.Context) {
-	tab := h.getTabAuthAndValidate(c)
-	if tab == nil {
+	access := writeAccess(c)
+	if access == nil {
 		return
 	}
-
-	if !h.requireCreator(c, tab.ID, "finalize") {
-		return
-	}
-
-	settlements, err := h.service.FinalizeTab(tab.ID)
+	rows, err := h.service.FinalizeTab(c.Request.Context(), FinalizeCommand{Access: *access})
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		mutation.WriteError(c, err)
 		return
 	}
-
-	c.JSON(200, settlements)
+	c.JSON(200, rows)
 }
 
 func (h *TabHandler) GetSettlements(c *gin.Context) {
@@ -585,14 +469,10 @@ func (h *TabHandler) GetSettlements(c *gin.Context) {
 }
 
 func (h *TabHandler) UpdateSettlement(c *gin.Context) {
-	tab := h.getTabAuthAndValidate(c)
-	if tab == nil {
+	access := writeAccess(c)
+	if access == nil {
 		return
 	}
-	if _, allowed := h.requireMemberForWrite(c, tab.ID); !allowed {
-		return
-	}
-
 	settlementID, err := strconv.ParseUint(c.Param("settlementId"), 10, 32)
 	if err != nil {
 		c.JSON(400, gin.H{"error": "invalid settlement id"})
@@ -607,13 +487,12 @@ func (h *TabHandler) UpdateSettlement(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.UpdateSettlementPaid(tab.ID, uint(settlementID), *body.Paid); err != nil {
+	if err := h.service.UpdateSettlementPaid(c.Request.Context(), SettlementPaidCommand{Access: *access, SettlementID: uint(settlementID), Paid: *body.Paid}); err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(404, gin.H{"error": "settlement not found"})
 			return
 		}
-		database.LogRequestError(err)
-		c.JSON(500, gin.H{"error": "an internal error occurred"})
+		mutation.WriteError(c, err)
 		return
 	}
 
@@ -621,75 +500,43 @@ func (h *TabHandler) UpdateSettlement(c *gin.Context) {
 }
 
 func (h *TabHandler) JoinTab(c *gin.Context) {
-	tab := h.getTabAuthAndValidate(c)
-	if tab == nil {
+	access := writeAccess(c)
+	if access == nil {
 		return
 	}
-
-	// A persisted member token makes retries idempotent. This prevents a
-	// repeated invite tap from creating a second member for the same install.
-	if existing := h.getMemberFromQuery(c, tab.ID); existing != nil {
-		c.JSON(200, gin.H{
-			"member_id":    existing.ID,
-			"member_token": existing.MemberToken,
-			"display_name": existing.DisplayName,
-			"role":         existing.Role,
-		})
-		return
-	}
-
 	var body struct {
 		DisplayName string `json:"display_name"`
 	}
-	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(400, gin.H{"error": "bad request"})
-		return
+	if access.MemberToken == "" {
+		if err := c.ShouldBindJSON(&body); err != nil {
+			c.JSON(400, gin.H{"error": "bad request"})
+			return
+		}
+		body.DisplayName = security.SanitizeString(body.DisplayName)
+		if body.DisplayName == "" || len(body.DisplayName) > 30 {
+			c.JSON(400, gin.H{"error": "display_name must be 1-30 characters"})
+			return
+		}
 	}
-
-	name := security.SanitizeString(body.DisplayName)
-	if name == "" || len(name) > 30 {
-		c.JSON(400, gin.H{"error": "display_name must be 1-30 characters"})
-		return
-	}
-
-	member, err := h.service.JoinTab(tab.ID, name)
+	member, replay, err := h.service.JoinTab(c.Request.Context(), JoinCommand{Access: *access, DisplayName: body.DisplayName})
 	if err != nil {
-		database.LogRequestError(err)
-		c.JSON(500, gin.H{"error": "an internal error occurred"})
+		mutation.WriteError(c, err)
 		return
 	}
-
-	c.JSON(201, gin.H{
-		"member_id":    member.ID,
-		"member_token": member.MemberToken,
-		"display_name": member.DisplayName,
-		"role":         member.Role,
-	})
+	status := 201
+	if replay {
+		status = 200
+	}
+	c.JSON(status, gin.H{"member_id": member.ID, "member_token": member.MemberToken, "display_name": member.DisplayName, "role": member.Role})
 }
 
 func (h *TabHandler) LeaveTab(c *gin.Context) {
-	tab := h.getTabAuthAndValidate(c)
-	if tab == nil {
+	access := writeAccess(c)
+	if access == nil {
 		return
 	}
-
-	member := h.getMemberFromQuery(c, tab.ID)
-	if member == nil {
-		c.JSON(403, gin.H{"error": "member token required"})
-		return
-	}
-	if member.Role == "creator" {
-		c.JSON(400, gin.H{"error": "the tab creator cannot leave the tab"})
-		return
-	}
-
-	if err := h.service.DeleteMember(tab.ID, member.ID); err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(404, gin.H{"error": "member not found"})
-			return
-		}
-		database.LogRequestError(err)
-		c.JSON(500, gin.H{"error": "an internal error occurred"})
+	if err := h.service.DeleteMember(c.Request.Context(), LeaveCommand{Access: *access}); err != nil {
+		mutation.WriteError(c, err)
 		return
 	}
 	c.JSON(200, gin.H{"status": "ok"})
@@ -709,4 +556,20 @@ func (h *TabHandler) GetMembers(c *gin.Context) {
 	}
 
 	c.JSON(200, members)
+}
+
+// writeAccess parses capabilities; current authority/state is resolved only by
+// the repository after acquiring the tab root lock.
+func writeAccess(c *gin.Context) *TabAccess {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil || id == 0 {
+		c.JSON(400, gin.H{"error": "invalid tab id"})
+		return nil
+	}
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 4<<20)
+	member := c.GetHeader("X-Member-Token")
+	if member == "" {
+		member = c.Query("m")
+	}
+	return &TabAccess{TabID: uint(id), TabToken: safehttp.AccessToken(c), MemberToken: member}
 }

@@ -3,6 +3,8 @@ package tab
 import (
 	billpkg "backend/internal/bill"
 	"backend/pkg/models"
+	"backend/pkg/mutation"
+	"backend/pkg/security"
 	"context"
 	"errors"
 	"testing"
@@ -22,7 +24,6 @@ type mockTabRepository struct {
 	addBillErr           error
 	finalizeErr          error
 	getSettlementsErr    error
-	createSettlementsErr error
 	updatePaidErr        error
 	createMemberErr      error
 	getMemberByTokenErr  error
@@ -37,7 +38,6 @@ type mockTabRepository struct {
 	addBillMemberID       *uint
 	addBillPaidByMemberID *uint
 	finalizedID           uint
-	createdSettlements    []models.TabSettlement
 	updatedAssignments    []models.ItemAssignment
 }
 
@@ -47,7 +47,12 @@ func newMockRepo() *mockTabRepository {
 	}
 }
 
-func (m *mockTabRepository) Create(tab *models.Tab) error {
+func (m *mockTabRepository) Create(_ context.Context, tab *models.Tab, creator *models.TabMember) error {
+	if creator != nil {
+		creator.ID = 1
+		creator.TabID = 1
+		m.members = append(m.members, *creator)
+	}
 	if m.createErr != nil {
 		return m.createErr
 	}
@@ -71,11 +76,7 @@ func (m *mockTabRepository) GetAuthById(id uint) (*models.Tab, error) {
 	return m.GetById(id)
 }
 
-func (m *mockTabRepository) GetForFinalization(id uint) (*models.Tab, error) {
-	return m.GetById(id)
-}
-
-func (m *mockTabRepository) Update(tab *models.Tab) error { return m.updateErr }
+func (m *mockTabRepository) Update(context.Context, SettingsCommand) error { return m.updateErr }
 func (m *mockTabRepository) AttachBill(_ context.Context, command AttachBillCommand) error {
 	m.addBillTabID = command.TabID
 	m.addBillBillID = command.BillID
@@ -83,27 +84,19 @@ func (m *mockTabRepository) AttachBill(_ context.Context, command AttachBillComm
 	return m.addBillErr
 }
 
-func (m *mockTabRepository) UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment, _ *time.Time) error {
-	m.updatedAssignments = assignments
-	return m.updateAssignmentsErr
-}
-
-func (m *mockTabRepository) UpdateBillItemAssignmentsBatch(_ uint, _ uint, updates []BillItemAssignmentsUpdate) error {
-	if len(updates) > 0 {
-		m.updatedAssignments = updates[0].Assignments
+func (m *mockTabRepository) UpdateBillItemAssignmentsBatch(_ context.Context, c AssignmentCommand) error {
+	if len(c.Updates) > 0 {
+		m.updatedAssignments = c.Updates[0].Assignments
 	}
 	return m.updateAssignmentsErr
 }
-
-func (m *mockTabRepository) UpdateBillPersonSharePaid(tabID uint, billID uint, shareID uint, paid bool) error {
+func (m *mockTabRepository) UpdateBillPersonSharePaid(context.Context, SharePaidCommand) error {
 	return nil
 }
-
-func (m *mockTabRepository) Finalize(id uint) error {
-	m.finalizedID = id
-	return m.finalizeErr
+func (m *mockTabRepository) FinalizeOnce(_ context.Context, c FinalizeCommand) ([]models.TabSettlement, error) {
+	m.finalizedID = c.Access.TabID
+	return m.settlements, m.finalizeErr
 }
-
 func (m *mockTabRepository) GetSettlements(tabID uint) ([]models.TabSettlement, error) {
 	if m.getSettlementsErr != nil {
 		return nil, m.getSettlementsErr
@@ -111,29 +104,15 @@ func (m *mockTabRepository) GetSettlements(tabID uint) ([]models.TabSettlement, 
 	return m.settlements, nil
 }
 
-func (m *mockTabRepository) CreateSettlements(settlements []models.TabSettlement) error {
-	if m.createSettlementsErr != nil {
-		return m.createSettlementsErr
-	}
-	m.createdSettlements = settlements
-	// Copy to settlements so GetSettlements returns them
-	m.settlements = settlements
-	return nil
-}
-
-func (m *mockTabRepository) UpdateSettlementPaid(tabID uint, id uint, paid bool) error {
+func (m *mockTabRepository) UpdateSettlementPaid(context.Context, SettlementPaidCommand) error {
 	return m.updatePaidErr
 }
 
-func (m *mockTabRepository) CreateMember(member *models.TabMember) error {
-	if m.createMemberErr != nil {
-		return m.createMemberErr
-	}
-	member.ID = uint(len(m.members) + 1)
-	m.members = append(m.members, *member)
-	return nil
+func (m *mockTabRepository) Join(_ context.Context, c JoinCommand) (*models.TabMember, bool, error) {
+	token, _ := security.GenerateSecureToken()
+	member := &models.TabMember{ID: 1, TabID: c.Access.TabID, DisplayName: c.DisplayName, MemberToken: token, Role: "member", JoinedAt: time.Now()}
+	return member, false, m.createMemberErr
 }
-
 func (m *mockTabRepository) GetMemberByToken(token string) (*models.TabMember, error) {
 	if m.getMemberByTokenErr != nil {
 		return nil, m.getMemberByTokenErr
@@ -159,7 +138,7 @@ func (m *mockTabRepository) GetMembersByTabID(tabID uint) ([]models.TabMember, e
 	return result, nil
 }
 
-func (m *mockTabRepository) DeleteMember(tabID uint, memberID uint) error {
+func (m *mockTabRepository) Leave(context.Context, LeaveCommand) error {
 	return m.deleteMemberErr
 }
 
@@ -189,8 +168,7 @@ func TestFinalizeTab_Success(t *testing.T) {
 		},
 	}
 
-	svc := NewTabService(repo)
-	settlements, err := svc.FinalizeTab(1)
+	settlements, err := grossSettlements(1, repo.tabs[1].Bills)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -213,9 +191,6 @@ func TestFinalizeTab_Success(t *testing.T) {
 		t.Errorf("expected Bob total 60, got %f", totals["Bob"])
 	}
 
-	if repo.finalizedID != 1 {
-		t.Errorf("expected Finalize called with id 1, got %d", repo.finalizedID)
-	}
 }
 
 func TestFinalizeTab_UsesFrozenUSDAmountsForMixedCurrencies(t *testing.T) {
@@ -224,12 +199,10 @@ func TestFinalizeTab_UsesFrozenUSDAmountsForMixedCurrencies(t *testing.T) {
 		ID: 1,
 		Bills: []models.Bill{
 			{CurrencyCode: "USD", USDExchangeRate: 1, Total: 25, USDTotal: 25, PersonShares: []models.PersonShare{{PersonName: "Alice", Total: 25}}},
-			{CurrencyCode: "EUR", USDExchangeRate: 1.25, Total: 40, USDTotal: 50, PersonShares: []models.PersonShare{{PersonName: "Alice", Total: 24}, {PersonName: "Bob", Total: 16}}},
+			{ExchangeRateSource: "frozen-fixture", ExchangeRateDate: "2026-11-03", CurrencyCode: "EUR", USDExchangeRate: 1.25, Total: 40, USDTotal: 50, PersonShares: []models.PersonShare{{PersonName: "Alice", Total: 24}, {PersonName: "Bob", Total: 16}}},
 		},
 	}
-	svc := NewTabService(repo)
-
-	settlements, err := svc.FinalizeTab(1)
+	settlements, err := grossSettlements(1, repo.tabs[1].Bills)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -247,7 +220,7 @@ func TestFinalizeTab_ReconcilesFractionalCentsToFrozenUSDTotal(t *testing.T) {
 	repo.tabs[1] = &models.Tab{
 		ID: 1,
 		Bills: []models.Bill{{
-			CurrencyCode:    "EUR",
+			ExchangeRateSource: "frozen-fixture", ExchangeRateDate: "2026-11-03", CurrencyCode: "EUR",
 			USDExchangeRate: 1.25,
 			Total:           0.80,
 			USDTotal:        1.00,
@@ -258,9 +231,7 @@ func TestFinalizeTab_ReconcilesFractionalCentsToFrozenUSDTotal(t *testing.T) {
 			},
 		}},
 	}
-	svc := NewTabService(repo)
-
-	settlements, err := svc.FinalizeTab(1)
+	settlements, err := grossSettlements(1, repo.tabs[1].Bills)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -280,7 +251,7 @@ func TestFinalizeTab_ReconcilesFractionalCentsToFrozenUSDTotal(t *testing.T) {
 
 func TestAllocateUSDShareCents_UsesOrdinalNameTieBreak(t *testing.T) {
 	bill := models.Bill{
-		CurrencyCode:    "EUR",
+		ExchangeRateSource: "frozen-fixture", ExchangeRateDate: "2026-11-03", CurrencyCode: "EUR",
 		USDExchangeRate: 1.25,
 		Total:           0.80,
 		USDTotal:        1.00,
@@ -299,7 +270,7 @@ func TestAllocateUSDShareCents_UsesOrdinalNameTieBreak(t *testing.T) {
 
 func TestAllocateUSDShareCents_UsesUTF8OrderForSupplementaryNames(t *testing.T) {
 	bill := models.Bill{
-		CurrencyCode:    "EUR",
+		ExchangeRateSource: "frozen-fixture", ExchangeRateDate: "2026-11-03", CurrencyCode: "EUR",
 		USDExchangeRate: 1.25,
 		Total:           0.008,
 		USDTotal:        0.01,
@@ -320,16 +291,14 @@ func TestFinalizeTab_DoesNotScalePartialAssignmentsToFullBill(t *testing.T) {
 	repo.tabs[1] = &models.Tab{
 		ID: 1,
 		Bills: []models.Bill{{
-			CurrencyCode:    "EUR",
+			ExchangeRateSource: "frozen-fixture", ExchangeRateDate: "2026-11-03", CurrencyCode: "EUR",
 			USDExchangeRate: 1.25,
 			Total:           80,
 			USDTotal:        100,
 			PersonShares:    []models.PersonShare{{PersonName: "Alice", Total: 8}},
 		}},
 	}
-	svc := NewTabService(repo)
-
-	settlements, err := svc.FinalizeTab(1)
+	settlements, err := grossSettlements(1, repo.tabs[1].Bills)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -342,7 +311,7 @@ func TestGetTab_UsesFrozenUSDTotalAndLegacyUSDFallback(t *testing.T) {
 	repo := newMockRepo()
 	repo.tabs[1] = &models.Tab{ID: 1, Bills: []models.Bill{
 		{Total: 10},
-		{CurrencyCode: "EUR", USDExchangeRate: 1.25, Total: 20, USDTotal: 25},
+		{ExchangeRateSource: "frozen-fixture", ExchangeRateDate: "2026-11-03", CurrencyCode: "EUR", USDExchangeRate: 1.25, Total: 20, USDTotal: 25},
 	}}
 	svc := NewTabService(repo)
 
@@ -356,21 +325,16 @@ func TestGetTab_UsesFrozenUSDTotalAndLegacyUSDFallback(t *testing.T) {
 }
 
 func TestFinalizeTab_AlreadyFinalized(t *testing.T) {
+	if err := validStoredSnapshot(models.Tab{ID: 1, Finalized: true}, nil); !errors.Is(err, mutation.Review) {
+		t.Fatalf("missing legacy snapshot must require review: %v", err)
+	}
+}
+func TestFinalizeTabForwardsAtomicCommandAndError(t *testing.T) {
 	repo := newMockRepo()
-
-	repo.tabs[1] = &models.Tab{
-		ID:        1,
-		Finalized: true,
-		Bills:     []models.Bill{{ID: 1}},
-	}
-
-	svc := NewTabService(repo)
-	_, err := svc.FinalizeTab(1)
-	if err == nil {
-		t.Fatal("expected error for already finalized tab")
-	}
-	if err.Error() != "tab is already finalized" {
-		t.Errorf("unexpected error: %v", err)
+	repo.finalizeErr = mutation.Review
+	_, err := NewTabService(repo).FinalizeTab(context.Background(), FinalizeCommand{Access: TabAccess{TabID: 7, TabToken: "tab"}})
+	if !errors.Is(err, mutation.Review) || repo.finalizedID != 7 {
+		t.Fatalf("atomic command/error lost: %v", err)
 	}
 }
 
@@ -383,8 +347,7 @@ func TestFinalizeTab_NoBills(t *testing.T) {
 		Bills:     []models.Bill{},
 	}
 
-	svc := NewTabService(repo)
-	_, err := svc.FinalizeTab(1)
+	_, err := grossSettlements(1, repo.tabs[1].Bills)
 	if err == nil {
 		t.Fatal("expected error for tab with no bills")
 	}
@@ -401,7 +364,7 @@ func TestUpdateBillItemAssignments_ForwardsToRepository(t *testing.T) {
 		{PersonName: "Alice", Percentage: 100},
 	}
 
-	err := svc.UpdateBillItemAssignments(3, 9, 12, assignments, nil)
+	err := svc.UpdateBillItemAssignmentsBatch(context.Background(), AssignmentCommand{Access: TabAccess{TabID: 3}, BillID: 9, Updates: []BillItemAssignmentsUpdate{{ItemID: 12, Assignments: assignments}}})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -461,7 +424,7 @@ func TestJoinTab_Success(t *testing.T) {
 	repo := newMockRepo()
 	svc := NewTabService(repo)
 
-	member, err := svc.JoinTab(1, "Charlie")
+	member, _, err := svc.JoinTab(context.Background(), JoinCommand{Access: TabAccess{TabID: 1}, DisplayName: "Charlie"})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -483,11 +446,11 @@ func TestJoinTab_Success(t *testing.T) {
 	}
 }
 
-func TestJoinTabAsCreator_Success(t *testing.T) {
+func TestFreshTabInitialCreator_Success(t *testing.T) {
 	repo := newMockRepo()
 	svc := NewTabService(repo)
 
-	member, err := svc.JoinTabAsCreator(1, "Alice")
+	member, err := svc.CreateTab(context.Background(), &models.Tab{Name: "Fresh"}, "Alice")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -733,8 +696,8 @@ func TestComputeNetBalances_ReconcilesFractionalCents(t *testing.T) {
 			{ID: 4, DisplayName: "Dana"},
 		},
 		Bills: []models.Bill{{
-			PaidByMemberID:  &payerID,
-			CurrencyCode:    "EUR",
+			PaidByMemberID:     &payerID,
+			ExchangeRateSource: "frozen-fixture", ExchangeRateDate: "2026-11-03", CurrencyCode: "EUR",
 			USDExchangeRate: 1.25,
 			Total:           0.80,
 			USDTotal:        1.00,
@@ -772,8 +735,8 @@ func TestComputeNetBalances_DoesNotScalePartialAssignmentsToFullBill(t *testing.
 			{ID: 2, DisplayName: "Bob"},
 		},
 		Bills: []models.Bill{{
-			PaidByMemberID:  &payerID,
-			CurrencyCode:    "EUR",
+			PaidByMemberID:     &payerID,
+			ExchangeRateSource: "frozen-fixture", ExchangeRateDate: "2026-11-03", CurrencyCode: "EUR",
 			USDExchangeRate: 1.25,
 			Total:           80,
 			USDTotal:        100,

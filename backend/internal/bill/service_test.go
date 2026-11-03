@@ -2,10 +2,10 @@ package bill
 
 import (
 	"backend/pkg/models"
+	"backend/pkg/mutation"
 	"context"
 	"errors"
 	"testing"
-	"time"
 )
 
 type fakeExchangeRateProvider struct {
@@ -29,7 +29,7 @@ type mockBillRepository struct {
 	updateSharePaidErr error
 
 	updatedShareBill uint
-	updatedShareName string
+	updatedShareID   uint
 	updatedSharePaid bool
 	updatedBillID    uint
 	updatedItemID    uint
@@ -44,7 +44,7 @@ func newMockRepo() *mockBillRepository {
 	}
 }
 
-func (m *mockBillRepository) Create(bill *models.Bill) error {
+func (m *mockBillRepository) Create(_ context.Context, bill *models.Bill) error {
 	if m.createErr != nil {
 		return m.createErr
 	}
@@ -61,26 +61,34 @@ func (m *mockBillRepository) GetById(id uint) (*models.Bill, error) {
 	if !ok {
 		return nil, errors.New("record not found")
 	}
-	return bill, nil
+	copy := *bill
+	return &copy, nil
 }
 
-func (m *mockBillRepository) UpdatePersonSharePaid(billID uint, personName string, paid bool) error {
-	m.updatedShareBill = billID
-	m.updatedShareName = personName
-	m.updatedSharePaid = paid
+func (m *mockBillRepository) UpdatePersonSharePaid(_ context.Context, c BillSharePaidCommand) error {
+	if b, ok := m.bills[c.Access.BillID]; ok && c.Access.BillToken != b.AccessToken {
+		return mutation.Forbidden
+	}
+	m.updatedShareBill = c.Access.BillID
+	m.updatedShareID = c.ShareID
+	m.updatedSharePaid = c.Paid
 	return m.updateSharePaidErr
 }
-
-func (m *mockBillRepository) UpdateItemAssignments(billID uint, itemID uint, assignments []models.ItemAssignment, _ *time.Time) error {
-	m.updatedBillID = billID
-	m.updatedItemID = itemID
-	m.updatedItems = assignments
-	return m.assignmentErr
-}
-
-func (m *mockBillRepository) UpdateItemAssignmentsBatch(billID uint, updates []ItemAssignmentsUpdate) error {
-	m.updatedBillID = billID
-	m.updatedBatch = updates
+func (m *mockBillRepository) UpdateItemAssignmentsBatch(_ context.Context, c ClaimCommand) error {
+	if b, ok := m.bills[c.Access.BillID]; ok {
+		if b.AccessToken != c.Access.BillToken {
+			return mutation.Forbidden
+		}
+		if !b.LazyMode || b.TabID != nil {
+			return mutation.StandaloneOnly
+		}
+	}
+	m.updatedBillID = c.Access.BillID
+	m.updatedBatch = c.Updates
+	if len(c.Updates) > 0 {
+		m.updatedItemID = c.Updates[0].ItemID
+		m.updatedItems = c.Updates[0].Assignments
+	}
 	return m.assignmentErr
 }
 
@@ -90,12 +98,12 @@ func TestUpdatePersonSharePaid_Success(t *testing.T) {
 	repo := newMockRepo()
 	svc := NewBillService(repo)
 
-	err := svc.UpdatePersonSharePaid(27, "Alex", true)
+	err := svc.UpdatePersonSharePaid(context.Background(), BillSharePaidCommand{Access: BillAccess{BillID: 27, BillToken: "source"}, ShareID: 159, Paid: true})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if repo.updatedShareBill != 27 || repo.updatedShareName != "Alex" {
-		t.Errorf("unexpected share identity: bill=%d person=%q", repo.updatedShareBill, repo.updatedShareName)
+	if repo.updatedShareBill != 27 || repo.updatedShareID != 159 {
+		t.Errorf("unexpected share identity: bill=%d share=%d", repo.updatedShareBill, repo.updatedShareID)
 	}
 	if !repo.updatedSharePaid {
 		t.Error("expected paid to be true")
@@ -107,7 +115,7 @@ func TestUpdatePersonSharePaid_Error(t *testing.T) {
 	repo.updateSharePaidErr = errors.New("db error")
 	svc := NewBillService(repo)
 
-	err := svc.UpdatePersonSharePaid(27, "Alex", true)
+	err := svc.UpdatePersonSharePaid(context.Background(), BillSharePaidCommand{Access: BillAccess{BillID: 27, BillToken: "source"}, ShareID: 159, Paid: true})
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -121,7 +129,7 @@ func TestUpdateItemAssignmentsBatch_PassesAllItemsTogether(t *testing.T) {
 		{ItemID: 9, Assignments: []models.ItemAssignment{{PersonName: "Alex", Percentage: 100}}},
 	}
 
-	if err := svc.UpdateItemAssignmentsBatch(33, updates); err != nil {
+	if err := svc.UpdateItemAssignmentsBatch(context.Background(), ClaimCommand{Access: BillAccess{BillID: 33}, Updates: updates}); err != nil {
 		t.Fatalf("expected batch update success, got %v", err)
 	}
 	if repo.updatedBillID != 33 || len(repo.updatedBatch) != 2 {

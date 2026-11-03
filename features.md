@@ -128,7 +128,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 ### [FEAT-1793644506] Exercise accounting transactions against PostgreSQL
 - [ ] **Priority:** high
 - **Area:** backend, tests
-- **File(s):** backend/internal/{bill,tab}/*_test.go; backend/docker-compose.yml; VERIFICATION.md
+- **File(s):** backend/internal/{bill,tab}/*_test.go; backend/pkg/mutation/*_test.go; existing internal/testpostgres harness; VERIFICATION.md
 - **Req:** TR fixes 7,19; SR integrated verification gaps; docs/reviews/2026-11-02-baseline.md
 - **Depends on:** BUG-1793644504, BUG-1793644505
 - **UI:** none
@@ -142,9 +142,11 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Test plan:** A separately selected PostgreSQL integration command with actual execution/skip counts; document it in VERIFICATION.md when implemented.
 - **Out of scope:** Unrelated redesign, new framework, live destructive operations, unapproved publication.
 - **Bump:** minor
-- **Status:** open
-- **Log:**
-  - 2026-11-03 Verification: Migration/readiness slice delivered at 53d1e1c: one strict loopback billington_test owned-schema harness, current-schema fixtures use actual runner, separately pinned released SQL proves adoption, real observed lock waits and DDL/DML/ledger/deferred-commit rollback, interruption/retry and binary/readiness coverage. Default 122/373 and tagged selection 119/413 top-level/leaf overlap 91/317; distinct union 150/469, zero failures/skips. Existing authorization/money/display tests preserved. Status remains open: atomic finalization/competing writes and stable-identity PostgreSQL coverage still require their separately assigned phases; no overall accounting or integrated acceptance claim. See docs/reviews/2026-11-03-migration-readiness.md.
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Implementation:** PostgreSQL lifecycle slice: real HTTP/state, both-arrival/rollback races, exact-ID/paid-economic guards, current-authority changes, legacy containment, commit failures and 3x100-sample query/latency evidence. Stable identity remains separate; independent review/driver acceptance pending.
+- **Docs:** docs/backend-api.md; docs/technical-overview.md; backend/README.md; VERIFICATION.md; docs/reviews/2026-11-03-atomic-lifecycle.md
+- **Log:** 2026-11-03 Verification: Migration/readiness evidence remains in docs/reviews/2026-11-03-migration-readiness.md. Lifecycle implementation evidence is in docs/reviews/2026-11-03-atomic-lifecycle.md; scoped checks do not establish stable identity, production adoption, old-writer exclusion or integrated acceptance.
 
 ### [FEAT-1793644507] Verify complete mobile-to-browser collaboration journeys
 - [ ] **Priority:** high
