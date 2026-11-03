@@ -189,14 +189,14 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - [ ] **Severity:** med
 - **Area:** backend, security
 - **File(s):** backend/cmd/bill-service/main.go; backend/internal/{bill,tab,receipt}/handler.go
-- **Observation:** Creation routes have no explicit JSON body/collection budgets or application rate limit; server uses http.ListenAndServe without deadlines.
+- **Observation:** Bill creation already has1MiB/500items/100people-shares/5000assignments and finite-money guards. CreateTab remains unbounded; both http.ListenAndServe entrypoints lack server deadlines. Mocked receipt before-proof also shows spoofed forwarded IP resets quota (11 requests reached provider).
 - **Expected:**
   - Creation body/collection limits, finite input checks, and server deadlines are enforced with explicit errors.
   - Trusted proxy configuration is verified so client-IP quotas cannot be bypassed by caller headers.
   - Slow/oversized/malformed and creation-burst tests stay within approved limits and preserve normal traffic.
 - **Req:** TR engineering 9; TR fix 12; docs/reviews/2026-11-02-baseline.md
 - **Depends on:** none
-- **Repro / Notes:** Read API startup, CreateBill/CreateTab and receipt limiter. External host controls are unverified; establish limits from real payload needs, without banning valid discounts.
+- **Repro / Notes:** Open; evidence correction only. INGRESS_OCR_BASELINE.md: 12 mocked handler/provider leaves,8 expected failures/4 controls; quota bypass and oversized413 predicate fail while same-peer quota/upload-byte controls pass. Detailed immutable source/test hashes and limits: docs/reviews/2026-11-03-local-workflow.md. No live-host control claim.
 - **Bump:** patch
 - **Status:** open
 
@@ -204,14 +204,14 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - [ ] **Severity:** med
 - **Area:** backend, security
 - **File(s):** backend/internal/receipt/{handler,service}.go; backend/cmd/bill-service/main.go
-- **Observation:** Receipt quotas are process-local; inactive IP keys never expire and no global OCR concurrency/daily-spend cap is defined in source.
+- **Observation:** Existing receipt10MiB body cap, provider30s timeout and same-peer10/min quota work. Remaining mocked before-proof:256 expired limiter keys retained, canceled caller starts1 uncanceled provider request,6 concurrent calls exceed proposed2, and3MiB response is read above proposed2MiB budget. No global durable start/spend bound is defined.
 - **Expected:**
   - Expired limiter keys are pruned; global concurrency/spend limits have bounded memory and documented multi-process semantics.
   - Quota/provider failure returns recoverable errors with no hidden paid retry loop.
   - Clock-controlled expiration/burst/concurrency tests prove caps; hosting/provider budgets are confirmed or explicitly blocked.
 - **Req:** TR engineering 9; TR fix 12; docs/reviews/2026-11-02-baseline.md
 - **Depends on:** none
-- **Repro / Notes:** Read receipt limiter map and provider request path. No claim is made about current provider-account budgets; choose numeric limits in the implementation plan.
+- **Repro / Notes:** Open; evidence correction only. INGRESS_OCR_BASELINE.md retains8 expected failures/4 controls/0 skips at13be27b;2-in-flight/2MiB were proposed test targets, not approved production policy. Raw parse-error content is internal; handler returns generic errors. Separate redirect boundary: BUG-1793725850. Provenance/repro in docs/reviews/2026-11-03-local-workflow.md; no real provider request.
 - **Bump:** patch
 - **Status:** open
 
@@ -449,3 +449,33 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Docs:** docs/reviews/2026-11-03-go-module-inventory.md; no living docs quote changed module versions. Historical reviews/baseline and CHANGELOG preserved.
 - **Log:**
   - 2026-11-03 Validation: SECURITY_INVENTORY_APPROVAL.md authorizes the exact crypto pseudo-version exception. Current official proxy/tag/commit/manifests/signed sums and Go stable feed reverified before resolution. Raw .vv/local-gate/security-inventory/ preserves actual counts, seven necessary graph version changes, no module additions/removals, fixture correction and all unsuppressed scanner results. Scoped source result only; independent review/integrated acceptance pending.
+
+### [BUG-1793725849] Keep panic recovery logs free of private requests and panic values
+- [ ] **Severity:** med
+- **Area:** backend, security
+- **File(s):** backend/cmd/{bill-service,web-service}/main.go; backend/pkg/safehttp/; Gin recovery middleware
+- **Observation:** Pinned13be27b actual middleware chain: debug recovery logged synthetic query capability and X-Member-Token; release recovery logged synthetic private panic text (3 confidentiality failures, 2 controls). Source defaults to debug; production GIN_MODE is unknown.
+- **Expected:**
+  - Recovery emits a finite diagnostic and generic500 without raw request/query/header or panic text in debug and release.
+  - Preserve ordinary query-free request logging and recovery semantics.
+  - Executed synthetic taint tests prove query, member/Authorization header and panic secrecy with positive500/logging controls.
+- **Req:** SR sensitive data/provider confidentiality; docs/reviews/2026-11-03-local-workflow.md
+- **Depends on:** none
+- **Repro / Notes:** Driver PANIC_LOGGING_BASELINE.md; isolated actual RequestLogger+gin.Recovery test at13be27b, 5 leaves/3 failed/2 passed/0 skips. Durable provenance: docs/reviews/2026-11-03-local-workflow.md. No real leak/production-mode claim. Distinct from SQL-specific BUG-1793644509; no recovery fix here.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1793725850] Deny OCR provider redirects across the API-key boundary
+- [ ] **Severity:** med
+- **Area:** backend, security
+- **File(s):** backend/internal/receipt/service.go; backend/internal/receipt/handler.go
+- **Observation:** At13be27b a mocked cross-origin307 through the actual default OCR client produced a second request carrying synthetic x-api-key. This is conditional transport behavior; no real provider redirect/key disclosure was observed.
+- **Expected:**
+  - Deny redirects for the fixed provider endpoint; at most one outbound attempt and no cross-origin API-key forwarding.
+  - Return finite generic provider/parse errors without raw receipt, response, key or Location text; retain timeout/cancellation and normal success.
+  - Local mock transport tests cover307/other redirect controls, one-attempt behavior and safe errors without real provider calls.
+- **Req:** SR sensitive data/provider confidentiality; docs/reviews/2026-11-03-local-workflow.md
+- **Depends on:** none
+- **Repro / Notes:** INGRESS_OCR_BASELINE.md and actual TestDriverReceiptResources/provider_redirect_does_not_forward_api_key failure. Durable source/test hashes and raw locations: docs/reviews/2026-11-03-local-workflow.md. Distinct from general receipt-memory/spend BUG-1793644508; no provider code fix here.
+- **Bump:** patch
+- **Status:** open

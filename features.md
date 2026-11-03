@@ -102,7 +102,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Docs:** README.md; backend/README.md; web-bill-viewer/README.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-03-local-workflow.md
 
 ### [FEAT-1793644505] Define ordered PostgreSQL migration readiness
-- [ ] **Priority:** high
+- [x] **Priority:** high
 - **Area:** backend, persistence
 - **File(s):** backend/pkg/database/postgres.go; backend/pkg/models/; backend/migrations/; docs/technical-overview.md
 - **Req:** SR ORDER; SR schema ownership; docs/reviews/2026-11-02-baseline.md
@@ -119,13 +119,12 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Out of scope:** Unrelated redesign, new framework, live destructive operations, unapproved publication.
 - **Bump:** minor
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
-- **Implementation:** Use immutable 0001 with frozen v1 and atomic schema-scoped startup/readiness (53d1e1c). Add checksummed guard v2 for related inheritance and ineffective FKs without rewriting v1/history or adding health queries. Payer backfill stays retired; correction re-review pending.
-- **Docs:** README.md; backend/README.md; docs/technical-overview.md; docs/backend-api.md; VERIFICATION.md; docs/reviews/2026-11-03-migration-readiness.md; docs/reviews/2026-11-03-catalog-safety.md
+- **Status:** shipped-pending-migration
+- **Implementation:** Immutable0001/frozen v1 and atomic schema-scoped startup/readiness retain history and retire payer backfill. Checksummed v2 rejects related inheritance/ineffective FK enforcement. Independent correction APPROVE at13be27b; fresh committed driver Go gate atfb6b4b9 passes. Production adoption/integrated acceptance unverified.
+- **Docs:** README.md; backend/README.md; docs/technical-overview.md; docs/backend-api.md; VERIFICATION.md; docs/reviews/2026-11-03-migration-readiness.md; docs/reviews/2026-11-03-catalog-safety.md; docs/reviews/2026-11-03-local-workflow.md
 - **Log:**
-  - 2026-11-03 Verification: Initial 53d1e1c/c541e7e scope:469 distinct cases,9 controls. Full original proof remains in the dated migration-readiness note.
-  - 2026-11-03 Review: Reopened for inherited descendants and ineffective FK triggers; supplemental v2 preserves frozen v1/history; correction re-review pending.
-  - 2026-11-03 Verification: V2:504 distinct cases pass,20 before failures/22 targets,4 controls;scans clean. Full proof in the catalog-safety note; fresh review pending.
+  - 2026-11-03 Review:13be27b correction APPROVE/zero findings; frozen v1/history unchanged. Earlier failures/controls retained in catalog-safety note.
+  - 2026-11-03 Verification: Driver clean committed fb6b4b9:414 default/545 tagged leaves,623 distinct;0 failures/skips. Full provenance and remaining gates in local-workflow note.
 
 ### [FEAT-1793644506] Exercise accounting transactions against PostgreSQL
 - [ ] **Priority:** high

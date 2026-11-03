@@ -146,3 +146,116 @@ Historical backend/roadmap.md remains a history record (as its header states). E
 API/provider environment contracts are unchanged. No claim about legacy external users,
 currency-provider cleanup, cloud resources, runtime/dependency acceptance or whole-product
 security follows from this local workflow gate.
+
+## Authorized tracker-only reconciliation
+
+This second logical change adds no server fix. Official `.cycle/trackers.py` alone
+minted BUG-1793725849 (medium panic recovery confidentiality) and BUG-1793725850
+(medium OCR redirect/API-key boundary). A pre-write search found no equivalent redirect
+or panic ticket; these do not duplicate SQL-specific BUG4509 or general OCR spend BUG4508.
+BUG4507/4508 retain open status with corrected before-proof and existing protections.
+BUG4513/4514 remain in-progress. Atomic BUG4504/FEAT4506, authentication and runtime/
+dependency acceptance statuses are unchanged. No CHANGELOG migration or PR comment.
+
+FEAT-1793644505 returns to shipped-pending-migration under the driver's explicit
+reconciliation authorization. Independent CATALOG_CORRECTION_REVIEW.md approves the exact
+13be27bd6c2ec763c21e7ce1cbc44719f5f90e69 correction, zero Standards/Spec findings,
+with reviewer execution NOT RUN. Report SHA256:
+6bc7c93356966aec935558ba55bca7fcfe0c680c2a9d94034b21df47cbbe5e3f, matching
+PENDING_REVIEW_DISPOSITIONS.json. Its scoped approval retains frozen v1/migration payloads,
+ledger history and one-query readiness; it does not establish production adoption.
+Earlier469-case original proof, v2's504 distinct cases,20 executed before failures,
+22 targets and four protection-removal controls remain in the prior dated migration/
+catalog notes and raw records. This reconciliation does not rewrite those records.
+
+Fresh driver gate: scratch billington-structure-evidence/atomic-clean-fb6b4b9/result.json,
+source fb6b4b99e8a1726c9334ba30a9042f8665ae3551, clean committed driver execution
+November3 16:37:30–16:40:55UTC, Go1.27.3. Commands recorded there: go build ./...;
+go vet ./...; format check; go test -race -count=1 -json ./...;
+go test -race -count=1 -tags=integration -json ./internal/bill ./internal/tab
+./pkg/database ./migrations ./internal/startup ./internal/readiness ./internal/testpostgres;
+go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./.... Default414 and tagged545 passing
+leaves overlap336, yielding623 distinct, zero failures/skips/missing/duplicate terminals
+or cached streams. All182 owned schemas were checked absent; its driver worktree was
+removed. I verified retained records/input hashes against the unchanged backend source,
+without creating a checkout or rerunning these suites. This supports only the authorized
+catalog status reconciliation; accounting/identity/replay/integrated acceptance is not closed.
+
+### Panic confidentiality before-proof (new BUG-1793725849)
+
+Source:13be27b. Driver `verify_recovery_log_baseline.py` added its diagnostic test to
+an isolated backend archive and ran `go test -race -count=1 -json ./pkg/safehttp -run
+'^TestDriverRecoveryCapabilities$'`. Actual RequestLogger + gin.Recovery produced five
+leaves: three failed confidentiality assertions, two passing controls, zero skips or
+missing terminals; exit1 is expected before-state. The debug-mode request dump emitted
+a synthetic query capability and X-Member-Token. Release recovery emitted synthetic
+private panic text. Authorization redaction and release request omission controls pass;
+all cases returned500 and normal request logging stayed query-free. Source defaults to
+debug because neither entrypoint selects a mode; actual production GIN_MODE is unknown.
+No real panic/credential leak is claimed. Release mode alone cannot protect raw panic
+content. Preserve the separate completed SQL logger/request database-error sanitizer.
+Later acceptance requires finite safe recovery diagnostics plus generic500 in both modes,
+with executed query/header/panic taint controls and ordinary request logging preserved.
+
+Raw recovery/{result.json,before.jsonl,before.stderr} is under scratch
+billington-structure-evidence/receipt-resources-baseline-13be27b/.
+Compiled test SHA256:c6abf499b82d8c587f951789bab683196358f2d43972e6dc8fb4a0bec1cd1886.
+Diagnostic input `recovery_log_baseline_test.go` SHA256:
+ce298c03ae96b0fb79d2bd924f41cf7f2eb9968b2f369210854386ee750ddfa0.
+PANIC_LOGGING_BASELINE.md SHA256:
+582630dc2344396988039df22891274e30722390c378dfd033ff0413b1fd98d6.
+
+### Ingress/OCR before-proof (open BUG4507/4508; new BUG-1793725850)
+
+Source:13be27b. `verify_receipt_resource_baseline.py` archived actual handler, limiter,
+Service and default factory, then used only synthetic JPEG/key values and local mocked
+RoundTrippers: `go test -race -count=1 -json ./internal/receipt -run
+'^TestDriverReceiptResources$'`. Twelve leaves, eight expected failures, four passing
+controls, zero skips/missing terminals; exit1 is retained before-state, not a green gate.
+
+| Failed predicate | Driver observation / limits |
+|---|---|
+| Spoofed forwarded IP cannot reset quota |11 same-peer requests with changed X-Forwarded-For reached provider; eleventh200 |
+| Expired keys removed |256 old entries remained beside a new key |
+| Caller cancellation prevents provider work | Already-canceled caller started1 request without canceled context |
+| Process concurrency bounded |6 simultaneous calls, above proposed target2 |
+| Response byte budget |3MiB fully read, above proposed2MiB |
+| Oversized upload returns413 | Existing10MiB byte guard returned400 |
+| Provider redirect denied | Mocked cross-origin307 generated request2 carrying synthetic x-api-key |
+| Internal parse error omits content | Synthetic receipt text appeared in error.Error(); handler still hid it |
+
+Controls: ordinary valid image/response succeeds; same-IP request11 is rejected; actual
+10MiB upload byte guard prevents provider work; explicit trusted proxy maps the expected
+client. The main-equivalent router/default proxy policy was reproduced in-process, not a
+launched binary. No real provider redirect or key disclosure, production load/spend,
+population memory measurement or account-wide budget is established. Proposed2-in-flight/
+2MiB thresholds are test targets requiring later numeric-policy approval, not current policy.
+The focused redirect bug requires denial, at most one attempt and finite content-free
+errors with local controls; server/provider code is untouched in this batch.
+
+Existing protections must remain: bill1MiB body,500 items,100 people/shares,
+5000 assignments and finite money; receipt10MiB body, provider30s timeout,
+10/min same-peer quota; mobile capture1500px/quality75 and45s send timeout. CreateTab
+still binds unbounded JSON, and both service entrypoints use http.ListenAndServe without
+configured deadlines. Receipt response streaming is outside the mobile send-only timeout.
+BUG4507 no longer claims universal absence of body/collection protections. BUG4508 records
+remaining expiry/cancellation/concurrency/response/global-bound gaps; process-only limits
+must not become dollar-spend claims. Provider/account budgets remain unverified.
+
+Raw result.json, before.jsonl, before.stderr, source-hashes.json and the formatted archived
+test live in scratch billington-structure-evidence/receipt-resources-baseline-13be27b/.
+Compiled test SHA256:fa38721b1e38f071e03d9a322cb2708176728d5eb9fbfe43fd77a2ba924f33a4.
+Diagnostic input `receipt_resource_baseline_test.go` SHA256:
+614454ad359d69ca143f7a47486fb735cbf9b94570a0152e1c5929485a09206c.
+INGRESS_OCR_BASELINE.md SHA256:
+179d7038bbf459f9767c95a815ed977d5f6db91996a4988e9f764c9beb1e8dcc.
+I checked the recorded Go test terminals without rerunning or contacting any provider.
+
+Tracker write/provenance records: .vv/local-gate/local-workflow/tracker-reconciliation-writes.json,
+reconciliation-ids.json and reconciliation-scope-check.json. Only the five authorized
+entry contents change in this second group (three existing, two new); the official writer
+also inserts the required blank separator before newly appended entries. An initial
+scope-check assertion counted that separator as an existing-entry edit; comparing entry
+content after trimming separators verifies that every other entry is unchanged. Touched
+entries remain below2500 bytes (maximum2394). No independent acceptance is inferred from
+these administrative updates.
