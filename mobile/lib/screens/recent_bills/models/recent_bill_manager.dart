@@ -22,6 +22,7 @@ import 'package:checks_frontend/database/database.dart';
 import 'package:checks_frontend/models/bill_item.dart';
 import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/services/api_service.dart';
+import 'package:checks_frontend/services/receipt_validation.dart';
 import 'package:checks_frontend/screens/settings/services/preferences_service.dart';
 import 'package:flutter/material.dart';
 import 'recent_bill_model.dart';
@@ -345,6 +346,15 @@ class RecentBillsManager extends ChangeNotifier {
     List<Map<String, String>> paymentMethods,
   ) async {
     final model = RecentBillModel.fromData(bill);
+    // Display reconstruction intentionally omits nonpositive assignments. Check
+    // the original stored values before that projection can hide invalid input.
+    for (final item in model.items ?? <Map<String, dynamic>>[]) {
+      final assignments = item['assignments'] as Map<String, dynamic>?;
+      for (final percentage in assignments?.values ?? <Object?>[]) {
+        final error = receiptAssignmentPercentageError(percentage);
+        if (error != null) throw BillValidationException(error);
+      }
+    }
     final response = await apiService.uploadBill(
       billName: model.billName,
       participants: model.participants,

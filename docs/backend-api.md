@@ -137,6 +137,9 @@ before publication. Empty and partial lazy claims remain supported. Receipt part
 entry and upload use the 30-code-point bound, including recent people and groups;
 historical labels remain readable and are never truncated or rewritten. Tab join/member
 validation has its own contract and is not changed by this receipt-entry check.
+Saved-history publication checks the raw stored assignment values before display
+reconstruction can omit nonpositive entries. Receipt-name preflight uses Go's Unicode
+White_Space trimming after tag removal: U+FEFF is retained and counts toward the limit.
 
 Share projections are optional compatibility input, validated against item assignments
 and the mobile formulas; raw fractional tax/tip and cent-rounded totals are supported.

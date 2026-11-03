@@ -295,11 +295,9 @@ class ApiService {
       final assignments = <Map<String, dynamic>>[];
 
       item.assignments.forEach((person, percentage) {
-        if (!percentage.isFinite || percentage < 0 || percentage > 100) {
-          throw BillValidationException(
-            'Review item assignments: each percentage must be a finite number '
-            'between 0 and 100 before sharing.',
-          );
+        final percentageError = receiptAssignmentPercentageError(percentage);
+        if (percentageError != null) {
+          throw BillValidationException(percentageError);
         }
         final error = receiptParticipantNameError(person.name);
         if (error != null) throw BillValidationException(error);

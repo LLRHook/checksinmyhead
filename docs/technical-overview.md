@@ -172,6 +172,9 @@ Groups validate every member before adding any. Done validates through the build
 before local serialization; explicit history Get Link surfaces validation errors while
 retaining the stored receipt. This does not resolve the separate save/replay operation
 or the established client/server one-cent tie mismatch.
+Pending-history upload checks the original saved assignment values before its display
+projection, using the serializer's shared percentage rule. Name checks match the
+endpoint's whitespace set, including retained U+FEFF. See [review corrections](reviews/2026-11-03-client-validation-correction.md).
 
 ### Next.js (Web Viewer)
 
