@@ -236,8 +236,11 @@ and rolls back the complete batch. Changed/removed shares cannot be paid via sta
 Source-bill `PATCH /api/bills/:id/shares/:shareId` uses the exact bill/share IDs and
 bill capability; a tab token cannot substitute. Attached source payment locks tab
 before bill and is allowed after finalization. Tab-share payment also checks current
-membership and the existing case-insensitive name rule under lock, rejecting detectable
-ambiguity. This contains observable collisions; stable identity remains separate work.
+membership and the existing Unicode `EqualFold` name rule under lock. Ambiguity uses
+that same relation for member and share candidates, independent of SQL collation.
+Multiple matching shares return `409 accounting_review_required` before any paid
+update, including equal-flag retries. This contains observable collisions; stable
+identity remains separate work.
 Both payment routes change only the selected receipt paid flag, with scoped `404` for
 stale IDs. Generic `503`/`500` responses never expose database messages.
 

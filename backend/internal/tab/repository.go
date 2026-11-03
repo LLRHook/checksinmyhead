@@ -303,9 +303,16 @@ func (r *tabRepository) UpdateBillPersonSharePaid(ctx context.Context, c SharePa
 		if !strings.EqualFold(share.PersonName, actor.DisplayName) {
 			return mutation.Forbidden
 		}
-		var count int64
-		if err := tx.Model(&models.PersonShare{}).Where("bill_id = ? AND LOWER(person_name) = ?", c.BillID, strings.ToLower(share.PersonName)).Count(&count).Error; err != nil {
+		// Use the authorization relation for ambiguity, independent of SQL collation.
+		var shareNames []string
+		if err := tx.Model(&models.PersonShare{}).Where("bill_id = ?", c.BillID).Pluck("person_name", &shareNames).Error; err != nil {
 			return err
+		}
+		count := 0
+		for _, name := range shareNames {
+			if strings.EqualFold(name, share.PersonName) {
+				count++
+			}
 		}
 		if count != 1 {
 			return mutation.Review
