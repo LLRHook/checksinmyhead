@@ -195,8 +195,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 ### [BUG-1793644507] Bound public API request resources
 - [ ] **Severity:** med
 - **Area:** backend, security
-- **File(s):** backend/cmd/{bill-service,web-service}/main.go; backend/pkg/safehttp/; backend/internal/bill/{create_request,assignment_request,handler,assignments}.go; backend/internal/tab/handler.go; remaining backend/internal/receipt/handler.go slice
-- **Observation:** A1 d60bedc adds shared HTTP/recovery/proxy/JSON bounds. Optimization1932ded reduces repeated decode/copy work; max50k p95 still misses10ms. Review found post-handler body draining and malformed-prefix peer normalization gaps; source4ffdeee corrects both pending re-review. Receipt A2 and hosted proof remain open.
+- **File(s):** backend/cmd/{bill-service,web-service}/main.go; backend/pkg/safehttp/; backend/internal/bill/{create_request,assignment_request,handler,assignments}.go; backend/internal/tab/handler.go; backend/internal/receipt/
+- **Observation:** A1 shared HTTP/recovery/proxy/JSON safeguards and fd26598 corrections have scoped independent APPROVE; reviewer execution NOT RUN. A2a34bc415 bounds receipt admission/upload/provider parsing and joins actual I/O. Maximum50k JSON latency and A2b/hosted/integrated proof remain open.
 - **Expected:**
   - Creation body/collection limits, finite input checks, and server deadlines are enforced with explicit errors.
   - Trusted proxy configuration is verified so client-IP quotas cannot be bypassed by caller headers.
@@ -207,25 +207,31 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** 4ffdeee expires rejected-body reads, closes HTTP/1 connections and canonicalizes valid XFF tokens without dropping invalid hops. Root960distinct Go/75runtime pass; re-review pending. Optimization1932ded retains no-cache policy; max50k p95=27.033/27.143/27.420ms remains RED. A2/host proof open.
-- **Docs:** backend/README.md; docs/{backend-api,technical-overview}.md; docs/reviews/2026-11-04-{api-a1,json-optimization,api-a1-review-corrections}.md.
+- **Fix:** 34bc415 implements backend OCR safeguards with actual upload/provider cancellation, joined native writers, fixed one-attempt key-safe transport and finite parse bounds. Local1093distinct Go/75runtime pass; independent OCR acceptance pending. fd26598 HTTP_JSON review APPROVE Standards0/Spec0, reviewer execution NOT RUN. Existing max50k p95=27.033/27.143/27.420ms stays RED; no waiver.
+- **Docs:** backend/README.md; backend/.env.example; docs/{backend-api,technical-overview,backend-ocr-verification}.md; VERIFICATION.md; docs/reviews/2026-11-04-ocr-a2-backend.md.
 - **Log:**
   - 2026-11-04 Validation: Original A1 845Go; optimization932Go; correction960Go (708ordinary/716PG,464overlap),0fail/skip.28focused pass; before15expected fails/9controls;3removals fail19overlapping leaf assertions.75runtime; Trivy/Semgrep/gosec0; Gitleaks5synthetic/placeholder candidates,0confirmed.206schemas absent/336originals intact. Known performance and whole acceptance RED.
+  - 2026-11-04 Validation: A2a local evidence:836ordinary/721PG/464overlap=1093distinct, all960prior IDs retained;0fail/skip/cache/missing.75runtime, actual wire/cancel/shape controls,414exact schemas absent and336originals intact. Raw scanner exits/triage retained; source correctness independent acceptance and global/performance gates remain open.
 
 ### [BUG-1793644508] Bound receipt inference spending and limiter memory
 - [ ] **Severity:** med
 - **Area:** backend, security
-- **File(s):** backend/internal/receipt/{handler,service}.go; backend/cmd/bill-service/main.go
-- **Observation:** Existing receipt10MiB body cap, provider30s timeout and same-peer10/min quota work. Remaining mocked before-proof:256 expired limiter keys retained, canceled caller starts1 uncanceled provider request,6 concurrent calls exceed proposed2, and3MiB response is read above proposed2MiB budget. No global durable start/spend bound is defined.
+- **File(s):** backend/internal/receipt/{policy,admission,handler,service,provider_transport,validation}.go; backend/cmd/bill-service/main.go
+- **Observation:** A2a34bc415 adds approved 2-slot default (1-8), 10 admissions/60s, 4096 bounded peer keys, joined sweeper/native cancellation, total10MiB uploads and bounded responses/parsing. Process/IP controls multiply across replicas. No durable/global account start or dollar-spend allowance exists; B remains deferred.
 - **Expected:**
   - Expired limiter keys are pruned; global concurrency/spend limits have bounded memory and documented multi-process semantics.
   - Quota/provider failure returns recoverable errors with no hidden paid retry loop.
   - Clock-controlled expiration/burst/concurrency tests prove caps; hosting/provider budgets are confirmed or explicitly blocked.
 - **Req:** TR engineering 9; TR fix 12; docs/reviews/2026-11-02-baseline.md
 - **Depends on:** none
-- **Repro / Notes:** Open; evidence correction only. INGRESS_OCR_BASELINE.md retains8 expected failures/4 controls/0 skips at13be27b;2-in-flight/2MiB were proposed test targets, not approved production policy. Raw parse-error content is internal; handler returns generic errors. Separate redirect boundary: BUG-1793725850. Provenance/repro in docs/reviews/2026-11-03-local-workflow.md; no real provider request.
+- **Repro / Notes:** INGRESS_OCR_BASELINE.md retains original8 expected failures/4 controls. A2a immutable-base overlay again fails8/passes4; final actual constructors/TCP/TLS tests and removals pass/fail as intended with synthetic fixtures only. See dated OCR note and ignored ocr-a2-backend evidence. No real inference or account/hosting access.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Backend phase A2a34bc415: bounded admission/limiter, stream caps, actual cancellation and joined writes, finite errors and parse/quantity guards. Limiter1397512bytes; native TLS burst allocation bounds53818904/107689336bytes for1/2slots; 75s retention -273632bytes, fixed7goroutines. Durable B, independent and hosted acceptance pending; cannot close from process controls.
+- **Docs:** backend/README.md; backend/.env.example; docs/{backend-api,technical-overview,backend-ocr-verification}.md; docs/reviews/2026-11-04-ocr-a2-backend.md.
+- **Log:**
+  - 2026-11-04 Validation: A2a local evidence:836ordinary/721PG/464overlap=1093distinct, all960prior IDs retained;0fail/skip/cache/missing.75runtime, actual wire/cancel/shape controls,414exact schemas absent and336originals intact. Raw scanner exits/triage retained; source correctness independent acceptance and global/performance gates remain open.
 
 ### [BUG-1793644509] Redact credentials and payment data from SQL logs
 - [x] **Severity:** med
@@ -495,13 +501,18 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - [ ] **Severity:** med
 - **Area:** backend, security
 - **File(s):** backend/internal/receipt/service.go; backend/internal/receipt/handler.go
-- **Observation:** At13be27b a mocked cross-origin307 through the actual default OCR client produced a second request carrying synthetic x-api-key. This is conditional transport behavior; no real provider redirect/key disclosure was observed.
+- **Observation:** Original conditional mocked cross-origin307 key forwarding remains retained before evidence; no real key/provider leak was observed. A2a34bc415 removes redirect targets before client parsing, refuses redirects and uses a private verified-TLS HTTP/1 pool with a nonempty nonreplayable POST and joined native request lifetime. Independent driver acceptance is pending.
 - **Expected:**
   - Deny redirects for the fixed provider endpoint; at most one outbound attempt and no cross-origin API-key forwarding.
   - Return finite generic provider/parse errors without raw receipt, response, key or Location text; retain timeout/cancellation and normal success.
   - Local mock transport tests cover307/other redirect controls, one-attempt behavior and safe errors without real provider calls.
 - **Req:** SR sensitive data/provider confidentiality; docs/reviews/2026-11-03-local-workflow.md
 - **Depends on:** none
-- **Repro / Notes:** INGRESS_OCR_BASELINE.md and actual TestDriverReceiptResources/provider_redirect_does_not_forward_api_key failure. Durable source/test hashes and raw locations: docs/reviews/2026-11-03-local-workflow.md. Distinct from general receipt-memory/spend BUG-1793644508; no provider code fix here.
+- **Repro / Notes:** Original INGRESS_OCR_BASELINE.md plus actual local TLS 301/302/303/307/308, immediate302, tainted Location, stale pooled pre/post-write failures, no error-body read, early/late cancellation and finite errors. Counted wire POSTs rather than Do/dials. Corrected final redirect-removal overlay executes failed acceptance assertion; initial nil-body counterfactual panic excluded from assertion proof.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** 34bc415 keeps one fixed provider attempt, blocks target/key forwarding, joins native writer/body cleanup and rechecks deadline after cleanup. Early writer and cleanup-cancel failures reproduced before and pass final. Local1093distinct Go/75runtime pass; stays in-progress pending independent acceptance.
+- **Docs:** backend/README.md; docs/{backend-api,technical-overview,backend-ocr-verification}.md; docs/reviews/2026-11-04-ocr-a2-backend.md.
+- **Log:**
+  - 2026-11-04 Validation: A2a local evidence:836ordinary/721PG/464overlap=1093distinct, all960prior IDs retained;0fail/skip/cache/missing.75runtime, actual wire/cancel/shape controls,414exact schemas absent and336originals intact. Raw scanner exits/triage retained; source correctness independent acceptance and global/performance gates remain open.
