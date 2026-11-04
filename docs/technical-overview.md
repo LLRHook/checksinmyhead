@@ -319,8 +319,13 @@ across replicas. Durable account allowance B is deferred. Neither hosted capacit
 provider acceptance of every admitted size/format has been verified.
 
 Mobile `ReceiptApiService` owns each attempt's IOClient, abort trigger, full-body
-subscription and 45s deadline from before setup through parse and cleanup. The native
-client is closed on every outcome; cancellation does not consume a future manual
+subscription and 45s deadline from before setup through parse and cleanup. A separate
+private upload owner retains the original input subscription and joins its one
+asynchronous cancellation future, including source errors and cancellation during
+listen. Native send completion alone does not establish input cleanup. The current
+Dart TLS-negotiation cancellation gap remains open, so full native lifetime/deadline
+acceptance is still pending. The client is closed on every outcome; cancellation
+does not consume a future manual
 attempt. Decoded bodies are capped at 1 MiB before bounded JSON preflight/typed graphs;
 redirects and automatic retries are disabled. A monotonic check after synchronous
 parse prevents late success; a timer cannot preempt synchronous CPU work.

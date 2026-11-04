@@ -155,7 +155,11 @@ current committed resolution; see the [lock verification evidence](../docs/revie
 
 Each manual scan owns one native HTTP client and a 45-second deadline covering file
 setup, upload, the entire decoded response and parsing. Timeout, cancellation and
-screen disposal abort/close that operation; a later manual attempt gets a fresh client.
+screen disposal request abort/close; a later manual attempt gets a fresh client. The
+original upload subscription is retained, canceled and joined before the attempt
+settles, including asynchronous cleanup after stream errors. Native TLS negotiation
+can still survive SDK force-close; that confirmed review finding remains open, so
+the full native-cancellation deadline is not yet certified.
 Redirects and automatic retries are disabled. Decoded bodies are capped at 1 MiB,
 including error responses. Errors use finite local messages and retain the rate-limit
 UX without displaying provider/server content.

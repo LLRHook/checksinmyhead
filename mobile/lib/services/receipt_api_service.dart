@@ -25,7 +25,7 @@ import 'package:http/io_client.dart';
 import 'package:checks_frontend/services/api_config.dart';
 import 'package:checks_frontend/services/receipt_parser.dart';
 
-/// Each attempt owns its client, abort trigger, body subscription and deadline.
+/// Each attempt owns its client, abort trigger, upload/body cleanup and deadline.
 /// There are no implicit retries; cancel leaves this service usable for manual retry.
 class ReceiptApiService {
   static const _timeout = Duration(seconds: 45);
@@ -93,10 +93,12 @@ class ReceiptApiService {
         _baseUrl.resolve('/api/receipts/parse'),
         abortTrigger: operation.abort.future,
       )..followRedirects = false;
-      request.files.add(await operation.wait(_prepareImage(imagePath)));
+      final image = await operation.wait(_prepareImage(imagePath));
+      final upload = operation.upload = _ReceiptUpload(image);
+      request.files.add(upload.file);
       operation.check();
-      // IOClient.send settles after native abort/force-close. Await it directly
-      // so a timeout cannot leave a detached native upload future behind.
+      // Native send and upload-input cleanup have separate completion handles.
+      // Join both; the SDK TLS-negotiation cancellation gap remains tracked.
       final response = await operation.client!.send(request);
       final bytes = await _readBody(response.stream, operation);
       operation.check();
@@ -129,7 +131,7 @@ class ReceiptApiService {
         'Could not process the receipt. Please try again.',
       );
     } finally {
-      operation.finish();
+      await operation.finish();
       _operations.remove(operation);
     }
     // Cleanup itself must not turn a late result into success.
@@ -243,6 +245,86 @@ class ReceiptApiService {
   }
 }
 
+// IOClient's socket consumer does not await upload cancellation. Keep the
+// original subscription and its one cleanup future owned by the attempt, also
+// when an error causes an intermediate serializer to cancel itself.
+class _ReceiptUpload {
+  final http.MultipartFile _source;
+  late final StreamController<List<int>> _events;
+  StreamSubscription<List<int>>? _input;
+  Completer<void>? _starting;
+  Future<void>? _cleanup;
+  bool _closed = false;
+  bool cleanupFailed = false;
+
+  _ReceiptUpload(this._source) {
+    _events = StreamController<List<int>>(
+      sync: true,
+      onListen: _startInput,
+      onPause: () => _input?.pause(),
+      onResume: () => _input?.resume(),
+      onCancel: finish,
+    );
+  }
+
+  http.MultipartFile get file => http.MultipartFile(
+    _source.field,
+    _events.stream,
+    _source.length,
+    filename: _source.filename,
+    contentType: _source.contentType,
+  );
+
+  void _startInput() {
+    if (_closed) {
+      _closeEvents();
+      return;
+    }
+    final starting = _starting = Completer<void>();
+    try {
+      _input = _source.finalize().listen(
+        (chunk) {
+          if (!_closed) _events.add(chunk);
+        },
+        onError: (Object error, StackTrace trace) {
+          if (!_closed) _events.addError(error, trace);
+        },
+        onDone: _closeEvents,
+        // Retain this subscription until our own cancellation has been joined.
+        // Automatic cancellation on error could discard its cleanup future.
+        cancelOnError: false,
+      );
+    } catch (error, trace) {
+      if (!_closed) _events.addError(error, trace);
+      _closeEvents();
+    } finally {
+      starting.complete();
+    }
+  }
+
+  void _closeEvents() {
+    if (!_events.isClosed) unawaited(_events.close());
+  }
+
+  Future<void> finish() {
+    _closed = true;
+    return _cleanup ??= _cancelInput();
+  }
+
+  Future<void> _cancelInput() async {
+    try {
+      // A custom source can cancel reentrantly during listen. Do not lose the
+      // subscription that will be returned when that synchronous call unwinds.
+      await _starting?.future;
+      await _input?.cancel();
+    } catch (_) {
+      cleanupFailed = true;
+    } finally {
+      _closeEvents();
+    }
+  }
+}
+
 class _ReceiptOperation {
   final Duration timeout;
   final Duration Function()? _elapsed;
@@ -251,6 +333,7 @@ class _ReceiptOperation {
   final _stopped = Completer<ReceiptParseException>();
   late final Timer _timer;
   http.Client? client;
+  _ReceiptUpload? upload;
   ReceiptParseException? _failure;
   bool _closed = false;
 
@@ -279,6 +362,9 @@ class _ReceiptOperation {
     _failure = error;
     if (!_stopped.isCompleted) _stopped.complete(error);
     _close();
+    // Start source cancellation now, even if native send/TLS is still pending.
+    // finish() below always joins this same observed, non-throwing future.
+    unawaited(upload?.finish() ?? Future<void>.value());
   }
 
   void _close() {
@@ -289,12 +375,18 @@ class _ReceiptOperation {
     }
   }
 
-  void finish() {
+  Future<void> finish() async {
     _timer.cancel();
     if (!_stopped.isCompleted) {
       _stopped.complete(ReceiptParseException.cancelled());
     }
     _close();
+    await upload?.finish();
+    if (upload?.cleanupFailed ?? false) {
+      _failure ??= ReceiptParseException(
+        'Could not finish the receipt scan. Please try again.',
+      );
+    }
     _watch.stop();
   }
 }

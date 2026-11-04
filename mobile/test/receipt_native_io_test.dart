@@ -6,6 +6,22 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/io_client.dart';
 import 'package:http/http.dart' as http;
 
+class _SendObservedClient extends http.BaseClient {
+  final IOClient _inner = IOClient();
+  final Completer<void> settled;
+
+  _SendObservedClient(this.settled);
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) =>
+      _inner.send(request).whenComplete(() {
+        if (!settled.isCompleted) settled.complete();
+      });
+
+  @override
+  void close() => _inner.close();
+}
+
 // Real loopback TCP peer: it never finishes a response until released/closed.
 class WirePeer {
   final ServerSocket server;
@@ -182,46 +198,101 @@ void main() {
       );
     }
   }
-  test(
-    'native cancellation stops a streaming upload and cancels its input subscription',
-    () async {
-      final peer = await WirePeer.start();
-      var inputCancelled = false;
-      final input = StreamController<List<int>>(
-        onCancel: () => inputCancelled = true,
-      );
-      final service = ReceiptApiService.forTesting(
-        baseUrl: peer.url,
-        createClient: IOClient.new,
-        prepareImage:
-            (_) async => http.MultipartFile('image', input.stream, 1024 * 1024),
-      );
-      try {
-        final pending = service.parseReceipt('test-only-stream');
-        final assertion = expectLater(
-          pending.timeout(const Duration(seconds: 2)),
-          throwsA(isA<ReceiptParseException>()),
+  for (final mode in ['cancel', 'source-error', 'cleanup-error', 'reentrant']) {
+    test(
+      mode == 'cancel'
+          ? 'native cancellation stops a streaming upload and cancels its input subscription'
+          : 'native $mode joins its input subscription cleanup',
+      () async {
+        final peer = await WirePeer.start();
+        final cancelStarted = Completer<void>();
+        final releaseCleanup = Completer<void>();
+        final sendSettled = Completer<void>();
+        var cleanupFinished = false;
+        var cancellations = 0;
+        late ReceiptApiService service;
+        final input = StreamController<List<int>>(
+          onListen: mode == 'reentrant' ? () => service.cancel() : null,
+          onCancel: () async {
+            cancellations++;
+            cancelStarted.complete();
+            await releaseCleanup.future;
+            cleanupFinished = true;
+            if (mode == 'cleanup-error') {
+              throw StateError('synthetic private cleanup error');
+            }
+          },
         );
-        input.add(List.filled(128, 1));
-        await peer.headersReceived.future.timeout(const Duration(seconds: 2));
-        service.cancel();
-        await assertion;
-        expect(
-          inputCancelled,
-          isTrue,
-          reason: 'no detached file upload read may remain',
+        service = ReceiptApiService.forTesting(
+          baseUrl: peer.url,
+          createClient: () => _SendObservedClient(sendSettled),
+          prepareImage:
+              (_) async =>
+                  http.MultipartFile('image', input.stream, 1024 * 1024),
         );
-        final ended = await peer.disconnected.future
-            .then((_) => true)
-            .timeout(const Duration(milliseconds: 400), onTimeout: () => false);
-        expect(ended, isTrue);
-      } finally {
-        service.dispose();
-        await input.close();
-        await peer.close();
-      }
-    },
-  );
+        var operationSettled = false;
+        Object? failure;
+        final observed = service
+            .parseReceipt('test-only-stream')
+            .then<void>(
+              (_) {
+                operationSettled = true;
+              },
+              onError: (Object error) {
+                failure = error;
+                operationSettled = true;
+              },
+            );
+        try {
+          input.add(List.filled(128, 1));
+          if (mode != 'reentrant') {
+            await peer.headersReceived.future.timeout(
+              const Duration(seconds: 2),
+            );
+            if (mode == 'source-error') {
+              input.addError(StateError('synthetic private input error'));
+            } else {
+              service.cancel();
+            }
+          }
+          await cancelStarted.future.timeout(const Duration(seconds: 2));
+          // The serializer itself waits for cleanup on its source-error path.
+          // The other paths expose the independently completed native send.
+          if (mode != 'source-error') {
+            await sendSettled.future.timeout(const Duration(seconds: 2));
+          }
+          // Observe completed native send and its queued continuations while
+          // the original source's asynchronous cleanup remains held.
+          await Future<void>.delayed(Duration.zero);
+          expect(
+            operationSettled,
+            isFalse,
+            reason:
+                'native send completion must not release upload-input ownership',
+          );
+          releaseCleanup.complete();
+          await observed.timeout(const Duration(seconds: 2));
+          expect(cleanupFinished, isTrue);
+          expect(cancellations, 1);
+          expect(failure, isA<ReceiptParseException>());
+          expect(failure.toString(), isNot(contains('synthetic private')));
+          final ended = await peer.disconnected.future
+              .then((_) => true)
+              .timeout(
+                const Duration(milliseconds: 400),
+                onTimeout: () => false,
+              );
+          expect(ended, isTrue);
+        } finally {
+          if (!releaseCleanup.isCompleted) releaseCleanup.complete();
+          service.dispose();
+          await observed.timeout(const Duration(seconds: 2));
+          await input.close();
+          await peer.close();
+        }
+      },
+    );
+  }
   for (final code in [302, 303, 307]) {
     test(
       'native $code never follows Location and counts only one wire POST',

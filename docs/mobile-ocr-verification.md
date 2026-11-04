@@ -23,7 +23,8 @@ The focused cases are:
 
 - `receipt_native_io_test.dart`: real `dart:io`/http IOClient on loopback TCP/HTTP,
   stalled headers/body, slow streaming upload, timeout/explicit cancellation/disposal,
-  actual peer disconnect and input subscription cancellation, 302/303/307 refusal,
+  actual peer disconnect and joined asynchronous input cleanup (including source/
+  cleanup errors and cancellation during listen), 302/303/307 refusal,
   a dropped response, compressed decoded cap and one wire POST per manual attempt.
   Join every owned listener/server/socket/client and temporary directory in cleanup.
   A timeout in the fixture is a failed liveness observation, never evidence that
@@ -55,7 +56,15 @@ against the restored source, keeping failed mutant logs.
 
 The setup seam can outlive cancellation as an OS file metadata future; late completion
 is ignored before any send. The default file stream opens only when multipart upload
-is finalized, and native upload cancellation must cancel that subscription. No detached
+is finalized. Retain the original input subscription and join its cancellation future;
+a synchronous onCancel-start flag or completed IOClient.send is insufficient. Hold
+that cleanup future in a real upload fixture and require the attempt to remain pending
+until cleanup is released. Capture cleanup errors without raw diagnostics.
+
+The confirmed Dart TLS-negotiation cancellation gap remains open. A raw loopback peer
+that receives ClientHello and then stays silent must eventually prove timeout/cancel/
+dispose settlement and actual disconnect, alongside trusted-TLS/hostname controls.
+Current HTTP loopback passes do not prove that missing TLS phase. No detached
 network/body read is accepted as timeout success. Bounded synchronous JSON work cannot
 be timer-preempted; monotonic elapsed checks also run after it and after cleanup.
 
