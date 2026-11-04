@@ -104,6 +104,12 @@ pins, reviews every generated delta, then repeats enforced pub acquisition and
 `pod install --deployment` without changing either lock. See the
 [iOS lock qualification](reviews/2026-11-04-ios-lock-qualification.md) for the bounded
 repair and actual local simulator results.
+The [driver phase-proof supplement](reviews/2026-11-04-ios-native-phase-acceptance.md)
+records the separately reviewed correction and evidence limits. For body-phase stop
+cases, require a forwarding witness after nonempty data reaches the actual service
+reader before stopping. For ClientHello cases, check both record and handshake
+lengths plus actual received bytes; record completion alone is insufficient.
+Retain the complete-single-record scope when that is what the fixture proves.
 
 Build the maintained `mobile/ios/Runner.xcworkspace`, with signing explicitly disabled
 for local QA, from `mobile/`:

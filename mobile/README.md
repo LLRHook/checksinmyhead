@@ -178,5 +178,8 @@ records the generated lock correction, maintained simulator/unsigned release bui
 and local transport assertions on one owned simulator. Physical devices, signed public
 clients and sustained resource acceptance remain separate gates. Local unsigned QA
 uses `--no-codesign`; unit/debug/unsigned QA needs no TestFlight version bump.
+The [driver phase-proof supplement](../docs/reviews/2026-11-04-ios-native-phase-acceptance.md)
+resolves response-body/complete-ClientHello evidence gaps while retaining the failed
+console wrapper and missing post-run receipts; it does not certify resources.
 Release `ApiConfig` still selects the hosted API; the test-only constructor is not a
 production configuration override.

@@ -83,7 +83,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
 - **Fix:** Server recovery slice a47eeca: strict parsed key/fingerprint, persisted201, checked winner-only graph and exact additive0002. Same-key recovery/claims/attach/paid/finalize guards pass local qualification; see docs/reviews/2026-11-04-replay-display.md. Mobile single-save/Drift/Keychain/reopen, cent-alignment and combined journeys remain open; no rollout or whole acceptance.
-- **Docs:** docs/backend-api.md; docs/backend-replay-verification.md; docs/reviews/2026-11-04-replay-display.md
+- **Docs:** docs/backend-api.md; docs/backend-replay-verification.md; docs/reviews/2026-11-04-replay-display.md; docs/reviews/2026-11-04-replay-driver-acceptance.md
 - **Log:**
   - 2026-11-03 Evidence: Driver fb6b4b9 actual provider penny capture: client Alex=.01/Sam=0; v1 server Alex=0/Sam=.01 with .005 raw details. No math change in 43772a7. Preserve server/historical contracts; deliberately align local/published allocation in currency/save scope. See docs/reviews/2026-11-03-client-v1-bridge.md.
 
@@ -362,7 +362,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
 - **Fix:** Phase1 ee125d1 and6dba4b4 retain one bounded provider, twelve receipt codes/independent ZAR display and checked frozenUSD/zero/legacy audit. Server0002 slice a47eeca adds separate nullable display day/source/UTC microsecond receipt without historical repricing. Evidence: docs/reviews/2026-11-04-replay-display.md. Mobile decoder/save/reopen/Keychain, quote/read state and versioned JPY remain open; rollout/integrated acceptance RED.
-- **Docs:** backend/README.md; docs/backend-api.md; docs/technical-overview.md; docs/backend-replay-verification.md; docs/reviews/2026-11-03-currency-provider-phase1.md; docs/reviews/2026-11-04-replay-display.md
+- **Docs:** backend/README.md; docs/backend-api.md; docs/technical-overview.md; docs/backend-replay-verification.md; docs/reviews/2026-11-03-currency-provider-phase1.md; docs/reviews/2026-11-04-replay-display.md; docs/reviews/2026-11-04-replay-driver-acceptance.md
 - **Log:**
   - 2026-11-03 Scope: Approved one-adapter/no-TTL decision supersedes old dual-provider/cache proposal. Keep open: display provenance0002; mobile rate decoder/quote state/save/replay/Keychain; required versioned JPY step. Global security/integrated acceptance RED.
 
@@ -524,18 +524,18 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-04 Acceptance: Specific source requirements met; root driver approves fixed-pending-migration only. Root clean1146; reviewer NOT RUN/0findings. Runtime1.619804>1.5 RED/flaky;75/75 completion is not clearance. No closure/CHANGELOG migration.
 
 ### [BUG-1793813173] Reconcile the maintained iOS lock with the existing Flutter plugin graph
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** mobile, ios, dependencies
 - **File(s):** mobile/ios/Podfile.lock; mobile/README.md; docs/mobile-ocr-verification.md
-- **Observation:** At 7e36d8afff04b1cf2add57050190370750fd88b7, Flutter3.41.5 enforced pub acquisition succeeds but CocoaPods1.16.2 pod install --deployment exits1 with A app_links / A package_info_plus. Both plugins are already present in the unchanged committed pubspec.lock and native registrant; the maintained CocoaPods lock omits them.
+- **Observation:** At7e36d8a, pod deployment rejected app_links/package_info_plus already in Flutter's locked graph but absent from Podfile.lock.
 - **Expected:** The existing locked Flutter plugin graph acquires reproducibly through pod install --deployment, preserving all existing native versions/checksums and pubspec.lock. Build the maintained Runner workspace for debug simulator and unsigned device release where supported; qualify production receipt transport on one owned simulator using synthetic local fixtures and retain all392 canonical host cases. No package/SDK/project/application behavior upgrade.
-- **Req:** none — bounded root-approved native-lock correction in IOS_LOCK_QUALIFICATION_BRIEF_20261104.md, November4
+- **Req:** none — root-approved IOS_LOCK_QUALIFICATION_BRIEF_20261104.md (2026-11-04)
 - **Depends on:** none — existing Flutter lock correction BUG-1793652308 is distinct
-- **Repro / Notes:** cd mobile && flutter pub get --enforce-lockfile; cd ios && pod install --deployment. Fresh failure retained in scratch ios-lock-qualification-20261104/logs/pod-deployment-before.*; earlier native failure in mobile-tls-integration-20261104. Root explicitly approves a generated-lock-only repair with existing pins, local native qualification and normal branch publication. Acceptance remains limited to this defect; broader resource/device/security/integrated gates stay open.
+- **Repro / Notes:** Enforced pub and pod deployment under Flutter3.41.5/CocoaPods1.16.2. Generated-only repair; preserve versions, existing devices and original artifacts. Full before/build/native/scanner evidence: docs/reviews/2026-11-04-ios-lock-qualification.md.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
-- **Fix:** CocoaPods1.16.2 ordinary install adds only the already locked app_links6.4.1 and package_info_plus native0.4.5 graph entries and refreshes the stale share_plus0.0.1 normalized checksum from existing Flutter13.3.1. No version/dependency/SDK/application/project change. First/final enforced pub and three subsequent deployment installs pass unchanged locks;392 host canonical cases and24 actual owned-simulator transport cases pass, zero failed/skipped. Maintained debug simulator and unsigned arm64 release artifacts build. Preserve console-capture limitation; source note and scratch artifacts bind exact modules. Keep in-progress for root independent clean committed validation; resource remains PARTIAL/RED and whole acceptance RED.
-- **Docs:** mobile/README.md; docs/mobile-ocr-verification.md; docs/reviews/2026-11-04-ios-lock-qualification.md. Prior dated notes, VERIFICATION/Last verified and CHANGELOG unchanged.
+- **Status:** fixed-pending-migration
+- **Fix:** 863dddc retains plugin versions/pub lock with approved checksum normalization. Owner392 host/24 native assertions and unsigned builds pass; root clean acquisition and8 phase/control assertions resolve native S1/S2. Wrapper1 and missing console/OSexit/source-after remain; resource/wholeRED.
+- **Docs:** mobile/README.md; docs/mobile-ocr-verification.md; docs/reviews/2026-11-04-ios-lock-qualification.md; docs/reviews/2026-11-04-ios-native-phase-acceptance.md
 - **Log:**
   - 2026-11-04 Validation: Root-approved bounded native-lock repair from exact7e36d8a; native24PASS with29 joined ownership observations and no new dependencies/versions. One owned simulator created and deleted; prior simulators preserved. Native console diagnostic capture incomplete; case JSON/artifact/source/lsof evidence retained. Raw Semgrep1/six candidates and Gitleaks1/three candidates are synthetic PKI/task logging, owner-confirmed0 with no suppressions; independent review pending. Existing host RSS/heap resource PARTIAL/RED, physical/public/signed-client NOT RUN, whole acceptance RED.
