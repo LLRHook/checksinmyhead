@@ -216,22 +216,22 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 ### [BUG-1793644508] Bound receipt inference spending and limiter memory
 - [ ] **Severity:** med
 - **Area:** backend, security
-- **File(s):** backend/internal/receipt/{policy,admission,handler,service,provider_transport,validation}.go; backend/cmd/bill-service/main.go
-- **Observation:** A2a34bc415 adds approved 2-slot default (1-8), 10 admissions/60s, 4096 bounded peer keys, joined sweeper/native cancellation, total10MiB uploads and bounded responses/parsing. Process/IP controls multiply across replicas. No durable/global account start or dollar-spend allowance exists; B remains deferred.
+- **File(s):** backend/internal/receipt/; mobile/lib/services/receipt*.dart; mobile/lib/screens/quick_split/bill_entry/{models,widgets}/
+- **Observation:** A2a adds bounded process/IP admission, which multiplies across replicas; independent backend review has 3 P2 findings (native I/O ownership, quota timestamps, provider diagnostics). A2b adds owned mobile cancellation and bounded parsing/application. Durable/global starts and account spending are unbounded; B is deferred.
 - **Expected:**
   - Expired limiter keys are pruned; global concurrency/spend limits have bounded memory and documented multi-process semantics.
   - Quota/provider failure returns recoverable errors with no hidden paid retry loop.
   - Clock-controlled expiration/burst/concurrency tests prove caps; hosting/provider budgets are confirmed or explicitly blocked.
 - **Req:** TR engineering 9; TR fix 12; docs/reviews/2026-11-02-baseline.md
 - **Depends on:** none
-- **Repro / Notes:** INGRESS_OCR_BASELINE.md retains original8 expected failures/4 controls. A2a immutable-base overlay again fails8/passes4; final actual constructors/TCP/TLS tests and removals pass/fail as intended with synthetic fixtures only. See dated OCR note and ignored ocr-a2-backend evidence. No real inference or account/hosting access.
+- **Repro / Notes:** Original backend before-proof: 8 failures/4 controls; retained A2a 1093 Go/75 runtime checks. Mobile immutable-base proof: 5 assertion failures/1 control. Synthetic loopback only; no paid inference/customer data. See dated backend/mobile OCR evidence notes and their raw scratch bindings.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Backend phase A2a34bc415: bounded admission/limiter, stream caps, actual cancellation and joined writes, finite errors and parse/quantity guards. Limiter1397512bytes; native TLS burst allocation bounds53818904/107689336bytes for1/2slots; 75s retention -273632bytes, fixed7goroutines. Durable B, independent and hosted acceptance pending; cannot close from process controls.
-- **Docs:** backend/README.md; backend/.env.example; docs/{backend-api,technical-overview,backend-ocr-verification}.md; docs/reviews/2026-11-04-ocr-a2-backend.md.
+- **Fix:** A2b 57b4647: one owned native client/45s deadline, actual abort/close, decoded 1MiB/shape/checked 500-line guards, atomic validated bill replacement and disposal/review checks. Full Flutter 359/359, all prior 237 retained; 9 removal assertions fail as intended. B, owner budget/provider enforcement, old-writer drain, independent/clean integrated/hosting/signed-public/release gates stay open; no closure.
+- **Docs:** mobile/README.md; docs/{backend-api,technical-overview,mobile-ocr-verification}.md; docs/reviews/2026-11-04-ocr-a2-{backend,mobile}.md; VERIFICATION.md.
 - **Log:**
-  - 2026-11-04 Validation: A2a local evidence:836ordinary/721PG/464overlap=1093distinct, all960prior IDs retained;0fail/skip/cache/missing.75runtime, actual wire/cancel/shape controls,414exact schemas absent and336originals intact. Raw scanner exits/triage retained; source correctness independent acceptance and global/performance gates remain open.
+  - 2026-11-04 Validation: Mobile 0 fail/skip/cache/missing terminals; 14 native host-IO cases, no simulator claim. Scans unsuppressed: Semgrep0/0 findings; Gitleaks1/3 unchanged placeholders. 336 originals intact. Backend P2 corrections and JSON performance/global RED remain pending.
 
 ### [BUG-1793644509] Redact credentials and payment data from SQL logs
 - [x] **Severity:** med
