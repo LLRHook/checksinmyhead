@@ -204,14 +204,15 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - Slow/oversized/malformed and creation-burst tests stay within approved limits and preserve normal traffic.
 - **Req:** TR engineering 9; TR fix 12; docs/reviews/2026-11-02-baseline.md
 - **Depends on:** none
-- **Repro / Notes:** Historical driver INGRESS_OCR_BASELINE.md at13be27b:12mocked handler/provider leaves,8failed/4controls; retained in docs/reviews/2026-11-03-local-workflow.md. A1 d60bedc before/final/removed-control execution is in docs/reviews/2026-11-04-api-a1.md and committed evidence. HTTP/JSON/proxy slice implemented; latency targets,A2,independent acceptance and live-host proof remain open.
+- **Repro / Notes:** Historical ingress13be27b/A1d60bedc proof stays in the A1 report;1932ded profiles the same router/DTO seam. New dated note binds samples,profiles,commands,counts,controls and cleanup.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** A1 d60bedc: both binaries share finite 5/20/50/60s HTTP policy,32KiB headers,signal cancellation,25s Shutdown/Close; trust-none canonical-CIDR proxy policy; eight-slot process JSON gate,503/Retry-After1/CORS; shared single-document bounded decoding and preallocation count checks; CreateTab16KiB/255/4096/30 codepoints,existing JSON caps/status/strict DTOs preserved. Final ordinary593+mandatoryPG651 leaves,399overlap/845distinct PASS; actual TCP/PG/removal controls and75static-runtime checks pass. Approved JSON latency targets remain missed; independent clean/review,A2 and hosting acceptance pending, so not closed.
-- **Docs:** docs/backend-api.md; docs/technical-overview.md; backend/README.md; backend/.env.example; docs/reviews/2026-11-04-api-a1.md; docs/reviews/evidence/2026-11-04-api-a1{,-samples}.json; VERIFICATION mandatory rows preserved at20478bytes
+- **Fix:** 1932ded reuses bounded non-strict JSON bytes, reserves counted slices and skips impossible HTML replacement. Max mutation still misses10ms. Root acceptance/P2 corrections,A2 and host proof remain open.
+- **Docs:** docs/reviews/2026-11-04-{api-a1,json-optimization}.md; original evidence retained.
 - **Log:**
   - 2026-11-04 Validation: A1 actual constructor before31leaves=22failed/9controls; final845distinct GoPASS,15removed-control overlays fail assertions,HTTP-to-PG invalid/capped/saturated SQL0 and health1query,416owned schemas absent.3x100samples/path: max mutation p95=55.217/58.208/80.263ms vs10ms; rejected minimal-array run3=5.380ms vs5ms; retain performanceRED without relaxing policy.8-way live heap212.46MiB/RSS237.42MiB,75sidle retention/goroutines pass. Root independent acceptance/public checks pending.
+  - 2026-11-04 Validation: 1932ded:932Go/75runtimePASS; max50k p95=27.033/27.143/27.420ms vs10msRED;18.713MB/request.206schemas absent/336originals intact. See new note; root owns separate A1 P2s.
 
 ### [BUG-1793644508] Bound receipt inference spending and limiter memory
 - [ ] **Severity:** med
