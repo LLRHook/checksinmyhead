@@ -153,9 +153,9 @@ func guardFreshCreation(b *models.Bill) error {
 	return nil
 }
 
-// prepareCreation validates before quoting or writing, then derives fresh shares.
-// Legacy projections are evidence of the client's calculation, never stored graphs.
-func prepareCreation(b *models.Bill) error {
+// normalizeCreation validates allowed input before any replay lookup. It preserves
+// ordered client projections; financial derivation runs only for a fresh miss.
+func normalizeCreation(b *models.Bill) error {
 	if err := guardFreshCreation(b); err != nil {
 		return err
 	}
@@ -275,7 +275,8 @@ func prepareCreation(b *models.Bill) error {
 		}
 	}
 	projections := map[string]models.PersonShare{}
-	for _, s := range b.PersonShares {
+	for i := range b.PersonShares {
+		s := &b.PersonShares[i]
 		s.PersonName, err = register(s.PersonName)
 		if err != nil {
 			return err
@@ -298,7 +299,27 @@ func prepareCreation(b *models.Bill) error {
 				return ErrInvalidCreation
 			}
 		}
-		projections[key] = s
+		projections[key] = *s
+	}
+	return nil
+}
+
+func deriveCreation(b *models.Bill) error {
+	names := map[string]string{}
+	projections := map[string]models.PersonShare{}
+	assignments := 0
+	for _, p := range b.Participants {
+		names[nameKey(p.Name)] = p.Name
+	}
+	for _, item := range b.Items {
+		for _, a := range item.Assignments {
+			names[nameKey(a.PersonName)] = a.PersonName
+			assignments++
+		}
+	}
+	for _, s := range b.PersonShares {
+		names[nameKey(s.PersonName)] = s.PersonName
+		projections[nameKey(s.PersonName)] = s
 	}
 	// Old saved history can have no item history, or item history without assignments.
 	// Its builder emits zero detail components with an equal-split total.
@@ -431,6 +452,14 @@ func prepareCreation(b *models.Bill) error {
 		b.PersonShares = append(b.PersonShares, s)
 	}
 	return nil
+}
+
+// prepareCreation retains the complete validation seam for calculation fixtures.
+func prepareCreation(b *models.Bill) error {
+	if err := normalizeCreation(b); err != nil {
+		return err
+	}
+	return deriveCreation(b)
 }
 
 func sortedCreationKeys(names map[string]string) []string {

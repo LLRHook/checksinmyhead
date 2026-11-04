@@ -27,7 +27,8 @@ type ClaimCommand struct {
 	Updates []ItemAssignmentsUpdate
 }
 type BillRepository interface {
-	Create(context.Context, *models.Bill) error
+	Create(context.Context, CreationInsert) (CreationRecord, error)
+	LookupCreation(context.Context, [32]byte) (*CreationRecord, error)
 	GetById(uint) (*models.Bill, error)
 	UpdatePersonSharePaid(context.Context, BillSharePaidCommand) error
 	UpdateItemAssignmentsBatch(context.Context, ClaimCommand) error
@@ -39,14 +40,6 @@ type ItemAssignmentsUpdate struct {
 }
 type billRepository struct{ db *gorm.DB }
 
-func (b *billRepository) Create(ctx context.Context, v *models.Bill) error {
-	ctx, cancel := mutation.Bound(ctx)
-	defer cancel()
-	if err := guardFreshCreation(v); err != nil {
-		return err
-	}
-	return b.db.WithContext(ctx).Create(v).Error
-}
 func (b *billRepository) GetById(id uint) (*models.Bill, error) {
 	v := &models.Bill{}
 	err := b.db.Preload("Tab").Preload("Items.Assignments").Preload("Participants").Preload("PersonShares").First(v, id).Error

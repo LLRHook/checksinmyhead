@@ -23,7 +23,7 @@ func (q *currencyReadQuote) Latest(_ context.Context, base, quote string) (model
 	if !ok {
 		return models.ExchangeRateQuote{}, fmt.Errorf("unexpected synthetic pair")
 	}
-	return models.ExchangeRateQuote{Base: base, Quote: quote, Rate: rate,
+	return models.ExchangeRateQuote{RetrievedAt: quoteReceiptTime(), Base: base, Quote: quote, Rate: rate,
 		Date: time.Now().UTC().Format(time.DateOnly), Source: "synthetic-read-proof"}, nil
 }
 

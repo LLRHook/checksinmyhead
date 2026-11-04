@@ -121,7 +121,7 @@ func run(ctx context.Context, db *sql.DB, mode Mode, steps []Step) (state *State
 		}
 		// Ledgered additions may extend the footprint, but cannot change any
 		// required baseline definition. Unknown same-epoch versions are retained.
-		if err = checkCatalog(objects, false, false); err != nil {
+		if err = checkApplicationCatalog(objects, history, steps); err != nil {
 			return nil, failure(ctx, "baseline definition", err)
 		}
 	} else {
@@ -166,9 +166,6 @@ func run(ctx context.Context, db *sql.DB, mode Mode, steps []Step) (state *State
 	if err != nil {
 		return nil, failure(ctx, "catalog", err)
 	}
-	if err = checkCatalog(objects, false, false); err != nil {
-		return nil, failure(ctx, "baseline definition", err)
-	}
 	if err = checkCatalog(objects, true, false); err != nil {
 		return nil, failure(ctx, "ledger definition", err)
 	}
@@ -179,6 +176,10 @@ func run(ctx context.Context, db *sql.DB, mode Mode, steps []Step) (state *State
 	if err = checkHistory(history, steps, true); err != nil {
 		return nil, failure(ctx, "required history", err)
 	}
+	if err = checkApplicationCatalog(objects, history, steps); err != nil {
+		return nil, failure(ctx, "baseline definition", err)
+	}
+
 	if err = tx.Commit(); err != nil {
 		return nil, failure(ctx, "commit", err)
 	}
@@ -207,7 +208,7 @@ type record struct {
 }
 
 func fromStep(s Step) record {
-	return record{Version: s.Version, Name: s.Name, Checksum: s.Checksum, ValidationChecksum: recognizerChecksum, Epoch: s.Epoch}
+	return record{Version: s.Version, Name: s.Name, Checksum: s.Checksum, ValidationChecksum: s.ValidationChecksum, Epoch: s.Epoch}
 }
 
 var digestPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
@@ -223,7 +224,7 @@ func checkHistory(history []record, steps []Step, required bool) error {
 			return errors.New("invalid history")
 		}
 		names[r.Name] = true
-		if i < len(steps) && (r.Name != steps[i].Name || r.Checksum != steps[i].Checksum || r.ValidationChecksum != recognizerChecksum) {
+		if i < len(steps) && (r.Name != steps[i].Name || r.Checksum != steps[i].Checksum || r.ValidationChecksum != steps[i].ValidationChecksum) {
 			return errors.New("changed history")
 		}
 	}

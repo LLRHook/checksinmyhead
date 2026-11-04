@@ -15,19 +15,25 @@ const CompatibilityEpoch = 1
 //go:embed 0001_baseline.sql
 var baselineSQL string
 
+//go:embed 0002_receipt_replay_display.sql
+var receiptSQL string
+
 // Step is a frozen migration payload; append versions instead of editing one.
 type Step struct {
-	Version  int
-	Name     string
-	Checksum string
-	Epoch    int
-	SQL      string
+	ValidationChecksum string
+	Version            int
+	Name               string
+	Checksum           string
+	Epoch              int
+	SQL                string
 }
 
-// Registry returns a private copy, and checks a separately pinned checksum before
-// use. 0002 is reserved for separately approved receipt metadata, not an empty step.
+// Registry returns a private copy of independently pinned additive steps.
 func Registry() ([]Step, error) {
-	steps := []Step{{1, "0001_baseline.sql", "d46084b1caae072be155d7e38c71eba986774853e7d004b08d19daa411992f55", CompatibilityEpoch, baselineSQL}}
+	steps := []Step{
+		{Version: 1, Name: "0001_baseline.sql", Checksum: "d46084b1caae072be155d7e38c71eba986774853e7d004b08d19daa411992f55", ValidationChecksum: recognizerChecksum, Epoch: CompatibilityEpoch, SQL: baselineSQL},
+		{Version: 2, Name: "0002_receipt_replay_display.sql", Checksum: receiptSQLChecksum, ValidationChecksum: receiptRecognizerChecksum, Epoch: CompatibilityEpoch, SQL: receiptSQL},
+	}
 	if err := validateRegistry(steps); err != nil {
 		return nil, err
 	}
@@ -45,7 +51,7 @@ func validateRegistry(steps []Step) error {
 		}
 		names[step.Name] = true
 		sum := sha256.Sum256([]byte(step.SQL))
-		if step.SQL == "" || hex.EncodeToString(sum[:]) != step.Checksum {
+		if step.SQL == "" || hex.EncodeToString(sum[:]) != step.Checksum || !digestPattern.MatchString(step.ValidationChecksum) {
 			return errors.New("migration checksum mismatch")
 		}
 	}

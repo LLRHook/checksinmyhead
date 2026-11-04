@@ -117,7 +117,8 @@ func (c *Client) Latest(ctx context.Context, base, quote string) (models.Exchang
 	if err := decoder.Decode(new(any)); err != io.EOF {
 		return models.ExchangeRateQuote{}, currency.ErrInvalidQuote
 	}
-	result := models.ExchangeRateQuote{Date: wire.Date, Base: wire.Base, Quote: wire.Quote, Rate: wire.Rate, Source: "frankfurter-v2-blended"}
+	retrieved := c.now().UTC().Truncate(time.Microsecond)
+	result := models.ExchangeRateQuote{RetrievedAt: &retrieved, Date: wire.Date, Base: wire.Base, Quote: wire.Quote, Rate: wire.Rate, Source: "frankfurter-v2-blended"}
 	if err := currency.ValidateQuote(result, base, quote, c.now()); err != nil {
 		return models.ExchangeRateQuote{}, err
 	}

@@ -53,7 +53,7 @@ func snapshot(t *testing.T, db *sql.DB) string {
 			result = append(result, "absent")
 			continue
 		}
-		if err := db.QueryRow(`SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY to_jsonb(x)::text),'[]')::text FROM ` + table + ` x`).Scan(&b); err != nil {
+		if err := db.QueryRow(`SELECT COALESCE(jsonb_agg((to_jsonb(x)-ARRAY['creation_key_digest','creation_fingerprint','creation_fingerprint_version','display_rate_date','display_rate_source','display_rate_retrieved_at']) ORDER BY to_jsonb(x)::text),'[]')::text FROM ` + table + ` x`).Scan(&b); err != nil {
 			t.Fatal(err)
 		}
 		result = append(result, b)
@@ -124,7 +124,7 @@ func TestPostgresFreshAndLegacyPreservation(t *testing.T) {
 			}
 			var after string
 			db.QueryRow("SELECT applied_at::text FROM schema_migrations WHERE version=1").Scan(&after)
-			if before != snapshot(t, db) || applied != after || scalar(t, db, "SELECT count(*) FROM schema_migrations") != 1 {
+			if before != snapshot(t, db) || applied != after || scalar(t, db, "SELECT count(*) FROM schema_migrations") != 2 {
 				t.Fatal("adoption/repeat changed history or frozen data")
 			}
 			if scalar(t, db, "SELECT last_value FROM bills_id_seq") != 501 {
@@ -229,11 +229,11 @@ func TestPostgresHistoryAndCompatibility(t *testing.T) {
 		"checksum":            "UPDATE schema_migrations SET checksum=repeat('a',64)",
 		"recognizer":          "UPDATE schema_migrations SET validation_checksum=repeat('a',64)",
 		"epoch":               "UPDATE schema_migrations SET compatibility_epoch=2",
-		"name":                "UPDATE schema_migrations SET name='0001_other.sql'",
+		"name":                "UPDATE schema_migrations SET name='0001_other.sql' WHERE version=1",
 		"missing":             "DELETE FROM schema_migrations",
-		"gap":                 "INSERT INTO schema_migrations VALUES(3,'0003_later.sql',repeat('a',64),repeat('b',64),1,now())",
-		"later_epoch":         "INSERT INTO schema_migrations VALUES(2,'0002_later.sql',repeat('a',64),repeat('b',64),2,now())",
-		"later_name":          "INSERT INTO schema_migrations VALUES(2,'garbage',repeat('a',64),repeat('b',64),1,now())",
+		"gap":                 "INSERT INTO schema_migrations VALUES(4,'0004_later.sql',repeat('a',64),repeat('b',64),1,now())",
+		"later_epoch":         "INSERT INTO schema_migrations VALUES(3,'0003_later.sql',repeat('a',64),repeat('b',64),2,now())",
+		"later_name":          "INSERT INTO schema_migrations VALUES(3,'garbage',repeat('a',64),repeat('b',64),1,now())",
 		"ledger_definition":   "ALTER TABLE schema_migrations DROP CONSTRAINT schema_migrations_pkey",
 		"baseline_definition": "ALTER TABLE bills ALTER COLUMN total DROP NOT NULL",
 	}
@@ -257,7 +257,7 @@ func TestPostgresHistoryAndCompatibility(t *testing.T) {
 	t.Run("compatible_additive_prefix", func(t *testing.T) {
 		db := testpostgres.Open(t)
 		s := apply(t, db)
-		execSQL(t, db, "ALTER TABLE bills ADD COLUMN future_receipt_metadata text;INSERT INTO schema_migrations VALUES(2,'0002_future.sql',repeat('a',64),repeat('b',64),1,now())")
+		execSQL(t, db, "ALTER TABLE bills ADD COLUMN future_receipt_metadata text;INSERT INTO schema_migrations VALUES(3,'0003_future.sql',repeat('a',64),repeat('b',64),1,now())")
 		if _, err := Run(context.Background(), db, Verify); err != nil {
 			t.Fatal(err)
 		}
@@ -265,7 +265,7 @@ func TestPostgresHistoryAndCompatibility(t *testing.T) {
 		if err := s.Check(context.Background()); err != nil {
 			t.Fatal(err)
 		}
-		if scalar(t, db, "SELECT max(version) FROM schema_migrations") != 2 {
+		if scalar(t, db, "SELECT max(version) FROM schema_migrations") != 3 {
 			t.Fatal("older binary downgraded ledger")
 		}
 	})

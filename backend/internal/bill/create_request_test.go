@@ -144,7 +144,7 @@ func TestCreateBillDirectServiceAndRepositoryGuards(t *testing.T) {
 			tc.mutate(b)
 			repo := newMockRepo()
 			provider := &fakeExchangeRateProvider{}
-			if err := NewBillService(repo, provider).CreateBill(context.Background(), b); !errors.Is(err, ErrInvalidCreation) || provider.calls != 0 || len(repo.bills) != 0 {
+			if _, err := NewBillService(repo, provider).CreateBill(context.Background(), CreateBillCommand{Content: b}); !errors.Is(err, ErrInvalidCreation) || provider.calls != 0 || len(repo.bills) != 0 {
 				t.Fatalf("service guard: %v", err)
 			}
 			db := newBillRepositoryTestDB(t)
@@ -153,7 +153,7 @@ func TestCreateBillDirectServiceAndRepositoryGuards(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = sql.Close() })
-			if err := (&billRepository{db: db}).Create(context.Background(), b); !errors.Is(err, ErrInvalidCreation) {
+			if _, err := (&billRepository{db: db}).Create(context.Background(), CreationInsert{Bill: b}); !errors.Is(err, ErrInvalidCreation) {
 				t.Errorf("repository guard: %v", err)
 			}
 			for _, table := range []string{"bills", "people", "bill_participants", "bill_items", "item_assignments", "person_shares"} {
@@ -171,7 +171,7 @@ func TestCreateBillDirectServiceAndRepositoryGuards(t *testing.T) {
 		b := &models.Bill{Name: "Positive", Subtotal: value, Total: 10, CurrencyCode: "EUR"}
 		repo := newMockRepo()
 		provider := &fakeExchangeRateProvider{}
-		if err := NewBillService(repo, provider).CreateBill(context.Background(), b); !errors.Is(err, ErrInvalidCreation) || provider.calls != 0 {
+		if _, err := NewBillService(repo, provider).CreateBill(context.Background(), CreateBillCommand{Content: b}); !errors.Is(err, ErrInvalidCreation) || provider.calls != 0 {
 			t.Fatal("nonfinite money escaped service validation")
 		}
 	}
@@ -179,8 +179,8 @@ func TestCreateBillDirectServiceAndRepositoryGuards(t *testing.T) {
 
 func TestCreateBillConversionOverflowDoesNotPersist(t *testing.T) {
 	repo := newMockRepo()
-	provider := &fakeExchangeRateProvider{quote: models.ExchangeRateQuote{Base: "EUR", Quote: "USD", Rate: math.MaxFloat64, Date: time.Now().UTC().Format(time.DateOnly), Source: "synthetic"}}
-	err := NewBillService(repo, provider).CreateBill(context.Background(), &models.Bill{Name: "Positive", Subtotal: 10, Total: 10, CurrencyCode: "EUR"})
+	provider := &fakeExchangeRateProvider{quote: models.ExchangeRateQuote{RetrievedAt: quoteReceiptTime(), Base: "EUR", Quote: "USD", Rate: math.MaxFloat64, Date: time.Now().UTC().Format(time.DateOnly), Source: "synthetic"}}
+	_, err := NewBillService(repo, provider).CreateBill(context.Background(), CreateBillCommand{Content: &models.Bill{Name: "Positive", Subtotal: 10, Total: 10, CurrencyCode: "EUR"}})
 	if err == nil || len(repo.bills) != 0 {
 		t.Fatal("overflow persisted")
 	}
@@ -214,7 +214,7 @@ func TestCreateBillRejectsNonfiniteNestedAndDirectAmounts(t *testing.T) {
 					b.DisplayTotal = &value
 				}
 				repo := newMockRepo()
-				if err := NewBillService(repo, &fakeExchangeRateProvider{}).CreateBill(context.Background(), b); !errors.Is(err, ErrInvalidCreation) || len(repo.bills) != 0 {
+				if _, err := NewBillService(repo, &fakeExchangeRateProvider{}).CreateBill(context.Background(), CreateBillCommand{Content: b}); !errors.Is(err, ErrInvalidCreation) || len(repo.bills) != 0 {
 					t.Fatalf("nonfinite %s: %v", field, err)
 				}
 			})

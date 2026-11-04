@@ -259,10 +259,14 @@ deployment or production compatibility with unknown hosting settings.
 
 ## PostgreSQL schema startup
 
-Both maintained binaries apply/verify `migrations/0001_baseline.sql` before serving;
+Both maintained binaries apply/verify frozen 0001 and additive 0002 before serving;
 production startup no longer uses GORM AutoMigrate. The SQL and its catalog recognizer
-have independent immutable SHA-256 pins and provenance. Version 0002 is reserved for
-separately approved receipt replay/display metadata; it is not implemented here.
+have independent immutable SHA-256 pins and provenance. Additive 0002 implements receipt replay/display metadata with six nullable columns,
+two CHECKs and one digest unique index. Its SQL, exact PG17 nine-object manifest and
+per-step recognition checksum are independently pinned in receipt provenance; frozen
+0001/catalog-v1/ledger/safety-v2 bytes and row1/applied_at remain unchanged. No backfill
+or default is introduced. Known1/2 prefixes reject arbitrary extras or weak/partial
+additions; compatible contiguous same-epoch unknown suffixes remain supported.
 
 Supplemental startup guard v2 has its own immutable checksum and preserves v1
 ledger digests. It rejects inheritance involving required application/ledger
@@ -353,9 +357,16 @@ display failure returns 503 before persistence; no identity/native fallback is l
 as foreign. Valid `Retry-After` on upstream 429/503 is returned on the public 503; no
 immediate retry runs. Consumers should wait until that delay/date before retrying.
 See [API ownership and wire contracts](../docs/backend-api.md#currency-quotes).
-Mobile preview/display state, its `value` decoder, durable save/replay, distinct
-persisted display provenance (migration 0002) and versioned JPY precision remain
-follow-up work under BUG-1793644515/4500.
+Server keyed creation recovery and separate nullable display provenance are implemented
+in 0002. Native display uses `same_currency` without an observation/retrieval time;
+foreign display preserves the accepted pair's day/source/UTC microsecond receipt.
+Historical null provenance remains unknown without refetch/repricing. Mobile
+preview/display state, its `value` decoder, durable save/reopen and versioned JPY
+precision remain follow-up work under BUG-1793644515/4500. The public no-store version
+policy advertises only `{version:1,key_format:"base64url-32"}` under
+`capabilities.bill_creation_replay`; it does not prove old-writer drain. See the
+[API recovery contract](../docs/backend-api.md#post-apibills) and
+[focused replay verification](../docs/backend-replay-verification.md).
 
 The public `GET /api/app/version-policy` endpoint is consumed at app startup. Raise `MINIMUM_SUPPORTED_APP_VERSION` only after the corresponding update is available in the store, and use a three-part numeric version such as `2.1.0`. The app fails open if the endpoint times out or returns invalid data; the version check is a user-facing compatibility gate, not an authorization control. Version policy responses are sent with `Cache-Control: no-store`.
 

@@ -191,13 +191,17 @@ endpoint's whitespace set, including retained U+FEFF. See [review corrections](r
 ### Anonymous Tokens Instead of Accounts
 Users never create accounts. Access is controlled by 64-character cryptographic tokens generated with Go's `crypto/rand.Text()`. Tab creators and members each receive unique tokens that are stored locally on their devices.
 
-Public bill creation accepts an explicit content contract and always creates a fresh
-standalone graph. One transactional attachment operation requires independent bill/tab
+Public bill creation accepts an explicit content contract. Unkeyed requests create
+independent standalone graphs; keyed requests recover the original persisted creation. One transactional attachment operation requires independent bill/tab
 capabilities, resolves member attribution inside the destination, and locks tab before
 bill. Same-tab retries preserve original attribution. Membership writers take the same
 tab lock; standalone claims recheck `tab_id IS NULL` at their locked write boundary.
-Creation validates and derives shares once in the service before display or frozen
-quoting. Raw share components and aggregate obligations are checked before the shared
+Creation normalizes and validates before indexed replay lookup. Only a miss derives
+shares and obtains bounded display/frozen quotes; the service owns secure token creation.
+The repository elects a parent with digest-only `ON CONFLICT DO NOTHING`, then inserts
+checked 500-row child batches only for the winner in one checked Read Committed
+transaction. A loser uses a new scalar SELECT in that transaction; the handler uses
+the acknowledged persisted201 fields. No replay graph enters fresh-creation guards. Raw share components and aggregate obligations are checked before the shared
 cent allocator; remainder work is bounded by participant count. Calculation failures
 propagate through claim transactions so assignments and old shares roll back together.
 One required Frankfurter v2 pair client is composed once for creation, USD preview
@@ -207,7 +211,8 @@ observation days, bounds upstream bodies and cancellation, and makes one attempt
 distinct pair within the creation's shared five-second quote budget. No backend TTL
 rate map or redundant ExchangeRate-API adapter remains; ordinary HTTP pooling and
 immutable stored quotes remain. Frozen USD source/date are never display metadata;
-distinct persisted display provenance waits for migration 0002. Historical quotes and
+migration 0002 stores separate nullable display day/source/retrieval receipts. Native
+display uses `same_currency` without a market/retrieval timestamp. Historical quotes and
 explicit zero totals are preserved on reads. Tab summaries and share allocation use
 one checked frozen USD audit; sums use checked cents and never display/native foreign
 fallbacks. Missing/inconsistent valuation requires an authorized accounting review,
@@ -236,7 +241,7 @@ Leaving cannot delete creator or recorded payer/adder provenance. Join retries c
 turn an invalid supplied capability into replacement membership.
 
 Stable participant identity, the positive-only USD read fallback, legacy missing-payer/net
-presentation and receipt replay/save remain separately owned. Schema compatibility does
+presentation and durable mobile save/reopen remain separately owned. Schema compatibility does
 not establish the guarantee during overlap with old uncooperative writers. No deployment,
 production adoption, signed-client bridge or whole-product acceptance is claimed.
 
@@ -249,9 +254,14 @@ Both database-using binaries share the SQL logger and sanitized database initial
 
 Both `bill-service` and the retained `web-service` use `migrations.Run` through the
 shared database initializer. One embedded ordered registry replaces runtime AutoMigrate.
-Only `0001_baseline.sql` is implemented: its released `81a564f`/`f1d62374` DDL checksum
-and the independent catalog recognizer/manifest/ledger checksums are pinned with provenance.
-Version 0002 is reserved for later receipt replay/display metadata.
+Frozen `0001_baseline.sql` retains its released `81a564f`/`f1d62374` DDL checksum
+and independent catalog recognizer/manifest/ledger provenance. Additive
+`0002_receipt_replay_display.sql` appends six nullable columns, two exact CHECKs and
+one immediate, NULL-distinct unique bytea btree index. Its independent per-step
+recognition checksum pins all nine definitions/enforcement before removing only
+those validated additions from a copy for frozen baseline recognition. No defaults,
+backfill or historical row1/applied_at change. Known prefixes remain strict; compatible
+same-epoch unknown suffixes are retained. See [replay procedure](backend-replay-verification.md).
 
 A schema-scoped transaction advisory lock precedes ledger inspection/creation. At Read
 Committed, the next starter rereads committed history after waiting. The checked transaction

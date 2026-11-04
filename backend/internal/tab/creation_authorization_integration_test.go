@@ -386,7 +386,7 @@ func (p authorizationQuote) Latest(context.Context, string, string) (models.Exch
 	if p.fail {
 		return models.ExchangeRateQuote{}, errors.New("synthetic provider unavailable")
 	}
-	return models.ExchangeRateQuote{Base: "EUR", Quote: "USD", Rate: 1.2, Date: time.Now().UTC().Format(time.DateOnly), Source: "synthetic"}, nil
+	return models.ExchangeRateQuote{RetrievedAt: quoteReceiptTime(), Base: "EUR", Quote: "USD", Rate: 1.2, Date: time.Now().UTC().Format(time.DateOnly), Source: "synthetic"}, nil
 }
 
 func assertCreationMoneyBoundary(t *testing.T, db *gorm.DB) {

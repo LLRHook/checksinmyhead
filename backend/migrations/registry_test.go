@@ -9,7 +9,7 @@ import (
 
 func TestFrozenBaselineRegistry(t *testing.T) {
 	steps, err := Registry()
-	if err != nil || len(steps) != 1 {
+	if err != nil || len(steps) != 2 {
 		t.Fatal("baseline registry invalid")
 	}
 	if steps[0].Version != 1 || steps[0].Epoch != 1 || steps[0].Name != "0001_baseline.sql" {

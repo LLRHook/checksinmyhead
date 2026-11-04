@@ -36,7 +36,8 @@ Returns the public mobile compatibility policy. Response headers include `Cache-
 ```json
 {
   "minimum_supported_version": "2.0.3",
-  "store_url": "https://apps.apple.com/app/id6746379502"
+  "store_url": "https://apps.apple.com/app/id6746379502",
+  "capabilities": {"bill_creation_replay": {"version": 1, "key_format": "base64url-32"}}
 }
 ```
 
@@ -48,8 +49,37 @@ Set `MINIMUM_SUPPORTED_APP_VERSION` on the bill service to a numeric `major.mino
 
 ### `POST /api/bills`
 
-Create a new **standalone** bill from content. Attach it to a tab separately using
-the returned source-bill token.
+Create a **standalone** bill from content. Attach it to a tab separately using
+its returned source-bill token. Without a key every request is independent, including
+identical content; a different key also represents a separate receipt.
+
+Optionally supply exactly one application-visible `Idempotency-Key`: 43 canonical,
+unpadded base64url characters encoding 32 random bytes. Present empty, duplicate
+(case-insensitive name cardinality), comma/list, padded, noncanonical or internal
+whitespace/control values return `400`. Validation runs after Go's standard HTTP
+parser; leading/trailing wire whitespace and some complete-value folds can become
+indistinguishable canonical values. There is no custom wire parser or version header.
+
+The service validates the strict DTO and normalized content before replay lookup.
+Matching key/content returns the same persisted `201` identity, source token and
+frozen USD quote, including after claim, attach, paid or finalized transitions.
+Established replay uses a bounded indexed scalar read without provider calls,
+financial derivation or graph writes. Concurrent initial misses may each quote and
+derive; one parent and its child batches commit. Different admissible content returns
+`409 {"error":"creation conflict","code":"creation_conflict"}` without disclosing
+an existing capability. Unknown/corrupt stored fingerprint formats or an uncertain
+commit return finite `503` with `code: creation_unavailable` when a response is possible.
+Recover by retrying the SAME key and original content; no automatic replacement key
+or keyed-to-unkeyed fallback. Creation responses carry `Cache-Control: no-store`.
+
+Only the key digest, immutable normalized ordered-content fingerprint and internal
+format version are stored. They are hidden from public reads/errors/logs. Format1
+freezes identity/accounting1; ordered arrays and repeated lines are significant.
+The public capability hint is neither authentication nor evidence that all old writers
+are excluded. Keyed public clients require replay-capable server floors and verified
+old-writer drain. Keep replay state on rollback. Before any future deletion or token
+revocation removes receipt identity, add irreversible tombstones and revoke recovery
+with source authority so an old key cannot resurrect a deleted receipt.
 
 **Request Body**
 ```json
@@ -200,8 +230,12 @@ response/error handling. Upstream 429/503 returns public 503 with a validated
 `currency_code`/original amounts are native receipt values. `usd_exchange_rate`,
 `usd_total`, `exchange_rate_date` and `exchange_rate_source` are frozen USD fields.
 `exchange_rate`/`display_total` describe the selected display conversion and never
-write those frozen date/source fields. Separate persisted display observation/source/
-retrieval metadata requires approved migration 0002; no schema change is made here.
+write those frozen date/source fields. Migration 0002 stores independent nullable
+`display_rate_date`, `display_rate_source`, `display_rate_retrieved_at` fields on reads.
+Foreign display retains its own exact observation day/source and UTC microsecond
+retrieval receipt. A USD display reuses the accepted frozen pair. Native display has
+`same_currency` source and no invented market/retrieval time. Historical null provenance
+stays unknown; reads never refetch, reprice or freshness-revalidate saved values.
 A valid frozen zero remains zero. Missing foreign data never means identity or zero.
 Tab summaries and settlement allocation validate the same saved USD audit. An unset
 legacy USD value may use native identity in memory; a display/native foreign amount

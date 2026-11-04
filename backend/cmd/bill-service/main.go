@@ -116,7 +116,7 @@ func newRouter(handler *bill.BillHandler, currencyHandler *currency.Handler, tab
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:  origins,
 		AllowMethods:  []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:  []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Member-Token"},
+		AllowHeaders:  []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Member-Token", "Idempotency-Key"},
 		ExposeHeaders: []string{"Content-Length", "Retry-After"},
 	}))
 	r.GET("/health", readiness.Handler(state, "bill service - ok"))

@@ -29,8 +29,10 @@ type a1MeasureBill struct {
 	hold func(bill.ClaimCommand)
 }
 
-func (s a1MeasureBill) CreateBill(_ context.Context, b *models.Bill) error { b.ID = 1; return nil }
-func (s a1MeasureBill) GetBill(uint) (*models.Bill, error)                 { return &models.Bill{ID: 1}, nil }
+func (s a1MeasureBill) CreateBill(_ context.Context, c bill.CreateBillCommand) (bill.CreateBillResult, error) {
+	return bill.CreateBillResult{BillID: 1}, nil
+}
+func (s a1MeasureBill) GetBill(uint) (*models.Bill, error) { return &models.Bill{ID: 1}, nil }
 func (s a1MeasureBill) UpdateItemAssignmentsBatch(_ context.Context, c bill.ClaimCommand) error {
 	if s.hold != nil {
 		s.hold(c)

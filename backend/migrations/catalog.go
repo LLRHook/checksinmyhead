@@ -33,7 +33,7 @@ func validateRecognizer() error {
 	if checksum(catalogSafetyV2SQL) != catalogSafetyV2Checksum || checksum(catalogSQL) != catalogQueryChecksum || checksum(catalogManifest) != catalogManifestChecksum || checksum(ledgerSQL) != ledgerChecksum || checksum(catalogSQL+catalogManifest+ledgerSQL) != recognizerChecksum {
 		return errors.New("changed catalog recognizer")
 	}
-	return nil
+	return validateReceiptRecognizer()
 }
 
 type catalogObjects map[string]json.RawMessage
@@ -98,11 +98,7 @@ func checkCatalog(objects catalogObjects, ledger, strict bool) error {
 		if !ok {
 			return errors.New("missing catalog definition")
 		}
-		var a, b any
-		left, right := json.NewDecoder(bytes.NewReader(want)), json.NewDecoder(bytes.NewReader(got))
-		left.UseNumber()
-		right.UseNumber()
-		if left.Decode(&a) != nil || right.Decode(&b) != nil || !reflect.DeepEqual(a, b) {
+		if !equalCatalogDefinition(want, got) {
 			return errors.New("wrong catalog definition")
 		}
 	}
@@ -116,4 +112,12 @@ func checkCatalog(objects catalogObjects, ledger, strict bool) error {
 		}
 	}
 	return nil
+}
+
+func equalCatalogDefinition(want, got json.RawMessage) bool {
+	var a, b any
+	left, right := json.NewDecoder(bytes.NewReader(want)), json.NewDecoder(bytes.NewReader(got))
+	left.UseNumber()
+	right.UseNumber()
+	return left.Decode(&a) == nil && right.Decode(&b) == nil && reflect.DeepEqual(a, b)
 }

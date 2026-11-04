@@ -23,11 +23,16 @@ type compositionRepo struct {
 	saved []*models.Bill
 }
 
-func (r *compositionRepo) Create(_ context.Context, b *models.Bill) error {
+func (r *compositionRepo) Create(_ context.Context, c bill.CreationInsert) (bill.CreationRecord, error) {
+	b := c.Bill
 	b.ID = uint(len(r.saved) + 1)
 	r.saved = append(r.saved, b)
-	return nil
+	return bill.CreationRecord{Result: bill.CreateBillResult{BillID: b.ID, AccessToken: b.AccessToken, CurrencyCode: b.CurrencyCode, USDExchangeRate: b.USDExchangeRate, USDTotal: b.USDTotal, ExchangeRateDate: b.ExchangeRateDate, ExchangeRateSource: b.ExchangeRateSource}}, nil
 }
+func (r *compositionRepo) LookupCreation(context.Context, [32]byte) (*bill.CreationRecord, error) {
+	return nil, nil
+}
+
 func (r *compositionRepo) GetById(id uint) (*models.Bill, error) {
 	for _, b := range r.saved {
 		if b.ID == id {

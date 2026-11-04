@@ -31,7 +31,7 @@ func TestCreationRejectsToleranceAmplificationBeforeProviders(t *testing.T) {
 			repo := newMockRepo()
 			provider := &fakeExchangeRateProvider{}
 			b.CurrencyCode = "EUR"
-			err := NewBillService(repo, provider).CreateBill(context.Background(), b)
+			_, err := NewBillService(repo, provider).CreateBill(context.Background(), CreateBillCommand{Content: b})
 			if !errors.Is(err, ErrInvalidCreation) || provider.calls != 0 || len(repo.bills) != 0 {
 				t.Fatalf("err=%v provider_calls=%d persisted=%d shares=%+v", err, provider.calls, len(repo.bills), b.PersonShares)
 			}
@@ -85,7 +85,7 @@ func (f *fakeDisplayRates) Latest(_ context.Context, from, to string) (models.Ex
 	f.calls++
 	f.from = from
 	f.to = to
-	return models.ExchangeRateQuote{Base: from, Quote: to, Rate: f.value, Source: "synthetic-display", Date: time.Now().UTC().Format(time.DateOnly)}, f.err
+	return models.ExchangeRateQuote{RetrievedAt: quoteReceiptTime(), Base: from, Quote: to, Rate: f.value, Source: "synthetic-display", Date: time.Now().UTC().Format(time.DateOnly)}, f.err
 }
 
 func TestCreationAllMobileDisplayChoicesAndProviderDefinedPair(t *testing.T) {
@@ -149,7 +149,7 @@ func TestCreationDisplayFailureAndInvalidMoneyNeverPersist(t *testing.T) {
 			h := NewBillHandler(NewBillService(repo, rates))
 			b.DisplayCurrency = "PEN"
 			// Exercise the same service operation used by the HTTP handler.
-			err := h.service.CreateBill(context.Background(), b)
+			_, err := h.service.CreateBill(context.Background(), CreateBillCommand{Content: b})
 			if !errors.Is(err, ErrInvalidCreation) || rates.calls != 0 || len(repo.bills) != 0 {
 				t.Fatalf("err=%v calls=%d persisted=%d", err, rates.calls, len(repo.bills))
 			}

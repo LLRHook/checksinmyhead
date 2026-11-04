@@ -4,6 +4,7 @@ import (
 	"backend/internal/currency"
 	"backend/pkg/models"
 	"backend/pkg/mutation"
+	"backend/pkg/security"
 	"context"
 	"errors"
 	"fmt"
@@ -24,7 +25,7 @@ var (
 type ExchangeRateProvider = currency.Provider
 
 type BillService interface {
-	CreateBill(ctx context.Context, bill *models.Bill) error
+	CreateBill(context.Context, CreateBillCommand) (CreateBillResult, error)
 	GetUSDExchangeRate(ctx context.Context, currency string) (models.ExchangeRateQuote, error)
 	GetBill(id uint) (bill *models.Bill, err error)
 	UpdatePersonSharePaid(context.Context, BillSharePaidCommand) error
@@ -36,30 +37,47 @@ type billService struct {
 	rateProvider ExchangeRateProvider
 }
 
-func (b *billService) CreateBill(ctx context.Context, bill *models.Bill) error {
+func (b *billService) CreateBill(ctx context.Context, c CreateBillCommand) (CreateBillResult, error) {
 	ctx, cancel := mutation.Bound(ctx)
 	defer cancel()
-	if err := prepareCreation(bill); err != nil {
-		return err
+	if err := guardCreationContent(c.Content); err != nil {
+		return CreateBillResult{}, err
 	}
-	// All distinct pairs in a creation share one deadline. The frozen quote also
-	// supplies a requested USD display; this is operation-local reuse, not a cache.
+	bill := cloneCreation(c.Content)
+	if err := normalizeCreation(bill); err != nil {
+		return CreateBillResult{}, err
+	}
+	var identity *ReplayIdentity
+	if c.Key != nil {
+		fingerprint := creationFingerprint(bill)
+		identity = &ReplayIdentity{KeyDigest: c.Key.digest, Fingerprint: fingerprint, Version: creationFingerprintVersion}
+		record, err := b.repo.LookupCreation(ctx, c.Key.digest)
+		if err != nil {
+			return CreateBillResult{}, creationStorageError(ctx, err)
+		}
+		if record != nil {
+			return compareCreation(*record, *identity)
+		}
+	}
+	if err := deriveCreation(bill); err != nil {
+		return CreateBillResult{}, err
+	}
+	// Quote work stays outside the election transaction and shares one deadline.
 	quoteCtx, cancelQuotes := context.WithTimeout(ctx, currency.OperationTimeout)
 	defer cancelQuotes()
 	quote, err := b.GetUSDExchangeRate(quoteCtx, bill.CurrencyCode)
 	if err != nil {
-		return err
+		return CreateBillResult{}, err
 	}
-	bill.CurrencyCode = quote.Base
-	bill.USDExchangeRate = quote.Rate
-	bill.ExchangeRateDate = quote.Date
-	bill.ExchangeRateSource = quote.Source
+	bill.USDExchangeRate, bill.ExchangeRateDate, bill.ExchangeRateSource = quote.Rate, quote.Date, quote.Source
 	bill.USDTotal = math.Round(bill.Total*quote.Rate*100) / 100
 	if !finite(bill.USDTotal) || bill.USDTotal > float64(math.MaxInt64)/100 {
-		return ErrInvalidCreation
+		return CreateBillResult{}, ErrInvalidCreation
 	}
 	displayTotal := bill.Total
 	bill.ExchangeRate = nil
+	source := "same_currency"
+	bill.DisplayRateSource = &source
 	if bill.CurrencyCode != bill.DisplayCurrency {
 		displayQuote := quote
 		if bill.DisplayCurrency != "USD" {
@@ -68,19 +86,26 @@ func (b *billService) CreateBill(ctx context.Context, bill *models.Bill) error {
 				err = currency.ValidateQuote(displayQuote, bill.CurrencyCode, bill.DisplayCurrency, time.Now())
 			}
 			if err != nil {
-				return fmt.Errorf("%w: %w", ErrDisplayConversionUnavailable, err)
+				return CreateBillResult{}, fmt.Errorf("%w: %w", ErrDisplayConversionUnavailable, err)
 			}
 		}
 		displayTotal *= displayQuote.Rate
 		if !finite(displayTotal) {
-			return ErrDisplayConversionUnavailable
+			return CreateBillResult{}, ErrDisplayConversionUnavailable
 		}
 		bill.ExchangeRate = &displayQuote.Rate
+		bill.DisplayRateDate, bill.DisplayRateSource, bill.DisplayRateRetrievedAt = &displayQuote.Date, &displayQuote.Source, displayQuote.RetrievedAt
 	}
-	// exchange_rate_date/source belong exclusively to frozen USD. Distinct
-	// persisted display provenance awaits approved migration 0002.
 	bill.DisplayTotal = &displayTotal
-	return b.repo.Create(ctx, bill)
+	bill.AccessToken, err = security.GenerateSecureToken()
+	if err != nil {
+		return CreateBillResult{}, err
+	}
+	record, err := b.repo.Create(ctx, CreationInsert{Bill: bill, Replay: identity})
+	if err != nil {
+		return CreateBillResult{}, creationStorageError(ctx, err)
+	}
+	return record.Result, nil
 }
 
 func (b *billService) GetUSDExchangeRate(ctx context.Context, currencyCode string) (models.ExchangeRateQuote, error) {

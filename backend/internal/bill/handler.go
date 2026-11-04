@@ -31,17 +31,23 @@ func (h *BillHandler) CreateBill(c *gin.Context) {
 		return
 	}
 
-	token, err := security.GenerateSecureToken()
+	key, err := parseCreationKey(c.Request.Header)
 	if err != nil {
-		database.LogRequestError(err)
-		c.JSON(500, gin.H{"error": "an internal error occurred"})
+		c.JSON(400, gin.H{"error": "invalid creation key"})
 		return
 	}
-	bill.AccessToken = token
-	err = h.service.CreateBill(c.Request.Context(), bill)
+	result, err := h.service.CreateBill(c.Request.Context(), CreateBillCommand{Content: bill, Key: key})
 
 	if err != nil {
 		currency.WriteRetryAfter(c, err)
+		if errors.Is(err, ErrReplayConflict) {
+			c.JSON(409, gin.H{"error": "creation conflict", "code": "creation_conflict"})
+			return
+		}
+		if errors.Is(err, ErrReplayVersion) || errors.Is(err, ErrCreateUncertain) {
+			c.JSON(503, gin.H{"error": "creation temporarily unavailable", "code": "creation_unavailable"})
+			return
+		}
 		if errors.Is(err, ErrDisplayConversionUnavailable) {
 			c.JSON(503, gin.H{"error": "currency conversion is temporarily unavailable"})
 			return
@@ -63,15 +69,12 @@ func (h *BillHandler) CreateBill(c *gin.Context) {
 		return
 	}
 
+	c.Header("Cache-Control", "no-store")
 	c.JSON(201, gin.H{
-		"bill_id":              bill.ID,
-		"access_token":         token,
-		"share_url":            fmt.Sprintf("%s/b/%d?t=%s", config.AppDomain(), bill.ID, token),
-		"currency_code":        bill.CurrencyCode,
-		"usd_exchange_rate":    bill.USDExchangeRate,
-		"exchange_rate_date":   bill.ExchangeRateDate,
-		"exchange_rate_source": bill.ExchangeRateSource,
-		"usd_total":            bill.USDTotal,
+		"bill_id": result.BillID, "access_token": result.AccessToken,
+		"share_url":     fmt.Sprintf("%s/b/%d?t=%s", config.AppDomain(), result.BillID, result.AccessToken),
+		"currency_code": result.CurrencyCode, "usd_exchange_rate": result.USDExchangeRate,
+		"exchange_rate_date": result.ExchangeRateDate, "exchange_rate_source": result.ExchangeRateSource, "usd_total": result.USDTotal,
 	})
 }
 

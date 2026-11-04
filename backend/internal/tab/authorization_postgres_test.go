@@ -254,8 +254,8 @@ func TestPostgresAttachmentAndCreationRollback(t *testing.T) {
 	if err := db.Exec("ALTER TABLE item_assignments ADD CONSTRAINT reject_child CHECK (percentage < 100)").Error; err != nil {
 		t.Fatal(err)
 	}
-	next := &models.Bill{Name: "Rollback", AccessToken: "new", Subtotal: 10, Total: 10, Participants: []models.Person{{Name: "Alex"}}, Items: []models.BillItem{{Name: "Dinner", Price: 10, Assignments: []models.ItemAssignment{{PersonName: "Alex", Percentage: 100}}}}}
-	if err := billpkg.NewBillService(billpkg.NewBillRepository(db), authorizationQuote{}).CreateBill(context.Background(), next); err == nil {
+	next := &models.Bill{Name: "Rollback", Subtotal: 10, Total: 10, Participants: []models.Person{{Name: "Alex"}}, Items: []models.BillItem{{Name: "Dinner", Price: 10, Assignments: []models.ItemAssignment{{PersonName: "Alex", Percentage: 100}}}}}
+	if _, err := billpkg.NewBillService(billpkg.NewBillRepository(db), authorizationQuote{}).CreateBill(context.Background(), billpkg.CreateBillCommand{Content: next}); err == nil {
 		t.Fatal("expected child failure")
 	}
 	for _, table := range []string{"people", "bill_participants", "bill_items", "item_assignments", "person_shares"} {
@@ -356,7 +356,8 @@ func TestPostgresCreationAttachmentQueryShapeAndLatency(t *testing.T) {
 					t.Fatalf("unstable attachment queries %d/%d", aq, attachQueries)
 				}
 			}
-			if createQueries > 8 || attachQueries > 5 {
+			// Five fixed data statements plus one checked INSERT per500 assignments.
+			if createQueries > int64(5+(items*10+499)/500) || attachQueries > 5 {
 				t.Fatalf("unexpected per-item query growth: create=%d attach=%d", createQueries, attachQueries)
 			}
 			sort.Slice(creates, func(i, j int) bool { return creates[i] < creates[j] })

@@ -45,7 +45,7 @@ var ErrInvalidQuote = errors.New("invalid exchange rate quote")
 // ValidateQuote applies only to new foreign quotes. Date comparisons are UTC
 // calendar days, including weekend/holiday lag and next-day publisher allowance.
 func ValidateQuote(q models.ExchangeRateQuote, base, quote string, now time.Time) error {
-	if q.Base != base || q.Quote != quote || strings.TrimSpace(q.Source) == "" || q.Rate <= 0 || math.IsNaN(q.Rate) || math.IsInf(q.Rate, 0) {
+	if q.Base != base || q.Quote != quote || q.Source == "" || q.Source != strings.TrimSpace(q.Source) || len(q.Source) > 64 || q.Source == "same_currency" || q.RetrievedAt == nil || q.RetrievedAt.IsZero() || q.RetrievedAt.Year() < 1 || q.RetrievedAt.Year() > 9999 || q.RetrievedAt.Location() != time.UTC || q.RetrievedAt.Nanosecond()%1000 != 0 || q.Rate <= 0 || math.IsNaN(q.Rate) || math.IsInf(q.Rate, 0) {
 		return ErrInvalidQuote
 	}
 	day, err := time.Parse(time.DateOnly, q.Date)

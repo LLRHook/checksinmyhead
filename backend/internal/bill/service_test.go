@@ -45,13 +45,29 @@ func newMockRepo() *mockBillRepository {
 	}
 }
 
-func (m *mockBillRepository) Create(_ context.Context, bill *models.Bill) error {
+func (m *mockBillRepository) Create(_ context.Context, c CreationInsert) (CreationRecord, error) {
 	if m.createErr != nil {
-		return m.createErr
+		return CreationRecord{}, m.createErr
 	}
+	bill := c.Bill
 	bill.ID = uint(len(m.bills) + 1)
+	if c.Replay != nil {
+		bill.CreationKeyDigest = append([]byte(nil), c.Replay.KeyDigest[:]...)
+		bill.CreationFingerprint = append([]byte(nil), c.Replay.Fingerprint[:]...)
+		v := c.Replay.Version
+		bill.CreationFingerprintVersion = &v
+	}
 	m.bills[bill.ID] = bill
-	return nil
+	return creationRow{ID: bill.ID, AccessToken: bill.AccessToken, CurrencyCode: bill.CurrencyCode, USDExchangeRate: bill.USDExchangeRate, USDTotal: bill.USDTotal, ExchangeRateDate: bill.ExchangeRateDate, ExchangeRateSource: bill.ExchangeRateSource, CreationFingerprint: bill.CreationFingerprint, CreationFingerprintVersion: bill.CreationFingerprintVersion}.record(), nil
+}
+func (m *mockBillRepository) LookupCreation(_ context.Context, digest [32]byte) (*CreationRecord, error) {
+	for _, v := range m.bills {
+		if string(v.CreationKeyDigest) == string(digest[:]) {
+			r := creationRow{ID: v.ID, AccessToken: v.AccessToken, CurrencyCode: v.CurrencyCode, USDExchangeRate: v.USDExchangeRate, USDTotal: v.USDTotal, ExchangeRateDate: v.ExchangeRateDate, ExchangeRateSource: v.ExchangeRateSource, CreationFingerprint: v.CreationFingerprint, CreationFingerprintVersion: v.CreationFingerprintVersion}.record()
+			return &r, nil
+		}
+	}
+	return nil, nil
 }
 
 func (m *mockBillRepository) GetById(id uint) (*models.Bill, error) {
@@ -180,16 +196,17 @@ func TestBuildLazyPersonShares_KeepEarlierSharesStableAsItemsAreClaimed(t *testi
 
 func TestCreateBill_FreezesLatestDailyConversion(t *testing.T) {
 	repo := newMockRepo()
-	provider := &fakeExchangeRateProvider{quote: models.ExchangeRateQuote{
+	provider := &fakeExchangeRateProvider{quote: models.ExchangeRateQuote{RetrievedAt: quoteReceiptTime(),
 		Base: "EUR", Quote: "USD", Rate: 1.1652, Date: time.Now().UTC().Format(time.DateOnly), Source: "frankfurter-v2-blended",
 	}}
 	svc := NewBillService(repo, provider)
 	b := &models.Bill{Name: "Cafe", Subtotal: 85.82, CurrencyCode: "eur", Total: 85.82}
 
-	err := svc.CreateBill(context.Background(), b)
+	_, err := svc.CreateBill(context.Background(), CreateBillCommand{Content: b})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
+	b = repo.bills[1]
 	if b.CurrencyCode != "EUR" || b.USDExchangeRate != 1.1652 || b.ExchangeRateDate != provider.quote.Date || b.ExchangeRateSource != "frankfurter-v2-blended" {
 		t.Fatalf("unexpected frozen conversion: %+v", b)
 	}
@@ -207,7 +224,7 @@ func TestCreateBill_ProviderFailureDoesNotPersistForeignCurrencyBill(t *testing.
 	svc := NewBillService(repo, provider)
 	b := &models.Bill{Name: "Cafe", Subtotal: 25, CurrencyCode: "CAD", Total: 25}
 
-	if err := svc.CreateBill(context.Background(), b); err == nil {
+	if _, err := svc.CreateBill(context.Background(), CreateBillCommand{Content: b}); err == nil {
 		t.Fatal("expected explicit exchange-rate error")
 	}
 	if len(repo.bills) != 0 {
@@ -217,13 +234,13 @@ func TestCreateBill_ProviderFailureDoesNotPersistForeignCurrencyBill(t *testing.
 
 func TestCreateBill_RejectsUnsupportedCurrencyWithoutCallingProvider(t *testing.T) {
 	repo := newMockRepo()
-	provider := &fakeExchangeRateProvider{quote: models.ExchangeRateQuote{
+	provider := &fakeExchangeRateProvider{quote: models.ExchangeRateQuote{RetrievedAt: quoteReceiptTime(),
 		Base: "ZZZ", Quote: "USD", Rate: 2, Date: time.Now().UTC().Format(time.DateOnly), Source: "unexpected",
 	}}
 	svc := NewBillService(repo, provider)
 	b := &models.Bill{Name: "Cafe", Subtotal: 25, CurrencyCode: "ZZZ", Total: 25}
 
-	if err := svc.CreateBill(context.Background(), b); !errors.Is(err, ErrInvalidCurrency) {
+	if _, err := svc.CreateBill(context.Background(), CreateBillCommand{Content: b}); !errors.Is(err, ErrInvalidCurrency) {
 		t.Fatalf("expected unsupported currency error, got %v", err)
 	}
 	if len(repo.bills) != 0 {
@@ -239,9 +256,10 @@ func TestCreateBill_LegacyUSDUsesStableIdentityConversion(t *testing.T) {
 	svc := NewBillService(repo, &fakeExchangeRateProvider{})
 	b := &models.Bill{Name: "Cafe", Subtotal: 42.37, Total: 42.37}
 
-	if err := svc.CreateBill(context.Background(), b); err != nil {
+	if _, err := svc.CreateBill(context.Background(), CreateBillCommand{Content: b}); err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
+	b = repo.bills[1]
 	if b.CurrencyCode != "USD" || b.USDExchangeRate != 1 || b.USDTotal != 42.37 {
 		t.Fatalf("unexpected USD defaults: %+v", b)
 	}

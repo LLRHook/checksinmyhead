@@ -21,7 +21,7 @@ func TestHandlerReturnsConfiguredPolicyWithoutCaching(t *testing.T) {
 	if response.Header().Get("Cache-Control") != "no-store" {
 		t.Fatal("policy response must not be cached")
 	}
-	if got := response.Body.String(); got != `{"minimum_supported_version":"2.1.0","store_url":"https://store.example/billington"}` {
+	if got := response.Body.String(); got != `{"capabilities":{"bill_creation_replay":{"key_format":"base64url-32","version":1}},"minimum_supported_version":"2.1.0","store_url":"https://store.example/billington"}` {
 		t.Fatalf("unexpected policy: %s", got)
 	}
 }
@@ -34,7 +34,7 @@ func TestHandlerFallsBackForInvalidMinimumVersion(t *testing.T) {
 	router.GET("/api/app/version-policy", Handler())
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, httptest.NewRequest("GET", "/api/app/version-policy", nil))
-	if got := response.Body.String(); got != `{"minimum_supported_version":"2.0.3","store_url":"https://apps.apple.com/app/id6746379502"}` {
+	if got := response.Body.String(); got != `{"capabilities":{"bill_creation_replay":{"key_format":"base64url-32","version":1}},"minimum_supported_version":"2.0.3","store_url":"https://apps.apple.com/app/id6746379502"}` {
 		t.Fatalf("unexpected fallback policy: %s", got)
 	}
 }
