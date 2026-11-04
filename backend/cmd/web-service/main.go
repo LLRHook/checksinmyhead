@@ -7,13 +7,15 @@ import (
 	"backend/internal/readiness"
 	"backend/internal/startup"
 	"backend/internal/web"
+	"backend/migrations"
 	"backend/pkg/database"
 	"backend/pkg/safehttp"
 	"context"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/gin-gonic/gin"
 )
@@ -42,8 +44,26 @@ func main() {
 	service := bill.NewBillService(repo, exchange.NewClient(""))
 	handler := web.NewWebpageHandler(service)
 
-	r := gin.New()
-	r.Use(safehttp.RequestLogger(), gin.Recovery())
+	r, err := newRouter(handler, state)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("Web Service starting on :8081")
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	if err := safehttp.Serve(ctx, ":8081", r); err != nil {
+		log.Print(err)
+		os.Exit(1)
+	}
+}
+
+// newRouter is shared by the retained HTML binary and its transport tests.
+func newRouter(handler *web.WebpageHandler, state *migrations.State) (*gin.Engine, error) {
+	r, err := safehttp.NewRouter(os.Getenv("TRUSTED_PROXY_CIDRS"))
+	if err != nil {
+		return nil, err
+	}
 	r.Use(func(c *gin.Context) {
 		c.Header("X-Content-Type-Options", "nosniff")
 		c.Header("X-Frame-Options", "DENY")
@@ -54,6 +74,5 @@ func main() {
 	r.GET("/health", readiness.Handler(state, "web service - ok"))
 	r.GET("/b/:id", handler.CreateHTML)
 
-	fmt.Println("Web Service starting on :8081")
-	log.Fatal(http.ListenAndServe(":8081", r))
+	return r, nil
 }

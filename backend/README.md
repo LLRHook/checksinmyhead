@@ -23,6 +23,29 @@ pkg/
 
 Each module follows the **Handler → Service → Repository** pattern. Services define interfaces for testability. Repositories use GORM with eager loading via `Preload`.
 
+## HTTP lifecycle and JSON limits
+
+Both service binaries use the shared `pkg/safehttp` lifecycle: 5s read-header, 20s
+read, 50s write and 60s idle timeouts, with 32 KiB MaxHeaderBytes. SIGINT/SIGTERM
+cancel request contexts; shutdown waits up to 25s and then closes connections.
+Ordinary graceful shutdown exits successfully. Startup/migration modes and the
+healthcheck-before-database CLI contract are unchanged. Server failure diagnostics
+and recovery logs are finite and omit private request/panic/error text.
+
+`TRUSTED_PROXY_CIDRS` is empty by default, trusting no proxy. Configure only verified
+canonical network prefixes (at most 32 / 2 KiB); malformed or overly broad values
+fail startup without echoing configuration. Only XFF is used; X-Real-IP and platform
+headers are ignored. An unconfigured proxy can share a peer quota across users;
+these source controls do not verify hosting topology.
+
+JSON mutation routes share eight nonwaiting process slots, returning 503 and
+`Retry-After: 1` when full. Reads and health bypass admission. See the
+[API resource policy](../docs/backend-api.md#http-resource-policy) for body, collection,
+text, EOF and compatibility limits. The optional local measurement test runs with
+`A1_MEASURE_OUTPUT=<absolute-file> go test -count=1 -tags=a1perf ./cmd/bill-service
+-run '^TestA1JSONMeasurements$'`; it uses injected services, no provider/database
+requests, three runs of 100 samples per path and a 75s retention observation.
+
 ## Quick Start
 
 ```bash

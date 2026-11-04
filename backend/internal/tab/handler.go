@@ -1,6 +1,7 @@
 package tab
 
 import (
+	"backend/internal/bill"
 	"backend/pkg/config"
 	"backend/pkg/database"
 	"backend/pkg/models"
@@ -8,15 +9,13 @@ import (
 	"backend/pkg/safehttp"
 	"backend/pkg/security"
 	"crypto/subtle"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"math"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -91,7 +90,19 @@ func (h *TabHandler) CreateTab(c *gin.Context) {
 		DisplayCurrency    string `json:"display_currency"`
 	}
 
-	if err := c.ShouldBindJSON(&body); err != nil {
+	if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, 16<<10, false); err != nil {
+		status := 400
+		if errors.Is(err, safehttp.ErrJSONTooLarge) {
+			status = 413
+		}
+		c.JSON(status, gin.H{"error": "bad request"})
+		return
+	}
+
+	body.Name = security.SanitizeString(body.Name)
+	body.Description = security.SanitizeString(body.Description)
+	body.CreatorDisplayName = security.SanitizeString(body.CreatorDisplayName)
+	if !utf8.ValidString(body.Name) || !utf8.ValidString(body.Description) || !utf8.ValidString(body.CreatorDisplayName) || utf8.RuneCountInString(body.Name) > 255 || utf8.RuneCountInString(body.Description) > 4096 || utf8.RuneCountInString(body.CreatorDisplayName) > 30 {
 		c.JSON(400, gin.H{"error": "bad request"})
 		return
 	}
@@ -101,8 +112,8 @@ func (h *TabHandler) CreateTab(c *gin.Context) {
 		displayCurrency = "USD"
 	}
 	tab := models.Tab{
-		Name:            security.SanitizeString(body.Name),
-		Description:     security.SanitizeString(body.Description),
+		Name:            body.Name,
+		Description:     body.Description,
 		DisplayCurrency: displayCurrency,
 	}
 
@@ -114,7 +125,7 @@ func (h *TabHandler) CreateTab(c *gin.Context) {
 	}
 	tab.AccessToken = token
 
-	creator, err := h.service.CreateTab(c.Request.Context(), &tab, security.SanitizeString(body.CreatorDisplayName))
+	creator, err := h.service.CreateTab(c.Request.Context(), &tab, body.CreatorDisplayName)
 	if err != nil {
 		database.LogRequestError(err)
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
@@ -155,13 +166,7 @@ func (h *TabHandler) AddBillToTab(c *gin.Context) {
 		BillID    uint   `json:"bill_id"`
 		BillToken string `json:"bill_token"`
 	}
-	decoder := json.NewDecoder(http.MaxBytesReader(c.Writer, c.Request.Body, 4<<10))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&body); err != nil {
-		c.JSON(400, gin.H{"error": "bad request"})
-		return
-	}
-	if err := decoder.Decode(new(any)); err != io.EOF {
+	if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, 4<<10, true); err != nil {
 		c.JSON(400, gin.H{"error": "bad request"})
 		return
 	}
@@ -206,18 +211,15 @@ func (h *TabHandler) UpdateBillItemAssignments(c *gin.Context) {
 	}
 
 	var body struct {
-		ExpectedUpdatedAt *string `json:"expected_updated_at"`
-		Assignments       []struct {
-			PersonName string  `json:"person_name"`
-			Percentage float64 `json:"percentage"`
-		} `json:"assignments"`
+		ExpectedUpdatedAt *string               `json:"expected_updated_at"`
+		Assignments       bill.AssignmentInputs `json:"assignments"`
 	}
-	if err := c.ShouldBindJSON(&body); err != nil {
+	if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, safehttp.MutationBodyLimit, false); err != nil {
 		c.JSON(400, gin.H{"error": "bad request"})
 		return
 	}
 
-	if body.Assignments == nil {
+	if body.Assignments == nil || len(body.Assignments) > 100 {
 		c.JSON(400, gin.H{"error": "assignments are required"})
 		return
 	}
@@ -287,17 +289,15 @@ func (h *TabHandler) UpdateBillItemAssignmentsBatch(c *gin.Context) {
 		return
 	}
 	var body struct {
-		Updates []struct {
-			ItemID            uint    `json:"item_id"`
-			ExpectedUpdatedAt *string `json:"expected_updated_at"`
-			Assignments       []struct {
-				PersonName string  `json:"person_name"`
-				Percentage float64 `json:"percentage"`
-			} `json:"assignments"`
-		} `json:"updates"`
+		Updates bill.AssignmentUpdateInputs `json:"updates"`
 	}
-	if err := c.ShouldBindJSON(&body); err != nil || len(body.Updates) == 0 {
+	if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, safehttp.MutationBodyLimit, false); err != nil || len(body.Updates) == 0 {
 		c.JSON(400, gin.H{"error": "item updates are required"})
+		return
+	}
+
+	if !bill.AssignmentInputCountsValid(body.Updates) {
+		c.JSON(400, gin.H{"error": "bad request"})
 		return
 	}
 
@@ -386,7 +386,7 @@ func (h *TabHandler) UpdateBillPersonSharePaid(c *gin.Context) {
 	var body struct {
 		Paid *bool `json:"paid"`
 	}
-	if err := c.ShouldBindJSON(&body); err != nil || body.Paid == nil {
+	if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, safehttp.MutationBodyLimit, false); err != nil || body.Paid == nil {
 		c.JSON(400, gin.H{"error": "paid field required"})
 		return
 	}
@@ -411,7 +411,7 @@ func (h *TabHandler) UpdateTab(c *gin.Context) {
 		Description     *string `json:"description"`
 		DisplayCurrency *string `json:"display_currency"`
 	}
-	if err := c.ShouldBindJSON(&body); err != nil {
+	if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, safehttp.MutationBodyLimit, false); err != nil {
 		c.JSON(400, gin.H{"error": "bad request"})
 		return
 	}
@@ -486,7 +486,7 @@ func (h *TabHandler) UpdateSettlement(c *gin.Context) {
 	var body struct {
 		Paid *bool `json:"paid"`
 	}
-	if err := c.ShouldBindJSON(&body); err != nil || body.Paid == nil {
+	if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, safehttp.MutationBodyLimit, false); err != nil || body.Paid == nil {
 		c.JSON(400, gin.H{"error": "paid field required"})
 		return
 	}
@@ -512,7 +512,7 @@ func (h *TabHandler) JoinTab(c *gin.Context) {
 		DisplayName string `json:"display_name"`
 	}
 	if access.MemberToken == "" {
-		if err := c.ShouldBindJSON(&body); err != nil {
+		if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, safehttp.MutationBodyLimit, false); err != nil {
 			c.JSON(400, gin.H{"error": "bad request"})
 			return
 		}
@@ -570,7 +570,6 @@ func writeAccess(c *gin.Context) *TabAccess {
 		c.JSON(400, gin.H{"error": "invalid tab id"})
 		return nil
 	}
-	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 4<<20)
 	member := c.GetHeader("X-Member-Token")
 	if member == "" {
 		member = c.Query("m")

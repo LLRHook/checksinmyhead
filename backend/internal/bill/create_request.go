@@ -3,10 +3,9 @@ package bill
 import (
 	"backend/internal/currency"
 	"backend/pkg/models"
+	"backend/pkg/safehttp"
 	"backend/pkg/security"
-	"encoding/json"
 	"errors"
-	"io"
 	"math"
 	"net/http"
 	"sort"
@@ -23,39 +22,39 @@ var ErrInvalidCreation = errors.New("invalid standalone bill content")
 // CreateBillRequest is the public content contract. No request type embeds a
 // persistence model: identity, ownership, paid state and quote metadata are not input.
 type CreateBillRequest struct {
-	Name            *string         `json:"name"`
-	LazyMode        bool            `json:"lazy_mode"`
-	Subtotal        *float64        `json:"subtotal"`
-	Tax             float64         `json:"tax"`
-	TipAmount       float64         `json:"tip_amount"`
-	TipPercentage   float64         `json:"tip_percentage"`
-	Total           *float64        `json:"total"`
-	CurrencyCode    string          `json:"currency_code"`
-	DisplayCurrency string          `json:"display_currency"`
-	Participants    []createPerson  `json:"participants"`
-	Items           []createItem    `json:"items"`
-	PersonShares    []createShare   `json:"person_shares"`
-	PaymentMethods  []createPayment `json:"payment_methods"`
+	Name            *string          `json:"name"`
+	LazyMode        bool             `json:"lazy_mode"`
+	Subtotal        *float64         `json:"subtotal"`
+	Tax             float64          `json:"tax"`
+	TipAmount       float64          `json:"tip_amount"`
+	TipPercentage   float64          `json:"tip_percentage"`
+	Total           *float64         `json:"total"`
+	CurrencyCode    string           `json:"currency_code"`
+	DisplayCurrency string           `json:"display_currency"`
+	Participants    creationPeople   `json:"participants"`
+	Items           creationItems    `json:"items"`
+	PersonShares    creationShares   `json:"person_shares"`
+	PaymentMethods  creationPayments `json:"payment_methods"`
 }
 type createPerson struct {
 	Name string `json:"name"`
 }
 type createItem struct {
-	Name        string             `json:"name"`
-	Price       *float64           `json:"price"`
-	Assignments []createAssignment `json:"assignments"`
+	Name        string              `json:"name"`
+	Price       *float64            `json:"price"`
+	Assignments creationAssignments `json:"assignments"`
 }
 type createAssignment struct {
 	PersonName string  `json:"person_name"`
 	Percentage float64 `json:"percentage"`
 }
 type createShare struct {
-	PersonName string         `json:"person_name"`
-	Items      []createDetail `json:"items"`
-	Subtotal   float64        `json:"subtotal"`
-	TaxShare   float64        `json:"tax_share"`
-	TipShare   float64        `json:"tip_share"`
-	Total      float64        `json:"total"`
+	PersonName string          `json:"person_name"`
+	Items      creationDetails `json:"items"`
+	Subtotal   float64         `json:"subtotal"`
+	TaxShare   float64         `json:"tax_share"`
+	TipShare   float64         `json:"tip_share"`
+	Total      float64         `json:"total"`
 }
 type createDetail struct {
 	Name     string  `json:"name"`
@@ -68,14 +67,17 @@ type createPayment struct {
 }
 
 func decodeCreateBill(w http.ResponseWriter, r *http.Request) (*models.Bill, error) {
-	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, createBodyLimit))
-	decoder.DisallowUnknownFields()
 	var request CreateBillRequest
-	if err := decoder.Decode(&request); err != nil {
+	if err := safehttp.DecodeJSON(w, r, &request, createBodyLimit, true); err != nil {
 		return nil, ErrInvalidCreation
 	}
-	if err := decoder.Decode(new(any)); err != io.EOF {
-		return nil, ErrInvalidCreation
+	// Counts precede every DTO-to-model copy, including the aggregate bound.
+	count := 0
+	for _, item := range request.Items {
+		count += len(item.Assignments)
+		if count > 5000 {
+			return nil, ErrInvalidCreation
+		}
 	}
 	if request.Name == nil || request.Subtotal == nil || request.Total == nil {
 		return nil, ErrInvalidCreation
@@ -438,4 +440,44 @@ func sortedCreationKeys(names map[string]string) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// Typed content collections reject minimal adversarial arrays before typed slice
+// growth. Limits are owned by the bill DTO; decoding mechanics are shared.
+type creationPeople []createPerson
+type creationItems []createItem
+type creationShares []createShare
+type creationPayments []createPayment
+type creationAssignments []createAssignment
+type creationDetails []createDetail
+
+func (v *creationPeople) UnmarshalJSON(data []byte) error {
+	values, err := safehttp.DecodeStrictArray[createPerson](data, 100)
+	*v = values
+	return err
+}
+func (v *creationItems) UnmarshalJSON(data []byte) error {
+	values, err := safehttp.DecodeStrictArray[createItem](data, 500)
+	*v = values
+	return err
+}
+func (v *creationShares) UnmarshalJSON(data []byte) error {
+	values, err := safehttp.DecodeStrictArray[createShare](data, 100)
+	*v = values
+	return err
+}
+func (v *creationPayments) UnmarshalJSON(data []byte) error {
+	values, err := safehttp.DecodeStrictArray[createPayment](data, 10)
+	*v = values
+	return err
+}
+func (v *creationAssignments) UnmarshalJSON(data []byte) error {
+	values, err := safehttp.DecodeStrictArray[createAssignment](data, 100)
+	*v = values
+	return err
+}
+func (v *creationDetails) UnmarshalJSON(data []byte) error {
+	values, err := safehttp.DecodeStrictArray[createDetail](data, 500)
+	*v = values
+	return err
 }

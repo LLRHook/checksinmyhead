@@ -240,6 +240,7 @@ def main():
                 wait_until(mode_ready, 15, key + " verify serving")
                 check(key + "-verify-serving", True)
                 command(["docker", "stop", "--time", "3", name])
+                check(key + "-verify-graceful-exit", inspect(name)["State"]["ExitCode"] == 0)
                 name = create(network + "-" + key, *app_args(key), "-p", f"127.0.0.1::{port}", images[key])
                 services[key] = name
                 command(["docker", "start", name])
@@ -308,6 +309,11 @@ def main():
                 check(key + "-readiness-recovered", True)
                 wait_until(lambda: inspect(name)["State"]["Health"]["Status"] == "healthy", 45, key + " Docker recovery")
                 check(key + "-docker-recovered", True)
+            for key, name in services.items():
+                command(["docker", "stop", "--time", "30", name])
+                check(key + "-graceful-exit", inspect(name)["State"]["ExitCode"] == 0)
+                logs = docker("logs", name)
+                check(key + "-shutdown-log-secrecy", "synthetic-runtime-fixture" not in logs and schema not in logs)
             record["dns_queries"] = [json.loads(line) for line in docker("logs", dns).splitlines() if line.startswith("{")]
             names = [q["name"] for q in record["dns_queries"]]
             check("dns-fixture-observed-search", "search-probe.runtime-check.test." in names)

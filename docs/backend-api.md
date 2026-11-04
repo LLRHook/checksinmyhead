@@ -303,11 +303,46 @@ all deployed writers to cooperate. It does not establish rollout or signed-clien
 
 ---
 
+## HTTP resource policy
+
+Both service binaries use read-header/read/write/idle timeouts of 5/20/50/60 seconds
+and a 32 KiB `MaxHeaderBytes` setting. Signal cancellation reaches request contexts;
+shutdown waits at most 25 seconds, then closes connections. A write deadline alone
+does not cancel handler work. Recovery returns a generic JSON 500 before response
+commitment, and aborts partial/disconnected responses without appending a false 500.
+Process diagnostics never print raw panic values, requests, headers, bodies or stacks.
+
+All JSON mutation routes share eight in-flight slots per process, independently of
+`Content-Type`. There is no waiting queue: saturation returns 503 with `Retry-After: 1`.
+Reads and health bypass the gate. CORS exposes `Retry-After` to permitted origins.
+JSON bodies must contain exactly one document, including trailing whitespace within
+the byte cap. Creation and attachment retain strict unknown-field rejection; other
+existing DTOs continue ignoring unknown fields. Standalone paid updates and attachment
+are capped at 4 KiB; other existing JSON mutations at 4 MiB. Existing byte excess
+returns 400 for compatibility. Assignment batches reject over 500 updates, 100
+assignments per item or 50,000 assignments in total before transforming DTOs.
+
+`TRUSTED_PROXY_CIDRS` defaults to empty (trust no forwarding proxy). Supplied values
+must be at most 32 canonical network CIDRs in 2 KiB, separated by commas, with no
+empty entries, hostnames, host-bit prefixes, mapped IPv4 CIDRs or `/0`. Invalid
+configuration fails startup with a finite error. Only `X-Forwarded-For` is considered,
+using Gin's right-to-left trusted-hop policy with socket fallback; mapped IPv4 client
+addresses are normalized. `X-Real-IP` and platform/AppEngine headers are ignored.
+A proxy left unconfigured may share one peer identity across its users. Source policy
+does not establish hosted topology or verify a production allowlist.
+
 ## Tabs
 
 ### `POST /api/tabs`
 
-Create a new tab. When supplied, the initial creator and tab commit together; a creator insertion failure leaves no tab. Creator membership cannot be added to an existing tab through join.
+Create a new tab with at most 16 KiB of JSON, including trailing whitespace. After
+HTML stripping and whitespace trimming, name/description/optional creator name may
+contain at most 255/4096/30 Unicode code points. Excess is rejected without truncation:
+byte excess returns 413, malformed/trailing/text excess returns 400. Name and creator
+remain optional; omitted creator leaves the tab memberless, and the display-currency
+default remains USD. Unknown fields, including privileged association graphs, are ignored.
+
+When supplied, the initial creator and tab commit together; a creator insertion failure leaves no tab. Creator membership cannot be added to an existing tab through join.
 
 **Request Body**
 ```json

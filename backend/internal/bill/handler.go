@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -139,7 +138,6 @@ func (h *BillHandler) GetBill(c *gin.Context) {
 }
 
 func (h *BillHandler) UpdateLazyItemAssignments(c *gin.Context) {
-	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 4<<20)
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil || id == 0 {
 		c.JSON(400, gin.H{"error": "invalid bill id"})
@@ -151,13 +149,10 @@ func (h *BillHandler) UpdateLazyItemAssignments(c *gin.Context) {
 		return
 	}
 	var body struct {
-		ExpectedUpdatedAt *string `json:"expected_updated_at"`
-		Assignments       []struct {
-			PersonName string  `json:"person_name"`
-			Percentage float64 `json:"percentage"`
-		} `json:"assignments"`
+		ExpectedUpdatedAt *string          `json:"expected_updated_at"`
+		Assignments       AssignmentInputs `json:"assignments"`
 	}
-	if err := c.ShouldBindJSON(&body); err != nil || body.Assignments == nil {
+	if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, safehttp.MutationBodyLimit, false); err != nil || body.Assignments == nil || len(body.Assignments) > 100 {
 		c.JSON(400, gin.H{"error": "assignments are required"})
 		return
 	}
@@ -211,24 +206,21 @@ func (h *BillHandler) UpdateLazyItemAssignments(c *gin.Context) {
 }
 
 func (h *BillHandler) UpdateLazyItemAssignmentsBatch(c *gin.Context) {
-	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 4<<20)
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil || id == 0 {
 		c.JSON(400, gin.H{"error": "invalid bill id"})
 		return
 	}
 	var body struct {
-		Updates []struct {
-			ItemID            uint    `json:"item_id"`
-			ExpectedUpdatedAt *string `json:"expected_updated_at"`
-			Assignments       []struct {
-				PersonName string  `json:"person_name"`
-				Percentage float64 `json:"percentage"`
-			} `json:"assignments"`
-		} `json:"updates"`
+		Updates AssignmentUpdateInputs `json:"updates"`
 	}
-	if err := c.ShouldBindJSON(&body); err != nil || len(body.Updates) == 0 {
+	if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, safehttp.MutationBodyLimit, false); err != nil || len(body.Updates) == 0 {
 		c.JSON(400, gin.H{"error": "item updates are required"})
+		return
+	}
+
+	if !AssignmentInputCountsValid(body.Updates) {
+		c.JSON(400, gin.H{"error": "bad request"})
 		return
 	}
 
@@ -316,7 +308,6 @@ func (h *BillHandler) UpdatePersonSharePaid(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "invalid bill id"})
 		return
 	}
-	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 4<<10)
 	shareID, err := strconv.ParseUint(c.Param("shareId"), 10, 32)
 	if err != nil {
 		c.JSON(400, gin.H{"error": "invalid share id"})
@@ -326,7 +317,7 @@ func (h *BillHandler) UpdatePersonSharePaid(c *gin.Context) {
 	var body struct {
 		Paid *bool `json:"paid"`
 	}
-	if err := c.ShouldBindJSON(&body); err != nil || body.Paid == nil {
+	if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, 4<<10, false); err != nil || body.Paid == nil {
 		c.JSON(400, gin.H{"error": "paid field required"})
 		return
 	}

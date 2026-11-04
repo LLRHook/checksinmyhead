@@ -301,6 +301,29 @@ Receipt scanning sends a selected image from the mobile app to the backend. The 
 ### Local-First Mobile
 The Flutter app maintains its own Drift database for offline access and fast reads. Backend sync is fire-and-forget — the app works without network access for local bills.
 
+### Shared HTTP lifecycle and admission
+
+`pkg/safehttp` owns both binaries' explicit HTTP server deadlines (5s headers, 20s
+read, 50s write, 60s idle, 32 KiB MaxHeaderBytes), signal-owned request cancellation
+and 25s graceful shutdown followed by Close. Its router constructor installs finite
+recovery in every Gin mode, an opaque standard-server log sink, and the configured
+trust-none-by-default proxy policy. Panic diagnostics contain only a fixed event,
+category and allowlisted route pattern. Partial responses and disconnects abort.
+
+One process-wide eight-slot gate covers JSON mutation routes before decoding, with
+503/Retry-After on saturation and no queue. Reads/health bypass it; Content-Type does
+not select admission. The shared decoder enforces one document/EOF under each caller's
+byte cap and retains strict versus ignored unknown-field contracts. Content DTO arrays
+count elements before typed slice allocation, then enforce aggregate bounds before
+model copies. Domain authorization, accounting and PostgreSQL atomicity stay in their
+existing owners. CreateTab has a 16 KiB body cap and sanitized code-point limits;
+see the [API policy](backend-api.md#http-resource-policy) for exact limits and errors.
+
+`TRUSTED_PROXY_CIDRS` accepts a bounded explicit canonical CIDR list. Only XFF is used;
+platform and X-Real-IP trust are disabled, and mapped client IPv4 addresses normalize
+to one identity. No hosted network ownership or verified deployment configuration is
+inferred. Receipt gate/provider/mobile work and durable allowance remain separate work.
+
 ## Security Model
 
 - **Token-based access**: Every tab and bill has a unique access token. Protected reads accept a bearer token or the legacy `?t=` link parameter.

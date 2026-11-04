@@ -14,9 +14,14 @@ func ValidateAssignmentUpdates(updates []ItemAssignmentsUpdate) error {
 	if len(updates) == 0 || len(updates) > 500 {
 		return mutation.Invalid
 	}
+	count := 0
 	ids := map[uint]bool{}
 	for _, u := range updates {
 		if u.ItemID == 0 || ids[u.ItemID] || len(u.Assignments) > 100 {
+			return mutation.Invalid
+		}
+		count += len(u.Assignments)
+		if count > 50000 {
 			return mutation.Invalid
 		}
 		ids[u.ItemID] = true
