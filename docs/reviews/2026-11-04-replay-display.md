@@ -71,8 +71,11 @@ conflicts use1 read and invalid DTOs0 statements. All four actual plans use
 6.344/6.368/6.042 representative;54.794/54.189/53.329 maximum. USD replay:
 0.658/0.621/0.657 representative;4.695/5.005/5.111 maximum. Healthy synthetic EUR/ZAR
 create p95 is5.115–5.485/52.600–53.897ms. All new fixed query/latency targets pass;
-no run variation exceeds both20% and20ms. Provider p95 is0.131–0.142/0.238–0.247ms;
-transaction-held create p95 is4.400–5.303/44.566–47.015ms. Create allocation p95 is
+no run variation exceeds both20% and20ms. WroteRequest-to-first-response-byte
+(`ProviderNS`) p95 is0.131–0.142/0.238–0.247ms; it excludes connection setup, request
+writing, response-body reading and validation. `ApplicationNS` is total elapsed time
+minus that interval, not CPU time. `TransactionHeldNS` is BEGIN-through-COMMIT/ROLLBACK,
+not row-lock time; its create p95 is4.400–5.303/44.566–47.015ms. Create allocation p95 is
 1.51–1.53/21.69–21.70MiB; replay0.36–0.37/4.87–4.88MiB. Raw distributions,
 allocations, every SQL/control/error/RETURNING/batch statement and instrument effects
 are retained in private performance-summary.json/measurements.json.
@@ -91,8 +94,11 @@ checks with cleanup; the first45-check stale expectation failure remains retaine
 Maintained scripts/Docker/CI/locks are unchanged. Both final static images, Dockerfiles
 and backend locks scan with0 findings; source commit secret scan is0 and its independent
 synthetic detection/redaction control passes. Raw source scanner exits/candidates remain
-unsuppressed and triaged, not relabeled zero. Local clean root/source/security review
-and deployment floors/drain remain separate gates. Historical runtimeRED/flaky, separate
+unsuppressed and triaged, not relabeled zero. Independent review of the51-path source
+commit approves Standards0/Spec0; reviewer execution NOT RUN. Root accepts that bounded
+source review and local one-shot evidence with independent raw reconciliation. Clean
+committed-snapshot root verification, global security and deployment floors/drain remain
+separate gates. Historical runtimeRED/flaky, separate
 50,000-updateRED/unselected and whole rollout/integrated/security acceptanceRED persist.
 
 Window permission is false. Fresh exact-owned cleanup verifies1,925 generated schemas

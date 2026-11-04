@@ -40,8 +40,12 @@ conflicts, RETURNING and every batch; report BEGIN/COMMIT/ROLLBACK/SAVEPOINT sep
 and total traced statements. Targets: keyed <= 7/16 data statements within12/20 caps,
 established replay normally 1/cap 2 indexed reads/0provider/0graph writes, USD p95 <= 200ms,
 healthy synthetic-provider publication<=2s. Report all distributions/allocations,
-provider versus transaction-held time, EXPLAIN plan, environment and noise. Misses stay
-RED. The separate50,000-update performance gate remains RED/unselected. Rebuild and
+the exact timing intervals, EXPLAIN plan, environment and noise. `ProviderNS` measures
+WroteRequest-to-first-response-byte only; it excludes connection setup, request writing,
+response-body reading and validation. `ApplicationNS` is total elapsed time minus that
+interval, not CPU time. `TransactionHeldNS` measures BEGIN-through-COMMIT/ROLLBACK,
+not row-lock time. Misses stay RED. The separate50,000-update performance gate remains
+RED/unselected. Rebuild and
 scan both exact maintained images, verify compiler/source/binary identities, run the
 unchanged runtime harness (only its reviewed read-only acquisition adapter allowed),
 and record bounded cleanup and absence receipts. Never erase a prior flaky failure.
