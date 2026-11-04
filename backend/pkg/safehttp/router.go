@@ -51,23 +51,21 @@ func parseProxies(config string) ([]string, error) {
 
 // Gin normalizes socket addresses, but returns a validated XFF token verbatim.
 // Normalize mapped IPv4 there too so both future admission and RequestLogger see
-// one ClientIP identity. Invalid entries are left for Gin's socket fallback.
+// one ClientIP identity. Preserve invalid tokens: Gin must still fall back to
+// the socket if its right-to-left trust walk reaches one, but it may select a
+// valid untrusted suffix without visiting an invalid left prefix.
 func normalizeForwardedIP(c *gin.Context) {
 	values := c.Request.Header.Values("X-Forwarded-For")
 	if len(values) > 0 {
 		entries := strings.Split(strings.Join(values, ","), ",")
-		valid := true
 		for i, s := range entries {
 			ip, err := netip.ParseAddr(strings.TrimSpace(s))
 			if err != nil || ip.Zone() != "" {
-				valid = false
-				break
+				continue
 			}
 			entries[i] = ip.Unmap().String()
 		}
-		if valid {
-			c.Request.Header.Set("X-Forwarded-For", strings.Join(entries, ","))
-		}
+		c.Request.Header.Set("X-Forwarded-For", strings.Join(entries, ","))
 	}
 	c.Next()
 }

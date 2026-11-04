@@ -39,7 +39,9 @@ headers are ignored. An unconfigured proxy can share a peer quota across users;
 these source controls do not verify hosting topology.
 
 JSON mutation routes share eight nonwaiting process slots, returning 503 and
-`Retry-After: 1` when full. Reads and health bypass admission. See the
+`Retry-After: 1` when full. Decoder/admission rejection interrupts further body reads
+and closes HTTP/1 connections; valid complete requests retain keep-alive. Reads and
+health bypass admission. See the
 [API resource policy](../docs/backend-api.md#http-resource-policy) for body, collection,
 text, EOF and compatibility limits. The optional local measurement test runs with
 `A1_MEASURE_OUTPUT=<absolute-file> go test -count=1 -tags=a1perf ./cmd/bill-service

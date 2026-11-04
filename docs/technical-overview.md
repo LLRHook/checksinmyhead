@@ -315,14 +315,18 @@ One process-wide eight-slot gate covers JSON mutation routes before decoding, wi
 not select admission. The shared decoder enforces one document/EOF under each caller's
 byte cap and retains strict versus ignored unknown-field contracts. Content DTO arrays
 count elements before typed slice allocation, then enforce aggregate bounds before
-model copies. Domain authorization, accounting and PostgreSQL atomicity stay in their
+model copies. Decoder/admission rejection expires body-read deadlines and closes
+HTTP/1 connections, bounding transport cleanup beyond the handler. Domain
+authorization, accounting and PostgreSQL atomicity stay in their
 existing owners. CreateTab has a 16 KiB body cap and sanitized code-point limits;
 see the [API policy](backend-api.md#http-resource-policy) for exact limits and errors.
 
 `TRUSTED_PROXY_CIDRS` accepts a bounded explicit canonical CIDR list. Only XFF is used;
 platform and X-Real-IP trust are disabled, and mapped client IPv4 addresses normalize
-to one identity. No hosted network ownership or verified deployment configuration is
-inferred. Receipt gate/provider/mobile work and durable allowance remain separate work.
+to one identity even with an unused malformed left prefix. Invalid hops remain for
+Gin's right-to-left trust/fallback decisions. No hosted network ownership or verified
+deployment configuration is inferred. Receipt gate/provider/mobile work and durable
+allowance remain separate work.
 
 ## Security Model
 

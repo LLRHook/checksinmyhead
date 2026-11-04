@@ -76,3 +76,37 @@ func TestA1WebProductionRouter(t *testing.T) {
 		t.Error("web config validation absent or raw")
 	}
 }
+
+func TestA1WebProxyCanonicalization(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	t.Chdir("../..")
+	for _, tc := range []struct {
+		name, config string
+		xff          []string
+		want         string
+	}{
+		{"malformed_left_mapped", "192.0.2.0/24", []string{"invalid, ::ffff:198.51.100.2"}, "198.51.100.2"},
+		{"multiple_ipv6", "192.0.2.0/24", []string{"invalid", "2001:0db9:0000:0000:0000:0000:0000:0002"}, "2001:db9::2"},
+		{"invalid_right_fallback", "192.0.2.0/24", []string{"::ffff:198.51.100.2, invalid"}, "192.0.2.1"},
+		{"trust_none", "", []string{"invalid, ::ffff:198.51.100.2"}, "192.0.2.1"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("TRUSTED_PROXY_CIDRS", tc.config)
+			r, err := newRouter(web.NewWebpageHandler(a1Reader{}), nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			r.GET("/a1/review/ip", func(c *gin.Context) { c.String(200, c.ClientIP()) })
+			req := httptest.NewRequest("GET", "/a1/review/ip", nil)
+			req.RemoteAddr = "192.0.2.1:8"
+			for _, v := range tc.xff {
+				req.Header.Add("X-Forwarded-For", v)
+			}
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
+			if w.Code != 200 || w.Body.String() != tc.want {
+				t.Errorf("status=%d peer=%q want=%q", w.Code, w.Body.String(), tc.want)
+			}
+		})
+	}
+}

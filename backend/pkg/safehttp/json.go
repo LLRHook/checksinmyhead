@@ -19,9 +19,14 @@ var (
 const MutationBodyLimit int64 = 4 << 20
 
 // DecodeJSON admits exactly one document, including all trailing whitespace within
-// the same byte cap. Syntax errors are returned immediately, without a drain.
+// the same byte cap. Rejection stops transport reads as well as decoder reads.
 // No arbitrary decoder/reader error becomes public diagnostic text.
-func DecodeJSON(w http.ResponseWriter, r *http.Request, dst any, limit int64, strict bool) error {
+func DecodeJSON(w http.ResponseWriter, r *http.Request, dst any, limit int64, strict bool) (err error) {
+	defer func() {
+		if err != nil {
+			stopRejectedBody(w, r)
+		}
+	}()
 	if r.ContentLength > limit {
 		return ErrJSONTooLarge
 	}
@@ -54,6 +59,21 @@ func DecodeJSON(w http.ResponseWriter, r *http.Request, dst any, limit int64, st
 	}
 	return nil
 }
+
+// net/http may drain an unread HTTP/1 body before flushing a response and again
+// during post-handler cleanup. A close header alone does not stop the latter.
+// Keep the read deadline expired after rejection; there will be no next request
+// on this HTTP/1 connection. HTTP/2 deadlines affect only the rejected stream.
+func stopRejectedBody(w http.ResponseWriter, r *http.Request) {
+	if r.Body == nil || r.Body == http.NoBody {
+		return
+	}
+	if r.ProtoMajor == 1 {
+		w.Header().Set("Connection", "close")
+	}
+	_ = http.NewResponseController(w).SetReadDeadline(time.Now())
+}
+
 func jsonError(err error) error {
 	var size *http.MaxBytesError
 	if errors.As(err, &size) {
@@ -133,6 +153,7 @@ var jsonMutations = make(chan struct{}, 8)
 
 func JSONMutation(c *gin.Context) {
 	if c.Request.Context().Err() != nil {
+		stopRejectedBody(c.Writer, c.Request)
 		c.Abort()
 		return
 	}
@@ -140,11 +161,13 @@ func JSONMutation(c *gin.Context) {
 	case jsonMutations <- struct{}{}:
 		defer func() { <-jsonMutations }()
 		if c.Request.Context().Err() != nil {
+			stopRejectedBody(c.Writer, c.Request)
 			c.Abort()
 			return
 		}
 		c.Next()
 	default:
+		stopRejectedBody(c.Writer, c.Request)
 		c.Header("Retry-After", "1")
 		c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "service temporarily unavailable"})
 	}

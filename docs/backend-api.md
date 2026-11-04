@@ -315,6 +315,11 @@ Process diagnostics never print raw panic values, requests, headers, bodies or s
 All JSON mutation routes share eight in-flight slots per process, independently of
 `Content-Type`. There is no waiting queue: saturation returns 503 with `Retry-After: 1`.
 Reads and health bypass the gate. CORS exposes `Retry-After` to permitted origins.
+For a rejected request with a body, decoder/admission rejection expires its read
+deadline. HTTP/1 responses also close the connection so transport cleanup cannot
+wait for the unread remainder.
+HTTP/2 uses a stream read deadline without a `Connection` header. Complete valid
+requests retain ordinary keep-alive behavior.
 JSON bodies must contain exactly one document, including trailing whitespace within
 the byte cap. Creation and attachment retain strict unknown-field rejection; other
 existing DTOs continue ignoring unknown fields. Standalone paid updates and attachment
@@ -326,8 +331,11 @@ assignments per item or 50,000 assignments in total before transforming DTOs.
 must be at most 32 canonical network CIDRs in 2 KiB, separated by commas, with no
 empty entries, hostnames, host-bit prefixes, mapped IPv4 CIDRs or `/0`. Invalid
 configuration fails startup with a finite error. Only `X-Forwarded-For` is considered,
-using Gin's right-to-left trusted-hop policy with socket fallback; mapped IPv4 client
-addresses are normalized. `X-Real-IP` and platform/AppEngine headers are ignored.
+using Gin's right-to-left trusted-hop policy with socket fallback. Valid IP tokens
+are canonicalized independently, including mapped IPv4; invalid/empty tokens remain
+in place. Gin falls back to the socket if its trust walk reaches an invalid token;
+an unused invalid left prefix does not disable a selected valid suffix's normalization.
+`X-Real-IP` and platform/AppEngine headers are ignored.
 A proxy left unconfigured may share one peer identity across its users. Source policy
 does not establish hosted topology or verify a production allowlist.
 
