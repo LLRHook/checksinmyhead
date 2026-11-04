@@ -47,7 +47,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-03 Validation: 43772a7 client slice: real widget/provider upload plus 30/31-rune entry/builder and validation checks; 228 Flutter/54 web pass, zero skips. See docs/reviews/2026-11-03-client-v1-bridge.md; broader acceptance unchanged.
 
 ### [BUG-1793644499] Inject the frozen exchange-rate provider at startup
-- [ ] **Severity:** high
+- [x] **Severity:** high
 - **Area:** backend, currency
 - **File(s):** backend/cmd/bill-service/main.go; backend/internal/bill/service.go; backend/internal/exchange/client.go; backend/internal/bill/service_test.go
 - **Observation:** main constructs NewBillService(repo) without its optional provider; non-USD lookup fails before persistence.
@@ -60,9 +60,9 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Trace main.go:31 to GetUSDExchangeRate nil provider; the review temporary composition repro returned 503 for EUR. Do not require live provider access to prove wiring.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
-- **Fix:** Provider phase ee125d1 requires one pair client at production construction; EUR/PEN and twelve-currency HTTP controls, native USD, failures and PG persistence pass. Independent driver acceptance remains pending; no rollout claim.
-- **Docs:** backend/README.md; docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-03-currency-provider-phase1.md
+- **Status:** fixed-pending-migration
+- **Fix:** Required shared Frankfurter pair provider is injected at actual API/legacy construction (ee125d1). Twelve receipt currencies, independent display, native USD identity, failure/no-write and immutable quote controls pass. Protocol review approves Standards0/Spec0; root hash-bound Go519/PG600 (751 distinct) plus final14 currency regressions pass. Source accepted pending integrated migration; no hosted/provider/public-binary claim.
+- **Docs:** backend/README.md; docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-03-currency-provider-phase1.md; docs/reviews/2026-11-04-foundation-checkpoint.md
 - **Log:**
   - 2026-11-03 Verification: Actual-construction before: EUR503/no write; USD and injected EUR201 controls. After: Go511/PG586 passing leaves, overlap360/union737, zero skips/missing roots; affected gate retains one CLI timing flake. See phase evidence.
 
@@ -115,7 +115,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Pin Next 16.4.5 after rechecking the official stable registry/release; change only the manifest and 11 Next/root/env/SWC lock entries, retaining React/ReactDOM 19.3.0, sharp 0.35.5, overrides, Node24/npm11 and all unrelated metadata. Node24.22.2/npm11.19.1 ordinary npm ci, lint, 54/54 tests (0 skips), production build and unsuppressed text/JSON npm audit pass with zero reported findings; source/lock hashes remain unchanged across checks. Preserve npm optional install-script and Vite config warnings. In-progress pending independent clean acceptance and individual external alert closure; whole security/integrated/release acceptance remains RED; deployed identity is unverified.
+- **Fix:** Pin Next16.4.5 with only11 root/Next/env/SWC lock entries, retaining React/DOM19.3.0,sharp0.35.5,overrides and unrelated metadata. Lead and independent root clean Node24.22.2/npm11.19.1 acquisition,lint,54 tests (0 skips),production build and unsuppressed audit pass; audit0all severities. Root source review Standards0/Spec0. Optional npm-script/Vite warnings retained. In-progress for external alert/deployed closure; global security/integrated/release RED.
 - **Docs:** web-bill-viewer/README.md; docs/reviews/2026-11-04-next1645-security-patch.md; prior docs/reviews/2026-11-02-web-dependency-maintenance.md preserved as historical evidence. Living dependency statement updated; exact delta, primary-source discrepancies, source/hash-bound checks and remaining gates recorded. No API/UI/schema/financial contract, VERIFICATION.md, frozen baseline or CHANGELOG changes.
 - **Log:**
   - 2026-11-02 Approval: Driver-approved DEPENDENCY_PHASE_APPROVAL.md at f1d62374 permits exact stable Next patch and sharp security floor. Official stable registry, engine/peer API documentation, maintainer advisories and sharp release reverified November 2. Next 16.4.4; sharp already resolves 0.35.5. React and unrelated locks retained. November 3 announced security release requires a fresh check before integration/release.
@@ -311,10 +311,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-03 Review: Driver accepts scoped source correction after REVIEW_CORRECTIONS_REVIEW.md (SHA2562e0560d359b8593541381d0d5e9e99078f48e6b3ddecea14516381e2c63f80c8): all15paths and388input hashes reconciled;5realPGgroups pass. No production/data-recovery or integrated V&V claim.
 
 ### [BUG-1793644514] Make local dependency startup reproducible
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** tooling
 - **File(s):** dev.sh; backend/Makefile; scripts/{reset_local_test,test_local_workflow,verify_local_lifecycle}.py; local workflow docs
-- **Observation:** Exact13be27b stub runs executed shutdown on missing Flutter before stack startup and discarded npm failure detail while retaining exit42. Source fix implemented; independent acceptance pending.
+- **Observation:** Exact13be27b stub runs executed shutdown on missing Flutter before stack startup and discarded npm failure detail while retaining exit42. The original failures and readiness-fixture correction remain recorded.
 - **Expected:**
   - Use locked npm ci in explicit setup; normal startup avoids unnecessary installs and exposes failures.
   - Prerequisite/runtime errors identify the failed stage; docs and CI use compatible package/toolchain commands.
@@ -324,8 +324,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Before records preserved; lasting stubbed setup/startup/health/signal/descendant/ownership/status tests and isolated real lifecycle: docs/reviews/2026-11-03-local-workflow.md. No real simulator/app mutation or secret-env reads.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
-- **Fix:** Runtime workflow correction independently approved at79a8568. A readiness-fixture follow-up separates ordinary lifecycle5s setup from1s timeout tests and covers a healthy2.1s response;55distinct cases pass. Fixture re-review/integrated gates remain.
+- **Status:** fixed-pending-migration
+- **Fix:** Runtime correction at79a8568 and fixture follow-up at85fafc6 are independently approved (Standards0/Spec0 each). Ordinary5s fixture covers a healthy2.1s response; timeout cases retain1s. Driver clean55 CLI tests and five isolated real-PG lifecycle assertion groups pass. Pending integrated migration; full-stack/simulator startup is not claimed.
 - **Docs:** README.md; backend/README.md; mobile/README.md; web-bill-viewer/README.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-03-local-workflow.md; docs/reviews/2026-11-03-local-workflow-correction.md; docs/reviews/2026-11-03-workflow-readiness-fixture.md
 - **Log:**
   - 2026-11-03 Validation: Lead retained54pass/1readiness timing failure and its passing rerun. Driver controlled2.1s healthy API reproduces quit-test false negative under fixture2s; ordinary fixture5s and explicit1s timeout cases now55pass without retries. Runtime unchanged.
@@ -346,8 +346,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Phase1 ee125d1: approved twelve-code receipt policy, independent ZAR display, one bounded Frankfurter pair adapter, no backend TTL maps/key dependency. Frozen source/date/zero stay immutable. This does not finish mobile save, display metadata or precision.
-- **Docs:** backend/README.md; docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-03-currency-provider-phase1.md
+- **Fix:** Phase1 ee125d1 uses one bounded Frankfurter pair provider, twelve receipt codes, independent ZAR display and no backend TTL/key redundancy; protocol review approved. Correction6dba4b4 shares checked frozen USD audit for tab summaries/allocations, preserves real zero and legacyUSD, and returns authorized409 for unavailable valuation without repricing history. Root751 distinct Go cases/final14 regressions/scoped scans pass; correction re-review pending. Display metadata0002,mobile decoder/save/replay/Keychain/read-state and JPY remain open.
+- **Docs:** backend/README.md; docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-03-currency-provider-phase1.md; docs/reviews/2026-11-04-foundation-checkpoint.md
 - **Log:**
   - 2026-11-03 Scope: Approved one-adapter/no-TTL decision supersedes old dual-provider/cache proposal. Keep open: display provenance0002; mobile rate decoder/quote state/save/replay/Keychain; required versioned JPY step. Global security/integrated acceptance RED.
 
