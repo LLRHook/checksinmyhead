@@ -103,24 +103,23 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 ### [BUG-1793644502] Resolve the three current Next.js security alerts
 - [ ] **Severity:** high
 - **Area:** web, dependencies
-- **File(s):** web-bill-viewer/package.json; web-bill-viewer/package-lock.json; web-bill-viewer/README.md; docs/reviews/2026-11-02-web-dependency-maintenance.md
-- **Observation:** Next resolves 16.4.0. Open alerts #67 (GHSA-2464-fhr4-w9xw), #68 (GHSA-p3m5-59mp-jv5r), #69 (GHSA-673q-mjm6-r5xr) affect the same lockfile.
+- **File(s):** web-bill-viewer/{package.json,package-lock.json,README.md}; docs/reviews/2026-11-04-next1645-security-patch.md
+- **Observation:** Baseline Next16.4.0 had alerts67–69 (GHSA-2464-fhr4-w9xw,GHSA-p3m5-59mp-jv5r,GHSA-673q-mjm6-r5xr). Maintained source now pins16.4.5; local affected checks pass. External alert closure and deployed version remain unverified.
 - **Expected:**
   - Choose a current patched stable resolution after checking each maintainer advisory and current primary docs.
   - npm audit --audit-level=moderate and npm run build succeed; lint and all web tests pass.
   - All three alerts are individually resolved in GitHub after integration; do not import old screenshot-branch dependencies.
 - **Req:** TR engineering 5; TR fix 4; SR three Dependabot alerts; docs/reviews/2026-11-02-baseline.md
 - **Depends on:** none
-- **Repro / Notes:** Alerts: https://github.com/LLRHook/checksinmyhead/security/dependabot/67 , /68 , /69. Patched 16.4.1 was reported at inspection; recheck at implementation. Exploitability in live deployment was not tested.
+- **Repro / Notes:** Historical alerts: https://github.com/LLRHook/checksinmyhead/security/dependabot/67 and IDs68/69. Follow current primary advisories before integration/release. No deployed exploitability result.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Pin Next16.4.5 with only11 root/Next/env/SWC lock entries, retaining React/DOM19.3.0,sharp0.35.5,overrides and unrelated metadata. Lead and independent root clean Node24.22.2/npm11.19.1 acquisition,lint,54 tests (0 skips),production build and unsuppressed audit pass; audit0all severities. Root source review Standards0/Spec0. Optional npm-script/Vite warnings retained. In-progress for external alert/deployed closure; global security/integrated/release RED.
-- **Docs:** web-bill-viewer/README.md; docs/reviews/2026-11-04-next1645-security-patch.md; prior docs/reviews/2026-11-02-web-dependency-maintenance.md preserved as historical evidence. Living dependency statement updated; exact delta, primary-source discrepancies, source/hash-bound checks and remaining gates recorded. No API/UI/schema/financial contract, VERIFICATION.md, frozen baseline or CHANGELOG changes.
+- **Fix:** e4af0a7 pins Next16.4.5 with11 root/Next/env/SWC lock entries; React/DOM19.3.0,sharp0.35.5 and overrides retained. Lead and independent root clean Node24.22.2/npm11.19.1 acquisition,lint,54tests (0skip),build,audit pass; audit0. Root Standards0/Spec0. Keep in-progress for alert/deployed closure.
+- **Docs:** web-bill-viewer/README.md; docs/reviews/2026-11-04-next1645-security-patch.md. Historical November2 dependency evidence is preserved.
 - **Log:**
-  - 2026-11-02 Approval: Driver-approved DEPENDENCY_PHASE_APPROVAL.md at f1d62374 permits exact stable Next patch and sharp security floor. Official stable registry, engine/peer API documentation, maintainer advisories and sharp release reverified November 2. Next 16.4.4; sharp already resolves 0.35.5. React and unrelated locks retained. November 3 announced security release requires a fresh check before integration/release.
-  - 2026-11-02 Validation: Web-specific acceptance commands all pass. In-progress retained for complete driver acceptance: enforced Flutter lock acquisition fails twice and companion Docker scans report unresolved package/policy findings. No missing scanner, production deployment, external alert closure or full runtime protocol is counted as a pass. Driver owns clean independent validation and integration.
-  - 2026-11-02 Follow-up: Approved RUNTIME_LOCK_APPROVAL.md follow-ups: BUG-1793652308 owns four-entry Flutter lock reproducibility; BUG-1793652309 owns supported minimal/nonroot runtime and same-binary probe. Original dependency evidence remains a dated record. No Go advisory is reclassified as OpenSSL.
+  - 2026-11-04 Validation: Primary-source discrepancies and npm/Vite warnings retained in dated evidence. Prior Flutter/runtime follow-ups belong to BUG-1793652308/2309. No hosting mutation, deployment, alert closure or whole security/integrated/release pass claimed.
+  - 2026-11-04 Maintenance: Condense inherited oversized tracker through official writer; historical fields remain in Git and dated reports.
 
 ### [BUG-1793644503] Patch the Go build toolchain for GO-2026-6809
 - [ ] **Severity:** high
@@ -197,22 +196,21 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - [ ] **Severity:** med
 - **Area:** backend, security
 - **File(s):** backend/cmd/{bill-service,web-service}/main.go; backend/pkg/safehttp/; backend/internal/bill/{create_request,assignment_request,handler,assignments}.go; backend/internal/tab/handler.go; remaining backend/internal/receipt/handler.go slice
-- **Observation:** Before A1 at6e, CreateTab lacked body/text bounds, both service entrypoints used bare http.ListenAndServe and Gin trusted forwarded headers by default. Source d60bedc now supplies shared HTTP/recovery/proxy/JSON safeguards. The 50,000-assignment JSON path and one rejected minimal-array run miss approved latency targets; receipt A2 and host proof remain open.
+- **Observation:** A1 d60bedc adds shared HTTP/recovery/proxy/JSON bounds. Optimization1932ded reduces repeated decode/copy work; max50k p95 still misses10ms. Review found post-handler body draining and malformed-prefix peer normalization gaps; source4ffdeee corrects both pending re-review. Receipt A2 and hosted proof remain open.
 - **Expected:**
   - Creation body/collection limits, finite input checks, and server deadlines are enforced with explicit errors.
   - Trusted proxy configuration is verified so client-IP quotas cannot be bypassed by caller headers.
   - Slow/oversized/malformed and creation-burst tests stay within approved limits and preserve normal traffic.
 - **Req:** TR engineering 9; TR fix 12; docs/reviews/2026-11-02-baseline.md
 - **Depends on:** none
-- **Repro / Notes:** Historical ingress13be27b/A1d60bedc proof stays in the A1 report;1932ded profiles the same router/DTO seam. New dated note binds samples,profiles,commands,counts,controls and cleanup.
+- **Repro / Notes:** Dated A1, optimization and correction notes retain before/after inputs, raw hashes, case IDs, controls and measurements. No budget/limit waiver; invalid/capped/saturated requests must reject without waiting for body remainder.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** 1932ded reuses bounded non-strict JSON bytes, reserves counted slices and skips impossible HTML replacement. Max mutation still misses10ms. Root acceptance/P2 corrections,A2 and host proof remain open.
-- **Docs:** docs/reviews/2026-11-04-{api-a1,json-optimization}.md; original evidence retained.
+- **Fix:** 4ffdeee expires rejected-body reads, closes HTTP/1 connections and canonicalizes valid XFF tokens without dropping invalid hops. Root960distinct Go/75runtime pass; re-review pending. Optimization1932ded retains no-cache policy; max50k p95=27.033/27.143/27.420ms remains RED. A2/host proof open.
+- **Docs:** backend/README.md; docs/{backend-api,technical-overview}.md; docs/reviews/2026-11-04-{api-a1,json-optimization,api-a1-review-corrections}.md.
 - **Log:**
-  - 2026-11-04 Validation: A1 actual constructor before31leaves=22failed/9controls; final845distinct GoPASS,15removed-control overlays fail assertions,HTTP-to-PG invalid/capped/saturated SQL0 and health1query,416owned schemas absent.3x100samples/path: max mutation p95=55.217/58.208/80.263ms vs10ms; rejected minimal-array run3=5.380ms vs5ms; retain performanceRED without relaxing policy.8-way live heap212.46MiB/RSS237.42MiB,75sidle retention/goroutines pass. Root independent acceptance/public checks pending.
-  - 2026-11-04 Validation: 1932ded:932Go/75runtimePASS; max50k p95=27.033/27.143/27.420ms vs10msRED;18.713MB/request.206schemas absent/336originals intact. See new note; root owns separate A1 P2s.
+  - 2026-11-04 Validation: Original A1 845Go; optimization932Go; correction960Go (708ordinary/716PG,464overlap),0fail/skip.28focused pass; before15expected fails/9controls;3removals fail19overlapping leaf assertions.75runtime; Trivy/Semgrep/gosec0; Gitleaks5synthetic/placeholder candidates,0confirmed.206schemas absent/336originals intact. Known performance and whole acceptance RED.
 
 ### [BUG-1793644508] Bound receipt inference spending and limiter memory
 - [ ] **Severity:** med
@@ -352,7 +350,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Phase1 ee125d1 uses one bounded Frankfurter pair provider, twelve receipt codes, independent ZAR display and no backend TTL/key redundancy; protocol review approved. Correction6dba4b4 shares checked frozen USD audit for tab summaries/allocations, preserves real zero and legacyUSD, and returns authorized409 for unavailable valuation without repricing history. Root751 distinct Go cases/final14 regressions/scoped scans pass; correction re-review pending. Display metadata0002,mobile decoder/save/replay/Keychain/read-state and JPY remain open.
+- **Fix:** Phase1 ee125d1 uses one bounded Frankfurter pair provider, twelve receipt codes, independent ZAR display and no backend TTL/key redundancy; protocol review approved. Correction6dba4b4 shares checked frozen USD audit for tab summaries/allocations, preserves real zero and legacyUSD, and returns authorized409 for unavailable valuation without repricing history. Root751 distinct Go cases/final14 regressions/scoped scans pass; independent re-review APPROVE (Standards0/Spec0; reviewer execution NOT RUN). Display metadata0002,mobile decoder/save/replay/Keychain/read-state and JPY remain open.
 - **Docs:** backend/README.md; docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-03-currency-provider-phase1.md; docs/reviews/2026-11-04-foundation-checkpoint.md
 - **Log:**
   - 2026-11-03 Scope: Approved one-adapter/no-TTL decision supersedes old dual-provider/cache proposal. Keep open: display provenance0002; mobile rate decoder/quote state/save/replay/Keychain; required versioned JPY step. Global security/integrated acceptance RED.
