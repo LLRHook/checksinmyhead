@@ -196,17 +196,22 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 ### [BUG-1793644507] Bound public API request resources
 - [ ] **Severity:** med
 - **Area:** backend, security
-- **File(s):** backend/cmd/bill-service/main.go; backend/internal/{bill,tab,receipt}/handler.go
-- **Observation:** Bill creation already has1MiB/500items/100people-shares/5000assignments and finite-money guards. CreateTab remains unbounded; both http.ListenAndServe entrypoints lack server deadlines. Mocked receipt before-proof also shows spoofed forwarded IP resets quota (11 requests reached provider).
+- **File(s):** backend/cmd/{bill-service,web-service}/main.go; backend/pkg/safehttp/; backend/internal/bill/{create_request,assignment_request,handler,assignments}.go; backend/internal/tab/handler.go; remaining backend/internal/receipt/handler.go slice
+- **Observation:** Before A1 at6e, CreateTab lacked body/text bounds, both service entrypoints used bare http.ListenAndServe and Gin trusted forwarded headers by default. Source d60bedc now supplies shared HTTP/recovery/proxy/JSON safeguards. The 50,000-assignment JSON path and one rejected minimal-array run miss approved latency targets; receipt A2 and host proof remain open.
 - **Expected:**
   - Creation body/collection limits, finite input checks, and server deadlines are enforced with explicit errors.
   - Trusted proxy configuration is verified so client-IP quotas cannot be bypassed by caller headers.
   - Slow/oversized/malformed and creation-burst tests stay within approved limits and preserve normal traffic.
 - **Req:** TR engineering 9; TR fix 12; docs/reviews/2026-11-02-baseline.md
 - **Depends on:** none
-- **Repro / Notes:** Open; evidence correction only. INGRESS_OCR_BASELINE.md: 12 mocked handler/provider leaves,8 expected failures/4 controls; quota bypass and oversized413 predicate fail while same-peer quota/upload-byte controls pass. Detailed immutable source/test hashes and limits: docs/reviews/2026-11-03-local-workflow.md. No live-host control claim.
+- **Repro / Notes:** Historical driver INGRESS_OCR_BASELINE.md at13be27b:12mocked handler/provider leaves,8failed/4controls; retained in docs/reviews/2026-11-03-local-workflow.md. A1 d60bedc before/final/removed-control execution is in docs/reviews/2026-11-04-api-a1.md and committed evidence. HTTP/JSON/proxy slice implemented; latency targets,A2,independent acceptance and live-host proof remain open.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** A1 d60bedc: both binaries share finite 5/20/50/60s HTTP policy,32KiB headers,signal cancellation,25s Shutdown/Close; trust-none canonical-CIDR proxy policy; eight-slot process JSON gate,503/Retry-After1/CORS; shared single-document bounded decoding and preallocation count checks; CreateTab16KiB/255/4096/30 codepoints,existing JSON caps/status/strict DTOs preserved. Final ordinary593+mandatoryPG651 leaves,399overlap/845distinct PASS; actual TCP/PG/removal controls and75static-runtime checks pass. Approved JSON latency targets remain missed; independent clean/review,A2 and hosting acceptance pending, so not closed.
+- **Docs:** docs/backend-api.md; docs/technical-overview.md; backend/README.md; backend/.env.example; docs/reviews/2026-11-04-api-a1.md; docs/reviews/evidence/2026-11-04-api-a1{,-samples}.json; VERIFICATION mandatory rows preserved at20478bytes
+- **Log:**
+  - 2026-11-04 Validation: A1 actual constructor before31leaves=22failed/9controls; final845distinct GoPASS,15removed-control overlays fail assertions,HTTP-to-PG invalid/capped/saturated SQL0 and health1query,416owned schemas absent.3x100samples/path: max mutation p95=55.217/58.208/80.263ms vs10ms; rejected minimal-array run3=5.380ms vs5ms; retain performanceRED without relaxing policy.8-way live heap212.46MiB/RSS237.42MiB,75sidle retention/goroutines pass. Root independent acceptance/public checks pending.
 
 ### [BUG-1793644508] Bound receipt inference spending and limiter memory
 - [ ] **Severity:** med
@@ -478,9 +483,14 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - Executed synthetic taint tests prove query, member/Authorization header and panic secrecy with positive500/logging controls.
 - **Req:** SR sensitive data/provider confidentiality; docs/reviews/2026-11-03-local-workflow.md
 - **Depends on:** none
-- **Repro / Notes:** Driver PANIC_LOGGING_BASELINE.md; isolated actual RequestLogger+gin.Recovery test at13be27b, 5 leaves/3 failed/2 passed/0 skips. Durable provenance: docs/reviews/2026-11-03-local-workflow.md. No real leak/production-mode claim. Distinct from SQL-specific BUG-1793644509; no recovery fix here.
+- **Repro / Notes:** Historical driver PANIC_LOGGING_BASELINE.md at13be27b:5leaves/3failed/2controls/0skips, retained in docs/reviews/2026-11-03-local-workflow.md. A1 d60bedc actual production routers/TCP/removed-control proof is in docs/reviews/2026-11-04-api-a1.md and committed evidence; independent acceptance/host proof pending. No real leak or production-mode claim; distinct from SQL-specific BUG-1793644509.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** A1 d60bedc replaces Gin raw recovery in BOTH actual production routers with one finite event/category/allowlisted-route recovery plus opaque Server.ErrorLog. Generic500 only before commitment; partial/disconnect/ErrAbortHandler/EPIPE/reset abort safely. Debug/release Error/Stringer/query/header/body/Location/stack taint controls,real TCP partial/kernel-RST/fallback controls and raw-recovery/ErrorLog removal assertions execute successfully; ordinary query-free logger preserved. No real/deployed leak claim. Independent review/clean/host verification pending; stays in-progress.
+- **Docs:** docs/backend-api.md; docs/technical-overview.md; backend/README.md; docs/reviews/2026-11-04-api-a1.md; docs/reviews/evidence/2026-11-04-api-a1.json
+- **Log:**
+  - 2026-11-04 Validation: Shared source/actual constructor before evidence and final uncached Go/PG gates retained with hashes. Removed Gin recovery restores2failed confidentiality leaves; removed opaque ErrorLog fails parent secrecy/finite-event assertions after positive TCP leaves. Go may format before the opaque sink; no input is retained/forwarded by it. Scoped source/image scans and runtime75PASS,root acceptance pending.
 
 ### [BUG-1793725850] Deny OCR provider redirects across the API-key boundary
 - [ ] **Severity:** med
