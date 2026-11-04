@@ -3,7 +3,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 ## Dependency maintenance
 
 Use Node 24 (see `.node-version`) and npm 11. Install the committed resolution with
-`npm ci`. Next is pinned to 16.4.4; the sharp override requires at least 0.35.5.
+`npm ci`. Next is pinned to 16.4.5; the sharp override requires at least 0.35.5.
 Keep security patch updates narrow and run `npm run lint`, `npm test`,
 `npm run build` and `npm audit --audit-level=moderate` after resolution. Check the
 current [Next.js security advisories](https://github.com/vercel/next.js/security/advisories)
