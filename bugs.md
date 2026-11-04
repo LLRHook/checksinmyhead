@@ -80,7 +80,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** BUG-1793644499
 - **Repro / Notes:** Trace bottom_bar initial/second save and Drift duplicate rule. Review reproduced USD+EUR rows. Extract one save operation with bounded UI changes rather than cosmetic file splitting.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Server recovery slice a47eeca: strict parsed key/fingerprint, persisted201, checked winner-only graph and exact additive0002. Same-key recovery/claims/attach/paid/finalize guards pass local qualification; see docs/reviews/2026-11-04-replay-display.md. Mobile single-save/Drift/Keychain/reopen, cent-alignment and combined journeys remain open; no rollout or whole acceptance.
+- **Docs:** docs/backend-api.md; docs/backend-replay-verification.md; docs/reviews/2026-11-04-replay-display.md
 - **Log:**
   - 2026-11-03 Evidence: Driver fb6b4b9 actual provider penny capture: client Alex=.01/Sam=0; v1 server Alex=0/Sam=.01 with .005 raw details. No math change in 43772a7. Preserve server/historical contracts; deliberately align local/published allocation in currency/save scope. See docs/reviews/2026-11-03-client-v1-bridge.md.
 
@@ -358,8 +361,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Phase1 ee125d1 uses one bounded Frankfurter pair provider, twelve receipt codes, independent ZAR display and no backend TTL/key redundancy; protocol review approved. Correction6dba4b4 shares checked frozen USD audit for tab summaries/allocations, preserves real zero and legacyUSD, and returns authorized409 for unavailable valuation without repricing history. Root751 distinct Go cases/final14 regressions/scoped scans pass; independent re-review APPROVE (Standards0/Spec0; reviewer execution NOT RUN). Display metadata0002,mobile decoder/save/replay/Keychain/read-state and JPY remain open.
-- **Docs:** backend/README.md; docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-03-currency-provider-phase1.md; docs/reviews/2026-11-04-foundation-checkpoint.md
+- **Fix:** Phase1 ee125d1 and6dba4b4 retain one bounded provider, twelve receipt codes/independent ZAR display and checked frozenUSD/zero/legacy audit. Server0002 slice a47eeca adds separate nullable display day/source/UTC microsecond receipt without historical repricing. Evidence: docs/reviews/2026-11-04-replay-display.md. Mobile decoder/save/reopen/Keychain, quote/read state and versioned JPY remain open; rollout/integrated acceptance RED.
+- **Docs:** backend/README.md; docs/backend-api.md; docs/technical-overview.md; docs/backend-replay-verification.md; docs/reviews/2026-11-03-currency-provider-phase1.md; docs/reviews/2026-11-04-replay-display.md
 - **Log:**
   - 2026-11-03 Scope: Approved one-adapter/no-TTL decision supersedes old dual-provider/cache proposal. Keep open: display provenance0002; mobile rate decoder/quote state/save/replay/Keychain; required versioned JPY step. Global security/integrated acceptance RED.
 

@@ -48,3 +48,56 @@ handoff will bind this exact source. Procedures: [replay](../backend-replay-veri
 [API](../backend-api.md), [operations](../../backend/README.md). Mobile save/Keychain/Drift,
 identity0003, versioned precision/B, production schema/hosting/accounts and release are
 outside this slice. BUG-1793644500/4515 remain in progress; no integrated Verified entry.
+
+## Final quiet qualification
+
+The exact158 source inputs were committed as
+`a47eeca727807e485a5be891e8405f0d27cd4673` and match both final image labels/source
+digest `53b743e3cdf4e12e32119da7c776e2c5a26f0ac3efd75ef71753167c995702b7`.
+Under explicit root activation19:31:06–19:51:06UTC, the three approved commands ran
+once in order and finished19:38:04UTC: ordinary905 leaves; mandatory eight-package
+PG843; overlap480; distinct1268, retaining all1146 prior leaves and every prior raw
+case node. All1748 underlying leaf occurrences pass, with zero skip/cache/missing/
+duplicate/malformed/error. Four measurement fixture leaves are separate; they are
+not added to the source-test union. Mobile392/web54 inputs stay unchanged and were
+not rerun solely as ceremony. No integrated Last verified/CHANGELOG claim follows.
+
+The fixed48 groups of100 observations complete all3 runs/path at40items/8people/
+320assignments and500/100/5,000, body17,182/250,328bytes. Keyed creation uses exactly
+7/16 data statements within12/20 caps, plus2 transaction-control statements. Established
+replay is exactly1 indexed scalar read/0 provider/0 graph writes/0 transaction control;
+conflicts use1 read and invalid DTOs0 statements. All four actual plans use
+`idx_bills_creation_key_digest`. Native USD creation p95(ms), runs1/2/3:
+6.344/6.368/6.042 representative;54.794/54.189/53.329 maximum. USD replay:
+0.658/0.621/0.657 representative;4.695/5.005/5.111 maximum. Healthy synthetic EUR/ZAR
+create p95 is5.115–5.485/52.600–53.897ms. All new fixed query/latency targets pass;
+no run variation exceeds both20% and20ms. Provider p95 is0.131–0.142/0.238–0.247ms;
+transaction-held create p95 is4.400–5.303/44.566–47.015ms. Create allocation p95 is
+1.51–1.53/21.69–21.70MiB; replay0.36–0.37/4.87–4.88MiB. Raw distributions,
+allocations, every SQL/control/error/RETURNING/batch statement and instrument effects
+are retained in private performance-summary.json/measurements.json.
+
+This is native darwin/arm64 in-process HTTP plus loopback PG17.11 in Docker, with a
+synthetic HTTP provider and one established warm-up per volume/pair. It proves no
+production/cold-start SLA. The historical concurrent-package race-instrumented maximum
+unkeyed USD row reports225.219/227.109/232.063ms, above200ms in that different context;
+it is retained alongside the faster non-race keyed measurements, without waiver/rerun.
+The original authorization row retains10 create/10 attach samples per fixture; its
+approved ceiling is five fixed statements plus ceil(assignments/500)=6/7/15, attachment
+<=5 unchanged. Other historical3x100 rows and all their original budgets remain intact.
+
+The root-approved exact1,2 registry adapter completes75/75 actual final-image runtime
+checks with cleanup; the first45-check stale expectation failure remains retained.
+Maintained scripts/Docker/CI/locks are unchanged. Both final static images, Dockerfiles
+and backend locks scan with0 findings; source commit secret scan is0 and its independent
+synthetic detection/redaction control passes. Raw source scanner exits/candidates remain
+unsuppressed and triaged, not relabeled zero. Local clean root/source/security review
+and deployment floors/drain remain separate gates. Historical runtimeRED/flaky, separate
+50,000-updateRED/unselected and whole rollout/integrated/security acceptanceRED persist.
+
+Window permission is false. Fresh exact-owned cleanup verifies1,925 generated schemas
+absent,0 named sessions/owned runtime/compatibility/scan containers/process groups;
+shared PG and ordinary volumes persist. All336 protected originals and off-scope bytes
+match. Official BUG-1793644500/4515 remain in progress within2,500bytes, all siblings
+preserved. No mobile save/identity/precision/B or production/hosting/account/merge/tag/
+release action was performed.
