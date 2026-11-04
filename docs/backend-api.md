@@ -646,8 +646,14 @@ formats/sizes is unverified; no silent resizing/transcoding is performed here.
 
 **Environment**: Backend-only `ANTHROPIC_API_KEY` is required to register the route.
 `OCR_MAX_INFLIGHT` defaults to 2, accepts 1–8 and rejects invalid supplied values
-at startup. Mobile's existing send-only 45s timeout does not establish cancellation
-of upload/body/parse; A2b owns that follow-up. Durable allowance B remains deferred.
+at startup. Mobile owns a 45s deadline from before file setup through upload, full
+body and parsing, with actual native abort/close on timeout or disposal. It refuses
+redirects/retries, caps every decoded response at 1 MiB and preflights the same flat
+receipt shape/field/quantity bounds before review or bill mutation. Finite client
+messages never display arbitrary server text. Manual retry remains explicit; valid
+Retry-After hints are bounded to 1–86400 seconds, with longer hints omitted rather
+than shortened. See [mobile verification](mobile-ocr-verification.md). Durable allowance
+B and independent backend acceptance remain deferred.
 
 ---
 

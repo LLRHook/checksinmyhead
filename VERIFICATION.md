@@ -147,9 +147,9 @@ It creates only labelled fixture resources, proves real down/restart preservatio
 guarded reset, and retains cleanup. No real simulator/app mutation in stub tests.
 
 For runtime changes, run the [static image harness](backend/README.md#static-runtime-verification)
-on both immutable images and an owned fixture; retain controls/cleanup, verify signatures
-and scan exact artifacts unsuppressed. No CI/hosting proof. For receipts, run
-[OCR local controls and measurements](docs/backend-ocr-verification.md).
+on both immutable images/owned fixtures; retain controls/cleanup, verify signatures
+and scan exact artifacts unsuppressed. No CI/hosting proof. Receipt controls:
+[backend](docs/backend-ocr-verification.md), [mobile](docs/mobile-ocr-verification.md).
 
 - [ ] Enumerate (`go test ./... -list '.*'`, `npm exec -- vitest list`, Flutter/Ruby
       runner output); record actual tests/skips/failures, never historical 202/52 counts.

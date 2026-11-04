@@ -315,9 +315,23 @@ envelope fragments to avoid extra full-image copies. Errors retain only finite
 codes/retry seconds; upstream text/causes/Location are never retained. See the
 [API contract](backend-api.md#post-apireceiptsparse) and
 [verification procedure](backend-ocr-verification.md). Process/IP controls multiply
-across replicas. Mobile operation cancellation/application guards are A2b; durable
-account allowance B is deferred. Neither hosted capacity nor provider acceptance of
-every admitted size/format has been verified.
+across replicas. Durable account allowance B is deferred. Neither hosted capacity nor
+provider acceptance of every admitted size/format has been verified.
+
+Mobile `ReceiptApiService` owns each attempt's IOClient, abort trigger, full-body
+subscription and 45s deadline from before setup through parse and cleanup. The native
+client is closed on every outcome; cancellation does not consume a future manual
+attempt. Decoded bodies are capped at 1 MiB before bounded JSON preflight/typed graphs;
+redirects and automatic retries are disabled. A monotonic check after synchronous
+parse prevents late success; a timer cannot preempt synchronous CPU work.
+`ParsedReceipt` is the shared validation/quantity-distribution owner for network,
+review and direct bill callers. `BillData` builds a complete bounded replacement
+before mutating currency/items/controllers or notifying. The scan widget owns service
+disposal and checks its active attempt after network/picker/review continuations.
+Appearance, navigation, quote/JPY policy and manual confirmation remain. See the
+[mobile procedure](mobile-ocr-verification.md) and
+[scoped evidence](reviews/2026-11-04-ocr-a2-mobile.md); backend independent review,
+real provider, simulator/signed public binary and whole-product gates are separate.
 
 ### Local-First Mobile
 The Flutter app maintains its own Drift database for offline access and fast reads. Backend sync is fire-and-forget — the app works without network access for local bills.

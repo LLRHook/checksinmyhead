@@ -150,3 +150,21 @@ and never erases/shuts down a device. Use `./dev.sh --no-mobile` for backend/web
 Coordinate SDK updates with the CI, TestFlight and App Store workflow pins, then
 regenerate and verify the lock under the chosen SDK. Use Flutter 3.41.5 for the
 current committed resolution; see the [lock verification evidence](../docs/reviews/2026-11-02-flutter-lock-reproducibility.md).
+
+## Receipt scan boundaries
+
+Each manual scan owns one native HTTP client and a 45-second deadline covering file
+setup, upload, the entire decoded response and parsing. Timeout, cancellation and
+screen disposal abort/close that operation; a later manual attempt gets a fresh client.
+Redirects and automatic retries are disabled. Decoded bodies are capped at 1 MiB,
+including error responses. Errors use finite local messages and retain the rate-limit
+UX without displaying provider/server content.
+
+`ParsedReceipt` owns bounded JSON preflight, field validation and checked expansion to
+at most 500 review/application lines. Review and `BillData` use the same expansion;
+invalid direct or reviewed candidates leave bill state/controllers unchanged. Existing
+two-decimal distribution, JPY and currency-confirmation policy remain separate concerns.
+See [local mobile OCR verification](../docs/mobile-ocr-verification.md) for loopback native
+I/O, widget disposal, negative controls and evidence limits. Unit/debug QA needs no
+TestFlight version bump. Release `ApiConfig` still selects the hosted API; the test-only
+constructor is not a production configuration override.
