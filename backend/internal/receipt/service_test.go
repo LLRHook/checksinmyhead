@@ -1,6 +1,7 @@
 package receipt
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -191,7 +192,7 @@ func TestServiceParse_MockAnthropic(t *testing.T) {
 	})}
 
 	svc := &Service{apiKey: "test-key", httpClient: client}
-	result, err := svc.Parse([]byte("fake-image-data"), "image/jpeg")
+	result, err := svc.Parse(context.Background(), []byte("fake-image-data"), "image/jpeg")
 	if err != nil {
 		t.Fatalf("Parse returned error: %v", err)
 	}
@@ -239,14 +240,5 @@ func TestParseResponseText_RestaurantReceipt(t *testing.T) {
 	}
 	if receipt.Tip == nil || *receipt.Tip != 6.15 {
 		t.Errorf("tip = %v, want 6.15", receipt.Tip)
-	}
-}
-
-func TestTruncate(t *testing.T) {
-	if got := truncate("hello", 10); got != "hello" {
-		t.Errorf("truncate short = %q, want %q", got, "hello")
-	}
-	if got := truncate("hello world", 5); got != "hello..." {
-		t.Errorf("truncate long = %q, want %q", got, "hello...")
 	}
 }

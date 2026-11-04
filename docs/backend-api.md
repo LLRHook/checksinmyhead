@@ -571,11 +571,13 @@ List all members of a tab.
 
 ### `POST /api/receipts/parse`
 
-Parse a receipt image using Anthropic's Claude Messages API. No user authentication is required. The image is processed for the request and is not saved in Billington's database. Requests are limited to 10 per minute per client IP.
+Parse a receipt image using Anthropic's Claude Messages API. No user authentication is required. The image is processed for the request and is not saved in Billington's database. Admission is limited to 10 starts per rolling 60 seconds per normalized client IP, including admitted invalid images. A process has 2 nonwaiting slots by default (`OCR_MAX_INFLIGHT=1–8`), held from before upload allocation through provider parsing. Denials do not charge a peer or extend its expiry. At most 4096 live peer keys are retained; a full table rejects new peers with 503/Retry-After 15 while existing peers remain eligible. These limits multiply across replicas; durable/global allowance is deferred.
 
 **Request**: Multipart form data with `image` field.
 
-- Max file size: 10MB
+- Max TOTAL multipart size: 10 MiB (boundaries included), streamed without disk/pixel decode
+- At most 32 parts, 16 KiB/64 parsed headers per part; duplicate image fields return 400
+- Receipt operation 40s from before upload; provider 30s; earlier caller/socket deadlines win
 - Accepted MIME types: `image/jpeg`, `image/png`, `image/webp`, `image/heic`, `image/heif`
 
 **Response** `200`
@@ -615,13 +617,37 @@ Parse a receipt image using Anthropic's Claude Messages API. No user authenticat
 **Errors**
 | Status | Body | Meaning |
 |--------|------|---------|
-| 400 | `{"error": "image field is required"}` | Missing `image` in form data |
+| 400 | `{"error": "image file required"}` | Missing, duplicate or malformed image field |
 | 400 | `{"error": "unsupported image type: ..."}` | Invalid MIME type |
+| 400 | `{"error":"invalid client address","code":"invalid_peer"}` | Invalid normalized peer |
+| 413 | Friendly error with `code: image_too_large` | Multipart/header/part excess or upstream 413 |
 | 429 | `{"error": "Too many scans. Please wait a moment and try again.", "code": "rate_limited"}` | Too many requests from this IP |
-| 503 | Scanner unavailable response | Anthropic credentials, capacity, or service unavailable |
-| 422 | Receipt parsing error response | Image could not be parsed |
+| 503 | Friendly error with `auth_failed`, `overloaded` or `provider_down` | Credentials, process/provider capacity, redirect, transport/deadline or upstream failure |
+| 422 | Friendly error with `invalid_request` or `bad_response` | Upstream 400, or invalid/oversized success |
 
-**Environment**: Requires the backend-only `ANTHROPIC_API_KEY`. When it is missing, the receipt parsing route is not registered.
+The fixed HTTPS endpoint uses verified TLS, a bounded private HTTP/1 pool and one
+nonreplayable POST per operation. Redirects fail; no Location/error content is
+returned or logged. Response headers are bounded at 32 KiB; decoded success reads
+are cap+1 at 2 MiB irrespective of declared length/compression. Receipt text is
+512 KiB. Before typed envelopes/items allocate: depth 16, 16,384 tokens, arrays
+512, content 16 and items 500. Vendor/item names are at most 255 codepoints;
+symbols 16; currency is absent/null or three ASCII letters; confidence is finite
+[0,1]; money is finite with magnitude at most 1e9. Checked expansion
+`sum(max(1, quantity)) <= 500` rejects excess/overflow without partial results.
+Null fields, signed discounts, repeated lines, code fences and empty items remain.
+No money/JPY/currency-confirmation policy changes follow from these guards.
+
+Transient responses expose `Retry-After` through existing CORS: bounded seconds or
+HTTP date normalize to 1–86400 seconds; invalid/missing transient hints use 60.
+Valid longer waits omit the header, requiring manual retry; they are never shortened.
+There is no automatic rescan. A disconnected request gets no new application response;
+a still-connected deadline can return 503. Provider acceptance of all admitted
+formats/sizes is unverified; no silent resizing/transcoding is performed here.
+
+**Environment**: Backend-only `ANTHROPIC_API_KEY` is required to register the route.
+`OCR_MAX_INFLIGHT` defaults to 2, accepts 1–8 and rejects invalid supplied values
+at startup. Mobile's existing send-only 45s timeout does not establish cancellation
+of upload/body/parse; A2b owns that follow-up. Durable allowance B remains deferred.
 
 ---
 

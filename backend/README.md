@@ -48,6 +48,40 @@ text, EOF and compatibility limits. The optional local measurement test runs wit
 -run '^TestA1JSONMeasurements$'`; it uses injected services, no provider/database
 requests, three runs of 100 samples per path and a 75s retention observation.
 
+## Receipt admission and provider limits
+
+The optional receipt route owns one process policy: `OCR_MAX_INFLIGHT` defaults to
+2 and accepts 1–8. Invalid supplied policy fails startup even with no provider key.
+Admission precedes upload allocation and holds a slot through encoding, provider
+I/O and parsing, with no queue. The operation has 40s; provider work has 30s; earlier
+caller or socket deadlines win. Actual socket/network reads are interrupted on
+cancellation; callbacks and the 15s quota sweeper are joined at their owners' exits.
+Shutdown closes the owned provider transport after serving stops.
+
+The 10 MiB limit covers TOTAL multipart bytes, including boundaries: streaming,
+no disk/pixel decode, at most 32 parts and 16 KiB/64 parsed headers per part.
+Duplicate image fields return 400; excess returns 413/image_too_large. Existing
+MIME support and manual review remain. Rejection uses the shared safehttp read
+shutdown, including incomplete bodies, without draining stalled remainders.
+
+One normalized peer gets 10 admissions per rolling 60s, using ten fixed timestamps;
+4096 live peer keys are retained at most. A full table rejects new peers with
+503/Retry-After 15; existing peers remain eligible. Denials do not add state or
+extend expiry; admitted invalid images stay charged. Slots and peer quotas multiply
+across replicas and provide no durable/global account or dollar allowance.
+
+The fixed HTTPS Anthropic endpoint/model/prompt/schema/4096-token limit are retained.
+A private verified-TLS HTTP/1 pool has at most one connection per slot, refuses
+redirects and sends a nonreplayable POST without inbound/idempotency headers. Error
+bodies are closed immediately. Native body closure and HTTP/1 write completion
+are joined before a slot can be released, including early provider responses. Success is capped at 2 MiB decoded, text at 512 KiB,
+with bounded shape/quantity validation before downstream review. Finite failures
+and bounded Retry-After hints preserve manual retry. Provider acceptance of every
+admitted format/size and hosted topology are unverified. Mobile cancellation and
+its application-side quantity guard remain separate A2b work; durable allowance B
+is deferred. See [API contract](../docs/backend-api.md#post-apireceiptsparse) and
+[local OCR proof procedure](../docs/backend-ocr-verification.md).
+
 ## Quick Start
 
 ```bash

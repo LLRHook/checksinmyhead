@@ -33,6 +33,10 @@ func main() {
 	if options.Healthcheck {
 		os.Exit(healthcheck.ExitCode("http://127.0.0.1:8080/health", "bill service - ok"))
 	}
+	if err := receipt.ValidatePolicy(); err != nil {
+		log.Fatal(err)
+	}
+
 	db, state, err := database.InitDB(context.Background(), options.SchemaMode)
 	if err != nil {
 		log.Fatal(err)
@@ -68,7 +72,11 @@ func main() {
 	fmt.Println("Bill service starting on :8080")
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	if err := safehttp.Serve(ctx, ":8080", r); err != nil {
+	err = safehttp.Serve(ctx, ":8080", r)
+	if receiptHandler != nil {
+		receiptHandler.Close()
+	}
+	if err != nil {
 		log.Print(err)
 		os.Exit(1)
 	}

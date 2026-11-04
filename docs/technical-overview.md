@@ -296,7 +296,28 @@ clients activate; see [backend operations](../backend/README.md#postgresql-schem
 A single `bill-service` binary handles all endpoints. The layered architecture (handler/service/repository) provides separation of concerns without the operational overhead of multiple services.
 
 ### Anthropic Claude for Receipt OCR
-Receipt scanning sends a selected image from the mobile app to the backend. The backend sends the image to Anthropic's Claude Messages API with an extraction prompt and returns parsed receipt fields. The receipt parsing endpoint does not persist the uploaded image.
+Receipt scanning sends a selected image to the optional backend receipt route,
+which performs no database statements or image persistence. `internal/receipt`
+owns one policy/admission module: 2 slots (configurable 1–8), no queue, 40s operation
+before upload and 30s provider context, with earlier caller/socket deadlines winning.
+A slot stays held until actual upload/encode/network/read/parse work exits. Bounded
+peer state owns ten admissions/60s, 4096 keys and a joined 15s sweeper; denials do not
+charge or extend expiry. Shared safehttp rejection interrupts incomplete uploads
+without a second drain/deadline implementation. Lifecycle shutdown joins the sweeper
+and closes the private provider pool after serving stops.
+
+The 10 MiB TOTAL multipart cap, parsed part/header caps, verified HTTPS HTTP/1 pool,
+fixed Anthropic endpoint/model/prompt/schema/output limit, nonreplayable POST,
+redirect refusal, joined native request-body/write completion (including early
+responses), decoded response/text caps and pre-allocation shape/checked quantity
+validation live in this owner. Base64 is encoded once and sent between small JSON
+envelope fragments to avoid extra full-image copies. Errors retain only finite
+codes/retry seconds; upstream text/causes/Location are never retained. See the
+[API contract](backend-api.md#post-apireceiptsparse) and
+[verification procedure](backend-ocr-verification.md). Process/IP controls multiply
+across replicas. Mobile operation cancellation/application guards are A2b; durable
+account allowance B is deferred. Neither hosted capacity nor provider acceptance of
+every admitted size/format has been verified.
 
 ### Local-First Mobile
 The Flutter app maintains its own Drift database for offline access and fast reads. Backend sync is fire-and-forget — the app works without network access for local bills.
@@ -325,8 +346,9 @@ see the [API policy](backend-api.md#http-resource-policy) for exact limits and e
 platform and X-Real-IP trust are disabled, and mapped client IPv4 addresses normalize
 to one identity even with an unused malformed left prefix. Invalid hops remain for
 Gin's right-to-left trust/fallback decisions. No hosted network ownership or verified
-deployment configuration is inferred. Receipt gate/provider/mobile work and durable
-allowance remain separate work.
+deployment configuration is inferred. Receipt admission consumes the same normalized
+identity. Mobile cancellation and
+durable allowance remain separate work.
 
 ## Security Model
 
@@ -334,7 +356,7 @@ allowance remain separate work.
 - **No accounts**: Billington does not ask users to create accounts, but shared bills and tabs contain user-provided names and payment handles and are stored online.
 - **Member attribution**: Write operations optionally accept `?m=memberToken` for attribution without authentication.
 - **CORS**: Restricted to configured browser origins; CORS is not an authorization control.
-- **Receipt scan limits**: Receipt parsing is limited to 10 requests per minute per client IP and images are limited to 10MB.
+- **Receipt scan limits**: Bounded process slots, 10 admissions/60s per peer, 4096 peer keys and 10 MiB TOTAL multipart; no durable/global allowance yet.
 
 ## Testing Strategy
 

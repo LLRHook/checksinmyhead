@@ -2,11 +2,12 @@ package receipt
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io"
-	"log"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -44,38 +45,81 @@ const (
 	ErrOverloaded     ParseErrorCode = "overloaded"
 	ErrProviderDown   ParseErrorCode = "provider_down"
 	ErrBadResponse    ParseErrorCode = "bad_response"
+	ErrInvalidPeer    ParseErrorCode = "invalid_peer"
 )
 
-// ParseError is a structured error from receipt parsing with a machine-readable code.
+// ParseError contains only finite policy data, never an upstream cause or payload.
 type ParseError struct {
-	Code    ParseErrorCode
-	Message string
+	Code             ParseErrorCode
+	RetryAfter       int // seconds; zero deliberately omits a retry hint
+	unsupportedImage bool
 }
 
 func (e *ParseError) Error() string {
-	return e.Message
+	switch e.Code {
+	case ErrRateLimited:
+		return "receipt rate limited"
+	case ErrAuthFailed:
+		return "receipt authentication unavailable"
+	case ErrInvalidRequest:
+		return "invalid receipt request"
+	case ErrImageTooLarge:
+		return "receipt image too large"
+	case ErrOverloaded:
+		return "receipt scanner overloaded"
+	case ErrProviderDown:
+		return "receipt provider unavailable"
+	case ErrBadResponse:
+		return "invalid receipt response"
+	case ErrInvalidPeer:
+		return "invalid receipt peer"
+	default:
+		return "receipt parsing failed"
+	}
 }
 
-// Service handles receipt parsing via the Anthropic Messages API.
+// Service owns a private, bounded HTTP/1 transport for the fixed provider.
 type Service struct {
 	apiKey     string
 	httpClient *http.Client
+	transport  *http.Transport
+	policy     policy
 }
 
-// NewService creates a new receipt parsing service.
-// Reads ANTHROPIC_API_KEY from environment.
+// NewService reads only backend configuration. Missing keys preserve route omission;
+// malformed policy is checked separately by the executable even when OCR is disabled.
 func NewService() (*Service, error) {
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
-	if apiKey == "" {
-		return nil, fmt.Errorf("ANTHROPIC_API_KEY environment variable is required")
+	p, err := parsePolicy(os.Getenv("OCR_MAX_INFLIGHT"))
+	if err != nil {
+		return nil, err
 	}
-	return &Service{
-		apiKey: apiKey,
-		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
-		},
-	}, nil
+	key := os.Getenv("ANTHROPIC_API_KEY")
+	if key == "" {
+		return nil, errors.New("receipt API key is not configured")
+	}
+	protocols := new(http.Protocols)
+	protocols.SetHTTP1(true)
+	transport := &http.Transport{
+		Proxy:       nil, // Fixed direct destination; do not inherit arbitrary proxy credentials/routes.
+		DialContext: (&net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
+		Protocols:   protocols, MaxConnsPerHost: p.slots, MaxIdleConns: p.slots, MaxIdleConnsPerHost: p.slots,
+		IdleConnTimeout: 60 * time.Second, TLSHandshakeTimeout: 10 * time.Second, ResponseHeaderTimeout: providerTimeout,
+		MaxResponseHeaderBytes: 32 << 10,
+	}
+	return &Service{apiKey: key, policy: p, transport: transport, httpClient: &http.Client{Transport: redirectOpaqueTransport{transport},
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}}, nil
 }
+
+func (s *Service) Close() {
+	if s.transport != nil {
+		s.transport.CloseIdleConnections()
+	}
+}
+
+// ValidatePolicy permits startup to reject invalid supplied policy independently
+// of the optional provider key. It never exposes configuration text.
+func ValidatePolicy() error { _, err := parsePolicy(os.Getenv("OCR_MAX_INFLIGHT")); return err }
 
 const receiptPrompt = `Extract receipt data from the supplied image for a bill-splitting app. The image is the only source of truth. Be literal and conservative: do not invent, infer, or silently correct details that are not clearly visible.
 
@@ -180,8 +224,25 @@ type messagesResponse struct {
 }
 
 // Parse sends a receipt image to Anthropic and returns structured receipt data.
-func (s *Service) Parse(imageData []byte, mimeType string) (*ParsedReceipt, error) {
-	b64Image := base64.StdEncoding.EncodeToString(imageData)
+func (s *Service) Parse(ctx context.Context, imageData []byte, mimeType string) (receipt *ParsedReceipt, resultErr error) {
+	ctx, cancel := context.WithTimeout(ctx, providerTimeout)
+	defer cancel()
+	// Response/request cleanup can outlive parsing. Recheck AFTER its defers have
+	// joined actual I/O, before the owner cancels this context itself.
+	defer func() {
+		if ctx.Err() != nil {
+			receipt = nil
+			resultErr = &ParseError{Code: ErrProviderDown, RetryAfter: 60}
+		}
+	}()
+
+	if ctx.Err() != nil {
+		return nil, &ParseError{Code: ErrProviderDown, RetryAfter: 60}
+	}
+	if len(imageData) > maxReceiptSize {
+		return nil, &ParseError{Code: ErrImageTooLarge}
+	}
+	const imageMarker = "__billington_image_bytes__"
 
 	reqBody := messagesRequest{
 		Model:     anthropicModel,
@@ -198,7 +259,7 @@ func (s *Service) Parse(imageData []byte, mimeType string) (*ParsedReceipt, erro
 						Source: &imageSource{
 							Type:      "base64",
 							MediaType: mimeType,
-							Data:      b64Image,
+							Data:      imageMarker,
 						},
 					},
 					{
@@ -212,12 +273,33 @@ func (s *Service) Parse(imageData []byte, mimeType string) (*ParsedReceipt, erro
 
 	jsonBody, err := json.Marshal(reqBody)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
+		return nil, &ParseError{Code: ErrInvalidRequest}
 	}
 
-	req, err := http.NewRequest("POST", anthropicEndpoint, bytes.NewReader(jsonBody))
+	prefix, suffix, found := bytes.Cut(jsonBody, []byte(imageMarker))
+	requestSize := len(prefix) + base64.StdEncoding.EncodedLen(len(imageData)) + len(suffix)
+	if !found || len(prefix)+len(suffix) > 64<<10 || requestSize > base64.StdEncoding.EncodedLen(maxReceiptSize)+(64<<10) {
+		return nil, &ParseError{Code: ErrImageTooLarge}
+	}
+	if ctx.Err() != nil {
+		return nil, &ParseError{Code: ErrProviderDown, RetryAfter: 60}
+	}
+	// Encode once into owned storage; JSON-safe base64 can be sent between the
+	// small marshaled envelope fragments without another full JSON/base64 copy.
+	encoded := make([]byte, base64.StdEncoding.EncodedLen(len(imageData)))
+	base64.StdEncoding.Encode(encoded, imageData)
+	if ctx.Err() != nil {
+		return nil, &ParseError{Code: ErrProviderDown, RetryAfter: 60}
+	}
+	// NopCloser hides readers from NewRequest: a nonempty, nonreplayable body
+	// prevents net/http from transparently retrying a stale pooled connection.
+	req, err := http.NewRequestWithContext(ctx, "POST", anthropicEndpoint, io.NopCloser(io.MultiReader(bytes.NewReader(prefix), bytes.NewReader(encoded), bytes.NewReader(suffix))))
+	if err == nil {
+		req.ContentLength = int64(requestSize)
+		req.GetBody = nil
+	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, &ParseError{Code: ErrInvalidRequest}
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-api-key", s.apiKey)
@@ -225,67 +307,58 @@ func (s *Service) Parse(imageData []byte, mimeType string) (*ParsedReceipt, erro
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("Anthropic API request failed: %w", err)
+		return nil, &ParseError{Code: ErrProviderDown, RetryAfter: 60}
 	}
 	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
-	}
-
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("[receipt] Anthropic returned status %d", resp.StatusCode)
-
-		// Parse the error body for details
-		var errResp messagesResponse
-		json.Unmarshal(respBody, &errResp)
-		detail := ""
-		if errResp.Error != nil {
-			detail = errResp.Error.Message
-		}
-
+		// Error bodies and redirect targets carry no required application data. Close
+		// immediately, abandoning HTTP/1 reuse rather than draining a stalled body.
+		code := ErrProviderDown
 		switch resp.StatusCode {
-		case http.StatusUnauthorized: // 401
-			return nil, &ParseError{Code: ErrAuthFailed, Message: "API authentication failed: " + detail}
-		case http.StatusForbidden: // 403
-			return nil, &ParseError{Code: ErrAuthFailed, Message: "API key lacks permission: " + detail}
-		case http.StatusTooManyRequests: // 429
-			return nil, &ParseError{Code: ErrRateLimited, Message: "Rate limited: " + detail}
-		case http.StatusRequestEntityTooLarge: // 413
-			return nil, &ParseError{Code: ErrImageTooLarge, Message: "Image too large for processing"}
-		case http.StatusBadRequest: // 400
-			return nil, &ParseError{Code: ErrInvalidRequest, Message: "Invalid request: " + detail}
-		case 529: // Anthropic overloaded
-			return nil, &ParseError{Code: ErrOverloaded, Message: "AI service is temporarily overloaded"}
-		default:
-			if resp.StatusCode >= 500 {
-				return nil, &ParseError{Code: ErrProviderDown, Message: "AI service error: " + detail}
-			}
-			return nil, &ParseError{Code: ErrInvalidRequest, Message: fmt.Sprintf("Unexpected status %d: %s", resp.StatusCode, detail)}
+		case 401, 403:
+			code = ErrAuthFailed
+		case 429:
+			code = ErrRateLimited
+		case 413:
+			code = ErrImageTooLarge
+		case 400:
+			code = ErrInvalidRequest
+		case 529:
+			code = ErrOverloaded
 		}
+		retry := 0
+		if code == ErrProviderDown || code == ErrRateLimited || code == ErrOverloaded {
+			retry = retryAfter(resp.Header.Get("Retry-After"), time.Now())
+		}
+		return nil, &ParseError{Code: code, RetryAfter: retry}
 	}
-
-	var msgResp messagesResponse
-	if err := json.Unmarshal(respBody, &msgResp); err != nil {
-		return nil, &ParseError{Code: ErrBadResponse, Message: "Failed to parse AI response"}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseSize+1))
+	if ctx.Err() != nil {
+		return nil, &ParseError{Code: ErrProviderDown, RetryAfter: 60}
 	}
-
-	if msgResp.Error != nil {
-		return nil, &ParseError{Code: ErrProviderDown, Message: "AI error: " + msgResp.Error.Message}
+	if err != nil || len(body) > maxResponseSize {
+		return nil, &ParseError{Code: ErrBadResponse}
 	}
-
-	if len(msgResp.Content) == 0 {
-		return nil, &ParseError{Code: ErrBadResponse, Message: "AI returned empty response"}
+	if !boundedJSON(body) {
+		return nil, &ParseError{Code: ErrBadResponse}
 	}
-
-	rawText := msgResp.Content[0].Text
-	return parseResponseText(rawText)
+	var message messagesResponse
+	if json.Unmarshal(body, &message) != nil || len(message.Content) == 0 || message.Error != nil {
+		return nil, &ParseError{Code: ErrBadResponse}
+	}
+	result, err := parseResponseText(message.Content[0].Text)
+	if ctx.Err() != nil {
+		return nil, &ParseError{Code: ErrProviderDown, RetryAfter: 60}
+	}
+	return result, err
 }
 
 // parseResponseText extracts JSON from the model's response text, which may
 // include markdown code fences.
 func parseResponseText(text string) (*ParsedReceipt, error) {
+	if len(text) > maxTextSize {
+		return nil, &ParseError{Code: ErrBadResponse}
+	}
 	cleaned := text
 
 	// Strip markdown code fences if present
@@ -305,21 +378,20 @@ func parseResponseText(text string) (*ParsedReceipt, error) {
 
 	cleaned = strings.TrimSpace(cleaned)
 
+	if !boundedJSON([]byte(cleaned)) {
+		return nil, &ParseError{Code: ErrBadResponse}
+	}
 	var receipt ParsedReceipt
 	if err := json.Unmarshal([]byte(cleaned), &receipt); err != nil {
-		return nil, fmt.Errorf("failed to parse receipt JSON: %w (raw: %s)", err, truncate(text, 200))
+		return nil, &ParseError{Code: ErrBadResponse}
 	}
 
+	if !validReceiptShape(&receipt) {
+		return nil, &ParseError{Code: ErrBadResponse}
+	}
 	if receipt.Items == nil {
 		receipt.Items = []ParsedItem{}
 	}
 
 	return &receipt, nil
-}
-
-func truncate(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	return s[:maxLen] + "..."
 }
