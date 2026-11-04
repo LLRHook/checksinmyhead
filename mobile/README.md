@@ -157,9 +157,11 @@ Each manual scan owns one native HTTP client and a 45-second deadline covering f
 setup, upload, the entire decoded response and parsing. Timeout, cancellation and
 screen disposal request abort/close; a later manual attempt gets a fresh client. The
 original upload subscription is retained, canceled and joined before the attempt
-settles, including asynchronous cleanup after stream errors. Native TLS negotiation
-can still survive SDK force-close; that confirmed review finding remains open, so
-the full native-cancellation deadline is not yet certified.
+settles, including asynchronous cleanup after stream errors. `ReceiptIoClient` retains
+valid upstream/relay handles during SDK TLS handoff and joins setup, paired loopback
+acceptance, pumps and teardown. Acceptance matches the initiated local endpoint and
+fails finitely at eight unmatched accepted endpoints per attempt. SDK DNS/staggered
+setup ownership and physical-platform behavior still limit full native certification.
 Redirects and automatic retries are disabled. Decoded bodies are capped at 1 MiB,
 including error responses. Errors use finite local messages and retain the rate-limit
 UX without displaying provider/server content.
@@ -169,6 +171,9 @@ at most 500 review/application lines. Review and `BillData` use the same expansi
 invalid direct or reviewed candidates leave bill state/controllers unchanged. Existing
 two-decimal distribution, JPY and currency-confirmation policy remain separate concerns.
 See [local mobile OCR verification](../docs/mobile-ocr-verification.md) for loopback native
-I/O, widget disposal, negative controls and evidence limits. Unit/debug QA needs no
+I/O, TLS, fixture regeneration, widget disposal, negative controls and evidence limits.
+Host qualification is recorded in the [integration note](../docs/reviews/2026-11-04-mobile-tls-integration.md);
+simulator builds currently need the maintained iOS Podfile.lock reconciled with the
+existing plugin graph. Unit/debug QA needs no
 TestFlight version bump. Release `ApiConfig` still selects the hosted API; the test-only
 constructor is not a production configuration override.

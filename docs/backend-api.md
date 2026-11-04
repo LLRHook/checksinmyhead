@@ -658,8 +658,10 @@ formats/sizes is unverified; no silent resizing/transcoding is performed here.
 at startup. Mobile owns a 45s deadline from before file setup through upload, full
 body and parsing, requesting native abort/close on timeout or disposal. Upload input
 cleanup is explicitly joined before settlement, even if native send finished earlier.
-The Dart TLS-negotiation cancellation gap remains open; full native deadline
-enforcement is not yet certified. The client refuses
+The mobile attempt-owned relay retains valid handles through SDK TLS handoff and
+joins setup/pumps/teardown; accepted loopback endpoints are paired with the initiated
+socket, with an eight-endpoint budget. SDK DNS/staggered setup and physical-platform
+deadline/trust behavior remain unqualified. The client refuses
 redirects/retries, caps every decoded response at 1 MiB and preflights the same flat
 receipt shape/field/quantity bounds before review or bill mutation. Finite client
 messages never display arbitrary server text. Manual retry remains explicit; valid

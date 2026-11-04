@@ -329,13 +329,19 @@ qualification. See the
 across replicas. Durable account allowance B is deferred. Neither hosted capacity nor
 provider acceptance of every admitted size/format has been verified.
 
-Mobile `ReceiptApiService` owns each attempt's IOClient, abort trigger, full-body
+Mobile `ReceiptApiService` owns each attempt's `ReceiptIoClient`, abort trigger, full-body
 subscription and 45s deadline from before setup through parse and cleanup. A separate
 private upload owner retains the original input subscription and joins its one
 asynchronous cancellation future, including source errors and cancellation during
-listen. Native send completion alone does not establish input cleanup. The current
-Dart TLS-negotiation cancellation gap remains open, so full native lifetime/deadline
-acceptance is still pending. The client is closed on every outcome; cancellation
+listen. Native send completion alone does not establish input cleanup. The private
+transport retains upstream and paired loopback sockets throughout SDK TLS handoff;
+its joined teardown terminates the reproduced silent-ClientHello stall. Acceptance
+matches the actual local endpoint, retaining at most eight accepted endpoints before
+finite failure; no fallback/retry is added. The ordinary paired topology costs two
+extra TCP descriptors and a transient listener, excluding SDK DNS/staggered setup
+and OS transients. Default TLS trust/hostname verification and SDK/http parsing stay
+in place; no new dependency or protocol parser is used. Full physical/signed-client
+and native DNS lifetime acceptance is still pending. The client closes on every outcome; cancellation
 does not consume a future manual
 attempt. Decoded bodies are capped at 1 MiB before bounded JSON preflight/typed graphs;
 redirects and automatic retries are disabled. A monotonic check after synchronous
@@ -346,7 +352,7 @@ before mutating currency/items/controllers or notifying. The scan widget owns se
 disposal and checks its active attempt after network/picker/review continuations.
 Appearance, navigation, quote/JPY policy and manual confirmation remain. See the
 [mobile procedure](mobile-ocr-verification.md) and
-[scoped evidence](reviews/2026-11-04-ocr-a2-mobile.md); backend independent review,
+[integration evidence](reviews/2026-11-04-mobile-tls-integration.md); backend independent review,
 real provider, simulator/signed public binary and whole-product gates are separate.
 
 ### Local-First Mobile

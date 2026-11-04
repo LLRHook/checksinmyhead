@@ -10,7 +10,7 @@ From `mobile/`:
 flutter pub get --enforce-lockfile
 flutter analyze
 flutter test --machine
-flutter test --no-pub --machine test/receipt_native_io_test.dart
+flutter test --machine test/receipt_native_io_test.dart test/tls_ownership_test.dart test/receipt_relay_pairing_test.dart
 ```
 
 Retain raw machine JSON, exact commands/exits and source hashes. Count visible case
@@ -21,7 +21,8 @@ failures and explain fixture corrections before any green rerun.
 
 The focused cases are:
 
-- `receipt_native_io_test.dart`: real `dart:io`/http IOClient on loopback TCP/HTTP,
+- `receipt_native_io_test.dart`: the canonical 17 native/M2 cases using the real
+  `ReceiptIoClient` and a send observer forwarding its joined teardown capability,
   stalled headers/body, slow streaming upload, timeout/explicit cancellation/disposal,
   actual peer disconnect and joined asynchronous input cleanup (including source/
   cleanup errors and cancellation during listen), 302/303/307 refusal,
@@ -29,6 +30,15 @@ The focused cases are:
   Join every owned listener/server/socket/client and temporary directory in cleanup.
   A timeout in the fixture is a failed liveness observation, never evidence that
   surviving native work stopped.
+- `tls_ownership_test.dart`: 21 real TLS cases: complete ClientHello followed by
+  silence, timeout/cancel/dispose settlement and peer disconnect before fixture
+  cleanup, held setup/post-TCP/teardown, trusted CA/hostname and actual invalid
+  certificate HandshakeExceptions, redirects and deliberate retry wire counts.
+- `receipt_relay_pairing_test.dart`: actual competing first peers, honest acceptance
+  before local future registration, the eight-endpoint budget before/after local
+  connect, cancellation/error cleanup and independent overlapping attempts.
+  Require finite failure on budget exhaustion, no wrong pairing, no fallback/retry
+  and no retained application socket/task/listener/pump after joined teardown.
 - `receipt_service_test.dart`: actual production service with exclusively owned client
   factories, short timers/monotonic clock/file seams, setup/send/body/parse/cleanup
   deadline, late completion, timer/abort/subscription cleanup, exact/excess 1 MiB even
@@ -61,18 +71,39 @@ a synchronous onCancel-start flag or completed IOClient.send is insufficient. Ho
 that cleanup future in a real upload fixture and require the attempt to remain pending
 until cleanup is released. Capture cleanup errors without raw diagnostics.
 
-The confirmed Dart TLS-negotiation cancellation gap remains open. A raw loopback peer
-that receives ClientHello and then stays silent must eventually prove timeout/cancel/
-dispose settlement and actual disconnect, alongside trusted-TLS/hostname controls.
-Current HTTP loopback passes do not prove that missing TLS phase. No detached
+The attempt-owned relay closes the reproduced SDK TLS-handoff gap on the host.
+Keep the raw silent-ClientHello peer, trusted TLS and debug HTTP controls; independently
+remove socket destruction, native teardown await and upload cleanup await. Each must
+produce the intended failed assertion with healthy controls. Also remove pairing and
+the accept budget to prove the competing-peer/flood assertions. SDK DNS/staggered
+setup still owns work beyond the exported application tasks; neither three-socket
+topology nor sink completion proves universal FD bounds or OS quiescence. No detached
 network/body read is accepted as timeout success. Bounded synchronous JSON work cannot
 be timer-preempted; monotonic elapsed checks also run after it and after cleanup.
+
+`test/fixtures/receipt_tls_fixture.dart` regenerates an isolated synthetic CA/localhost
+leaf and keys per host run using existing OpenSSL, verifies the chain and hostname,
+and deletes its temporary directory. Validity is two days from generation; no dated
+certificate is a permanent test input. `RECEIPT_TEST_OPENSSL` selects an existing host
+executable; retain its actual resolved path/hash/version and generation commands.
+Never bypass verification or modify a default/platform trust store. Device probes
+must receive host-generated PEM material without requiring OpenSSL inside the app.
+The historical prototype's 17 extra native-adapter executions are consolidated into
+the canonical suite: 362 originals + 21 TLS = 383, plus nine pairing/resource guards
+= 392 visible occurrences. Preserve repeated suite/name multiplicities using Counters.
 
 No package addition, application cache, paid inference, customer API/SQL, hosting or
 store action is needed. Do not launch signed release QA against the hardcoded public
 API, assume a dart-define override, or bump TestFlight versions for these tests.
 Native host IO tests are not iOS simulator, physical-device, signed-public-binary or
-provider compatibility proof. Performance/memory claims require separate warmups and
+provider compatibility proof. Qualify debug artifacts on a new owned simulator only;
+preserve existing simulator/app/history and Android work. Use `pod install --deployment`;
+a mismatch with the existing plugin graph is a prerequisite blocker, never permission
+to rewrite the lock. Physical privacy/background/network behavior needs separate proof.
+Resource qualification records warmup/GC/baseline, sequential failure/cancel/retry,
+controlled overlap, actual process/socket/FD inventory and retained-memory plateaus,
+with fixture/test-VM/RSS limitations. Short host samples establish no battery, capacity
+or production-SLO acceptance. Performance claims still require separate warmups and
 three independent 100-sample runs per path without competing heavy work. Local liveness
 assertion deadlines do not establish those distributions or general mobile capacity.
 Existing JSON performance, durable allowance B, account budget/provider enforcement,

@@ -3,11 +3,12 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:checks_frontend/services/receipt_api_service.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/io_client.dart';
+import 'package:checks_frontend/services/receipt_io_client.dart';
 import 'package:http/http.dart' as http;
 
-class _SendObservedClient extends http.BaseClient {
-  final IOClient _inner = IOClient();
+class _SendObservedClient extends http.BaseClient
+    implements JoinedReceiptClient {
+  final ReceiptIoClient _inner = ReceiptIoClient();
   final Completer<void> settled;
 
   _SendObservedClient(this.settled);
@@ -20,6 +21,9 @@ class _SendObservedClient extends http.BaseClient {
 
   @override
   void close() => _inner.close();
+
+  @override
+  Future<void> finish() => _inner.finish();
 }
 
 // Real loopback TCP peer: it never finishes a response until released/closed.
@@ -102,11 +106,11 @@ void main() {
     final peer = await WirePeer.start();
     final dir = await Directory.systemTemp.createTemp('ocr-a2-mobile-');
     final image = await File('${dir.path}/receipt.jpg').writeAsBytes([1, 2, 3]);
-    final clients = <IOClient>[];
+    final clients = <ReceiptIoClient>[];
     final service = ReceiptApiService.forTesting(
       baseUrl: peer.url,
       createClient: () {
-        final c = IOClient();
+        final c = ReceiptIoClient();
         clients.add(c);
         return c;
       },
@@ -159,7 +163,7 @@ void main() {
           ).writeAsBytes([1, 2, 3]);
           final service = ReceiptApiService.forTesting(
             baseUrl: peer.url,
-            createClient: IOClient.new,
+            createClient: ReceiptIoClient.new,
             timeout:
                 stop == 'timeout'
                     ? const Duration(milliseconds: 100)
@@ -317,7 +321,7 @@ void main() {
         });
         final service = ReceiptApiService.forTesting(
           baseUrl: Uri.parse('http://127.0.0.1:${server.port}'),
-          createClient: IOClient.new,
+          createClient: ReceiptIoClient.new,
           prepareImage: (_) async => http.MultipartFile.fromBytes('image', [1]),
         );
         try {
@@ -351,11 +355,11 @@ void main() {
           await request.response.close();
         }());
       });
-      final clients = <IOClient>[];
+      final clients = <ReceiptIoClient>[];
       final service = ReceiptApiService.forTesting(
         baseUrl: Uri.parse('http://127.0.0.1:${server.port}'),
         createClient: () {
-          final client = IOClient();
+          final client = ReceiptIoClient();
           clients.add(client);
           return client;
         },
@@ -404,7 +408,7 @@ void main() {
       });
       final service = ReceiptApiService.forTesting(
         baseUrl: Uri.parse('http://127.0.0.1:${server.port}'),
-        createClient: IOClient.new,
+        createClient: ReceiptIoClient.new,
         prepareImage: (_) async => http.MultipartFile.fromBytes('image', [1]),
       );
       try {
@@ -430,7 +434,7 @@ void main() {
     final peer = await WirePeer.start(closeOnRequest: true);
     final service = ReceiptApiService.forTesting(
       baseUrl: peer.url,
-      createClient: IOClient.new,
+      createClient: ReceiptIoClient.new,
       prepareImage: (_) async => http.MultipartFile.fromBytes('image', [1]),
     );
     try {

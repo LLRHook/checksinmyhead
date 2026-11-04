@@ -21,7 +21,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:http/io_client.dart';
+import 'package:checks_frontend/services/receipt_io_client.dart';
 import 'package:checks_frontend/services/api_config.dart';
 import 'package:checks_frontend/services/receipt_parser.dart';
 
@@ -41,7 +41,7 @@ class ReceiptApiService {
 
   ReceiptApiService()
     : _baseUrl = Uri.parse(ApiConfig.baseUrl),
-      _createClient = IOClient.new,
+      _createClient = ReceiptIoClient.new,
       _prepareImage = _imageFromPath,
       _operationTimeout = _timeout,
       _elapsed = null,
@@ -98,7 +98,7 @@ class ReceiptApiService {
       request.files.add(upload.file);
       operation.check();
       // Native send and upload-input cleanup have separate completion handles.
-      // Join both; the SDK TLS-negotiation cancellation gap remains tracked.
+      // Join both; the transport also owns and joins TLS setup teardown.
       final response = await operation.client!.send(request);
       final bytes = await _readBody(response.stream, operation);
       operation.check();
@@ -381,6 +381,7 @@ class _ReceiptOperation {
       _stopped.complete(ReceiptParseException.cancelled());
     }
     _close();
+    if (client case JoinedReceiptClient native) await native.finish();
     await upload?.finish();
     if (upload?.cleanupFailed ?? false) {
       _failure ??= ReceiptParseException(
