@@ -22,7 +22,9 @@ scan against the fixed endpoint to fill a coverage gap.
    concurrent cancellation orders, panic/error/success release; 10/60s normalized
    IPv4/mapped/IPv6 identities; denial-no-charge/no-extension; 4096 live keys with
    existing-peer success/new-peer 503; admission expiry and real 15s idle sweep;
-   close/join the sweeper. Existing proxy constructors retain hop/fallback coverage.
+   close/join the sweeper. Retain all three quota-clock cases: sample exactly once
+   under the mutex, no sampling/charge on canceled admission, and actual rolling
+   admission ordering. Existing proxy constructors retain hop/fallback coverage.
 5. Real TCP upload cases must keep bytes missing while requiring response AND
    StateClosed/handler/permit completion: known/streamed size excess, bad headers,
    unsupported MIME, duplicate image, earlier deadline and disconnect. Use shared
@@ -32,8 +34,13 @@ scan against the fixed endpoint to fill a coverage gap.
    tainted Location/key/error data, reused/stale connections and manual retry. Prove
    nonreplayable nonempty bodies/GetBody nil/no idempotency headers, HTTP/1 only,
    prompt closure of stalled non200 bodies, early/late context cancellation, joined
-   early-response request writers and deadline rechecks after cleanup, response
-   headers 32 KiB, truncated/declared-vs-streamed/gzip decoded 2 MiB cap+1 reads,
+   early-response request writers INCLUDING final Flush and deadline rechecks after
+   cleanup. Require held dial/TLS/DNS cleanup, no native drain or provider-byte
+   diagnostics, healthy reuse, dirty/stale idle refusal without hidden redial, and
+   duplex idle interruption joining real TLS-generated writes. Exercise reservations
+   1/2/8 including actual closing, timer/idle/callback cleanup and concurrent Close
+   against cancellation/claim. Response headers total 32 KiB across at most four
+   informational responses, truncated/declared-vs-streamed/gzip decoded 2 MiB cap+1 reads,
    text 512 KiB and all shape/quantity boundaries. Retain finite typed errors, friendly
    status mapping, Retry-After seconds/date/invalid/long-wait behavior and CORS.
 7. Keep before-failures, valid controls and executed guard-removal assertions distinct
@@ -66,6 +73,23 @@ scan against the fixed endpoint to fill a coverage gap.
    Scan scoped source and exact saved images unsuppressed; retain raw exits, candidates
    and dispositions. Record original-file hashes, exact SQL/schema cleanup, image IDs,
    artifact hashes, lifecycle resources and commands in ignored evidence.
+10. The generic 75-check runtime probe does not exercise this private provider owner.
+    Qualify the actual final CGO0 Linux API image at the OCR endpoint with an owned
+    internal DNS/TLS provider fixture, fixed api.anthropic.com and a synthetic key.
+    Verify local-only provider paths BEFORE valid requests; keep host DNS/hosts/routes
+    untouched. Cover hosts/search, UDP/truncated-TCP DNS, A/AAAA/serial fallback,
+    roots/hostname/TLS1.2+/HTTP1.1 and timeout/cancel/close/no detached native work.
+    Label mounted package-test-binary evidence separately. Missing IPv6 prerequisites
+    are BLOCKED. Record KeyUpdate-specific execution as NOT RUN/source-derived if
+    supported local APIs cannot inject it; the executed native TLS alert-write barrier
+    remains a distinct control. Do not use private crypto hooks.
+
+The [native integration record](reviews/2026-11-04-ocr-native-ownership-integration.md)
+binds local executions and remaining limits; it is not deployment or integrated
+acceptance. Private Go DNS/serial TCP and conservative dirty-idle refusal are explicit
+tradeoffs: DNS/address-selection sockets are outside the provider TCP reservation
+cap, and legitimate idle TLS control traffic can fail one operation before manual
+retry. Preserve all historical before/removal evidence and final-source controls.
 
 Backend fields and money semantics are unchanged. Existing receipt parsing fixtures
 cover nulls/discounts/repeats/fences/empty items and schema/model/prompt compatibility.

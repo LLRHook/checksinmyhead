@@ -627,7 +627,16 @@ Parse a receipt image using Anthropic's Claude Messages API. No user authenticat
 
 The fixed HTTPS endpoint uses verified TLS, a bounded private HTTP/1 pool and one
 nonreplayable POST per operation. Redirects fail; no Location/error content is
-returned or logged. Response headers are bounded at 32 KiB; decoded success reads
+returned or logged. DNS, serial numeric TCP/TLS setup, final request Flush and
+response/cancellation cleanup are joined before admission release. Private Go DNS
+preserves hosts/search/UDP/TCP policy; one provider TCP socket per reservation
+excludes DNS/address-selection sockets. Serial dialing exchanges Happy Eyeballs
+latency for this ownership bound. Healthy idle connections reuse; selected dirty or
+stale idle connections fail finitely without redial/retry, including conservative
+refusal after legitimate TLS control traffic. Manual retry is a separate operation.
+Deployment DNS/address-family/roots compatibility remains separately qualified.
+Response headers total at most 32 KiB across up to four informational responses;
+TLS is 1.2+ and HTTP/1.1 only. Decoded success reads
 are cap+1 at 2 MiB irrespective of declared length/compression. Receipt text is
 512 KiB. Before typed envelopes/items allocate: depth 16, 16,384 tokens, arrays
 512, content 16 and items 500. Vendor/item names are at most 255 codepoints;

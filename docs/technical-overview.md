@@ -302,17 +302,28 @@ owns one policy/admission module: 2 slots (configurable 1–8), no queue, 40s op
 before upload and 30s provider context, with earlier caller/socket deadlines winning.
 A slot stays held until actual upload/encode/network/read/parse work exits. Bounded
 peer state owns ten admissions/60s, 4096 keys and a joined 15s sweeper; denials do not
-charge or extend expiry. Shared safehttp rejection interrupts incomplete uploads
+charge or extend expiry. Admission samples time once under its mutex; sweeping
+also samples after locking. Shared safehttp rejection interrupts incomplete uploads
 without a second drain/deadline implementation. Lifecycle shutdown joins the sweeper
-and closes the private provider pool after serving stops.
+and cancels/joins private provider leases, idle readers and the pool timer after
+serving stops.
 
 The 10 MiB TOTAL multipart cap, parsed part/header caps, verified HTTPS HTTP/1 pool,
 fixed Anthropic endpoint/model/prompt/schema/output limit, nonreplayable POST,
-redirect refusal, joined native request-body/write completion (including early
-responses), decoded response/text caps and pre-allocation shape/checked quantity
+redirect refusal, joined DNS/socket/TLS/request/final-Flush completion (including
+early responses), raw-socket close without partial/error-body drain, decoded
+response/text caps and pre-allocation shape/checked quantity
 validation live in this owner. Base64 is encoded once and sent between small JSON
 envelope fragments to avoid extra full-image copies. Errors retain only finite
-codes/retry seconds; upstream text/causes/Location are never retained. See the
+codes/retry seconds; upstream text/causes/Location never enter application errors
+or native HTTP pool diagnostics. The private Go resolver owns query sockets and
+joins lookup cleanup while retaining stdlib hosts/search/UDP/TCP behavior. Numeric
+provider TCP attempts are serial within existing deadlines: one provider socket per
+reservation, with DNS/address-selection sockets separate. Healthy idle TLS sockets
+reuse only after a duplex interruption/join. Dirty/stale selected idle sockets fail
+without redial/retry; legitimate TLS control traffic can conservatively fail one
+operation too. Deployment resolver/address-family/roots behavior remains a separate
+qualification. See the
 [API contract](backend-api.md#post-apireceiptsparse) and
 [verification procedure](backend-ocr-verification.md). Process/IP controls multiply
 across replicas. Durable account allowance B is deferred. Neither hosted capacity nor

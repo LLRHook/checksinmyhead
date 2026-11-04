@@ -78,16 +78,16 @@ func TestA2Measurements(t *testing.T) {
 	now := time.Now()
 	measure("admission", 5, func() {
 		now = now.Add(time.Minute)
-		r, e := a.acquire(context.Background(), "192.0.2.1", now)
+		r, e := a.acquire(context.Background(), "192.0.2.1", func() time.Time { return now })
 		if e != nil {
 			t.Fatal(e)
 		}
 		r()
 	})
-	r1, _ := a.acquire(context.Background(), "192.0.2.2", now)
-	r2, _ := a.acquire(context.Background(), "192.0.2.3", now)
+	r1, _ := a.acquire(context.Background(), "192.0.2.2", func() time.Time { return now })
+	r2, _ := a.acquire(context.Background(), "192.0.2.3", func() time.Time { return now })
 	measure("slot_reject", 5, func() {
-		if r, e := a.acquire(context.Background(), "192.0.2.4", now); r != nil || e.Code != ErrOverloaded {
+		if r, e := a.acquire(context.Background(), "192.0.2.4", func() time.Time { return now }); r != nil || e.Code != ErrOverloaded {
 			t.Fatal("saturation")
 		}
 	})
@@ -281,7 +281,7 @@ func TestA2Measurements(t *testing.T) {
 	var before, after runtime.MemStats
 	runtime.ReadMemStats(&before)
 	for i := 0; i < maxPeerKeys; i++ {
-		r, e := limiter.acquire(context.Background(), fmt.Sprintf("10.%d.%d.1", i>>8, i&255), time.Now())
+		r, e := limiter.acquire(context.Background(), fmt.Sprintf("10.%d.%d.1", i>>8, i&255), func() time.Time { return time.Now() })
 		if e != nil {
 			t.Fatal(e)
 		}
@@ -289,14 +289,14 @@ func TestA2Measurements(t *testing.T) {
 	}
 	rateNow := time.Now()
 	for i := 0; i < 10; i++ {
-		release, e := limiter.acquire(context.Background(), "10.0.0.1", rateNow)
+		release, e := limiter.acquire(context.Background(), "10.0.0.1", func() time.Time { return rateNow })
 		if e != nil {
 			break
 		}
 		release()
 	}
 	measure("quota_reject", 5, func() {
-		if release, e := limiter.acquire(context.Background(), "10.0.0.1", rateNow); release != nil || e.Code != ErrRateLimited {
+		if release, e := limiter.acquire(context.Background(), "10.0.0.1", func() time.Time { return rateNow }); release != nil || e.Code != ErrRateLimited {
 			t.Fatal("quota rejection")
 		}
 	})
@@ -304,19 +304,19 @@ func TestA2Measurements(t *testing.T) {
 	measure("full_table_existing_admission", 5, func() {
 		i := existing
 		existing++
-		release, e := limiter.acquire(context.Background(), fmt.Sprintf("10.%d.%d.1", i>>8, i&255), rateNow)
+		release, e := limiter.acquire(context.Background(), fmt.Sprintf("10.%d.%d.1", i>>8, i&255), func() time.Time { return rateNow })
 		if e != nil {
 			t.Fatal(e)
 		}
 		release()
 	})
 	measure("full_table_new_peer_reject", 5, func() {
-		if release, e := limiter.acquire(context.Background(), "198.51.100.1", rateNow); release != nil || e.Code != ErrOverloaded {
+		if release, e := limiter.acquire(context.Background(), "198.51.100.1", func() time.Time { return rateNow }); release != nil || e.Code != ErrOverloaded {
 			t.Fatal("table rejection")
 		}
 	})
 	measure("invalid_peer_reject", 5, func() {
-		if release, e := limiter.acquire(context.Background(), "invalid", rateNow); release != nil || e.Code != ErrInvalidPeer {
+		if release, e := limiter.acquire(context.Background(), "invalid", func() time.Time { return rateNow }); release != nil || e.Code != ErrInvalidPeer {
 			t.Fatal("peer rejection")
 		}
 	})

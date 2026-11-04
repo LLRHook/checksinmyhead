@@ -28,7 +28,7 @@ func (h *Handler) Close()            { h.admission.close(); h.service.Close() }
 func (h *Handler) ParseReceipt(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), operationTimeout)
 	defer cancel()
-	release, err := h.admission.acquire(ctx, c.ClientIP(), time.Now())
+	release, err := h.admission.acquire(ctx, c.ClientIP(), time.Now)
 	if err != nil {
 		safehttp.StopRejectedBody(c.Writer, c.Request)
 		writeFailure(c, err)

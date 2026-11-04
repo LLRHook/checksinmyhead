@@ -56,7 +56,8 @@ Admission precedes upload allocation and holds a slot through encoding, provider
 I/O and parsing, with no queue. The operation has 40s; provider work has 30s; earlier
 caller or socket deadlines win. Actual socket/network reads are interrupted on
 cancellation; callbacks and the 15s quota sweeper are joined at their owners' exits.
-Shutdown closes the owned provider transport after serving stops.
+Shutdown rejects new provider leases, cancels active I/O and joins active leases,
+idle readers and the pool timer after serving stops.
 
 The 10 MiB limit covers TOTAL multipart bytes, including boundaries: streaming,
 no disk/pixel decode, at most 32 parts and 16 KiB/64 parsed headers per part.
@@ -64,7 +65,8 @@ Duplicate image fields return 400; excess returns 413/image_too_large. Existing
 MIME support and manual review remain. Rejection uses the shared safehttp read
 shutdown, including incomplete bodies, without draining stalled remainders.
 
-One normalized peer gets 10 admissions per rolling 60s, using ten fixed timestamps;
+One normalized peer gets 10 admissions per rolling 60s, using ten fixed timestamps
+sampled once under the admission mutex; sweeping also samples after locking;
 4096 live peer keys are retained at most. A full table rejects new peers with
 503/Retry-After 15; existing peers remain eligible. Denials do not add state or
 extend expiry; admitted invalid images stay charged. Slots and peer quotas multiply
@@ -73,8 +75,20 @@ across replicas and provide no durable/global account or dollar allowance.
 The fixed HTTPS Anthropic endpoint/model/prompt/schema/4096-token limit are retained.
 A private verified-TLS HTTP/1 pool has at most one connection per slot, refuses
 redirects and sends a nonreplayable POST without inbound/idempotency headers. Error
-bodies are closed immediately. Native body closure and HTTP/1 write completion
-are joined before a slot can be released, including early provider responses. Success is capped at 2 MiB decoded, text at 512 KiB,
+bodies are closed immediately. The private owner joins DNS query cleanup, serial numeric TCP dialing, TLS setup,
+request serialization/final Flush, cancellation callbacks and response cleanup before
+a slot is released. Non200/partial-body cleanup closes the raw socket without
+draining. Idle TLS reads are interrupted in both directions and joined before reuse;
+provider bytes never enter native HTTP pool diagnostics. Healthy connections reuse.
+
+Each invocation uses an owned Go resolver with native hosts/search/UDP/TCP behavior.
+Serial dialing trades Happy Eyeballs latency for one provider TCP socket per reserved
+slot; DNS/query/address-selection sockets are separate, not an all-process socket
+cap. A selected dirty/stale idle socket fails this operation without hidden redial or
+POST retry, including conservative refusal after legitimate TLS control traffic.
+Deployment resolver/address-family/roots compatibility still requires qualification.
+Headers total at most 32 KiB including up to four informational responses; TLS is
+1.2+ and HTTP/1.1 only. Success is capped at 2 MiB decoded, text at 512 KiB,
 with bounded shape/quantity validation before downstream review. Finite failures
 and bounded Retry-After hints preserve manual retry. Provider acceptance of every
 admitted format/size and hosted topology are unverified. Mobile cancellation and

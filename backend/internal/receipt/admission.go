@@ -41,9 +41,9 @@ func newAdmission(p policy) *admission {
 		defer t.Stop()
 		for {
 			select {
-			case now := <-t.C:
+			case <-t.C:
 				a.mu.Lock()
-				a.prune(now)
+				a.prune(time.Now())
 				a.mu.Unlock()
 			case <-a.stop:
 				return
@@ -61,7 +61,7 @@ func (a *admission) prune(now time.Time) {
 	}
 }
 
-func (a *admission) acquire(ctx context.Context, peer string, now time.Time) (func(), *ParseError) {
+func (a *admission) acquire(ctx context.Context, peer string, sample func() time.Time) (func(), *ParseError) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if ctx.Err() != nil || a.closed {
@@ -72,6 +72,8 @@ func (a *admission) acquire(ctx context.Context, peer string, now time.Time) (fu
 		return nil, &ParseError{Code: ErrInvalidPeer}
 	}
 	ip = ip.Unmap()
+	// Sample at the locked admission boundary, never in a waiting caller.
+	now := sample()
 	a.prune(now)
 	b, exists := a.peers[ip]
 	b = b.prune(now)

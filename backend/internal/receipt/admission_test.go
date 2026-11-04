@@ -32,7 +32,7 @@ func TestAdmissionPolicy(t *testing.T) {
 				}
 				handler := NewHandler(service)
 				defer handler.Close()
-				if service.policy.slots != tc.slots || handler.admission.capacity != tc.slots || service.transport.MaxConnsPerHost != tc.slots {
+				if service.policy.slots != tc.slots || handler.admission.capacity != tc.slots || service.transport.limit != tc.slots {
 					t.Fatal("constructor policy mismatch")
 				}
 			}
@@ -52,11 +52,13 @@ func TestAdmissionLifetime(t *testing.T) {
 	a := newAdmission(policy{2})
 	defer a.close()
 	now := time.Now()
-	acquire := func(peer string) (func(), *ParseError) { return a.acquire(context.Background(), peer, now) }
+	acquire := func(peer string) (func(), *ParseError) {
+		return a.acquire(context.Background(), peer, func() time.Time { return now })
+	}
 	t.Run("invalid_and_precancel", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
-		if r, e := a.acquire(ctx, "192.0.2.1", now); r != nil || e == nil {
+		if r, e := a.acquire(ctx, "192.0.2.1", func() time.Time { return now }); r != nil || e == nil {
 			t.Fatal("canceled admission")
 		}
 		for _, peer := range []string{"invalid", "fe80::1%en0", ""} {
@@ -107,7 +109,7 @@ func TestAdmissionLifetime(t *testing.T) {
 		if after := a.peers[netip.MustParseAddr("192.0.2.1")]; before != after {
 			t.Fatal("denial extended expiry")
 		}
-		r, e := a.acquire(context.Background(), "192.0.2.1", now.Add(time.Minute))
+		r, e := a.acquire(context.Background(), "192.0.2.1", func() time.Time { return now.Add(time.Minute) })
 		if e != nil {
 			t.Fatal(e)
 		}
@@ -132,7 +134,7 @@ func TestAdmissionLifetime(t *testing.T) {
 			t.Fatal("existing peer blocked")
 		}
 		r()
-		r, e = a.acquire(context.Background(), "198.51.100.1", now.Add(time.Minute))
+		r, e = a.acquire(context.Background(), "198.51.100.1", func() time.Time { return now.Add(time.Minute) })
 		if e != nil {
 			t.Fatal(e)
 		}
@@ -157,7 +159,7 @@ func TestAdmissionContenders(t *testing.T) {
 				go func(i int) {
 					defer wg.Done()
 					<-start
-					r, e := a.acquire(context.Background(), fmt.Sprintf("192.0.2.%d", i+1), time.Now())
+					r, e := a.acquire(context.Background(), fmt.Sprintf("192.0.2.%d", i+1), func() time.Time { return time.Now() })
 					results <- e == nil
 					if r != nil {
 						<-hold
@@ -212,7 +214,7 @@ func TestAdmissionIdleSweepAndClose(t *testing.T) {
 	default:
 		t.Fatal("sweeper not joined")
 	}
-	if r, e := a.acquire(context.Background(), "192.0.2.1", time.Now()); r != nil || e == nil {
+	if r, e := a.acquire(context.Background(), "192.0.2.1", func() time.Time { return time.Now() }); r != nil || e == nil {
 		t.Fatal("closed admission")
 	}
 }

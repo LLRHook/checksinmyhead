@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -82,7 +81,7 @@ func (e *ParseError) Error() string {
 type Service struct {
 	apiKey     string
 	httpClient *http.Client
-	transport  *http.Transport
+	transport  *providerTransport
 	policy     policy
 }
 
@@ -97,23 +96,15 @@ func NewService() (*Service, error) {
 	if key == "" {
 		return nil, errors.New("receipt API key is not configured")
 	}
-	protocols := new(http.Protocols)
-	protocols.SetHTTP1(true)
-	transport := &http.Transport{
-		Proxy:       nil, // Fixed direct destination; do not inherit arbitrary proxy credentials/routes.
-		DialContext: (&net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
-		Protocols:   protocols, MaxConnsPerHost: p.slots, MaxIdleConns: p.slots, MaxIdleConnsPerHost: p.slots,
-		IdleConnTimeout: 60 * time.Second, TLSHandshakeTimeout: 10 * time.Second, ResponseHeaderTimeout: providerTimeout,
-		MaxResponseHeaderBytes: 32 << 10,
-	}
-	return &Service{apiKey: key, policy: p, transport: transport, httpClient: &http.Client{Transport: redirectOpaqueTransport{transport},
+	transport := newProviderTransport(p.slots)
+	return &Service{apiKey: key, policy: p, transport: transport, httpClient: &http.Client{Transport: transport,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 	}}, nil
 }
 
 func (s *Service) Close() {
 	if s.transport != nil {
-		s.transport.CloseIdleConnections()
+		s.transport.Close()
 	}
 }
 

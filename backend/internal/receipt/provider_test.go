@@ -36,8 +36,8 @@ func tlsService(t *testing.T, handler http.HandlerFunc) (*Service, *httptest.Ser
 	t.Cleanup(s.Close)
 	roots := x509.NewCertPool()
 	roots.AddCert(server.Certificate())
-	s.transport.TLSClientConfig = &tls.Config{RootCAs: roots, ServerName: "example.com", MinVersion: tls.VersionTLS12}
-	s.transport.DialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
+	s.transport.tlsConfig = &tls.Config{RootCAs: roots, ServerName: "example.com", MinVersion: tls.VersionTLS12, NextProtos: []string{"http/1.1"}}
+	s.transport.dialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
 		return (&net.Dialer{}).DialContext(ctx, "tcp", server.Listener.Addr().String())
 	}
 	return s, server
@@ -108,8 +108,8 @@ func TestProviderWirePolicy(t *testing.T) {
 			_, _ = io.WriteString(w, envelope(validReceipt))
 		})
 		// Count socket connections independently of requests.
-		dial := s.transport.DialContext
-		s.transport.DialContext = func(ctx context.Context, n, a string) (net.Conn, error) { connections.Add(1); return dial(ctx, n, a) }
+		dial := s.transport.dialContext
+		s.transport.dialContext = func(ctx context.Context, n, a string) (net.Conn, error) { connections.Add(1); return dial(ctx, n, a) }
 		for i := 0; i < 2; i++ {
 			r, err := s.Parse(context.Background(), []byte("fixture"), "image/jpeg")
 			if err != nil || len(r.Items) != 2 {
@@ -117,7 +117,7 @@ func TestProviderWirePolicy(t *testing.T) {
 			}
 		}
 		_ = server
-		if posts.Load() != 2 || connections.Load() != 1 || s.transport.MaxConnsPerHost != 2 || s.transport.Protocols.HTTP2() || !s.transport.Protocols.HTTP1() || s.transport.TLSClientConfig.InsecureSkipVerify {
+		if posts.Load() != 2 || connections.Load() != 1 || s.transport.limit != 2 || len(s.transport.tlsConfig.NextProtos) != 1 || s.transport.tlsConfig.NextProtos[0] != "http/1.1" || s.transport.tlsConfig.InsecureSkipVerify {
 			t.Fatal("pool/protocol contract")
 		}
 	})
@@ -135,8 +135,8 @@ func TestProviderWirePolicy(t *testing.T) {
 			}
 			_, _ = io.WriteString(w, envelope(validReceipt))
 		})
-		dial := s.transport.DialContext
-		s.transport.DialContext = func(ctx context.Context, n, a string) (net.Conn, error) { connections.Add(1); return dial(ctx, n, a) }
+		dial := s.transport.dialContext
+		s.transport.dialContext = func(ctx context.Context, n, a string) (net.Conn, error) { connections.Add(1); return dial(ctx, n, a) }
 		if _, err := s.Parse(context.Background(), []byte("fixture"), "image/jpeg"); err != nil {
 			t.Fatal(err)
 		}
@@ -420,8 +420,8 @@ func TestProviderStaleBeforeWriteDoesNotRetry(t *testing.T) {
 		_, _ = io.Copy(io.Discard, r.Body)
 		_, _ = io.WriteString(w, envelope(validReceipt))
 	})
-	config := s.transport.TLSClientConfig.Clone()
-	s.transport.DialTLSContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
+	config := s.transport.tlsConfig.Clone()
+	s.transport.connectTLS = func(ctx context.Context, _, _ string) (net.Conn, error) {
 		dials.Add(1)
 		c, err := (&tls.Dialer{Config: config}).DialContext(ctx, "tcp", server.Listener.Addr().String())
 		if err != nil {
@@ -526,8 +526,8 @@ func TestProviderJoinsEarlyResponseWriter(t *testing.T) {
 		w.(http.Flusher).Flush()
 		close(arrived)
 	})
-	config := s.transport.TLSClientConfig.Clone()
-	s.transport.DialTLSContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
+	config := s.transport.tlsConfig.Clone()
+	s.transport.connectTLS = func(ctx context.Context, _, _ string) (net.Conn, error) {
 		c, err := (&tls.Dialer{Config: config}).DialContext(ctx, "tcp", server.Listener.Addr().String())
 		if err != nil {
 			return nil, err
