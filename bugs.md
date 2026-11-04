@@ -217,7 +217,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - [ ] **Severity:** med
 - **Area:** backend, security
 - **File(s):** backend/internal/receipt/; mobile/lib/services/receipt*.dart; mobile/lib/screens/quick_split/bill_entry/{models,widgets}/
-- **Observation:** Backend native I/O/quota ordering/provider diagnostics are repaired locally in c3c95cc3, pending independent acceptance. M2 at957433/5231926 has scoped APPROVE; M1 native TLS remains open. Process quotas multiply across replicas; durable spending B is deferred.
+- **Observation:** Backend c3c95cc3 native repair awaits independent acceptance. M2 scoped APPROVE; mobile relay587d5aa host392 passes, native/resource certification pending. Replica quotas multiply; durable B is deferred.
 - **Expected:**
   - Expired limiter keys are pruned; global concurrency/spend limits have bounded memory and documented multi-process semantics.
   - Quota/provider failure returns recoverable errors with no hidden paid retry loop.
@@ -228,11 +228,12 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** M2 original upload cleanup and atomic bounded application remain. Backend c3c95cc3 retains receipt190/Go1146 cases and joins private native ownership; unchanged OCR3600 samples/75s retention meet targets. Runtime remains RED/flaky. M1/B/spend/old-writer/deployment/device/public-binary/clean integrated/provider/release gates remain open; no closure or grade.
-- **Docs:** backend/README.md; docs/{backend-api,technical-overview,backend-ocr-verification,mobile-ocr-verification}.md; docs/reviews/2026-11-04-ocr-native-ownership-integration.md; dated M2/A2 history retained; VERIFICATION.md unchanged.
+- **Fix:** Adopt paired/budget8 attempt-owned TLS relay and joined teardown; retain M2/body/state. Host392 preserves362+21TLS+9guards; removals fail decisively. Backend1146/OCR3600 evidence unchanged. B/spending/provider/old-writer/physical/signed-client/integrated/release remain open; no closure or grade.
+- **Docs:** mobile/README.md; docs/{backend-api,technical-overview,mobile-ocr-verification}.md; docs/reviews/2026-11-04-mobile-tls-integration.md; prior dated M2/A2/backend history retained; VERIFICATION.md unchanged.
 - **Log:**
-  - 2026-11-04 History: M2 clean362/17native/all359prior and scoped APPROVE (reviewer NOT RUN): docs/reviews/2026-11-04-mobile-upload-cleanup-correction.md. A2 history: native integration note (Docs).
-  - 2026-11-04 Validation: Go1146 retains1093/960; OCR3600 targets met. RuntimeRED/flaky despite75/75 raw0. Scanner candidates raw1/0confirmed;207shared schemas absent/336originals intact. See native integration note (Docs).
+  - 2026-11-04 History: M2 clean362/17native/all359prior APPROVE (reviewer NOT RUN): docs/reviews/2026-11-04-mobile-upload-cleanup-correction.md. Backend: docs/reviews/2026-11-04-ocr-native-ownership-integration.md.
+  - 2026-11-04 Validation: Backend1146/OCR3600; runtime1.619804>1.5 RED/flaky; assignment JSON RED. Raw scanner1/0confirmed;336originals/128backend intact.
+  - 2026-11-04 Mobile: 587d5aa host392; FD plateau/RSS nonplateau. Simulator BLOCKED maintained Pods; physical unavailable; native/resource/global RED. See integration note (Docs).
 
 ### [BUG-1793644509] Redact credentials and payment data from SQL logs
 - [x] **Severity:** med
