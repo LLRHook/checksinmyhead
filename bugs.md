@@ -196,7 +196,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - [ ] **Severity:** med
 - **Area:** backend, security
 - **File(s):** backend/cmd/{bill-service,web-service}/main.go; backend/pkg/safehttp/; backend/internal/bill/{create_request,assignment_request,handler,assignments}.go; backend/internal/tab/handler.go; backend/internal/receipt/
-- **Observation:** A1 HTTP/recovery/proxy/JSON and fd26598 corrections have scoped APPROVE (reviewer execution NOT RUN). Native OCR/F2 source c3c95cc3 is locally qualified; independent acceptance remains pending. Max50k JSON latency, runtime flake and hosted/integrated gates remain RED/open.
+- **Observation:** A1/fd26598 corrections and backend c3c95cc3 F1/F2/F3 source have scoped APPROVE Standards0/Spec0 (reviewer NOT RUN); root clean1146 passed. Max50k assignment latency, runtime flake and hosted/integrated gates stay RED/open.
 - **Expected:**
   - Creation body/collection limits, finite input checks, and server deadlines are enforced with explicit errors.
   - Trusted proxy configuration is verified so client-IP quotas cannot be bypassed by caller headers.
@@ -207,17 +207,17 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** c3c95cc3 owns receipt DNS/TCP/TLS/final-Flush/idle cleanup and locked quota time. Go1146 retains1093/960 predecessors; receipt190; removal/native Linux proof executes. Runtime RED/flaky: web1.619804s vs<1.5s,75/75 rerun raw0. Max50k p95=27.033/27.143/27.420ms vs10ms remains RED/unrerun; no waiver.
-- **Docs:** backend/README.md; docs/{backend-api,technical-overview,backend-ocr-verification}.md; docs/reviews/2026-11-04-ocr-native-ownership-integration.md; earlier A1/A2 notes retained; VERIFICATION.md unchanged.
+- **Fix:** c3c95cc3 owns receipt DNS/TCP/TLS/final-Flush/idle cleanup and locked quota time; source F1/F2/F3 accepted. Root clean1146 retains predecessor IDs. Runtime RED/flaky: web1.619804s vs<1.5s, despite75/75 completion raw0. Max50k p95=27.033/27.143/27.420ms vs10ms remains RED/unrerun; no waiver.
+- **Docs:** backend/README.md; docs/{backend-api,technical-overview,backend-ocr-verification}.md; docs/reviews/2026-11-04-backend-native-acceptance.md; prior native/A1/A2 dated history retained; VERIFICATION.md unchanged.
 - **Log:**
-  - 2026-11-04 History: A1/A2 history remains in dated api-a1, api-a1-review-corrections and ocr-a2-backend notes; see condensed history in native integration note (Docs).
-  - 2026-11-04 Validation: Go1146 retains1093/960; OCR3600 targets met. RuntimeRED/flaky despite75/75 raw0. Scanner candidates raw1/0confirmed;207shared schemas absent/336originals intact. See native integration note (Docs).
+  - 2026-11-04 History: A1/A2 dated api-a1, api-a1-review-corrections and ocr-a2-backend notes; docs/reviews/2026-11-04-ocr-native-ownership-integration.md.
+  - 2026-11-04 Acceptance: sourcec3c95cc3/evidence554cd4ca F1/F2/F3 APPROVE0/0; reviewer NOT RUN, root clean1146. OCR3600 targets met; runtimeflaky/assignment/global RED. Raw scanner1/0confirmed;207schemas absent/336originals intact.
 
 ### [BUG-1793644508] Bound receipt inference spending and limiter memory
 - [ ] **Severity:** med
 - **Area:** backend, security
 - **File(s):** backend/internal/receipt/; mobile/lib/services/receipt*.dart; mobile/lib/screens/quick_split/bill_entry/{models,widgets}/
-- **Observation:** Backend c3c95cc3 native repair awaits independent acceptance. M2 scoped APPROVE; mobile relay587d5aa host392 passes, native/resource certification pending. Replica quotas multiply; durable B is deferred.
+- **Observation:** Backend c3c95cc3 F1/F2/F3 source APPROVE0/0 (reviewer NOT RUN), root clean1146. M2 scoped APPROVE; relay587d5aa host392, native/resource pending. Replica quotas multiply; durable B deferred.
 - **Expected:**
   - Expired limiter keys are pruned; global concurrency/spend limits have bounded memory and documented multi-process semantics.
   - Quota/provider failure returns recoverable errors with no hidden paid retry loop.
@@ -229,10 +229,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
 - **Fix:** Adopt paired/budget8 attempt-owned TLS relay and joined teardown; retain M2/body/state. Host392 preserves362+21TLS+9guards; removals fail decisively. Backend1146/OCR3600 evidence unchanged. B/spending/provider/old-writer/physical/signed-client/integrated/release remain open; no closure or grade.
-- **Docs:** mobile/README.md; docs/{backend-api,technical-overview,mobile-ocr-verification}.md; docs/reviews/2026-11-04-mobile-tls-integration.md; prior dated M2/A2/backend history retained; VERIFICATION.md unchanged.
+- **Docs:** mobile/README.md; docs/{backend-api,technical-overview,mobile-ocr-verification}.md; docs/reviews/2026-11-04-{mobile-tls-integration,backend-native-acceptance}.md; prior M2/A2 history; VERIFICATION.md unchanged.
 - **Log:**
   - 2026-11-04 History: M2 clean362/17native/all359prior APPROVE (reviewer NOT RUN): docs/reviews/2026-11-04-mobile-upload-cleanup-correction.md. Backend: docs/reviews/2026-11-04-ocr-native-ownership-integration.md.
-  - 2026-11-04 Validation: Backend1146/OCR3600; runtime1.619804>1.5 RED/flaky; assignment JSON RED. Raw scanner1/0confirmed;336originals/128backend intact.
+  - 2026-11-04 Acceptance: backend F1/F2/F3 APPROVE0/0/reviewer NOT RUN/root clean1146; OCR3600. Runtime1.619804>1.5 RED/flaky; assignment JSON RED. Raw scanner1/0confirmed;336originals/128backend intact.
   - 2026-11-04 Mobile: 587d5aa host392; FD plateau/RSS nonplateau. Simulator BLOCKED maintained Pods; physical unavailable; native/resource/global RED. See integration note (Docs).
 
 ### [BUG-1793644509] Redact credentials and payment data from SQL logs
@@ -500,10 +500,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-04 Validation: Shared source/actual constructor before evidence and final uncached Go/PG gates retained with hashes. Removed Gin recovery restores2failed confidentiality leaves; removed opaque ErrorLog fails parent secrecy/finite-event assertions after positive TCP leaves. Go may format before the opaque sink; no input is retained/forwarded by it. Scoped source/image scans and runtime75PASS,root acceptance pending.
 
 ### [BUG-1793725850] Deny OCR provider redirects across the API-key boundary
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** backend, security
 - **File(s):** backend/internal/receipt/service.go; backend/internal/receipt/handler.go
-- **Observation:** Original conditional mocked307 forwarding remains before evidence. c3c95cc3 replaces the callback wrapper with a fixed-origin private owner, strips Location, retains one nonreplayable POST and joins native I/O. Independent driver acceptance remains pending; no real provider/key leak was observed.
+- **Observation:** Fixed-origin redirect/confidentiality source accepted at c3c95cc3/evidence554cd4ca: Standards0/Spec0, reviewer NOT RUN, root clean1146. No real provider/key leak observed. Runtime/global RED are separate.
 - **Expected:**
   - Deny redirects for the fixed provider endpoint; at most one outbound attempt and no cross-origin API-key forwarding.
   - Return finite generic provider/parse errors without raw receipt, response, key or Location text; retain timeout/cancellation and normal success.
@@ -513,9 +513,9 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Original INGRESS_OCR_BASELINE.md plus actual local TLS 301/302/303/307/308, immediate302, tainted Location, stale pooled pre/post-write failures, no error-body read, early/late cancellation and finite errors. Counted wire POSTs rather than Do/dials. Corrected final redirect-removal overlay executes failed acceptance assertion; initial nil-body counterfactual panic excluded from assertion proof.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
-- **Fix:** c3c95cc3 preserves redirect/stale/finite-status cases and joins native DNS/TLS/final-Flush/dirty-idle cleanup, no hidden retry. Go1146 and actual Linux image redirect/taint cases pass. Runtime RED/flaky despite75/75 rerun raw0; independent/hosted/integrated acceptance pending.
-- **Docs:** backend/README.md; docs/{backend-api,technical-overview,backend-ocr-verification}.md; docs/reviews/2026-11-04-ocr-native-ownership-integration.md; original A2 dated evidence retained.
+- **Status:** fixed-pending-migration
+- **Fix:** Driver accepts fixed-origin onePOST, stripped Location, finite errors and preserved cancellation/success at c3c95cc3/evidence554cd4ca. Independent0/0/reviewer NOT RUN; root clean1146 and actual Linux redirect/taint proof. Runtimeflaky/assignment/global remain RED; no deployed/physical/signed/integrated certification.
+- **Docs:** backend/README.md; docs/{backend-api,technical-overview,backend-ocr-verification}.md; docs/reviews/2026-11-04-backend-native-acceptance.md; prior A2/native dated records retained.
 - **Log:**
-  - 2026-11-04 History: Original redirect-before/removal and A2a history: docs/reviews/2026-11-04-ocr-a2-backend.md; native integration note (Docs).
-  - 2026-11-04 Validation: Go1146 retains1093/960; OCR3600 targets met. RuntimeRED/flaky despite75/75 raw0. Scanner candidates raw1/0confirmed;207shared schemas absent/336originals intact. See native integration note (Docs).
+  - 2026-11-04 History: Original redirect-before/removal: docs/reviews/2026-11-04-ocr-a2-backend.md; docs/reviews/2026-11-04-ocr-native-ownership-integration.md.
+  - 2026-11-04 Acceptance: Specific source requirements met; root driver approves fixed-pending-migration only. Root clean1146; reviewer NOT RUN/0findings. Runtime1.619804>1.5 RED/flaky;75/75 completion is not clearance. No closure/CHANGELOG migration.
