@@ -1,6 +1,7 @@
 package tab
 
 import (
+	billpkg "backend/internal/bill"
 	"backend/pkg/models"
 	"backend/pkg/mutation"
 	"backend/pkg/security"
@@ -76,19 +77,26 @@ func (s *tabService) GetTab(id uint) (tab *models.Tab, err error) {
 	if err != nil {
 		return nil, err
 	}
-	// Recalculate total from bills and strip bill access tokens
-	var total float64
+	// Strip every source capability even when a later bill needs review. Retain
+	// the tab capability internally so the handler can authorize that response.
 	for i := range tab.Bills {
-		if tab.Bills[i].USDTotal > 0 {
-			total += tab.Bills[i].USDTotal
-		} else if tab.Bills[i].DisplayTotal != nil {
-			total += *tab.Bills[i].DisplayTotal
-		} else {
-			total += tab.Bills[i].Total
-		}
 		tab.Bills[i].AccessToken = ""
 	}
-	tab.TotalAmount = total
+	var total int64
+	for _, b := range tab.Bills {
+		cents, valueErr := billpkg.FrozenUSDTotalCents(b)
+		if valueErr != nil {
+			return tab, valueErr
+		}
+		total, err = billpkg.AddObligationCents(total, cents)
+		if err != nil {
+			return tab, err
+		}
+	}
+	tab.TotalAmount, err = billpkg.ObligationDollars(total)
+	if err != nil {
+		return tab, err
+	}
 	tab.NetBalances = ComputeNetBalances(tab)
 	return tab, nil
 }

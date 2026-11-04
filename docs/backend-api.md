@@ -203,6 +203,10 @@ response/error handling. Upstream 429/503 returns public 503 with a validated
 write those frozen date/source fields. Separate persisted display observation/source/
 retrieval metadata requires approved migration 0002; no schema change is made here.
 A valid frozen zero remains zero. Missing foreign data never means identity or zero.
+Tab summaries and settlement allocation validate the same saved USD audit. An unset
+legacy USD value may use native identity in memory; a display/native foreign amount
+never substitutes for unavailable USD. Invalid or inconsistent frozen evidence makes
+the authorized tab summary require accounting review, without rewriting saved rows.
 Current accounting precision, including fractional legacy JPY, is unchanged; the
 versioned whole-yen accounting step remains required follow-up.
 
@@ -331,13 +335,18 @@ Create a new tab. When supplied, the initial creator and tab commit together; a 
 
 Get a tab with all bills, items, assignments, person shares, and members.
 
-**Response** `200` — Full tab object.
+**Response** `200` — Full tab object. `total_amount` sums validated frozen USD cents,
+including genuine zero values, independently of each bill's display currency.
 
 **Errors**
 | Status | Body | Meaning |
 |--------|------|---------|
 | 403 | `{"error": "token mismatch"}` | Invalid access token |
 | 404 | `{"error": "tab not found"}` | Tab does not exist |
+| 409 | `{"error":"accounting review required","code":"accounting_review_required"}` | Authorized tab contains unavailable or inconsistent frozen USD evidence, or an unsafe aggregate |
+
+Access is checked before returning the accounting-review response. Stored receipts
+and accepted quotes remain unchanged; no provider call repairs historical data.
 
 ### `PATCH /api/tabs/:id?t=token`
 

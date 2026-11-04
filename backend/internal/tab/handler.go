@@ -61,7 +61,7 @@ func (h *TabHandler) getTabWithLookup(
 	}
 
 	tab, err := lookup(uint(idUint))
-	if err != nil {
+	if err != nil && (!errors.Is(err, mutation.Review) || tab == nil) {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(404, gin.H{"error": "tab not found"})
 			return nil
@@ -73,6 +73,10 @@ func (h *TabHandler) getTabWithLookup(
 
 	if subtle.ConstantTimeCompare([]byte(token), []byte(tab.AccessToken)) != 1 {
 		c.JSON(403, gin.H{"error": "token mismatch"})
+		return nil
+	}
+	if err != nil {
+		mutation.WriteError(c, err)
 		return nil
 	}
 

@@ -208,14 +208,19 @@ distinct pair within the creation's shared five-second quote budget. No backend 
 rate map or redundant ExchangeRate-API adapter remains; ordinary HTTP pooling and
 immutable stored quotes remain. Frozen USD source/date are never display metadata;
 distinct persisted display provenance waits for migration 0002. Historical quotes and
-explicit zero totals are preserved on reads. Mobile caching/decoding/save/replay and
+explicit zero totals are preserved on reads. Tab summaries and share allocation use
+one checked frozen USD audit; sums use checked cents and never display/native foreign
+fallbacks. Missing/inconsistent valuation requires an authorized accounting review,
+without fetching or rewriting history. Mobile caching/decoding/save/replay and
 versioned JPY precision remain open. See [API contracts](backend-api.md#currency-quotes)
 for accepted fields, ownership, freshness and legacy compatibility.
 `FinalizeOnce` is the sole production finalization seam: tab capability, current creator
 or memberless policy, stored-result validation, gross allocation, bounded inserts and
 one checked active-state update commit together. Authorized retries read the stored
 snapshot without writes/recalculation. Ambiguous legacy results and unsafe accounting
-return `409 accounting_review_required` while historical reads remain available.
+return `409 accounting_review_required`. Individual receipt reads remain available;
+tab summaries also return that review response when frozen USD evidence is unavailable
+or inconsistent, after checking tab access. Stored historical rows remain unchanged.
 
 Every attached writer uses Tab → ascending Bills → ascending Items → Shares; settlement
 writes use Tab → Settlement. Join/leave/settings take Tab first. Fresh tab/creator creation

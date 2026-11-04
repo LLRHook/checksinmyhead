@@ -10,42 +10,57 @@ import (
 	"time"
 )
 
-// FrozenUSDShareCents validates persisted accounting without normalizing or
-// rewriting its evidence. Known legacy USD identity is interpreted in memory.
-func FrozenUSDShareCents(b models.Bill) ([]int64, error) {
-	result := make([]int64, len(b.PersonShares))
+// FrozenUSDTotalCents validates the saved USD value, including zero, without
+// normalizing or rewriting historical evidence. Display money is never a fallback.
+func FrozenUSDTotalCents(b models.Bill) (int64, error) {
+	_, cents, err := frozenUSDAudit(b)
+	return cents, err
+}
+
+func frozenUSDAudit(b models.Bill) (float64, int64, error) {
 	code := strings.ToUpper(strings.TrimSpace(b.CurrencyCode))
 	rate, frozen := b.USDExchangeRate, b.USDTotal
 	if !finite(b.Total) || b.Total < 0 {
-		return nil, mutation.Review
+		return 0, 0, mutation.Review
 	}
 	native, err := roundedCents(b.Total)
 	if err != nil {
-		return nil, mutation.Review
+		return 0, 0, mutation.Review
 	}
 	if code == "" || code == "USD" {
 		if rate != 0 && rate != 1 {
-			return nil, mutation.Review
+			return 0, 0, mutation.Review
 		}
 		rate = 1
-		if frozen == 0 {
+		if frozen == 0 && b.ExchangeRateSource == "" && b.ExchangeRateDate == "" {
 			frozen = float64(native) / 100
 		}
 	} else {
 		if !currency.ValidCode(code) || !finite(rate) || rate <= 0 || strings.TrimSpace(b.ExchangeRateSource) == "" {
-			return nil, mutation.Review
+			return 0, 0, mutation.Review
 		}
 		if _, err := time.Parse("2006-01-02", b.ExchangeRateDate); err != nil {
-			return nil, mutation.Review
+			return 0, 0, mutation.Review
 		}
 	}
 	frozenCents, err := roundedCents(frozen)
 	if err != nil || frozen < 0 {
-		return nil, mutation.Review
+		return 0, 0, mutation.Review
 	}
 	expected, err := roundedCents(b.Total * rate)
 	if err != nil || expected != frozenCents {
-		return nil, mutation.Review
+		return 0, 0, mutation.Review
+	}
+	return rate, frozenCents, nil
+}
+
+// FrozenUSDShareCents uses the same saved audit as tab totals before allocating
+// assigned shares. Known legacy USD identity is interpreted only in memory.
+func FrozenUSDShareCents(b models.Bill) ([]int64, error) {
+	result := make([]int64, len(b.PersonShares))
+	rate, frozenCents, err := frozenUSDAudit(b)
+	if err != nil {
+		return nil, err
 	}
 	total := 0.0
 	for _, s := range b.PersonShares {
