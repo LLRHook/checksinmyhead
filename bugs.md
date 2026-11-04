@@ -519,3 +519,20 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Log:**
   - 2026-11-04 History: Original redirect-before/removal: docs/reviews/2026-11-04-ocr-a2-backend.md; docs/reviews/2026-11-04-ocr-native-ownership-integration.md.
   - 2026-11-04 Acceptance: Specific source requirements met; root driver approves fixed-pending-migration only. Root clean1146; reviewer NOT RUN/0findings. Runtime1.619804>1.5 RED/flaky;75/75 completion is not clearance. No closure/CHANGELOG migration.
+
+### [BUG-1793813173] Reconcile the maintained iOS lock with the existing Flutter plugin graph
+- [ ] **Severity:** med
+- **Area:** mobile, ios, dependencies
+- **File(s):** mobile/ios/Podfile.lock; mobile/README.md; docs/mobile-ocr-verification.md
+- **Observation:** At 7e36d8afff04b1cf2add57050190370750fd88b7, Flutter3.41.5 enforced pub acquisition succeeds but CocoaPods1.16.2 pod install --deployment exits1 with A app_links / A package_info_plus. Both plugins are already present in the unchanged committed pubspec.lock and native registrant; the maintained CocoaPods lock omits them.
+- **Expected:** The existing locked Flutter plugin graph acquires reproducibly through pod install --deployment, preserving all existing native versions/checksums and pubspec.lock. Build the maintained Runner workspace for debug simulator and unsigned device release where supported; qualify production receipt transport on one owned simulator using synthetic local fixtures and retain all392 canonical host cases. No package/SDK/project/application behavior upgrade.
+- **Req:** none — bounded root-approved native-lock correction in IOS_LOCK_QUALIFICATION_BRIEF_20261104.md, November4
+- **Depends on:** none — existing Flutter lock correction BUG-1793652308 is distinct
+- **Repro / Notes:** cd mobile && flutter pub get --enforce-lockfile; cd ios && pod install --deployment. Fresh failure retained in scratch ios-lock-qualification-20261104/logs/pod-deployment-before.*; earlier native failure in mobile-tls-integration-20261104. Root explicitly approves a generated-lock-only repair with existing pins, local native qualification and normal branch publication. Acceptance remains limited to this defect; broader resource/device/security/integrated gates stay open.
+- **Bump:** patch
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** CocoaPods1.16.2 ordinary install adds only the already locked app_links6.4.1 and package_info_plus native0.4.5 graph entries and refreshes the stale share_plus0.0.1 normalized checksum from existing Flutter13.3.1. No version/dependency/SDK/application/project change. First/final enforced pub and three subsequent deployment installs pass unchanged locks;392 host canonical cases and24 actual owned-simulator transport cases pass, zero failed/skipped. Maintained debug simulator and unsigned arm64 release artifacts build. Preserve console-capture limitation; source note and scratch artifacts bind exact modules. Keep in-progress for root independent clean committed validation; resource remains PARTIAL/RED and whole acceptance RED.
+- **Docs:** mobile/README.md; docs/mobile-ocr-verification.md; docs/reviews/2026-11-04-ios-lock-qualification.md. Prior dated notes, VERIFICATION/Last verified and CHANGELOG unchanged.
+- **Log:**
+  - 2026-11-04 Validation: Root-approved bounded native-lock repair from exact7e36d8a; native24PASS with29 joined ownership observations and no new dependencies/versions. One owned simulator created and deleted; prior simulators preserved. Native console diagnostic capture incomplete; case JSON/artifact/source/lsof evidence retained. Raw Semgrep1/six candidates and Gitleaks1/three candidates are synthetic PKI/task logging, owner-confirmed0 with no suppressions; independent review pending. Existing host RSS/heap resource PARTIAL/RED, physical/public/signed-client NOT RUN, whole acceptance RED.

@@ -172,8 +172,11 @@ invalid direct or reviewed candidates leave bill state/controllers unchanged. Ex
 two-decimal distribution, JPY and currency-confirmation policy remain separate concerns.
 See [local mobile OCR verification](../docs/mobile-ocr-verification.md) for loopback native
 I/O, TLS, fixture regeneration, widget disposal, negative controls and evidence limits.
-Host qualification is recorded in the [integration note](../docs/reviews/2026-11-04-mobile-tls-integration.md);
-simulator builds currently need the maintained iOS Podfile.lock reconciled with the
-existing plugin graph. Unit/debug QA needs no
-TestFlight version bump. Release `ApiConfig` still selects the hosted API; the test-only
-constructor is not a production configuration override.
+Host qualification is recorded in the [integration note](../docs/reviews/2026-11-04-mobile-tls-integration.md).
+The [iOS lock and native qualification note](../docs/reviews/2026-11-04-ios-lock-qualification.md)
+records the generated lock correction, maintained simulator/unsigned release builds
+and local transport assertions on one owned simulator. Physical devices, signed public
+clients and sustained resource acceptance remain separate gates. Local unsigned QA
+uses `--no-codesign`; unit/debug/unsigned QA needs no TestFlight version bump.
+Release `ApiConfig` still selects the hosted API; the test-only constructor is not a
+production configuration override.

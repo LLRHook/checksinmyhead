@@ -99,7 +99,30 @@ Native host IO tests are not iOS simulator, physical-device, signed-public-binar
 provider compatibility proof. Qualify debug artifacts on a new owned simulator only;
 preserve existing simulator/app/history and Android work. Use `pod install --deployment`;
 a mismatch with the existing plugin graph is a prerequisite blocker, never permission
-to rewrite the lock. Physical privacy/background/network behavior needs separate proof.
+to rewrite the lock. An approved lock repair uses ordinary `pod install` with existing
+pins, reviews every generated delta, then repeats enforced pub acquisition and
+`pod install --deployment` without changing either lock. See the
+[iOS lock qualification](reviews/2026-11-04-ios-lock-qualification.md) for the bounded
+repair and actual local simulator results.
+
+Build the maintained `mobile/ios/Runner.xcworkspace`, with signing explicitly disabled
+for local QA, from `mobile/`:
+
+```sh
+flutter build ios --debug --simulator --no-pub --no-codesign
+flutter build ios --release --no-pub --no-codesign
+```
+
+Build-only release compilation does not authorize launching its public API configuration.
+Native transport qualification instead uses a task-local entrypoint in this project
+with the unchanged production modules and synthetic loopback fixtures. Bind its source,
+PEM provenance, kernel/native artifact and owned simulator UDID/runtime to its results.
+Keep default-trust rejection separate from synthetic-context TLS success and hostname
+rejection. Inspect the actual built Info.plist: Flutter can add debug Bonjour/local
+network debugging strings without changing the maintained source plist. A local socket
+success does not certify ATS, local-network prompts or trust on physical devices.
+Retain raw case terminals and ownership joins; record any missing console/packet
+diagnostics explicitly. Physical privacy/background/network behavior needs separate proof.
 Resource qualification records warmup/GC/baseline, sequential failure/cancel/retry,
 controlled overlap, actual process/socket/FD inventory and retained-memory plateaus,
 with fixture/test-VM/RSS limitations. Short host samples establish no battery, capacity
