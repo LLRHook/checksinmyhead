@@ -217,7 +217,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - [ ] **Severity:** med
 - **Area:** backend, security
 - **File(s):** backend/internal/receipt/; mobile/lib/services/receipt*.dart; mobile/lib/screens/quick_split/bill_entry/{models,widgets}/
-- **Observation:** A2a has 3 reviewed P2 gaps: native I/O ownership, quota clock ordering and provider diagnostics. Mobile M1 TLS cancellation remains open. Root M2 cleanup correction at957433 has clean362-test proof; re-review pending. Process quotas multiply across replicas; durable spending B is deferred.
+- **Observation:** Backend A2a retains 3 reviewed P2 gaps: native I/O, quota ordering and provider logs. Mobile M2 at957433/5231926 has scoped APPROVE (Standards0/Spec0); M1 TLS remains open. Process quotas multiply across replicas; durable spending B is deferred.
 - **Expected:**
   - Expired limiter keys are pruned; global concurrency/spend limits have bounded memory and documented multi-process semantics.
   - Quota/provider failure returns recoverable errors with no hidden paid retry loop.
@@ -233,6 +233,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Log:**
   - 2026-11-04 Validation: Mobile 0 fail/skip/cache/missing terminals; 14 native host-IO cases, no simulator claim. Scans unsuppressed: Semgrep0/0 findings; Gitleaks1/3 unchanged placeholders. 336 originals intact. Backend P2 corrections and JSON performance/global RED remain pending.
   - 2026-11-04 Correction: M2 clean committed gate:362 pass/0fail/skip;17native;131inputs/336originals unchanged. Re-review pending; M1 silent-TLS3fail/1HTTPcontrol and backend3P2 stay open. Whole acceptance RED.
+  - 2026-11-04 Acceptance: M2 re-review APPROVE Standards0/Spec0; source/evidence/362-case proof reconciled, reviewer execution NOT RUN. M1 and whole acceptance remain open.
 
 ### [BUG-1793644509] Redact credentials and payment data from SQL logs
 - [x] **Severity:** med

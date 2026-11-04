@@ -69,7 +69,8 @@ Flaky: none   Blocked: none in this M2 correctness selection
 ```
 
 Flutter was **3.41.5**, Dart **3.11.3**. `--machine` changes reporting, not test
-selection or skip policy. There were also 31 successful hidden loader cases.
+selection or skip policy. There were also 31 hidden successes: 29 loaders and two
+lifecycle hooks (`setUpAll` and `tearDownAll`).
 Repeated display labels are counted by runner identity and occurrence, rather than
 silently collapsing two distinct tests. All 131 selected committed inputs were
 unchanged before/after the run; the verification checkout was clean. All 336
@@ -120,3 +121,19 @@ OCR F1/F2/F3 corrections, durable allowance B and the owner spending policy, old
 exclusion, JSON performance, clean integrated/device/signed-client verification and
 release gates remain open. **Whole OCR, security, integrated and release acceptance
 remain RED.** This scoped result does not establish a new overall project grade.
+
+## Independent M2 acceptance
+
+The separate re-review of the exact eight-path `c487550..5231926a` snapshot returned
+**Standards PASS, zero findings; Spec PASS for M2, zero findings**. The original
+upload-input ownership finding is resolved. Reviewer application tests, scans,
+builds, native experiments and CI/public checks were **NOT RUN**; the reviewer
+independently inspected source and reconciled retained commands, raw events and
+hashes. Root verified the report binding, all 76 retained manifest files, and the
+362 visible / 31 hidden successful events before accepting the scoped verdict.
+
+The report is `MOBILE_UPLOAD_CLEANUP_REVIEW_20261104.md` in the task scratch
+directory. Its one nonblocking wording correction is incorporated above: the two
+lifecycle hooks are not loaders. Application source, tests and the recorded clean
+gate are unchanged by this acceptance update. M1 TLS cancellation and the wider
+ticket/program gates remain open; BUG-1793644508 stays in progress.
