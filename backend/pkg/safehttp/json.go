@@ -105,11 +105,22 @@ func decodeArray[T any](data []byte, limit int, strict bool) ([]T, error) {
 			}
 		}
 	}
+	// The enclosing decoder supplies one complete value to UnmarshalJSON. The
+	// non-strict path can decode those bytes without another streaming buffer.
+	// Strict DTOs retain DisallowUnknownFields, including nested fields.
+	// Reserve only after the count guard; null and empty retain stdlib semantics.
 	var result []T
-	d := json.NewDecoder(bytes.NewReader(data))
-	if strict {
-		d.DisallowUnknownFields()
+	if count > 0 {
+		result = make([]T, 0, count)
 	}
+	if !strict {
+		if err := json.Unmarshal(data, &result); err != nil {
+			return nil, ErrInvalidJSON
+		}
+		return result, nil
+	}
+	d := json.NewDecoder(bytes.NewReader(data))
+	d.DisallowUnknownFields()
 	if err := d.Decode(&result); err != nil {
 		return nil, ErrInvalidJSON
 	}
