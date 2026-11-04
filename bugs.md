@@ -196,7 +196,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - [ ] **Severity:** med
 - **Area:** backend, security
 - **File(s):** backend/cmd/{bill-service,web-service}/main.go; backend/pkg/safehttp/; backend/internal/bill/{create_request,assignment_request,handler,assignments}.go; backend/internal/tab/handler.go; backend/internal/receipt/
-- **Observation:** A1 shared HTTP/recovery/proxy/JSON safeguards and fd26598 corrections have scoped independent APPROVE; reviewer execution NOT RUN. A2a34bc415 bounds receipt admission/upload/provider parsing and joins actual I/O. Maximum50k JSON latency and A2b/hosted/integrated proof remain open.
+- **Observation:** A1 HTTP/recovery/proxy/JSON and fd26598 corrections have scoped APPROVE (reviewer execution NOT RUN). Native OCR/F2 source c3c95cc3 is locally qualified; independent acceptance remains pending. Max50k JSON latency, runtime flake and hosted/integrated gates remain RED/open.
 - **Expected:**
   - Creation body/collection limits, finite input checks, and server deadlines are enforced with explicit errors.
   - Trusted proxy configuration is verified so client-IP quotas cannot be bypassed by caller headers.
@@ -207,17 +207,17 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** 34bc415 implements backend OCR safeguards with actual upload/provider cancellation, joined native writers, fixed one-attempt key-safe transport and finite parse bounds. Local1093distinct Go/75runtime pass; independent OCR acceptance pending. fd26598 HTTP_JSON review APPROVE Standards0/Spec0, reviewer execution NOT RUN. Existing max50k p95=27.033/27.143/27.420ms stays RED; no waiver.
-- **Docs:** backend/README.md; backend/.env.example; docs/{backend-api,technical-overview,backend-ocr-verification}.md; VERIFICATION.md; docs/reviews/2026-11-04-ocr-a2-backend.md.
+- **Fix:** c3c95cc3 owns receipt DNS/TCP/TLS/final-Flush/idle cleanup and locked quota time. Go1146 retains1093/960 predecessors; receipt190; removal/native Linux proof executes. Runtime RED/flaky: web1.619804s vs<1.5s,75/75 rerun raw0. Max50k p95=27.033/27.143/27.420ms vs10ms remains RED/unrerun; no waiver.
+- **Docs:** backend/README.md; docs/{backend-api,technical-overview,backend-ocr-verification}.md; docs/reviews/2026-11-04-ocr-native-ownership-integration.md; earlier A1/A2 notes retained; VERIFICATION.md unchanged.
 - **Log:**
-  - 2026-11-04 Validation: Original A1 845Go; optimization932Go; correction960Go (708ordinary/716PG,464overlap),0fail/skip.28focused pass; before15expected fails/9controls;3removals fail19overlapping leaf assertions.75runtime; Trivy/Semgrep/gosec0; Gitleaks5synthetic/placeholder candidates,0confirmed.206schemas absent/336originals intact. Known performance and whole acceptance RED.
-  - 2026-11-04 Validation: A2a local evidence:836ordinary/721PG/464overlap=1093distinct, all960prior IDs retained;0fail/skip/cache/missing.75runtime, actual wire/cancel/shape controls,414exact schemas absent and336originals intact. Raw scanner exits/triage retained; source correctness independent acceptance and global/performance gates remain open.
+  - 2026-11-04 History: A1/A2 history remains in dated api-a1, api-a1-review-corrections and ocr-a2-backend notes; see condensed history in native integration note (Docs).
+  - 2026-11-04 Validation: Go1146 retains1093/960; OCR3600 targets met. RuntimeRED/flaky despite75/75 raw0. Scanner candidates raw1/0confirmed;207shared schemas absent/336originals intact. See native integration note (Docs).
 
 ### [BUG-1793644508] Bound receipt inference spending and limiter memory
 - [ ] **Severity:** med
 - **Area:** backend, security
 - **File(s):** backend/internal/receipt/; mobile/lib/services/receipt*.dart; mobile/lib/screens/quick_split/bill_entry/{models,widgets}/
-- **Observation:** Backend A2a retains 3 reviewed P2 gaps: native I/O, quota ordering and provider logs. Mobile M2 at957433/5231926 has scoped APPROVE (Standards0/Spec0); M1 TLS remains open. Process quotas multiply across replicas; durable spending B is deferred.
+- **Observation:** Backend native I/O/quota ordering/provider diagnostics are repaired locally in c3c95cc3, pending independent acceptance. M2 at957433/5231926 has scoped APPROVE; M1 native TLS remains open. Process quotas multiply across replicas; durable spending B is deferred.
 - **Expected:**
   - Expired limiter keys are pruned; global concurrency/spend limits have bounded memory and documented multi-process semantics.
   - Quota/provider failure returns recoverable errors with no hidden paid retry loop.
@@ -228,12 +228,11 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** 957433 joins original upload-input cleanup, including errors/reentrant cancel. Clean Flutter362/362 incl17native; all359prior retained. A2b bounded parsing/atomic application retained. M1/backend review/B/budget/old-writer/integrated/device/hosting/release remain open; no closure.
-- **Docs:** mobile/README.md; docs/{backend-api,technical-overview,mobile-ocr-verification}.md; dated OCR A2 notes; docs/reviews/2026-11-04-mobile-upload-cleanup-correction.md; VERIFICATION.md (unchanged).
+- **Fix:** M2 original upload cleanup and atomic bounded application remain. Backend c3c95cc3 retains receipt190/Go1146 cases and joins private native ownership; unchanged OCR3600 samples/75s retention meet targets. Runtime remains RED/flaky. M1/B/spend/old-writer/deployment/device/public-binary/clean integrated/provider/release gates remain open; no closure or grade.
+- **Docs:** backend/README.md; docs/{backend-api,technical-overview,backend-ocr-verification,mobile-ocr-verification}.md; docs/reviews/2026-11-04-ocr-native-ownership-integration.md; dated M2/A2 history retained; VERIFICATION.md unchanged.
 - **Log:**
-  - 2026-11-04 Validation: Mobile 0 fail/skip/cache/missing terminals; 14 native host-IO cases, no simulator claim. Scans unsuppressed: Semgrep0/0 findings; Gitleaks1/3 unchanged placeholders. 336 originals intact. Backend P2 corrections and JSON performance/global RED remain pending.
-  - 2026-11-04 Correction: M2 clean committed gate:362 pass/0fail/skip;17native;131inputs/336originals unchanged. Re-review pending; M1 silent-TLS3fail/1HTTPcontrol and backend3P2 stay open. Whole acceptance RED.
-  - 2026-11-04 Acceptance: M2 re-review APPROVE Standards0/Spec0; source/evidence/362-case proof reconciled, reviewer execution NOT RUN. M1 and whole acceptance remain open.
+  - 2026-11-04 History: M2 clean362/17native/all359prior and scoped APPROVE (reviewer NOT RUN): docs/reviews/2026-11-04-mobile-upload-cleanup-correction.md. A2 history: native integration note (Docs).
+  - 2026-11-04 Validation: Go1146 retains1093/960; OCR3600 targets met. RuntimeRED/flaky despite75/75 raw0. Scanner candidates raw1/0confirmed;207shared schemas absent/336originals intact. See native integration note (Docs).
 
 ### [BUG-1793644509] Redact credentials and payment data from SQL logs
 - [x] **Severity:** med
@@ -503,7 +502,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - [ ] **Severity:** med
 - **Area:** backend, security
 - **File(s):** backend/internal/receipt/service.go; backend/internal/receipt/handler.go
-- **Observation:** Original conditional mocked cross-origin307 key forwarding remains retained before evidence; no real key/provider leak was observed. A2a34bc415 removes redirect targets before client parsing, refuses redirects and uses a private verified-TLS HTTP/1 pool with a nonempty nonreplayable POST and joined native request lifetime. Independent driver acceptance is pending.
+- **Observation:** Original conditional mocked307 forwarding remains before evidence. c3c95cc3 replaces the callback wrapper with a fixed-origin private owner, strips Location, retains one nonreplayable POST and joins native I/O. Independent driver acceptance remains pending; no real provider/key leak was observed.
 - **Expected:**
   - Deny redirects for the fixed provider endpoint; at most one outbound attempt and no cross-origin API-key forwarding.
   - Return finite generic provider/parse errors without raw receipt, response, key or Location text; retain timeout/cancellation and normal success.
@@ -514,7 +513,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** 34bc415 keeps one fixed provider attempt, blocks target/key forwarding, joins native writer/body cleanup and rechecks deadline after cleanup. Early writer and cleanup-cancel failures reproduced before and pass final. Local1093distinct Go/75runtime pass; stays in-progress pending independent acceptance.
-- **Docs:** backend/README.md; docs/{backend-api,technical-overview,backend-ocr-verification}.md; docs/reviews/2026-11-04-ocr-a2-backend.md.
+- **Fix:** c3c95cc3 preserves redirect/stale/finite-status cases and joins native DNS/TLS/final-Flush/dirty-idle cleanup, no hidden retry. Go1146 and actual Linux image redirect/taint cases pass. Runtime RED/flaky despite75/75 rerun raw0; independent/hosted/integrated acceptance pending.
+- **Docs:** backend/README.md; docs/{backend-api,technical-overview,backend-ocr-verification}.md; docs/reviews/2026-11-04-ocr-native-ownership-integration.md; original A2 dated evidence retained.
 - **Log:**
-  - 2026-11-04 Validation: A2a local evidence:836ordinary/721PG/464overlap=1093distinct, all960prior IDs retained;0fail/skip/cache/missing.75runtime, actual wire/cancel/shape controls,414exact schemas absent and336originals intact. Raw scanner exits/triage retained; source correctness independent acceptance and global/performance gates remain open.
+  - 2026-11-04 History: Original redirect-before/removal and A2a history: docs/reviews/2026-11-04-ocr-a2-backend.md; native integration note (Docs).
+  - 2026-11-04 Validation: Go1146 retains1093/960; OCR3600 targets met. RuntimeRED/flaky despite75/75 raw0. Scanner candidates raw1/0confirmed;207shared schemas absent/336originals intact. See native integration note (Docs).
