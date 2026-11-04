@@ -217,21 +217,22 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - [ ] **Severity:** med
 - **Area:** backend, security
 - **File(s):** backend/internal/receipt/; mobile/lib/services/receipt*.dart; mobile/lib/screens/quick_split/bill_entry/{models,widgets}/
-- **Observation:** A2a adds bounded process/IP admission, which multiplies across replicas; independent backend review has 3 P2 findings (native I/O ownership, quota timestamps, provider diagnostics). A2b adds owned mobile cancellation and bounded parsing/application. Durable/global starts and account spending are unbounded; B is deferred.
+- **Observation:** A2a has 3 reviewed P2 gaps: native I/O ownership, quota clock ordering and provider diagnostics. Mobile M1 TLS cancellation remains open. Root M2 cleanup correction at957433 has clean362-test proof; re-review pending. Process quotas multiply across replicas; durable spending B is deferred.
 - **Expected:**
   - Expired limiter keys are pruned; global concurrency/spend limits have bounded memory and documented multi-process semantics.
   - Quota/provider failure returns recoverable errors with no hidden paid retry loop.
   - Clock-controlled expiration/burst/concurrency tests prove caps; hosting/provider budgets are confirmed or explicitly blocked.
 - **Req:** TR engineering 9; TR fix 12; docs/reviews/2026-11-02-baseline.md
 - **Depends on:** none
-- **Repro / Notes:** Original backend before-proof: 8 failures/4 controls; retained A2a 1093 Go/75 runtime checks. Mobile immutable-base proof: 5 assertion failures/1 control. Synthetic loopback only; no paid inference/customer data. See dated backend/mobile OCR evidence notes and their raw scratch bindings.
+- **Repro / Notes:** Backend before-proof: 8 failures/4 controls; A2a1093Go/75runtime. Mobile original5 failures/1control; M2 immutable-base and final-await removal failures retained. Synthetic loopback only; no paid inference/customer data.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** A2b 57b4647: one owned native client/45s deadline, actual abort/close, decoded 1MiB/shape/checked 500-line guards, atomic validated bill replacement and disposal/review checks. Full Flutter 359/359, all prior 237 retained; 9 removal assertions fail as intended. B, owner budget/provider enforcement, old-writer drain, independent/clean integrated/hosting/signed-public/release gates stay open; no closure.
-- **Docs:** mobile/README.md; docs/{backend-api,technical-overview,mobile-ocr-verification}.md; docs/reviews/2026-11-04-ocr-a2-{backend,mobile}.md; VERIFICATION.md.
+- **Fix:** 957433 joins original upload-input cleanup, including errors/reentrant cancel. Clean Flutter362/362 incl17native; all359prior retained. A2b bounded parsing/atomic application retained. M1/backend review/B/budget/old-writer/integrated/device/hosting/release remain open; no closure.
+- **Docs:** mobile/README.md; docs/{backend-api,technical-overview,mobile-ocr-verification}.md; dated OCR A2 notes; docs/reviews/2026-11-04-mobile-upload-cleanup-correction.md; VERIFICATION.md (unchanged).
 - **Log:**
   - 2026-11-04 Validation: Mobile 0 fail/skip/cache/missing terminals; 14 native host-IO cases, no simulator claim. Scans unsuppressed: Semgrep0/0 findings; Gitleaks1/3 unchanged placeholders. 336 originals intact. Backend P2 corrections and JSON performance/global RED remain pending.
+  - 2026-11-04 Correction: M2 clean committed gate:362 pass/0fail/skip;17native;131inputs/336originals unchanged. Re-review pending; M1 silent-TLS3fail/1HTTPcontrol and backend3P2 stay open. Whole acceptance RED.
 
 ### [BUG-1793644509] Redact credentials and payment data from SQL logs
 - [x] **Severity:** med
