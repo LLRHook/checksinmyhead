@@ -22,6 +22,8 @@ import 'package:http/testing.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+final _syntheticKey = base64Url.encode(List.filled(32, 1)).replaceAll('=', '');
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late Directory fixture;
@@ -230,24 +232,29 @@ void main() {
           Map<String, dynamic>? sent;
           await http.runWithClient(
             () async {
-              final operation = ApiService().uploadBill(
-                billName: 'Snack',
-                participants: [person],
-                personShares: {person: 10},
-                items: [
-                  BillItem(
-                    name: 'Snack',
-                    price: 10,
-                    assignments: {person: 100},
-                  ),
-                ],
-                subtotal: 10,
-                tax: 0,
-                tipAmount: 0,
-                tipPercentage: 0,
-                total: 10,
-                paymentMethods: const [],
-              );
+              final operation = Future.sync(() {
+                final api = ApiService();
+                final body = api.buildBillRequest(
+                  billName: 'Snack',
+                  participants: [person],
+                  personShares: {person: 10},
+                  items: [
+                    BillItem(
+                      name: 'Snack',
+                      price: 10,
+                      assignments: {person: 100},
+                    ),
+                  ],
+                  subtotal: 10,
+                  tax: 0,
+                  tipAmount: 0,
+                  tipPercentage: 0,
+                  total: 10,
+                  paymentMethods: const [],
+                  currencyCode: 'USD',
+                );
+                return api.publishSnapshot(jsonEncode(body), _syntheticKey);
+              });
               if (letters == 30) {
                 await expectLater(
                   operation,
@@ -265,8 +272,13 @@ void main() {
             },
             () => MockClient((request) async {
               requests++;
+              expect(request.method, 'POST');
+              expect(request.headers['Idempotency-Key'], _syntheticKey);
               sent = jsonDecode(request.body) as Map<String, dynamic>;
-              return http.Response('{"bill_id":1}', 201);
+              return http.Response(
+                jsonEncode(creationResponse(sent!, id: 1)),
+                201,
+              );
             }),
           );
           expect(requests, letters == 30 ? 0 : 1);

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'save_receipt_test.dart' show creationResponse;
 import 'package:checks_frontend/models/bill_item.dart';
 import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/screens/quick_split/bill_summary/models/bill_summary_data.dart';
@@ -16,6 +17,8 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:provider/provider.dart';
 
+final _syntheticKey = base64Url.encode(List.filled(32, 1)).replaceAll('=', '');
+
 final alex = Person(name: 'Alex', color: Colors.blue);
 final sam = Person(name: 'Sam', color: Colors.green);
 
@@ -25,19 +28,24 @@ Future<BillUploadResponse> upload(
   Map<Person, double>? shares,
   bool lazy = false,
   double subtotal = 10,
-}) => ApiService().uploadBill(
-  billName: 'Snack',
-  participants: participants ?? [alex, sam],
-  personShares: shares ?? {alex: 10, sam: 0},
-  items: items,
-  subtotal: subtotal,
-  tax: 0,
-  tipAmount: 0,
-  tipPercentage: 0,
-  total: subtotal,
-  paymentMethods: const [],
-  lazyMode: lazy,
-);
+}) async {
+  final api = ApiService();
+  final body = api.buildBillRequest(
+    billName: 'Snack',
+    participants: participants ?? [alex, sam],
+    personShares: shares ?? {alex: 10, sam: 0},
+    items: items,
+    subtotal: subtotal,
+    tax: 0,
+    tipAmount: 0,
+    tipPercentage: 0,
+    total: subtotal,
+    paymentMethods: const [],
+    currencyCode: 'USD',
+    lazyMode: lazy,
+  );
+  return api.publishSnapshot(jsonEncode(body), _syntheticKey);
+}
 
 void main() {
   testWidgets(
@@ -92,16 +100,18 @@ void main() {
       expect(item.assignments, {alex: 100, sam: 0});
       expect(provider.personFinalShares, {alex: 10, sam: 0});
       Map<String, dynamic>? sent;
+      var requests = 0;
       await http.runWithClient(
         () => upload(provider.items, shares: provider.personFinalShares),
         () => MockClient((request) async {
+          requests++;
+          expect(request.method, 'POST');
+          expect(request.headers['Idempotency-Key'], _syntheticKey);
           sent = jsonDecode(request.body) as Map<String, dynamic>;
-          return http.Response(
-            '{"bill_id":1,"access_token":"synthetic","share_url":"https://example.test/b/1"}',
-            201,
-          );
+          return http.Response(jsonEncode(creationResponse(sent!, id: 1)), 201);
         }),
       );
+      expect(requests, 1);
       expect((sent!['items'] as List).single['assignments'], [
         {'person_name': 'Alex', 'percentage': 100},
       ]);
@@ -170,6 +180,7 @@ void main() {
     test('upload accepts 30-rune label ${name.runes.first}', () async {
       final person = Person(name: name, color: Colors.blue);
       Map<String, dynamic>? sent;
+      var requests = 0;
       await http.runWithClient(
         () => upload(
           [
@@ -179,10 +190,14 @@ void main() {
           shares: {person: 10},
         ),
         () => MockClient((request) async {
+          requests++;
+          expect(request.method, 'POST');
+          expect(request.headers['Idempotency-Key'], _syntheticKey);
           sent = jsonDecode(request.body) as Map<String, dynamic>;
-          return http.Response('{"bill_id":1}', 201);
+          return http.Response(jsonEncode(creationResponse(sent!, id: 1)), 201);
         }),
       );
+      expect(requests, 1);
       expect(sent!['participants'], [
         {'name': name},
       ]);
@@ -340,6 +355,7 @@ void main() {
       'lazy upload preserves empty and partial claims ${assignments.length}/${assignments[alex]}',
       () async {
         Map<String, dynamic>? sent;
+        var requests = 0;
         await http.runWithClient(
           () => upload(
             [
@@ -356,10 +372,17 @@ void main() {
             subtotal: 9,
           ),
           () => MockClient((request) async {
+            requests++;
+            expect(request.method, 'POST');
+            expect(request.headers['Idempotency-Key'], _syntheticKey);
             sent = jsonDecode(request.body) as Map<String, dynamic>;
-            return http.Response('{"bill_id":1}', 201);
+            return http.Response(
+              jsonEncode(creationResponse(sent!, id: 1)),
+              201,
+            );
           }),
         );
+        expect(requests, 1);
         final items = sent!['items'] as List;
         expect(items.map((i) => i['name']), ['Repeated', 'Repeated']);
         expect(items.map((i) => i['price']), [10, -1]);

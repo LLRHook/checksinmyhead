@@ -161,68 +161,6 @@ class ApiService {
         return rate;
       });
 
-  /// Uploads a completed bill to the backend
-  Future<BillUploadResponse> uploadBill({
-    required String billName,
-    required List<Person> participants,
-    required Map<Person, double> personShares,
-    required List<BillItem> items,
-    required double subtotal,
-    required double tax,
-    required double tipAmount,
-    required double tipPercentage,
-    required double total,
-    required List<Map<String, String>> paymentMethods,
-    String currencyCode = 'USD',
-    String? displayCurrency,
-    bool lazyMode = false,
-  }) async {
-    return _withStandardErrors(() async {
-      final requestBody = buildBillRequest(
-        billName: billName,
-        participants: participants,
-        personShares: personShares,
-        items: items,
-        subtotal: subtotal,
-        tax: tax,
-        tipAmount: tipAmount,
-        tipPercentage: tipPercentage,
-        total: total,
-        paymentMethods: paymentMethods,
-        currencyCode: currencyCode,
-        displayCurrency: displayCurrency,
-        lazyMode: lazyMode,
-      );
-
-      final response = await _client
-          .post(
-            Uri.parse('$baseUrl/api/bills'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode(requestBody),
-          )
-          .timeout(_timeout);
-
-      if (response.statusCode == 201) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>?;
-        if (data == null) {
-          throw ApiException('Failed to parse bill upload response');
-        }
-        final result = BillUploadResponse.fromJson(data);
-        if (!result.isAuthoritativeFor(currencyCode)) {
-          throw ApiException(
-            'The server did not confirm this conversion. Publication is pending.',
-          );
-        }
-        return result;
-      } else {
-        throw ApiException(
-          'Failed to upload bill',
-          statusCode: response.statusCode,
-        );
-      }
-    });
-  }
-
   /// Fail closed before any attempted create. Capability is a wire prerequisite,
   /// never evidence that replay-ignorant writers have been drained from a fleet.
   Future<bool> supportsCreationReplay() async {

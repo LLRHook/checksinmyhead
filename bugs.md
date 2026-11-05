@@ -82,8 +82,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** 11e6f67 fixes overlapping tab intent and per-row validation feedback;7bddfa9 makes diagnostics finite. Root clean467/510 preserves prior458/500;3 guards discriminate. Independent corrections0/0 APPROVE. At276 maintained Runner native33/33 passes lost201/process-reopen with real MethodChannel/Drift and synthetic loopback; OSexit unavailable, native review pending. PG wire proof retained; .005 and combined/release remain open.
-- **Docs:** docs/mobile-save-verification.md; docs/reviews/2026-11-04-mobile-save-{reopen,corrections,acceptance}.md; docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md
+- **Fix:** 11e6f67 fixes tab intent/validation feedback;7bddfa9 finite diagnostics. Root467/510 retains458/500;3 guards; corrections0/0 APPROVE. At276 native33/33 real MethodChannel/Drift lost201/reopen+synthetic loopback is accepted Std0/Spec0; OSexit unavailable; PG wire retained. Remove unused uploader; retarget helpers; local34/467 pass. .005/identity/precision/integrated/release open; retirement independent/root/CI pending.
+- **Docs:** docs/mobile-save-verification.md; docs/reviews/2026-11-04-mobile-save-{reopen,corrections,acceptance}.md; docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-05-legacy-uploader-retirement.md
 - **Log:**
   - 2026-11-03 Evidence: Driver fb6b4b9 actual provider penny capture: client Alex=.01/Sam=0; v1 server Alex=0/Sam=.01 with .005 raw details. No math change in 43772a7. Preserve server/historical contracts; deliberately align local/published allocation in currency/save scope. See docs/reviews/2026-11-03-client-v1-bridge.md.
 
