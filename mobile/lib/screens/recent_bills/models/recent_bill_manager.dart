@@ -79,8 +79,8 @@ class RecentBillsManager extends ChangeNotifier {
       }
 
       return bills;
-    } catch (e) {
-      debugPrint('Error fetching bills: $e');
+    } catch (_) {
+      debugPrint('Error fetching bills');
       return [];
     }
   }
@@ -315,8 +315,8 @@ class RecentBillsManager extends ChangeNotifier {
 
       await getRecentBills();
       notifyListeners();
-    } catch (e) {
-      debugPrint('Error deleting bill: $e');
+    } catch (_) {
+      debugPrint('Error deleting bill');
     }
   }
 
@@ -326,8 +326,8 @@ class RecentBillsManager extends ChangeNotifier {
 
       await getRecentBills();
       notifyListeners();
-    } catch (e) {
-      debugPrint('Error deleting all bills: $e');
+    } catch (_) {
+      debugPrint('Error deleting all bills');
     }
   }
 
@@ -336,8 +336,8 @@ class RecentBillsManager extends ChangeNotifier {
       await _db.updateBillShareUrl(id, shareUrl);
       await getRecentBills();
       notifyListeners();
-    } catch (e) {
-      debugPrint('Error updating bill share URL: $e');
+    } catch (_) {
+      debugPrint('Error updating bill share URL');
     }
   }
 
@@ -828,9 +828,9 @@ class RecentBillsManager extends ChangeNotifier {
       // Refresh the bills list to update listeners
       await getRecentBills();
       notifyListeners();
-    } catch (e) {
-      // Log any errors but don't propagate them to the UI
-      debugPrint('Error updating bill name: $e');
+    } catch (_) {
+      // Keep the operation diagnostic finite; never include driver parameters.
+      debugPrint('Error updating bill name');
     }
   }
 }

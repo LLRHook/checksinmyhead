@@ -48,6 +48,8 @@ joining that pass; conflicting destinations retain the first trip. A failed crea
 or attachment is not automatically repeated by the joining caller. Mixed tab
 selections continue after history-review or missing-row failures, preserve earlier
 commits/raw history, and show review/pending feedback through the actual selector.
+Its real SQLite rejection trigger also verifies that failed URL/name writes retain
+the original row and emit only finite operation labels, without SQL parameters.
 
 ## Actual maintained-server wire proof
 

@@ -539,3 +539,16 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Docs:** mobile/README.md; docs/mobile-ocr-verification.md; docs/reviews/2026-11-04-ios-lock-qualification.md; docs/reviews/2026-11-04-ios-native-phase-acceptance.md
 - **Log:**
   - 2026-11-04 Validation: Root-approved bounded native-lock repair from exact7e36d8a; native24PASS with29 joined ownership observations and no new dependencies/versions. One owned simulator created and deleted; prior simulators preserved. Native console diagnostic capture incomplete; case JSON/artifact/source/lsof evidence retained. Raw Semgrep1/six candidates and Gitleaks1/three candidates are synthetic PKI/task logging, owner-confirmed0 with no suppressions; independent review pending. Existing host RSS/heap resource PARTIAL/RED, physical/public/signed-client NOT RUN, whole acceptance RED.
+
+### [BUG-1793848441] Keep mobile persistence diagnostics free of receipt data
+- [ ] **Severity:** med
+- **Area:** mobile, security, logging
+- **File(s):** mobile/lib/screens/recent_bills/models/recent_bill_manager.dart; mobile/test/save_tab_review_correction_test.dart
+- **Observation:** Five persistence error sinks interpolate original errors. A real SQLite BEFORE UPDATE rejection caused synthetic receipt URL/name write parameters to reach the captured application diagnostic.
+- **Expected:** Failed persistence operations log finite operation labels only, never driver text, SQL parameters, receipt names or source capabilities. Existing return/control behavior and original rows remain unchanged. A real SQLite rejection regression proves confidentiality and preserved state.
+- **Req:** Security finite-diagnostic boundary; scoped Semgrep follow-up to mobile save review; BUG-1793644509 covers the separate backend sinks
+- **Depends on:** none
+- **Repro / Notes:** At source11e6f67, logging-before.jsonl executes9 cases:8 pass and1 intended confidentiality assertion fails. Synthetic in-memory Drift only; no customer data or external request. Five raw sinks were confirmed by source inspection.
+- **Bump:** patch
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress

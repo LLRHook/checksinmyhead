@@ -108,6 +108,43 @@ void main() {
     },
   );
 
+  test(
+    'real SQLite write failures keep receipt URLs and names out of diagnostics',
+    () async {
+      final h = Harness()..replay = false;
+      addTearDown(h.db.close);
+      final saved = await h.save();
+      await h.db.customStatement(
+        "CREATE TRIGGER fixture_reject_update BEFORE UPDATE ON recent_bills BEGIN SELECT RAISE(ABORT, 'synthetic write rejection'); END",
+      );
+      const marker = 'synthetic-private-receipt-20261104';
+      final messages = <String>[];
+      final original = debugPrint;
+      debugPrint = (String? message, {int? wrapWidth}) {
+        messages.add(message ?? '');
+      };
+      try {
+        await h.owner.updateBillShareUrl(
+          saved.localId,
+          'https://billington.app/b/19?t=$marker',
+        );
+        await h.owner.updateBillName(saved.localId, marker);
+      } finally {
+        debugPrint = original;
+      }
+      expect(messages, hasLength(2));
+      expect(
+        messages.any((line) => line.contains(marker)),
+        isFalse,
+        reason: 'SQL failure parameters must not enter application diagnostics',
+      );
+      final row = (await h.db.getBillById(saved.localId))!;
+      expect(row.shareUrl, isNull);
+      expect(row.billName, 'Synthetic');
+      expect(h.posts, 0);
+    },
+  );
+
   for (final lostResponse in [false, true]) {
     test(
       'launch recovery retains overlapping tab intent ${lostResponse ? 'after lost201 without automatic create retry' : 'and attaches once'}',
