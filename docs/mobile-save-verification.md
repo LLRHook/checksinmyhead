@@ -83,20 +83,30 @@ keys block publication. No unsupported-platform/plaintext fallback exists. Exist
 bearer URLs remain plaintext; this change makes no broader encryption claim.
 
 Native tests use task-owned service/item names and exactly one owned simulator.
-Every qualification build must pass `--no-codesign`; Xcode invocations must explicitly
-set `CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=` and avoid
-all provisioning/account actions. Disable parallel simulator cloning when using
-XCTest. Preserve existing devices/credentials. Bind exact native/Dart source, target,
-kernel/application artifact and result receipts; distinguish app assertions, XCTest
-counts, wrapper exit and missing diagnostics. Retain failed attempts.
+Default builds use `--no-codesign` and explicit Xcode
+`CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=`. The driver's
+separately bounded local simulator follow-up uses command-line dash signing only:
+`CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual`, required/allowed/ad-hoc signing YES,
+with empty development-team/profile fields. It changes no project settings or
+entitlements and permits no named identity, provisioning or account actions.
+Inspect actual embedded simulator entitlement sections, generated xcent and native
+compiler inputs; an empty `codesign --entitlements` result alone is insufficient.
+Disable parallel simulator cloning when using XCTest. Preserve existing devices and
+credentials. Bind exact native/Dart source, target, kernel/application artifact and
+result receipts; distinguish app assertions, XCTest counts, wrapper exit, intended
+exit, actual process termination and unavailable independent OS exit status. Retain
+failed attempts.
 
-The retained unsigned attempt reports `errSecMissingEntitlement` (`-34018`): native
-Keychain is **BLOCKED**. Its reported2/5 XCTest passes and the host/wire
-results do not qualify actual native storage; lookup failed before one intended
-random-failure seam was reached. Root owns any separately bounded next
-native path. No signing/project-entitlement workaround follows. Simulator proof,
-even if later successful, would not establish physical/signed/default-trust/release
-acceptance. Delete only exact task-owned simulator/schema/process fixtures.
+The retained unsigned attempt reports `errSecMissingEntitlement` (`-34018`): that
+attempt remains **BLOCKED**, with2/5 XCTest passes. A later maintained-app attempt
+failed before run-start with zero cases/requests; it remains setup RED. Neither is
+relabeled. The bounded follow-up at276c33fe records33 passing app assertions across
+first save and actual process-reopen, using the production MethodChannel and
+file-backed Drift with a synthetic loopback replay fixture. See the
+[acceptance note](reviews/2026-11-04-mobile-save-acceptance.md) for artifact/signing,
+console, cleanup and scope limits. This does not establish physical, public-signed,
+default-trust, memory or release acceptance. Delete only exact task-owned simulator,
+schema and process fixtures.
 
 ## Fail-closed release and evidence rules
 

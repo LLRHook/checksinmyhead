@@ -82,8 +82,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** 11e6f67 fixes durable overlapping tab intent and per-row history/read feedback;7bddfa9 makes diagnostics finite. Root clean7bddfa9: Flutter467/510, prior458/500 retained and495 sources unchanged;3 scoped guard removals discriminate. PG/Drift recovery proof retained. Native app setup RED/0 cases; .005 alignment, independent review and combined/release gates remain open.
-- **Docs:** docs/mobile-save-verification.md; docs/reviews/2026-11-04-mobile-save-reopen.md; docs/reviews/2026-11-04-mobile-save-corrections.md; docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md
+- **Fix:** 11e6f67 fixes overlapping tab intent and per-row validation feedback;7bddfa9 makes diagnostics finite. Root clean467/510 preserves prior458/500;3 guards discriminate. Independent corrections0/0 APPROVE. At276 maintained Runner native33/33 passes lost201/process-reopen with real MethodChannel/Drift and synthetic loopback; OSexit unavailable, native review pending. PG wire proof retained; .005 and combined/release remain open.
+- **Docs:** docs/mobile-save-verification.md; docs/reviews/2026-11-04-mobile-save-{reopen,corrections,acceptance}.md; docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md
 - **Log:**
   - 2026-11-03 Evidence: Driver fb6b4b9 actual provider penny capture: client Alex=.01/Sam=0; v1 server Alex=0/Sam=.01 with .005 raw details. No math change in 43772a7. Preserve server/historical contracts; deliberately align local/published allocation in currency/save scope. See docs/reviews/2026-11-03-client-v1-bridge.md.
 
@@ -361,8 +361,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Provider/replay frozen/display/zero contracts retained. Mobile final7bddfa9 includes save review corrections; root clean Flutter467/510 preserves prior458/500. Native class20 proof is separate; maintained app setup RED/0 cases. .005 alignment, identity0003, versioned JPY, independent correction review and combined/signed rollout remain open.
-- **Docs:** docs/mobile-save-verification.md; docs/reviews/2026-11-04-mobile-save-reopen.md; docs/reviews/2026-11-04-mobile-save-corrections.md; docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md
+- **Fix:** Provider/replay frozen/display/zero contracts retained. Mobile corrections independently0/0 APPROVE; root clean467/510 preserves prior458/500. At276 maintained Runner native33/33 passes exact-key/snapshot process-reopen and EUR25/USD31.25 with synthetic loopback; OSexit unavailable, native review pending. .005, identity0003, versioned JPY and combined/signed rollout remain open.
+- **Docs:** docs/mobile-save-verification.md; docs/reviews/2026-11-04-mobile-save-{reopen,corrections,acceptance}.md; docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md
 - **Log:**
   - 2026-11-03 Scope: Approved one-adapter/no-TTL decision supersedes old dual-provider/cache proposal. Keep open: display provenance0002; mobile rate decoder/quote state/save/replay/Keychain; required versioned JPY step. Global security/integrated acceptance RED.
 
@@ -541,7 +541,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-04 Validation: Root-approved bounded native-lock repair from exact7e36d8a; native24PASS with29 joined ownership observations and no new dependencies/versions. One owned simulator created and deleted; prior simulators preserved. Native console diagnostic capture incomplete; case JSON/artifact/source/lsof evidence retained. Raw Semgrep1/six candidates and Gitleaks1/three candidates are synthetic PKI/task logging, owner-confirmed0 with no suppressions; independent review pending. Existing host RSS/heap resource PARTIAL/RED, physical/public/signed-client NOT RUN, whole acceptance RED.
 
 ### [BUG-1793848441] Keep mobile persistence diagnostics free of receipt data
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** mobile, security, logging
 - **File(s):** mobile/lib/screens/recent_bills/models/recent_bill_manager.dart; mobile/test/save_tab_review_correction_test.dart
 - **Observation:** Five persistence error sinks interpolate original errors. A real SQLite BEFORE UPDATE rejection caused synthetic receipt URL/name write parameters to reach the captured application diagnostic.
@@ -551,6 +551,6 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** At source11e6f67, logging-before.jsonl executes9 cases:8 pass and1 intended confidentiality assertion fails. Synthetic in-memory Drift only; no customer data or external request. Five raw sinks were confirmed by source inspection.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
-- **Fix:** 7bddfa9 replaces five raw persistence-error interpolations with finite operation labels. A real SQLite rejection produces1 intended confidentiality failure with8 healthy controls before correction, then9 passes. Root clean Flutter467/510 preserves all prior cases and495 sources. Scoped scans/review recorded in dated correction evidence; independent acceptance remains pending.
-- **Docs:** docs/mobile-save-verification.md; docs/reviews/2026-11-04-mobile-save-corrections.md; mobile/lib/screens/recent_bills/models/recent_bill_manager.dart
+- **Status:** fixed-pending-migration
+- **Fix:** 7bddfa9 replaces five raw persistence-error interpolations with finite labels. Real SQLite rejection:1 intended confidentiality failure/8 healthy before,9 pass after; rows unchanged. Root clean467/510 retains all prior cases/495 sources. Independent Standards0/Spec0 APPROVE; scoped source criterion accepted, whole security/integrated acceptance remains RED.
+- **Docs:** docs/mobile-save-verification.md; docs/reviews/2026-11-04-mobile-save-{corrections,acceptance}.md; mobile/lib/screens/recent_bills/models/recent_bill_manager.dart
