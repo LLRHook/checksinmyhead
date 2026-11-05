@@ -468,6 +468,7 @@ describe("tab collections", () => {
 
     await expect(get("7", "token")).resolves.toEqual([{ id: 1 }]);
     expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining(path), {
+      cache: "no-store",
       headers: { Authorization: "Bearer token" },
     });
   });

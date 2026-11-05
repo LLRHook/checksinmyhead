@@ -408,7 +408,12 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Read generateMetadata and layout metadata at baseline; tokens remain authorization credentials. Defense in depth does not replace ownership fixes.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Use generic resource-free root metadata, noindex/nofollow HTTP policy, no-referrer, and explicit no-store authorized reads. Local72 cases and nine built-Next HTTP cases pass; independent review/root acceptance pending.
+- **Docs:** web-bill-viewer/README.md; docs/reviews/2026-11-04-private-viewer-privacy.md
+- **Log:**
+  - 2026-11-04 Verification: Approved private-viewer scope implemented; before/removal controls and local browser destination headers retained. No hosting/release action; wider gates remain RED.
 
 ### [BUG-1793644519] Harden existing GitHub workflow execution settings
 - [ ] **Severity:** med

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { FaLock, FaTriangleExclamation } from "react-icons/fa6";
 import AppHandoff from "@/components/AppHandoff";
@@ -20,24 +19,6 @@ import {
   type Tab,
 } from "@/lib/api";
 import { lazyBillRemainingTotal } from "@/lib/lazy-bill";
-
-export async function generateMetadata({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ t?: string }>;
-}): Promise<Metadata> {
-  const { id } = await params;
-  const { t: token } = await searchParams;
-  if (!token) return { title: "Billington" };
-  try {
-    const tab = await getTab(id, token);
-    return { title: `${tab.name} - Billington` };
-  } catch {
-    return { title: "Billington" };
-  }
-}
 
 export default async function TabPage({
   params,

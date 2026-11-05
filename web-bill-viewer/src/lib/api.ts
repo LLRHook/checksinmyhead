@@ -120,6 +120,7 @@ async function getAuthorizedResource<T>(
   resourceName: "bill" | "tab",
 ): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
+    cache: "no-store",
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!response.ok) {
@@ -155,6 +156,7 @@ async function getTabCollection<T>(
   token: string,
 ): Promise<T[]> {
   const response = await fetch(`${API_BASE_URL}/api/tabs/${id}/${collection}`, {
+    cache: "no-store",
     headers: { Authorization: `Bearer ${token}` },
   });
 

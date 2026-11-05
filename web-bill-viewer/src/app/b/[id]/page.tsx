@@ -1,25 +1,5 @@
-import type { Metadata } from "next";
 import { FaLock } from "react-icons/fa6";
 import BillPageClient from "@/components/BillPageClient";
-import { getBill } from "@/lib/api";
-
-export async function generateMetadata({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ t?: string }>;
-}): Promise<Metadata> {
-  const { id } = await params;
-  const { t: token } = await searchParams;
-  if (!token) return { title: "Billington" };
-  try {
-    const bill = await getBill(id, token);
-    return { title: `${bill.name} - Billington` };
-  } catch {
-    return { title: "Billington" };
-  }
-}
 
 export default async function BillPage({
   params,

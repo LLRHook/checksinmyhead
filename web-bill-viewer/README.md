@@ -10,6 +10,54 @@ current [Next.js security advisories](https://github.com/vercel/next.js/security
 and [stable release](https://registry.npmjs.org/next/latest) before release;
 successful local checks do not establish the deployed Vercel revision.
 
+## Private viewer privacy
+
+This application serves private bill and tab links. The public marketing and policy
+site lives in a separate repository; its search acquisition policy does not apply
+here. PR #149 intentionally removed the viewer's `/privacy` route. Privacy disclosure
+destinations and contact ownership remain separate verification obligations.
+
+The root layout supplies a generic Billington title and description with
+`noindex, nofollow`. Bill and tab metadata needs no authorized API lookup and contains
+no resource names, bearer URLs, canonical/social URLs or resource preview assets.
+The global `X-Robots-Tag: noindex, nofollow` also covers access-required and error
+responses. These crawler directives do not authorize access or revoke an old link.
+
+`Referrer-Policy: no-referrer` prevents the private page URL from being sent as a
+browser `Referer`, including on same-origin navigation. Authorized bill, tab, member
+and settlement reads use `cache: "no-store"` for both Next's server fetch cache and
+the browser HTTP cache, retaining the per-request Bearer header and existing API
+paths. Dynamic private page responses remain private/no-store. Authorized names and
+credentials required by client components can still appear in body/RSC data; do not
+treat an absence check over the entire HTML as a metadata privacy test.
+
+### Local privacy verification
+
+Use Node 24/npm 11 and the committed lock, with a task-owned synthetic API on loopback.
+Set `NEXT_PUBLIC_API_URL` explicitly for **both** `npm run build` and
+`npm run start -- --hostname 127.0.0.1 --port <owned-port>`; do not point this exercise
+at live hosting. Run `npm ci`, `npm run lint`, `npm test`, `npm run build` and
+`npm audit --audit-level=moderate`. Retain full test case identities and raw results.
+
+For `/b/[id]` and `/t/[id]`, request valid, invalid and missing-token links from the
+actual production server. Inspect response headers and parsed title/robots/canonical/
+Open Graph/Twitter tags separately from the body. Require generic metadata,
+noindex/nofollow, no-referrer and private/no-store, including tab not-found/API-error
+responses. Missing-token pages must make no resource request; an invalid tab token
+must not load its member/settlement collections. Valid tab names remain server
+rendered. Bill data loads in the client: HTTP returns its loading body and client
+props, then the browser must show the authorized bill or access error. No bill API
+request is needed to construct its metadata.
+
+In one owned browser tab, follow a test-only anchor from a synthetic private page
+to a second owned loopback origin. Record the destination's actual request headers
+and require no `Referer`; do not give the anchor its own referrer override. Keep
+the existing CSP, images/fonts, body authorization and manual payment handoff intact.
+Retain before/healthy/guard-removal failures and restoration hashes, then stop only
+the exact owned process groups/ports and close the owned tab. Local evidence is not
+deployed-hosting, whole-security or release acceptance. See the
+[dated implementation evidence](../docs/reviews/2026-11-04-private-viewer-privacy.md).
+
 ## Getting Started
 
 From the repository root, prepare explicitly, then start the backend and viewer:
