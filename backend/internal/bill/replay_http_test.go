@@ -42,7 +42,15 @@ func TestReplayHTTPRejectsEveryMalformedParsedKey(t *testing.T) {
 
 func TestCreationResponseCapabilityIsNoStore(t *testing.T) {
 	w := creationHTTP(t, newMockRepo(), http.Header{}, `{"name":"Receipt","subtotal":10,"total":10}`)
-	if w.Code != 201 || w.Header().Get("Cache-Control") != "no-store" {
+	if w.Code != 201 || !privateNoStore(w.Header().Get("Cache-Control")) {
 		t.Fatalf("creation capability caching: status=%d cache=%q", w.Code, w.Header().Get("Cache-Control"))
 	}
+}
+
+func privateNoStore(value string) bool {
+	directives := map[string]bool{}
+	for _, token := range strings.Split(value, ",") {
+		directives[strings.TrimSpace(strings.ToLower(token))] = true
+	}
+	return directives["private"] && directives["no-store"] && !directives["public"]
 }

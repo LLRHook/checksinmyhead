@@ -122,6 +122,12 @@ func TestPostgresReplayElectionWaitVisibilityBothOrdersAndRollback(t *testing.T)
 					}
 					defer hold.Rollback()
 					v := cloneCreation(winner.Bill)
+					var graphErr error
+					v.ParticipantRows, graphErr = creationParticipants(v)
+					if graphErr != nil {
+						t.Fatal(graphErr)
+					}
+					v.IdentityVersion, v.IdentityState = 2, "ready"
 					v.CreationKeyDigest = winner.Replay.KeyDigest[:]
 					v.CreationFingerprint = winner.Replay.Fingerprint[:]
 					version := int16(1)
@@ -330,7 +336,7 @@ func TestPostgresReplayPersistedReturningAndNoHooks(t *testing.T) {
 	if err != nil || result.AccessToken != first.Result.AccessToken {
 		t.Fatal("scalar persisted identity lost")
 	}
-	replayExec(t, db, "UPDATE bills SET creation_fingerprint_version=2")
+	replayExec(t, db, "UPDATE bills SET creation_fingerprint_version=3")
 	got, err = repo.LookupCreation(context.Background(), c.Replay.KeyDigest)
 	if err != nil {
 		t.Fatal(err)

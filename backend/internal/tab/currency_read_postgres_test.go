@@ -3,6 +3,7 @@
 package tab
 
 import (
+	"backend/internal/testidentity"
 	"backend/pkg/models"
 	"context"
 	"encoding/json"
@@ -109,10 +110,13 @@ func TestPostgresCurrencyBillTabAndFinalizationAgree(t *testing.T) {
 						t.Errorf("per-person settlement=%+v; want Alex %.2f, Birthday0", rows, tc.usd)
 					}
 				}
-				read := authRequest(r, "GET", fmt.Sprintf("/api/tabs/%d", dst.ID), "", dst.AccessToken, "")
+				read := referenceAuthRequest(t, db, r, "GET", fmt.Sprintf("/api/tabs/%d", dst.ID), "", dst.AccessToken, "")
 				var trip models.Tab
 				if err := json.Unmarshal(read.Body.Bytes(), &trip); err != nil {
 					t.Fatal(err)
+				}
+				if !strings.Contains(read.Body.String(), `"net_balances":null`) || !strings.Contains(read.Body.String(), `"net_balance_status":"identity_review_required"`) {
+					t.Error("missing payer must remain explicitly unavailable alongside valid frozen totals")
 				}
 				if read.Code != 200 || trip.TotalAmount != tc.usd || len(trip.Bills) != 1 || trip.Bills[0].USDTotal != tc.usd {
 					t.Errorf("finalized=%v tab read=%d total %.2f bills=%+v; want USD %.2f", finalized, read.Code, trip.TotalAmount, trip.Bills, tc.usd)
@@ -142,17 +146,18 @@ func TestPostgresCurrencyUnavailableSummaryIsAuthorizedReview(t *testing.T) {
 	b := models.Bill{Name: "Legacy foreign", AccessToken: "synthetic-source", TabID: &dst.ID, CurrencyCode: "PEN", Total: 10, Subtotal: 10, USDExchangeRate: 1,
 		PersonShares: []models.PersonShare{{PersonName: "Alex", Subtotal: 10, Total: 10}}}
 	saveAuthFixture(t, db, &b)
+	testidentity.Ready(t, db, &b)
 	before := lifecycleSnapshot(t, db)
 	for _, token := range []string{"", "wrong", dst.AccessToken} {
-		got := authRequest(r, "GET", fmt.Sprintf("/api/tabs/%d", dst.ID), "", token, "")
+		got := referenceAuthRequest(t, db, r, "GET", fmt.Sprintf("/api/tabs/%d", dst.ID), "", token, "")
 		want := 403
 		if token == dst.AccessToken {
-			want = 409
+			want = 200
 		}
 		if got.Code != want {
 			t.Errorf("summary token=%q status=%d want=%d body=%s", token, got.Code, want, got.Body)
 		}
-		if token == dst.AccessToken && !strings.Contains(got.Body.String(), `"accounting_review_required"`) {
+		if token == dst.AccessToken && (!strings.Contains(got.Body.String(), `"total_amount":null`) || !strings.Contains(got.Body.String(), `"total_status":"accounting_review_required"`) || !strings.Contains(got.Body.String(), `"net_balance_status":"accounting_review_required"`)) {
 			t.Error("missing finite accounting-review code")
 		}
 		if strings.Contains(got.Body.String(), b.AccessToken) || strings.Contains(got.Body.String(), dst.AccessToken) {

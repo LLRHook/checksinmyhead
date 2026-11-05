@@ -260,6 +260,34 @@ Actual hosting resolver/NSS settings, mounted credentials, platform and deployme
 identity require separate evidence. Local success establishes no program-branch
 deployment or production compatibility with unknown hosting settings.
 
+## Participant identity behavior
+
+Use `X-Billington-Identity-Version: 2` for scoped participant IDs and truthful current/
+legacy review projections. [The API contract](../docs/backend-api.md#participant-reference-contract)
+defines strict reference creation/claims, participant create/rename, generation-bound
+binding request/decision receipts, authenticated member self-rename and exact retry
+exceptions. Source/destination/current membership are independently rechecked under
+Tab → Bills → participants → Items → Shares locks. Source-paid remains independent;
+tab-paid requires confirmed member ID equality even for same-flag retries.
+
+Ready references preserve immutable allocation labels/ordinals and frozen quotes.
+Gross and net share one checked USD kernel. Missing payer/invalid identity or valuation
+means explicit unavailable/null computed values, with independently safe raw history.
+Valid legacy1 snapshots retain exact rows even with duplicate/blank labels; mixed or
+missing evidence cannot be regenerated. First finalize acknowledges database RETURNING
+values/counts after checked commit, preserving actual timestamp precision.
+
+Complete explicit storage columns and bounded read-only consistent transactions serve
+API and retained HTML graph reads. This avoids additive-DDL result-shape invalidation
+without query-mode changes, reconnection or blind mutation retry. Readiness is still a
+live ledger check; separate startup verification checks catalog definitions. Existing
+old cached-reader failures and old-writer exclusion remain rollout prerequisites.
+
+The November5 source checkpoint characterizes local index reuse and runs the complete
+nonnumerical ordinary/mandatory PostgreSQL selections. The four historical numerical
+parents stay mandatory and unexecuted here; prior misses, the incomplete full gate and
+current runtime/image/warm qualification remain RED. See the [scoped evidence](../docs/reviews/2026-11-05-participant-identity-behavior.md).
+
 ## PostgreSQL schema startup
 
 Both maintained binaries apply/verify frozen 0001 and additive 0002/0003 before serving;
@@ -280,9 +308,13 @@ Recognition validates/subtracts exact v3, then nine v2 definitions before v1. St
 backfill copies exact Person/allocation labels, person-ID order and bill location,
 and assignment bill IDs. It never binds members, fills old child participant refs,
 recalculates money or changes original rows/ledger entries. Long/empty/colliding legacy
-labels and raw settlements remain. Defaults keep existing application writes at
-graph1/`legacy_review`; ready graphs, wire2, capability2, binding/paid/reference behavior
-and client/rollout work are separate. Retained original CASCADE actions still apply;
+labels and raw settlements remain. Database defaults stay graph1/`legacy_review`.
+Current creation explicitly writes complete graph2/ready/unbound rows; wire1 keeps its
+frozen fingerprint and eight-field201, while wire2 persists its exact original response
+and scoped reference map. All claim/participant/binding/paid/read/gross/net/finalization
+owners use references and checked revision/evidence. Labels grant no authority.
+Matched clients and rollout remain unqualified; the participant_identity2 capability
+is a server contract hint, separate from unchanged replay capability1/release guard. Retained original CASCADE actions still apply;
 new immediate RESTRICT FKs do not override an earlier original cascade trigger.
 See [foundation evidence](../docs/reviews/2026-11-05-identity-foundation.md).
 

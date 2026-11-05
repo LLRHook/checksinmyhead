@@ -97,7 +97,11 @@ func TestPostgresProductionReplayLifecycleLost201AndSecrecy(t *testing.T) {
 	// The first201 is deliberately treated as lost by the client. Recovery uses
 	// the original key/content; it never invents a second identity.
 	first := replayRequest(t, r, "POST", "/api/bills", body, key, "")
-	if first.Code != 201 || first.Header().Get("Cache-Control") != "no-store" || calls.Load() != 1 {
+	directives := map[string]bool{}
+	for _, directive := range strings.Split(first.Header().Get("Cache-Control"), ",") {
+		directives[strings.ToLower(strings.TrimSpace(directive))] = true
+	}
+	if first.Code != 201 || !directives["private"] || !directives["no-store"] || directives["public"] || calls.Load() != 1 {
 		t.Fatalf("first201=%d calls=%d", first.Code, calls.Load())
 	}
 	var result struct {
@@ -128,17 +132,27 @@ func TestPostgresProductionReplayLifecycleLost201AndSecrecy(t *testing.T) {
 	if err := db.QueryRow("SELECT id,updated_at FROM bill_items WHERE bill_id=$1 ORDER BY id DESC LIMIT 1", result.ID).Scan(&item, &stamp); err != nil {
 		t.Fatal(err)
 	}
-	claim := fmt.Sprintf(`{"expected_updated_at":%q,"assignments":[{"person_name":"Blair","percentage":100}]}`, stamp.Format(time.RFC3339Nano))
-	w := replayRequest(t, r, "PATCH", fmt.Sprintf("/api/bills/%d/items/%d/assignments?t=%s", result.ID, item, token), claim, "", "")
+	participant := identityRequest(t, r, "POST", fmt.Sprintf("/api/bills/%d/participants", result.ID), `{"client_ref":"claim_blair","name":"Blair","expected_revision":0}`, token, "", "", 2, 200)
+	var added struct {
+		P struct {
+			ID uint `json:"participant_id"`
+		} `json:"participant"`
+	}
+	if err := json.Unmarshal(participant.Body.Bytes(), &added); err != nil {
+		t.Fatal(err)
+	}
+	claim := fmt.Sprintf(`{"expected_revision":1,"expected_updated_at":%q,"assignments":[{"participant_id":%d,"percentage":100}]}`, stamp.Format(time.RFC3339Nano), added.P.ID)
+	w := identityRequest(t, r, "PATCH", fmt.Sprintf("/api/bills/%d/items/%d/assignments", result.ID, item), claim, token, "", "", 2, 200)
 	if w.Code != 200 {
 		t.Fatalf("claim %d %s", w.Code, w.Body)
 	}
 	checkReplay()
 	w = replayRequest(t, r, "POST", "/api/tabs", `{"name":"Trip","creator_display_name":"Alex"}`, "", "")
 	var dst struct {
-		ID     uint   `json:"tab_id"`
-		Token  string `json:"access_token"`
-		Member string `json:"member_token"`
+		ID       uint   `json:"tab_id"`
+		Token    string `json:"access_token"`
+		Member   string `json:"member_token"`
+		MemberID uint   `json:"member_id"`
 	}
 	if w.Code != 201 || json.Unmarshal(w.Body.Bytes(), &dst) != nil {
 		t.Fatal("create tab")
@@ -152,6 +166,17 @@ func TestPostgresProductionReplayLifecycleLost201AndSecrecy(t *testing.T) {
 	if err := db.QueryRow("SELECT id FROM person_shares WHERE bill_id=$1 ORDER BY id LIMIT 1", result.ID).Scan(&share); err != nil {
 		t.Fatal(err)
 	}
+	var participantID uint
+	var revision int64
+	if err := db.QueryRow("SELECT participant_id FROM person_shares WHERE id=$1 AND bill_id=$2", share, result.ID).Scan(&participantID); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRow("SELECT identity_revision FROM bills WHERE id=$1", result.ID).Scan(&revision); err != nil {
+		t.Fatal(err)
+	}
+	binding := fmt.Sprintf("/api/tabs/%d/bills/%d/participants/%d", dst.ID, result.ID, participantID)
+	identityRequest(t, r, "POST", binding+"/binding-request", fmt.Sprintf(`{"expected_revision":%d}`, revision), dst.Token, dst.Member, "", 2, 200)
+	identityRequest(t, r, "PUT", binding+"/binding", fmt.Sprintf(`{"expected_revision":%d,"request_revision":%d,"member_id":%d,"decision":"approve"}`, revision+1, revision+1, dst.MemberID), dst.Token, dst.Member, "", 2, 200)
 	w = replayRequest(t, r, "PATCH", fmt.Sprintf("/api/tabs/%d/bills/%d/shares/%d/paid?t=%s", dst.ID, result.ID, share, dst.Token), `{"paid":true}`, "", dst.Member)
 	if w.Code != 200 {
 		t.Fatalf("paid %d %s", w.Code, w.Body)
@@ -192,7 +217,7 @@ func TestPostgresProductionReplayLifecycleLost201AndSecrecy(t *testing.T) {
 			t.Fatal("malformed/conflict replay bypass or capability disclosure")
 		}
 	}
-	if _, err := db.Exec("UPDATE bills SET creation_fingerprint_version=2 WHERE id=$1", result.ID); err != nil {
+	if _, err := db.Exec("UPDATE bills SET creation_fingerprint_version=3 WHERE id=$1", result.ID); err != nil {
 		t.Fatal(err)
 	}
 	w = replayRequest(t, r, "POST", "/api/bills", body, key, "")

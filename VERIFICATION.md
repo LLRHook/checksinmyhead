@@ -129,9 +129,13 @@ via PG lock waits/channels ([lifecycle](docs/reviews/2026-11-03-atomic-lifecycle
 Registry1,2,3: preserve original rows/columns/PK/FK actions and ledger1/2 bytes. Test
 structural backfill/legacy defaults, NULL-safe scoped groups, sequence/default/ownership,
 strict prefixes/future drift, rollback/cancel/apply locks and actual old prefix1/2
-startup/verify/reads. Distinguish restarted compatibility from warm-reader failures/
-writer safety. Verify pre-DDL reader drain and connection replacement before resuming;
-no blind mutation retry, ready2 or capability2.
+startup/verify/reads. Retain old warm-reader failures/old-writer gates. Prove current
+API/HTML on the same observed warm PID/pool1 through owned additive columns/suffix4;
+health checks ledger only, separate verify checks catalogs. Restore1,2,3/data. Test
+ready2 reference authority/revision/receipts, persisted response2, same-label denial/
+confirmed-owner success, rename-stable cents, explicit unavailable net and raw legacy
+snapshots. Interim nonnumerical checkpoints exclude exactly four measured parents;
+full numerical/runtime gates stay RED. No matched-client/release claim.
 Default apply serves; `--migrate-only` applies/exits; `--schema-mode=verify` verifies/serves.
 Health: one ledger query; rerun verify after external DDL. No payer backfill. Use owned
 schemas/overlays; retain additive schema/ledger on rollback. Production footprint,

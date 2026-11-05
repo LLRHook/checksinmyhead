@@ -236,8 +236,20 @@ func TestPostgresMembershipTransitionIsRecheckedByWaitingAttachment(t *testing.T
 
 func TestPostgresAttachmentAndCreationRollback(t *testing.T) {
 	db := authorizationPostgres(t)
+	db = db.Session(&gorm.Session{NowFunc: func() time.Time {
+		return time.Date(2026, 11, 5, 1, 2, 3, 123456789, time.UTC)
+	}})
 	a, _, source := seedPostgresAttachment(t, db)
 	// Constraint failures occur at actual PostgreSQL writes, inside the transactions.
+	var baseline models.Bill
+	if err := db.First(&baseline, source.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if baseline.UpdatedAt.Equal(source.UpdatedAt) || baseline.UpdatedAt.Nanosecond()%1000 != 0 {
+		t.Fatal("healthy control did not exercise persisted seed precision")
+	}
+	source = baseline
+	before := authSnapshot(t, db)
 	if err := db.Exec(fmt.Sprintf("ALTER TABLE bills ADD CONSTRAINT reject_attach CHECK (tab_id IS NULL OR tab_id <> %d)", a.ID)).Error; err != nil {
 		t.Fatal(err)
 	}
@@ -250,6 +262,9 @@ func TestPostgresAttachmentAndCreationRollback(t *testing.T) {
 	}
 	if got.TabID != nil || got.PaidByMemberID != nil || !got.UpdatedAt.Equal(source.UpdatedAt) {
 		t.Fatal("failed attachment partially committed")
+	}
+	if authSnapshot(t, db) != before {
+		t.Fatal("constraint failure changed persisted ownership/content/timestamps")
 	}
 	if err := db.Exec("ALTER TABLE item_assignments ADD CONSTRAINT reject_child CHECK (percentage < 100)").Error; err != nil {
 		t.Fatal(err)
@@ -271,6 +286,12 @@ func TestPostgresAttachmentAndCreationRollback(t *testing.T) {
 	db.Model(&models.Bill{}).Count(&count)
 	if count != 1 {
 		t.Fatal("creation leaked parent")
+	}
+	if err := db.Exec("ALTER TABLE bills DROP CONSTRAINT reject_attach").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := NewTabRepository(db).AttachBill(context.Background(), AttachBillCommand{TabID: a.ID, TabToken: "a", BillID: source.ID, BillToken: "source"}); err != nil {
+		t.Fatal("healthy attachment after removing the constraint:", err)
 	}
 }
 

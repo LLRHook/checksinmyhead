@@ -62,8 +62,22 @@ func FrozenUSDShareCents(b models.Bill) ([]int64, error) {
 	if err != nil {
 		return nil, err
 	}
+	var ready map[uint]models.BillParticipant
+	if b.IdentityVersion == 2 {
+		ready, err = ParticipantIndex(b)
+		if err != nil {
+			return nil, err
+		}
+	}
+	seen := map[uint]bool{}
 	total := 0.0
 	for _, s := range b.PersonShares {
+		if b.IdentityVersion == 2 {
+			if s.IdentityVersion != 2 || s.ParticipantID == nil || s.BillID != b.ID || ready[*s.ParticipantID].ID == 0 || seen[*s.ParticipantID] {
+				return nil, ErrIdentityReview
+			}
+			seen[*s.ParticipantID] = true
+		}
 		for _, v := range []float64{s.Subtotal, s.TaxShare, s.TipShare, s.Total} {
 			if !finite(v) || v < 0 {
 				return nil, mutation.Review
@@ -103,6 +117,7 @@ func FrozenUSDShareCents(b models.Bill) ([]int64, error) {
 		index    int
 		fraction float64
 		name     string
+		ordinal  int64
 	}
 	order := make([]remainder, len(result))
 	var allocated int64
@@ -120,7 +135,18 @@ func FrozenUSDShareCents(b models.Bill) ([]int64, error) {
 		if err != nil {
 			return nil, mutation.Review
 		}
-		order[i] = remainder{i, exact - float64(result[i]), s.PersonName}
+		label, ordinal := s.PersonName, int64(i)
+		if b.IdentityVersion == 2 {
+			if s.IdentityVersion != 2 || s.ParticipantID == nil {
+				return nil, ErrIdentityReview
+			}
+			p, ok := ready[*s.ParticipantID]
+			if !ok {
+				return nil, ErrIdentityReview
+			}
+			label, ordinal = p.AllocationLabel, *p.Ordinal
+		}
+		order[i] = remainder{i, exact - float64(result[i]), label, ordinal}
 	}
 	sort.SliceStable(order, func(i, j int) bool {
 		if order[i].fraction != order[j].fraction {
@@ -128,6 +154,9 @@ func FrozenUSDShareCents(b models.Bill) ([]int64, error) {
 		}
 		if order[i].name != order[j].name {
 			return order[i].name < order[j].name
+		}
+		if order[i].ordinal != order[j].ordinal {
+			return order[i].ordinal < order[j].ordinal
 		}
 		return order[i].index < order[j].index
 	})

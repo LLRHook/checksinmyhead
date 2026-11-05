@@ -211,6 +211,8 @@
             <div class="total-badge">${{ printf "%.2f" .Total }}</div>
         </div>
 
+        {{ if ne .IdentityReviewStatus "ready" }}<p>Recorded content; participant ownership needs review.</p>{{ end }}
+        {{ if ne .AccountingReviewStatus "available" }}<p>Recorded amounts; frozen USD accounting needs review.</p>{{ end }}
         <!-- Items Section -->
         <div class="section">
             <div class="section-title"><i class="fas fa-receipt"></i> Items</div>
@@ -249,7 +251,7 @@
             {{ range .PersonShares }}
             <div class="person-card">
                 <div class="person-header">
-                    <span class="person-name">{{ .PersonName }}</span>
+                    <span class="person-name">{{ if .PersonName }}{{ .PersonName }}{{ else }}Unnamed participant{{ end }}{{ if .ParticipantID }} · participant {{ .ParticipantID }}{{ end }}</span>
                     <span class="person-total">${{ printf "%.2f" .Total }}</span>
                 </div>
                 <div class="person-items">
@@ -270,12 +272,12 @@
         </div>
 
         <!-- Payment Details Section -->
-        {{ if or .PaymentMethod.Name .PaymentMethod.Identifier }}
+        {{ range .PaymentMethods }}
         <div class="section">
             <div class="section-title"><i class="fas fa-credit-card"></i> Payment Details</div>
             <div class="payment-card">
-                <div class="payment-label">{{ .PaymentMethod.Name }}</div>
-                <div class="payment-value">{{ .PaymentMethod.Identifier }}</div>
+                <div class="payment-label">{{ .Name }}</div>
+                <div class="payment-value">{{ .Identifier }}</div>
             </div>
         </div>
         {{ end }}

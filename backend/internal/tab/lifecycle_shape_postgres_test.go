@@ -4,6 +4,7 @@ package tab
 
 import (
 	billpkg "backend/internal/bill"
+	"backend/internal/testidentity"
 	"backend/internal/testpostgres"
 	"backend/migrations"
 	"backend/pkg/models"
@@ -77,12 +78,25 @@ func TestPostgresLifecycleMeasuredBudgets(t *testing.T) {
 			dst := models.Tab{Name: "Measured", AccessToken: "tab"}
 			saveAuthFixture(t, db, &dst)
 			a := TabAccess{TabID: dst.ID, TabToken: "tab"}
+			intended := make([]models.TabMember, size.people)
+			for j := range intended {
+				intended[j] = models.TabMember{TabID: dst.ID, DisplayName: fmt.Sprintf("Person %03d", j), MemberToken: fmt.Sprintf("intended-%d", j), Role: "member"}
+				if j == 0 {
+					intended[j].Role = "creator"
+				}
+				saveAuthFixture(t, db, &intended[j])
+			}
+			a.MemberToken = intended[0].MemberToken
 			for i := 0; i < size.bills; i++ {
 				b := models.Bill{TabID: &dst.ID, AccessToken: fmt.Sprint("perf-", i), Name: "Measured", Total: float64(size.people), Subtotal: float64(size.people)}
 				for j := 0; j < size.people; j++ {
 					b.PersonShares = append(b.PersonShares, models.PersonShare{PersonName: fmt.Sprintf("Person %03d", j), Subtotal: 1, Total: 1})
 				}
 				saveAuthFixture(t, db, &b)
+				testidentity.Ready(t, db, &b)
+				for j, p := range b.ParticipantRows {
+					testidentity.Bind(t, db, b.ID, p.ID, intended[j].ID, intended[0].ID)
+				}
 			}
 			for run := 1; run <= 3; run++ {
 				fresh, retry := []time.Duration{}, []time.Duration{}
@@ -97,13 +111,21 @@ func TestPostgresLifecycleMeasuredBudgets(t *testing.T) {
 					}
 					trace.reset()
 					start := time.Now()
-					mustFinalize(t, db, a)
+					rows := mustFinalize(t, db, a)
 					fresh = append(fresh, time.Since(start))
 					n, tc := trace.counts()
 					if n > freshMax {
 						freshMax = n
 					}
 					controls += tc
+					if len(rows) != size.people {
+						t.Fatal("intended confirmed parties were not grouped by member ID")
+					}
+					for _, row := range rows {
+						if row.MemberID == nil || row.ParticipantID != nil || row.Amount != float64(size.bills) {
+							t.Fatal("measured reference snapshot changed per-party cents")
+						}
+					}
 					if sample == 0 && run == 1 {
 						t.Logf("fresh SQL shape: %q", trace.shape)
 					}
@@ -138,7 +160,7 @@ func TestPostgresLifecycleMeasuredBudgets(t *testing.T) {
 	t.Run("paid_attachment_assignment", func(t *testing.T) {
 		trace := &lifecycleTrace{}
 		db := lifecycleMeasuredDB(t, trace)
-		dst, b, a := seedLifecycle(t, db)
+		dst, b, a := seedReferenceLifecycle(t, db)
 		for run := 1; run <= 3; run++ {
 			timings := []time.Duration{}
 			maxData := 0
@@ -167,6 +189,7 @@ func TestPostgresLifecycleMeasuredBudgets(t *testing.T) {
 		saveAuthFixture(t, db, &creator)
 		saveAuthFixture(t, db, &alex)
 		a.MemberToken = "creator"
+		bindReferenceFixture(t, db, b, "Alex", alex, creator)
 		for run := 1; run <= 3; run++ {
 			paidTimes, attachTimes := []time.Duration{}, []time.Duration{}
 			paidData, attachData := 0, 0
@@ -217,16 +240,39 @@ func TestPostgresLifecycleMeasuredBudgets(t *testing.T) {
 		}
 		bulk.PersonShares = shares
 		saveAuthFixture(t, db, &bulk)
+		testidentity.Ready(t, db, &bulk)
 		for _, item := range bulk.Items {
-			updates = append(updates, BillItemAssignmentsUpdate{ItemID: item.ID, Assignments: item.Assignments})
+			next := BillItemAssignmentsUpdate{ItemID: item.ID}
+			for _, assignment := range item.Assignments {
+				next.Assignments = append(next.Assignments, models.ItemAssignment{ParticipantID: assignment.ParticipantID, Percentage: assignment.Percentage})
+			}
+			updates = append(updates, next)
+		}
+		phase := 0
+		var previousMax uint
+		if err := db.Raw("SELECT max(id) FROM item_assignments WHERE bill_id = ?", bulk.ID).Scan(&previousMax).Error; err != nil {
+			t.Fatal(err)
 		}
 		for run := 1; run <= 3; run++ {
 			times := []time.Duration{}
 			maxData := 0
 			for sample := 0; sample < 100; sample++ {
+				// Prepare only command input/observers outside the timer. The production
+				// owner still authorizes, loads, locks and rewrites the complete graph.
+				for i := range updates {
+					updates[i].Assignments[0].Percentage = 9
+					updates[i].Assignments[1].Percentage = 11
+					if phase%2 == 1 {
+						updates[i].Assignments[0].Percentage = 11
+						updates[i].Assignments[1].Percentage = 9
+					}
+				}
+				phase++
+				expected := *testidentity.Revision(t, db, bulk.ID)
+				command := AssignmentCommand{Access: a, BillID: bulk.ID, Updates: updates, ExpectedRevision: &expected}
 				trace.reset()
 				start := time.Now()
-				if err := NewTabRepository(db).UpdateBillItemAssignmentsBatch(context.Background(), AssignmentCommand{Access: a, BillID: bulk.ID, Updates: updates}); err != nil {
+				if err := NewTabRepository(db).UpdateBillItemAssignmentsBatch(context.Background(), command); err != nil {
 					t.Fatal(err)
 				}
 				times = append(times, time.Since(start))
@@ -234,6 +280,26 @@ func TestPostgresLifecycleMeasuredBudgets(t *testing.T) {
 				if n > maxData {
 					maxData = n
 				}
+				var observed struct {
+					Count, Changed   int64
+					Minimum, Maximum uint
+				}
+				chunks := 0
+				for _, statement := range trace.shape {
+					if strings.HasPrefix(strings.ToLower(strings.TrimSpace(statement)), `insert into "item_assignments"`) {
+						chunks++
+					}
+				}
+				if chunks != 5 {
+					t.Fatal("measured replacement did not execute five checked assignment chunks")
+				}
+				if err := db.Raw("SELECT count(*) AS count,min(id) AS minimum,max(id) AS maximum,count(*) FILTER (WHERE percentage<>10) AS changed FROM item_assignments WHERE bill_id = ?", bulk.ID).Scan(&observed).Error; err != nil {
+					t.Fatal(err)
+				}
+				if observed.Count != 5000 || observed.Changed != 1000 || observed.Minimum <= previousMax || *testidentity.Revision(t, db, bulk.ID) != expected+1 {
+					t.Fatal("measured allocation did not fully replace 5000 rows and advance once")
+				}
+				previousMax = observed.Maximum
 			}
 			sort.Slice(times, func(i, j int) bool { return times[i] < times[j] })
 			t.Logf("assignment run=%d samples=100 items=500 allocations=5000 data=%d insert_chunks=5 p95=%s lock_wait=uncontended", run, maxData, times[94])

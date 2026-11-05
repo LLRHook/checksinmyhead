@@ -11,9 +11,10 @@ type TabAccess struct {
 }
 type FinalizeCommand struct{ Access TabAccess }
 type AssignmentCommand struct {
-	Access  TabAccess
-	BillID  uint
-	Updates []BillItemAssignmentsUpdate
+	Access           TabAccess
+	BillID           uint
+	Updates          []BillItemAssignmentsUpdate
+	ExpectedRevision *int64
 }
 type SharePaidCommand struct {
 	Access          TabAccess

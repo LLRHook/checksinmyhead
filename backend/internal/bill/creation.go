@@ -8,6 +8,7 @@ import (
 	"database/sql/driver"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"io"
 	"math"
@@ -39,20 +40,25 @@ type CreateBillResult struct {
 	AccessToken, CurrencyCode            string
 	USDExchangeRate, USDTotal            float64
 	ExchangeRateDate, ExchangeRateSource string
-	Replayed                             bool // internal; never sent on the wire
+	Replayed                             bool   // internal; never sent on the wire
+	OriginalResponse                     []byte // exact persisted response2, never rebuilt on replay
 }
 type ReplayIdentity struct {
 	KeyDigest, Fingerprint [32]byte
 	Version                int16
+	ClientRefs             []string
 }
 type CreationInsert struct {
-	Bill   *models.Bill
-	Replay *ReplayIdentity
+	Bill             *models.Bill
+	Replay           *ReplayIdentity
+	ParticipantOrder []string
 }
 type CreationRecord struct {
-	Result      CreateBillResult
-	Fingerprint []byte
-	Version     *int16
+	Result          CreateBillResult
+	Fingerprint     []byte
+	Version         *int16
+	ResponseVersion *int16
+	Response        []byte
 }
 
 func parseCreationKey(header http.Header) (*CreationKey, error) {
@@ -90,13 +96,30 @@ func parseCreationKey(header http.Header) (*CreationKey, error) {
 }
 
 func compareCreation(record CreationRecord, identity ReplayIdentity) (CreateBillResult, error) {
-	if record.Version == nil || *record.Version != creationFingerprintVersion || identity.Version != creationFingerprintVersion || len(record.Fingerprint) != 32 {
+	if record.Version == nil || (*record.Version != 1 && *record.Version != 2) || (identity.Version != 1 && identity.Version != 2) || len(record.Fingerprint) != 32 {
 		return CreateBillResult{}, ErrReplayVersion
 	}
-	if subtle.ConstantTimeCompare(record.Fingerprint, identity.Fingerprint[:]) != 1 {
+	if *record.Version != identity.Version || subtle.ConstantTimeCompare(record.Fingerprint, identity.Fingerprint[:]) != 1 {
 		return CreateBillResult{}, ErrReplayConflict
 	}
 	if record.Result.BillID == 0 || record.Result.AccessToken == "" {
+		return CreateBillResult{}, ErrCreateUncertain
+	}
+	if *record.Version == 2 {
+		if err := validateCreationResponse(record); err != nil {
+			return CreateBillResult{}, err
+		}
+		var original originalCreationResponse
+		if err := json.Unmarshal(record.Response, &original); err != nil || len(original.ParticipantMap) != len(identity.ClientRefs) {
+			return CreateBillResult{}, ErrCreateUncertain
+		}
+		for i, p := range original.ParticipantMap {
+			if p.ClientRef != identity.ClientRefs[i] {
+				return CreateBillResult{}, ErrCreateUncertain
+			}
+		}
+		record.Result.OriginalResponse = append([]byte(nil), record.Response...)
+	} else if record.ResponseVersion != nil || record.Response != nil {
 		return CreateBillResult{}, ErrCreateUncertain
 	}
 	record.Result.Replayed = true
@@ -142,8 +165,12 @@ func cloneCreation(b *models.Bill) *models.Bill {
 func creationEncoding(b *models.Bill) []byte {
 	out := make([]byte, 0, 256)
 	out = append(out, []byte("billington/create\x00")...)
-	out = binary.BigEndian.AppendUint16(out, uint16(creationFingerprintVersion))
-	out = binary.BigEndian.AppendUint16(out, creationIdentityVersion)
+	format, domain := uint16(creationFingerprintVersion), creationIdentityVersion
+	if b.InputVersion == 2 {
+		format, domain = 2, 2
+	}
+	out = binary.BigEndian.AppendUint16(out, format)
+	out = binary.BigEndian.AppendUint16(out, domain)
 	out = binary.BigEndian.AppendUint16(out, creationAccountingVersion)
 	str := func(s string) { out = binary.BigEndian.AppendUint32(out, uint32(len(s))); out = append(out, s...) }
 	num := func(v float64) {
@@ -171,6 +198,9 @@ func creationEncoding(b *models.Bill) []byte {
 	str(b.DisplayCurrency)
 	count(len(b.Participants))
 	for _, p := range b.Participants {
+		if b.InputVersion == 2 && p.ClientRef != nil {
+			str(*p.ClientRef)
+		}
 		str(p.Name)
 	}
 	count(len(b.Items))
@@ -179,13 +209,21 @@ func creationEncoding(b *models.Bill) []byte {
 		num(item.Price)
 		count(len(item.Assignments))
 		for _, a := range item.Assignments {
-			str(a.PersonName)
+			if b.InputVersion == 2 {
+				str(a.ParticipantRef)
+			} else {
+				str(a.PersonName)
+			}
 			num(a.Percentage)
 		}
 	}
 	count(len(b.PersonShares))
 	for _, s := range b.PersonShares {
-		str(s.PersonName)
+		if b.InputVersion == 2 {
+			str(s.ParticipantRef)
+		} else {
+			str(s.PersonName)
+		}
 		count(len(s.Items))
 		for _, d := range s.Items {
 			str(d.Name)

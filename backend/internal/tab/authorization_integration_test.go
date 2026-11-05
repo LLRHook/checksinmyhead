@@ -2,6 +2,7 @@ package tab
 
 import (
 	billpkg "backend/internal/bill"
+	"backend/internal/testidentity"
 	"backend/pkg/models"
 	"context"
 	"encoding/json"
@@ -30,7 +31,7 @@ func authorizationDB(t *testing.T) *gorm.DB {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = sql.Close() })
-	if err := db.AutoMigrate(&models.Tab{}, &models.TabMember{}, &models.Bill{}, &models.Person{}, &models.BillItem{}, &models.ItemAssignment{}, &models.PersonShare{}); err != nil {
+	if err := db.AutoMigrate(&models.BillParticipant{}, &models.Person{}, &models.Tab{}, &models.TabMember{}, &models.Bill{}, &models.Person{}, &models.BillItem{}, &models.ItemAssignment{}, &models.PersonShare{}); err != nil {
 		t.Fatal(err)
 	}
 	return db
@@ -251,6 +252,8 @@ func assertStaleStandaloneClaim(t *testing.T, db *gorm.DB, batch bool) {
 	t.Helper()
 	source := models.Bill{Name: "Lazy", LazyMode: true, AccessToken: "source", Subtotal: 10, Total: 10, Items: []models.BillItem{{Name: "Dinner", Price: 10, Assignments: []models.ItemAssignment{{PersonName: "Alex", Percentage: 50}}}}, PersonShares: []models.PersonShare{{PersonName: "Alex", Subtotal: 5, Total: 5, Items: []models.ItemDetail{{Name: "Dinner", Amount: 5, IsShared: true}}}}}
 	saveAuthFixture(t, db, &source)
+	testidentity.Ready(t, db, &source, "Sam")
+	sam := testidentity.Participant(t, db, source.ID, "Sam")
 	dst := models.Tab{Name: "Destination", AccessToken: "dest"}
 	saveAuthFixture(t, db, &dst)
 	loaded, resumeClaim := make(chan struct{}), make(chan struct{})
@@ -272,13 +275,13 @@ func assertStaleStandaloneClaim(t *testing.T, db *gorm.DB, batch bool) {
 	r.PATCH("/api/bills/:id/items/:itemId/assignments", h.UpdateLazyItemAssignments)
 	r.PATCH("/api/bills/:id/assignments", h.UpdateLazyItemAssignmentsBatch)
 	path := fmt.Sprintf("/api/bills/%d/items/%d/assignments", source.ID, source.Items[0].ID)
-	body := `{"assignments":[{"person_name":"Sam","percentage":100}]}`
+	body := fmt.Sprintf(`{"expected_revision":0,"assignments":[{"participant_id":%d,"percentage":100}]}`, sam.ID)
 	if batch {
 		path = fmt.Sprintf("/api/bills/%d/assignments", source.ID)
-		body = fmt.Sprintf(`{"updates":[{"item_id":%d,"assignments":[{"person_name":"Sam","percentage":100}]}]}`, source.Items[0].ID)
+		body = fmt.Sprintf(`{"expected_revision":0,"updates":[{"item_id":%d,"assignments":[{"participant_id":%d,"percentage":100}]}]}`, source.Items[0].ID, sam.ID)
 	}
 	result := make(chan *httptest.ResponseRecorder, 1)
-	go func() { result <- authRequest(r, "PATCH", path, body, "source", "") }()
+	go func() { result <- versionAuthRequest(r, "PATCH", path, body, "source", "", 2) }()
 	select {
 	case <-loaded:
 	case <-time.After(10 * time.Second):

@@ -168,7 +168,9 @@ func TestFinalizeTab_Success(t *testing.T) {
 		},
 	}
 
-	settlements, err := grossSettlements(1, repo.tabs[1].Bills)
+	repo.tabs[1].Members = []models.TabMember{{ID: 1, TabID: 1, DisplayName: "Alice"}, {ID: 2, TabID: 1, DisplayName: "Bob"}, {ID: 3, TabID: 1, DisplayName: "Cara"}}
+	referenceMoneyFixture(t, repo.tabs[1], map[string]uint{"Alice": 1, "alice": 1, "Bob": 2, "Cara": 3})
+	settlements, err := grossSettlements(1, repo.tabs[1].Bills, repo.tabs[1].Members)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -182,7 +184,7 @@ func TestFinalizeTab_Success(t *testing.T) {
 		totals[s.PersonName] = s.Amount
 	}
 
-	// Alice (60) + alice (30) = 90, case-insensitive merge
+	// Both explicit Alice/alice participations are confirmed to member1.
 	if totals["Alice"] != 90 {
 		t.Errorf("expected Alice total 90, got %f", totals["Alice"])
 	}
@@ -202,7 +204,9 @@ func TestFinalizeTab_UsesFrozenUSDAmountsForMixedCurrencies(t *testing.T) {
 			{ExchangeRateSource: "frozen-fixture", ExchangeRateDate: "2026-11-03", CurrencyCode: "EUR", USDExchangeRate: 1.25, Total: 40, USDTotal: 50, PersonShares: []models.PersonShare{{PersonName: "Alice", Total: 24}, {PersonName: "Bob", Total: 16}}},
 		},
 	}
-	settlements, err := grossSettlements(1, repo.tabs[1].Bills)
+	repo.tabs[1].Members = []models.TabMember{{ID: 1, TabID: 1, DisplayName: "Alice"}, {ID: 2, TabID: 1, DisplayName: "Bob"}, {ID: 3, TabID: 1, DisplayName: "Cara"}}
+	referenceMoneyFixture(t, repo.tabs[1], map[string]uint{"Alice": 1, "alice": 1, "Bob": 2, "Cara": 3})
+	settlements, err := grossSettlements(1, repo.tabs[1].Bills, repo.tabs[1].Members)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -231,7 +235,9 @@ func TestFinalizeTab_ReconcilesFractionalCentsToFrozenUSDTotal(t *testing.T) {
 			},
 		}},
 	}
-	settlements, err := grossSettlements(1, repo.tabs[1].Bills)
+	repo.tabs[1].Members = []models.TabMember{{ID: 1, TabID: 1, DisplayName: "Alice"}, {ID: 2, TabID: 1, DisplayName: "Bob"}, {ID: 3, TabID: 1, DisplayName: "Cara"}}
+	referenceMoneyFixture(t, repo.tabs[1], map[string]uint{"Alice": 1, "alice": 1, "Bob": 2, "Cara": 3})
+	settlements, err := grossSettlements(1, repo.tabs[1].Bills, repo.tabs[1].Members)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -262,7 +268,10 @@ func TestAllocateUSDShareCents_UsesOrdinalNameTieBreak(t *testing.T) {
 		},
 	}
 
-	amounts := allocateUSDShareCents(bill)
+	amounts, err := billpkg.FrozenUSDShareCents(bill)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if amounts[0] != 33 || amounts[1] != 34 || amounts[2] != 33 {
 		t.Fatalf("expected ordinal tie-break to award z the extra cent, got %#v", amounts)
 	}
@@ -280,7 +289,10 @@ func TestAllocateUSDShareCents_UsesUTF8OrderForSupplementaryNames(t *testing.T) 
 		},
 	}
 
-	amounts := allocateUSDShareCents(bill)
+	amounts, err := billpkg.FrozenUSDShareCents(bill)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if amounts[0] != 0 || amounts[1] != 1 {
 		t.Fatalf("expected UTF-8 order to award fullwidth A the cent, got %#v", amounts)
 	}
@@ -298,7 +310,9 @@ func TestFinalizeTab_DoesNotScalePartialAssignmentsToFullBill(t *testing.T) {
 			PersonShares:    []models.PersonShare{{PersonName: "Alice", Total: 8}},
 		}},
 	}
-	settlements, err := grossSettlements(1, repo.tabs[1].Bills)
+	repo.tabs[1].Members = []models.TabMember{{ID: 1, TabID: 1, DisplayName: "Alice"}, {ID: 2, TabID: 1, DisplayName: "Bob"}, {ID: 3, TabID: 1, DisplayName: "Cara"}}
+	referenceMoneyFixture(t, repo.tabs[1], map[string]uint{"Alice": 1, "alice": 1, "Bob": 2, "Cara": 3})
+	settlements, err := grossSettlements(1, repo.tabs[1].Bills, repo.tabs[1].Members)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -537,7 +551,11 @@ func TestComputeNetBalances_SingleBill(t *testing.T) {
 		},
 	}
 
-	balances := ComputeNetBalances(tab)
+	referenceMoneyFixture(t, tab, map[string]uint{"Alice": 1, "alice": 1, "Bob": 2, "bob": 2, "Cara": 3, "Dana": 4})
+	balances, err := ReferenceNetBalances(tab)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Alice paid 100, owes 30 → net +70 (owed 70)
 	// Bob paid 0, owes 40 → net -40 (owes 40)
@@ -549,7 +567,7 @@ func TestComputeNetBalances_SingleBill(t *testing.T) {
 
 	balanceMap := make(map[string]float64)
 	for _, b := range balances {
-		balanceMap[b.From+"→"+b.To] = b.Amount
+		balanceMap[b.From.Label+"→"+b.To.Label] = b.Amount
 	}
 
 	if balanceMap["Bob→Alice"] != 40 {
@@ -591,7 +609,12 @@ func TestComputeNetBalances_MultipleBills(t *testing.T) {
 		},
 	}
 
-	balances := ComputeNetBalances(tab)
+	tab.Members = append(tab.Members, models.TabMember{ID: 3, TabID: 1, DisplayName: "Charlie"})
+	referenceMoneyFixture(t, tab, map[string]uint{"Alice": 1, "alice": 1, "Bob": 2, "bob": 2, "Charlie": 3, "Cara": 3, "Dana": 4})
+	balances, err := ReferenceNetBalances(tab)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Alice: paid 100, owes 50 → net +50
 	// Bob: paid 60, owes 60 → net 0
@@ -600,8 +623,8 @@ func TestComputeNetBalances_MultipleBills(t *testing.T) {
 	if len(balances) != 1 {
 		t.Fatalf("expected 1 balance, got %d: %+v", len(balances), balances)
 	}
-	if balances[0].From != "Charlie" || balances[0].To != "Alice" {
-		t.Errorf("expected Charlie→Alice, got %s→%s", balances[0].From, balances[0].To)
+	if balances[0].From.Label != "Charlie" || balances[0].To.Label != "Alice" {
+		t.Errorf("expected Charlie→Alice, got %s→%s", balances[0].From.Label, balances[0].To.Label)
 	}
 	if balances[0].Amount != 50 {
 		t.Errorf("expected amount 50, got %f", balances[0].Amount)
@@ -625,7 +648,11 @@ func TestComputeNetBalances_AllEven(t *testing.T) {
 		},
 	}
 
-	balances := ComputeNetBalances(tab)
+	referenceMoneyFixture(t, tab, map[string]uint{"Alice": 1, "alice": 1, "Bob": 2, "bob": 2, "Charlie": 3, "Cara": 3, "Dana": 4})
+	balances, err := ReferenceNetBalances(tab)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(balances) != 0 {
 		t.Errorf("expected 0 balances when even, got %d: %+v", len(balances), balances)
 	}
@@ -646,9 +673,16 @@ func TestComputeNetBalances_NoPaidByMember(t *testing.T) {
 		},
 	}
 
-	balances := ComputeNetBalances(tab)
-	if len(balances) != 0 {
-		t.Errorf("expected 0 balances for unattributed bills, got %d", len(balances))
+	referenceMoneyFixture(t, tab, nil)
+	balances, err := ReferenceNetBalances(tab)
+	if !errors.Is(err, billpkg.ErrIdentityReview) || balances != nil {
+		t.Fatal("missing payer must be unavailable, not zero transfers")
+	}
+	repo := newMockRepo()
+	repo.tabs[tab.ID] = tab
+	raw, readErr := NewTabService(repo).GetTab(tab.ID)
+	if readErr != nil || raw.TotalStatus != "available" || raw.TotalAmount != 100 || raw.NetBalanceStatus != "identity_review_required" || raw.ReferenceBalances != nil || len(raw.Bills) != 1 {
+		t.Fatal("unavailable net hid safe raw receipt/total")
 	}
 }
 
@@ -671,15 +705,19 @@ func TestComputeNetBalances_CaseInsensitive(t *testing.T) {
 		},
 	}
 
-	balances := ComputeNetBalances(tab)
+	referenceMoneyFixture(t, tab, map[string]uint{"Alice": 1, "alice": 1, "Bob": 2, "bob": 2, "Charlie": 3, "Cara": 3, "Dana": 4})
+	balances, err := ReferenceNetBalances(tab)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(balances) != 1 {
 		t.Fatalf("expected 1 balance, got %d: %+v", len(balances), balances)
 	}
-	if balances[0].From != "Bob" {
-		t.Errorf("expected From='Bob' (capitalized), got '%s'", balances[0].From)
+	if balances[0].From.Label != "Bob" {
+		t.Errorf("expected From='Bob' (capitalized), got '%s'", balances[0].From.Label)
 	}
-	if balances[0].To != "Alice" {
-		t.Errorf("expected To='Alice', got '%s'", balances[0].To)
+	if balances[0].To.Label != "Alice" {
+		t.Errorf("expected To='Alice', got '%s'", balances[0].To.Label)
 	}
 	if balances[0].Amount != 70 {
 		t.Errorf("expected amount 70, got %f", balances[0].Amount)
@@ -709,15 +747,19 @@ func TestComputeNetBalances_ReconcilesFractionalCents(t *testing.T) {
 		}},
 	}
 
-	balances := ComputeNetBalances(tab)
+	referenceMoneyFixture(t, tab, map[string]uint{"Alice": 1, "alice": 1, "Bob": 2, "bob": 2, "Charlie": 3, "Cara": 3, "Dana": 4})
+	balances, err := ReferenceNetBalances(tab)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var sum float64
 	amounts := map[string]float64{}
 	for _, balance := range balances {
-		if balance.To != "Alice" {
+		if balance.To.Label != "Alice" {
 			t.Fatalf("expected Alice to receive each payment, got %#v", balance)
 		}
 		sum += balance.Amount
-		amounts[balance.From] = balance.Amount
+		amounts[balance.From.Label] = balance.Amount
 	}
 	if sum != 1.00 {
 		t.Fatalf("expected net balances to reconcile to 1.00, got %.2f", sum)
@@ -744,12 +786,113 @@ func TestComputeNetBalances_DoesNotScalePartialAssignmentsToFullBill(t *testing.
 		}},
 	}
 
-	balances := ComputeNetBalances(tab)
-	if len(balances) != 1 || balances[0].From != "Bob" || balances[0].To != "Alice" || balances[0].Amount != 10 {
+	referenceMoneyFixture(t, tab, map[string]uint{"Alice": 1, "alice": 1, "Bob": 2, "bob": 2, "Charlie": 3, "Cara": 3, "Dana": 4})
+	balances, err := ReferenceNetBalances(tab)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(balances) != 1 || balances[0].From.Label != "Bob" || balances[0].To.Label != "Alice" || balances[0].Amount != 10 {
 		t.Fatalf("expected only the assigned USD 10 to be owed, got %#v", balances)
 	}
 }
 
 func ptrUint(v uint) *uint {
 	return &v
+}
+
+// referenceMoneyFixture declares the intended IDs in the original numerical
+// examples. The explicit binding map, never label matching at runtime, joins
+// cross-bill parties. Omitted names remain separate bill-local guests.
+func referenceMoneyFixture(t *testing.T, tab *models.Tab, bindings map[string]uint) {
+	t.Helper()
+	if tab.ID == 0 {
+		tab.ID = 1
+	}
+	for i := range tab.Members {
+		tab.Members[i].TabID = tab.ID
+	}
+	nextID := uint(1)
+	for i := range tab.Bills {
+		b := &tab.Bills[i]
+		if b.ID == 0 {
+			b.ID = uint(i + 1)
+		}
+		b.TabID = ptrUint(tab.ID)
+		b.IdentityVersion, b.IdentityState = 2, "ready"
+		b.ParticipantRows = nil
+		for j := range b.PersonShares {
+			s := &b.PersonShares[j]
+			pid := nextID
+			nextID++
+			ordinal := int64(j)
+			p := models.BillParticipant{ID: pid, BillID: b.ID, PersonID: pid, TabID: ptrUint(tab.ID), Label: s.PersonName, AllocationLabel: s.PersonName, IdentityVersion: 2, Ordinal: &ordinal}
+			if id, ok := bindings[s.PersonName]; ok {
+				found := false
+				for _, m := range tab.Members {
+					if m.ID == id {
+						found = true
+					}
+				}
+				if !found {
+					t.Fatal("explicit financial fixture binding has no member")
+				}
+				p.MemberID = ptrUint(id)
+				p.ApprovedByMemberID = ptrUint(id)
+				kind := "source"
+				p.ApprovalKind = &kind
+				now := time.Date(2026, 11, 5, 0, 0, 0, 0, time.UTC)
+				p.ApprovedAt = &now
+			}
+			b.ParticipantRows = append(b.ParticipantRows, p)
+			s.ID = pid
+			s.BillID = b.ID
+			s.IdentityVersion = 2
+			s.ParticipantID = &pid
+		}
+	}
+}
+
+func TestIdentity0003UnboundGuestsAndMissingPayers(t *testing.T) {
+	t.Run("same_label_guests_remain_distinct", func(t *testing.T) {
+		trip := &models.Tab{ID: 1, Members: []models.TabMember{{ID: 1, TabID: 1, DisplayName: "Alice"}, {ID: 2, TabID: 1, DisplayName: "Bob"}}, Bills: []models.Bill{{ID: 1, Total: 100, PaidByMemberID: ptrUint(1), PersonShares: []models.PersonShare{{PersonName: "Alice", Total: 30}, {PersonName: "Bob", Total: 40}, {PersonName: "Charlie", Total: 30}}}, {ID: 2, Total: 60, PaidByMemberID: ptrUint(2), PersonShares: []models.PersonShare{{PersonName: "Alice", Total: 20}, {PersonName: "Bob", Total: 20}, {PersonName: "Charlie", Total: 20}}}}}
+		referenceMoneyFixture(t, trip, map[string]uint{"Alice": 1, "Bob": 2})
+		rows, err := ReferenceNetBalances(trip)
+		if err != nil || len(rows) != 2 {
+			t.Fatalf("unbound guests were merged: %+v %v", rows, err)
+		}
+		seen := map[uint]float64{}
+		for _, row := range rows {
+			if row.From.Kind != "guest" || row.From.ParticipantID == 0 || row.To.Kind != "member" || row.To.MemberID != 1 {
+				t.Fatal("transfer lost tagged scoped identity")
+			}
+			seen[row.From.BillID] = row.Amount
+		}
+		if seen[1] != 30 || seen[2] != 20 {
+			t.Fatal("unbound same-label obligations changed")
+		}
+	})
+	for _, kind := range []string{"missing", "dangling", "cross_tab"} {
+		t.Run(kind, func(t *testing.T) {
+			trip := &models.Tab{ID: 1, Members: []models.TabMember{{ID: 1, TabID: 1, DisplayName: "Payer"}}, Bills: []models.Bill{{ID: 1, Total: 10, PaidByMemberID: ptrUint(1), PersonShares: []models.PersonShare{{PersonName: "Guest", Total: 10}}}}}
+			referenceMoneyFixture(t, trip, nil)
+			switch kind {
+			case "missing":
+				trip.Bills[0].PaidByMemberID = nil
+			case "dangling":
+				trip.Bills[0].PaidByMemberID = ptrUint(999)
+			case "cross_tab":
+				trip.Members[0].TabID = 2
+			}
+			rows, err := ReferenceNetBalances(trip)
+			if rows != nil || !errors.Is(err, billpkg.ErrIdentityReview) {
+				t.Fatal("invalid payer became zero/partial net")
+			}
+			repo := newMockRepo()
+			repo.tabs[1] = trip
+			raw, err := NewTabService(repo).GetTab(1)
+			if err != nil || raw.NetBalanceStatus != "identity_review_required" || raw.TotalAmount != 10 || len(raw.Bills) != 1 {
+				t.Fatal("safe authorized raw receipt was lost")
+			}
+		})
+	}
 }

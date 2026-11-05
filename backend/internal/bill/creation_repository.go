@@ -21,12 +21,14 @@ type creationRow struct {
 	ExchangeRateDate, ExchangeRateSource string
 	CreationFingerprint                  []byte
 	CreationFingerprintVersion           *int16
+	CreationResponseVersion              *int16
+	CreationResponse                     []byte
 }
 
-const creationColumns = "id,access_token,currency_code,usd_exchange_rate,usd_total,exchange_rate_date,exchange_rate_source,creation_fingerprint,creation_fingerprint_version"
+const creationColumns = "id,access_token,currency_code,usd_exchange_rate,usd_total,exchange_rate_date,exchange_rate_source,creation_fingerprint,creation_fingerprint_version,creation_response_version,creation_response"
 
 func (r creationRow) record() CreationRecord {
-	return CreationRecord{Result: CreateBillResult{BillID: r.ID, AccessToken: r.AccessToken, CurrencyCode: r.CurrencyCode, USDExchangeRate: r.USDExchangeRate, USDTotal: r.USDTotal, ExchangeRateDate: r.ExchangeRateDate, ExchangeRateSource: r.ExchangeRateSource}, Fingerprint: r.CreationFingerprint, Version: r.CreationFingerprintVersion}
+	return CreationRecord{Result: CreateBillResult{BillID: r.ID, AccessToken: r.AccessToken, CurrencyCode: r.CurrencyCode, USDExchangeRate: r.USDExchangeRate, USDTotal: r.USDTotal, ExchangeRateDate: r.ExchangeRateDate, ExchangeRateSource: r.ExchangeRateSource}, Fingerprint: r.CreationFingerprint, Version: r.CreationFingerprintVersion, ResponseVersion: r.CreationResponseVersion, Response: r.CreationResponse}
 }
 func lookupCreation(db *gorm.DB, digest [32]byte) (*CreationRecord, error) {
 	var row creationRow
@@ -57,7 +59,7 @@ func guardCreationInsert(c CreationInsert) error {
 	if _, err := FrozenUSDTotalCents(*v); err != nil {
 		return ErrInvalidCreation
 	}
-	if c.Replay != nil && c.Replay.Version != creationFingerprintVersion {
+	if c.Replay != nil && (c.Replay.Version != 1 && c.Replay.Version != 2 || (c.Replay.Version == 2) != (v.InputVersion == 2)) {
 		return ErrInvalidCreation
 	}
 	if v.CurrencyCode == "USD" {
@@ -94,6 +96,37 @@ func (b *billRepository) Create(ctx context.Context, c CreationInsert) (record C
 		return CreationRecord{}, err
 	}
 	v := cloneCreation(c.Bill)
+	participants, err := creationParticipants(v)
+	if err != nil {
+		return CreationRecord{}, err
+	}
+	if c.ParticipantOrder != nil {
+		if len(c.ParticipantOrder) != len(participants) {
+			return CreationRecord{}, ErrInvalidCreation
+		}
+		byKey := map[string]models.BillParticipant{}
+		for _, p := range participants {
+			key := nameKey(p.Label)
+			if v.InputVersion == 2 {
+				key = *p.ClientRef
+			}
+			byKey[key] = p
+		}
+		ordered := make([]models.BillParticipant, 0, len(participants))
+		for i, key := range c.ParticipantOrder {
+			p, ok := byKey[key]
+			if !ok {
+				return CreationRecord{}, ErrInvalidCreation
+			}
+			delete(byKey, key)
+			ordinal := int64(i)
+			p.Ordinal = &ordinal
+			ordered = append(ordered, p)
+		}
+		participants = ordered
+	}
+	v.ParticipantRows = participants
+	v.IdentityVersion, v.IdentityState, v.IdentityRevision = 2, "ready", 0
 	if c.Replay != nil {
 		v.CreationKeyDigest = append([]byte(nil), c.Replay.KeyDigest[:]...)
 		v.CreationFingerprint = append([]byte(nil), c.Replay.Fingerprint[:]...)
@@ -142,10 +175,30 @@ func (b *billRepository) Create(ctx context.Context, c CreationInsert) (record C
 		record = *winner
 		record.Result = result
 	} else if inserted.RowsAffected == 1 {
+		if v.ID == 0 || v.AccessToken == "" {
+			return CreationRecord{}, ErrCreateUncertain
+		}
 		if err := insertCreationChildren(tx, v); err != nil {
 			return CreationRecord{}, err
 		}
 		record = CreationRecord{Result: CreateBillResult{BillID: v.ID, AccessToken: v.AccessToken, CurrencyCode: v.CurrencyCode, USDExchangeRate: v.USDExchangeRate, USDTotal: v.USDTotal, ExchangeRateDate: v.ExchangeRateDate, ExchangeRateSource: v.ExchangeRateSource}, Fingerprint: v.CreationFingerprint, Version: v.CreationFingerprintVersion}
+		if v.InputVersion == 2 {
+			body, err := creationResponse2(record.Result, v.ParticipantRows)
+			if err != nil {
+				return CreationRecord{}, err
+			}
+			updated := tx.Model(&models.Bill{}).Where("id = ? AND creation_response_version IS NULL AND creation_response IS NULL", v.ID).UpdateColumns(map[string]any{"creation_response_version": int16(2), "creation_response": body})
+			if updated.Error != nil {
+				return CreationRecord{}, updated.Error
+			}
+			if updated.RowsAffected != 1 {
+				return CreationRecord{}, ErrCreateUncertain
+			}
+			version := int16(2)
+			record.ResponseVersion = &version
+			record.Response = body
+			record.Result.OriginalResponse = append([]byte(nil), body...)
+		}
 	} else {
 		return CreationRecord{}, ErrCreateUncertain
 	}
@@ -155,24 +208,35 @@ func (b *billRepository) Create(ctx context.Context, c CreationInsert) (record C
 	return record, nil
 }
 
-type creationParticipant struct {
-	BillID   uint
-	PersonID uint
-}
-
 func insertCreationChildren(tx *gorm.DB, v *models.Bill) error {
-	// Explicit batches avoid association callbacks/upserts and per-person lookups.
-	if len(v.Participants) > 0 {
-		if err := insertCreationBatches(tx, v.Participants); err != nil {
+	people := make([]models.Person, len(v.ParticipantRows))
+	for i, p := range v.ParticipantRows {
+		people[i] = models.Person{Name: p.Label}
+	}
+	if len(people) > 0 {
+		if err := insertCreationBatches(tx, people); err != nil {
 			return err
 		}
-		joins := make([]creationParticipant, len(v.Participants))
-		for i, p := range v.Participants {
-			joins[i] = creationParticipant{v.ID, p.ID}
-		}
-		if err := insertCreationBatches(tx.Table("bill_participants"), joins); err != nil {
+	}
+	for i := range v.ParticipantRows {
+		v.ParticipantRows[i].PersonID = people[i].ID
+		v.ParticipantRows[i].BillID = v.ID
+	}
+	if len(v.ParticipantRows) > 0 {
+		if err := insertCreationBatches(tx, v.ParticipantRows); err != nil {
 			return err
 		}
+	}
+	byKey := map[string]uint{}
+	for _, p := range v.ParticipantRows {
+		key := nameKey(p.Label)
+		if v.InputVersion == 2 {
+			if p.ClientRef == nil {
+				return ErrInvalidCreation
+			}
+			key = *p.ClientRef
+		}
+		byKey[key] = p.ID
 	}
 	assignments := []models.ItemAssignment{}
 	for i := range v.Items {
@@ -182,11 +246,19 @@ func insertCreationChildren(tx *gorm.DB, v *models.Bill) error {
 		if err := insertCreationBatches(tx, v.Items); err != nil {
 			return err
 		}
-		for _, item := range v.Items {
-			for _, a := range item.Assignments {
-				a.BillItemID = item.ID
-				assignments = append(assignments, a)
+	}
+	for _, item := range v.Items {
+		for _, a := range item.Assignments {
+			pid, ok := byKey[assignmentKey(v, a)]
+			if !ok {
+				return ErrInvalidCreation
 			}
+			bid := v.ID
+			a.BillItemID = item.ID
+			a.BillID = &bid
+			a.ParticipantID = &pid
+			a.IdentityVersion = 2
+			assignments = append(assignments, a)
 		}
 	}
 	if len(assignments) > 0 {
@@ -195,7 +267,14 @@ func insertCreationChildren(tx *gorm.DB, v *models.Bill) error {
 		}
 	}
 	for i := range v.PersonShares {
-		v.PersonShares[i].BillID = v.ID
+		s := &v.PersonShares[i]
+		pid, ok := byKey[shareKey(v, *s)]
+		if !ok {
+			return ErrInvalidCreation
+		}
+		s.BillID = v.ID
+		s.ParticipantID = &pid
+		s.IdentityVersion = 2
 	}
 	if len(v.PersonShares) > 0 {
 		if err := insertCreationBatches(tx, v.PersonShares); err != nil {
@@ -208,8 +287,11 @@ func insertCreationChildren(tx *gorm.DB, v *models.Bill) error {
 // A trigger/rule can suppress rows without a driver error. Acknowledge only
 // complete batches. The owned outer transaction rolls back every earlier batch.
 func insertCreationBatches[T any](tx *gorm.DB, values []T) error {
-	for start := 0; start < len(values); start += 500 {
-		end := min(start+500, len(values))
+	return insertCheckedBatches(tx, values, 500)
+}
+func insertCheckedBatches[T any](tx *gorm.DB, values []T, size int) error {
+	for start := 0; start < len(values); start += size {
+		end := min(start+size, len(values))
 		batch := values[start:end]
 		expected := end - start
 		result := tx.Omit(clause.Associations).Create(&batch)

@@ -11,10 +11,9 @@ import (
 	"crypto/subtle"
 	"errors"
 	"fmt"
-	"math"
+
 	"strconv"
 	"strings"
-	"time"
 	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
@@ -44,6 +43,10 @@ func (h *TabHandler) getTabWithLookup(
 	c *gin.Context,
 	lookup func(uint) (*models.Tab, error),
 ) *models.Tab {
+	version, ok := safehttp.IdentityVersion(c)
+	if !ok {
+		return nil
+	}
 	id := c.Param("id")
 
 	token := safehttp.AccessToken(c)
@@ -60,7 +63,7 @@ func (h *TabHandler) getTabWithLookup(
 	}
 
 	tab, err := lookup(uint(idUint))
-	if err != nil && (!errors.Is(err, mutation.Review) || tab == nil) {
+	if err != nil && (!(errors.Is(err, mutation.Review) || errors.Is(err, bill.ErrIdentityReview)) || tab == nil) {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(404, gin.H{"error": "tab not found"})
 			return nil
@@ -70,12 +73,12 @@ func (h *TabHandler) getTabWithLookup(
 		return nil
 	}
 
-	if subtle.ConstantTimeCompare([]byte(token), []byte(tab.AccessToken)) != 1 {
+	if token == "" || tab.AccessToken == "" || subtle.ConstantTimeCompare([]byte(token), []byte(tab.AccessToken)) != 1 {
 		c.JSON(403, gin.H{"error": "token mismatch"})
 		return nil
 	}
-	if err != nil {
-		mutation.WriteError(c, err)
+	if err != nil && version != 2 {
+		mutation.WriteError(c, bill.ErrClientUpgrade)
 		return nil
 	}
 
@@ -152,30 +155,53 @@ func (h *TabHandler) GetTab(c *gin.Context) {
 		return
 	}
 
+	viewer, err := bill.ViewerMember(tab.ID, tab.Members, safehttp.MemberToken(c))
+	if err != nil {
+		mutation.WriteError(c, err)
+		return
+	}
+	version, _ := safehttp.IdentityVersion(c)
+	if version == 2 {
+		safehttp.JSONValue(c, 200, viewTab(*tab, viewer))
+		return
+	}
+	if err := legacyTabRepresentable(tab); err != nil {
+		mutation.WriteError(c, err)
+		return
+	}
 	tab.AccessToken = ""
-	c.JSON(200, tab)
+	for i := range tab.Bills {
+		tab.Bills[i] = bill.LegacyBill(tab.Bills[i])
+	}
+	safehttp.JSONValue(c, 200, tab)
 }
 
 func (h *TabHandler) AddBillToTab(c *gin.Context) {
+	version, ok := safehttp.IdentityVersion(c)
+	if !ok {
+		return
+	}
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil || id == 0 {
 		c.JSON(400, gin.H{"error": "invalid tab id"})
 		return
 	}
 	var body struct {
-		BillID    uint   `json:"bill_id"`
-		BillToken string `json:"bill_token"`
+		BillID           uint   `json:"bill_id"`
+		BillToken        string `json:"bill_token"`
+		ExpectedRevision *int64 `json:"expected_revision"`
 	}
 	if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, 4<<10, true); err != nil {
 		c.JSON(400, gin.H{"error": "bad request"})
 		return
 	}
-	memberToken := c.GetHeader("X-Member-Token")
-	if memberToken == "" {
-		memberToken = c.Query("m")
+	memberToken := safehttp.MemberToken(c)
+	if version == 2 && (body.ExpectedRevision == nil || *body.ExpectedRevision < 0) || version == 1 && body.ExpectedRevision != nil {
+		mutation.WriteError(c, mutation.Invalid)
+		return
 	}
 	command := AttachBillCommand{TabID: uint(id), BillID: body.BillID, BillToken: body.BillToken,
-		TabToken: safehttp.AccessToken(c), MemberToken: memberToken}
+		TabToken: safehttp.AccessToken(c), MemberToken: memberToken, IdentityVersion: version, ExpectedRevision: body.ExpectedRevision}
 	err = h.service.AddBillToTab(c.Request.Context(), command)
 	switch {
 	case errors.Is(err, ErrInvalidAttachment):
@@ -193,176 +219,27 @@ func (h *TabHandler) AddBillToTab(c *gin.Context) {
 	}
 }
 
-func (h *TabHandler) UpdateBillItemAssignments(c *gin.Context) {
+func (h *TabHandler) UpdateBillItemAssignments(c *gin.Context)      { h.updateClaims(c, true) }
+func (h *TabHandler) UpdateBillItemAssignmentsBatch(c *gin.Context) { h.updateClaims(c, false) }
+func (h *TabHandler) updateClaims(c *gin.Context, single bool) {
 	access := writeAccess(c)
 	if access == nil {
 		return
 	}
-	billID, err := strconv.ParseUint(c.Param("billId"), 10, 32)
+	id, err := strconv.ParseUint(c.Param("billId"), 10, 63)
+	if err != nil || id == 0 {
+		mutation.WriteError(c, mutation.Invalid)
+		return
+	}
+	updates, expected, err := bill.DecodeClaim(c, single)
 	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid bill id"})
+		if !c.IsAborted() {
+			bill.WriteClaimError(c, err)
+		}
 		return
 	}
-
-	itemID, err := strconv.ParseUint(c.Param("itemId"), 10, 32)
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid item id"})
-		return
-	}
-
-	var body struct {
-		ExpectedUpdatedAt *string               `json:"expected_updated_at"`
-		Assignments       bill.AssignmentInputs `json:"assignments"`
-	}
-	if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, safehttp.MutationBodyLimit, false); err != nil {
-		c.JSON(400, gin.H{"error": "bad request"})
-		return
-	}
-
-	if body.Assignments == nil || len(body.Assignments) > 100 {
-		c.JSON(400, gin.H{"error": "assignments are required"})
-		return
-	}
-	assignments := make([]models.ItemAssignment, 0, len(body.Assignments))
-	seen := make(map[string]struct{}, len(body.Assignments))
-	var totalPercentage float64
-	var expectedUpdatedAt *time.Time
-	if body.ExpectedUpdatedAt != nil && *body.ExpectedUpdatedAt != "" {
-		parsed, parseErr := time.Parse(time.RFC3339Nano, *body.ExpectedUpdatedAt)
-		if parseErr != nil {
-			c.JSON(400, gin.H{"error": "invalid expected_updated_at"})
-			return
-		}
-		expectedUpdatedAt = &parsed
-	}
-	for _, assignment := range body.Assignments {
-		name := security.SanitizeString(assignment.PersonName)
-		if name == "" || len([]rune(name)) > 30 || assignment.Percentage <= 0 || assignment.Percentage > 100 || math.IsNaN(assignment.Percentage) || math.IsInf(assignment.Percentage, 0) {
-			c.JSON(400, gin.H{"error": "invalid item assignment"})
-			return
-		}
-		key := strings.ToLower(name)
-		if _, ok := seen[key]; ok {
-			c.JSON(400, gin.H{"error": "duplicate person assignment"})
-			return
-		}
-		seen[key] = struct{}{}
-		totalPercentage += assignment.Percentage
-		assignments = append(assignments, models.ItemAssignment{
-			PersonName: name,
-			Percentage: assignment.Percentage,
-		})
-	}
-	if !models.ItemAssignmentTotalIsValid(totalPercentage) {
-		c.JSON(400, gin.H{"error": "item assignments cannot exceed 100 percent"})
-		return
-	}
-
-	if err := h.service.UpdateBillItemAssignmentsBatch(c.Request.Context(), AssignmentCommand{Access: *access, BillID: uint(billID), Updates: []BillItemAssignmentsUpdate{{ItemID: uint(itemID), Assignments: assignments, ExpectedUpdatedAt: expectedUpdatedAt}}}); err != nil {
-		if err == ErrAssignmentConflict {
-			c.JSON(409, gin.H{"error": "item changed; refresh and try again"})
-			return
-		}
-		if err == ErrItemAlreadyPaid {
-			c.JSON(409, gin.H{"error": "paid shares cannot be changed"})
-			return
-		}
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(404, gin.H{"error": "bill item not found"})
-			return
-		}
-		mutation.WriteError(c, err)
-		return
-	}
-
-	c.JSON(200, gin.H{"status": "ok"})
-}
-
-func (h *TabHandler) UpdateBillItemAssignmentsBatch(c *gin.Context) {
-	access := writeAccess(c)
-	if access == nil {
-		return
-	}
-	billID, err := strconv.ParseUint(c.Param("billId"), 10, 32)
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid bill id"})
-		return
-	}
-	var body struct {
-		Updates bill.AssignmentUpdateInputs `json:"updates"`
-	}
-	if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, safehttp.MutationBodyLimit, false); err != nil || len(body.Updates) == 0 {
-		c.JSON(400, gin.H{"error": "item updates are required"})
-		return
-	}
-
-	if !bill.AssignmentInputCountsValid(body.Updates) {
-		c.JSON(400, gin.H{"error": "bad request"})
-		return
-	}
-
-	updates := make([]BillItemAssignmentsUpdate, 0, len(body.Updates))
-	seenItems := make(map[uint]struct{}, len(body.Updates))
-	for _, itemUpdate := range body.Updates {
-		if itemUpdate.ItemID == 0 {
-			c.JSON(400, gin.H{"error": "invalid item id"})
-			return
-		}
-		if _, exists := seenItems[itemUpdate.ItemID]; exists {
-			c.JSON(400, gin.H{"error": "duplicate item update"})
-			return
-		}
-		seenItems[itemUpdate.ItemID] = struct{}{}
-		if itemUpdate.Assignments == nil {
-			c.JSON(400, gin.H{"error": "assignments are required"})
-			return
-		}
-		var expectedUpdatedAt *time.Time
-		if itemUpdate.ExpectedUpdatedAt != nil && *itemUpdate.ExpectedUpdatedAt != "" {
-			parsed, parseErr := time.Parse(time.RFC3339Nano, *itemUpdate.ExpectedUpdatedAt)
-			if parseErr != nil {
-				c.JSON(400, gin.H{"error": "invalid expected_updated_at"})
-				return
-			}
-			expectedUpdatedAt = &parsed
-		}
-		assignments := make([]models.ItemAssignment, 0, len(itemUpdate.Assignments))
-		seenPeople := make(map[string]struct{}, len(itemUpdate.Assignments))
-		var totalPercentage float64
-		for _, assignment := range itemUpdate.Assignments {
-			name := security.SanitizeString(assignment.PersonName)
-			key := strings.ToLower(name)
-			if name == "" || len([]rune(name)) > 30 || assignment.Percentage <= 0 || assignment.Percentage > 100 || math.IsNaN(assignment.Percentage) || math.IsInf(assignment.Percentage, 0) {
-				c.JSON(400, gin.H{"error": "invalid item assignment"})
-				return
-			}
-			if _, exists := seenPeople[key]; exists {
-				c.JSON(400, gin.H{"error": "duplicate person assignment"})
-				return
-			}
-			seenPeople[key] = struct{}{}
-			totalPercentage += assignment.Percentage
-			assignments = append(assignments, models.ItemAssignment{PersonName: name, Percentage: assignment.Percentage})
-		}
-		if !models.ItemAssignmentTotalIsValid(totalPercentage) {
-			c.JSON(400, gin.H{"error": "item assignments cannot exceed 100 percent"})
-			return
-		}
-		updates = append(updates, BillItemAssignmentsUpdate{
-			ItemID: itemUpdate.ItemID, Assignments: assignments, ExpectedUpdatedAt: expectedUpdatedAt,
-		})
-	}
-	if err := h.service.UpdateBillItemAssignmentsBatch(c.Request.Context(), AssignmentCommand{Access: *access, BillID: uint(billID), Updates: updates}); err != nil {
-		switch {
-		case errors.Is(err, ErrAssignmentConflict):
-			c.JSON(409, gin.H{"error": "item changed; refresh and try again"})
-		case errors.Is(err, ErrItemAlreadyPaid):
-			c.JSON(409, gin.H{"error": "paid shares cannot be changed"})
-		case errors.Is(err, gorm.ErrRecordNotFound):
-			c.JSON(404, gin.H{"error": "bill item not found"})
-		default:
-			mutation.WriteError(c, err)
-		}
+	if err := h.service.UpdateBillItemAssignmentsBatch(c.Request.Context(), AssignmentCommand{Access: *access, BillID: uint(id), Updates: updates, ExpectedRevision: expected}); err != nil {
+		bill.WriteClaimError(c, err)
 		return
 	}
 	c.JSON(200, gin.H{"status": "ok"})
@@ -386,7 +263,7 @@ func (h *TabHandler) UpdateBillPersonSharePaid(c *gin.Context) {
 	var body struct {
 		Paid *bool `json:"paid"`
 	}
-	if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, safehttp.MutationBodyLimit, false); err != nil || body.Paid == nil {
+	if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, safehttp.MutationBodyLimit, identityStrict(c)); err != nil || body.Paid == nil {
 		c.JSON(400, gin.H{"error": "paid field required"})
 		return
 	}
@@ -411,7 +288,7 @@ func (h *TabHandler) UpdateTab(c *gin.Context) {
 		Description     *string `json:"description"`
 		DisplayCurrency *string `json:"display_currency"`
 	}
-	if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, safehttp.MutationBodyLimit, false); err != nil {
+	if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, safehttp.MutationBodyLimit, identityStrict(c)); err != nil {
 		c.JSON(400, gin.H{"error": "bad request"})
 		return
 	}
@@ -453,10 +330,37 @@ func (h *TabHandler) FinalizeTab(c *gin.Context) {
 		mutation.WriteError(c, err)
 		return
 	}
+	version, _ := safehttp.IdentityVersion(c)
+	if version == 2 {
+		var viewer *uint
+		if len(rows) > 0 {
+			viewer = rows[0].ViewerMemberID
+		}
+		safehttp.JSONValue(c, 200, viewSettlements(models.Tab{ID: access.TabID}, rows, viewer, nil))
+		return
+	}
 	c.JSON(200, rows)
 }
 
 func (h *TabHandler) GetSettlements(c *gin.Context) {
+	if reader, ok := h.service.(SettlementReader); ok {
+		access := writeAccess(c)
+		if access == nil {
+			return
+		}
+		history, err := reader.ReadSettlements(c.Request.Context(), *access)
+		if err != nil {
+			mutation.WriteError(c, err)
+			return
+		}
+		version, _ := safehttp.IdentityVersion(c)
+		if version == 2 {
+			safehttp.JSONValue(c, 200, history)
+		} else {
+			safehttp.JSONValue(c, 200, history.RawRows)
+		}
+		return
+	}
 	tab := h.getTabAuthAndValidate(c)
 	if tab == nil {
 		return
@@ -486,7 +390,7 @@ func (h *TabHandler) UpdateSettlement(c *gin.Context) {
 	var body struct {
 		Paid *bool `json:"paid"`
 	}
-	if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, safehttp.MutationBodyLimit, false); err != nil || body.Paid == nil {
+	if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, safehttp.MutationBodyLimit, identityStrict(c)); err != nil || body.Paid == nil {
 		c.JSON(400, gin.H{"error": "paid field required"})
 		return
 	}
@@ -512,12 +416,12 @@ func (h *TabHandler) JoinTab(c *gin.Context) {
 		DisplayName string `json:"display_name"`
 	}
 	if access.MemberToken == "" {
-		if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, safehttp.MutationBodyLimit, false); err != nil {
+		if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, safehttp.MutationBodyLimit, identityStrict(c)); err != nil {
 			c.JSON(400, gin.H{"error": "bad request"})
 			return
 		}
 		body.DisplayName = security.SanitizeString(body.DisplayName)
-		if body.DisplayName == "" || len(body.DisplayName) > 30 {
+		if body.DisplayName == "" || utf8.RuneCountInString(body.DisplayName) > 30 {
 			c.JSON(400, gin.H{"error": "display_name must be 1-30 characters"})
 			return
 		}
@@ -559,20 +463,30 @@ func (h *TabHandler) GetMembers(c *gin.Context) {
 		return
 	}
 
+	if _, err := bill.ViewerMember(tab.ID, members, safehttp.MemberToken(c)); err != nil {
+		mutation.WriteError(c, err)
+		return
+	}
 	c.JSON(200, members)
 }
 
 // writeAccess parses capabilities; current authority/state is resolved only by
 // the repository after acquiring the tab root lock.
 func writeAccess(c *gin.Context) *TabAccess {
+	if _, ok := safehttp.IdentityVersion(c); !ok {
+		return nil
+	}
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil || id == 0 {
+		safehttp.StopRejectedBody(c.Writer, c.Request)
 		c.JSON(400, gin.H{"error": "invalid tab id"})
 		return nil
 	}
-	member := c.GetHeader("X-Member-Token")
-	if member == "" {
-		member = c.Query("m")
-	}
+	member := safehttp.MemberToken(c)
 	return &TabAccess{TabID: uint(id), TabToken: safehttp.AccessToken(c), MemberToken: member}
+}
+
+func identityStrict(c *gin.Context) bool {
+	version, _ := safehttp.ParseIdentityVersion(c.Request.Header)
+	return version == 2
 }

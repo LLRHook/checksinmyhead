@@ -9,7 +9,6 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"math"
-	"strings"
 	"time"
 )
 
@@ -23,8 +22,9 @@ type BillSharePaidCommand struct {
 	Paid    bool
 }
 type ClaimCommand struct {
-	Access  BillAccess
-	Updates []ItemAssignmentsUpdate
+	Access           BillAccess
+	Updates          []ItemAssignmentsUpdate
+	ExpectedRevision *int64
 }
 type BillRepository interface {
 	Create(context.Context, CreationInsert) (CreationRecord, error)
@@ -42,7 +42,14 @@ type billRepository struct{ db *gorm.DB }
 
 func (b *billRepository) GetById(id uint) (*models.Bill, error) {
 	v := &models.Bill{}
-	err := b.db.Preload("Tab").Preload("Items.Assignments").Preload("Participants").Preload("PersonShares").First(v, id).Error
+	ctx, cancel := mutation.Bound(context.Background())
+	defer cancel()
+	err := b.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return GraphQuery(tx).Preload("Tab", func(q *gorm.DB) *gorm.DB { return q.Select(models.TabColumns) }).Preload("Tab.Members", func(q *gorm.DB) *gorm.DB { return q.Select(models.MemberColumns).Order("id ASC") }).First(v, id).Error
+	}, &sql.TxOptions{Isolation: sql.LevelRepeatableRead, ReadOnly: true})
+	if err == nil {
+		PopulateLegacyParticipants(v)
+	}
 	return v, err
 }
 
@@ -88,7 +95,7 @@ func (b *billRepository) UpdatePersonSharePaid(ctx context.Context, c BillShareP
 				return err
 			}
 			var share models.PersonShare
-			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND bill_id = ?", c.ShareID, c.Access.BillID).First(&share).Error; err != nil {
+			if err := tx.Select(models.ShareColumns).Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND bill_id = ?", c.ShareID, c.Access.BillID).First(&share).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					return ErrPersonShareNotFound
 				}
@@ -133,10 +140,10 @@ func (b *billRepository) UpdateItemAssignmentsBatch(ctx context.Context, c Claim
 			return mutation.Forbidden
 		}
 		var v models.Bill
-		if err := tx.Session(&gorm.Session{SkipHooks: true}).Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND access_token = ? AND lazy_mode = ? AND tab_id IS NULL", c.Access.BillID, c.Access.BillToken, true).First(&v).Error; err != nil {
+		if err := tx.Session(&gorm.Session{SkipHooks: true}).Select(models.BillColumns).Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND access_token = ? AND lazy_mode = ? AND tab_id IS NULL", c.Access.BillID, c.Access.BillToken, true).First(&v).Error; err != nil {
 			return err
 		}
-		return ReplaceAssignmentsLocked(tx, v, c.Updates)
+		return ReplaceAssignmentsLocked(tx, v, c.Updates, c.ExpectedRevision)
 	}, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 }
 
@@ -146,10 +153,10 @@ func PreservesPaidAssignments(current, next []models.ItemAssignment, paidByName 
 	currentByName := make(map[string]float64, len(current))
 	nextByName := make(map[string]float64, len(next))
 	for _, existing := range current {
-		currentByName[strings.ToLower(existing.PersonName)] = existing.Percentage
+		currentByName[assignmentIdentityKey(existing)] = existing.Percentage
 	}
 	for _, candidate := range next {
-		nextByName[strings.ToLower(candidate.PersonName)] = candidate.Percentage
+		nextByName[assignmentIdentityKey(candidate)] = candidate.Percentage
 	}
 	for name, percentage := range currentByName {
 		if paidByName[name] && math.Abs(nextByName[name]-percentage) > 1e-9 {
@@ -167,10 +174,10 @@ func PreservesPaidAssignments(current, next []models.ItemAssignment, paidByName 
 func PreserveAssignmentClaimTimes(current, next []models.ItemAssignment) []models.ItemAssignment {
 	createdAtByName := make(map[string]time.Time, len(current))
 	for _, assignment := range current {
-		createdAtByName[strings.ToLower(assignment.PersonName)] = assignment.CreatedAt
+		createdAtByName[assignmentIdentityKey(assignment)] = assignment.CreatedAt
 	}
 	for i := range next {
-		if createdAt, ok := createdAtByName[strings.ToLower(next[i].PersonName)]; ok {
+		if createdAt, ok := createdAtByName[assignmentIdentityKey(next[i])]; ok {
 			next[i].CreatedAt = createdAt
 		}
 	}

@@ -94,7 +94,7 @@ type Bill struct {
     Total           float64
     Date            time.Time
     PaymentMethods  []PaymentMethod  // JSONB — Venmo, Zelle, etc.
-    Participants    []Person         // many2many
+    Participants    []Person         // legacy wire view; scoped ParticipantRows persist
     Items           []BillItem       // Line items with assignments
     PersonShares    []PersonShare    // Calculated per-person totals
     AccessToken     string
@@ -118,7 +118,7 @@ type TabMember struct {
 
 ### TabSettlement
 
-Created once when a tab is finalized. Stores gross allocated USD by legacy name key; net payer balances and the two independent paid flags retain their separate meanings.
+Created once when a tab is finalized. New snapshots store gross allocated USD by tagged member/guest reference with a frozen display label. Historical version1 rows remain exact raw records; net payer balances and the two paid flags retain their separate meanings.
 
 ```go
 type TabSettlement struct {
@@ -153,7 +153,7 @@ internal/
 
 **Service** — Validates typed commands and delegates a complete mutation to its repository. Handlers parse capabilities and DTOs; current authority/state decisions live inside the locked transaction.
 
-**Repository** — Owns authorization, lock ordering and commit for each database transition. Read endpoints may preload nested associations. Finalization batch-projects frozen accounting and persisted share components without Bill normalization or item/participant/payment graphs.
+**Repository** — Owns authorization, lock ordering and checked commit. Consistent read-only transactions use complete explicit column shapes at every graph/preload owner. Finalization batch-projects scoped participants, frozen shares and reference closure without financial revaluation or provider calls.
 
 ## Frontend Architecture
 
@@ -237,12 +237,14 @@ for accepted fields, ownership, freshness and legacy compatibility.
 `FinalizeOnce` is the sole production finalization seam: tab capability, current creator
 or memberless policy, stored-result validation, gross allocation, bounded inserts and
 one checked active-state update commit together. Authorized retries read the stored
-snapshot without writes/recalculation. Ambiguous legacy results and unsafe accounting
-return `409 accounting_review_required`. Individual receipt reads remain available;
-tab summaries also return that review response when frozen USD evidence is unavailable
-or inconsistent, after checking tab access. Stored historical rows remain unchanged.
+snapshot without writes/recalculation. New snapshots use tagged version2 parties and database-returned values/counts. Valid
+legacy1 raw rows retry exactly, including duplicate/empty labels. Mixed/missing/invalid
+evidence refuses mutation without regeneration. Wire2 preserves safe raw bills/history
+and explicit null/unavailable identity or accounting projections; unsafe serialization
+fails finite503. Faithful wire1 reads remain, otherwise actionable upgrade is required.
+Stored historical money and labels are never inferred or rewritten.
 
-Every attached writer uses Tab → ascending Bills → ascending Items → Shares; settlement
+Every attached writer uses Tab → ascending Bills → participants → ascending Items → Shares; settlement
 writes use Tab → Settlement. Join/leave/settings take Tab first. Fresh tab/creator creation
 is atomic. Source-share payment discovers association without locks and permits at most
 one standalone-to-attached restart under the same 10-second request context. Lifecycle monetary projections
@@ -252,11 +254,16 @@ use checked cent conversion/sums and the existing bounded remainder semantics.
 batch-loads/locks/persists, preserves claim timestamps and unchanged economic share IDs,
 and rejects paid percentage/component/total/ordered-item/frozen-USD changes. Paid routes
 use exact scoped share IDs; flags remain editable after finalization without recalculation.
-Leaving cannot delete creator or recorded payer/adder provenance. Join retries cannot
+Leaving cannot delete creator, recorded payer/adder, binding/pending/approval/retained
+receipt or snapshot references. Join retries cannot
 turn an invalid supplied capability into replacement membership.
 
-Stable participant identity, the positive-only USD read fallback, legacy missing-payer/net
-presentation, native Keychain qualification and combined mobile journeys remain open.
+The server now uses scoped participant references for creation, claims, paid authority,
+renames, binding generations/receipts, gross/net and snapshots. Confirmed members group
+by tab/member ID; unbound/pending guests remain distinct per bill/participant. Checked
+USD reads preserve explicit frozen zero and expose unavailable payer/valuation states.
+The earlier positive-only USD fallback source defect is corrected; native Keychain
+qualification, matched reference clients, old-writer drain and combined journeys remain open.
 The narrow iOS MethodChannel uses OS random32 bytes and generic-password Keychain
 items accessible only when unlocked on this device, with foreground admission and
 create-if-absent retrieval on duplicate add. Drift stores only its nonsecret locator;
@@ -293,17 +300,19 @@ known1/2/3 prefixes are strict and future suffixes cannot conceal known drift.
 Structural IDs/labels/person-ID ordinals/location and assignment bill IDs infer no
 historical identity or rounding ties. Original columns/PK/FK actions and all financial
 values remain. NULL-safe pending generation and last-decision receipts retain scoped
-member/actor references; cross-row revision validation belongs to later locked behavior.
-Application writes still default to graph1/`legacy_review`, with no new serialized
-fields/capability/version negotiation. Fresh graphs, response2, reference authority,
-legacy containment and clients remain separate identity work.
+member/actor references. Current locked behavior validates generations and revisions.
+Database defaults remain graph1/`legacy_review`; fresh wire1/2 misses construct complete
+graph2/ready/revision0, with exact format1 preserved and response2 persisted only for
+wire2. Existing replay hits never promote a graph. Header2 and participant_identity2
+select the implemented server contract; matched clients/release adoption remain pending.
 Actual old prefix1/2 readers pass against0003 after restart. Warm cached readers
 returned500 immediately after additive DDL; a separate pgx control reproduced
 SQLSTATE0A000 for cached `SELECT *` result-type invalidation. Drain readers before
 DDL and replace connections before resuming; verify this operational exclusion
 independently. Restarted read compatibility proves neither uninterrupted overlap
-nor old-writer safety. A stable-projection/connection strategy needs separate review
-and actual binary proof; never blindly retry a mutation. Production adoption remains
+nor old-writer safety. Current readers use explicit complete column shapes. Local index reuse retains full reference validation and money/tie behavior; it establishes no latency recovery. Qualify the final API/HTML on
+the same observed warmed database connections through owned additive fixtures. This
+does not repair old cached binaries or authorize blind mutation retries. Production adoption remains
 unauthorized.
 See [foundation evidence](reviews/2026-11-05-identity-foundation.md).
 
@@ -444,7 +453,7 @@ durable allowance remain separate work.
 
 - **Token-based access**: Every tab and bill has a unique access token. Protected reads accept a bearer token or the legacy `?t=` link parameter.
 - **No accounts**: Billington does not ask users to create accounts, but shared bills and tabs contain user-provided names and payment handles and are stored online.
-- **Member attribution**: Write operations optionally accept `?m=memberToken` for attribution without authentication.
+- **Member attribution**: A scoped member bearer capability (`X-Member-Token` or `?m=`) authenticates current membership; it is independently rechecked under the tab lock. Labels grant no authority.
 - **CORS**: Restricted to configured browser origins; CORS is not an authorization control.
 - **Receipt scan limits**: Bounded process slots, 10 admissions/60s per peer, 4096 peer keys and 10 MiB TOTAL multipart; no durable/global allowance yet.
 

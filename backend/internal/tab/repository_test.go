@@ -1,6 +1,7 @@
 package tab
 
 import (
+	"backend/internal/testidentity"
 	"backend/pkg/models"
 	"context"
 	"errors"
@@ -17,7 +18,7 @@ func newTabRepositoryTestDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.AutoMigrate(&models.Tab{}, &models.TabMember{}, &models.Bill{}, &models.BillItem{}, &models.ItemAssignment{}, &models.PersonShare{}); err != nil {
+	if err := db.AutoMigrate(&models.BillParticipant{}, &models.Person{}, &models.Tab{}, &models.TabMember{}, &models.Bill{}, &models.BillItem{}, &models.ItemAssignment{}, &models.PersonShare{}); err != nil {
 		t.Fatal(err)
 	}
 	return db
@@ -41,7 +42,8 @@ func TestUpdateBillItemAssignmentsRejectsChangesToPaidShares(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := (&tabRepository{db: db}).UpdateBillItemAssignmentsBatch(context.Background(), AssignmentCommand{Access: testTabAccess(t, db, tab.ID), BillID: bill.ID, Updates: []BillItemAssignmentsUpdate{{ItemID: item.ID, Assignments: []models.ItemAssignment{{PersonName: "Sam", Percentage: 100}}, ExpectedUpdatedAt: nil}}})
+	testidentity.Ready(t, db, &bill, "Sam")
+	err := (&tabRepository{db: db}).UpdateBillItemAssignmentsBatch(context.Background(), referenceTabCommand(t, db, AssignmentCommand{Access: testTabAccess(t, db, tab.ID), BillID: bill.ID, Updates: []BillItemAssignmentsUpdate{{ItemID: item.ID, Assignments: []models.ItemAssignment{{PersonName: "Sam", Percentage: 100}}, ExpectedUpdatedAt: nil}}}))
 	if !errors.Is(err, ErrItemAlreadyPaid) {
 		t.Fatalf("expected paid share assignment rejection, got %v", err)
 	}
@@ -75,11 +77,15 @@ func TestUpdateBillItemAssignmentsBatchRollsBackEveryItemOnFailure(t *testing.T)
 	if err := db.Create(&models.PersonShare{BillID: bill.ID, PersonName: "Paid person", Subtotal: 5, Total: 5, Paid: true}).Error; err != nil {
 		t.Fatal(err)
 	}
+	if err := db.Create(&models.PersonShare{BillID: bill.ID, PersonName: "Alex", Subtotal: 5, Total: 5}).Error; err != nil {
+		t.Fatal(err)
+	}
 
-	err := (&tabRepository{db: db}).UpdateBillItemAssignmentsBatch(context.Background(), AssignmentCommand{Access: testTabAccess(t, db, tab.ID), BillID: bill.ID, Updates: []BillItemAssignmentsUpdate{
+	testidentity.Ready(t, db, &bill, "Sam")
+	err := (&tabRepository{db: db}).UpdateBillItemAssignmentsBatch(context.Background(), referenceTabCommand(t, db, AssignmentCommand{Access: testTabAccess(t, db, tab.ID), BillID: bill.ID, Updates: []BillItemAssignmentsUpdate{
 		{ItemID: first.ID, Assignments: []models.ItemAssignment{{PersonName: "Sam", Percentage: 100}}},
 		{ItemID: second.ID, Assignments: []models.ItemAssignment{}},
-	}})
+	}}))
 	if !errors.Is(err, ErrItemAlreadyPaid) {
 		t.Fatalf("expected paid share rejection, got %v", err)
 	}

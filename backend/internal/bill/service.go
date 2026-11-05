@@ -50,7 +50,16 @@ func (b *billService) CreateBill(ctx context.Context, c CreateBillCommand) (Crea
 	var identity *ReplayIdentity
 	if c.Key != nil {
 		fingerprint := creationFingerprint(bill)
-		identity = &ReplayIdentity{KeyDigest: c.Key.digest, Fingerprint: fingerprint, Version: creationFingerprintVersion}
+		version := creationFingerprintVersion
+		if bill.InputVersion == 2 {
+			version = 2
+		}
+		identity = &ReplayIdentity{KeyDigest: c.Key.digest, Fingerprint: fingerprint, Version: version}
+		if version == 2 {
+			for _, p := range bill.Participants {
+				identity.ClientRefs = append(identity.ClientRefs, *p.ClientRef)
+			}
+		}
 		record, err := b.repo.LookupCreation(ctx, c.Key.digest)
 		if err != nil {
 			return CreateBillResult{}, creationStorageError(ctx, err)
@@ -59,7 +68,11 @@ func (b *billService) CreateBill(ctx context.Context, c CreateBillCommand) (Crea
 			return compareCreation(*record, *identity)
 		}
 	}
+	order := documentParticipantOrder(bill)
 	if err := deriveCreation(bill); err != nil {
+		return CreateBillResult{}, err
+	}
+	if _, err := creationParticipants(bill); err != nil {
 		return CreateBillResult{}, err
 	}
 	// Quote work stays outside the election transaction and shares one deadline.
@@ -101,7 +114,7 @@ func (b *billService) CreateBill(ctx context.Context, c CreateBillCommand) (Crea
 	if err != nil {
 		return CreateBillResult{}, err
 	}
-	record, err := b.repo.Create(ctx, CreationInsert{Bill: bill, Replay: identity})
+	record, err := b.repo.Create(ctx, CreationInsert{Bill: bill, Replay: identity, ParticipantOrder: order})
 	if err != nil {
 		return CreateBillResult{}, creationStorageError(ctx, err)
 	}
@@ -134,7 +147,8 @@ func (b *billService) GetUSDExchangeRate(ctx context.Context, currencyCode strin
 func (b *billService) GetBill(id uint) (bill *models.Bill, err error) {
 	bill, err = b.repo.GetById(id)
 	if err == nil {
-		bill.NormalizeCurrency()
+		value := ReadCurrency(*bill)
+		bill = &value
 	}
 	return bill, err
 }

@@ -4,6 +4,7 @@ import (
 	"backend/pkg/models"
 	"math"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -31,6 +32,9 @@ func addCents(a, b int64) (int64, error) {
 }
 
 func allocateRoundedCents(raw map[string]float64, lastClaimByPerson map[string]time.Time) (map[string]float64, error) {
+	return allocateRoundedCentsOrdered(raw, lastClaimByPerson, nil)
+}
+func allocateRoundedCentsOrdered(raw map[string]float64, lastClaimByPerson map[string]time.Time, order map[string]allocationTie) (map[string]float64, error) {
 	shares := make([]roundedShare, 0, len(raw))
 	var rawTotal float64
 	var allocated int64
@@ -69,6 +73,16 @@ func allocateRoundedCents(raw map[string]float64, lastClaimByPerson map[string]t
 	remaining := target - allocated
 	sort.Slice(shares, func(i, j int) bool {
 		if shares[i].lastClaim.Equal(shares[j].lastClaim) {
+			a, aok := order[shares[i].key]
+			b, bok := order[shares[j].key]
+			if aok && bok {
+				if a.label != b.label {
+					return a.label < b.label
+				}
+				if a.ordinal != b.ordinal {
+					return a.ordinal < b.ordinal
+				}
+			}
 			return shares[i].key < shares[j].key
 		}
 		return shares[i].lastClaim.After(shares[j].lastClaim)
@@ -115,6 +129,10 @@ func distributeRemainder(shares []roundedShare, remaining int64) error {
 // Creation validates its client projection and receipt limits against these same
 // values before the shared allocator is allowed to convert anything to cents.
 type shareCalculation struct {
+	source       *models.Bill
+	order        map[string]allocationTie
+	participants map[string]models.BillParticipant
+
 	keys                      []string
 	subtotals, taxes, tips    map[string]float64
 	details                   map[string][]models.ItemDetail
@@ -124,9 +142,14 @@ type shareCalculation struct {
 }
 
 func calculatePersonShares(bill *models.Bill, useReceiptSubtotal bool) (*shareCalculation, error) {
-	c := &shareCalculation{subtotals: map[string]float64{}, taxes: map[string]float64{}, tips: map[string]float64{}, details: map[string][]models.ItemDetail{}, names: map[string]string{}, lastClaims: map[string]time.Time{}}
+	c := &shareCalculation{source: bill, subtotals: map[string]float64{}, taxes: map[string]float64{}, tips: map[string]float64{}, details: map[string][]models.ItemDetail{}, names: map[string]string{}, lastClaims: map[string]time.Time{}}
 	if bill == nil {
 		return c, nil
+	}
+	c.order = allocationOrder(bill)
+	c.participants = map[string]models.BillParticipant{}
+	for _, p := range bill.ParticipantRows {
+		c.participants[strconv.FormatUint(uint64(p.ID), 10)] = p
 	}
 	for _, value := range []float64{bill.Subtotal, bill.Tax, bill.TipAmount} {
 		if !money(value) || value < 0 {
@@ -139,10 +162,17 @@ func calculatePersonShares(bill *models.Bill, useReceiptSubtotal bool) (*shareCa
 		}
 		for _, assignment := range item.Assignments {
 			personName := strings.TrimSpace(assignment.PersonName)
-			if personName == "" || !finite(assignment.Percentage) || assignment.Percentage <= 0 || assignment.Percentage > 100 {
+			if (personName == "" && bill.InputVersion != 2 && bill.IdentityVersion != 2) || !finite(assignment.Percentage) || assignment.Percentage <= 0 || assignment.Percentage > 100 {
 				return nil, ErrInvalidCreation
 			}
-			key := strings.ToLower(personName)
+			key := assignmentKey(bill, assignment)
+			if bill.IdentityVersion == 2 {
+				p, ok := c.participants[key]
+				if !ok || assignment.IdentityVersion != 2 || assignment.BillID == nil || *assignment.BillID != bill.ID {
+					return nil, ErrIdentityReview
+				}
+				personName = p.Label
+			}
 			amount := item.Price * assignment.Percentage / 100
 			if !money(amount) || !money(c.subtotals[key]+amount) {
 				return nil, ErrInvalidCreation
@@ -203,15 +233,15 @@ func calculatePersonShares(bill *models.Bill, useReceiptSubtotal bool) (*shareCa
 }
 
 func (c *shareCalculation) rounded(billID uint) ([]models.PersonShare, error) {
-	subtotals, err := allocateRoundedCents(c.subtotals, c.lastClaims)
+	subtotals, err := allocateRoundedCentsOrdered(c.subtotals, c.lastClaims, c.order)
 	if err != nil {
 		return nil, err
 	}
-	taxes, err := allocateRoundedCents(c.taxes, c.lastClaims)
+	taxes, err := allocateRoundedCentsOrdered(c.taxes, c.lastClaims, c.order)
 	if err != nil {
 		return nil, err
 	}
-	tips, err := allocateRoundedCents(c.tips, c.lastClaims)
+	tips, err := allocateRoundedCentsOrdered(c.tips, c.lastClaims, c.order)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +253,16 @@ func (c *shareCalculation) rounded(billID uint) ([]models.PersonShare, error) {
 			return nil, ErrInvalidCreation
 		}
 		total += obligation
-		shares = append(shares, models.PersonShare{BillID: billID, PersonName: c.names[key], Items: c.details[key], Subtotal: subtotals[key], TaxShare: taxes[key], TipShare: tips[key], Total: obligation})
+		next := models.PersonShare{BillID: billID, PersonName: c.names[key], Items: c.details[key], Subtotal: subtotals[key], TaxShare: taxes[key], TipShare: tips[key], Total: obligation}
+		if c.source != nil && c.source.InputVersion == 2 {
+			next.ParticipantRef = key
+		}
+		if p, ok := c.participants[key]; ok {
+			id := p.ID
+			next.ParticipantID = &id
+			next.IdentityVersion = 2
+		}
+		shares = append(shares, next)
 	}
 	if !money(total) {
 		return nil, ErrInvalidCreation

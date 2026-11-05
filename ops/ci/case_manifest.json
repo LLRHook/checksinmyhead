@@ -314,7 +314,13 @@
       "backend/pkg/security/TestBase62EncodeKnownValue",
       "backend/pkg/security/TestSanitizeStringCompatibility",
       "backend/pkg/security/TestTokenLengthRange",
-      "backend/pkg/security/TestTokenUniqueness"
+      "backend/pkg/security/TestTokenUniqueness",
+      "backend/internal/bill/TestFrozenUSDReferenceTieAndInputPreservation",
+      "backend/internal/bill/TestFrozenUSDReferenceValidationBeforeZeroReturn",
+      "backend/internal/bill/TestIdentity0003Fingerprint2Golden",
+      "backend/internal/bill/TestIdentity0003RenameStableMoneyKeys",
+      "backend/internal/tab/TestIdentity0003UnboundGuestsAndMissingPayers",
+      "backend/pkg/safehttp/TestIdentity0003HeaderAndMemberProofs"
     ],
     "postgres": [
       "backend/cmd/bill-service/TestA1PostgresProductionJSON",
@@ -515,7 +521,25 @@
       "backend/pkg/database/TestSQLLoggerConfigurationIsSafe",
       "backend/pkg/database/TestSQLLoggerFastAndSilentDoNotEvaluateQuery",
       "backend/pkg/database/TestSQLLoggerParameterizedQueries",
-      "backend/pkg/database/TestSQLLoggerSecrecyAtEveryLevel"
+      "backend/pkg/database/TestSQLLoggerSecrecyAtEveryLevel",
+      "backend/cmd/bill-service/TestPostgresIdentity0003BindingAuthorityAndRetry",
+      "backend/cmd/bill-service/TestPostgresIdentity0003BindingGenerationReceiptAndCurrentProof",
+      "backend/cmd/bill-service/TestPostgresIdentity0003CreationAndExactReplay",
+      "backend/cmd/bill-service/TestPostgresIdentity0003FullRosterRecoveryAndRevisionOverflow",
+      "backend/cmd/bill-service/TestPostgresIdentity0003LegacyHistoryAndUnavailableNet",
+      "backend/cmd/bill-service/TestPostgresIdentity0003MalformedReadyGraphAndMixedHistory",
+      "backend/cmd/bill-service/TestPostgresIdentity0003ReferenceClaimsAndParticipantRecovery",
+      "backend/cmd/bill-service/TestPostgresIdentity0003Response2AtomicGuards",
+      "backend/internal/bill/TestFrozenUSDReferenceTieAndInputPreservation",
+      "backend/internal/bill/TestFrozenUSDReferenceValidationBeforeZeroReturn",
+      "backend/internal/bill/TestIdentity0003Fingerprint2Golden",
+      "backend/internal/bill/TestIdentity0003RenameStableMoneyKeys",
+      "backend/internal/bill/TestPostgresIdentity0003Response2WinnerAndCommitLoss",
+      "backend/internal/tab/TestIdentity0003UnboundGuestsAndMissingPayers",
+      "backend/internal/tab/TestPostgresIdentity0003AttachmentCountRollback",
+      "backend/internal/tab/TestPostgresIdentity0003BindingCompetingWriters",
+      "backend/internal/tab/TestPostgresSnapshotPersistedAcknowledgment",
+      "backend/internal/tab/TestPostgresSnapshotSuppressedInsertRollsBack"
     ],
     "mobile": [
       "mobile/test/client_v1_bridge_test.dart",

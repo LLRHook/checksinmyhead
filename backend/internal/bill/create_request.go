@@ -5,6 +5,8 @@ import (
 	"backend/pkg/models"
 	"backend/pkg/safehttp"
 	"backend/pkg/security"
+	"bytes"
+	"encoding/json"
 	"errors"
 	"math"
 	"net/http"
@@ -37,7 +39,9 @@ type CreateBillRequest struct {
 	PaymentMethods  creationPayments `json:"payment_methods"`
 }
 type createPerson struct {
-	Name string `json:"name"`
+	RefPresent bool    `json:"-"`
+	Name       string  `json:"name"`
+	ClientRef  *string `json:"client_ref"`
 }
 type createItem struct {
 	Name        string              `json:"name"`
@@ -45,16 +49,22 @@ type createItem struct {
 	Assignments creationAssignments `json:"assignments"`
 }
 type createAssignment struct {
-	PersonName string  `json:"person_name"`
-	Percentage float64 `json:"percentage"`
+	RefPresent     bool    `json:"-"`
+	NamePresent    bool    `json:"-"`
+	PersonName     string  `json:"person_name"`
+	ParticipantRef *string `json:"participant_ref"`
+	Percentage     float64 `json:"percentage"`
 }
 type createShare struct {
-	PersonName string          `json:"person_name"`
-	Items      creationDetails `json:"items"`
-	Subtotal   float64         `json:"subtotal"`
-	TaxShare   float64         `json:"tax_share"`
-	TipShare   float64         `json:"tip_share"`
-	Total      float64         `json:"total"`
+	RefPresent     bool            `json:"-"`
+	NamePresent    bool            `json:"-"`
+	PersonName     string          `json:"person_name"`
+	ParticipantRef *string         `json:"participant_ref"`
+	Items          creationDetails `json:"items"`
+	Subtotal       float64         `json:"subtotal"`
+	TaxShare       float64         `json:"tax_share"`
+	TipShare       float64         `json:"tip_share"`
+	Total          float64         `json:"total"`
 }
 type createDetail struct {
 	Name     string  `json:"name"`
@@ -67,6 +77,10 @@ type createPayment struct {
 }
 
 func decodeCreateBill(w http.ResponseWriter, r *http.Request) (*models.Bill, error) {
+	version, ok := safehttp.ParseIdentityVersion(r.Header)
+	if !ok {
+		return nil, ErrInvalidCreation
+	}
 	var request CreateBillRequest
 	if err := safehttp.DecodeJSON(w, r, &request, createBodyLimit, true); err != nil {
 		return nil, ErrInvalidCreation
@@ -82,11 +96,14 @@ func decodeCreateBill(w http.ResponseWriter, r *http.Request) (*models.Bill, err
 	if request.Name == nil || request.Subtotal == nil || request.Total == nil {
 		return nil, ErrInvalidCreation
 	}
-	b := &models.Bill{Name: *request.Name, LazyMode: request.LazyMode, Subtotal: *request.Subtotal,
+	b := &models.Bill{InputVersion: version, Name: *request.Name, LazyMode: request.LazyMode, Subtotal: *request.Subtotal,
 		Tax: request.Tax, TipAmount: request.TipAmount, TipPercentage: request.TipPercentage, Total: *request.Total,
 		CurrencyCode: request.CurrencyCode, DisplayCurrency: request.DisplayCurrency}
 	for _, p := range request.Participants {
-		b.Participants = append(b.Participants, models.Person{Name: p.Name})
+		if (version == 1 && p.RefPresent) || (version == 2 && p.ClientRef == nil) {
+			return nil, ErrInvalidCreation
+		}
+		b.Participants = append(b.Participants, models.Person{Name: p.Name, ClientRef: p.ClientRef})
 	}
 	for _, item := range request.Items {
 		if item.Price == nil {
@@ -94,12 +111,26 @@ func decodeCreateBill(w http.ResponseWriter, r *http.Request) (*models.Bill, err
 		}
 		next := models.BillItem{Name: item.Name, Price: *item.Price}
 		for _, a := range item.Assignments {
-			next.Assignments = append(next.Assignments, models.ItemAssignment{PersonName: a.PersonName, Percentage: a.Percentage})
+			if (version == 1 && a.RefPresent) || (version == 2 && (a.NamePresent || a.ParticipantRef == nil)) {
+				return nil, ErrInvalidCreation
+			}
+			name, ref := a.PersonName, ""
+			if a.ParticipantRef != nil {
+				ref = *a.ParticipantRef
+			}
+			next.Assignments = append(next.Assignments, models.ItemAssignment{PersonName: name, ParticipantRef: ref, Percentage: a.Percentage})
 		}
 		b.Items = append(b.Items, next)
 	}
 	for _, s := range request.PersonShares {
-		next := models.PersonShare{PersonName: s.PersonName, Subtotal: s.Subtotal, TaxShare: s.TaxShare, TipShare: s.TipShare, Total: s.Total, Items: []models.ItemDetail{}}
+		if (version == 1 && s.RefPresent) || (version == 2 && (s.NamePresent || s.ParticipantRef == nil)) {
+			return nil, ErrInvalidCreation
+		}
+		name, ref := s.PersonName, ""
+		if s.ParticipantRef != nil {
+			ref = *s.ParticipantRef
+		}
+		next := models.PersonShare{PersonName: name, ParticipantRef: ref, Subtotal: s.Subtotal, TaxShare: s.TaxShare, TipShare: s.TipShare, Total: s.Total, Items: []models.ItemDetail{}}
 		for _, item := range s.Items {
 			next.Items = append(next.Items, models.ItemDetail{Name: item.Name, Amount: item.Amount, IsShared: item.IsShared})
 		}
@@ -127,11 +158,11 @@ func nameKey(s string) string { return strings.ToLower(s) }
 // cannot reparent existing associations or create a bill inside a tab.
 func guardFreshCreation(b *models.Bill) error {
 	if b == nil || b.ID != 0 || b.TabID != nil || b.Tab != nil || b.AddedByMemberID != nil || b.PaidByMemberID != nil ||
-		!b.Date.IsZero() || !b.CreatedAt.IsZero() || !b.UpdatedAt.IsZero() {
+		!b.Date.IsZero() || !b.CreatedAt.IsZero() || !b.UpdatedAt.IsZero() || b.IdentityVersion != 0 || b.IdentityState != "" || b.IdentityRevision != 0 || b.CreationResponseVersion != nil || b.CreationResponse != nil || len(b.ParticipantRows) != 0 || (b.InputVersion != 0 && b.InputVersion != 1 && b.InputVersion != 2) {
 		return ErrInvalidCreation
 	}
 	for _, p := range b.Participants {
-		if p.ID != 0 {
+		if p.ID != 0 || (b.InputVersion != 2 && p.ClientRef != nil) {
 			return ErrInvalidCreation
 		}
 	}
@@ -140,13 +171,13 @@ func guardFreshCreation(b *models.Bill) error {
 			return ErrInvalidCreation
 		}
 		for _, a := range item.Assignments {
-			if a.ID != 0 || a.BillItemID != 0 || !a.CreatedAt.IsZero() || !a.UpdatedAt.IsZero() {
+			if a.ID != 0 || a.BillItemID != 0 || a.BillID != nil || a.ParticipantID != nil || a.IdentityVersion != 0 || (b.InputVersion != 2 && a.ParticipantRef != "") || !a.CreatedAt.IsZero() || !a.UpdatedAt.IsZero() {
 				return ErrInvalidCreation
 			}
 		}
 	}
 	for _, s := range b.PersonShares {
-		if s.ID != 0 || s.BillID != 0 || s.Paid {
+		if s.ID != 0 || s.BillID != 0 || s.Paid || s.IdentityVersion != 0 || s.ParticipantID != nil || (b.InputVersion != 2 && s.ParticipantRef != "") {
 			return ErrInvalidCreation
 		}
 	}
@@ -211,6 +242,18 @@ func normalizeCreation(b *models.Bill) error {
 	}
 	for i := range b.Participants {
 		p := &b.Participants[i]
+		if b.InputVersion == 2 {
+			if p.ClientRef == nil || !validClientRef(*p.ClientRef) || participants[*p.ClientRef] {
+				return ErrInvalidCreation
+			}
+			p.Name, err = participantLabel(p.Name)
+			if err != nil {
+				return err
+			}
+			participants[*p.ClientRef] = true
+			names[*p.ClientRef] = p.Name
+			continue
+		}
 		p.Name, err = register(p.Name)
 		if err != nil {
 			return err
@@ -245,11 +288,21 @@ func normalizeCreation(b *models.Bill) error {
 			if assignments > 5000 || !finite(a.Percentage) || a.Percentage <= 0 || a.Percentage > 100 {
 				return ErrInvalidCreation
 			}
-			a.PersonName, err = register(a.PersonName)
-			if err != nil {
-				return err
-			}
 			key := nameKey(a.PersonName)
+			if b.InputVersion == 2 {
+				name, ok := names[a.ParticipantRef]
+				if !ok || a.ParticipantRef == "" {
+					return ErrInvalidCreation
+				}
+				a.PersonName = name
+				key = a.ParticipantRef
+			} else {
+				a.PersonName, err = register(a.PersonName)
+				if err != nil {
+					return err
+				}
+				key = nameKey(a.PersonName)
+			}
 			if seen[key] {
 				return ErrInvalidCreation
 			}
@@ -277,11 +330,21 @@ func normalizeCreation(b *models.Bill) error {
 	projections := map[string]models.PersonShare{}
 	for i := range b.PersonShares {
 		s := &b.PersonShares[i]
-		s.PersonName, err = register(s.PersonName)
-		if err != nil {
-			return err
-		}
 		key := nameKey(s.PersonName)
+		if b.InputVersion == 2 {
+			name, ok := names[s.ParticipantRef]
+			if !ok || s.ParticipantRef == "" {
+				return ErrInvalidCreation
+			}
+			s.PersonName = name
+			key = s.ParticipantRef
+		} else {
+			s.PersonName, err = register(s.PersonName)
+			if err != nil {
+				return err
+			}
+			key = nameKey(s.PersonName)
+		}
 		if _, ok := projections[key]; ok {
 			return ErrInvalidCreation
 		}
@@ -309,17 +372,17 @@ func deriveCreation(b *models.Bill) error {
 	projections := map[string]models.PersonShare{}
 	assignments := 0
 	for _, p := range b.Participants {
-		names[nameKey(p.Name)] = p.Name
+		names[creationPersonKey(b, p)] = p.Name
 	}
 	for _, item := range b.Items {
 		for _, a := range item.Assignments {
-			names[nameKey(a.PersonName)] = a.PersonName
+			names[assignmentKey(b, a)] = a.PersonName
 			assignments++
 		}
 	}
 	for _, s := range b.PersonShares {
-		names[nameKey(s.PersonName)] = s.PersonName
-		projections[nameKey(s.PersonName)] = s
+		names[shareKey(b, s)] = s.PersonName
+		projections[shareKey(b, s)] = s
 	}
 	// Old saved history can have no item history, or item history without assignments.
 	// Its builder emits zero detail components with an equal-split total.
@@ -354,26 +417,26 @@ func deriveCreation(b *models.Bill) error {
 				}
 			}
 		}
-		totals, err := allocateRoundedCents(rawTotals, nil)
+		totals, err := allocateRoundedCentsOrdered(rawTotals, nil, allocationOrder(b))
 		if err != nil {
 			return err
 		}
-		subs, err := allocateRoundedCents(subRaw, nil)
+		subs, err := allocateRoundedCentsOrdered(subRaw, nil, allocationOrder(b))
 		if err != nil {
 			return err
 		}
-		taxes, err := allocateRoundedCents(taxRaw, nil)
+		taxes, err := allocateRoundedCentsOrdered(taxRaw, nil, allocationOrder(b))
 		if err != nil {
 			return err
 		}
-		tips, err := allocateRoundedCents(tipRaw, nil)
+		tips, err := allocateRoundedCentsOrdered(tipRaw, nil, allocationOrder(b))
 		if err != nil {
 			return err
 		}
 		b.PersonShares = []models.PersonShare{}
 		for _, key := range sortedCreationKeys(names) {
 			if _, ok := projections[key]; ok {
-				b.PersonShares = append(b.PersonShares, models.PersonShare{PersonName: names[key], Items: []models.ItemDetail{}, Subtotal: subs[key], TaxShare: taxes[key], TipShare: tips[key], Total: totals[key]})
+				b.PersonShares = append(b.PersonShares, models.PersonShare{PersonName: names[key], ParticipantRef: creationRef(b, key), Items: []models.ItemDetail{}, Subtotal: subs[key], TaxShare: taxes[key], TipShare: tips[key], Total: totals[key]})
 			}
 		}
 		return nil
@@ -434,13 +497,13 @@ func deriveCreation(b *models.Bill) error {
 	}
 	byName := map[string]models.PersonShare{}
 	for _, s := range shares {
-		byName[nameKey(s.PersonName)] = s
+		byName[shareKey(b, s)] = s
 	}
 	b.PersonShares = []models.PersonShare{}
 	for _, key := range sortedCreationKeys(names) {
 		s, ok := byName[key]
 		if !ok {
-			s = models.PersonShare{PersonName: names[key]}
+			s = models.PersonShare{PersonName: names[key], ParticipantRef: creationRef(b, key)}
 		}
 		if !money(s.Total) || s.Total < 0 {
 			return ErrInvalidCreation
@@ -509,4 +572,60 @@ func (v *creationDetails) UnmarshalJSON(data []byte) error {
 	values, err := safehttp.DecodeStrictArray[createDetail](data, 500)
 	*v = values
 	return err
+}
+
+func creationObjectFields(data []byte, value any) (map[string]json.RawMessage, error) {
+	d := json.NewDecoder(bytes.NewReader(data))
+	d.DisallowUnknownFields()
+	if err := d.Decode(value); err != nil {
+		return nil, err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return nil, err
+	}
+	return fields, nil
+}
+func fieldPresent(fields map[string]json.RawMessage, name string) bool {
+	for key := range fields {
+		if strings.EqualFold(key, name) {
+			return true
+		}
+	}
+	return false
+}
+func (v *createPerson) UnmarshalJSON(data []byte) error {
+	type plain createPerson
+	var p plain
+	fields, err := creationObjectFields(data, &p)
+	if err != nil {
+		return err
+	}
+	*v = createPerson(p)
+	v.RefPresent = fieldPresent(fields, "client_ref")
+	return nil
+}
+func (v *createAssignment) UnmarshalJSON(data []byte) error {
+	type plain createAssignment
+	var p plain
+	fields, err := creationObjectFields(data, &p)
+	if err != nil {
+		return err
+	}
+	*v = createAssignment(p)
+	v.RefPresent = fieldPresent(fields, "participant_ref")
+	v.NamePresent = fieldPresent(fields, "person_name")
+	return nil
+}
+func (v *createShare) UnmarshalJSON(data []byte) error {
+	type plain createShare
+	var p plain
+	fields, err := creationObjectFields(data, &p)
+	if err != nil {
+		return err
+	}
+	*v = createShare(p)
+	v.RefPresent = fieldPresent(fields, "participant_ref")
+	v.NamePresent = fieldPresent(fields, "person_name")
+	return nil
 }

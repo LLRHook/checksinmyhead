@@ -7,14 +7,10 @@ import (
 	"backend/pkg/models"
 	"backend/pkg/mutation"
 	"backend/pkg/safehttp"
-	"backend/pkg/security"
 	"crypto/subtle"
 	"errors"
 	"fmt"
-	"math"
 	"strconv"
-	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -25,6 +21,9 @@ type BillHandler struct{ service BillService }
 func NewBillHandler(service BillService) *BillHandler { return &BillHandler{service: service} }
 
 func (h *BillHandler) CreateBill(c *gin.Context) {
+	if _, ok := safehttp.IdentityVersion(c); !ok {
+		return
+	}
 	bill, err := decodeCreateBill(c.Writer, c.Request)
 	if err != nil {
 		c.JSON(400, gin.H{"error": "invalid bill content"})
@@ -64,12 +63,15 @@ func (h *BillHandler) CreateBill(c *gin.Context) {
 			c.JSON(503, gin.H{"error": "daily exchange rate is unavailable; retry or use USD"})
 			return
 		}
-		database.LogRequestError(err)
-		c.JSON(500, gin.H{"error": "an internal error occurred"})
+		mutation.WriteError(c, err)
 		return
 	}
 
-	c.Header("Cache-Control", "no-store")
+	if result.OriginalResponse != nil {
+		c.Data(201, "application/json; charset=utf-8", result.OriginalResponse)
+		return
+	}
+	c.Header("Cache-Control", "private, no-store")
 	c.JSON(201, gin.H{
 		"bill_id": result.BillID, "access_token": result.AccessToken,
 		"share_url":     fmt.Sprintf("%s/b/%d?t=%s", config.AppDomain(), result.BillID, result.AccessToken),
@@ -131,181 +133,84 @@ func (h *BillHandler) getBillAndValidate(c *gin.Context) *models.Bill {
 }
 
 func (h *BillHandler) GetBill(c *gin.Context) {
+	version, ok := safehttp.IdentityVersion(c)
+	if !ok {
+		return
+	}
 	bill := h.getBillAndValidate(c)
 	if bill == nil {
 		return
 	}
 
-	bill.AccessToken = ""
-	c.JSON(200, bill)
+	viewer, err := BillViewer(*bill, safehttp.MemberToken(c))
+	if err != nil {
+		mutation.WriteError(c, err)
+		return
+	}
+	if version == 2 {
+		safehttp.JSONValue(c, 200, ViewBill(*bill, viewer))
+		return
+	}
+	if err := LegacyBillRepresentable(*bill); err != nil {
+		mutation.WriteError(c, err)
+		return
+	}
+	value := LegacyBill(*bill)
+	safehttp.JSONValue(c, 200, value)
 }
 
-func (h *BillHandler) UpdateLazyItemAssignments(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+func (h *BillHandler) UpdateLazyItemAssignments(c *gin.Context)      { h.updateClaims(c, true) }
+func (h *BillHandler) UpdateLazyItemAssignmentsBatch(c *gin.Context) { h.updateClaims(c, false) }
+func (h *BillHandler) updateClaims(c *gin.Context, single bool) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 63)
 	if err != nil || id == 0 {
-		c.JSON(400, gin.H{"error": "invalid bill id"})
+		mutation.WriteError(c, mutation.Invalid)
 		return
 	}
-	itemID, err := strconv.ParseUint(c.Param("itemId"), 10, 32)
+	updates, expected, err := DecodeClaim(c, single)
 	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid item id"})
-		return
-	}
-	var body struct {
-		ExpectedUpdatedAt *string          `json:"expected_updated_at"`
-		Assignments       AssignmentInputs `json:"assignments"`
-	}
-	if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, safehttp.MutationBodyLimit, false); err != nil || body.Assignments == nil || len(body.Assignments) > 100 {
-		c.JSON(400, gin.H{"error": "assignments are required"})
-		return
-	}
-
-	assignments := make([]models.ItemAssignment, 0, len(body.Assignments))
-	seen := make(map[string]struct{}, len(body.Assignments))
-	totalPercentage := 0.0
-	for _, assignment := range body.Assignments {
-		name := security.SanitizeString(assignment.PersonName)
-		key := strings.ToLower(name)
-		if name == "" || len([]rune(name)) > 30 || assignment.Percentage <= 0 || assignment.Percentage > 100 || math.IsNaN(assignment.Percentage) || math.IsInf(assignment.Percentage, 0) {
-			c.JSON(400, gin.H{"error": "invalid item assignment"})
-			return
-		}
-		if _, exists := seen[key]; exists {
-			c.JSON(400, gin.H{"error": "duplicate person assignment"})
-			return
-		}
-		seen[key] = struct{}{}
-		totalPercentage += assignment.Percentage
-		assignments = append(assignments, models.ItemAssignment{PersonName: name, Percentage: assignment.Percentage})
-	}
-	if !models.ItemAssignmentTotalIsValid(totalPercentage) {
-		c.JSON(400, gin.H{"error": "item assignments cannot exceed 100 percent"})
-		return
-	}
-
-	var expectedUpdatedAt *time.Time
-	if body.ExpectedUpdatedAt != nil && *body.ExpectedUpdatedAt != "" {
-		parsed, parseErr := time.Parse(time.RFC3339Nano, *body.ExpectedUpdatedAt)
-		if parseErr != nil {
-			c.JSON(400, gin.H{"error": "invalid expected_updated_at"})
-			return
-		}
-		expectedUpdatedAt = &parsed
-	}
-	if err := h.service.UpdateItemAssignmentsBatch(c.Request.Context(), ClaimCommand{Access: BillAccess{BillID: uint(id), BillToken: safehttp.AccessToken(c)}, Updates: []ItemAssignmentsUpdate{{ItemID: uint(itemID), Assignments: assignments, ExpectedUpdatedAt: expectedUpdatedAt}}}); err != nil {
-		switch {
-		case errors.Is(err, ErrAssignmentConflict):
-			c.JSON(409, gin.H{"error": "item changed; refresh and try again"})
-		case errors.Is(err, ErrItemAlreadyPaid):
-			c.JSON(409, gin.H{"error": "paid shares cannot be changed"})
-		case errors.Is(err, gorm.ErrRecordNotFound):
-			c.JSON(404, gin.H{"error": "bill item not found"})
-		default:
-			mutation.WriteError(c, err)
+		if !c.IsAborted() {
+			WriteClaimError(c, err)
 		}
 		return
 	}
-	c.JSON(200, gin.H{"status": "ok"})
-}
-
-func (h *BillHandler) UpdateLazyItemAssignmentsBatch(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil || id == 0 {
-		c.JSON(400, gin.H{"error": "invalid bill id"})
-		return
-	}
-	var body struct {
-		Updates AssignmentUpdateInputs `json:"updates"`
-	}
-	if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, safehttp.MutationBodyLimit, false); err != nil || len(body.Updates) == 0 {
-		c.JSON(400, gin.H{"error": "item updates are required"})
-		return
-	}
-
-	if !AssignmentInputCountsValid(body.Updates) {
-		c.JSON(400, gin.H{"error": "bad request"})
-		return
-	}
-
-	updates := make([]ItemAssignmentsUpdate, 0, len(body.Updates))
-	seenItems := make(map[uint]struct{}, len(body.Updates))
-	for _, itemUpdate := range body.Updates {
-		if itemUpdate.ItemID == 0 {
-			c.JSON(400, gin.H{"error": "invalid item id"})
-			return
-		}
-		if _, exists := seenItems[itemUpdate.ItemID]; exists {
-			c.JSON(400, gin.H{"error": "duplicate item update"})
-			return
-		}
-		seenItems[itemUpdate.ItemID] = struct{}{}
-		if itemUpdate.Assignments == nil {
-			c.JSON(400, gin.H{"error": "assignments are required"})
-			return
-		}
-
-		assignments := make([]models.ItemAssignment, 0, len(itemUpdate.Assignments))
-		seenPeople := make(map[string]struct{}, len(itemUpdate.Assignments))
-		totalPercentage := 0.0
-		for _, assignment := range itemUpdate.Assignments {
-			name := security.SanitizeString(assignment.PersonName)
-			key := strings.ToLower(name)
-			if name == "" || len([]rune(name)) > 30 || assignment.Percentage <= 0 || assignment.Percentage > 100 || math.IsNaN(assignment.Percentage) || math.IsInf(assignment.Percentage, 0) {
-				c.JSON(400, gin.H{"error": "invalid item assignment"})
-				return
-			}
-			if _, exists := seenPeople[key]; exists {
-				c.JSON(400, gin.H{"error": "duplicate person assignment"})
-				return
-			}
-			seenPeople[key] = struct{}{}
-			totalPercentage += assignment.Percentage
-			assignments = append(assignments, models.ItemAssignment{PersonName: name, Percentage: assignment.Percentage})
-		}
-		if !models.ItemAssignmentTotalIsValid(totalPercentage) {
-			c.JSON(400, gin.H{"error": "item assignments cannot exceed 100 percent"})
-			return
-		}
-
-		var expectedUpdatedAt *time.Time
-		if itemUpdate.ExpectedUpdatedAt != nil && *itemUpdate.ExpectedUpdatedAt != "" {
-			parsed, err := time.Parse(time.RFC3339Nano, *itemUpdate.ExpectedUpdatedAt)
-			if err != nil {
-				c.JSON(400, gin.H{"error": "invalid expected_updated_at"})
-				return
-			}
-			expectedUpdatedAt = &parsed
-		}
-		updates = append(updates, ItemAssignmentsUpdate{
-			ItemID: itemUpdate.ItemID, Assignments: assignments, ExpectedUpdatedAt: expectedUpdatedAt,
-		})
-	}
-
-	if err := h.service.UpdateItemAssignmentsBatch(c.Request.Context(), ClaimCommand{Access: BillAccess{BillID: uint(id), BillToken: safehttp.AccessToken(c)}, Updates: updates}); err != nil {
-		switch {
-		case errors.Is(err, ErrAssignmentConflict):
-			c.JSON(409, gin.H{"error": "item changed; refresh and try again"})
-		case errors.Is(err, ErrItemAlreadyPaid):
-			c.JSON(409, gin.H{"error": "paid shares cannot be changed"})
-		case errors.Is(err, gorm.ErrRecordNotFound):
-			c.JSON(404, gin.H{"error": "bill item not found"})
-		default:
-			mutation.WriteError(c, err)
-		}
-		return
-	}
-
-	updatedBill, err := h.service.GetBill(uint(id))
+	err = h.service.UpdateItemAssignmentsBatch(c.Request.Context(), ClaimCommand{Access: BillAccess{BillID: uint(id), BillToken: safehttp.AccessToken(c)}, Updates: updates, ExpectedRevision: expected})
 	if err != nil {
-		database.LogRequestError(err)
-		c.JSON(500, gin.H{"error": "an internal error occurred"})
+		WriteClaimError(c, err)
 		return
 	}
-	updatedBill.AccessToken = ""
-	c.JSON(200, updatedBill)
+	if single {
+		c.JSON(200, gin.H{"status": "ok"})
+		return
+	}
+	b, err := h.service.GetBill(uint(id))
+	if err != nil {
+		mutation.WriteError(c, err)
+		return
+	}
+	viewer, err := BillViewer(*b, safehttp.MemberToken(c))
+	if err != nil {
+		mutation.WriteError(c, err)
+		return
+	}
+	version, _ := safehttp.IdentityVersion(c)
+	b.AccessToken = ""
+	if version == 2 {
+		safehttp.JSONValue(c, 200, ViewBill(*b, viewer))
+	} else {
+		if err := LegacyBillRepresentable(*b); err != nil {
+			mutation.WriteError(c, err)
+			return
+		}
+		value := LegacyBill(*b)
+		safehttp.JSONValue(c, 200, value)
+	}
 }
 
 func (h *BillHandler) UpdatePersonSharePaid(c *gin.Context) {
+	if _, ok := safehttp.IdentityVersion(c); !ok {
+		return
+	}
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil || id == 0 {
 		c.JSON(400, gin.H{"error": "invalid bill id"})
@@ -320,7 +225,7 @@ func (h *BillHandler) UpdatePersonSharePaid(c *gin.Context) {
 	var body struct {
 		Paid *bool `json:"paid"`
 	}
-	if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, 4<<10, false); err != nil || body.Paid == nil {
+	if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, 4<<10, identityStrict(c)); err != nil || body.Paid == nil {
 		c.JSON(400, gin.H{"error": "paid field required"})
 		return
 	}
@@ -335,4 +240,9 @@ func (h *BillHandler) UpdatePersonSharePaid(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{"status": "ok"})
+}
+
+func identityStrict(c *gin.Context) bool {
+	version, _ := safehttp.ParseIdentityVersion(c.Request.Header)
+	return version == 2
 }

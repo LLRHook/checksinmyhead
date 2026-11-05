@@ -2,6 +2,7 @@ package tab
 
 import (
 	billpkg "backend/internal/bill"
+	"backend/internal/testidentity"
 	"backend/pkg/models"
 	"bytes"
 	"context"
@@ -46,6 +47,10 @@ func TestAuthorizationNestedIDsCannotReparentVictimChildren(t *testing.T) {
 			r := authorizationRouter(db)
 			victim := models.Bill{Name: "Victim", AccessToken: "victim", Subtotal: 10, Total: 10, Participants: []models.Person{{Name: "Private"}}, Items: []models.BillItem{{Name: "Private", Price: 10, Assignments: []models.ItemAssignment{{PersonName: "Private", Percentage: 100}}}}, PersonShares: []models.PersonShare{{PersonName: "Private", Subtotal: 10, Total: 10, Paid: true}}}
 			saveAuthFixture(t, db, &victim)
+			// An explicit legacy association fixture; runtime no longer many2many-upserts.
+			saveAuthFixture(t, db, &victim.Participants[0])
+			ordinal := int64(0)
+			saveAuthFixture(t, db, &models.BillParticipant{BillID: victim.ID, PersonID: victim.Participants[0].ID, IdentityVersion: 1, Label: "Private", AllocationLabel: "Private", Ordinal: &ordinal})
 			body := map[string]any{"name": "Valid positive", "subtotal": 10, "total": 10}
 			var target map[string]any
 			var forbiddenID uint
@@ -319,7 +324,7 @@ func TestAuthorizationActualMobileCreationFixtures(t *testing.T) {
 				t.Fatalf("attach: %d %s", attach.Code, attach.Body.String())
 			}
 			for _, path := range []string{fmt.Sprintf("/api/tabs/%d", dst.ID), fmt.Sprintf("/api/bills/%d", created.BillID)} {
-				read := authRequest(r, "GET", path, "", "destination", "")
+				read := referenceAuthRequest(t, db, r, "GET", path, "", "destination", "")
 				if read.Code != 200 || strings.Contains(read.Body.String(), created.Token) {
 					t.Fatal("authorized read failed or disclosed source token")
 				}
@@ -434,7 +439,7 @@ func assertUnsafeShareCalculationRollsBack(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	for _, attached := range []bool{false, true} {
 		t.Run(fmt.Sprint(attached), func(t *testing.T) {
-			// A synthetic legacy row with inconsistent amounts must not lose old shares
+			// A synthetic ready row with inconsistent amounts must not lose old shares
 			// or partially save new assignments if recalculation fails.
 			b := models.Bill{Name: "Legacy synthetic", AccessToken: fmt.Sprint("legacy-", attached), LazyMode: true, Subtotal: 1e-12, Tax: 1, Total: 1,
 				Items:        []models.BillItem{{Name: "Legacy item", Price: .02}},
@@ -447,13 +452,14 @@ func assertUnsafeShareCalculationRollsBack(t *testing.T, db *gorm.DB) {
 				b.TabID = &dst.ID
 			}
 			saveAuthFixture(t, db, &b)
+			testidentity.Ready(t, db, &b, "New claim")
 			before := authSnapshot(t, db)
 			assignments := []models.ItemAssignment{{PersonName: "New claim", Percentage: 100}}
 			var err error
 			if attached {
-				err = NewTabRepository(db).UpdateBillItemAssignmentsBatch(context.Background(), AssignmentCommand{Access: testTabAccess(t, db, dst.ID), BillID: b.ID, Updates: []BillItemAssignmentsUpdate{{ItemID: b.Items[0].ID, Assignments: assignments, ExpectedUpdatedAt: nil}}})
+				err = NewTabRepository(db).UpdateBillItemAssignmentsBatch(context.Background(), referenceTabCommand(t, db, AssignmentCommand{Access: testTabAccess(t, db, dst.ID), BillID: b.ID, Updates: []BillItemAssignmentsUpdate{{ItemID: b.Items[0].ID, Assignments: assignments, ExpectedUpdatedAt: nil}}}))
 			} else {
-				err = billpkg.NewBillRepository(db).UpdateItemAssignmentsBatch(context.Background(), billpkg.ClaimCommand{Access: billpkg.BillAccess{BillID: b.ID, BillToken: b.AccessToken}, Updates: []billpkg.ItemAssignmentsUpdate{{ItemID: b.Items[0].ID, Assignments: assignments, ExpectedUpdatedAt: nil}}})
+				err = billpkg.NewBillRepository(db).UpdateItemAssignmentsBatch(context.Background(), referenceBillCommand(t, db, billpkg.ClaimCommand{Access: billpkg.BillAccess{BillID: b.ID, BillToken: b.AccessToken}, Updates: []billpkg.ItemAssignmentsUpdate{{ItemID: b.Items[0].ID, Assignments: assignments, ExpectedUpdatedAt: nil}}}))
 			}
 			if !errors.Is(err, billpkg.ErrInvalidCreation) {
 				t.Fatalf("expected calculation error, got %v", err)

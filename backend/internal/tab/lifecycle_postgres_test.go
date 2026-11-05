@@ -4,6 +4,7 @@ package tab
 
 import (
 	billpkg "backend/internal/bill"
+	"backend/internal/testidentity"
 	"backend/pkg/models"
 	"backend/pkg/mutation"
 	"context"
@@ -30,12 +31,13 @@ func TestPostgresLifecyclePaidEconomicsAndRetry(t *testing.T) {
 		Items:        []models.BillItem{{Name: "First", Price: 5, Assignments: []models.ItemAssignment{{PersonName: "Alex", Percentage: 100}}}, {Name: "Second", Price: 5}},
 		PersonShares: []models.PersonShare{{PersonName: "Alex", Subtotal: 5, TaxShare: 1, Total: 6, Paid: true, Items: []models.ItemDetail{{Name: "First", Amount: 5}}}}}
 	saveAuthFixture(t, db, &b)
+	testidentity.Ready(t, db, &b, "Sam")
 	r := authorizationRouter(db)
 	h := NewTabHandler(NewTabService(NewTabRepository(db)))
 	r.POST("/api/tabs/:id/finalize", h.FinalizeTab)
 	r.PATCH("/api/tabs/:id/bills/:billId/items/:itemId", h.UpdateBillItemAssignments)
 	before := authSnapshot(t, db)
-	edit := authRequest(r, "PATCH", fmt.Sprintf("/api/tabs/%d/bills/%d/items/%d", dst.ID, b.ID, b.Items[1].ID), `{"assignments":[{"person_name":"Sam","percentage":100}]}`, "tab", "")
+	edit := referenceAuthRequest(t, db, r, "PATCH", fmt.Sprintf("/api/tabs/%d/bills/%d/items/%d", dst.ID, b.ID, b.Items[1].ID), `{"assignments":[{"person_name":"Sam","percentage":100}]}`, "tab", "")
 	if edit.Code != 409 {
 		t.Errorf("paid 6 -> 5.50 edit must be 409, got %d", edit.Code)
 	}
@@ -101,7 +103,7 @@ func mustFinalize(t *testing.T, db *gorm.DB, a TabAccess) []models.TabSettlement
 }
 func TestPostgresLifecycleConcurrentFinalizersAndPaidReplay(t *testing.T) {
 	db := authorizationPostgres(t)
-	dst, b, a := seedLifecycle(t, db)
+	dst, b, a := seedReferenceLifecycle(t, db)
 	hold := db.Begin()
 	t.Cleanup(func() { hold.Rollback() })
 	if err := hold.Exec("SELECT id FROM tabs WHERE id = ? FOR UPDATE", dst.ID).Error; err != nil {
@@ -156,7 +158,7 @@ func TestPostgresLifecycleFailuresRollBackAndRetry(t *testing.T) {
 	for _, stage := range []string{"insert", "second_batch", "update", "deferred_commit"} {
 		t.Run(stage, func(t *testing.T) {
 			db := authorizationPostgres(t)
-			_, _, a := seedLifecycle(t, db)
+			_, _, a := seedReferenceLifecycle(t, db)
 			if stage == "second_batch" {
 				for billIndex := 0; billIndex < 6; billIndex++ {
 					b := models.Bill{TabID: &a.TabID, AccessToken: fmt.Sprint("batch-", billIndex), Name: "Batch", Total: 100, Subtotal: 100}
@@ -164,6 +166,7 @@ func TestPostgresLifecycleFailuresRollBackAndRetry(t *testing.T) {
 						b.PersonShares = append(b.PersonShares, models.PersonShare{PersonName: fmt.Sprintf("Person %d-%d", billIndex, i), Subtotal: 1, Total: 1})
 					}
 					saveAuthFixture(t, db, &b)
+					testidentity.Ready(t, db, &b)
 				}
 			}
 			before := lifecycleSnapshot(t, db)
@@ -227,9 +230,16 @@ func TestPostgresLifecycleLegacyContainmentAndAccountingEvidence(t *testing.T) {
 			dst, b, a := seedLifecycle(t, db)
 			var want error = mutation.Review
 			switch kind {
+			case "duplicate_members", "invalid_foreign", "nonfinite", "overflow", "zero_participant", "foreign_zero", "legacy_usd":
+				testidentity.Ready(t, db, &b)
+			}
+			switch kind {
 			case "active_orphan":
 				saveAuthFixture(t, db, &models.TabSettlement{TabID: dst.ID, PersonName: "Alex", Amount: 10})
 			case "finalized_missing", "finalized_duplicate":
+				if kind == "finalized_duplicate" {
+					want = nil
+				}
 				now := time.Now()
 				db.Model(&dst).Updates(map[string]any{"finalized": true, "finalized_at": now})
 				if kind == "finalized_duplicate" {
@@ -238,7 +248,9 @@ func TestPostgresLifecycleLegacyContainmentAndAccountingEvidence(t *testing.T) {
 			case "duplicate_members":
 				saveAuthFixture(t, db, &[]models.TabMember{{TabID: dst.ID, DisplayName: "Alex", MemberToken: "creator", Role: "creator"}, {TabID: dst.ID, DisplayName: "alex", MemberToken: "other"}})
 				a.MemberToken = "creator"
+				want = nil
 			case "duplicate_shares":
+				want = billpkg.ErrIdentityReview
 				saveAuthFixture(t, db, &models.PersonShare{BillID: b.ID, PersonName: "alex", Total: 0})
 			case "invalid_foreign":
 				db.Model(&models.Bill{}).Where("id = ?", b.ID).Updates(map[string]any{"currency_code": "EUR", "usd_exchange_rate": 1.25, "usd_total": 12.50})
@@ -266,6 +278,12 @@ func TestPostgresLifecycleLegacyContainmentAndAccountingEvidence(t *testing.T) {
 			}
 			before := lifecycleSnapshot(t, db)
 			rows, err := NewTabRepository(db).FinalizeOnce(context.Background(), FinalizeCommand{a})
+			if kind == "invalid_foreign" || kind == "nonfinite" || kind == "overflow" {
+				var failure *mutation.Failure
+				if !errors.As(err, &failure) || failure.Code != "accounting_review_required" {
+					t.Fatal("bad financial evidence did not reach the checked money guard")
+				}
+			}
 			if !errors.Is(err, want) {
 				t.Fatalf("%s: got %v want %v", kind, err, want)
 			}
@@ -273,12 +291,33 @@ func TestPostgresLifecycleLegacyContainmentAndAccountingEvidence(t *testing.T) {
 				if lifecycleSnapshot(t, db) != before {
 					t.Fatal("containment changed legacy state")
 				}
-				read := authRequest(lifecycleRouter(db), "GET", fmt.Sprintf("/api/tabs/%d/settlements", dst.ID), "", "tab", "")
+				read := referenceAuthRequest(t, db, lifecycleRouter(db), "GET", fmt.Sprintf("/api/tabs/%d/settlements", dst.ID), "", "tab", "")
 				if read.Code != 200 {
 					t.Fatal("authorized historical read blocked")
 				}
-			} else if len(rows) != 1 {
-				t.Fatal("zero/legacy share omitted")
+			} else {
+				expected := 1
+				if kind == "finalized_duplicate" {
+					expected = 2
+				}
+				if len(rows) != expected {
+					t.Fatal("zero/legacy share omitted")
+				}
+				if kind == "finalized_duplicate" {
+					if lifecycleSnapshot(t, db) != before {
+						t.Fatal("legacy duplicate retry rewrote exact rows")
+					}
+					if err := NewTabRepository(db).UpdateSettlementPaid(context.Background(), SettlementPaidCommand{Access: a, SettlementID: rows[0].ID, Paid: true}); err != nil {
+						t.Fatal(err)
+					}
+					var exact []models.TabSettlement
+					db.Where("tab_id = ?", dst.ID).Order("id ASC").Find(&exact)
+					for _, row := range exact {
+						if row.Paid != (row.ID == rows[0].ID) {
+							t.Fatal("legacy paid marker selected by duplicate label")
+						}
+					}
+				}
 			}
 		})
 	}
@@ -290,14 +329,18 @@ func TestPostgresLifecycleCompetingWritersBothArrivalOrders(t *testing.T) {
 			for _, rollbackOwner := range []bool{false, true} {
 				t.Run(fmt.Sprintf("%s/finalize_first=%t/rollback=%t", op, finalizeFirst, rollbackOwner), func(t *testing.T) {
 					db := authorizationPostgres(t)
-					dst, b, a := seedLifecycle(t, db)
+					dst, b, a := seedReferenceLifecycle(t, db)
 					creator := models.TabMember{TabID: dst.ID, DisplayName: "Creator", MemberToken: "creator", Role: "creator"}
 					alex := models.TabMember{TabID: dst.ID, DisplayName: "Alex", MemberToken: "alex", Role: "member"}
 					saveAuthFixture(t, db, &creator)
 					saveAuthFixture(t, db, &alex)
+					if op == "tab_paid" {
+						bindReferenceFixture(t, db, b, "Alex", alex, creator)
+					}
 					a.MemberToken = "creator"
 					source := models.Bill{Name: "Added", AccessToken: "added", Total: 2, Subtotal: 2, PersonShares: []models.PersonShare{{PersonName: "Sam", Subtotal: 2, Total: 2}}}
 					saveAuthFixture(t, db, &source)
+					testidentity.Ready(t, db, &source)
 					operate := func(conn *gorm.DB) error {
 						repo := NewTabRepository(conn)
 						switch op {
@@ -309,7 +352,7 @@ func TestPostgresLifecycleCompetingWritersBothArrivalOrders(t *testing.T) {
 								path = fmt.Sprintf("/api/tabs/%d/bills/%d/assignments", dst.ID, b.ID)
 								body = fmt.Sprintf(`{"updates":[{"item_id":%d,"assignments":[{"person_name":"Alex","percentage":50},{"person_name":"Sam","percentage":50}]}]}`, b.Items[0].ID)
 							}
-							got := authRequest(r, "PATCH", path, body, "tab", "creator")
+							got := referenceAuthRequest(t, conn, r, "PATCH", path, body, "tab", "creator")
 							if got.Code == 400 {
 								return ErrTabFinalized
 							}
@@ -400,7 +443,7 @@ func TestPostgresLifecycleAuthorityChangesWhileWaiting(t *testing.T) {
 	for _, op := range []string{"finalize", "assignment", "paid", "settings", "settlement", "leave", "join"} {
 		t.Run(op, func(t *testing.T) {
 			db := authorizationPostgres(t)
-			dst, b, a := seedLifecycle(t, db)
+			dst, b, a := seedReferenceLifecycle(t, db)
 			m := models.TabMember{TabID: dst.ID, DisplayName: "Alex", MemberToken: "member", Role: "creator"}
 			saveAuthFixture(t, db, &m)
 			a.MemberToken = "member"
@@ -424,7 +467,7 @@ func TestPostgresLifecycleAuthorityChangesWhileWaiting(t *testing.T) {
 					_, err := repo.FinalizeOnce(context.Background(), FinalizeCommand{a})
 					ch <- err
 				case "assignment":
-					ch <- repo.UpdateBillItemAssignmentsBatch(context.Background(), AssignmentCommand{Access: a, BillID: b.ID, Updates: []BillItemAssignmentsUpdate{{ItemID: b.Items[0].ID, Assignments: []models.ItemAssignment{}}}})
+					ch <- repo.UpdateBillItemAssignmentsBatch(context.Background(), referenceTabCommand(t, db, AssignmentCommand{Access: a, BillID: b.ID, Updates: []BillItemAssignmentsUpdate{{ItemID: b.Items[0].ID, Assignments: []models.ItemAssignment{}}}}))
 				case "paid":
 					ch <- repo.UpdateBillPersonSharePaid(context.Background(), SharePaidCommand{Access: a, BillID: b.ID, ShareID: b.PersonShares[0].ID, Paid: true})
 				case "settings":
@@ -458,8 +501,13 @@ func TestPostgresLifecycleSourcePaidDiscoveryAndStaleShareRaces(t *testing.T) {
 	for _, race := range []string{"attach", "recreate"} {
 		t.Run(race, func(t *testing.T) {
 			db := authorizationPostgres(t)
-			dst, b, a := seedLifecycle(t, db)
+			dst, b, a := seedReferenceLifecycle(t, db)
 			if race == "attach" {
+				// Synthetic initial standalone premise: move the unbound scoped
+				// fixture rows before its parent, respecting the immediate RESTRICT FK.
+				if err := db.Model(&models.BillParticipant{}).Where("bill_id = ?", b.ID).UpdateColumn("tab_id", nil).Error; err != nil {
+					t.Fatal(err)
+				}
 				if err := db.Model(&models.Bill{}).Where("id = ?", b.ID).Update("tab_id", nil).Error; err != nil {
 					t.Fatal(err)
 				}
@@ -492,7 +540,7 @@ func TestPostgresLifecycleSourcePaidDiscoveryAndStaleShareRaces(t *testing.T) {
 					t.Fatal(err)
 				}
 			} else {
-				if err := NewTabRepository(db).UpdateBillItemAssignmentsBatch(context.Background(), AssignmentCommand{Access: a, BillID: b.ID, Updates: []BillItemAssignmentsUpdate{{ItemID: b.Items[0].ID, Assignments: []models.ItemAssignment{{PersonName: "Alex", Percentage: 50}, {PersonName: "Sam", Percentage: 50}}}}}); err != nil {
+				if err := NewTabRepository(db).UpdateBillItemAssignmentsBatch(context.Background(), referenceTabCommand(t, db, AssignmentCommand{Access: a, BillID: b.ID, Updates: []BillItemAssignmentsUpdate{{ItemID: b.Items[0].ID, Assignments: []models.ItemAssignment{{PersonName: "Alex", Percentage: 50}, {PersonName: "Sam", Percentage: 50}}}}})); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -521,7 +569,7 @@ func TestPostgresLifecycleSourcePaidDiscoveryAndStaleShareRaces(t *testing.T) {
 
 func TestPostgresLifecycleHTTPIsolationMembershipAndSettings(t *testing.T) {
 	db := authorizationPostgres(t)
-	dst, b, a := seedLifecycle(t, db)
+	dst, b, a := seedReferenceLifecycle(t, db)
 	r := lifecycleRouter(db)
 	other := models.Tab{Name: "Other", AccessToken: "other"}
 	saveAuthFixture(t, db, &other)
@@ -545,7 +593,7 @@ func TestPostgresLifecycleHTTPIsolationMembershipAndSettings(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			before := lifecycleSnapshot(t, db)
-			got := authRequest(r, tc.method, tc.path, tc.body, tc.token, tc.member)
+			got := referenceAuthRequest(t, db, r, tc.method, tc.path, tc.body, tc.token, tc.member)
 			if got.Code != tc.want {
 				t.Fatalf("got %d want %d: %s", got.Code, tc.want, got.Body.String())
 			}
@@ -579,7 +627,7 @@ func TestPostgresLifecycleHTTPIsolationMembershipAndSettings(t *testing.T) {
 	}
 	beforeBill := models.Bill{}
 	db.Session(&gorm.Session{SkipHooks: true}).First(&beforeBill, b.ID)
-	got := authRequest(r, "PATCH", fmt.Sprintf("/api/tabs/%d", dst.ID), `{"name":"Changed","description":"Note","display_currency":"EUR","finalized":true}`, "tab", "creator")
+	got := referenceAuthRequest(t, db, r, "PATCH", fmt.Sprintf("/api/tabs/%d", dst.ID), `{"name":"Changed","description":"Note","display_currency":"EUR","finalized":true}`, "tab", "creator")
 	if got.Code != 200 {
 		t.Fatal(got.Body.String())
 	}
@@ -588,6 +636,7 @@ func TestPostgresLifecycleHTTPIsolationMembershipAndSettings(t *testing.T) {
 	if !reflect.DeepEqual(beforeBill, afterBill) {
 		t.Fatal("settings rewrote frozen receipt")
 	}
+	bindReferenceFixture(t, db, b, "Alex", member, creator)
 	rows := mustFinalize(t, db, a)
 	paymentBefore := lifecycleSnapshot(t, db)
 	for _, route := range []struct {
@@ -597,7 +646,7 @@ func TestPostgresLifecycleHTTPIsolationMembershipAndSettings(t *testing.T) {
 		{fmt.Sprintf("/api/tabs/%d/bills/%d/shares/%d", dst.ID, b.ID, b.PersonShares[0].ID), "tab", "alex", true},
 		{fmt.Sprintf("/api/bills/%d/shares/%d", b.ID, b.PersonShares[0].ID), "source", "", false},
 	} {
-		response := authRequest(r, "PATCH", route.path, fmt.Sprintf(`{"paid":%t}`, route.paid), route.token, route.member)
+		response := referenceAuthRequest(t, db, r, "PATCH", route.path, fmt.Sprintf(`{"paid":%t}`, route.paid), route.token, route.member)
 		if response.Code != 200 {
 			t.Fatalf("post-finalize receipt payment %d: %s", response.Code, response.Body.String())
 		}
@@ -606,11 +655,11 @@ func TestPostgresLifecycleHTTPIsolationMembershipAndSettings(t *testing.T) {
 		t.Fatal("paid toggles changed money, IDs, quote provenance or timestamps")
 	}
 	settlementPath := fmt.Sprintf("/api/tabs/%d/settlements/%d", dst.ID, rows[0].ID)
-	if response := authRequest(r, "PATCH", settlementPath, `{"paid":true}`, "tab", "alex"); response.Code != 200 {
+	if response := referenceAuthRequest(t, db, r, "PATCH", settlementPath, `{"paid":true}`, "tab", "alex"); response.Code != 200 {
 		t.Fatal("settlement paid route failed")
 	}
 	paidBefore := lifecycleSnapshot(t, db)
-	if response := authRequest(r, "PATCH", settlementPath, `{"paid":true}`, "tab", "alex"); response.Code != 200 || lifecycleSnapshot(t, db) != paidBefore {
+	if response := referenceAuthRequest(t, db, r, "PATCH", settlementPath, `{"paid":true}`, "tab", "alex"); response.Code != 200 || lifecycleSnapshot(t, db) != paidBefore {
 		t.Fatal("idempotent settlement payment wrote state")
 	}
 	retryRows := mustFinalize(t, db, a)
@@ -633,27 +682,34 @@ func TestPostgresLifecycleHTTPIsolationMembershipAndSettings(t *testing.T) {
 	if retry.Code != 200 || lifecycleSnapshot(t, db) != before {
 		t.Fatal("join retry minted member")
 	}
-	got = authRequest(r, "PATCH", fmt.Sprintf("/api/tabs/%d/settlements/%d", other.ID, rows[0].ID), `{"paid":true}`, "other", "")
+	got = referenceAuthRequest(t, db, r, "PATCH", fmt.Sprintf("/api/tabs/%d/settlements/%d", other.ID, rows[0].ID), `{"paid":true}`, "other", "")
 	if got.Code != 409 {
 		t.Fatal("active other snapshot not contained")
 	}
-	// Current legacy name rule rejects detectable ambiguity without assigning identity.
+	// A duplicate member label neither revokes the confirmed owner nor grants authority.
 	duplicate := models.TabMember{TabID: dst.ID, DisplayName: "alex", MemberToken: "collision", Role: "member"}
 	saveAuthFixture(t, db, &duplicate)
 	before = lifecycleSnapshot(t, db)
-	got = authRequest(r, "PATCH", fmt.Sprintf("/api/tabs/%d/bills/%d/shares/%d", dst.ID, b.ID, b.PersonShares[0].ID), `{"paid":true}`, "tab", "alex")
-	if got.Code != 409 || lifecycleSnapshot(t, db) != before {
-		t.Fatal("ambiguous member label accepted")
+	got = referenceAuthRequest(t, db, r, "PATCH", fmt.Sprintf("/api/tabs/%d/bills/%d/shares/%d", dst.ID, b.ID, b.PersonShares[0].ID), `{"paid":true}`, "tab", "alex")
+	if got.Code != 200 {
+		t.Fatal("duplicate label revoked the confirmed owner")
 	}
+	paidNow := lifecycleSnapshot(t, db)
+	denied := authRequest(r, "PATCH", fmt.Sprintf("/api/tabs/%d/bills/%d/shares/%d", dst.ID, b.ID, b.PersonShares[0].ID), `{"paid":true}`, "tab", "collision")
+	if denied.Code != 403 || lifecycleSnapshot(t, db) != paidNow {
+		t.Fatal("same-label member impersonated the confirmed ID")
+	}
+	_ = before
 }
 
 func TestPostgresLifecycleUnchangedShareIDsAndDeadline(t *testing.T) {
 	db := authorizationPostgres(t)
-	dst, b, a := seedLifecycle(t, db)
+	dst, b, a := seedReferenceLifecycle(t, db)
 	if err := db.Model(&models.PersonShare{}).Where("id = ?", b.PersonShares[0].ID).Update("paid", true).Error; err != nil {
 		t.Fatal(err)
 	}
 	cmd := AssignmentCommand{Access: a, BillID: b.ID, Updates: []BillItemAssignmentsUpdate{{ItemID: b.Items[0].ID, Assignments: []models.ItemAssignment{{PersonName: "Alex", Percentage: 100}}}}}
+	cmd = referenceTabCommand(t, db, cmd)
 	if err := NewTabRepository(db).UpdateBillItemAssignmentsBatch(context.Background(), cmd); err != nil {
 		t.Fatal(err)
 	}
@@ -706,7 +762,9 @@ func TestPostgresLifecycleClaimPriorityAndZeroParticipant(t *testing.T) {
 		Items:        []models.BillItem{{Name: "Cent", Price: .01, Assignments: []models.ItemAssignment{{PersonName: "Alex", Percentage: 100.0 / 3, CreatedAt: old}}}},
 		PersonShares: []models.PersonShare{{PersonName: "Alex", Items: []models.ItemDetail{{Name: "Cent", Amount: .01 / 3, IsShared: true}}}, {PersonName: "Birthday", Paid: true, Items: []models.ItemDetail{}}}}
 	saveAuthFixture(t, db, &b)
+	testidentity.Ready(t, db, &b, "Sam", "Cara")
 	cmd := AssignmentCommand{Access: TabAccess{TabID: dst.ID, TabToken: "tab"}, BillID: b.ID, Updates: []BillItemAssignmentsUpdate{{ItemID: b.Items[0].ID, Assignments: []models.ItemAssignment{{PersonName: "Alex", Percentage: 100.0 / 3}, {PersonName: "Sam", Percentage: 100.0 / 3}, {PersonName: "Cara", Percentage: 100.0 / 3}}}}}
+	cmd = referenceTabCommand(t, db, cmd)
 	if err := NewTabRepository(db).UpdateBillItemAssignmentsBatch(context.Background(), cmd); err != nil {
 		t.Fatal(err)
 	}
@@ -811,8 +869,13 @@ func TestPostgresLifecycleSourcePaidFirstAgainstAttachmentAndRecreation(t *testi
 	for _, op := range []string{"attach", "recreate"} {
 		t.Run(op, func(t *testing.T) {
 			db := authorizationPostgres(t)
-			dst, b, a := seedLifecycle(t, db)
+			dst, b, a := seedReferenceLifecycle(t, db)
 			if op == "attach" {
+				// Synthetic initial standalone premise: move the unbound scoped
+				// fixture rows before its parent, respecting the immediate RESTRICT FK.
+				if err := db.Model(&models.BillParticipant{}).Where("bill_id = ?", b.ID).UpdateColumn("tab_id", nil).Error; err != nil {
+					t.Fatal(err)
+				}
 				if err := db.Model(&models.Bill{}).Where("id = ?", b.ID).Update("tab_id", nil).Error; err != nil {
 					t.Fatal(err)
 				}
@@ -832,7 +895,7 @@ func TestPostgresLifecycleSourcePaidFirstAgainstAttachmentAndRecreation(t *testi
 				if op == "attach" {
 					ch <- NewTabRepository(db).AttachBill(context.Background(), AttachBillCommand{TabID: dst.ID, TabToken: "tab", BillID: b.ID, BillToken: "source"})
 				} else {
-					ch <- NewTabRepository(db).UpdateBillItemAssignmentsBatch(context.Background(), AssignmentCommand{Access: a, BillID: b.ID, Updates: []BillItemAssignmentsUpdate{{ItemID: b.Items[0].ID, Assignments: []models.ItemAssignment{{PersonName: "Alex", Percentage: 50}, {PersonName: "Sam", Percentage: 50}}}}})
+					ch <- NewTabRepository(db).UpdateBillItemAssignmentsBatch(context.Background(), referenceTabCommand(t, db, AssignmentCommand{Access: a, BillID: b.ID, Updates: []BillItemAssignmentsUpdate{{ItemID: b.Items[0].ID, Assignments: []models.ItemAssignment{{PersonName: "Alex", Percentage: 50}, {PersonName: "Sam", Percentage: 50}}}}}))
 				}
 			}()
 			waitForPostgresLocks(t, db, 1)

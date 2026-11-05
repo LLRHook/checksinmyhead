@@ -27,11 +27,10 @@ unvalidated startup; database/driver details never enter the response:
 The retained legacy web service uses the same readiness check and fields, with healthy
 status `web service - ok`. The `--healthcheck` loopback command treats HTTP 503 as failure.
 See [schema startup modes](../backend/README.md#postgresql-schema-startup) for migration-only
-and verify startup behavior. Registry0003 adds only the identity schema foundation:
-application writes remain graph1/`legacy_review`; no identity-version header, new
-JSON field, ready graph or capability2 is exposed. Existing replay capability1 and
-receipt/quote/payment payloads and current authorization behavior are unchanged.
-Reference authority and legacy containment still require separate implementation.
+and verify startup behavior. Registry remains exactly1,2,3. Historical defaults remain
+graph1/`legacy_review`; fresh application creation explicitly constructs ready graph2.
+The server implements participant-reference behavior below. Matched browser/mobile
+clients, old-writer exclusion and rollout remain separate, unqualified gates.
 
 ### `GET /api/app/version-policy`
 
@@ -41,13 +40,114 @@ Returns the public mobile compatibility policy. Response headers include `Cache-
 {
   "minimum_supported_version": "2.0.3",
   "store_url": "https://apps.apple.com/app/id6746379502",
-  "capabilities": {"bill_creation_replay": {"version": 1, "key_format": "base64url-32"}}
+  "capabilities": {"bill_creation_replay": {"version": 1, "key_format": "base64url-32"}, "participant_identity": {"version": 2}}
 }
 ```
 
 Set `MINIMUM_SUPPORTED_APP_VERSION` on the bill service to a numeric `major.minor.patch` value only after the new release is available in the store. Invalid values fall back to `2.0.3`.
 
 ---
+
+## Participant-reference contract
+
+Every API request accepts at most one `X-Billington-Identity-Version: 1` or `2`;
+absence means1. Empty, malformed, duplicate or unsupported values return400. This
+selects representation, never authority. Responses echo the accepted version, vary on
+this header/Authorization/X-Member-Token, and use private, no-store caching. CORS allows
+and exposes the identity header. Invalid supplied membership always fails403, including
+empty/duplicate proof; it cannot become genuinely memberless access.
+
+| Creation request | Stored graph | Original201/replay |
+|---|---|---|
+| Existing matching format1 hit | Original graph1 or2 unchanged | Original eight-field kind1 builder; response columns remain NULL |
+| New admissible wire1 miss | Fresh graph2/ready/revision0, unbound document-local union | Eight old fields; format1 normalization, bytes and ordering unchanged |
+| New wire2 miss, keyed or unkeyed | Fresh graph2/ready/revision0 with ordered explicit refs | Kind2 exact persisted original bytes and map before checked COMMIT |
+
+Wire2 creation keeps the wire1 bill/item/money/payment fields below, replacing identity
+slots: participants contain `client_ref` and `name`; assignments contain
+`participant_ref` and `percentage`; optional share projections use `participant_ref`
+instead of `person_name`. Refs are unique case-sensitive ASCII `[A-Za-z0-9_-]{1,64}`,
+explicitly declared, and resolved within this document only. Empty/duplicate labels are
+legal; labels remain sanitized and at most30 Unicode code points. Unknown fields,
+name/ref mixtures (including null), duplicate assignments/shares and dangling refs
+fail400 before replay lookup/provider work. No storage ID/member/binding is input.
+
+```json
+{"name":"Dinner","subtotal":2,"total":2,"participants":[{"client_ref":"a","name":"Alex"},{"client_ref":"b","name":"Alex"}],"items":[{"name":"Meal","price":2,"assignments":[{"participant_ref":"a","percentage":50},{"participant_ref":"b","percentage":50}]}]}
+```
+
+Response2 adds only `response_version:2`, `identity_version:2`, `identity_revision:0`
+and ordered `participant_map:[{"client_ref":"a","participant_id":17},…]` to the eight
+original fields. It freezes the actual share URL and complete original JSON (≤65536
+bytes). Winner, losing concurrent create and later same-key replay return those exact
+bytes after checked commit, even after rename/attach/paid/finalization/config changes.
+A known format1/2 conflict is409; missing/corrupt/unknown stored evidence is503
+creation_unavailable. Established hits use one indexed SELECT, no transaction/writes,
+providers or current-child lookup. An uncertain commit is never acknowledged; recover
+with the same key/original content. New wire1 translation occurs only on a miss; an
+ambiguous Unicode case-fold mapping requires409 client_upgrade_required without
+invalidating an admissible historical hit. New people/participations are always fresh.
+
+Wire2 authenticated GET returns stored `identity_version`, `identity_state`,
+`identity_revision`, plus derived `identity_review_status` and
+`accounting_review_status`. Participants expose scoped `participant_id`, `bill_id`,
+`client_ref`, `label`, location, `binding_state` (unbound/pending/confirmed), current
+member/pending IDs, request generation and approval facts. Assignment/share rows expose
+`identity_version`, `participant_id` and current `label`; historical `person_name`
+is retained raw content. `viewer_member_id` is null without membership proof and comes
+only from valid scoped proof. Reads use bounded read-only consistent transactions.
+Source/member tokens, creation receipt/fingerprint and private last-decision fields
+are absent. Invalid ready references produce explicit review without resolving a
+cross-scope label or hiding independently safe raw rows.
+
+New participant routes require header2. All bodies are strict, at most4KiB:
+
+| Route | Body | Required current authority |
+|---|---|---|
+| `POST /api/bills/:id/participants` | `client_ref,name,expected_revision` | Standalone source |
+| `PATCH /api/bills/:id/participants/:participantId` | `name,expected_revision` | Standalone source |
+| `POST /api/tabs/:id/bills/:billId/participants` | `client_ref,name,expected_revision` | Destination and current member, or genuine memberless destination |
+| `PATCH /api/tabs/:id/bills/:billId/participants/:participantId` | `name,expected_revision,bill_token?` | Current creator/bound-self, or independent source+destination/current member; source+destination for genuine memberless tabs |
+| `POST …/participants/:participantId/binding-request` | `expected_revision` | Own current tab member; target is derived from proof |
+| `PUT …/participants/:participantId/binding` | `expected_revision,request_revision,member_id,decision,bill_token?` | Current creator or independent source+destination/current member |
+
+Successful participant commands return200 `{participant:{…},identity_revision:N}`.
+Actual additions/requests/decisions require active ready/unpaid eligibility; maximum100
+participants. A member cannot request another participation while already bound/pending
+on this bill. Pending grants no paid authority. Approve/reject must address the exact
+persisted request generation/target; no rebind or pending overwrite. Actual label rename
+is allowed while paid-active, preserving all economics, immutable allocation labels,
+ordinals, claim times and flags. It cannot alter frozen snapshot labels.
+
+`GET /api/tabs/:id/members/me` and `PATCH` with strict `{display_name:…}` require current
+scoped membership and return `member_id,tab_id,display_name,role` without a token. Rename
+is ID-based, allows an empty sanitized label ≤30 code points and remains valid finalized;
+same label is a no-op, otherwise last-write-wins. It does not change bill revision.
+
+Bill revisions are checked int64 and advance once for a changed participant/allocation
+transaction or first attachment. No initial-graph, paid, finalize or member-rename bump.
+No overflow. Existing item timestamps/paid/finalized/location guards remain. Only these
+fully reauthorized read-only exceptions accept a stale revision:
+
+- Same participant client_ref and original allocation label returns that original ID's
+  current state, even if renamed/full/paid/finalized; changed original content conflicts.
+- Same-label rename accepts current or exactly one-behind revision as a satisfied
+  postcondition; it creates no historical receipt.
+- Own pending request accepts current revision, or exactly one-behind only when its
+  persisted pending generation equals current revision.
+- A binding decision retry matches retained target/generation/decision/actor and result
+  revision exactly, with expected exactly one-behind. Current proof is still required;
+  its sufficient mode may change without rewriting original kind/time, including after
+  paid/finalized state. A later revision/replaced receipt makes it stale.
+- Same-tab attachment reauthorizes independent source/destination/current member and
+  preserves attribution/times, including after later revision, paid or finalized state.
+
+Other stale revisions return409 identity_revision_conflict. Actual legacy graph1
+identity mutations require409 identity_review_required; name-only claims on ready
+rows require409 client_upgrade_required. Header1 preserves representable creation,
+reads, attachment, settings/join, independent source-paid and exact raw legacy
+settlement behavior. Ambiguous/unavailable wire1 projections require actionable
+client_upgrade_required. No name grants ownership, grouping or paid permission.
 
 ## Bills
 
@@ -62,7 +162,7 @@ unpadded base64url characters encoding 32 random bytes. Present empty, duplicate
 (case-insensitive name cardinality), comma/list, padded, noncanonical or internal
 whitespace/control values return `400`. Validation runs after Go's standard HTTP
 parser; leading/trailing wire whitespace and some complete-value folds can become
-indistinguishable canonical values. There is no custom wire parser or version header.
+indistinguishable canonical values. There is no custom wire parser; the independent identity header selects the content version below.
 
 The service validates the strict DTO and normalized content before replay lookup.
 Matching key/content returns the same persisted `201` identity, source token and
@@ -74,11 +174,13 @@ derive; one parent and its child batches commit. Different admissible content re
 an existing capability. Unknown/corrupt stored fingerprint formats or an uncertain
 commit return finite `503` with `code: creation_unavailable` when a response is possible.
 Recover by retrying the SAME key and original content; no automatic replacement key
-or keyed-to-unkeyed fallback. Creation responses carry `Cache-Control: no-store`.
+or keyed-to-unkeyed fallback. Creation responses carry `Cache-Control: private, no-store`.
 
-Only the key digest, immutable normalized ordered-content fingerprint and internal
-format version are stored. They are hidden from public reads/errors/logs. Format1
-freezes identity/accounting1; ordered arrays and repeated lines are significant.
+The key digest, immutable ordered-content fingerprint and internal format version are
+private. Format1 retains identity-domain1/accounting1 bytes; format2 uses reference
+identity-domain2/accounting1. Graph and response versions are independent. Wire2 also
+stores its exact original bounded response; ordinary reads never disclose it. Ordered
+arrays and repeated lines remain significant.
 The public capability hint is neither authentication nor evidence that all old writers
 are excluded. Keyed public clients require replay-capable server floors and verified
 old-writer drain. Keep replay state on rollback. Before any future deletion or token
@@ -306,25 +408,23 @@ Get a bill by ID.
 | 403 | `{"error": "token mismatch"}` | Invalid access token |
 | 404 | `{"error": "bill not found"}` | Bill does not exist |
 
-### `PATCH /api/bills/:id/items/:itemId/assignments`
+### Reference claims (single and batch)
 
-Update one item's claim on a standalone lazy bill. Supply the bill access token as `Authorization: Bearer <token>` or `?t=<token>`. The item timestamp is an optimistic concurrency precondition; stale writes return `409` and should refresh the bill.
+With header2, single claims use `{expected_revision,expected_updated_at?,assignments:
+[{participant_id,percentage}]}`. Standalone lazy route:
+`PATCH /api/bills/:id/items/:itemId/assignments`; attached route:
+`PATCH /api/tabs/:id/bills/:billId/items/:itemId/assignments`. Batch siblings replace
+`assignments` with `updates:[{item_id,expected_updated_at?,assignments:[…]}]` under
+`PATCH /api/bills/:id/assignments` or `/api/tabs/:id/bills/:billId/assignments`.
+An empty assignments array releases unpaid claims; percentages remain `(0,100]`,
+unique within each item and total ≤100+1e-9. IDs must belong to this bill. Mixed name/
+reference or unknown wire2 fields fail400. All siblings use the same replacement owner.
+Single success is200 status ok; batch success returns the current selected representation.
 
-**Request Body**
-```json
-{
-  "expected_updated_at": "2026-10-10T17:30:54.055105Z",
-  "assignments": [
-    { "person_name": "Alex", "percentage": 100 }
-  ]
-}
-```
-
-Assignments must use unique, non-empty names of at most 30 characters and total no more than 100 percent; any unassigned percentage remains available to claim. An empty array releases an unpaid item's claim. Paid assignments cannot be removed or changed, while the unclaimed remainder may still be claimed. This endpoint rejects ordinary bills and bills already attached to a trip.
-
-**Response** `200`: `{"status":"ok"}`
-
-**Errors** `400` for invalid assignments/non-lazy bills, `403` for an invalid token, `404` for a missing bill item, and `409` for stale or paid-item conflicts.
+The old wire1 content decoder still ignores unknown fields and retains standard known-
+field duplicate/null semantics; ignored paid/association/reference fields never enter
+the command. After decoding, a real name-only mutation receives the actionable upgrade
+response. This compatibility does not relax strict fresh creation or strict wire2 DTOs.
 
 ### Receipt and tab mutation policy
 
@@ -338,16 +438,13 @@ and rolls back the complete batch. Changed/removed shares cannot be paid via sta
 
 Source-bill `PATCH /api/bills/:id/shares/:shareId` uses the exact bill/share IDs and
 bill capability; a tab token cannot substitute. Attached source payment locks tab
-before bill and is allowed after finalization. Tab-share payment also checks current
-membership and the existing Unicode `EqualFold` name rule under lock. Ambiguity uses
-that same relation for member and share candidates, independent of SQL collation.
-Multiple matching shares return `409 accounting_review_required` before any paid
-update, including equal-flag retries. This contains observable collisions; stable
-identity remains separate work.
+before bill and is allowed after finalization. Tab-share payment requires a ready share/participant whose confirmed member ID equals
+the current actor ID, including equal-flag retries. Unbound, pending, same-label other
+members and creator overrides are denied403; legacy identity needs review409.
 Both payment routes change only the selected receipt paid flag, with scoped `404` for
 stale IDs. Generic `503`/`500` responses never expose database messages.
 
-All attached writers use Tab → Bills by ID → Items by ID → Shares; settlement writes
+All attached writers use Tab → Bills by ID → participants → Items by ID → Shares; settlement writes
 use Tab → Settlement. Membership/settings take Tab first. Mutations use the request
 context with a 10-second maximum (earlier caller deadlines win). This protocol requires
 all deployed writers to cooperate. It does not establish rollout or signed-client proof.
@@ -427,6 +524,15 @@ When supplied, the initial creator and tab commit together; a creator insertion 
 
 ### `GET /api/tabs/:id?t=token`
 
+Header2 returns raw bills/current reference views, accounting_currency:"USD", nullable
+`total_amount`, `total_status`, nullable `net_balances`, `net_balance_status` and scoped
+`viewer_member_id`. Missing/dangling/cross-tab payer or bad reference evidence yields
+identity_review_required and null net, preserving safe raw bills/frozen totals. Invalid
+valuation yields accounting_review_required; unsafe total is also null. Available/no
+transfers is an actual empty array, never a swallowed calculation error. Display
+currency is a preference; it never relabels computed USD or triggers a quote on read.
+
+
 Get a tab with all bills, items, assignments, person shares, and members.
 
 **Response** `200` — Full tab object. `total_amount` sums validated frozen USD cents,
@@ -437,9 +543,9 @@ including genuine zero values, independently of each bill's display currency.
 |--------|------|---------|
 | 403 | `{"error": "token mismatch"}` | Invalid access token |
 | 404 | `{"error": "tab not found"}` | Tab does not exist |
-| 409 | `{"error":"accounting review required","code":"accounting_review_required"}` | Authorized tab contains unavailable or inconsistent frozen USD evidence, or an unsafe aggregate |
+| 409 | `client_upgrade_required` | Wire1 cannot faithfully represent identity or unavailable computation; use header2 review/null projections |
 
-Access is checked before returning the accounting-review response. Stored receipts
+Access is checked before returning review data. Stored receipts
 and accepted quotes remain unchanged; no provider call repairs historical data.
 
 ### `PATCH /api/tabs/:id?t=token`
@@ -477,8 +583,11 @@ attribution. Memberless legacy tabs still accept the tab token without a member 
 but require source proof; a supplied invalid member token fails.
 
 Authorization, finalized-state check and attachment execute in one transaction using
-destination-tab then source-bill row locks. Active same-tab retries revalidate all
-credentials and succeed without changing attribution, timestamps or quote metadata.
+destination-tab then source-bill row locks. Same-tab retries revalidate all
+credentials and succeed without changing attribution, timestamps or quote metadata,
+including after later revision, payment or finalization. Header2 first attachment also
+requires expected_revision. First attachment updates participant locations atomically
+and advances bill revision once without binding anyone.
 A bill already in another tab cannot be moved. A failed attachment leaves its source
 bill available through the original bill token.
 
@@ -492,7 +601,7 @@ bill available through the original bill token.
 | 400 | Malformed/oversized/trailing/unknown JSON, nonpositive bill ID, blank source token, or finalized destination |
 | 403 | Missing/wrong destination token, missing required member, or wrong/cross-tab member token |
 | 404 | Generic `source bill unavailable`: missing source, wrong/another source token, or source attached elsewhere |
-| 200 | Authorized first attachment or active-tab retry |
+| 200 | Authorized first attachment or fully reauthorized same-tab retry |
 
 The existing token API uses `403` for failed capabilities. Errors never echo tokens,
 source content or SQL. Attachment participates in the tab-root protocol shared with
@@ -507,7 +616,8 @@ finalization and all competing attached writes.
 Finalize once in one authorized Read Committed transaction: lock the tab, resolve
 current creator or genuinely memberless authority, read persisted accounting/shares,
 insert gross USD settlements and mark finalized. A supplied invalid member token
-fails even on a memberless tab. No quote lookup, item graph or revaluation occurs.
+fails even on a memberless tab. It reads reference closure and frozen allocations in
+batches, with no quote lookup or financial revaluation.
 
 An authorized repeat returns the stored snapshot, ordered by `amount DESC, id ASC`,
 with the same IDs, amounts, creation/finalization times and current settlement paid
@@ -518,8 +628,13 @@ net payer balances are distinct; neither flag proves an external transfer.
 Foreign accounting needs valid frozen rate/date/source/total evidence. Legitimate
 frozen USD zero and known legacy USD identity are supported without backfill.
 No bills or no allocated share rows leaves the tab active; explicit zero participant
-rows count as allocations. Detectable duplicate member labels or normalized share
-keys within one bill require review, without guessing participant ownership.
+rows count as allocations. New snapshots are uniformly version2: confirmed parties
+group by (tab_id,member_id); pending/unbound guests remain distinct (bill_id,participant_id).
+Duplicate/empty labels are legal. Frozen USD gross AND net use the same checked money
+kernel; local ties use last claim then immutable lowercase allocation label/ordinal,
+USD ties raw allocation label/ordinal. Rename and paid flags do not change cents.
+The checked USD allocator reuses its validated participant index within each call;
+complete reference/receipt validation still precedes a zero-amount return.
 
 **Response** `200` — Array of persisted gross USD settlements (first transition or retry).
 ```json
@@ -535,7 +650,7 @@ keys within one bill require review, without guessing participant ownership.
 |---|---|
 | 400 | `no_bills` or `no_allocation`; the tab remains active |
 | 403 | Missing/wrong tab capability, invalid supplied member token, or current non-creator |
-| 409 | `accounting_review_required`: active orphan settlements, missing/ambiguous finalized results, duplicate labels/shares, invalid frozen evidence or unsafe money |
+| 409 | identity/accounting review: unresolved or inconsistent graph, orphan/missing/mixed invalid snapshot, invalid frozen evidence or unsafe money |
 | 503 | Generic temporary unavailability; retry |
 | 500 | Generic unexpected failure; no database text |
 
@@ -544,7 +659,15 @@ adoption and exclusion of old writers still need separate deployment evidence.
 
 ### `GET /api/tabs/:id/settlements?t=token`
 
-Get all settlements for a tab.
+Header1 returns the exact valid raw array below, including legitimate duplicate/blank
+legacy labels. Header2 returns `{settlements:[…],identity_review_status,
+accounting_currency:"USD",viewer_member_id}`. Rows include snapshot_version, raw label,
+amount/flag/time and a tagged frozen party for valid snapshot2. Nonempty valid legacy1
+history says legacy_identity_review_required and has null party; mixed/invalid/missing
+evidence says identity_review_required, retains safely serializable raw rows and fails
+closed on retry/paid mutation. No snapshot regeneration or inferred ownership occurs.
+New finalize header2 uses this same envelope. Safe raw data that cannot be serialized
+returns finite503 representation_unavailable before any successful JSON header.
 
 **Response** `200`
 ```json
@@ -581,7 +704,8 @@ payment recovery. A valid supplied same-tab member token returns that membership
 without writing (`200`); an invalid supplied token returns `403` and cannot create a
 replacement. Ordinary new joining returns `201` and grants no accounting reassignment.
 Leaving cannot remove the creator (`400`) or any member whose recorded ID appears as
-bill payer/adder (`409 member_referenced`), including historical cross-tab references.
+bill payer/adder, current/pending binding, approver, retained receipt target/actor or
+snapshot (`409 member_referenced`), including historical cross-tab references.
 Unreferenced members may leave. No name-based recovery or provenance repair occurs.
 
 Join a tab as a member. Returns a member token for future attribution.

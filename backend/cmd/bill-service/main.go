@@ -116,14 +116,17 @@ func newRouter(handler *bill.BillHandler, currencyHandler *currency.Handler, tab
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:  origins,
 		AllowMethods:  []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:  []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Member-Token", "Idempotency-Key"},
-		ExposeHeaders: []string{"Content-Length", "Retry-After"},
+		AllowHeaders:  []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Member-Token", "Idempotency-Key", safehttp.IdentityHeader},
+		ExposeHeaders: []string{"Content-Length", "Retry-After", safehttp.IdentityHeader},
 	}))
+	r.Use(safehttp.IdentityMiddleware)
 	r.GET("/health", readiness.Handler(state, "bill service - ok"))
 	r.GET("/api/app/version-policy", versionpolicy.Handler())
 	r.GET("/api/currency/rate", currencyHandler.GetRate)
 	r.GET("/api/bills/:id", handler.GetBill)
 	r.POST("/api/bills", safehttp.JSONMutation, handler.CreateBill)
+	r.POST("/api/bills/:id/participants", safehttp.JSONMutation, handler.CreateParticipant)
+	r.PATCH("/api/bills/:id/participants/:participantId", safehttp.JSONMutation, handler.RenameParticipant)
 	r.GET("/api/exchange-rates/:currency", handler.GetExchangeRate)
 	r.PATCH("/api/bills/:id/shares/:shareId", safehttp.JSONMutation, handler.UpdatePersonSharePaid)
 	r.PATCH("/api/bills/:id/items/:itemId/assignments", safehttp.JSONMutation, handler.UpdateLazyItemAssignments)
@@ -141,6 +144,12 @@ func newRouter(handler *bill.BillHandler, currencyHandler *currency.Handler, tab
 	r.POST("/api/tabs/:id/join", safehttp.JSONMutation, tabHandler.JoinTab)
 	r.DELETE("/api/tabs/:id/members/me", safehttp.JSONMutation, tabHandler.LeaveTab)
 	r.GET("/api/tabs/:id/members", tabHandler.GetMembers)
+	r.GET("/api/tabs/:id/members/me", tabHandler.GetMemberSelf)
+	r.PATCH("/api/tabs/:id/members/me", safehttp.JSONMutation, tabHandler.RenameMemberSelf)
+	r.POST("/api/tabs/:id/bills/:billId/participants", safehttp.JSONMutation, tabHandler.CreateParticipant)
+	r.PATCH("/api/tabs/:id/bills/:billId/participants/:participantId", safehttp.JSONMutation, tabHandler.RenameParticipant)
+	r.POST("/api/tabs/:id/bills/:billId/participants/:participantId/binding-request", safehttp.JSONMutation, tabHandler.RequestBinding)
+	r.PUT("/api/tabs/:id/bills/:billId/participants/:participantId/binding", safehttp.JSONMutation, tabHandler.DecideBinding)
 
 	if receiptHandler != nil {
 		r.POST("/api/receipts/parse", receiptHandler.ParseReceipt)
