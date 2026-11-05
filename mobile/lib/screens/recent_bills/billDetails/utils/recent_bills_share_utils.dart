@@ -35,9 +35,14 @@ class RecentBillShareUtils {
       tax: bill.tax,
       tipAmount: bill.tipAmount,
       total: bill.total,
-      birthdayPerson: null,
+      birthdayPerson:
+          bill.birthdayName == null
+              ? null
+              : participants
+                  .where((p) => p.name == bill.birthdayName)
+                  .firstOrNull,
       tipPercentage: bill.tipPercentage,
-      isCustomTipAmount: bill.tipPercentage == 0,
+      isCustomTipAmount: bill.isCustomTipAmount,
       showAllItems: shareOptions.showAllItems,
       showPersonItems: shareOptions.showPersonItems,
       showBreakdown: !shareOptions.showBreakdown,

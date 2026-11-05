@@ -98,10 +98,13 @@ class _RecentBillCardState extends State<RecentBillCard> {
           );
         }
       }
-    } on BillValidationException catch (e) {
+    } on ApiException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
+          SnackBar(
+            content: Text(e.message),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } finally {
@@ -336,11 +339,13 @@ class _RecentBillCardState extends State<RecentBillCard> {
                                 fit: BoxFit.scaleDown,
                                 child: Text(
                                   CurrencyFormatter.formatCurrency(
-                                    widget.showBillTotalsInUSD
+                                    widget.showBillTotalsInUSD &&
+                                            widget.bill.hasUSDValuation
                                         ? widget.bill.usdTotal
                                         : widget.bill.total,
                                     currencyCode:
-                                        widget.showBillTotalsInUSD
+                                        widget.showBillTotalsInUSD &&
+                                                widget.bill.hasUSDValuation
                                             ? 'USD'
                                             : widget.bill.currencyCode,
                                   ),
@@ -359,6 +364,18 @@ class _RecentBillCardState extends State<RecentBillCard> {
                   ),
                 ),
 
+                if (!widget.bill.hasUSDValuation)
+                  const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Text('USD conversion pending'),
+                  ),
+                if (widget.bill.failureCode != null)
+                  const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Text(
+                      'Saved on this device. Link or trip recovery pending.',
+                    ),
+                  ),
                 // Bottom action buttons with divider
                 Container(
                   decoration: BoxDecoration(

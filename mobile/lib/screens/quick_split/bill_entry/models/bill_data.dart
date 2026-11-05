@@ -49,6 +49,7 @@ class BillData extends ChangeNotifier {
     'CHF': 'Swiss Franc',
   };
   String currencyCode = defaultCurrencyCode;
+  bool currencyConfirmed = false;
   ExchangeRateQuote _exchangeRateQuote = const ExchangeRateQuote.usd();
   bool _isLoadingExchangeRate = false;
   String? _exchangeRateError;
@@ -64,6 +65,7 @@ class BillData extends ChangeNotifier {
 
   void selectCurrency(String value) {
     currencyCode = value.toUpperCase();
+    currencyConfirmed = supportedCurrencies.containsKey(currencyCode);
     _exchangeRateQuote =
         currencyCode == defaultCurrencyCode
             ? const ExchangeRateQuote.usd()
@@ -255,9 +257,24 @@ class BillData extends ChangeNotifier {
       (sum, item) => sum + item.price,
     );
 
-    if (receipt.currencyCode != null) {
-      currencyCode = receipt.currencyCode!.toUpperCase();
+    // Scan evidence suggests a code; only the explicit receipt selector confirms
+    // it. A dollar symbol or absent evidence cannot silently establish USD.
+    final scannedCode = receipt.currencyCode?.toUpperCase();
+    if (scannedCode != null && supportedCurrencies.containsKey(scannedCode)) {
+      currencyCode = scannedCode;
+      _exchangeRateQuote =
+          currencyCode == 'USD'
+              ? const ExchangeRateQuote.usd()
+              : ExchangeRateQuote(
+                currencyCode: currencyCode,
+                usdRate: 0,
+                rateDate: '',
+                source: '',
+              );
+      _isLoadingExchangeRate = false;
+      _exchangeRateError = null;
     }
+    currencyConfirmed = false;
     items = replacement;
     itemsTotal = replacementTotal;
     scannedVendor = receipt.vendor;

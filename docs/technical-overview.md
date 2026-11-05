@@ -216,8 +216,16 @@ display uses `same_currency` without a market/retrieval timestamp. Historical qu
 explicit zero totals are preserved on reads. Tab summaries and share allocation use
 one checked frozen USD audit; sums use checked cents and never display/native foreign
 fallbacks. Missing/inconsistent valuation requires an authorized accounting review,
-without fetching or rewriting history. Mobile caching/decoding/save/replay and
-versioned JPY precision remain open. See [API contracts](backend-api.md#currency-quotes)
+without fetching or rewriting history. Mobile `RecentBillsManager` now owns the
+Drift9 save/resume transaction, immutable request and exact-ID checkpoints; Done,
+launch/history retry and tab additions enter that owner. Its API/storage/key-store
+seams expose durable publication, valuation and attachment results. No time/content
+deduplication or newest-row identity lookup remains on that path. Imported tab
+snapshots cannot acquire source/publication authority. Pending/referenced receipts
+survive capacity handling; inability to evict safely fails the new transaction.
+Foreign values without an audit stay unavailable; frozen zero stays zero. Display
+rates are temporary values and never write frozen quote columns. Versioned JPY
+precision and the known local/server `.005` allocation difference remain open. See [API contracts](backend-api.md#currency-quotes)
 for accepted fields, ownership, freshness and legacy compatibility.
 `FinalizeOnce` is the sole production finalization seam: tab capability, current creator
 or memberless policy, stored-result validation, gross allocation, bounded inserts and
@@ -241,7 +249,14 @@ Leaving cannot delete creator or recorded payer/adder provenance. Join retries c
 turn an invalid supplied capability into replacement membership.
 
 Stable participant identity, the positive-only USD read fallback, legacy missing-payer/net
-presentation and durable mobile save/reopen remain separately owned. Schema compatibility does
+presentation, native Keychain qualification and combined mobile journeys remain open.
+The narrow iOS MethodChannel uses OS random32 bytes and generic-password Keychain
+items accessible only when unlocked on this device, with foreground admission and
+create-if-absent retrieval on duplicate add. Drift stores only its nonsecret locator;
+existing bearer URLs elsewhere remain plaintext. Missing/locked/error are distinct;
+an attempted publication cannot mint a replacement key. Unsupported platforms have
+no fallback. The unsigned simulator currently lacks the required Keychain entitlement
+(`-34018`); source/build and host/wire proof do not satisfy the native gate. Schema compatibility does
 not establish the guarantee during overlap with old uncooperative writers. No deployment,
 production adoption, signed-client bridge or whole-product acceptance is claimed.
 

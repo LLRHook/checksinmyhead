@@ -61,9 +61,13 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
   late RecentBillModel _bill;
 
   double get _displayedTotal =>
-      widget.showBillTotalsInUSD ? _bill.usdTotal : _bill.total;
+      widget.showBillTotalsInUSD && _bill.hasUSDValuation
+          ? _bill.usdTotal
+          : _bill.total;
   String get _displayedCurrencyCode =>
-      widget.showBillTotalsInUSD ? 'USD' : _bill.currencyCode;
+      widget.showBillTotalsInUSD && _bill.hasUSDValuation
+          ? 'USD'
+          : _bill.currencyCode;
 
   // Track if the bill name was updated
   bool _wasNameUpdated = false;
@@ -186,6 +190,17 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
                           color: _bill.color,
                           itemAssignments: _bill.itemAssignments,
                           shareUrl: _bill.shareUrl,
+                          currencyCode: _bill.currencyCode,
+                          usdExchangeRate: _bill.usdExchangeRate,
+                          exchangeRateDate: _bill.exchangeRateDate,
+                          exchangeRateSource: _bill.exchangeRateSource,
+                          authoritativeUsdTotal: _bill.authoritativeUsdTotal,
+                          publicationState: _bill.publicationState,
+                          valuationState: _bill.valuationState,
+                          failureCode: _bill.failureCode,
+                          attachmentState: _bill.attachmentState,
+                          savedShares: _bill.savedShares,
+                          receiptMetadata: _bill.receiptMetadata,
                         );
 
                         // Mark that bill name was updated to notify previous screen

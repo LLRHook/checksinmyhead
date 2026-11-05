@@ -147,6 +147,12 @@ class BillCalculations {
   ///
   /// Note: Results are cached for performance optimization
   Map<String, double> calculatePersonTotals() {
+    if (bill.savedShares != null) {
+      return {
+        for (final entry in bill.generatePersonShares().entries)
+          entry.key.name: entry.value,
+      };
+    }
     // Return cached result if available
     if (_personTotals != null) {
       return _personTotals!;
@@ -179,7 +185,8 @@ class BillCalculations {
   /// - true if at least one person has items specifically assigned to them
   /// - false if no real assignments exist (indicating equal splits)
   bool hasRealAssignments() {
-    return calculatePersonItemTotals().values.any((v) => v > 0);
+    return bill.savedShares != null ||
+        calculatePersonItemTotals().values.any((v) => v > 0);
   }
 
   /// Calculates what each person would pay in a simple equal split

@@ -169,7 +169,10 @@ UX without displaying provider/server content.
 `ParsedReceipt` owns bounded JSON preflight, field validation and checked expansion to
 at most 500 review/application lines. Review and `BillData` use the same expansion;
 invalid direct or reviewed candidates leave bill state/controllers unchanged. Existing
-two-decimal distribution, JPY and currency-confirmation policy remain separate concerns.
+two-decimal distribution and versioned JPY remain separate concerns. Receipt review
+retains currency evidence; explicit receipt-currency confirmation is required after a
+scan, including ambiguous dollar evidence. Preview-rate failure does not block a valid
+native-currency receipt from continuing or saving locally.
 See [local mobile OCR verification](../docs/mobile-ocr-verification.md) for loopback native
 I/O, TLS, fixture regeneration, widget disposal, negative controls and evidence limits.
 Host qualification is recorded in the [integration note](../docs/reviews/2026-11-04-mobile-tls-integration.md).
@@ -183,3 +186,28 @@ resolves response-body/complete-ClientHello evidence gaps while retaining the fa
 console wrapper and missing post-run receipts; it does not certify resources.
 Release `ApiConfig` still selects the hosted API; the test-only constructor is not a
 production configuration override.
+
+
+## Durable receipt save and recovery
+
+Done confirms a name before writing anything. `RecentBillsManager.saveReceipt`
+commits one native receipt with a stable operation handle, ordered immutable create
+snapshot/version, nonsecret key locator and optional destination intent. All resume,
+history/launch retry and tab additions use that owner and the same exact Drift ID.
+A valid persisted201 response atomically checkpoints source link, remote ID, frozen
+quote and authoritative USD total before presentation or attachment. Failed HTTP,
+checkpoint, attachment or presentation leaves truthful saved/pending state.
+
+The iOS adapter generates32 bytes with Security and stores only the recovery capability
+in device-only unlocked Keychain. Drift does not hold that capability. This does not
+encrypt existing bearer URLs. Missing keys after an attempted publication block retry
+rather than replacing the identity; unsupported platforms cannot publish via a fallback.
+History/imported snapshots without creation authority require review and never auto-post.
+The current unsigned simulator Keychain gate is blocked by missing entitlement; no
+signing/provisioning change is authorized. Keyed release publication is disabled in
+source until a separately reviewed native/source-floor/old-writer-drain qualification.
+
+See [the mobile save procedure](../docs/mobile-save-verification.md) and
+[scoped source evidence](../docs/reviews/2026-11-04-mobile-save-reopen.md). Host/wire
+checks do not close identity0003, versioned JPY, the local/server `.005` allocation
+mismatch, resources, full integrated/security or release gates.

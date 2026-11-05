@@ -252,8 +252,21 @@ the provider observation day at UTC midnight, not retrieval time. Same-currency
 identity returns rate 1/source `same_currency`; its `updated_at` is request time
 and does not represent a market observation. Invalid/unavailable pairs return 503
 `{"error":"exchange rates are temporarily unavailable"}`. This endpoint does not
-freeze or change any saved receipt. The mobile decoder still reading `value` is an
-explicit next-phase client correction.
+freeze or change any saved receipt. The mobile decoder accepts finite positive JSON
+numbers from `rate`, including integer encodings, without a rate-1 fallback.
+
+New mobile save operations persist their ordered creation request, snapshot version,
+nonsecret operation/key locator, native amounts and optional attachment intent in
+Drift9 before publication. They commit an attempted marker before their one keyed
+POST and checkpoint all eight persisted201 authority fields to the exact row before
+sharing or attachment. A lost/invalid response or checkpoint failure retains the
+same recovery capability and snapshot. Missing keys after an attempt block further
+publication; imports/ambiguous old history are never automatic create work.
+
+Client upgrade policy may fail open for app access; creation replay preflight fails
+closed. The source additionally disables keyed publication in release mode pending
+separate source-floor, old-writer-drain and native qualification. A version-policy
+response cannot establish drain or authorize rollback to a replay-ignorant server.
 
 ### `GET /api/exchange-rates/:currency`
 

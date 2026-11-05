@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:checks_frontend/services/receipt_validation.dart';
 import 'package:http/http.dart' as http;
 import 'package:checks_frontend/services/api_config.dart';
@@ -33,10 +34,20 @@ class BillValidationException extends ApiException {
   BillValidationException(super.message);
 }
 
+class InvalidCreationResponse extends ApiException {
+  InvalidCreationResponse()
+    : super('The creation response could not be verified.');
+}
+
 class ApiService {
+  ApiService({http.Client? client, String? baseUrl})
+    : _client = client ?? http.Client(),
+      _baseUrl = baseUrl;
+  final http.Client _client;
+  final String? _baseUrl;
   static const _timeout = Duration(seconds: 30);
 
-  String get baseUrl => ApiConfig.baseUrl;
+  String get baseUrl => _baseUrl ?? ApiConfig.baseUrl;
 
   Future<T> _withStandardErrors<T>(Future<T> Function() request) async {
     try {
@@ -59,7 +70,7 @@ class ApiService {
     String billId,
     String token,
   ) async {
-    final response = await http
+    final response = await _client
         .get(
           Uri.parse('$baseUrl/api/bills/$billId'),
           headers: {'Authorization': 'Bearer $token'},
@@ -83,7 +94,7 @@ class ApiService {
     required String token,
     required List<Map<String, dynamic>> updates,
   }) async {
-    final response = await http
+    final response = await _client
         .patch(
           Uri.parse('$baseUrl/api/bills/$billId/assignments'),
           headers: {
@@ -114,7 +125,7 @@ class ApiService {
     required String token,
     required bool paid,
   }) async {
-    final response = await http
+    final response = await _client
         .patch(
           Uri.parse('$baseUrl/api/bills/$billId/shares/$shareId'),
           headers: {
@@ -129,24 +140,26 @@ class ApiService {
     }
   }
 
-  Future<double> getCurrencyRate(String from, String to) async {
-    final uri = Uri.parse(
-      '$baseUrl/api/currency/rate?from=${from.toUpperCase()}&to=${to.toUpperCase()}',
-    );
-    final response = await http.get(uri).timeout(_timeout);
-    if (response.statusCode != 200) {
-      throw ApiException(
-        'Exchange rate unavailable',
-        statusCode: response.statusCode,
-      );
-    }
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
-    final rate = (data['value'] as num?)?.toDouble();
-    if (rate == null || rate <= 0) {
-      throw ApiException('Invalid exchange rate response');
-    }
-    return rate;
-  }
+  Future<double> getCurrencyRate(String from, String to) =>
+      _withStandardErrors(() async {
+        final uri = Uri.parse('$baseUrl/api/currency/rate').replace(
+          queryParameters: {'from': from.toUpperCase(), 'to': to.toUpperCase()},
+        );
+        final response = await _client.get(uri).timeout(_timeout);
+        if (response.statusCode != 200) {
+          throw ApiException(
+            'Exchange rate unavailable',
+            statusCode: response.statusCode,
+          );
+        }
+        final data = jsonDecode(response.body);
+        final value = data is Map ? data['rate'] : null;
+        final rate = value is num ? value.toDouble() : null;
+        if (rate == null || !rate.isFinite || rate <= 0) {
+          throw ApiException('Invalid exchange rate response');
+        }
+        return rate;
+      });
 
   /// Uploads a completed bill to the backend
   Future<BillUploadResponse> uploadBill({
@@ -181,7 +194,7 @@ class ApiService {
         lazyMode: lazyMode,
       );
 
-      final response = await http
+      final response = await _client
           .post(
             Uri.parse('$baseUrl/api/bills'),
             headers: {'Content-Type': 'application/json'},
@@ -197,7 +210,7 @@ class ApiService {
         final result = BillUploadResponse.fromJson(data);
         if (!result.isAuthoritativeFor(currencyCode)) {
           throw ApiException(
-            'The server did not confirm this daily conversion. Nothing was saved; retry or use USD.',
+            'The server did not confirm this conversion. Publication is pending.',
           );
         }
         return result;
@@ -210,11 +223,127 @@ class ApiService {
     });
   }
 
+  /// Fail closed before any attempted create. Capability is a wire prerequisite,
+  /// never evidence that replay-ignorant writers have been drained from a fleet.
+  Future<bool> supportsCreationReplay() async {
+    // Release source floors and old-writer drain are not qualified by this
+    // source-only assignment. A capability response cannot enable a release.
+    if (kReleaseMode) return false;
+    return _withStandardErrors(() async {
+      final response = await _client
+          .get(Uri.parse('$baseUrl/api/app/version-policy'))
+          .timeout(_timeout);
+      if (response.statusCode != 200) return false;
+      final body = jsonDecode(response.body);
+      final capability = body is Map ? body['capabilities'] : null;
+      final replay =
+          capability is Map ? capability['bill_creation_replay'] : null;
+      return replay is Map &&
+          replay['version'] == 1 &&
+          replay['key_format'] == 'base64url-32';
+    });
+  }
+
+  /// Exactly one POST of the persisted bytes; the owner controls durable attempt
+  /// ordering and explicit later recovery. No fallback or automatic POST retry.
+  Future<BillUploadResponse> publishSnapshot(String snapshot, String key) =>
+      _withStandardErrors(() async {
+        if (!RegExp(r'^[A-Za-z0-9_-]{43}$').hasMatch(key) ||
+            base64Url.encode(base64Url.decode('$key=')).replaceAll('=', '') !=
+                key) {
+          throw BillValidationException('Invalid recovery key');
+        }
+        final request = jsonDecode(snapshot) as Map<String, dynamic>;
+        final body = await _sendCreation(snapshot, key);
+        const requiredFields = [
+          'bill_id',
+          'access_token',
+          'share_url',
+          'currency_code',
+          'usd_exchange_rate',
+          'exchange_rate_date',
+          'exchange_rate_source',
+          'usd_total',
+        ];
+        if (requiredFields.any((field) => !body.containsKey(field))) {
+          throw InvalidCreationResponse();
+        }
+        if (body['bill_id'] is! int ||
+            body['usd_exchange_rate'] is! num ||
+            body['usd_total'] is! num ||
+            [
+              'access_token',
+              'share_url',
+              'currency_code',
+              'exchange_rate_date',
+              'exchange_rate_source',
+            ].any((field) => body[field] is! String)) {
+          throw InvalidCreationResponse();
+        }
+        final result = BillUploadResponse.fromJson(body);
+        final nativeTotal = (request['total'] as num).toDouble();
+        if (!result.isAuthoritativeFor(request['currency_code'] as String) ||
+            result.billId <= 0 ||
+            result.accessToken.isEmpty ||
+            !result.hasValidSourceLink ||
+            !result.hasFrozenProvenance ||
+            !result.matchesNativeTotal(nativeTotal)) {
+          throw InvalidCreationResponse();
+        }
+        return result;
+      });
+
+  Future<Map<String, dynamic>> _sendCreation(
+    String snapshot,
+    String key,
+  ) async {
+    final abort = Completer<void>();
+    final deadline = Timer(_timeout, () {
+      if (!abort.isCompleted) abort.complete();
+    });
+    try {
+      final request =
+          http.AbortableRequest(
+              'POST',
+              Uri.parse('$baseUrl/api/bills'),
+              abortTrigger: abort.future,
+            )
+            ..followRedirects = false
+            ..maxRedirects = 0
+            ..headers.addAll({
+              'Content-Type': 'application/json',
+              'Idempotency-Key': key,
+            })
+            ..body = snapshot;
+      final response = await _client.send(request).timeout(_timeout);
+      if (response.statusCode != 201) {
+        await response.stream.listen(null).cancel();
+        throw ApiException(
+          'Publication pending',
+          statusCode: response.statusCode,
+        );
+      }
+      final bytes = <int>[];
+      await for (final chunk in response.stream) {
+        if (bytes.length + chunk.length > 64 * 1024) {
+          throw InvalidCreationResponse();
+        }
+        bytes.addAll(chunk);
+      }
+      final body = jsonDecode(utf8.decode(bytes));
+      if (body is! Map<String, dynamic>) throw InvalidCreationResponse();
+      return body;
+    } finally {
+      deadline.cancel();
+      if (!abort.isCompleted) abort.complete();
+    }
+  }
+
   Future<ExchangeRateQuote> getExchangeRate(String currencyCode) async {
     final normalized = currencyCode.toUpperCase();
     if (normalized == 'USD') return const ExchangeRateQuote.usd();
     try {
-      final response = await http
+      final response = await _client
           .get(Uri.parse('$baseUrl/api/exchange-rates/$normalized'))
           .timeout(_timeout);
       if (response.statusCode != 200) {
@@ -339,7 +468,7 @@ class ApiService {
         body['creator_display_name'] = creatorDisplayName;
       }
 
-      final response = await http
+      final response = await _client
           .post(
             Uri.parse('$baseUrl/api/tabs'),
             headers: {'Content-Type': 'application/json'},
@@ -381,7 +510,7 @@ class ApiService {
     if (memberToken != null && memberToken.isNotEmpty) {
       headers['X-Member-Token'] = memberToken;
     }
-    final response = await http
+    final response = await _client
         .patch(
           Uri.parse('$baseUrl/api/tabs/$tabId'),
           headers: headers,
@@ -413,7 +542,7 @@ class ApiService {
         headers['X-Member-Token'] = memberToken;
       }
 
-      final response = await http
+      final response = await _client
           .post(
             Uri.parse('$baseUrl/api/tabs/$tabId/bills'),
             headers: headers,
@@ -442,7 +571,7 @@ class ApiService {
         headers['X-Member-Token'] = memberToken;
       }
 
-      final response = await http
+      final response = await _client
           .post(
             Uri.parse('$baseUrl/api/tabs/$tabId/finalize'),
             headers: headers,
@@ -472,7 +601,7 @@ class ApiService {
     String accessToken,
   ) async {
     return _withStandardErrors(() async {
-      final response = await http
+      final response = await _client
           .get(
             Uri.parse('$baseUrl/api/tabs/$tabId/settlements'),
             headers: {'Authorization': 'Bearer $accessToken'},
@@ -512,7 +641,7 @@ class ApiService {
       if (memberToken != null && memberToken.isNotEmpty) {
         headers['X-Member-Token'] = memberToken;
       }
-      final response = await http
+      final response = await _client
           .patch(
             Uri.parse('$baseUrl/api/tabs/$tabId/settlements/$settlementId'),
             headers: headers,
@@ -543,7 +672,7 @@ class ApiService {
       if (memberToken != null && memberToken.isNotEmpty) {
         headers['X-Member-Token'] = memberToken;
       }
-      final response = await http
+      final response = await _client
           .post(
             Uri.parse('$baseUrl/api/tabs/$tabId/join'),
             headers: headers,
@@ -580,7 +709,7 @@ class ApiService {
     String memberToken,
   ) async {
     await _withStandardErrors(() async {
-      final response = await http
+      final response = await _client
           .delete(
             Uri.parse('$baseUrl/api/tabs/$tabId/members/me'),
             headers: {
@@ -606,7 +735,7 @@ class ApiService {
     String accessToken,
   ) async {
     return _withStandardErrors(() async {
-      final response = await http
+      final response = await _client
           .get(
             Uri.parse('$baseUrl/api/tabs/$tabId/members'),
             headers: {'Authorization': 'Bearer $accessToken'},
@@ -633,7 +762,7 @@ class ApiService {
   /// Fetches full tab data from the backend
   Future<Map<String, dynamic>> getTabData(int tabId, String accessToken) async {
     return _withStandardErrors(() async {
-      final response = await http
+      final response = await _client
           .get(
             Uri.parse('$baseUrl/api/tabs/$tabId'),
             headers: {'Authorization': 'Bearer $accessToken'},
@@ -794,16 +923,50 @@ class BillUploadResponse {
     );
   }
 
+  bool get hasValidSourceLink {
+    final uri = Uri.tryParse(shareUrl);
+    return uri != null &&
+        uri.scheme == 'https' &&
+        {'billington.app', 'billingtonapp.vercel.app'}.contains(uri.host) &&
+        uri.userInfo.isEmpty &&
+        !uri.hasPort &&
+        uri.path == '/b/$billId' &&
+        uri.queryParameters['t'] == accessToken;
+  }
+
+  bool get hasFrozenProvenance {
+    if (exchangeRateQuote.currencyCode == 'USD') {
+      return exchangeRateQuote.source == 'native-usd' &&
+          exchangeRateQuote.rateDate.isEmpty;
+    }
+    final date = exchangeRateQuote.rateDate;
+    final parsed = DateTime.tryParse(date);
+    return RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(date) &&
+        parsed != null &&
+        parsed.toIso8601String().startsWith('${date}T') &&
+        exchangeRateQuote.source.isNotEmpty &&
+        exchangeRateQuote.source != 'native-usd';
+  }
+
+  bool matchesNativeTotal(double nativeTotal) =>
+      nativeTotal.isFinite &&
+      usdTotal.isFinite &&
+      (usdTotal - (nativeTotal * exchangeRateQuote.usdRate * 100).round() / 100)
+              .abs() <
+          0.000001;
+
   bool isAuthoritativeFor(String requestedCurrencyCode) {
     final requested = requestedCurrencyCode.trim().toUpperCase();
     if (requested.isEmpty || requested == 'USD') {
       return exchangeRateQuote.currencyCode == 'USD' &&
-          exchangeRateQuote.usdRate == 1;
+          exchangeRateQuote.usdRate == 1 &&
+          usdTotal.isFinite &&
+          usdTotal >= 0;
     }
     return exchangeRateQuote.currencyCode == requested &&
         exchangeRateQuote.isValid &&
         usdTotal.isFinite &&
-        usdTotal > 0;
+        usdTotal >= 0;
   }
 }
 

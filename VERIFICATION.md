@@ -151,6 +151,14 @@ on both immutable images/owned fixtures; retain controls/cleanup, verify signatu
 and scan exact artifacts unsuppressed. No CI/hosting proof. Receipt controls:
 [backend](docs/backend-ocr-verification.md), [mobile](docs/mobile-ocr-verification.md).
 
+The [mobile save/reopen procedure](docs/mobile-save-verification.md) adds real
+memory/file-backed Drift, immutable keyed-request, lost-response/local-checkpoint,
+attachment-finalization and currency-confirmation checks to the full Flutter row.
+Native Keychain results, app witnesses and harness exit codes must be reported
+separately; unsigned `-34018` is BLOCKED, never a native/release pass. Retain canonical
+OCR native/M2/TLS obligations unchanged. No numerical performance qualification is
+implied by these functional cases.
+
 - [ ] Enumerate (`go test ./... -list '.*'`, `npm exec -- vitest list`, Flutter/Ruby
       runner output); record actual tests/skips/failures, never historical 202/52 counts.
 - [ ] Run the full local gate, collect real execution counts and prove every batch

@@ -52,6 +52,9 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
   }
 
   String _formatCurrency(double value) {
+    if (_rateCurrency != _currentTab.displayCurrency) {
+      return '${_currentTab.displayCurrency} conversion unavailable';
+    }
     return CurrencyFormatter.formatCurrency(
       value *
           (_rateCurrency == _currentTab.displayCurrency
@@ -500,7 +503,10 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
   }
 
   double _calculateTotal() {
-    return _tabBills.fold(0.0, (sum, bill) => sum + bill.usdTotal);
+    return _tabBills.fold(
+      0.0,
+      (sum, bill) => sum + (bill.verifiedUsdTotal ?? 0),
+    );
   }
 
   // Known limitation: Person equality uses both name and color, so the same
@@ -767,7 +773,9 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
         child: Column(
           children: [
             Text(
-              'Total',
+              _tabBills.any((bill) => !bill.hasUSDValuation)
+                  ? 'Valued total · some receipts pending'
+                  : 'Total',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.9),
                 fontSize: 14,
@@ -1276,7 +1284,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
           ),
           child: Semantics(
             label:
-                '${bill.billName}, ${_formatCurrency(bill.total)}, ${bill.formattedDate}${!_currentTab.isFinalized ? '. Swipe left to remove' : ''}',
+                '${bill.billName}, ${bill.hasUSDValuation ? _formatCurrency(bill.usdTotal) : '${bill.currencyCode} ${bill.total.toStringAsFixed(2)}, USD pending'}, ${bill.formattedDate}${!_currentTab.isFinalized ? '. Swipe left to remove' : ''}',
             button: true,
             child: Material(
               color: Colors.transparent,
@@ -1359,7 +1367,9 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          _formatCurrency(bill.usdTotal),
+                          bill.hasUSDValuation
+                              ? _formatCurrency(bill.usdTotal)
+                              : '${bill.currencyCode} ${bill.total.toStringAsFixed(2)} · USD pending',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,

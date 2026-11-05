@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:checks_frontend/database/database.dart' hide Tab;
 import 'package:checks_frontend/database/database_provider.dart';
 import 'package:checks_frontend/models/tab.dart';
+import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
 import 'package:checks_frontend/services/api_service.dart';
 import 'package:checks_frontend/screens/settings/services/preferences_service.dart';
 import 'package:drift/drift.dart';
@@ -84,65 +85,17 @@ class TabManager extends ChangeNotifier {
   }
 
   Future<bool> addBillsToTab(int tabId, List<int> billIds) async {
-    try {
-      final tabData = await DatabaseProvider.db.getTabById(tabId);
-      if (tabData == null) return false;
-
-      final existingIds = AppTab.parseBillIds(tabData.billIds);
-      final attachedIds = <int>[];
-
-      if (tabData.accessToken != null && tabData.backendId != null) {
-        final apiService = ApiService();
-
-        var syncSucceeded = true;
-        for (final localBillId in billIds) {
-          if (existingIds.contains(localBillId)) continue;
-          final billData = await DatabaseProvider.db.getBillById(localBillId);
-          final shareUrl = billData?.shareUrl;
-          final backendBill = _parseBillShareUrl(shareUrl);
-          if (backendBill == null) {
-            debugPrint('Skipping backend tab sync for bill without share URL');
-            syncSucceeded = false;
-            continue;
-          }
-
-          try {
-            await apiService.addBillToTab(
-              tabData.backendId!,
-              backendBill.id,
-              tabData.accessToken!,
-              billToken: backendBill.token,
-              memberToken: tabData.memberToken,
-            );
-            attachedIds.add(localBillId);
-          } on ApiException {
-            syncSucceeded = false;
-          }
-        }
-        await DatabaseProvider.db.updateTab(
-          tabId,
-          TabsCompanion(
-            billIds: Value([...existingIds, ...attachedIds].join(',')),
-          ),
-        );
-        notifyListeners();
-        return syncSucceeded;
-      }
-
-      attachedIds.addAll(billIds.where((id) => !existingIds.contains(id)));
-      await DatabaseProvider.db.updateTab(
-        tabId,
-        TabsCompanion(
-          billIds: Value([...existingIds, ...attachedIds].join(',')),
-        ),
+    var complete = true;
+    for (final id in billIds) {
+      final result = await RecentBillsManager().resumeReceipt(
+        id,
+        intendedTabId: tabId,
       );
-
-      notifyListeners();
-      return true;
-    } catch (e) {
-      debugPrint('Error adding bills to tab');
-      return false;
+      if (result.attachment != AttachmentState.attached) complete = false;
     }
+    await getAllTabs();
+    notifyListeners();
+    return complete;
   }
 
   Future<void> _syncTabToBackend(
@@ -378,25 +331,4 @@ class TabManager extends ChangeNotifier {
     );
     return appTab.copyWith(displayCurrency: currency);
   }
-
-  _BackendBillRef? _parseBillShareUrl(String? shareUrl) {
-    if (shareUrl == null || shareUrl.isEmpty) return null;
-
-    final uri = Uri.tryParse(shareUrl);
-    if (uri == null || uri.pathSegments.length < 2) return null;
-    if (uri.pathSegments[uri.pathSegments.length - 2] != 'b') return null;
-
-    final billId = int.tryParse(uri.pathSegments.last);
-    final token = uri.queryParameters['t'];
-    if (billId == null || token == null || token.isEmpty) return null;
-
-    return _BackendBillRef(billId, token);
-  }
-}
-
-class _BackendBillRef {
-  final int id;
-  final String token;
-
-  const _BackendBillRef(this.id, this.token);
 }

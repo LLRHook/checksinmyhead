@@ -96,13 +96,10 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
   /// - Subtotal is greater than zero
   /// - At least one item has been added
   /// - Total of all items matches the entered subtotal (within rounding tolerance)
-  void _continueToItemAssignment() {
-    if (!_billData.hasUsableExchangeRate || _billData.isLoadingExchangeRate) {
-      _showSnackBar(
-        _billData.exchangeRateError ??
-            'Wait for the daily USD rate, or choose USD.',
-      );
-      return;
+  Future<void> _continueToItemAssignment() async {
+    if (!_billData.currencyConfirmed) {
+      await CurrencySection.show(context: context, billData: _billData);
+      if (!mounted || !_billData.currencyConfirmed) return;
     }
     if (_billData.subtotal <= 0) {
       _showSnackBar('Please enter a subtotal amount');

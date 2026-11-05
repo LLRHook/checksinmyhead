@@ -16,6 +16,7 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import 'package:flutter/material.dart';
+import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
 import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/models/bill_item.dart';
 import 'package:checks_frontend/models/tab.dart';
@@ -87,6 +88,7 @@ class BillSummaryScreen extends StatefulWidget {
 class _BillSummaryScreenState extends State<BillSummaryScreen> {
   // Bill summary data
   late BillSummaryData _summaryData;
+  final _saveHandle = RecentBillsManager.newOperationHandle();
   final Set<int> _ownerClaimedItems = <int>{};
 
   @override
@@ -309,6 +311,7 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
                 await DoneButtonHandler.handleDone(
                   context,
                   data: _summaryData,
+                  operationHandle: _saveHandle,
                   lazyMode: widget.lazyMode,
                   tab: widget.tab,
                 );

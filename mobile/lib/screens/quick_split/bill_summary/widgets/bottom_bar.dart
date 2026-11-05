@@ -19,14 +19,10 @@ import 'package:checks_frontend/screens/quick_split/bill_summary/models/bill_sum
 import 'package:checks_frontend/screens/quick_split/bill_summary/widgets/bill_name_sheet.dart';
 import 'package:checks_frontend/screens/quick_split/bill_summary/widgets/enhanced_share_sheet.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
-import 'package:checks_frontend/database/database_provider.dart';
 import 'package:checks_frontend/screens/settings/services/preferences_service.dart';
-import 'package:checks_frontend/services/api_service.dart';
 import 'package:checks_frontend/models/tab.dart';
-import 'package:checks_frontend/screens/tabs/tab_manager.dart';
+import 'package:checks_frontend/services/api_service.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:logger/logger.dart';
 
 /// BottomBar - Fixed navigation bar at bottom of bill screens
 ///
@@ -150,23 +146,32 @@ class BottomBar extends StatelessWidget {
 /// Provides a method to save bill data, show confirmation,
 /// and navigate back to the starting screen.
 class DoneButtonHandler {
-  static final _billsManager = RecentBillsManager();
-  static final _apiService = ApiService();
-  static final _prefsService = PreferencesService();
   static bool _isSaving = false;
 
-  /// Saves the bill locally and uploads to backend
-  static Future<void> handleDone(
+  static Future<SaveReceiptResult?> handleDone(
     BuildContext context, {
     required BillSummaryData data,
     bool lazyMode = false,
     AppTab? tab,
+    String? operationHandle,
+    RecentBillsManager? manager,
+    Future<String> Function()? confirmName,
+    Future<void> Function(SaveReceiptResult, BillSummaryData)? presentSaved,
+    VoidCallback? navigateHome,
   }) async {
-    if (_isSaving) return;
+    if (_isSaving) return null;
     _isSaving = true;
+    DialogRoute<void>? loading;
+    final navigator = Navigator.of(context);
+    void closeLoading() {
+      if (loading?.isActive == true) navigator.removeRoute(loading!);
+    }
+
     try {
+      // Pure preflight exposes invalid raw assignments and labels before naming.
+      // The manager alone owns persistence, publication and recovery.
       try {
-        _apiService.buildBillRequest(
+        ApiService().buildBillRequest(
           billName: data.billName,
           participants: lazyMode ? const [] : data.participants,
           personShares: lazyMode ? const {} : data.personShares,
@@ -180,217 +185,92 @@ class DoneButtonHandler {
           currencyCode: data.currencyCode,
           lazyMode: lazyMode,
         );
-      } on BillValidationException catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message)),
-        );
-        return;
+      } on BillValidationException catch (error) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(error.message)));
+        }
+        return null;
       }
-      // Capture ALL context-dependent references FIRST (before any async)
-      final navigator = Navigator.of(context);
-
-      // Get bill name
-      final billName = await BillNameSheet.show(
-        context: context,
-        initialName: data.billName,
-      );
-
-      if (billName.isEmpty) {
-        return; // User cancelled
-      }
-
-      // Check context.mounted before using context
-      if (!context.mounted) {
-        return;
-      }
-
-      // Show loading indicator
-      showDialog(
+      final name =
+          await (confirmName?.call() ??
+              BillNameSheet.show(context: context, initialName: data.billName));
+      if (name.isEmpty || !context.mounted) return null;
+      loading = DialogRoute<void>(
         context: context,
         barrierDismissible: false,
-        builder:
-            (dialogContext) => const Center(child: CircularProgressIndicator()),
+        builder: (_) => const Center(child: CircularProgressIndicator()),
       );
-
-      // Load payment methods from preferences
-      final selectedMethods = await _prefsService.getSelectedPaymentMethods();
-      final identifiers = await _prefsService.getAllPaymentIdentifiers();
-
-      // Convert to the format expected by the API
-      final paymentMethods =
-          selectedMethods.map((method) {
-            return {'name': method, 'identifier': identifiers[method] ?? ''};
-          }).toList();
-
-      // Create updated data with bill name and payment methods
-      final updatedData = BillSummaryData(
-        participants: data.participants,
-        personShares: data.personShares,
-        items: data.items,
-        subtotal: data.subtotal,
-        tax: data.tax,
-        tipAmount: data.tipAmount,
-        total: data.total,
-        birthdayPerson: data.birthdayPerson,
-        tipPercentage: data.tipPercentage,
-        isCustomTipAmount: data.isCustomTipAmount,
-        billName: billName,
-        paymentMethods: paymentMethods,
-        currencyCode: data.currencyCode,
-      );
-
-      // Save locally first (always works even if backend fails)
-      await _billsManager.saveBill(
-        participants: updatedData.participants,
-        personShares: updatedData.personShares,
-        items: updatedData.items,
-        subtotal: updatedData.subtotal,
-        tax: updatedData.tax,
-        tipAmount: updatedData.tipAmount,
-        total: updatedData.total,
-        tipPercentage: updatedData.tipPercentage,
-        billName: updatedData.billName,
-      );
-
-      // Try to upload to backend
-      String? shareUrl;
-      var logger = Logger();
+      navigator.push(loading);
+      var payments = data.paymentMethods;
       try {
-        // Use payment methods from settings, or provide defaults
-        final apiPaymentMethods =
-            paymentMethods.isNotEmpty
-                ? paymentMethods
-                : [
-                  {'name': 'Venmo', 'identifier': '@username'},
-                ];
-
-        final response = await _apiService.uploadBill(
-          billName: billName,
-          participants: lazyMode ? const [] : updatedData.participants,
-          personShares: lazyMode ? const {} : updatedData.personShares,
-          items: updatedData.items,
-          subtotal: updatedData.subtotal,
-          tax: updatedData.tax,
-          tipAmount: updatedData.tipAmount,
-          tipPercentage: updatedData.tipPercentage,
-          total: updatedData.total,
-          paymentMethods: apiPaymentMethods,
-          currencyCode: updatedData.currencyCode,
-          displayCurrency: lazyMode ? null : tab?.displayCurrency,
+        final prefs = PreferencesService();
+        final selected = await prefs.getSelectedPaymentMethods();
+        final identifiers = await prefs.getAllPaymentIdentifiers();
+        payments = [
+          for (final method in selected)
+            {'name': method, 'identifier': identifiers[method] ?? ''},
+        ];
+      } catch (_) {
+        /* Preserve the confirmed draft's payment snapshot. */
+      }
+      final confirmed = data.copyWith(billName: name, paymentMethods: payments);
+      SaveReceiptResult result;
+      try {
+        result = await (manager ?? RecentBillsManager()).saveReceipt(
+          operationHandle:
+              operationHandle ?? RecentBillsManager.newOperationHandle(),
+          receipt: confirmed,
           lazyMode: lazyMode,
+          displayCurrency: lazyMode ? null : tab?.displayCurrency,
+          intendedTabId: lazyMode ? null : tab?.id,
         );
-
-        if (lazyMode) {
-          shareUrl = response.shareUrl;
-          logger.d('Lazy bill uploaded successfully: $shareUrl');
-        } else {
-          shareUrl = response.shareUrl;
-          logger.d('Bill uploaded successfully: $shareUrl');
-
-          // Persist the share URL to the most recently saved bill
-          final mostRecent = await DatabaseProvider.db.getMostRecentBill();
-          if (mostRecent != null) {
-            await _billsManager.updateBillShareUrl(mostRecent.id, shareUrl);
-            if (tab?.id != null) {
-              await TabManager().addBillsToTab(tab!.id!, [mostRecent.id]);
-            }
-          }
-        }
-
-        // Persist the backend's authoritative frozen rate, never the preview
-        // quote alone. This makes saved totals stable if rates change later.
-        await _billsManager.saveBill(
-          participants: updatedData.participants,
-          personShares: updatedData.personShares,
-          items: updatedData.items,
-          subtotal: updatedData.subtotal,
-          tax: updatedData.tax,
-          tipAmount: updatedData.tipAmount,
-          total: updatedData.total,
-          tipPercentage: updatedData.tipPercentage,
-          billName: updatedData.billName,
-          shareUrl: shareUrl,
-          currencyCode: response.exchangeRateQuote.currencyCode,
-          usdExchangeRate: response.exchangeRateQuote.usdRate,
-          exchangeRateDate: response.exchangeRateQuote.rateDate,
-          exchangeRateSource: response.exchangeRateQuote.source,
-        );
-      } on ApiException catch (e) {
-        logger.d('Failed to upload to backend: $e');
-        if (updatedData.currencyCode != 'USD') {
-          if (navigator.mounted) navigator.pop();
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Could not verify the daily ${updatedData.currencyCode} rate. '
-                  'Nothing was saved; retry or use USD.',
-                ),
+      } catch (_) {
+        closeLoading();
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Could not save on this device. Review the receipt and retry.',
               ),
-            );
-          }
-          return;
+            ),
+          );
         }
-        await _saveUSDLocally(updatedData);
-      } catch (e) {
-        logger.d('Failed to upload to backend: $e');
-        if (updatedData.currencyCode != 'USD') {
-          if (navigator.mounted) navigator.pop();
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Could not save this converted bill. Nothing was saved; '
-                  'please retry.',
-                ),
-              ),
-            );
-          }
-          return;
+        return null;
+      }
+      closeLoading();
+      // Everything below consumes a committed result. Presentation failures must
+      // not be caught as persistence failures or trigger a second local save.
+      try {
+        if (presentSaved != null) {
+          await presentSaved(result, confirmed);
+        } else if (context.mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(result.message)));
+          await EnhancedShareSheet.show(
+            context: context,
+            shareUrl: result.shareUrl,
+            data: confirmed,
+          );
         }
-        await _saveUSDLocally(updatedData);
+      } catch (_) {
+        /* The saved receipt remains in history. */
       }
-
-      // Close loading dialog
-      if (navigator.mounted) {
-        navigator.pop(); // Close loading dialog
+      try {
+        if (navigateHome != null) {
+          navigateHome();
+        } else if (navigator.mounted) {
+          navigator.popUntil((route) => route.isFirst);
+        }
+      } catch (_) {
+        /* Navigation cannot undo a committed receipt. */
       }
-
-      if (!navigator.mounted) {
-        return;
-      }
-
-      HapticFeedback.mediumImpact();
-
-      // Show EnhancedShareSheet instead of snackbar
-      if (context.mounted) {
-        await EnhancedShareSheet.show(
-          context: context,
-          shareUrl: shareUrl,
-          data: updatedData,
-        );
-      }
-
-      // Return to home
-      if (navigator.mounted) {
-        navigator.popUntil((route) => route.isFirst);
-      }
+      return result;
     } finally {
+      closeLoading();
       _isSaving = false;
     }
-  }
-
-  static Future<void> _saveUSDLocally(BillSummaryData data) {
-    return _billsManager.saveBill(
-      participants: data.participants,
-      personShares: data.personShares,
-      items: data.items,
-      subtotal: data.subtotal,
-      tax: data.tax,
-      tipAmount: data.tipAmount,
-      total: data.total,
-      tipPercentage: data.tipPercentage,
-      billName: data.billName,
-    );
   }
 }

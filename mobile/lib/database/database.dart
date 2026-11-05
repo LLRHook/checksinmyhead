@@ -89,6 +89,11 @@ class Tabs extends Table {
       dateTime().withDefault(Constant(DateTime.now()))();
 }
 
+@TableIndex(
+  name: 'idx_receipt_creation_handle',
+  columns: {#creationHandle},
+  unique: true,
+)
 class RecentBills extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get billName => text().withDefault(const Constant(''))();
@@ -111,6 +116,26 @@ class RecentBills extends Table {
   TextColumn get exchangeRateDate => text().nullable()();
   TextColumn get exchangeRateSource =>
       text().withDefault(const Constant('native-usd'))();
+
+  // Recovery authority is additive: legacy/import rows have no creation handle.
+  TextColumn get creationHandle => text().nullable()();
+  TextColumn get creationSnapshot => text().nullable()();
+  IntColumn get snapshotVersion => integer().nullable()();
+  TextColumn get keyLocator => text().nullable()();
+  BoolColumn get publicationAttempted =>
+      boolean().withDefault(const Constant(false))();
+  TextColumn get publicationState =>
+      text().withDefault(const Constant('legacy'))();
+  TextColumn get valuationState =>
+      text().withDefault(const Constant('legacy'))();
+  TextColumn get failureCode => text().nullable()();
+  IntColumn get remoteBillId => integer().nullable()();
+  RealColumn get authoritativeUsdTotal => real().nullable()();
+  IntColumn get intendedTabId => integer().nullable()();
+  TextColumn get attachmentState =>
+      text().withDefault(const Constant('none'))();
+  TextColumn get savedShares => text().nullable()();
+  TextColumn get receiptMetadata => text().nullable()();
 }
 
 @DriftDatabase(
@@ -133,7 +158,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -176,6 +201,29 @@ class AppDatabase extends _$AppDatabase {
         await migrator.addColumn(recentBills, recentBills.usdExchangeRate);
         await migrator.addColumn(recentBills, recentBills.exchangeRateDate);
         await migrator.addColumn(recentBills, recentBills.exchangeRateSource);
+      }
+      if (from < 9) {
+        for (final column in [
+          recentBills.creationHandle,
+          recentBills.creationSnapshot,
+          recentBills.snapshotVersion,
+          recentBills.keyLocator,
+          recentBills.publicationAttempted,
+          recentBills.publicationState,
+          recentBills.valuationState,
+          recentBills.failureCode,
+          recentBills.remoteBillId,
+          recentBills.authoritativeUsdTotal,
+          recentBills.intendedTabId,
+          recentBills.attachmentState,
+          recentBills.savedShares,
+          recentBills.receiptMetadata,
+        ]) {
+          await migrator.addColumn(recentBills, column);
+        }
+        await customStatement(
+          'CREATE UNIQUE INDEX idx_receipt_creation_handle ON recent_bills(creation_handle)',
+        );
       }
     },
     beforeOpen: (details) async {
@@ -345,7 +393,7 @@ class AppDatabase extends _$AppDatabase {
   static const int maxRecentBills = 30;
 
   // Stores a new bill in history
-  Future<void> saveBill({
+  Future<int> saveBill({
     int? billId,
     required List<Person> participants,
     required Map<Person, double> personShares,
@@ -367,25 +415,6 @@ class AppDatabase extends _$AppDatabase {
     final normalizedCurrencyCode = currencyCode.trim().toUpperCase();
     final participantNames = participants.map((p) => p.name).toList();
     final participantsJson = jsonEncode(participantNames);
-
-    // Check for duplicate bills within the last minute
-    if (!skipDuplicateCheck) {
-      final oneMinuteAgo = DateTime.now().subtract(const Duration(minutes: 1));
-      final recentBillsResults =
-          await (select(recentBills)
-                ..where((b) => b.createdAt.isBiggerThanValue(oneMinuteAgo))
-                ..where(
-                  (b) => b.total.isBetweenValues(total - 0.01, total + 0.01),
-                )
-                ..where((b) => b.currencyCode.equals(normalizedCurrencyCode))
-                ..where((b) => b.participants.equals(participantsJson)))
-              .get();
-
-      // If a similar bill exists within the last minute, skip saving
-      if (recentBillsResults.isNotEmpty) {
-        return;
-      }
-    }
 
     String? itemsJson;
     if (items.isNotEmpty) {
@@ -430,24 +459,101 @@ class AppDatabase extends _$AppDatabase {
       createdAt: Value(DateTime.now()),
     );
 
-    final count = await select(recentBills).get().then((bills) => bills.length);
-
-    if (billId == null && count >= maxRecentBills) {
-      final oldest =
-          await (select(recentBills)
-                ..orderBy([(t) => OrderingTerm.asc(t.createdAt)])
-                ..limit(1))
-              .getSingle();
-
-      await _cleanBillIdFromTabs(oldest.id);
-      await (delete(recentBills)..where((t) => t.id.equals(oldest.id))).go();
-    }
-
-    if (billId == null) {
-      await into(recentBills).insert(companion);
-    } else {
+    return transaction(() async {
+      if (billId == null) {
+        await _makeReceiptRoom();
+        return into(recentBills).insert(companion);
+      }
+      // Existing history/import callers retain exact-row update semantics.
+      final existing = await getBillById(billId);
+      if (existing?.creationHandle != null) {
+        throw StateError(
+          'A saved creation snapshot cannot be replaced by history',
+        );
+      }
       await into(recentBills).insertOnConflictUpdate(companion);
+      return billId;
+    });
+  }
+
+  /// The first receipt transaction returns its actual ID. Content never identifies
+  /// an operation; the unique nonsecret handle does, including after reopening.
+  Future<int> insertReceipt(RecentBillsCompanion receipt) => transaction(
+    () async {
+      final existing = await getReceiptByHandle(receipt.creationHandle.value!);
+      if (existing != null) return existing.id;
+      await _makeReceiptRoom();
+      return into(recentBills).insert(receipt);
+    },
+  );
+
+  Future<RecentBill?> getReceiptByHandle(String handle) =>
+      (select(recentBills)
+        ..where((b) => b.creationHandle.equals(handle))).getSingleOrNull();
+
+  Future<void> checkpointReceipt(int id, RecentBillsCompanion values) async {
+    if (await (update(recentBills)
+          ..where((b) => b.id.equals(id))).write(values) !=
+        1) {
+      throw StateError('Receipt checkpoint target missing');
     }
+  }
+
+  Future<void> checkpointAttachment(int id, int tabId) => transaction(() async {
+    final tab = await getTabById(tabId);
+    if (tab == null) throw StateError('Attachment destination missing');
+    final ids =
+        tab.billIds.split(',').where((id) => id.isNotEmpty).toSet()..add('$id');
+    await updateTab(tabId, TabsCompanion(billIds: Value(ids.join(','))));
+    await checkpointReceipt(
+      id,
+      const RecentBillsCompanion(
+        attachmentState: Value('attached'),
+        failureCode: Value(null),
+      ),
+    );
+  });
+
+  Future<List<RecentBill>> getPendingReceipts() =>
+      (select(recentBills)..where(
+        (b) =>
+            b.creationHandle.isNotNull() &
+            (b.publicationState.equals('pending') |
+                b.attachmentState.equals('pending') |
+                b.attachmentState.equals('attempted')),
+      )).get();
+
+  Future<void> _makeReceiptRoom() async {
+    final count =
+        await (selectOnly(recentBills)..addColumns([
+          recentBills.id.count(),
+        ])).map((r) => r.read(recentBills.id.count())!).getSingle();
+    if (count < maxRecentBills) return;
+    final referenced = <int>{};
+    for (final tab in await getAllTabs()) {
+      referenced.addAll(
+        tab.billIds.split(',').map(int.tryParse).whereType<int>(),
+      );
+    }
+    final candidates =
+        await (select(recentBills)
+              ..where(
+                (b) =>
+                    (b.publicationState.equals('published') |
+                        (b.creationHandle.isNull() & b.shareUrl.isNotNull())) &
+                    (b.attachmentState.equals('none') |
+                        b.attachmentState.equals('attached')) &
+                    b.intendedTabId.isNull() &
+                    b.id.isNotIn(referenced),
+              )
+              ..orderBy([(b) => OrderingTerm.asc(b.createdAt)])
+              ..limit(1))
+            .get();
+    if (candidates.isEmpty) {
+      throw StateError('History is full of pending or referenced receipts');
+    }
+    await (delete(recentBills)
+      ..where((b) => b.id.equals(candidates.single.id))).go();
   }
 
   Future<List<RecentBill>> getRecentBills() async {

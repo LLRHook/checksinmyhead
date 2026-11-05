@@ -2,6 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:checks_frontend/database/database_provider.dart';
+import 'package:checks_frontend/database/database.dart' show RecentBill;
+import 'package:checks_frontend/screens/quick_split/bill_summary/models/bill_summary_data.dart';
+import 'save_receipt_test.dart'
+    show FakeCreationKeys, capability, creationResponse;
 import 'package:checks_frontend/models/bill_item.dart';
 import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/screens/quick_split/participant_selection/providers/participants_provider.dart';
@@ -101,20 +105,47 @@ void main() {
   test(
     'saved zero assignment publishes with its participant and zero share',
     () async {
-      await saveHistory(103, 0);
-      final original = (await DatabaseProvider.db.getBillById(103))!;
+      // New saved operations retain authority; ambiguous pre-replay history is
+      // intentionally reviewed instead of being reconstructed and republished.
+      late RecentBill original;
       Map<String, dynamic>? payload;
-      final link = await http.runWithClient(
-        () => RecentBillsManager().retrySingleBillUpload(103),
+      final result = await http.runWithClient(
+        () => RecentBillsManager.withDependencies(
+          database: DatabaseProvider.db,
+          api: ApiService(),
+          keyStore: FakeCreationKeys(),
+        ).saveReceipt(
+          operationHandle: 'saved-zero',
+          receipt: BillSummaryData(
+            participants: [alex, sam],
+            personShares: {alex: 10, sam: 0},
+            items: [
+              BillItem(
+                name: 'Snack',
+                price: 10,
+                assignments: {alex: 100, sam: 0},
+              ),
+            ],
+            subtotal: 10,
+            tax: 0,
+            tipAmount: 0,
+            total: 10,
+            billName: 'Saved zero',
+          ),
+        ),
         () => MockClient((request) async {
+          if (request.method == 'GET') return http.Response(capability, 200);
+          original =
+              (await DatabaseProvider.db.getReceiptByHandle('saved-zero'))!;
           payload = jsonDecode(request.body) as Map<String, dynamic>;
           return http.Response(
-            '{"bill_id":1,"share_url":"https://example.test/b/1"}',
+            jsonEncode(creationResponse(payload!, id: 1)),
             201,
           );
         }),
       );
-      expect(link, 'https://example.test/b/1');
+      final link = result.shareUrl;
+      expect(link, 'https://billington.app/b/1?t=synthetic-source-1');
       expect(payload!['participants'], [
         {'name': 'Alex'},
         {'name': 'Sam'},
@@ -128,7 +159,7 @@ void main() {
         )['total'],
         0,
       );
-      final retained = (await DatabaseProvider.db.getBillById(103))!;
+      final retained = (await DatabaseProvider.db.getBillById(result.localId))!;
       expect(retained.shareUrl, link);
       expect(retained.items, original.items);
     },

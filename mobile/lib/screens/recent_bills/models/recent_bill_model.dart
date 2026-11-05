@@ -40,6 +40,16 @@ class RecentBillModel {
   /// Original receipt currency and the immutable daily conversion audit.
   final String currencyCode;
   final double usdExchangeRate;
+  final double? authoritativeUsdTotal;
+  final String publicationState;
+  final String valuationState;
+  final String? failureCode;
+  final String? attachmentState;
+  final List<dynamic>? savedShares;
+  final Map<String, dynamic>? receiptMetadata;
+  bool get isCustomTipAmount =>
+      receiptMetadata?['is_custom_tip_amount'] as bool? ?? tipPercentage == 0;
+  String? get birthdayName => receiptMetadata?['birthday_name'] as String?;
   final String? exchangeRateDate;
   final String exchangeRateSource;
 
@@ -60,6 +70,13 @@ class RecentBillModel {
     this.shareUrl,
     this.currencyCode = 'USD',
     this.usdExchangeRate = 1,
+    this.authoritativeUsdTotal,
+    this.publicationState = 'legacy',
+    this.valuationState = 'legacy',
+    this.failureCode,
+    this.attachmentState,
+    this.savedShares,
+    this.receiptMetadata,
     this.exchangeRateDate,
     this.exchangeRateSource = 'native-usd',
   });
@@ -134,14 +151,64 @@ class RecentBillModel {
       shareUrl: data.shareUrl,
       currencyCode: data.currencyCode,
       usdExchangeRate: data.usdExchangeRate,
+      authoritativeUsdTotal: data.authoritativeUsdTotal,
+      publicationState: data.publicationState,
+      valuationState: data.valuationState,
+      failureCode: data.failureCode,
+      attachmentState: data.attachmentState,
+      receiptMetadata:
+          data.receiptMetadata == null
+              ? null
+              : jsonDecode(data.receiptMetadata!) as Map<String, dynamic>,
+      savedShares:
+          data.savedShares == null
+              ? null
+              : jsonDecode(data.savedShares!) as List<dynamic>,
       exchangeRateDate: data.exchangeRateDate,
       exchangeRateSource: data.exchangeRateSource,
     );
   }
 
-  double get usdTotal => (total * usdExchangeRate * 100).roundToDouble() / 100;
+  bool get hasUSDValuation => verifiedUsdTotal != null;
+
+  double? get verifiedUsdTotal {
+    if (valuationState == 'pending' ||
+        !usdExchangeRate.isFinite ||
+        usdExchangeRate <= 0) {
+      return null;
+    }
+    if (currencyCode == 'USD' && usdExchangeRate != 1) return null;
+    if (currencyCode != 'USD') {
+      // Historical rates are never freshness-revalidated. Missing provenance
+      // still cannot make an unvalued foreign receipt a USD/default-1 amount.
+      final day = exchangeRateDate;
+      final parsed = day == null ? null : DateTime.tryParse(day);
+      if (!usdExchangeRate.isFinite ||
+          usdExchangeRate <= 0 ||
+          exchangeRateSource.isEmpty ||
+          exchangeRateSource == 'native-usd' ||
+          day == null ||
+          !RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(day) ||
+          parsed == null ||
+          !parsed.toIso8601String().startsWith('${day}T')) {
+        return null;
+      }
+    }
+    if (authoritativeUsdTotal != null) {
+      final value = authoritativeUsdTotal!;
+      final expected = (total * usdExchangeRate * 100).roundToDouble() / 100;
+      return value.isFinite && value >= 0 && (value - expected).abs() < 0.000001
+          ? value
+          : null;
+    }
+    if (currencyCode == 'USD') return total;
+    return (total * usdExchangeRate * 100).roundToDouble() / 100;
+  }
+
+  double get usdTotal => verifiedUsdTotal ?? double.nan;
 
   Map<Person, double> generateUSDPersonShares() {
+    if (!hasUSDValuation) return {};
     final shares = generatePersonShares();
     if (shares.isEmpty) return {};
 
@@ -303,6 +370,13 @@ class RecentBillModel {
   /// Returns:
   /// - A map of Person objects to their calculated share amounts
   Map<Person, double> generatePersonShares() {
+    if (savedShares != null) {
+      return {
+        for (final share in savedShares!)
+          Person(name: share['name'] as String, color: color):
+              (share['total'] as num).toDouble(),
+      };
+    }
     // Create Person objects from participant names
     List<Person> personList = participants;
     Map<Person, double> shares = {};

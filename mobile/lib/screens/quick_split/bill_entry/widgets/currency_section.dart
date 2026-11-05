@@ -74,7 +74,7 @@ class CurrencySection extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                'The daily USD rate is frozen when this receipt is added.',
+                'Confirm the currency printed on your receipt. You can save offline; the USD value stays pending until publication.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -103,6 +103,14 @@ class CurrencySection extends StatelessWidget {
                             _loadQuote(data, currency);
                           }
                         },
+              ),
+              TextButton.icon(
+                onPressed: () {
+                  data.selectCurrency(data.currencyCode);
+                  Navigator.pop(context);
+                },
+                icon: const Icon(Icons.check),
+                label: Text('Confirm ${data.currencyCode}'),
               ),
               if (data.isLoadingExchangeRate) ...[
                 const SizedBox(height: 12),
