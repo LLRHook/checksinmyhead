@@ -148,7 +148,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-05 Source acceptance: Driver reconciles completed scoped reviews/current clean committed-source proof; source criteria met, pending integrated V&V migration only. Historical handoffs remain in Git/dated notes. Deployment, public clients and whole acceptance are separate/RED.
 
 ### [BUG-1793644504] Finalize tabs within one retry-safe transaction
-- [x] **Severity:** high
+- [ ] **Severity:** high
 - **Area:** backend, persistence
 - **File(s):** backend/internal/{bill,tab}/{handler,service,repository}.go; bill/{accounting,assignments}.go; tab/{commands,settlement}.go; backend/pkg/mutation/; related tests
 - **Observation:** FinalizeTab reads tab, creates settlements and marks finalized in separate operations. Competing assignment mutations check state outside the common boundary.
@@ -162,11 +162,11 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Actual pre-fix PostgreSQL HTTP regression failed four assertions (paid 6->5.50, child/time changes, retry 400 and changed result); seven removed-control overlays fail executed assertions. Raw evidence: .vv/local-gate/atomic-lifecycle/. Historical pre-acceptance evidence.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** fixed-pending-migration
-- **Fix:** Atomic source accepted: tab-first FinalizeOnce and competing writes, checked commit/rollback, stable stored-snapshot retries/share IDs and paid economics; Unicode correction independently0/0. Current root clean908 ordinary/1189 PG leaves retain lifecycle races, failure controls and all prior IDs. Stable participant authority remains separately open in BUG-1793644505; no integrated/deployed/old-writer approval.
+- **Status:** in-progress
+- **Fix:** Prior atomicity/lock/rollback source reviews and Mac908/1189 passing leaves remain historical. Hosted Linux59ef362 exposes first-finalize nanosecond CreatedAt versus stored microseconds: first/retry200 bodies and concurrent snapshots differ. Reopened for persisted-value acknowledgement and deterministic submicrosecond regression in behavior B; root addendum specifies no equality/budget weakening. Attachment rollback baseline precision also needs discrimination. Whole/integrated/deployed acceptance remains RED.
 - **Docs:** docs/backend-api.md; backend/README.md; VERIFICATION.md; docs/reviews/2026-11-03-atomic-lifecycle.md; docs/reviews/2026-11-03-unicode-share-ambiguity.md; docs/reviews/2026-11-05-scoped-source-acceptance.md
 - **Log:**
-  - 2026-11-05 Source acceptance: Driver reconciles completed scoped reviews/current clean committed-source proof; source criteria met, pending integrated V&V migration only. Historical handoffs remain in Git/dated notes. Deployment, public clients and whole acceptance are separate/RED.
+  - 2026-11-05 Contrary execution: run42012762828 mandatory8 PG fails snapshot equality across two lifecycle parents/five currency children; first/stored CreatedAt803580958/803580000ns. Other five rows pass; Required delivery checks fails. Reopen in-progress; no flake/rerun waiver. See committed gate note and retained raw job log.
 
 ### [BUG-1793644505] Authorize accounting by stable participant identity
 - [ ] **Severity:** high

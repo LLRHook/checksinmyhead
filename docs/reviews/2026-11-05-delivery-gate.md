@@ -106,3 +106,27 @@ in the authorized task scratch. Independent reports are
 `DELIVERY_GATE_CANDIDATE_REVIEW_20261105.md` and
 `DELIVERY_GATE_CORRECTION_REVIEW_20261105.md`; root application decision is
 `DELIVERY_GATE_S4_SOURCE_APPLICATION_APPROVAL_20261105.json`.
+
+## First hosted result: gate blocked, runtime correction required
+
+Run42012762828 on59ef362 completed automation/local-workflow/backend/mobile/web
+successfully but failed the mandatory PostgreSQL row. Both `checks / Selected
+checks all` and `Required delivery checks` failed; publishers were skipped in PR
+context. The actual check provider is GitHub Actions app15368. This observes the
+aggregate name/provider and dependency failure; it proves neither branch ruleset
+enforcement nor protected production authority.
+
+Actual Linux failures reveal a persisted-snapshot acknowledgment discrepancy:
+first finalization returns nanosecond CreatedAt values, while a retry reads
+PostgreSQL microseconds. Concurrent finalizers observed803580958 versus803580000ns
+on the same row. The two lifecycle parents and all five currency-read children
+failed equality despite HTTP200. A rollback test additionally compared the stored
+UpdatedAt against an unrefreshed seeded Go object; actual transaction-state
+discrimination remains necessary. Passing Mac runs do not waive this evidence.
+
+BUG-1793644504 is reopened in progress. The behavior B lead must first return
+actual persisted snapshot values and add deterministic non-microsecond and
+suppression/rollback controls, preserving equality and every failed test ID.
+No blind rerun, platform skip, response normalization or timing-budget change is
+authorized. The raw2,151,199-byte job log/failure index and root addendum remain
+in task scratch. Actual correction is not yet implemented; whole acceptance stays RED.

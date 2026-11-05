@@ -76,3 +76,14 @@ does not rerun application tests or attribute the reviewers' execution. Whole
 runtime/50k-update/resource/integrated/release gates stay RED, and no CHANGELOG
 entry or Verified stamp is created. Full original tracker fields/logs remain in
 Git and dated evidence; current entries are condensed through the official writer.
+
+### Later contrary Linux evidence
+
+The first complete hosted PostgreSQL row at59ef362 failed exact first/retry and
+concurrent settlement snapshot equality: the first response retained nanoseconds
+that PostgreSQL stores at microsecond precision. BUG-1793644504 is therefore
+**reopened in progress**, superseding only that ticket's earlier pending status.
+The genuine prior Mac results/reviews remain historical evidence, not a Linux or
+whole-program pass. [Gate execution](2026-11-05-delivery-gate.md#first-hosted-result-gate-blocked-runtime-correction-required)
+records the failures, the rollback-fixture baseline question and the required
+persisted-value correction. Other source acceptances are not extended by this event.
