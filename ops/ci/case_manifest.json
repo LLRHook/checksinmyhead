@@ -357,7 +357,8 @@
       "backend/internal/tab/TestIdentity0003UnboundGuestsAndMissingPayers",
       "backend/pkg/safehttp/TestIdentity0003HeaderAndMemberProofs",
       "backend/pkg/safehttp/TestIdentityBReviewMalformedQueryProof",
-      "backend/internal/bill/TestIdentityBReviewAllocationProjection"
+      "backend/internal/bill/TestIdentityBReviewAllocationProjection",
+      "backend/internal/tab/TestMaterializationAccountingFidelity"
     ],
     "postgres": [
       "backend/cmd/bill-service/TestA1PostgresProductionJSON",
@@ -580,7 +581,13 @@
       "backend/internal/bill/TestIdentityBReviewAllocationProjection",
       "backend/cmd/bill-service/TestPostgresIdentityBReviewSettlementWireStatus",
       "backend/cmd/bill-service/TestPostgresIdentityBReviewMalformedMemberJoin",
-      "backend/cmd/bill-service/TestPostgresIdentityBReviewBillAllocationRead"
+      "backend/cmd/bill-service/TestPostgresIdentityBReviewBillAllocationRead",
+      "backend/internal/tab/TestMaterializationAccountingFidelity",
+      "backend/internal/tab/TestPostgresMaterializationCompleteRows",
+      "backend/internal/tab/TestPostgresMaterializationReadFailures",
+      "backend/internal/tab/TestPostgresMaterializationInvalidEvidence",
+      "backend/internal/tab/TestPostgresMaterializationGroupedFidelity",
+      "backend/internal/tab/TestPostgresMaterializationEmptyRows"
     ],
     "mobile": [
       "mobile/test/client_v1_bridge_test.dart",

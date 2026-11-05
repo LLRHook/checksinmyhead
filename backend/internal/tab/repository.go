@@ -169,29 +169,9 @@ func (r *tabRepository) FinalizeOnce(ctx context.Context, c FinalizeCommand) ([]
 				invalidReferences = true
 			}
 		}
-		ids := make([]uint, len(bills))
-		byID := map[uint]int{}
-		for i, b := range bills {
-			ids[i] = b.ID
-			byID[b.ID] = i
-		}
-		var participants []models.BillParticipant
-		var shares []models.PersonShare
-		if len(ids) > 0 {
-			if err := tx.Select(models.ParticipantColumns).Where("bill_id IN ?", ids).Order("id ASC").Clauses(clause.Locking{Strength: "UPDATE"}).Find(&participants).Error; err != nil {
-				return err
-			}
-			if err := tx.Select(models.ShareColumns).Where("bill_id IN ?", ids).Order("id ASC").Clauses(clause.Locking{Strength: "UPDATE"}).Find(&shares).Error; err != nil {
-				return err
-			}
-		}
-		for _, p := range participants {
-			i := byID[p.BillID]
-			bills[i].ParticipantRows = append(bills[i].ParticipantRows, p)
-		}
-		for _, s := range shares {
-			i := byID[s.BillID]
-			bills[i].PersonShares = append(bills[i].PersonShares, s)
+		participants, err := loadFinalizationRows(tx, bills)
+		if err != nil {
+			return err
 		}
 		allocated := 0
 		for _, b := range bills {

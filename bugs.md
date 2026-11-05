@@ -163,10 +163,11 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Prior atomicity/lock/rollback source reviews and Mac908/1189 passing leaves remain historical. Hosted Linux59ef362 exposes first-finalize nanosecond CreatedAt versus stored microseconds: first/retry200 bodies and concurrent snapshots differ. Reopened for persisted-value acknowledgement and deterministic submicrosecond regression in behavior B; root addendum specifies no equality/budget weakening. Attachment rollback baseline precision also needs discrimination. Whole/integrated/deployed acceptance remains RED.
-- **Docs:** docs/backend-api.md; backend/README.md; VERIFICATION.md; docs/reviews/2026-11-03-atomic-lifecycle.md; docs/reviews/2026-11-03-unicode-share-ambiguity.md; docs/reviews/2026-11-05-scoped-source-acceptance.md
+- **Fix:** Persist stored RETURNING timestamps and checked row counts; identityB snapshot/retry controls pass. Reviewed row loader uses pointer temporaries/exact grouped capacity with physical scanner coverage. Full gate RED: tested merge b5f08199 misses750ms and alarms600s; no performance/artifact/integrated/rollout acceptance.
+- **Docs:** docs/backend-api.md; backend/README.md; VERIFICATION.md; docs/reviews/2026-11-03-atomic-lifecycle.md; docs/reviews/2026-11-03-unicode-share-ambiguity.md; docs/reviews/2026-11-05-scoped-source-acceptance.md; docs/reviews/2026-11-05-row-materialization.md
 - **Log:**
   - 2026-11-05 Contrary execution: run42012762828 mandatory8 PG fails snapshot equality across two lifecycle parents/five currency children; first/stored CreatedAt803580958/803580000ns. Other five rows pass; Required delivery checks fails. Reopen in-progress; no flake/rerun waiver. See committed gate note and retained raw job log.
+  - 2026-11-05 Integration: Loader source0/0, physical build/vet/scanner coverage pass;1734 selected leaves retained. No numerical waiver.
 
 ### [BUG-1793644505] Authorize accounting by stable participant identity
 - [ ] **Severity:** high
@@ -184,10 +185,11 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Backend reference-authority checkpoint plus read/proof corrections implemented;962 ordinary/1272 selected PG leaves pass(1722 distinct). Numerical/runtime,matched clients,independent source acceptance and rollout remain open.
-- **Docs:** docs/backend-api.md; docs/reviews/2026-11-05-participant-identity-behavior.md; docs/reviews/2026-11-05-identity-review-corrections.md
+- **Fix:** Scoped reference/read/proof reviews pass;962 ordinary/1272 selectedPG (1722distinct) retained. Matched C/D and atomic fresh-self participation remain incomplete; no adopted retirement established. Numerical/runtime/rollout and whole gates remain open.
+- **Docs:** docs/backend-api.md; docs/reviews/2026-11-05-participant-identity-behavior.md; docs/reviews/2026-11-05-identity-review-corrections.md; docs/reviews/2026-11-05-row-materialization.md
 - **Log:**
   - 2026-11-05 Verification: Three unique P2 review gaps corrected;14 failing before cases/12 controls,26 after pass;5 independent removals discriminate. Correction review pending;broader B gate RED.
+  - 2026-11-05 Integration: Manager/source check: POST participants is unbound-only; original plan60/approval33-34 fresh-self capability UNMET. Creator/source flow remains; frozen0003 unchanged.
 
 ### [BUG-1793644506] Label local bill and tab removal accurately
 - [ ] **Severity:** med
