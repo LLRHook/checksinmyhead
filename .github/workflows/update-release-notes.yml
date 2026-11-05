@@ -1,5 +1,5 @@
-# Phase G only. NOT CI-CONFIRMED: native/signed/GUI, images, live providers, adoption/drain, recovery and performance qualification.
-name: Update App Store release notes (phase F unavailable)
+# Integrated phase F controls; external policy defaults disabled. Native/hosted/ASC qualification NOT RUN.
+name: Update proven App Store release notes
 'on':
   workflow_dispatch:
     inputs:
@@ -23,8 +23,24 @@ name: Update App Store release notes (phase F unavailable)
         type: boolean
       source:
         type: string
-        description: Full source SHA (blank = C); phase F publication unavailable
+        description: Exact full source SHA; must match the selected origin for promotion/notes
         required: false
+      verification_only:
+        description: Read eligibility only; no signing, credential files, upload, tags or ASC writes
+        type: boolean
+        default: false
+      origin_run:
+        type: string
+        description: Explicit successful TestFlight origin run ID
+        required: true
+      origin_attempt:
+        type: string
+        description: Exact successful origin attempt (no latest fallback)
+        required: true
+      asc_build_id:
+        type: string
+        description: Exact processed ASC build ID in that origin receipt
+        required: true
 permissions:
   contents: read
 jobs:
@@ -37,7 +53,7 @@ jobs:
       backend: ${{ steps.resolve.outputs.backend }}
       web: ${{ steps.resolve.outputs.web }}
     steps:
-    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
       with:
         ref: ${{ github.sha }}
         path: control
@@ -58,17 +74,55 @@ jobs:
       source_sha: ${{ needs.resolve.outputs.candidate }}
       controller_sha: ${{ needs.resolve.outputs.controller }}
       scope: all
-  unavailable:
+  required:
+    name: Required delivery checks
+    if: always()
     needs:
     - resolve
     - checks
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    outputs:
+      receipt: ${{ steps.required.outputs.receipt }}
+      source: ${{ steps.required.outputs.source }}
+      controller: ${{ steps.required.outputs.controller }}
     steps:
-    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
       with:
         ref: ${{ github.sha }}
         path: control
         fetch-depth: 0
         persist-credentials: false
-    - run: python3 control/ops/ci/delivery_gate.py ios-unavailable
+    - id: required
+      env:
+        CONTROLLER: ${{ github.sha }}
+        SOURCE: ${{ needs.resolve.outputs.candidate }}
+        NEEDS: ${{ toJSON(needs) }}
+      run: python3 control/ops/ci/delivery_gate.py required --repo control --controller "$CONTROLLER" --source "$SOURCE"
+  deliver:
+    needs:
+    - resolve
+    - required
+    if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && needs.required.result
+      == 'success' }}
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/ios-promote.yml
+    secrets:
+      DELIVERY_ASC_KEY_ID: ${{ secrets.DELIVERY_ASC_KEY_ID }}
+      DELIVERY_ASC_ISSUER_ID: ${{ secrets.DELIVERY_ASC_ISSUER_ID }}
+      DELIVERY_ASC_API_KEY_P8: ${{ secrets.DELIVERY_ASC_API_KEY_P8 }}
+    with:
+      source: ${{ needs.required.outputs.source }}
+      controller: ${{ needs.required.outputs.controller }}
+      receipt: ${{ needs.required.outputs.receipt }}
+      verification_only: ${{ inputs.verification_only }}
+      release_notes: ${{ inputs.release_notes }}
+      operation: notes
+      version: ${{ inputs.version }}
+      origin_run: ${{ inputs.origin_run }}
+      origin_attempt: ${{ inputs.origin_attempt }}
+      asc_build_id: ${{ inputs.asc_build_id }}
+      allow_cancel: ${{ inputs.allow_cancel }}
+      resubmit: ${{ inputs.resubmit }}

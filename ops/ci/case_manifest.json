@@ -34,6 +34,41 @@
       "FloorTests.test_stale_automatic_run_rejected_but_current_control_works",
       "GraphTests.test_actual_graph_and_negative_mutations",
       "GuardRemovalTests.test_selected_result_and_health_guard_removals_are_detected",
+      "IOSASCTests#test_JWT_refreshes_before_expiry_using_only_inert_signing_stubs",
+      "IOSASCTests#test_action_hash_mismatch_is_rejected_before_key_setup_or_transport",
+      "IOSASCTests#test_actual_current_exact_build_eligibility_and_duplicate_numbers",
+      "IOSASCTests#test_exact_promotion_and_stage_readback_never_allocate_rebuild_or_upload",
+      "IOSASCTests#test_expiry_guard_removal_is_detected_against_otherwise_healthy_build",
+      "IOSASCTests#test_finite_command_closes_owned_descendants_for_both_parent_results",
+      "IOSASCTests#test_finite_command_failure_never_logs_tainted_output",
+      "IOSASCTests#test_mutation_guard_status_errors_and_tainted_payloads_never_escape",
+      "IOSASCTests#test_next_number_preserves_numeric_dotted_rules_and_validates_operator_input",
+      "IOSASCTests#test_notes_exact_attached_build_default_cancel_and_explicit_resubmit",
+      "IOSASCTests#test_pagination_app_uniqueness_and_hostile_links",
+      "IOSASCTests#test_processing_wait_has_deadline_and_requires_positive_build_readback",
+      "IOSASCTests#test_real_upload_entry_point_calls_validate_upload_once_and_persists_processed_ID",
+      "IOSASCTests#test_rejected_release_and_three_step_submission_are_preserved",
+      "IOSASCTests#test_scoped_session_rejects_marketing_wrong_build_and_cancel_without_consent",
+      "IOSASCTests#test_upload_once_processing_and_key_cleanup_on_failure",
+      "IOSASCTests#test_upload_to_receipt_substitution_is_rejected_after_otherwise_healthy_transport",
+      "IOSASCTests#test_verification_only_never_creates_keys_signs_uploads_tags_or_writes",
+      "IOSArtifactTests.test_actual_context_CLI_refreshes_main_and_never_accepts_local_receipt_file",
+      "IOSArtifactTests.test_current_gate_main_and_floors_are_reauthorized_before_origin",
+      "IOSArtifactTests.test_each_origin_identity_and_job_result_is_required",
+      "IOSArtifactTests.test_exact_origin_pagination_and_digest_binding",
+      "IOSArtifactTests.test_hostile_redirects_headers_bounds_and_log_taint",
+      "IOSArtifactTests.test_ipa_multiple_missing_metadata_and_archive_paths_rejected",
+      "IOSArtifactTests.test_missing_duplicate_expired_tampered_and_wrong_named_artifacts",
+      "IOSArtifactTests.test_narrow_guard_removal_controls_discriminate",
+      "IOSArtifactTests.test_receipt_gate_binary_and_processed_build_fields_are_bound",
+      "IOSArtifactTests.test_upload_context_requires_prior_version_bump_and_never_trusts_rerun",
+      "IOSFailureBoundaryTests.test_early_restore_faults_do_not_skip_independent_private_cleanup",
+      "IOSFailureBoundaryTests.test_origin_receipt_rejects_upload_to_artifact_binary_substitution",
+      "IOSFailureBoundaryTests.test_owned_group_is_closed_after_parent_success_and_failure",
+      "IOSFailureBoundaryTests.test_signed_copy_keeps_exact_bytes_inspected_before_output_mutation",
+      "IOSGraphTests.test_actual_workflow_boundary_mutations",
+      "IOSGraphTests.test_tag_retirement_rejects_ref_writes_and_preserves_checks_only_tags",
+      "IOSLifecycleTests.test_action_lifecycle_cleans_owned_material_after_healthy_and_failed_build",
       "ManifestReportTests.test_all_adapter_families_and_report_files_are_required",
       "ManifestReportTests.test_every_source_grounded_Go_family_is_mandatory_and_overlap_is_retained",
       "ManifestReportTests.test_mobile_and_web_reject_missing_literal_selections_and_runner_terminals",
@@ -601,6 +636,14 @@
       [
         "cases",
         "ruby.json"
+      ],
+      [
+        "cases",
+        "ios-python.json"
+      ],
+      [
+        "cases",
+        "ios-ruby.json"
       ]
     ],
     "local-workflow": [
@@ -1193,5 +1236,50 @@
     "backend/internal/startup",
     "backend/internal/readiness",
     "backend/internal/testpostgres"
-  ]
+  ],
+  "phase_f_sources": {
+    "source": "13c871cb920904009848f84381b7008dac34ae48",
+    "families": {
+      "ios-python.json": [
+        "IOSArtifactTests.test_exact_origin_pagination_and_digest_binding",
+        "IOSArtifactTests.test_each_origin_identity_and_job_result_is_required",
+        "IOSArtifactTests.test_missing_duplicate_expired_tampered_and_wrong_named_artifacts",
+        "IOSArtifactTests.test_receipt_gate_binary_and_processed_build_fields_are_bound",
+        "IOSArtifactTests.test_current_gate_main_and_floors_are_reauthorized_before_origin",
+        "IOSArtifactTests.test_ipa_multiple_missing_metadata_and_archive_paths_rejected",
+        "IOSArtifactTests.test_hostile_redirects_headers_bounds_and_log_taint",
+        "IOSArtifactTests.test_actual_context_CLI_refreshes_main_and_never_accepts_local_receipt_file",
+        "IOSArtifactTests.test_upload_context_requires_prior_version_bump_and_never_trusts_rerun",
+        "IOSArtifactTests.test_narrow_guard_removal_controls_discriminate",
+        "IOSLifecycleTests.test_action_lifecycle_cleans_owned_material_after_healthy_and_failed_build",
+        "IOSGraphTests.test_actual_workflow_boundary_mutations",
+        "IOSGraphTests.test_tag_retirement_rejects_ref_writes_and_preserves_checks_only_tags",
+        "IOSFailureBoundaryTests.test_owned_group_is_closed_after_parent_success_and_failure",
+        "IOSFailureBoundaryTests.test_early_restore_faults_do_not_skip_independent_private_cleanup",
+        "IOSFailureBoundaryTests.test_signed_copy_keeps_exact_bytes_inspected_before_output_mutation",
+        "IOSFailureBoundaryTests.test_origin_receipt_rejects_upload_to_artifact_binary_substitution"
+      ],
+      "ios-ruby.json": [
+        "IOSASCTests#test_next_number_preserves_numeric_dotted_rules_and_validates_operator_input",
+        "IOSASCTests#test_pagination_app_uniqueness_and_hostile_links",
+        "IOSASCTests#test_actual_current_exact_build_eligibility_and_duplicate_numbers",
+        "IOSASCTests#test_processing_wait_has_deadline_and_requires_positive_build_readback",
+        "IOSASCTests#test_mutation_guard_status_errors_and_tainted_payloads_never_escape",
+        "IOSASCTests#test_scoped_session_rejects_marketing_wrong_build_and_cancel_without_consent",
+        "IOSASCTests#test_exact_promotion_and_stage_readback_never_allocate_rebuild_or_upload",
+        "IOSASCTests#test_rejected_release_and_three_step_submission_are_preserved",
+        "IOSASCTests#test_notes_exact_attached_build_default_cancel_and_explicit_resubmit",
+        "IOSASCTests#test_verification_only_never_creates_keys_signs_uploads_tags_or_writes",
+        "IOSASCTests#test_upload_once_processing_and_key_cleanup_on_failure",
+        "IOSASCTests#test_JWT_refreshes_before_expiry_using_only_inert_signing_stubs",
+        "IOSASCTests#test_real_upload_entry_point_calls_validate_upload_once_and_persists_processed_ID",
+        "IOSASCTests#test_expiry_guard_removal_is_detected_against_otherwise_healthy_build",
+        "IOSASCTests#test_finite_command_failure_never_logs_tainted_output",
+        "IOSASCTests#test_upload_to_receipt_substitution_is_rejected_after_otherwise_healthy_transport",
+        "IOSASCTests#test_action_hash_mismatch_is_rejected_before_key_setup_or_transport",
+        "IOSASCTests#test_finite_command_closes_owned_descendants_for_both_parent_results"
+      ]
+    },
+    "note": "Additive controller automation; no app inventory or inherited selection changes."
+  }
 }

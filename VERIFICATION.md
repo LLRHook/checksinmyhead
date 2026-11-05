@@ -101,8 +101,9 @@ locked: `go mod download`/`go mod verify`, `npm ci`, `flutter pub get --enforce-
 | Web unit / `web-bill-viewer` | `npm test -- --reporter=json --outputFile="$REPORT_DIR/vitest.json"` |
 | Web build / `web-bill-viewer` | `npm run build` |
 | Local workflow / root | `CASE_REPORT="$REPORT_DIR/local-workflow.json" python3 ops/ci/unittest_report.py scripts/test_local_workflow.py` |
-| Ruby automation / root | `CASE_REPORT="$REPORT_DIR/ruby.json" ruby -r "$PWD/ops/ci/minitest_report.rb" .github/scripts/asc_release_test.rb` |
-| Delivery contracts / root | `CASE_REPORT="$REPORT_DIR/gate-tests.json" python3 ops/ci/unittest_report.py ops/ci/test_delivery_gate.py` |
+| Ruby / root | `CASE_REPORT="$REPORT_DIR/ruby.json" ruby -r "$PWD/ops/ci/minitest_report.rb" .github/scripts/asc_release_test.rb` |
+| Gate / root | `CASE_REPORT="$REPORT_DIR/gate-tests.json" python3 ops/ci/unittest_report.py ops/ci/test_delivery_gate.py` |
+| iOS / root | [Report commands](ops/ci/README.md#processed-ios-artifact-authority) |
 | Live PG authorization/migrations/readiness / `backend` | `go test -race -count=1 -json -tags=integration ./cmd/bill-service ./internal/bill ./internal/tab ./pkg/database ./migrations ./internal/startup ./internal/readiness ./internal/testpostgres \| tee "$REPORT_DIR/go-postgres.jsonl"` |
 | E2E/a11y/load | No wired runner: FEAT-1793644507, FEAT-1793644512, FEAT-1793644502; manual stages remain |
 
@@ -226,8 +227,8 @@ implied by these functional cases.
 - [ ] Verify a signed public binary's version/build/OS/storefront against live policy,
       valid old links and current API using approved synthetic fixtures. A TestFlight
       processing success or source version number is insufficient.
-- [ ] Assess [phase G controls](ops/ci/README.md), provenance, recovery and a11y.
-      iOS/notes writes await phase F; source rebuilds are not identical-artifact promotion.
+- [ ] Assess [G/F controls](ops/ci/README.md), provenance, recovery and a11y.
+      phase F receipts replace tags. Native/hosted/ASC NOT RUN; rebuilds are not promotion.
       Settings/ownership, queues/credentials, floors/capabilities and drain remain external.
       No hosted mutation or Render/Vercel control-plane work is authorized here.
 

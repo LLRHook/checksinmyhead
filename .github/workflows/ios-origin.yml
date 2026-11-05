@@ -1,0 +1,152 @@
+name: Create processed iOS origin
+'on':
+  workflow_call:
+    inputs:
+      source:
+        type: string
+        required: true
+      controller:
+        type: string
+        required: true
+      receipt:
+        type: string
+        required: true
+      verification_only:
+        type: boolean
+        default: false
+      release_notes:
+        type: string
+        default: ''
+      build_number:
+        type: string
+        default: ''
+    secrets:
+      DELIVERY_ASC_KEY_ID:
+        required: true
+      DELIVERY_ASC_ISSUER_ID:
+        required: true
+      DELIVERY_ASC_API_KEY_P8:
+        required: true
+      DELIVERY_BUILD_CERTIFICATE_BASE64:
+        required: true
+      DELIVERY_P12_PASSWORD:
+        required: true
+      DELIVERY_PROVISIONING_PROFILE_BASE64:
+        required: true
+permissions:
+  contents: read
+jobs:
+  origin:
+    name: Upload iOS origin
+    if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' }}
+    runs-on: macos-26
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
+    environment: ios-upload
+    concurrency:
+      group: ios-upload
+      cancel-in-progress: false
+    env:
+      CONTROL_REPO: control
+      CONTROLLER: ${{ inputs.controller }}
+      SOURCE: ${{ inputs.source }}
+      GATE_RECEIPT: ${{ inputs.receipt }}
+      RELEASE_POLICY: ${{ vars.RELEASE_POLICY }}
+      GH_TOKEN: ${{ github.token }}
+      VERIFY_ONLY: ${{ inputs.verification_only }}
+      DELIVERY_TARGET: ios-upload
+      IPA_DIR: ${{ runner.temp }}/ios-ipa
+      RECEIPT_DIR: ${{ runner.temp }}/ios-origin-receipt
+      ASC_RECEIPT: ${{ runner.temp }}/ios-processed.json
+      BUNDLE_ID: com.checksinmyhead-vng.app
+      TEAM_ID: D9QD5DUKNC
+    defaults:
+      run:
+        shell: bash
+    steps:
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      with:
+        ref: ${{ inputs.controller }}
+        path: control
+        fetch-depth: 0
+        persist-credentials: false
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      with:
+        ref: ${{ inputs.source }}
+        path: candidate
+        fetch-depth: 0
+        persist-credentials: false
+    - name: Fresh authority before toolchain or signing
+      run: python3 control/ops/ci/ios_artifact.py context > /dev/null
+    - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+      if: ${{ !inputs.verification_only }}
+      with:
+        channel: stable
+        flutter-version: 3.41.5
+        cache: 'false'
+        pub-cache: 'false'
+    - name: Allocate exact next binary build
+      id: prepare
+      env:
+        ASC_KEY_ID: ${{ secrets.DELIVERY_ASC_KEY_ID }}
+        ASC_ISSUER_ID: ${{ secrets.DELIVERY_ASC_ISSUER_ID }}
+        DELIVERY_ASC_API_KEY_P8: ${{ secrets.DELIVERY_ASC_API_KEY_P8 }}
+        REQUESTED_BUILD: ${{ inputs.build_number }}
+      run: ruby control/.github/scripts/asc_delivery.rb prepare
+    - name: Build once and inspect exact IPA
+      id: ipa
+      if: ${{ !inputs.verification_only }}
+      uses: ./control/.github/actions/build-signed-ipa
+      with:
+        build-number: ${{ steps.prepare.outputs.build }}
+        build-name: ${{ steps.prepare.outputs.version }}
+        certificate-base64: ${{ secrets.DELIVERY_BUILD_CERTIFICATE_BASE64 }}
+        p12-password: ${{ secrets.DELIVERY_P12_PASSWORD }}
+        provisioning-profile-base64: ${{ secrets.DELIVERY_PROVISIONING_PROFILE_BASE64 }}
+        team-id: ${{ env.TEAM_ID }}
+        bundle-id: ${{ env.BUNDLE_ID }}
+    - name: Upload once and require current processed exact build
+      if: ${{ !inputs.verification_only }}
+      env:
+        ASC_KEY_ID: ${{ secrets.DELIVERY_ASC_KEY_ID }}
+        ASC_ISSUER_ID: ${{ secrets.DELIVERY_ASC_ISSUER_ID }}
+        DELIVERY_ASC_API_KEY_P8: ${{ secrets.DELIVERY_ASC_API_KEY_P8 }}
+        BUILD_NUMBER: ${{ steps.prepare.outputs.build }}
+        IPA_PATH: ${{ steps.ipa.outputs.ipa-path }}
+        IPA_SHA256: ${{ steps.ipa.outputs.ipa-sha256 }}
+        RELEASE_NOTES: ${{ inputs.release_notes }}
+      run: ruby control/.github/scripts/asc_delivery.rb upload
+    - name: Immutable IPA evidence
+      if: ${{ !inputs.verification_only }}
+      id: artifact
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: ios-ipa-${{ inputs.source }}-${{ github.run_id }}-${{ github.run_attempt }}
+        path: ${{ runner.temp }}/ios-ipa/candidate.ipa
+        if-no-files-found: error
+        retention-days: 90
+        overwrite: false
+        compression-level: 0
+        archive: true
+    - name: Bind processed ASC identity to immutable IPA metadata
+      if: ${{ !inputs.verification_only }}
+      env:
+        IPA_PATH: ${{ steps.ipa.outputs.ipa-path }}
+        IPA_SHA256: ${{ steps.ipa.outputs.ipa-sha256 }}
+        BUILD_NUMBER: ${{ steps.prepare.outputs.build }}
+        IPA_ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
+        IPA_ARTIFACT_DIGEST: ${{ steps.artifact.outputs.artifact-digest }}
+      run: python3 control/ops/ci/ios_artifact.py receipt
+    - name: Immutable originating receipt
+      if: ${{ !inputs.verification_only }}
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: ios-origin-${{ inputs.source }}-${{ github.run_id }}-${{ github.run_attempt }}
+        path: ${{ runner.temp }}/ios-origin-receipt/receipt.json
+        if-no-files-found: error
+        retention-days: 90
+        overwrite: false
+        compression-level: 0
+        archive: true

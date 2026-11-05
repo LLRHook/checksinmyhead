@@ -2,7 +2,7 @@
 
 C owns this file and its case manifest. S supplies app code, never release policy.
 Receipt JSON is an internal synchronous needs contract, NOT an artifact attestation.
-iOS receipt acceptance/promotion deliberately remains unavailable in phase G.
+iOS uses this same owner; historical artifact authentication lives in ios_artifact.
 """
 import argparse
 import hashlib
@@ -23,8 +23,10 @@ PG_PACKAGES = ('backend/cmd/bill-service', 'backend/internal/bill', 'backend/int
                'backend/pkg/database', 'backend/migrations', 'backend/internal/startup',
                'backend/internal/readiness', 'backend/internal/testpostgres')
 DISABLED = ('ios-upload', 'ios-production', 'ios-notes')
+TARGETS = ('backend', 'web', *DISABLED)
 REPOSITORY = 'LLRHook/checksinmyhead'
 WORKFLOW = REPOSITORY + '/.github/workflows/ci.yml@refs/heads/main'
+IOS_WORKFLOWS = dict(zip(DISABLED, ('testflight.yml', 'app-store-release.yml', 'update-release-notes.yml')))
 MIRROR = 'git@github.com:dhaliwalg/checksinmyhead.git'
 HOST_KEY = 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl\n'
 DISABLED_POLICY = {'version': 1, 'enabled_targets': [], 'control_floor': None, 'targets': {}}
@@ -298,7 +300,7 @@ def publication_selection(event, ref, requested, policy_text, changed_paths=None
         policy = parse(policy_text)
         require(policy.get('version') == 1 and isinstance(policy.get('enabled_targets'), list), 'disabled policy')
         enabled = policy['enabled_targets']
-        require(all(t in ('backend', 'web') for t in enabled), 'unknown/phase-F target')
+        require(all(t in TARGETS for t in enabled), 'unknown publication target')
     except (Rejected, AttributeError):
         enabled = []
     selected = ['backend', 'web'] if event == 'push' or requested == 'both' else ([] if requested == 'checks' else [requested])
@@ -312,18 +314,20 @@ def publication_selection(event, ref, requested, policy_text, changed_paths=None
 
 
 def authorize(repo, target, receipt, b, env, policy):
-    require(target not in DISABLED, 'F-phase iOS receipt/promotion is unavailable')
-    require(target in ('backend', 'web'), 'unknown target')
+    require(target in TARGETS, 'unknown target')
     require(env.get('GITHUB_REF') == 'refs/heads/main' and env.get('GITHUB_EVENT_NAME') in ('push', 'workflow_dispatch'),
             'publication requires main push/main dispatch')
-    require(env.get('GITHUB_REPOSITORY') == REPOSITORY and env.get('GITHUB_WORKFLOW_REF') == WORKFLOW,
+    workflow = (REPOSITORY + '/.github/workflows/' + IOS_WORKFLOWS[target] + '@refs/heads/main') if target in IOS_WORKFLOWS else WORKFLOW
+    require(env.get('GITHUB_REPOSITORY') == REPOSITORY and env.get('GITHUB_WORKFLOW_REF') == workflow,
             'untrusted publication controller')
+    if target in IOS_WORKFLOWS:
+        require(env.get('GITHUB_EVENT_NAME') == 'workflow_dispatch', 'iOS requires main dispatch')
     require(env.get('GITHUB_SHA') == b['controller'], 'C differs from workflow controller')
     verify_receipt(receipt, b)
     require(isinstance(policy, dict) and policy.get('version') == 1, 'missing/invalid RELEASE_POLICY')
     enabled = policy.get('enabled_targets')
     require(isinstance(enabled, list) and len(enabled) == len(set(enabled)) and
-            all(t in ('backend', 'web') for t in enabled) and target in enabled, 'target disabled/unknown')
+            all(t in TARGETS for t in enabled) and target in enabled, 'target disabled/unknown')
     main = sha(git(repo, 'rev-parse', 'refs/remotes/origin/main'))
     ancestor(repo, sha(policy.get('control_floor')), b['controller']); ancestor(repo, b['controller'], main)
     targets = policy.get('targets'); require(isinstance(targets, dict), 'invalid targets')
@@ -510,6 +514,7 @@ def main():
         r = collect(parse(e['NEEDS']), b)
         emit('receipt', compact(r)); emit('source', b['source']); emit('controller', b['controller']); return
     receipt = parse(e.get('GATE_RECEIPT', '')); target = e.get('DELIVERY_TARGET', '')
+    require(target in ('backend', 'web'), 'source publisher supports backend/web only')
     policy = parse(e.get('RELEASE_POLICY', ''))
     # Fresh inside the noncancelling environment job; no candidate checkout or code.
     git(a.repo, 'fetch', '--no-tags', 'origin', '+refs/heads/main:refs/remotes/origin/main')

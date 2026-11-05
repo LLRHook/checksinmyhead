@@ -1,5 +1,5 @@
-# Phase G only. NOT CI-CONFIRMED: native/signed/GUI, images, live providers, adoption/drain, recovery and performance qualification.
-name: Deploy to TestFlight (phase F unavailable)
+# Integrated phase F controls; external policy defaults disabled. Native/hosted/ASC qualification NOT RUN.
+name: Deploy to TestFlight
 'on':
   workflow_dispatch:
     inputs:
@@ -10,14 +10,18 @@ name: Deploy to TestFlight (phase F unavailable)
       release_notes:
         description: What to test (TestFlight notes)
         required: false
-        default: 'Billington 2.0: collaborative trip tabs, app-first invites, multi-currency receipts with conversion previews,
-          creator-controlled tab settings, currency-aware balances, and a read-only web handoff. Receipt scanning, external
-          payment links, and the existing Quick Split and Lazy Mode flows remain supported.'
+        default: 'Billington 2.0: collaborative trip tabs, app-first invites, multi-currency receipts with conversion
+          previews, creator-controlled tab settings, currency-aware balances, and a read-only web handoff. Receipt
+          scanning, external payment links, and the existing Quick Split and Lazy Mode flows remain supported.'
         type: string
       source:
         type: string
-        description: Full source SHA (blank = C); phase F publication unavailable
+        description: Exact full source SHA; must match the selected origin for promotion/notes
         required: false
+      verification_only:
+        description: Read eligibility only; no signing, credential files, upload, tags or ASC writes
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -30,7 +34,7 @@ jobs:
       backend: ${{ steps.resolve.outputs.backend }}
       web: ${{ steps.resolve.outputs.web }}
     steps:
-    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
       with:
         ref: ${{ github.sha }}
         path: control
@@ -51,17 +55,52 @@ jobs:
       source_sha: ${{ needs.resolve.outputs.candidate }}
       controller_sha: ${{ needs.resolve.outputs.controller }}
       scope: all
-  unavailable:
+  required:
+    name: Required delivery checks
+    if: always()
     needs:
     - resolve
     - checks
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    outputs:
+      receipt: ${{ steps.required.outputs.receipt }}
+      source: ${{ steps.required.outputs.source }}
+      controller: ${{ steps.required.outputs.controller }}
     steps:
-    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
       with:
         ref: ${{ github.sha }}
         path: control
         fetch-depth: 0
         persist-credentials: false
-    - run: python3 control/ops/ci/delivery_gate.py ios-unavailable
+    - id: required
+      env:
+        CONTROLLER: ${{ github.sha }}
+        SOURCE: ${{ needs.resolve.outputs.candidate }}
+        NEEDS: ${{ toJSON(needs) }}
+      run: python3 control/ops/ci/delivery_gate.py required --repo control --controller "$CONTROLLER" --source "$SOURCE"
+  deliver:
+    needs:
+    - resolve
+    - required
+    if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && needs.required.result
+      == 'success' }}
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/ios-origin.yml
+    secrets:
+      DELIVERY_ASC_KEY_ID: ${{ secrets.DELIVERY_ASC_KEY_ID }}
+      DELIVERY_ASC_ISSUER_ID: ${{ secrets.DELIVERY_ASC_ISSUER_ID }}
+      DELIVERY_ASC_API_KEY_P8: ${{ secrets.DELIVERY_ASC_API_KEY_P8 }}
+      DELIVERY_BUILD_CERTIFICATE_BASE64: ${{ secrets.DELIVERY_BUILD_CERTIFICATE_BASE64 }}
+      DELIVERY_P12_PASSWORD: ${{ secrets.DELIVERY_P12_PASSWORD }}
+      DELIVERY_PROVISIONING_PROFILE_BASE64: ${{ secrets.DELIVERY_PROVISIONING_PROFILE_BASE64 }}
+    with:
+      source: ${{ needs.required.outputs.source }}
+      controller: ${{ needs.required.outputs.controller }}
+      receipt: ${{ needs.required.outputs.receipt }}
+      verification_only: ${{ inputs.verification_only }}
+      release_notes: ${{ inputs.release_notes }}
+      build_number: ${{ inputs.build_number || '' }}

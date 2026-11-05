@@ -17,6 +17,7 @@ from unittest.mock import patch
 import yaml
 os.environ['GIT_ALLOW_PROTOCOL'] = 'file'  # Synthetic Git transports cannot reach SSH/HTTPS endpoints.
 import delivery_gate as gate
+from test_ios_artifact import validate_ios_graph
 
 ROOT = Path(__file__).resolve().parents[2]
 B = {'source': 'a'*40, 'controller': 'b'*40, 'scope': 'all', 'run': '712', 'attempt': '2'}
@@ -97,7 +98,15 @@ class GitFixture(unittest.TestCase):
         self.receipt=gate.collect(needs(self.b),self.b)
 
     def call(self,*args):
-        return subprocess.check_output(['git','-C',str(self.repo),*args],env=self.env,stderr=subprocess.DEVNULL,text=True).strip()
+        if args[0] == 'commit':
+            for var in ('GIT_AUTHOR_IDENT', 'GIT_COMMITTER_IDENT'):
+                identity = subprocess.check_output(['git','-C',str(self.repo),'var',var],env=self.env,text=True)
+                self.assertTrue(identity.startswith('Victor Ivanov <victor.n.ivanov@gmail.com> '))
+        result = subprocess.check_output(['git','-C',str(self.repo),*args],env=self.env,stderr=subprocess.DEVNULL,text=True).strip()
+        if args[0] == 'commit':
+            identity = subprocess.check_output(['git','-C',str(self.repo),'log','-1','--format=%an|%ae|%cn|%ce'],env=self.env,text=True).strip()
+            self.assertEqual(identity,'Victor Ivanov|victor.n.ivanov@gmail.com|Victor Ivanov|victor.n.ivanov@gmail.com')
+        return result
 
 
 class FloorTests(GitFixture):
@@ -317,7 +326,11 @@ def validate_graph(root):
                     ('ci.yml', 'publish-backend'): {'DELIVERY_RENDER_DEPLOY_HOOK_URL': '${{ secrets.DELIVERY_RENDER_DEPLOY_HOOK_URL }}'},
                     ('ci.yml', 'publish-web'): {'DELIVERY_VERCEL_DEPLOY_KEY': '${{ secrets.DELIVERY_VERCEL_DEPLOY_KEY }}'},
                 }
-                if (filename, name) in publisher_secrets:
+                if filename in ('testflight.yml','app-store-release.yml','update-release-notes.yml') and name == 'deliver':
+                    names = ['DELIVERY_ASC_KEY_ID','DELIVERY_ASC_ISSUER_ID','DELIVERY_ASC_API_KEY_P8']
+                    if filename == 'testflight.yml': names += ['DELIVERY_BUILD_CERTIFICATE_BASE64','DELIVERY_P12_PASSWORD','DELIVERY_PROVISIONING_PROFILE_BASE64']
+                    require(job.get('secrets') == {k:'${{ secrets.'+k+' }}' for k in names}, 'named iOS secret forwarding')
+                elif (filename, name) in publisher_secrets:
                     require(job.get('secrets') == publisher_secrets[(filename, name)], 'named publisher secret forwarding')
                 else:
                     require('secrets' not in job, 'secret passed to nonpublisher reusable job')
@@ -327,10 +340,10 @@ def validate_graph(root):
             for step in job.get('steps',[]):
                 require(not step.get('continue-on-error'),'step continue-on-error')
                 if 'uses' in step:
-                    require(re.fullmatch('[^@]+@[0-9a-f]{40}',step['uses']) is not None,'mutable action')
+                    require(step['uses'] == './control/.github/actions/build-signed-ipa' or re.fullmatch('[^@]+@[0-9a-f]{40}',step['uses']) is not None,'mutable action')
                     if step['uses'].startswith('actions/checkout@'):
                         values=step['with'];require(values['persist-credentials'] is False,'persisted token')
-                        if values['path']=='candidate':require(values['ref']=='${{ inputs.source_sha }}','candidate checkout wrong S')
+                        if values['path']=='candidate':require(values['ref']==('${{ inputs.source_sha }}' if filename=='checks.yml' else '${{ inputs.source }}'),'candidate checkout wrong S')
                         elif filename=='checks.yml':require(values['ref']=='${{ inputs.controller_sha }}','trusted helper checkout wrong C')
                         else:require(values['ref'] in ('${{ github.sha }}','${{ inputs.controller }}'),'privileged control from candidate')
                     if step['uses'].startswith('subosito/flutter-action@'):
@@ -361,10 +374,10 @@ def validate_graph(root):
         caller=ci['jobs']['publish-'+target];require(set(caller['needs'])=={'resolve','required'} and caller['with']['receipt']=='${{ needs.required.outputs.receipt }}' and caller['with']['source']=='${{ needs.required.outputs.source }}' and "needs.required.result == 'success'" in caller['if'],'publisher missing gate edge')
     for name in ('testflight.yml','app-store-release.yml','update-release-notes.yml'):
         w=workflows[name];require(w['jobs']['checks']['uses']=='./.github/workflows/checks.yml','iOS missing common gate')
-        text=(root/'.github/workflows'/name).read_text();require('secrets.' not in text and 'skip_tests' not in text and 'ios-unavailable' in text,'phase-F alternate path')
+        text=(root/'.github/workflows'/name).read_text();require('skip_tests' not in text and set(w['jobs']['deliver']['needs'])=={'resolve','required'},'phase-F alternate path')
     action=yaml.safe_load((root/'.github/actions/build-signed-ipa/action.yml').read_text())
-    require(len(action['runs']['steps'])==1 and 'exit 1' in action['runs']['steps'][0]['run'],'signed action bypass')
-    expected_workflows = {'ci.yml','checks.yml','deploy-backend.yml','sync-web-viewer.yml','testflight.yml','app-store-release.yml','update-release-notes.yml'}
+    require(len(action['runs']['steps'])==1 and action['runs']['steps'][0]['run']=='python3 control/ops/ci/ios_sign.py','signed action bypass')
+    expected_workflows = {'ci.yml','checks.yml','deploy-backend.yml','sync-web-viewer.yml','testflight.yml','app-store-release.yml','update-release-notes.yml','ios-origin.yml','ios-promote.yml'}
     require(set(workflows) == expected_workflows, 'alternate workflow owner')
     helper = 'python3 control/ops/ci/delivery_gate.py'
     args = ' --repo control --controller "$CONTROLLER" --source "$SOURCE"'
@@ -401,6 +414,7 @@ def validate_graph(root):
         for name,job in w['jobs'].items():
             for step in job.get('steps',[]):
                 if 'uses' in step:
+                    if step['uses'] == './control/.github/actions/build-signed-ipa': continue
                     owner,ref=step['uses'].split('@')
                     require(pins.get(owner)==ref,'unverified action pin')
             if 'resolve' == name:
@@ -419,11 +433,12 @@ def validate_graph(root):
         expected_if="${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && needs.required.result == 'success' && needs.resolve.outputs."+target+" == 'true' }}"
         require(' '.join(ci['jobs']['publish-'+target]['if'].split()) == expected_if, 'publication result/ref condition weakened')
     for filename in ('testflight.yml','app-store-release.yml','update-release-notes.yml'):
-        w=workflows[filename];require(set(w['jobs'])=={'resolve','checks','unavailable'},'alternate iOS mutation job')
-        require(w['jobs']['unavailable']['steps'][-1]['run']==helper+' ios-unavailable','F-phase code guard replaced')
-        require(set(w['jobs']['unavailable']['needs'])=={'resolve','checks'},'iOS common gate missing')
+        w=workflows[filename];require(set(w['jobs'])=={'resolve','checks','required','deliver'},'alternate iOS mutation job')
+        require(w['jobs']['required']==ci['jobs']['required'],'iOS required collector differs')
+        require(set(w['jobs']['deliver']['needs'])=={'resolve','required'},'iOS common gate missing')
     cancel=workflows['update-release-notes.yml']['on']['workflow_dispatch']['inputs']['allow_cancel']
     require(cancel['type']=='boolean' and cancel['default'] is False,'cancellation consent changed')
+    validate_ios_graph(root,workflows)
     return workflows
 
 
@@ -473,7 +488,7 @@ class GraphTests(unittest.TestCase):
                 elif defect=='cancel-consent':
                     path=wf/'update-release-notes.yml';j=yaml.safe_load(path.read_text());j['on']['workflow_dispatch']['inputs']['allow_cancel']['default']=True
                 elif defect=='ios-bypass':
-                    path=wf/'testflight.yml';j=yaml.safe_load(path.read_text());j['jobs']['unavailable']['steps'][-1]['run']='echo uploaded'
+                    path=wf/'testflight.yml';j=yaml.safe_load(path.read_text());j['jobs']['deliver']['uses']='./.github/workflows/checks.yml'
                 elif defect=='policy-override':
                     path=wf/'deploy-backend.yml';j=yaml.safe_load(path.read_text());j['jobs']['publish']['steps'][-1]['env']['RELEASE_POLICY']='${{ inputs.policy }}'
                 elif defect=='unverified-pin':j['jobs']['backend']['steps'][0]['uses']='actions/checkout@'+'a'*40
@@ -599,7 +614,7 @@ class ManifestReportTests(unittest.TestCase):
             reports = []
             families = self.manifest['rows'][row]
             for kind, name in self.manifest['reports'][row]:
-                selected = [f for f in families if (('#' in f) == (name == 'ruby.json'))] if row == 'automation' else families
+                selected = [f for f in families if (name == 'ruby.json' and f.startswith('ASCReleaseTest#')) or (name == 'ios-ruby.json' and f.startswith('IOSASCTests#')) or (name == 'ios-python.json' and f.startswith(('IOSArtifactTests.','IOSLifecycleTests.','IOSGraphTests.','IOSFailureBoundaryTests.'))) or (name == 'gate-tests.json' and '#' not in f and not f.startswith(('IOSArtifactTests.','IOSLifecycleTests.','IOSGraphTests.','IOSFailureBoundaryTests.')))] if row == 'automation' else families
                 cases = [{'id':f,'family':f,'status':'pass'} for f in selected]
                 obj = dict(complete=True, success=True, tests_run=len(cases), started=[c['id'] for c in cases], cases=cases)
                 reports.append((kind,str(self.write(name,obj))))
@@ -764,7 +779,7 @@ class EntrypointTests(GitFixture):
 
     def test_ASC_transport_and_all_iOS_inputs_remain_unavailable_with_explicit_cancel_consent(self):
         ruby=ROOT/'.github/scripts/asc_api.rb'
-        script='require '+json.dumps(str(ruby))+'\nmodule Net; class HTTP; def self.start(*); abort "NETWORK FORBIDDEN"; end; end; end\n[:post,:patch,:delete].each do |verb|\n begin\n ASC.request(verb,"/synthetic",body:{},allow_failure:true)\n abort "WRITE WAS ALLOWED"\n rescue ASC::Error => e\n abort "WRONG FAILURE" unless e.message == "F-phase required: ASC writes are unavailable"\n end\nend\nputs "3 synthetic ASC mutation verbs rejected before authentication/network"\n'
+        script='require '+json.dumps(str(ruby))+'\nmodule Net; class HTTP; def self.start(*); abort "NETWORK FORBIDDEN"; end; end; end\n[:post,:patch,:delete].each do |verb|\n begin\n ASC.request(verb,"/synthetic",body:{},allow_failure:true)\n abort "WRITE WAS ALLOWED"\n rescue ASC::Error => e\n abort "WRONG FAILURE" unless e.message == "ASC writes require verified delivery authority"\n end\nend\nputs "3 synthetic ASC mutation verbs rejected before authentication/network"\n'
         r=subprocess.run(['ruby','-e',script],env={k:v for k,v in self.env.items() if not k.startswith('ASC_')},capture_output=True,text=True)
         self.assertEqual(r.returncode,0,r.stderr);self.assertIn('3 synthetic ASC',r.stdout)
         notes=yaml.safe_load((ROOT/'.github/workflows/update-release-notes.yml').read_text())
@@ -777,8 +792,9 @@ class EntrypointTests(GitFixture):
         for name in ('testflight.yml','app-store-release.yml','update-release-notes.yml'):
             w=yaml.safe_load((ROOT/'.github/workflows'/name).read_text())
             self.assertNotIn('skip_tests',w['on']['workflow_dispatch']['inputs'])
-            command=w['jobs']['unavailable']['steps'][-1]['run'].split()[-1]
-            self.assertEqual(command,'ios-unavailable')
+            self.assertEqual(set(w['jobs']['deliver']['needs']),{'resolve','required'})
+            self.assertIn("needs.required.result == 'success'",w['jobs']['deliver']['if'])
+            command='ios-unavailable' # Retired CLI still denies unauthenticated alternate entry.
             result=subprocess.run([sys.executable,str(Path(gate.__file__)),command],env=dict(self.event,ALLOW_CANCEL='true'),capture_output=True,text=True)
             self.assertEqual(result.returncode,1);self.assertIn('F-phase required',result.stderr)
 

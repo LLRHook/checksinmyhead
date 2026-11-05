@@ -1,5 +1,6 @@
 name: Build signed IPA
-description: Unavailable until phase F implements verified exact processed-build receipts; no signing or upload in phase G.
+description: Authorize, build once with locked toolchain, inspect IPA identity and
+  always clean owned signing material.
 inputs:
   build-number:
     description: CFBundleVersion for this build
@@ -25,9 +26,21 @@ inputs:
 runs:
   using: composite
   steps:
-  - shell: bash
-    run: 'echo ''F-phase required: signed artifact/source/origin receipt handling is unavailable.'' >&2
-
-      exit 1
-
-      '
+  - id: build
+    shell: bash
+    env:
+      BUILD_NUMBER: ${{ inputs.build-number }}
+      BUILD_NAME: ${{ inputs.build-name }}
+      CERTIFICATE_BASE64: ${{ inputs.certificate-base64 }}
+      P12_PASSWORD: ${{ inputs.p12-password }}
+      PROFILE_BASE64: ${{ inputs.provisioning-profile-base64 }}
+      TEAM_ID: ${{ inputs.team-id }}
+      BUNDLE_ID: ${{ inputs.bundle-id }}
+    run: python3 control/ops/ci/ios_sign.py
+outputs:
+  ipa-path:
+    description: Exact inspected IPA
+    value: ${{ steps.build.outputs.ipa_path }}
+  ipa-sha256:
+    description: SHA256 of inspected IPA
+    value: ${{ steps.build.outputs.ipa_sha256 }}

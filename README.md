@@ -156,8 +156,11 @@ migrates completed tickets into
 
 [Managed delivery controls](ops/ci/README.md) define one six-row source-bound CI
 gate. Publication requires separate protected-environment and policy clearance;
-signed iOS publication remains unavailable until processed-artifact promotion is
-implemented and qualified. CI success does not replace the local integrated protocol.
+integrated iOS origin/promotion/notes controls require separate hosted, ASC
+and signed-client qualification. Inspected IPA bytes stay bound through upload and
+receipt creation; parent exits and restore failures still trigger owned cleanup.
+Targets default disabled; whole acceptance remains RED. Convenience TestFlight tag
+emission is retired; immutable receipts carry identity. Existing tags remain. CI success does not replace the local integrated protocol.
 
 The [foundation baseline](docs/reviews/2026-11-02-baseline.md) records the approved scope
 and evidence reconciliation. Existing architecture and API documents linked below
