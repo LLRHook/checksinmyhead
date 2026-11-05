@@ -82,8 +82,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Mobile source a97137f: RecentBillsManager owns Drift9 native transaction, immutable keyed snapshot, exact-ID frozen checkpoints and authorized attachment/recovery. Host458 pass/all392 prior; maintained PG plus file-backed lost201/attach-finalization wire pass;5 removal controls. Native -34018 blocked; independent/root clean acceptance, .005 alignment and combined/release gates remain open. Server recovery a47eeca retained.
-- **Docs:** docs/mobile-save-verification.md; docs/reviews/2026-11-04-mobile-save-reopen.md; docs/backend-api.md; docs/technical-overview.md; mobile/README.md; VERIFICATION.md
+- **Fix:** 11e6f67 fixes durable overlapping tab intent and per-row history/read feedback;7bddfa9 makes diagnostics finite. Root clean7bddfa9: Flutter467/510, prior458/500 retained and495 sources unchanged;3 scoped guard removals discriminate. PG/Drift recovery proof retained. Native app setup RED/0 cases; .005 alignment, independent review and combined/release gates remain open.
+- **Docs:** docs/mobile-save-verification.md; docs/reviews/2026-11-04-mobile-save-reopen.md; docs/reviews/2026-11-04-mobile-save-corrections.md; docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md
 - **Log:**
   - 2026-11-03 Evidence: Driver fb6b4b9 actual provider penny capture: client Alex=.01/Sam=0; v1 server Alex=0/Sam=.01 with .005 raw details. No math change in 43772a7. Preserve server/historical contracts; deliberately align local/published allocation in currency/save scope. See docs/reviews/2026-11-03-client-v1-bridge.md.
 
@@ -361,8 +361,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Provider/server ee125d1/6dba4b4/a47eeca retained. Mobile a97137f decodes rate, confirms receipt currency, permits offline native save and separates pending/frozen/display state; valid zero stays zero and ZAR display remains independent. Host458 and maintained wire pass. Native Keychain -34018 blocked; .005 alignment, identity0003, versioned JPY, independent/root clean and combined/signed rollout gates remain open.
-- **Docs:** docs/mobile-save-verification.md; docs/reviews/2026-11-04-mobile-save-reopen.md; docs/backend-api.md; docs/technical-overview.md; mobile/README.md; VERIFICATION.md
+- **Fix:** Provider/replay frozen/display/zero contracts retained. Mobile final7bddfa9 includes save review corrections; root clean Flutter467/510 preserves prior458/500. Native class20 proof is separate; maintained app setup RED/0 cases. .005 alignment, identity0003, versioned JPY, independent correction review and combined/signed rollout remain open.
+- **Docs:** docs/mobile-save-verification.md; docs/reviews/2026-11-04-mobile-save-reopen.md; docs/reviews/2026-11-04-mobile-save-corrections.md; docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md
 - **Log:**
   - 2026-11-03 Scope: Approved one-adapter/no-TTL decision supersedes old dual-provider/cache proposal. Keep open: display provenance0002; mobile rate decoder/quote state/save/replay/Keychain; required versioned JPY step. Global security/integrated acceptance RED.
 
@@ -552,3 +552,5 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
+- **Fix:** 7bddfa9 replaces five raw persistence-error interpolations with finite operation labels. A real SQLite rejection produces1 intended confidentiality failure with8 healthy controls before correction, then9 passes. Root clean Flutter467/510 preserves all prior cases and495 sources. Scoped scans/review recorded in dated correction evidence; independent acceptance remains pending.
+- **Docs:** docs/mobile-save-verification.md; docs/reviews/2026-11-04-mobile-save-corrections.md; mobile/lib/screens/recent_bills/models/recent_bill_manager.dart
