@@ -242,12 +242,13 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Use paired/budget8 attempt-owned TLS relay and joined teardown; preserve M2/body/state. Host392 retains362+21TLS+9guards; removal controls discriminate. Independent source0/0 accepted; native/resource/B/spending/provider/old-writer/physical/signed/integrated/release remain open.
-- **Docs:** mobile/README.md; docs/{backend-api,technical-overview,mobile-ocr-verification}.md; docs/reviews/2026-11-04-{mobile-tls-integration,mobile-tls-acceptance,backend-native-acceptance}.md; prior M2/A2 records; VERIFICATION unchanged.
+- **Fix:** Use paired/budget8 TLS/M2 teardown; host392/source0/0 retained. Timer fixture uses logical time and checks cancel; production45s unchanged. Native/resource/B/spending/provider/old-writer/physical/signed/integrated/release remain open.
+- **Docs:** mobile/README.md; docs/{backend-api,technical-overview,mobile-ocr-verification}.md; docs/reviews/2026-11-04-{mobile-tls-integration,mobile-tls-acceptance,backend-native-acceptance}.md; prior M2/A2 records; VERIFICATION unchanged; docs/reviews/2026-11-05-ocr-timer-fixture.md
 - **Log:**
   - 2026-11-04 History: M2 clean362/17native/all359prior APPROVE; backend1146/OCR3600: prior M2/A2/native dated records (Docs).
   - 2026-11-04 Acceptance: Mobile7e36 source APPROVE0/0/reviewer NOT RUN; root392 CI commands and retained-report reconciliation pass; raw parser failure/missing source-after receipt retained. See mobile-tls-acceptance.
   - 2026-11-04 Limits: Runtime1.619804>1.5 RED/flaky; assignment JSON RED. At7e36 native Pods blocked;863dd qualification is separate/pending review. FD stable/RSS nonplateau; no global pass or closure.
+  - 2026-11-05 Verification: CI42096155322 timer fixture flaky; controlled fix/full513 pass; cancel-removal assertion fails. PG/full gates RED.
 
 ### [BUG-1793644509] Redact credentials and payment data from SQL logs
 - [x] **Severity:** med

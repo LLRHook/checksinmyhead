@@ -55,23 +55,46 @@ void main() {
     'success closes owned client and completes abort listeners without later timeout',
     () async {
       final client = ScriptClient((_) => response('{"items":[]}'));
-      final service = serviceFor(
-        client,
-        timeout: const Duration(milliseconds: 20),
-      );
-      await service.parseReceipt('x');
-      expect(client.closes, 1);
-      expect(client.request, isA<http.AbortableMultipartRequest>());
-      expect(client.request!.followRedirects, isFalse);
-      var released = false;
-      (client.request as http.Abortable).abortTrigger!.then(
-        (_) => released = true,
-      );
-      await Future<void>.delayed(const Duration(milliseconds: 30));
-      expect(released, isTrue);
-      expect(client.closes, 1);
-      service.dispose();
-      expect(client.closes, 1);
+      // Hold logical elapsed time steady for this successful scripted response.
+      // Deadline behavior has separate stalled/late-response cases below.
+      final service = serviceFor(client, elapsed: () => Duration.zero);
+      final timers = <Timer>[];
+      final durations = <Duration>[];
+      try {
+        await runZoned(
+          () async {
+            await service.parseReceipt('x');
+            expect(client.closes, 1);
+            expect(client.request, isA<http.AbortableMultipartRequest>());
+            expect(client.request!.followRedirects, isFalse);
+            var released = false;
+            await (client.request as http.Abortable).abortTrigger!.then(
+              (_) => released = true,
+            );
+            expect(released, isTrue);
+            expect(durations, [const Duration(seconds: 45)]);
+            expect(timers, hasLength(1));
+            expect(timers.single.isActive, isFalse);
+            expect(client.closes, 1);
+            service.dispose();
+            expect(client.closes, 1);
+          },
+          zoneSpecification: ZoneSpecification(
+            createTimer: (self, parent, zone, duration, callback) {
+              durations.add(duration);
+              final timer = parent.createTimer(zone, duration, callback);
+              timers.add(timer);
+              return timer;
+            },
+          ),
+        );
+      } finally {
+        service.dispose();
+        // Independent test cleanup also runs when a cancellation guard is removed.
+        for (final timer in timers) {
+          timer.cancel();
+        }
+      }
     },
   );
   test(
