@@ -571,8 +571,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Compare scripts/verify_static_runtime.py at43aba14 with backend/migrations/registry.go. Retained replay0002 runtime45 failure and75 completion are separate from this source-only correction. No fresh canonical container run is claimed.
 - **Bump:** patch
 - **Status:** fixed-pending-migration
-- **Fix:** Foundation0003 changes only exact ordered ledger1,2 to1,2,3. Fresh canonical75/75 runtime passes on both bound static images under explicit root quiet activation, with acquisition-only read-only compiler cache adapter. Other predicates/timeouts unchanged. Original45 stale-expectation failure and web1.619804s/<1.5 flake retained; earlier canonical1,2 runtime was NOT RUN. Wider gates RED.
-- **Docs:** backend/README.md; VERIFICATION.md; docs/reviews/2026-11-05-identity-foundation.md; exact ledger expectation tracks registry additions.
+- **Fix:** Foundation0003 changes only ordered ledger1,2 to1,2,3. Owner exact final images passed75/75 canonical runtime checks with the acquisition-only compiler-cache adapter under root activation; other predicates/timeouts unchanged. Original45 stale-ledger failure and web1.619804s/<1.5 flake stay RED; earlier canonical1,2 runtime was NOT RUN. At76cb5fbb independent0/0 and root clean908/1189=1614 distinct/178input binding accept A source/evidence only; root did not rerun runtime. Cached-reader HIGH/OPEN BUG-1793861425 and wider gates remain RED.
+- **Docs:** backend/README.md; VERIFICATION.md; docs/reviews/2026-11-05-identity-foundation.md; docs/reviews/2026-11-05-scoped-source-acceptance.md; exact ledger expectation tracks registry additions.
 
 ### [BUG-1793861425] Drain cached readers before additive DDL or preserve stable read projections
 - [ ] **Severity:** high

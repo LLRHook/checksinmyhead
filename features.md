@@ -120,8 +120,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** minor
 - **Assignee:** Victor Ivanov
 - **Status:** shipped-pending-migration
-- **Implementation:** Frozen0001/v1, ledger/safety-v2 and receipt0002 bytes retained. Foundation0003 adds90 pinned PG17 definitions, structural-only IDs/labels/ordinals and scoped NULL-safe receipts; defaults1/review, no wire/auth exposure. Full race908/1189 leaves,1614 distinct; restarted old4/4 pass, warm reads4/4 RED (0A000 control). independent/root source acceptance and production/integrated adoption pending; BUG4505 OPEN.
-- **Docs:** backend/README.md; docs/technical-overview.md; docs/backend-api.md; VERIFICATION.md; docs/backend-replay-verification.md; docs/reviews/2026-11-05-identity-foundation.md; earlier migration/catalog/local-workflow notes unchanged
+- **Implementation:** 76cb5fbb A accepted: independent0/0; root clean908/1189 leaves,1614 distinct/483 overlap,178inputs exact,429schemas absent. Frozen0001/v1,0002,safety-v2 retained.0003:90 PG17 definitions,structural IDs/labels/ordinals,NULL-safe receipts,defaults1/review,no wire/auth. Restarted old4/4 PASS; warm4/4 HTTP500/0A000 HIGH/OPEN BUG-1793861425; BUG4505 OPEN. B/production/integrated not accepted.
+- **Docs:** backend/README.md; docs/technical-overview.md; docs/backend-api.md; VERIFICATION.md; docs/backend-replay-verification.md; docs/reviews/2026-11-05-identity-foundation.md; docs/reviews/2026-11-05-scoped-source-acceptance.md
 - **Log:**
   - 2026-11-03 Review:13be27b correction APPROVE/zero findings; frozen v1/history unchanged. Earlier failures/controls retained in catalog-safety note.
   - 2026-11-03 Verification: Driver clean committed fb6b4b9:414 default/545 tagged leaves,623 distinct;0 failures/skips. Full provenance and remaining gates in local-workflow note.
