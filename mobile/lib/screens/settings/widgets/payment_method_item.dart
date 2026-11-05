@@ -26,6 +26,10 @@ class PaymentMethodItem extends StatelessWidget {
   /// The user identifier for this method (e.g., "@username")
   final String identifier;
 
+  /// Optional ink supplied by the Settings panel's effective surface.
+  /// Other callers retain the existing white text treatment.
+  final Color? foregroundColor;
+
   /// Callback when the edit button is pressed
   final VoidCallback onEdit;
 
@@ -40,6 +44,7 @@ class PaymentMethodItem extends StatelessWidget {
     super.key,
     required this.methodName,
     required this.identifier,
+    this.foregroundColor,
     required this.onEdit,
     required this.onDelete,
     required this.onTap,
@@ -72,13 +77,23 @@ class PaymentMethodItem extends StatelessWidget {
         onDelete();
       },
       child: ListTile(
-        title: Text(methodName, style: const TextStyle(color: Colors.white)),
+        title: Text(
+          methodName,
+          style: TextStyle(color: foregroundColor ?? Colors.white),
+        ),
         subtitle: Text(
           identifier,
-          style: TextStyle(color: Colors.white.withValues(alpha: .7)),
+          style: TextStyle(
+            color: foregroundColor ?? Colors.white.withValues(alpha: .7),
+          ),
         ),
         trailing: IconButton(
-          icon: const Icon(Icons.more_horiz, color: Colors.white70, size: 20),
+          tooltip: '$methodName options',
+          icon: Icon(
+            Icons.more_horiz,
+            color: foregroundColor ?? Colors.white70,
+            size: 20,
+          ),
           onPressed: () {
             _showOptions(context);
           },

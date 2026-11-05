@@ -37,8 +37,9 @@ class AppTheme {
   static const Color primaryDark = Color(0xFF2A736E);
 
   /// Notifier for the current primary color — listeners rebuild when it changes
-  static final ValueNotifier<Color> primaryColorNotifier =
-      ValueNotifier<Color>(defaultPrimary);
+  static final ValueNotifier<Color> primaryColorNotifier = ValueNotifier<Color>(
+    defaultPrimary,
+  );
 
   /// Current primary color (reads from the notifier so all theme builders stay in sync)
   static Color get _primaryColor => primaryColorNotifier.value;
@@ -46,6 +47,25 @@ class AppTheme {
   /// Updates the primary color used throughout the app theme
   static void setPrimaryColor(Color color) {
     primaryColorNotifier.value = color;
+  }
+
+  /// Readable ink for an opaque, already composited surface.
+  /// Keeps a preferred accent when it meets normal-text contrast; otherwise
+  /// chooses the higher-contrast black or white. Does not change ThemeData.
+  static Color foregroundOn(Color background, {Color? preferred}) {
+    assert(background.a == 1, 'Composite the effective surface first.');
+    final luminance = background.computeLuminance();
+    if (preferred != null) {
+      final ink = Color.alphaBlend(preferred, background).computeLuminance();
+      final ratio =
+          ink > luminance
+              ? (ink + 0.05) / (luminance + 0.05)
+              : (luminance + 0.05) / (ink + 0.05);
+      if (ratio >= 4.5) return preferred;
+    }
+    return (luminance + 0.05) / 0.05 >= 1.05 / (luminance + 0.05)
+        ? Colors.black
+        : Colors.white;
   }
 
   /// Light theme configuration
@@ -117,7 +137,10 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: const Color(0xFFF7F7F7),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
@@ -145,7 +168,9 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: _primaryColor,
           foregroundColor: Color(0xFFFFFFFF),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
           elevation: 0,
           textStyle: const TextStyle(
@@ -160,7 +185,9 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: _primaryColor,
           side: BorderSide(color: _primaryColor),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
           textStyle: const TextStyle(
             fontSize: 16,
@@ -290,7 +317,10 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Color(0xFF161616),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
@@ -320,7 +350,9 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: _primaryColor,
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
           elevation: 0,
           textStyle: const TextStyle(
@@ -336,7 +368,9 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: _primaryColor,
           side: BorderSide(color: _primaryColor),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
           textStyle: const TextStyle(
             fontSize: 16,

@@ -600,3 +600,39 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** PG17.11 owned synthetic schemas, exact immutable prefix1/2 archives; raw phase-isolation failures, restarted4/4 and scalar1/1 control in identity0003-foundation-20261105/. HTTP sanitized logs expose unknown database class; scalar0A000 strongly supports mechanism, not direct HTTP error disclosure. Follow up with separately reviewed stable projections/connection strategy and real PG/final-binary proof; no blind mutation retry. See docs/reviews/2026-11-05-identity-foundation.md.
 - **Bump:** patch
 - **Status:** open
+
+### [BUG-1793898428] Make Settings accent choices labeled and reachable at small widths
+- [x] **Severity:** med
+- **Area:** mobile, accessibility
+- **File(s):** mobile/lib/screens/settings/settings_screen.dart
+- **Observation:** At13c871c, actual Settings host checks find10 unlabeled color tap nodes and38.4x38.4 targets at320 width, below the iOS44 minimum;390-wide positive control passes.
+- **Expected:** Every preset/custom choice has a unique descriptive label, button/selected semantics and one effective tap action.
+  At320/390 widths targets meet platform minimum without overlap/overflow; preserve all palette values, selection/picker and preference behavior.
+  Lasting actual-widget guideline and selection/persistence tests pass; direct device VoiceOver remains separate.
+- **Req:** FEAT-1793644512; TR UX/a11y and fix20; docs/reviews/2026-11-02-baseline.md
+- **Depends on:** none
+- **Repro / Notes:** Source-pinned Flutter3.41.5/Dart3.11.3 Settings/AppTheme host proof: light/dark,320/390; healthy fixture passes. docs/reviews/2026-11-05-settings-accessibility.md retains before failures, independent approval,33 new regressions and8 removal controls. Physical VoiceOver/signed-client coverage is separate.
+- **Bump:** patch
+- **Assignee:** Victor Ivanov
+- **Status:** fixed-pending-migration
+- **Fix:** Integrate named responsive accent choices with selected semantics,>=48 targets and one effective persistence action. Actual513 cases/558 terminals and33 exact gate obligations pass; prior independent9-case host fixture/eight removal controls and Standards0/Spec0 review are retained. Device AT remains separate.
+- **Docs:** DESIGN_SYSTEM.md; docs/reviews/2026-11-05-settings-accessibility.md
+- **Cross-ref:** FEAT-1793644512
+
+### [BUG-1793898429] Keep Settings text readable on accent and panel surfaces
+- [x] **Severity:** med
+- **Area:** mobile, accessibility
+- **File(s):** mobile/lib/screens/settings/settings_screen.dart; mobile/lib/config/theme.dart; mobile/lib/screens/settings/widgets/payment_method_item.dart
+- **Observation:** At13c871c, all8 Settings host scenarios fail4.5 text contrast: body2.88/helper2.37/payment action4.17/contact3.24. White/white70 on base/panel surfaces is affected in both themes.
+- **Expected:** Choose readable foreground against actual Settings base/panel/button/selected-payment-row surfaces; preserve user accent and existing flows.
+  Actual widget checks pass default/presets and representative bright/dark custom accents plus enlarged text.
+  Reuse one small foreground seam, expose options label and retain callbacks/persistence; no new package/cache/theme system or global unrelated restyle.
+- **Req:** FEAT-1793644512; TR UX/a11y and fix20; docs/reviews/2026-11-02-baseline.md
+- **Depends on:** none
+- **Repro / Notes:** Root actual24 application guideline evaluations completed before the fix; all failed scenarios have healthy controls. Candidate QA covers populated payment rows, presets and bright/dark custom accents; independent original diagnostic passes9/9. See docs/reviews/2026-11-05-settings-accessibility.md. Host proof does not establish physical/public-binary accessibility.
+- **Bump:** patch
+- **Assignee:** Victor Ivanov
+- **Status:** fixed-pending-migration
+- **Fix:** Use one effective-surface foreground owner for Settings and populated payment rows, preserving accents/actions. Actual513/558 mobile and mandatory-case omission checks pass; prior contrast/2x/populated-row and8 meaningful guard controls retained. Full app/device accessibility stays open.
+- **Docs:** DESIGN_SYSTEM.md; docs/reviews/2026-11-05-settings-accessibility.md
+- **Cross-ref:** FEAT-1793644512

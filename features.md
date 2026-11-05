@@ -272,6 +272,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Out of scope:** Unrelated redesign, new framework, live destructive operations, unapproved publication.
 - **Bump:** minor
 - **Status:** open
+- **Log:**
+  - 2026-11-05 Scoped evidence: Settings host slice integrated for BUG-1793898428, BUG-1793898429:513 cases/558 terminals,33 exact gate obligations, retained independent9-case guideline proof and8 removal controls. Physical/VoiceOver/iPad/reduced-motion/browser/signed coverage remains open.
 
 ### [FEAT-1793644778] Complete mobile settlement payment actions
 - [ ] **Priority:** med
