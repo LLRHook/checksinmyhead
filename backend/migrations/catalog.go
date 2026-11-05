@@ -33,13 +33,16 @@ func validateRecognizer() error {
 	if checksum(catalogSafetyV2SQL) != catalogSafetyV2Checksum || checksum(catalogSQL) != catalogQueryChecksum || checksum(catalogManifest) != catalogManifestChecksum || checksum(ledgerSQL) != ledgerChecksum || checksum(catalogSQL+catalogManifest+ledgerSQL) != recognizerChecksum {
 		return errors.New("changed catalog recognizer")
 	}
-	return validateReceiptRecognizer()
+	if err := validateReceiptRecognizer(); err != nil {
+		return err
+	}
+	return validateIdentityRecognizer()
 }
 
 type catalogObjects map[string]json.RawMessage
 
 func catalog(ctx context.Context, q querier, schema string) (catalogObjects, error) {
-	query := "SELECT key, value FROM (" + catalogSQL + ") frozen_catalog UNION ALL SELECT 'validation/catalog-safety-v2', to_jsonb(accepted) FROM (" + catalogSafetyV2SQL + ") safety"
+	query := "SELECT key, value FROM (" + catalogSQL + ") frozen_catalog UNION ALL SELECT key, value FROM (" + identityCatalogSQL + ") identity_catalog UNION ALL SELECT 'validation/catalog-safety-v2', to_jsonb(accepted) FROM (" + catalogSafetyV2SQL + ") safety"
 	rows, err := q.QueryContext(ctx, query, schema)
 	if err != nil {
 		return nil, err

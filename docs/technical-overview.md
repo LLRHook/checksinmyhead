@@ -278,6 +278,28 @@ those validated additions from a copy for frozen baseline recognition. No defaul
 backfill or historical row1/applied_at change. Known prefixes remain strict; compatible
 same-epoch unknown suffixes are retained. See [replay procedure](backend-replay-verification.md).
 
+Additive `0003_participant_identity.sql` appends the participant identity schema
+foundation with independently pinned PG17.11 recognition of 90 new definitions.
+Frozen SQL/catalog-v1, the nine v2 definitions, ledger DDL and safety-v2 remain
+unchanged. Exact v3 definitions are checked before subtraction, then v2 and v1;
+known1/2/3 prefixes are strict and future suffixes cannot conceal known drift.
+Structural IDs/labels/person-ID ordinals/location and assignment bill IDs infer no
+historical identity or rounding ties. Original columns/PK/FK actions and all financial
+values remain. NULL-safe pending generation and last-decision receipts retain scoped
+member/actor references; cross-row revision validation belongs to later locked behavior.
+Application writes still default to graph1/`legacy_review`, with no new serialized
+fields/capability/version negotiation. Fresh graphs, response2, reference authority,
+legacy containment and clients remain separate identity work.
+Actual old prefix1/2 readers pass against0003 after restart. Warm cached readers
+returned500 immediately after additive DDL; a separate pgx control reproduced
+SQLSTATE0A000 for cached `SELECT *` result-type invalidation. Drain readers before
+DDL and replace connections before resuming; verify this operational exclusion
+independently. Restarted read compatibility proves neither uninterrupted overlap
+nor old-writer safety. A stable-projection/connection strategy needs separate review
+and actual binary proof; never blindly retry a mutation. Production adoption remains
+unauthorized.
+See [foundation evidence](reviews/2026-11-05-identity-foundation.md).
+
 A schema-scoped transaction advisory lock precedes ledger inspection/creation. At Read
 Committed, the next starter rereads committed history after waiting. The checked transaction
 covers all pending SQL, validation and ledger entries; commit/rollback errors fail startup.

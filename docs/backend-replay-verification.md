@@ -26,9 +26,10 @@ both unique-wait arrival orders, winner rollback and same-key recovery; inject e
 child/mid-batch/deferred-commit failure and actual PG connection loss before/after
 COMMIT. Meaningful source-overlay removals must fail executed behavioral assertions.
 
-Validate empty/strict legacy/1/2/compatible-newer/corrupt histories and all nine 0002
-definitions/enforcement; preserve old rows and complete row1. Run actual old and new
-binaries' apply/verify/readiness against the full0002 schema. Prefix compatibility
+Validate empty/strict legacy/1/2/3/compatible-newer/corrupt histories, all nine 0002
+and 90 independently captured 0003 definitions/enforcement; preserve original rows
+and complete prior ledger entries. Run actual prefix1/prefix2 old binaries'
+apply/verify/readiness/authorized reads against the full0003 schema. Prefix compatibility
 and capability/health do not establish old-writer exclusion. Keep additive columns,
 index and ledger during rollback; never reintroduce replay-ignorant writers after
 keyed clients. Future deletion/revocation requires tombstones before identity removal.

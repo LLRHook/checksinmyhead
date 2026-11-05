@@ -2,6 +2,7 @@ package migrations
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -9,7 +10,7 @@ import (
 
 func TestFrozenBaselineRegistry(t *testing.T) {
 	steps, err := Registry()
-	if err != nil || len(steps) != 2 {
+	if err != nil || len(steps) != 3 {
 		t.Fatal("baseline registry invalid")
 	}
 	if steps[0].Version != 1 || steps[0].Epoch != 1 || steps[0].Name != "0001_baseline.sql" {
@@ -89,5 +90,60 @@ func TestFrozenCatalogRecognizer(t *testing.T) {
 func TestUnknownRunnerModeFailsBeforeDatabaseAccess(t *testing.T) {
 	if state, err := Run(context.Background(), nil, Mode("synthetic-hostile-mode")); state != nil || err == nil || strings.Contains(err.Error(), "synthetic-hostile-mode") {
 		t.Fatal("unknown mode did not fail safely")
+	}
+}
+
+func TestIdentity0003RecognizerPinsAndPrivateView(t *testing.T) {
+	for _, name := range []string{"sql", "query", "manifest"} {
+		t.Run(name, func(t *testing.T) {
+			a, b, c := identitySQL, identityCatalogSQL, identityManifest
+			defer func() { identitySQL, identityCatalogSQL, identityManifest = a, b, c }()
+			switch name {
+			case "sql":
+				identitySQL += "\n"
+			case "query":
+				identityCatalogSQL += "\n"
+			case "manifest":
+				identityManifest += "\n"
+			}
+			if validateRecognizer() == nil {
+				t.Fatal("changed independently pinned identity payload accepted")
+			}
+		})
+	}
+	var objects catalogObjects
+	if err := json.Unmarshal([]byte(catalogManifest), &objects); err != nil {
+		t.Fatal(err)
+	}
+	for _, manifest := range []string{receiptManifest, identityManifest} {
+		var additions catalogObjects
+		if err := json.Unmarshal([]byte(manifest), &additions); err != nil {
+			t.Fatal(err)
+		}
+		for k, v := range additions {
+			objects[k] = v
+		}
+	}
+	before, _ := json.Marshal(objects)
+	steps, _ := Registry()
+	history := []record{fromStep(steps[0]), fromStep(steps[1]), fromStep(steps[2])}
+	if err := checkApplicationCatalog(objects, history, steps); err != nil {
+		t.Fatal(err)
+	}
+	after, _ := json.Marshal(objects)
+	if string(before) != string(after) {
+		t.Fatal("recognition mutated actual catalog")
+	}
+	for k := range objects {
+		if strings.HasPrefix(k, "column/bill_participants/") {
+			copy := make(catalogObjects, len(objects))
+			for k, v := range objects {
+				copy[k] = v
+			}
+			delete(copy, k)
+			if checkApplicationCatalog(copy, history, steps) == nil {
+				t.Fatal("missing known definition accepted")
+			}
+		}
 	}
 }

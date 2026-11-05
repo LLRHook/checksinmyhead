@@ -113,33 +113,33 @@ and SQLite; PostgreSQL adds lifecycle, adoption, catalog guard v2, history/locks
 | Live PostgreSQL authorization + migrations/readiness / `backend` | `go test -race -tags=integration ./cmd/bill-service ./internal/bill ./internal/tab ./pkg/database ./migrations ./internal/startup ./internal/readiness ./internal/testpostgres` | Not yet an integrated baseline; test-only DSN required |
 | App/browser E2E, a11y, realistic load | No wired automated runner: FEAT-1793644507, FEAT-1793644512, FEAT-1793644502 | Manual stages required; automation gap remains |
 
-For the PostgreSQL row, set only `BILLINGTON_TEST_POSTGRES_DSN` to a dedicated
-loopback `billington_test` fixture, for example
+Set `BILLINGTON_TEST_POSTGRES_DSN` for PG, e.g.
 `host=127.0.0.1 port=<fixture-port> user=billington_test dbname=billington_test sslmode=disable`.
-The shared `internal/testpostgres` harness fails if the variable is absent, primary or
-fallback host is not loopback, database/user is not `billington_test`, or caller supplies
-schema/options (even empty overrides). It creates an owned random `billington_test_*`
-schema and drops only that schema with bounded cleanup. It never initializes public.
-Current-schema authorization fixtures execute the actual runner; legacy adoption uses
-independently pinned frozen SQL, never current models. No selected test skips.
+The shared harness fails on missing DSN, nonloopback primary/fallback, wrong user/DB
+or schema/options (even empty). Bounded cleanup drops only owned random schemas,
+never public. Use the runner for current schemas, independent frozen SQL for legacy,
+never models. No skips.
 
-The row retains migration preservation/catalog/history/locks/rollback, startup and health.
-Lifecycle coverage adds concurrent/lost-response/paid finalize retries, insert/update/
-deferred-commit rollback, sibling writers in both arrival orders and rollback, current
-authority, exact paid share IDs, paid economics, claim priority and legacy containment.
-HTTP/mobile conservation covers full/partial/zero/discount/custom-tip/history; [client bridge](docs/reviews/2026-11-03-client-v1-bridge.md).
-Three runs of 100 samples measure query/latency targets at 10 bills/8 people,
-100 bills/10,000 shares, paid/attachment and 500 items/5,000 assignments. Report misses
-and transaction control separately. Compare raw IDs/children/money/quotes/flags/times;
-use PG lock waits/channels. See [evidence](docs/reviews/2026-11-03-atomic-lifecycle.md).
+Retain migration/catalog/history/locks/startup/health, all lifecycle/authorization/money
+cases: both writer orders, concurrent/lost-response/paid retries, insert/update/deferred
+COMMIT rollback, current authority, stable share IDs/paid economics/claim priority and
+legacy containment. Preserve HTTP/mobile full/partial/zero/discount/custom-tip/history
+([bridge](docs/reviews/2026-11-03-client-v1-bridge.md)). Keep three runs of 100 samples at
+10 bills/8 people, 100 bills/10,000 shares, paid/attachment and 500 items/5,000 assignments.
+Separate misses/transaction control; compare raw IDs/children/money/quotes/flags/times
+via PG lock waits/channels ([lifecycle](docs/reviews/2026-11-03-atomic-lifecycle.md)).
 
-Default applies/verifies then serves; `--migrate-only` applies/exits;
-`--schema-mode=verify` checks without applying then serves. Health is one live ledger
-query; rerun startup verify after out-of-band DDL. No payer backfill runs. Use owned
-synthetic schemas/isolated overlays; retain additive schema/ledger on rollback.
-Production footprint, backup restore, predeploy and old-writer drain need separate proof:
-[backend operations](backend/README.md#postgresql-schema-startup). This is local,
-not an integrated pass. Lifecycle acceptance, identity and rollout gates remain open.
+Registry1,2,3: preserve original rows/columns/PK/FK actions and ledger1/2 bytes. Test
+structural backfill/legacy defaults, NULL-safe scoped groups, sequence/default/ownership,
+strict prefixes/future drift, rollback/cancel/apply locks and actual old prefix1/2
+startup/verify/reads. Distinguish restarted compatibility from warm-reader failures/
+writer safety. Verify pre-DDL reader drain and connection replacement before resuming;
+no blind mutation retry, ready2 or capability2.
+Default apply serves; `--migrate-only` applies/exits; `--schema-mode=verify` verifies/serves.
+Health: one ledger query; rerun verify after external DDL. No payer backfill. Use owned
+schemas/overlays; retain additive schema/ledger on rollback. Production footprint,
+backup/restore/predeploy/drain/rollout need [separate proof](backend/README.md#postgresql-schema-startup).
+Local proof is no integrated pass.
 
 For local workflow changes, also run `python3 scripts/verify_local_lifecycle.py
 --postgres-image sha256:<local-image-id> --output .vv/local-lifecycle-<unique-run>`.

@@ -24,6 +24,11 @@ func checkApplicationCatalog(objects catalogObjects, history []record, steps []S
 		view[k] = v
 	}
 	known := len(steps)
+	if known >= 3 && len(history) >= 3 {
+		if err := subtractIdentityCatalog(view); err != nil {
+			return err
+		}
+	}
 	if known >= 2 && len(history) >= 2 {
 		var additions catalogObjects
 		if err := json.Unmarshal([]byte(receiptManifest), &additions); err != nil {
@@ -48,6 +53,6 @@ func checkApplicationCatalog(objects catalogObjects, history []record, steps []S
 	}
 	// Unknown same-epoch suffixes may add definitions. A known prefix and strict
 	// adoption cannot conceal arbitrary extras or partial/weak receipt objects.
-	strict := len(history) <= known && len(history) <= 2
+	strict := len(history) <= known && len(history) <= 3
 	return checkCatalog(view, false, strict)
 }

@@ -1,0 +1,1653 @@
+{
+  "column/bill_participants/allocation_label": [
+    "pg_catalog",
+    "text",
+    -1,
+    true,
+    "",
+    "",
+    "pg_catalog",
+    "default",
+    "''::text"
+  ],
+  "column/bill_participants/approval_kind": [
+    "pg_catalog",
+    "text",
+    -1,
+    false,
+    "",
+    "",
+    "pg_catalog",
+    "default",
+    null
+  ],
+  "column/bill_participants/approved_at": [
+    "pg_catalog",
+    "timestamptz",
+    -1,
+    false,
+    "",
+    "",
+    null,
+    null,
+    null
+  ],
+  "column/bill_participants/approved_by_member_id": [
+    "pg_catalog",
+    "int8",
+    -1,
+    false,
+    "",
+    "",
+    null,
+    null,
+    null
+  ],
+  "column/bill_participants/client_ref": [
+    "pg_catalog",
+    "varchar",
+    68,
+    false,
+    "",
+    "",
+    "pg_catalog",
+    "default",
+    null
+  ],
+  "column/bill_participants/id": [
+    "pg_catalog",
+    "int8",
+    -1,
+    true,
+    "",
+    "",
+    null,
+    null,
+    "nextval('bill_participants_id_seq'::regclass)"
+  ],
+  "column/bill_participants/identity_version": [
+    "pg_catalog",
+    "int2",
+    -1,
+    true,
+    "",
+    "",
+    null,
+    null,
+    "1"
+  ],
+  "column/bill_participants/label": [
+    "pg_catalog",
+    "text",
+    -1,
+    true,
+    "",
+    "",
+    "pg_catalog",
+    "default",
+    "''::text"
+  ],
+  "column/bill_participants/last_binding_actor_kind": [
+    "pg_catalog",
+    "text",
+    -1,
+    false,
+    "",
+    "",
+    "pg_catalog",
+    "default",
+    null
+  ],
+  "column/bill_participants/last_binding_actor_member_id": [
+    "pg_catalog",
+    "int8",
+    -1,
+    false,
+    "",
+    "",
+    null,
+    null,
+    null
+  ],
+  "column/bill_participants/last_binding_decided_at": [
+    "pg_catalog",
+    "timestamptz",
+    -1,
+    false,
+    "",
+    "",
+    null,
+    null,
+    null
+  ],
+  "column/bill_participants/last_binding_decision": [
+    "pg_catalog",
+    "text",
+    -1,
+    false,
+    "",
+    "",
+    "pg_catalog",
+    "default",
+    null
+  ],
+  "column/bill_participants/last_binding_member_id": [
+    "pg_catalog",
+    "int8",
+    -1,
+    false,
+    "",
+    "",
+    null,
+    null,
+    null
+  ],
+  "column/bill_participants/last_binding_request_revision": [
+    "pg_catalog",
+    "int8",
+    -1,
+    false,
+    "",
+    "",
+    null,
+    null,
+    null
+  ],
+  "column/bill_participants/last_binding_result_revision": [
+    "pg_catalog",
+    "int8",
+    -1,
+    false,
+    "",
+    "",
+    null,
+    null,
+    null
+  ],
+  "column/bill_participants/member_id": [
+    "pg_catalog",
+    "int8",
+    -1,
+    false,
+    "",
+    "",
+    null,
+    null,
+    null
+  ],
+  "column/bill_participants/ordinal": [
+    "pg_catalog",
+    "int8",
+    -1,
+    false,
+    "",
+    "",
+    null,
+    null,
+    null
+  ],
+  "column/bill_participants/pending_member_id": [
+    "pg_catalog",
+    "int8",
+    -1,
+    false,
+    "",
+    "",
+    null,
+    null,
+    null
+  ],
+  "column/bill_participants/pending_request_revision": [
+    "pg_catalog",
+    "int8",
+    -1,
+    false,
+    "",
+    "",
+    null,
+    null,
+    null
+  ],
+  "column/bill_participants/requested_at": [
+    "pg_catalog",
+    "timestamptz",
+    -1,
+    false,
+    "",
+    "",
+    null,
+    null,
+    null
+  ],
+  "column/bill_participants/tab_id": [
+    "pg_catalog",
+    "int8",
+    -1,
+    false,
+    "",
+    "",
+    null,
+    null,
+    null
+  ],
+  "column/bills/creation_response": [
+    "pg_catalog",
+    "bytea",
+    -1,
+    false,
+    "",
+    "",
+    null,
+    null,
+    null
+  ],
+  "column/bills/creation_response_version": [
+    "pg_catalog",
+    "int2",
+    -1,
+    false,
+    "",
+    "",
+    null,
+    null,
+    null
+  ],
+  "column/bills/identity_revision": [
+    "pg_catalog",
+    "int8",
+    -1,
+    true,
+    "",
+    "",
+    null,
+    null,
+    "0"
+  ],
+  "column/bills/identity_state": [
+    "pg_catalog",
+    "text",
+    -1,
+    true,
+    "",
+    "",
+    "pg_catalog",
+    "default",
+    "'legacy_review'::text"
+  ],
+  "column/bills/identity_version": [
+    "pg_catalog",
+    "int2",
+    -1,
+    true,
+    "",
+    "",
+    null,
+    null,
+    "1"
+  ],
+  "column/item_assignments/bill_id": [
+    "pg_catalog",
+    "int8",
+    -1,
+    false,
+    "",
+    "",
+    null,
+    null,
+    null
+  ],
+  "column/item_assignments/identity_version": [
+    "pg_catalog",
+    "int2",
+    -1,
+    true,
+    "",
+    "",
+    null,
+    null,
+    "1"
+  ],
+  "column/item_assignments/participant_id": [
+    "pg_catalog",
+    "int8",
+    -1,
+    false,
+    "",
+    "",
+    null,
+    null,
+    null
+  ],
+  "column/person_shares/identity_version": [
+    "pg_catalog",
+    "int2",
+    -1,
+    true,
+    "",
+    "",
+    null,
+    null,
+    "1"
+  ],
+  "column/person_shares/participant_id": [
+    "pg_catalog",
+    "int8",
+    -1,
+    false,
+    "",
+    "",
+    null,
+    null,
+    null
+  ],
+  "column/tab_settlements/member_id": [
+    "pg_catalog",
+    "int8",
+    -1,
+    false,
+    "",
+    "",
+    null,
+    null,
+    null
+  ],
+  "column/tab_settlements/participant_id": [
+    "pg_catalog",
+    "int8",
+    -1,
+    false,
+    "",
+    "",
+    null,
+    null,
+    null
+  ],
+  "column/tab_settlements/snapshot_version": [
+    "pg_catalog",
+    "int2",
+    -1,
+    true,
+    "",
+    "",
+    null,
+    null,
+    "1"
+  ],
+  "constraint/bill_items/bill_items_id_bill_unique": [
+    "u",
+    false,
+    false,
+    true,
+    [
+      "id",
+      "bill_id"
+    ],
+    null,
+    null,
+    [],
+    " ",
+    " ",
+    " ",
+    true,
+    null
+  ],
+  "constraint/bill_participants/bill_participants_approver_tab_fk": [
+    "f",
+    false,
+    false,
+    true,
+    [
+      "approved_by_member_id",
+      "tab_id"
+    ],
+    "tab_members",
+    true,
+    [
+      "id",
+      "tab_id"
+    ],
+    "r",
+    "r",
+    "s",
+    true,
+    null
+  ],
+  "constraint/bill_participants/bill_participants_authority_scope": [
+    "c",
+    false,
+    false,
+    true,
+    [
+      "member_id",
+      "pending_member_id",
+      "approved_by_member_id",
+      "approval_kind",
+      "requested_at",
+      "approved_at",
+      "pending_request_revision",
+      "last_binding_member_id",
+      "last_binding_request_revision",
+      "last_binding_decision",
+      "last_binding_actor_member_id",
+      "last_binding_actor_kind",
+      "last_binding_result_revision",
+      "last_binding_decided_at",
+      "identity_version",
+      "tab_id"
+    ],
+    null,
+    null,
+    [],
+    " ",
+    " ",
+    " ",
+    false,
+    "((((member_id IS NULL) AND (pending_member_id IS NULL) AND (approved_by_member_id IS NULL) AND (approval_kind IS NULL) AND (requested_at IS NULL) AND (approved_at IS NULL) AND (pending_request_revision IS NULL) AND (last_binding_member_id IS NULL) AND (last_binding_request_revision IS NULL) AND (last_binding_decision IS NULL) AND (last_binding_actor_member_id IS NULL) AND (last_binding_actor_kind IS NULL) AND (last_binding_result_revision IS NULL) AND (last_binding_decided_at IS NULL)) OR ((identity_version = 2) AND (tab_id IS NOT NULL))) IS TRUE)"
+  ],
+  "constraint/bill_participants/bill_participants_bill_tab_fk": [
+    "f",
+    false,
+    false,
+    true,
+    [
+      "bill_id",
+      "tab_id"
+    ],
+    "bills",
+    true,
+    [
+      "id",
+      "tab_id"
+    ],
+    "r",
+    "r",
+    "s",
+    true,
+    null
+  ],
+  "constraint/bill_participants/bill_participants_binding_shape": [
+    "c",
+    false,
+    false,
+    true,
+    [
+      "member_id",
+      "approved_by_member_id",
+      "approval_kind",
+      "approved_at",
+      "pending_member_id",
+      "requested_at",
+      "pending_request_revision"
+    ],
+    null,
+    null,
+    [],
+    " ",
+    " ",
+    " ",
+    false,
+    "((((member_id IS NULL) AND (approved_by_member_id IS NULL) AND (approval_kind IS NULL) AND (approved_at IS NULL)) OR ((member_id IS NOT NULL) AND (approved_by_member_id IS NOT NULL) AND (approval_kind IS NOT NULL) AND (approval_kind = ANY (ARRAY['creator'::text, 'source'::text])) AND (approved_at IS NOT NULL) AND (pending_member_id IS NULL) AND (requested_at IS NULL) AND (pending_request_revision IS NULL))) IS TRUE)"
+  ],
+  "constraint/bill_participants/bill_participants_client_ref_shape": [
+    "c",
+    false,
+    false,
+    true,
+    [
+      "client_ref"
+    ],
+    null,
+    null,
+    [],
+    " ",
+    " ",
+    " ",
+    false,
+    "((client_ref IS NULL) OR (((client_ref)::text COLLATE \"C\") ~ '^[A-Za-z0-9_-]{1,64}$'::text))"
+  ],
+  "constraint/bill_participants/bill_participants_id_bill_unique": [
+    "u",
+    false,
+    false,
+    true,
+    [
+      "id",
+      "bill_id"
+    ],
+    null,
+    null,
+    [],
+    " ",
+    " ",
+    " ",
+    true,
+    null
+  ],
+  "constraint/bill_participants/bill_participants_id_tab_unique": [
+    "u",
+    false,
+    false,
+    true,
+    [
+      "id",
+      "tab_id"
+    ],
+    null,
+    null,
+    [],
+    " ",
+    " ",
+    " ",
+    true,
+    null
+  ],
+  "constraint/bill_participants/bill_participants_id_unique": [
+    "u",
+    false,
+    false,
+    true,
+    [
+      "id"
+    ],
+    null,
+    null,
+    [],
+    " ",
+    " ",
+    " ",
+    true,
+    null
+  ],
+  "constraint/bill_participants/bill_participants_identity_shape": [
+    "c",
+    false,
+    false,
+    true,
+    [
+      "identity_version",
+      "ordinal",
+      "label",
+      "allocation_label"
+    ],
+    null,
+    null,
+    [],
+    " ",
+    " ",
+    " ",
+    false,
+    "(((identity_version = 1) OR ((identity_version = 2) AND (ordinal IS NOT NULL) AND (ordinal \u003e= 0) AND (char_length(label) \u003c= 30) AND (char_length(allocation_label) \u003c= 30))) IS TRUE)"
+  ],
+  "constraint/bill_participants/bill_participants_member_tab_fk": [
+    "f",
+    false,
+    false,
+    true,
+    [
+      "member_id",
+      "tab_id"
+    ],
+    "tab_members",
+    true,
+    [
+      "id",
+      "tab_id"
+    ],
+    "r",
+    "r",
+    "s",
+    true,
+    null
+  ],
+  "constraint/bill_participants/bill_participants_pending_shape": [
+    "c",
+    false,
+    false,
+    true,
+    [
+      "pending_member_id",
+      "requested_at",
+      "pending_request_revision"
+    ],
+    null,
+    null,
+    [],
+    " ",
+    " ",
+    " ",
+    false,
+    "((((pending_member_id IS NULL) AND (requested_at IS NULL) AND (pending_request_revision IS NULL)) OR ((pending_member_id IS NOT NULL) AND (requested_at IS NOT NULL) AND (pending_request_revision IS NOT NULL) AND (pending_request_revision \u003e 0))) IS TRUE)"
+  ],
+  "constraint/bill_participants/bill_participants_pending_tab_fk": [
+    "f",
+    false,
+    false,
+    true,
+    [
+      "pending_member_id",
+      "tab_id"
+    ],
+    "tab_members",
+    true,
+    [
+      "id",
+      "tab_id"
+    ],
+    "r",
+    "r",
+    "s",
+    true,
+    null
+  ],
+  "constraint/bill_participants/bill_participants_receipt_actor_tab_fk": [
+    "f",
+    false,
+    false,
+    true,
+    [
+      "last_binding_actor_member_id",
+      "tab_id"
+    ],
+    "tab_members",
+    true,
+    [
+      "id",
+      "tab_id"
+    ],
+    "r",
+    "r",
+    "s",
+    true,
+    null
+  ],
+  "constraint/bill_participants/bill_participants_receipt_member_tab_fk": [
+    "f",
+    false,
+    false,
+    true,
+    [
+      "last_binding_member_id",
+      "tab_id"
+    ],
+    "tab_members",
+    true,
+    [
+      "id",
+      "tab_id"
+    ],
+    "r",
+    "r",
+    "s",
+    true,
+    null
+  ],
+  "constraint/bill_participants/bill_participants_receipt_shape": [
+    "c",
+    false,
+    false,
+    true,
+    [
+      "last_binding_member_id",
+      "last_binding_request_revision",
+      "last_binding_decision",
+      "last_binding_actor_member_id",
+      "last_binding_actor_kind",
+      "last_binding_result_revision",
+      "last_binding_decided_at"
+    ],
+    null,
+    null,
+    [],
+    " ",
+    " ",
+    " ",
+    false,
+    "((((last_binding_member_id IS NULL) AND (last_binding_request_revision IS NULL) AND (last_binding_decision IS NULL) AND (last_binding_actor_member_id IS NULL) AND (last_binding_actor_kind IS NULL) AND (last_binding_result_revision IS NULL) AND (last_binding_decided_at IS NULL)) OR ((last_binding_member_id IS NOT NULL) AND (last_binding_request_revision IS NOT NULL) AND (last_binding_request_revision \u003e 0) AND (last_binding_decision IS NOT NULL) AND (last_binding_decision = ANY (ARRAY['approve'::text, 'reject'::text])) AND (last_binding_actor_member_id IS NOT NULL) AND (last_binding_actor_kind IS NOT NULL) AND (last_binding_actor_kind = ANY (ARRAY['creator'::text, 'source'::text])) AND (last_binding_result_revision IS NOT NULL) AND (last_binding_result_revision \u003e last_binding_request_revision) AND (last_binding_decided_at IS NOT NULL))) IS TRUE)"
+  ],
+  "constraint/bills/bills_creation_response_shape": [
+    "c",
+    false,
+    false,
+    true,
+    [
+      "creation_response_version",
+      "creation_response"
+    ],
+    null,
+    null,
+    [],
+    " ",
+    " ",
+    " ",
+    false,
+    "((((creation_response_version IS NULL) AND (creation_response IS NULL)) OR ((creation_response_version IS NOT NULL) AND (creation_response_version = 2) AND (creation_response IS NOT NULL) AND ((octet_length(creation_response) \u003e= 1) AND (octet_length(creation_response) \u003c= 65536)))) IS TRUE)"
+  ],
+  "constraint/bills/bills_id_tab_unique": [
+    "u",
+    false,
+    false,
+    true,
+    [
+      "id",
+      "tab_id"
+    ],
+    null,
+    null,
+    [],
+    " ",
+    " ",
+    " ",
+    true,
+    null
+  ],
+  "constraint/bills/bills_identity_revision": [
+    "c",
+    false,
+    false,
+    true,
+    [
+      "identity_revision"
+    ],
+    null,
+    null,
+    [],
+    " ",
+    " ",
+    " ",
+    false,
+    "(identity_revision \u003e= 0)"
+  ],
+  "constraint/bills/bills_identity_shape": [
+    "c",
+    false,
+    false,
+    true,
+    [
+      "identity_version",
+      "identity_state"
+    ],
+    null,
+    null,
+    [],
+    " ",
+    " ",
+    " ",
+    false,
+    "((((identity_version = 1) AND (identity_state = 'legacy_review'::text)) OR ((identity_version = 2) AND (identity_state = 'ready'::text))) IS TRUE)"
+  ],
+  "constraint/item_assignments/item_assignments_identity_shape": [
+    "c",
+    false,
+    false,
+    true,
+    [
+      "identity_version",
+      "participant_id",
+      "bill_id"
+    ],
+    null,
+    null,
+    [],
+    " ",
+    " ",
+    " ",
+    false,
+    "((((identity_version = 1) AND (participant_id IS NULL)) OR ((identity_version = 2) AND (participant_id IS NOT NULL) AND (bill_id IS NOT NULL))) IS TRUE)"
+  ],
+  "constraint/item_assignments/item_assignments_item_bill_fk": [
+    "f",
+    false,
+    false,
+    true,
+    [
+      "bill_item_id",
+      "bill_id"
+    ],
+    "bill_items",
+    true,
+    [
+      "id",
+      "bill_id"
+    ],
+    "r",
+    "r",
+    "s",
+    true,
+    null
+  ],
+  "constraint/item_assignments/item_assignments_participant_bill_fk": [
+    "f",
+    false,
+    false,
+    true,
+    [
+      "participant_id",
+      "bill_id"
+    ],
+    "bill_participants",
+    true,
+    [
+      "id",
+      "bill_id"
+    ],
+    "r",
+    "r",
+    "s",
+    true,
+    null
+  ],
+  "constraint/person_shares/person_shares_identity_shape": [
+    "c",
+    false,
+    false,
+    true,
+    [
+      "identity_version",
+      "participant_id"
+    ],
+    null,
+    null,
+    [],
+    " ",
+    " ",
+    " ",
+    false,
+    "((((identity_version = 1) AND (participant_id IS NULL)) OR ((identity_version = 2) AND (participant_id IS NOT NULL))) IS TRUE)"
+  ],
+  "constraint/person_shares/person_shares_participant_bill_fk": [
+    "f",
+    false,
+    false,
+    true,
+    [
+      "participant_id",
+      "bill_id"
+    ],
+    "bill_participants",
+    true,
+    [
+      "id",
+      "bill_id"
+    ],
+    "r",
+    "r",
+    "s",
+    true,
+    null
+  ],
+  "constraint/tab_members/tab_members_id_tab_unique": [
+    "u",
+    false,
+    false,
+    true,
+    [
+      "id",
+      "tab_id"
+    ],
+    null,
+    null,
+    [],
+    " ",
+    " ",
+    " ",
+    true,
+    null
+  ],
+  "constraint/tab_settlements/tab_settlements_identity_shape": [
+    "c",
+    false,
+    false,
+    true,
+    [
+      "snapshot_version",
+      "member_id",
+      "participant_id"
+    ],
+    null,
+    null,
+    [],
+    " ",
+    " ",
+    " ",
+    false,
+    "((((snapshot_version = 1) AND (member_id IS NULL) AND (participant_id IS NULL)) OR ((snapshot_version = 2) AND (((member_id IS NOT NULL) AND (participant_id IS NULL)) OR ((member_id IS NULL) AND (participant_id IS NOT NULL))))) IS TRUE)"
+  ],
+  "constraint/tab_settlements/tab_settlements_member_tab_fk": [
+    "f",
+    false,
+    false,
+    true,
+    [
+      "member_id",
+      "tab_id"
+    ],
+    "tab_members",
+    true,
+    [
+      "id",
+      "tab_id"
+    ],
+    "r",
+    "r",
+    "s",
+    true,
+    null
+  ],
+  "constraint/tab_settlements/tab_settlements_participant_tab_fk": [
+    "f",
+    false,
+    false,
+    true,
+    [
+      "participant_id",
+      "tab_id"
+    ],
+    "bill_participants",
+    true,
+    [
+      "id",
+      "tab_id"
+    ],
+    "r",
+    "r",
+    "s",
+    true,
+    null
+  ],
+  "index/bill_items/bill_items_id_bill_unique": [
+    "btree",
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    false,
+    2,
+    [
+      "id",
+      "bill_id"
+    ],
+    "0 0",
+    [
+      "pg_catalog.int8_ops",
+      "pg_catalog.int8_ops"
+    ],
+    [
+      null,
+      null
+    ],
+    null,
+    null
+  ],
+  "index/bill_participants/bill_participants_id_bill_unique": [
+    "btree",
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    false,
+    2,
+    [
+      "id",
+      "bill_id"
+    ],
+    "0 0",
+    [
+      "pg_catalog.int8_ops",
+      "pg_catalog.int8_ops"
+    ],
+    [
+      null,
+      null
+    ],
+    null,
+    null
+  ],
+  "index/bill_participants/bill_participants_id_tab_unique": [
+    "btree",
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    false,
+    2,
+    [
+      "id",
+      "tab_id"
+    ],
+    "0 0",
+    [
+      "pg_catalog.int8_ops",
+      "pg_catalog.int8_ops"
+    ],
+    [
+      null,
+      null
+    ],
+    null,
+    null
+  ],
+  "index/bill_participants/bill_participants_id_unique": [
+    "btree",
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    false,
+    1,
+    [
+      "id"
+    ],
+    "0",
+    [
+      "pg_catalog.int8_ops"
+    ],
+    [
+      null
+    ],
+    null,
+    null
+  ],
+  "index/bill_participants/idx_bill_participants_approver_tab": [
+    "btree",
+    false,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    false,
+    2,
+    [
+      "approved_by_member_id",
+      "tab_id"
+    ],
+    "0 0",
+    [
+      "pg_catalog.int8_ops",
+      "pg_catalog.int8_ops"
+    ],
+    [
+      null,
+      null
+    ],
+    null,
+    null
+  ],
+  "index/bill_participants/idx_bill_participants_bill_tab": [
+    "btree",
+    false,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    false,
+    2,
+    [
+      "bill_id",
+      "tab_id"
+    ],
+    "0 0",
+    [
+      "pg_catalog.int8_ops",
+      "pg_catalog.int8_ops"
+    ],
+    [
+      null,
+      null
+    ],
+    null,
+    null
+  ],
+  "index/bill_participants/idx_bill_participants_client_ref": [
+    "btree",
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    false,
+    2,
+    [
+      "bill_id",
+      "client_ref"
+    ],
+    "0 0",
+    [
+      "pg_catalog.int8_ops",
+      "pg_catalog.text_ops"
+    ],
+    [
+      null,
+      "pg_catalog.default"
+    ],
+    null,
+    "(client_ref IS NOT NULL)"
+  ],
+  "index/bill_participants/idx_bill_participants_member": [
+    "btree",
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    false,
+    2,
+    [
+      "bill_id",
+      "member_id"
+    ],
+    "0 0",
+    [
+      "pg_catalog.int8_ops",
+      "pg_catalog.int8_ops"
+    ],
+    [
+      null,
+      null
+    ],
+    null,
+    "(member_id IS NOT NULL)"
+  ],
+  "index/bill_participants/idx_bill_participants_member_tab": [
+    "btree",
+    false,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    false,
+    2,
+    [
+      "member_id",
+      "tab_id"
+    ],
+    "0 0",
+    [
+      "pg_catalog.int8_ops",
+      "pg_catalog.int8_ops"
+    ],
+    [
+      null,
+      null
+    ],
+    null,
+    null
+  ],
+  "index/bill_participants/idx_bill_participants_ordinal": [
+    "btree",
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    false,
+    2,
+    [
+      "bill_id",
+      "ordinal"
+    ],
+    "0 0",
+    [
+      "pg_catalog.int8_ops",
+      "pg_catalog.int8_ops"
+    ],
+    [
+      null,
+      null
+    ],
+    null,
+    "(ordinal IS NOT NULL)"
+  ],
+  "index/bill_participants/idx_bill_participants_pending": [
+    "btree",
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    false,
+    2,
+    [
+      "bill_id",
+      "pending_member_id"
+    ],
+    "0 0",
+    [
+      "pg_catalog.int8_ops",
+      "pg_catalog.int8_ops"
+    ],
+    [
+      null,
+      null
+    ],
+    null,
+    "(pending_member_id IS NOT NULL)"
+  ],
+  "index/bill_participants/idx_bill_participants_pending_tab": [
+    "btree",
+    false,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    false,
+    2,
+    [
+      "pending_member_id",
+      "tab_id"
+    ],
+    "0 0",
+    [
+      "pg_catalog.int8_ops",
+      "pg_catalog.int8_ops"
+    ],
+    [
+      null,
+      null
+    ],
+    null,
+    null
+  ],
+  "index/bill_participants/idx_bill_participants_receipt_actor_tab": [
+    "btree",
+    false,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    false,
+    2,
+    [
+      "last_binding_actor_member_id",
+      "tab_id"
+    ],
+    "0 0",
+    [
+      "pg_catalog.int8_ops",
+      "pg_catalog.int8_ops"
+    ],
+    [
+      null,
+      null
+    ],
+    null,
+    null
+  ],
+  "index/bill_participants/idx_bill_participants_receipt_member_tab": [
+    "btree",
+    false,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    false,
+    2,
+    [
+      "last_binding_member_id",
+      "tab_id"
+    ],
+    "0 0",
+    [
+      "pg_catalog.int8_ops",
+      "pg_catalog.int8_ops"
+    ],
+    [
+      null,
+      null
+    ],
+    null,
+    null
+  ],
+  "index/bills/bills_id_tab_unique": [
+    "btree",
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    false,
+    2,
+    [
+      "id",
+      "tab_id"
+    ],
+    "0 0",
+    [
+      "pg_catalog.int8_ops",
+      "pg_catalog.int8_ops"
+    ],
+    [
+      null,
+      null
+    ],
+    null,
+    null
+  ],
+  "index/item_assignments/idx_item_assignments_item_bill": [
+    "btree",
+    false,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    false,
+    2,
+    [
+      "bill_item_id",
+      "bill_id"
+    ],
+    "0 0",
+    [
+      "pg_catalog.int8_ops",
+      "pg_catalog.int8_ops"
+    ],
+    [
+      null,
+      null
+    ],
+    null,
+    null
+  ],
+  "index/item_assignments/idx_item_assignments_participant": [
+    "btree",
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    false,
+    2,
+    [
+      "bill_item_id",
+      "participant_id"
+    ],
+    "0 0",
+    [
+      "pg_catalog.int8_ops",
+      "pg_catalog.int8_ops"
+    ],
+    [
+      null,
+      null
+    ],
+    null,
+    "(participant_id IS NOT NULL)"
+  ],
+  "index/item_assignments/idx_item_assignments_participant_bill": [
+    "btree",
+    false,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    false,
+    2,
+    [
+      "participant_id",
+      "bill_id"
+    ],
+    "0 0",
+    [
+      "pg_catalog.int8_ops",
+      "pg_catalog.int8_ops"
+    ],
+    [
+      null,
+      null
+    ],
+    null,
+    null
+  ],
+  "index/person_shares/idx_person_shares_participant": [
+    "btree",
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    false,
+    2,
+    [
+      "bill_id",
+      "participant_id"
+    ],
+    "0 0",
+    [
+      "pg_catalog.int8_ops",
+      "pg_catalog.int8_ops"
+    ],
+    [
+      null,
+      null
+    ],
+    null,
+    "(participant_id IS NOT NULL)"
+  ],
+  "index/person_shares/idx_person_shares_participant_bill": [
+    "btree",
+    false,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    false,
+    2,
+    [
+      "participant_id",
+      "bill_id"
+    ],
+    "0 0",
+    [
+      "pg_catalog.int8_ops",
+      "pg_catalog.int8_ops"
+    ],
+    [
+      null,
+      null
+    ],
+    null,
+    null
+  ],
+  "index/tab_members/tab_members_id_tab_unique": [
+    "btree",
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    false,
+    2,
+    [
+      "id",
+      "tab_id"
+    ],
+    "0 0",
+    [
+      "pg_catalog.int8_ops",
+      "pg_catalog.int8_ops"
+    ],
+    [
+      null,
+      null
+    ],
+    null,
+    null
+  ],
+  "index/tab_settlements/idx_tab_settlements_member": [
+    "btree",
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    false,
+    2,
+    [
+      "tab_id",
+      "member_id"
+    ],
+    "0 0",
+    [
+      "pg_catalog.int8_ops",
+      "pg_catalog.int8_ops"
+    ],
+    [
+      null,
+      null
+    ],
+    null,
+    "((snapshot_version = 2) AND (member_id IS NOT NULL))"
+  ],
+  "index/tab_settlements/idx_tab_settlements_member_tab": [
+    "btree",
+    false,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    false,
+    2,
+    [
+      "member_id",
+      "tab_id"
+    ],
+    "0 0",
+    [
+      "pg_catalog.int8_ops",
+      "pg_catalog.int8_ops"
+    ],
+    [
+      null,
+      null
+    ],
+    null,
+    null
+  ],
+  "index/tab_settlements/idx_tab_settlements_participant": [
+    "btree",
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    false,
+    2,
+    [
+      "tab_id",
+      "participant_id"
+    ],
+    "0 0",
+    [
+      "pg_catalog.int8_ops",
+      "pg_catalog.int8_ops"
+    ],
+    [
+      null,
+      null
+    ],
+    null,
+    "((snapshot_version = 2) AND (participant_id IS NOT NULL))"
+  ],
+  "index/tab_settlements/idx_tab_settlements_participant_tab": [
+    "btree",
+    false,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    false,
+    2,
+    [
+      "participant_id",
+      "tab_id"
+    ],
+    "0 0",
+    [
+      "pg_catalog.int8_ops",
+      "pg_catalog.int8_ops"
+    ],
+    [
+      null,
+      null
+    ],
+    null,
+    null
+  ],
+  "relation/bill_participants_id_seq": [
+    "S",
+    "p",
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false
+  ],
+  "sequence/bill_participants_id_seq": [
+    "int8",
+    1,
+    1,
+    9223372036854775807,
+    1,
+    1,
+    false,
+    "bill_participants",
+    true,
+    "id",
+    "a"
+  ]
+}

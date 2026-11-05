@@ -18,6 +18,9 @@ var baselineSQL string
 //go:embed 0002_receipt_replay_display.sql
 var receiptSQL string
 
+//go:embed 0003_participant_identity.sql
+var identitySQL string
+
 // Step is a frozen migration payload; append versions instead of editing one.
 type Step struct {
 	ValidationChecksum string
@@ -33,6 +36,7 @@ func Registry() ([]Step, error) {
 	steps := []Step{
 		{Version: 1, Name: "0001_baseline.sql", Checksum: "d46084b1caae072be155d7e38c71eba986774853e7d004b08d19daa411992f55", ValidationChecksum: recognizerChecksum, Epoch: CompatibilityEpoch, SQL: baselineSQL},
 		{Version: 2, Name: "0002_receipt_replay_display.sql", Checksum: receiptSQLChecksum, ValidationChecksum: receiptRecognizerChecksum, Epoch: CompatibilityEpoch, SQL: receiptSQL},
+		{Version: 3, Name: "0003_participant_identity.sql", Checksum: identitySQLChecksum, ValidationChecksum: identityRecognizerChecksum, Epoch: CompatibilityEpoch, SQL: identitySQL},
 	}
 	if err := validateRegistry(steps); err != nil {
 		return nil, err

@@ -120,8 +120,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** minor
 - **Assignee:** Victor Ivanov
 - **Status:** shipped-pending-migration
-- **Implementation:** Immutable0001/frozen v1 and atomic schema-scoped startup/readiness retain history and retire payer backfill. Checksummed v2 rejects related inheritance/ineffective FK enforcement. Independent correction APPROVE at13be27b; fresh committed driver Go gate atfb6b4b9 passes. Production adoption/integrated acceptance unverified.
-- **Docs:** README.md; backend/README.md; docs/technical-overview.md; docs/backend-api.md; VERIFICATION.md; docs/reviews/2026-11-03-migration-readiness.md; docs/reviews/2026-11-03-catalog-safety.md; docs/reviews/2026-11-03-local-workflow.md
+- **Implementation:** Frozen0001/v1, ledger/safety-v2 and receipt0002 bytes retained. Foundation0003 adds90 pinned PG17 definitions, structural-only IDs/labels/ordinals and scoped NULL-safe receipts; defaults1/review, no wire/auth exposure. Full race908/1189 leaves,1614 distinct; restarted old4/4 pass, warm reads4/4 RED (0A000 control). independent/root source acceptance and production/integrated adoption pending; BUG4505 OPEN.
+- **Docs:** backend/README.md; docs/technical-overview.md; docs/backend-api.md; VERIFICATION.md; docs/backend-replay-verification.md; docs/reviews/2026-11-05-identity-foundation.md; earlier migration/catalog/local-workflow notes unchanged
 - **Log:**
   - 2026-11-03 Review:13be27b correction APPROVE/zero findings; frozen v1/history unchanged. Earlier failures/controls retained in catalog-safety note.
   - 2026-11-03 Verification: Driver clean committed fb6b4b9:414 default/545 tagged leaves,623 distinct;0 failures/skips. Full provenance and remaining gates in local-workflow note.

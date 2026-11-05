@@ -46,6 +46,15 @@ func apply(t *testing.T, db *sql.DB) *State {
 func frozenLegacy(t *testing.T, db *sql.DB) { t.Helper(); execSQL(t, db, legacySQL) }
 func snapshot(t *testing.T, db *sql.DB) string {
 	t.Helper()
+	// Compare every original value. New migration metadata is verified separately;
+	// participant structural IDs must not replace the original composite key.
+	added := map[string]string{
+		"bills":             "'creation_key_digest','creation_fingerprint','creation_fingerprint_version','display_rate_date','display_rate_source','display_rate_retrieved_at','identity_version','identity_state','identity_revision','creation_response_version','creation_response'",
+		"bill_participants": "'id','label','allocation_label','identity_version','ordinal','client_ref','tab_id','member_id','pending_member_id','approved_by_member_id','approval_kind','requested_at','approved_at','pending_request_revision','last_binding_member_id','last_binding_request_revision','last_binding_decision','last_binding_actor_member_id','last_binding_actor_kind','last_binding_result_revision','last_binding_decided_at'",
+		"item_assignments":  "'identity_version','participant_id','bill_id'",
+		"person_shares":     "'identity_version','participant_id'",
+		"tab_settlements":   "'snapshot_version','member_id','participant_id'",
+	}
 	var result []string
 	for _, table := range []string{"tabs", "tab_members", "bills", "bill_items", "people", "bill_participants", "item_assignments", "person_shares", "tab_settlements"} {
 		var b string
@@ -53,7 +62,7 @@ func snapshot(t *testing.T, db *sql.DB) string {
 			result = append(result, "absent")
 			continue
 		}
-		if err := db.QueryRow(`SELECT COALESCE(jsonb_agg((to_jsonb(x)-ARRAY['creation_key_digest','creation_fingerprint','creation_fingerprint_version','display_rate_date','display_rate_source','display_rate_retrieved_at']) ORDER BY to_jsonb(x)::text),'[]')::text FROM ` + table + ` x`).Scan(&b); err != nil {
+		if err := db.QueryRow(`SELECT COALESCE(jsonb_agg(value ORDER BY value::text),'[]')::text FROM (SELECT to_jsonb(x)-ARRAY[` + added[table] + `]::text[] AS value FROM ` + table + ` x) original`).Scan(&b); err != nil {
 			t.Fatal(err)
 		}
 		result = append(result, b)
@@ -124,7 +133,7 @@ func TestPostgresFreshAndLegacyPreservation(t *testing.T) {
 			}
 			var after string
 			db.QueryRow("SELECT applied_at::text FROM schema_migrations WHERE version=1").Scan(&after)
-			if before != snapshot(t, db) || applied != after || scalar(t, db, "SELECT count(*) FROM schema_migrations") != 2 {
+			if before != snapshot(t, db) || applied != after || scalar(t, db, "SELECT count(*) FROM schema_migrations") != 3 {
 				t.Fatal("adoption/repeat changed history or frozen data")
 			}
 			if scalar(t, db, "SELECT last_value FROM bills_id_seq") != 501 {
@@ -231,9 +240,9 @@ func TestPostgresHistoryAndCompatibility(t *testing.T) {
 		"epoch":               "UPDATE schema_migrations SET compatibility_epoch=2",
 		"name":                "UPDATE schema_migrations SET name='0001_other.sql' WHERE version=1",
 		"missing":             "DELETE FROM schema_migrations",
-		"gap":                 "INSERT INTO schema_migrations VALUES(4,'0004_later.sql',repeat('a',64),repeat('b',64),1,now())",
-		"later_epoch":         "INSERT INTO schema_migrations VALUES(3,'0003_later.sql',repeat('a',64),repeat('b',64),2,now())",
-		"later_name":          "INSERT INTO schema_migrations VALUES(3,'garbage',repeat('a',64),repeat('b',64),1,now())",
+		"gap":                 "INSERT INTO schema_migrations VALUES(5,'0005_later.sql',repeat('a',64),repeat('b',64),1,now())",
+		"later_epoch":         "INSERT INTO schema_migrations VALUES(4,'0004_later.sql',repeat('a',64),repeat('b',64),2,now())",
+		"later_name":          "INSERT INTO schema_migrations VALUES(4,'garbage',repeat('a',64),repeat('b',64),1,now())",
 		"ledger_definition":   "ALTER TABLE schema_migrations DROP CONSTRAINT schema_migrations_pkey",
 		"baseline_definition": "ALTER TABLE bills ALTER COLUMN total DROP NOT NULL",
 	}
@@ -257,7 +266,7 @@ func TestPostgresHistoryAndCompatibility(t *testing.T) {
 	t.Run("compatible_additive_prefix", func(t *testing.T) {
 		db := testpostgres.Open(t)
 		s := apply(t, db)
-		execSQL(t, db, "ALTER TABLE bills ADD COLUMN future_receipt_metadata text;INSERT INTO schema_migrations VALUES(3,'0003_future.sql',repeat('a',64),repeat('b',64),1,now())")
+		execSQL(t, db, "ALTER TABLE bills ADD COLUMN future_receipt_metadata text;INSERT INTO schema_migrations VALUES(4,'0004_future.sql',repeat('a',64),repeat('b',64),1,now())")
 		if _, err := Run(context.Background(), db, Verify); err != nil {
 			t.Fatal(err)
 		}
@@ -265,7 +274,7 @@ func TestPostgresHistoryAndCompatibility(t *testing.T) {
 		if err := s.Check(context.Background()); err != nil {
 			t.Fatal(err)
 		}
-		if scalar(t, db, "SELECT max(version) FROM schema_migrations") != 3 {
+		if scalar(t, db, "SELECT max(version) FROM schema_migrations") != 4 {
 			t.Fatal("older binary downgraded ledger")
 		}
 	})

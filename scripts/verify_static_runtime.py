@@ -265,7 +265,7 @@ def main():
                 record[key + "_runtime"] = json.loads(result.stdout)
                 check(key + "-readonly-config", inspect(name)["HostConfig"]["ReadonlyRootfs"])
 
-            check("fresh-ledger", sql(f'SELECT version FROM "{schema}".schema_migrations ORDER BY version') == "1\n2")
+            check("fresh-ledger", sql(f'SELECT version FROM "{schema}".schema_migrations ORDER BY version') == "1\n2\n3")
             check("public-schema-untouched", sql("SELECT count(*) FROM pg_class WHERE relnamespace='public'::regnamespace AND relkind IN ('r','v','S')") == "0")
             payload = {"name": "Static runtime synthetic receipt", "lazy_mode": False, "subtotal": 12, "tax": 0, "tip_amount": 0, "total": 12,
                        "currency_code": "USD", "display_currency": "USD", "participants": [{"name": "QA"}], "items": [{"name": "Synthetic meal", "price": 12, "assignments": [{"person_name": "QA", "percentage": 100}]}],

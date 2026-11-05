@@ -14,7 +14,7 @@ import (
 
 func pendingSQL(payload string) []Step {
 	steps, _ := Registry()
-	return append(steps, Step{Version: 3, Name: "0003_test_only.sql", ValidationChecksum: receiptRecognizerChecksum, Checksum: checksum(payload), Epoch: CompatibilityEpoch, SQL: payload})
+	return append(steps, Step{Version: 4, Name: "0004_test_only.sql", ValidationChecksum: receiptRecognizerChecksum, Checksum: checksum(payload), Epoch: CompatibilityEpoch, SQL: payload})
 }
 func waitActivity(t *testing.T, db *sql.DB, predicate string) {
 	t.Helper()
@@ -64,7 +64,7 @@ func TestPostgresAtomicPendingFailures(t *testing.T) {
 	for name, sql := range map[string]string{
 		"ddl":    "CREATE TABLE rollback_marker(id bigint);CREATE TABLE bills(id bigint)",
 		"dml":    "CREATE TABLE rollback_marker(id bigint);UPDATE bills SET total=NULL WHERE id=101",
-		"ledger": "CREATE TABLE rollback_marker(id bigint);UPDATE bills SET name='must roll back';ALTER TABLE schema_migrations ADD CONSTRAINT reject_pending CHECK(version<3)",
+		"ledger": "CREATE TABLE rollback_marker(id bigint);UPDATE bills SET name='must roll back';ALTER TABLE schema_migrations ADD CONSTRAINT reject_pending CHECK(version<4)",
 		"commit": "CREATE TABLE rollback_marker(id bigint REFERENCES bills(id) DEFERRABLE INITIALLY DEFERRED);UPDATE bills SET name='must roll back';INSERT INTO rollback_marker VALUES(99999999)",
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -85,7 +85,7 @@ func TestPostgresAtomicPendingFailures(t *testing.T) {
 			if migrationError.stage != expected {
 				t.Fatalf("failure stage %s want %s", migrationError.stage, expected)
 			}
-			if before != snapshot(t, db) || scalar(t, db, "SELECT count(*) FROM schema_migrations") != 2 || scalar(t, db, "SELECT count(*) FROM pg_class WHERE relnamespace=current_schema()::regnamespace AND relname='rollback_marker'") != 0 {
+			if before != snapshot(t, db) || scalar(t, db, "SELECT count(*) FROM schema_migrations") != 3 || scalar(t, db, "SELECT count(*) FROM pg_class WHERE relnamespace=current_schema()::regnamespace AND relname='rollback_marker'") != 0 {
 				t.Fatal("partial DDL/DML/ledger survived rollback")
 			}
 			repaired := pendingSQL("CREATE TABLE rollback_marker(id bigint);UPDATE bills SET name='applied once' WHERE id=101")
@@ -94,7 +94,7 @@ func TestPostgresAtomicPendingFailures(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			if scalar(t, db, "SELECT count(*) FROM schema_migrations WHERE version=3") != 1 {
+			if scalar(t, db, "SELECT count(*) FROM schema_migrations WHERE version=4") != 1 {
 				t.Fatal("retry applied twice")
 			}
 		})
@@ -167,7 +167,7 @@ func TestPostgresConcurrentStartersRereadAfterLock(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if scalar(t, db, "SELECT count(*) FROM schema_migrations") != 2 {
+	if scalar(t, db, "SELECT count(*) FROM schema_migrations") != 3 {
 		t.Fatal("competing starters duplicated history")
 	}
 }
@@ -224,7 +224,7 @@ func TestPostgresInterruptedMigrationReleasesLock(t *testing.T) {
 			}
 			// Retry on another real connection must acquire the released transaction lock.
 			repaired := pendingSQL("CREATE TABLE interruption_marker(id bigint);UPDATE bills SET name='applied once' WHERE id=101")
-			if before != snapshot(t, db) || scalar(t, db, "SELECT count(*) FROM schema_migrations") != 2 || scalar(t, db, "SELECT count(*) FROM pg_class WHERE relnamespace=current_schema()::regnamespace AND relname='interruption_marker'") != 0 {
+			if before != snapshot(t, db) || scalar(t, db, "SELECT count(*) FROM schema_migrations") != 3 || scalar(t, db, "SELECT count(*) FROM pg_class WHERE relnamespace=current_schema()::regnamespace AND relname='interruption_marker'") != 0 {
 				t.Fatal("interrupted transaction leaked writes")
 			}
 			for i := 0; i < 2; i++ {
@@ -232,7 +232,7 @@ func TestPostgresInterruptedMigrationReleasesLock(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			if scalar(t, db, "SELECT count(*) FROM schema_migrations WHERE version=3") != 1 {
+			if scalar(t, db, "SELECT count(*) FROM schema_migrations WHERE version=4") != 1 {
 				t.Fatal("retry applied more than once")
 			}
 		})
@@ -265,11 +265,11 @@ func TestPostgresAllPendingVersionsRollbackTogether(t *testing.T) {
 	before := snapshot(t, db)
 	steps := pendingSQL("CREATE TABLE batch_marker(id bigint);UPDATE bills SET name='must roll back'")
 	payload := "SELECT 1/0"
-	steps = append(steps, Step{Version: 4, Name: "0004_test_only.sql", ValidationChecksum: receiptRecognizerChecksum, Checksum: checksum(payload), Epoch: CompatibilityEpoch, SQL: payload})
+	steps = append(steps, Step{Version: 5, Name: "0005_test_only.sql", ValidationChecksum: receiptRecognizerChecksum, Checksum: checksum(payload), Epoch: CompatibilityEpoch, SQL: payload})
 	if state, err := run(context.Background(), db, Apply, steps); err == nil || state != nil {
 		t.Fatal("failed later step accepted")
 	}
-	if before != snapshot(t, db) || scalar(t, db, "SELECT count(*) FROM schema_migrations") != 2 || scalar(t, db, "SELECT count(*) FROM pg_class WHERE relnamespace=current_schema()::regnamespace AND relname='batch_marker'") != 0 {
+	if before != snapshot(t, db) || scalar(t, db, "SELECT count(*) FROM schema_migrations") != 3 || scalar(t, db, "SELECT count(*) FROM pg_class WHERE relnamespace=current_schema()::regnamespace AND relname='batch_marker'") != 0 {
 		t.Fatal("earlier pending version escaped failed batch")
 	}
 }

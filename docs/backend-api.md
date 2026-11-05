@@ -27,7 +27,11 @@ unvalidated startup; database/driver details never enter the response:
 The retained legacy web service uses the same readiness check and fields, with healthy
 status `web service - ok`. The `--healthcheck` loopback command treats HTTP 503 as failure.
 See [schema startup modes](../backend/README.md#postgresql-schema-startup) for migration-only
-and verify startup behavior. No receipt/quote/payment payload changes are introduced.
+and verify startup behavior. Registry0003 adds only the identity schema foundation:
+application writes remain graph1/`legacy_review`; no identity-version header, new
+JSON field, ready graph or capability2 is exposed. Existing replay capability1 and
+receipt/quote/payment payloads and current authorization behavior are unchanged.
+Reference authority and legacy containment still require separate implementation.
 
 ### `GET /api/app/version-policy`
 

@@ -35,7 +35,7 @@ func TestPostgresReceiptExpansionFromOnePreservesRowOneAndData(t *testing.T) {
 	if err := db.QueryRow("SELECT to_jsonb(m)::text FROM schema_migrations m WHERE version=1").Scan(&after); err != nil {
 		t.Fatal(err)
 	}
-	if row1 != after || before != snapshot(t, db) || scalar(t, db, "SELECT count(*) FROM schema_migrations") != 2 {
+	if row1 != after || before != snapshot(t, db) || scalar(t, db, "SELECT count(*) FROM schema_migrations") != 3 {
 		t.Fatal("expansion rewrote row1/legacy data")
 	}
 	if scalar(t, db, "SELECT count(*) FROM bills WHERE creation_key_digest IS NOT NULL OR creation_fingerprint IS NOT NULL OR creation_fingerprint_version IS NOT NULL OR display_rate_date IS NOT NULL OR display_rate_source IS NOT NULL OR display_rate_retrieved_at IS NOT NULL") != 0 {
@@ -178,7 +178,7 @@ func splitAssignments(s string) []string {
 func TestPostgresReceiptUnknownSuffixDoesNotHideKnownDrift(t *testing.T) {
 	db := testpostgres.Open(t)
 	apply(t, db)
-	execSQL(t, db, fmt.Sprintf("INSERT INTO schema_migrations VALUES(3,'0003_future.sql','%s','%s',1,now())", checksum("future"), checksum("future validation")))
+	execSQL(t, db, fmt.Sprintf("INSERT INTO schema_migrations VALUES(4,'0004_future.sql','%s','%s',1,now())", checksum("future"), checksum("future validation")))
 	execSQL(t, db, "DROP INDEX idx_bills_creation_key_digest")
 	if s, err := Run(context.Background(), db, Verify); s != nil || err == nil {
 		t.Fatal("unknown suffix concealed missing known index")

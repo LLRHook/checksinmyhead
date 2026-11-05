@@ -250,7 +250,7 @@ modes, one-query live readiness, API/authorized HTML, Docker health failure and
 recovery during a paused database. Public HTTPS uses a host-resolved `example.com`
 address injected into the fixture hosts file; the dedicated DNS fixture handles
 synthetic names only. Failed controls stay failures; no selected test skips.
-The fresh-ledger check requires the exact ordered current registry, versions1 and2;
+The fresh-ledger check requires the exact ordered current registry, versions1,2 and3;
 missing or extra versions fail. Append any future registry version and its verifier
 expectation in the same change. This does not relax any runtime timing budget.
 
@@ -262,14 +262,29 @@ deployment or production compatibility with unknown hosting settings.
 
 ## PostgreSQL schema startup
 
-Both maintained binaries apply/verify frozen 0001 and additive 0002 before serving;
+Both maintained binaries apply/verify frozen 0001 and additive 0002/0003 before serving;
 production startup no longer uses GORM AutoMigrate. The SQL and its catalog recognizer
 have independent immutable SHA-256 pins and provenance. Additive 0002 implements receipt replay/display metadata with six nullable columns,
 two CHECKs and one digest unique index. Its SQL, exact PG17 nine-object manifest and
 per-step recognition checksum are independently pinned in receipt provenance; frozen
 0001/catalog-v1/ledger/safety-v2 bytes and row1/applied_at remain unchanged. No backfill
-or default is introduced. Known1/2 prefixes reject arbitrary extras or weak/partial
+or default is introduced. Known1/2/3 prefixes reject arbitrary extras or weak/partial
 additions; compatible contiguous same-epoch unknown suffixes remain supported.
+
+Additive `0003_participant_identity.sql` is a schema foundation, not an identity
+authorization fix. It retains the original join PK/non-null Person FK, adds unique
+bigint participant IDs, scoped references, version/NULL-safe binding receipt checks
+and a separately pinned PG17.11 catalog of 90 additions. A supplemental query captures
+only the new sequence; frozen catalog-v1 still captures existing-table additions.
+Recognition validates/subtracts exact v3, then nine v2 definitions before v1. Structural
+backfill copies exact Person/allocation labels, person-ID order and bill location,
+and assignment bill IDs. It never binds members, fills old child participant refs,
+recalculates money or changes original rows/ledger entries. Long/empty/colliding legacy
+labels and raw settlements remain. Defaults keep existing application writes at
+graph1/`legacy_review`; ready graphs, wire2, capability2, binding/paid/reference behavior
+and client/rollout work are separate. Retained original CASCADE actions still apply;
+new immediate RESTRICT FKs do not override an earlier original cascade trigger.
+See [foundation evidence](../docs/reviews/2026-11-05-identity-foundation.md).
 
 Supplemental startup guard v2 has its own immutable checksum and preserves v1
 ledger digests. It rejects inheritance involving required application/ledger

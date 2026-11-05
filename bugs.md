@@ -561,7 +561,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Docs:** docs/mobile-save-verification.md; docs/reviews/2026-11-04-mobile-save-{corrections,acceptance}.md; mobile/lib/screens/recent_bills/models/recent_bill_manager.dart
 
 ### [BUG-1793852257] Recognize the current ledger in static runtime verification
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** verification, runtime
 - **File(s):** scripts/verify_static_runtime.py; backend/README.md
 - **Observation:** The maintained fresh-ledger predicate requires only version1 although the committed registry applies1,2. An actual final-image campaign stopped at check45 with the valid ledger; a separately approved exact1,2 adapter completed75/75.
@@ -570,6 +570,18 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Compare scripts/verify_static_runtime.py at43aba14 with backend/migrations/registry.go. Retained replay0002 runtime45 failure and75 completion are separate from this source-only correction. No fresh canonical container run is claimed.
 - **Bump:** patch
+- **Status:** fixed-pending-migration
+- **Fix:** Foundation0003 changes only exact ordered ledger1,2 to1,2,3. Fresh canonical75/75 runtime passes on both bound static images under explicit root quiet activation, with acquisition-only read-only compiler cache adapter. Other predicates/timeouts unchanged. Original45 stale-expectation failure and web1.619804s/<1.5 flake retained; earlier canonical1,2 runtime was NOT RUN. Wider gates RED.
+- **Docs:** backend/README.md; VERIFICATION.md; docs/reviews/2026-11-05-identity-foundation.md; exact ledger expectation tracks registry additions.
+
+### [BUG-1793861425] Drain cached readers before additive DDL or preserve stable read projections
+- [ ] **Severity:** high
+- **Area:** backend, persistence, availability
+- **File(s):** backend/internal/bill/repository.go; backend/pkg/database/postgres.go; backend/migrations/0003_participant_identity.sql
+- **Observation:** Four immutable prefix1/2 bill/web binaries read the same HTTP-created graph200 before0003 and500 in warm processes afterDDL; restarted readers pass4/4. A separate same-connection SELECT-star control exposes0A000 afterDDL and succeeds on a fresh connection.
+- **Expected:** Supported migration/read strategy preserves authorized visible fields or proves reader exclusion/connection replacement beforeDDL. No live-overlap or old-writer safety claim from restart success.
+- **Req:** FEAT-1793644505 migration/read compatibility; driver IDENTITY0003_FOUNDATION_COMPATIBILITY_DECISION_20261105.json
+- **Depends on:** none
+- **Repro / Notes:** PG17.11 owned synthetic schemas, exact immutable prefix1/2 archives; raw phase-isolation failures, restarted4/4 and scalar1/1 control in identity0003-foundation-20261105/. HTTP sanitized logs expose unknown database class; scalar0A000 strongly supports mechanism, not direct HTTP error disclosure. Follow up with separately reviewed stable projections/connection strategy and real PG/final-binary proof; no blind mutation retry. See docs/reviews/2026-11-05-identity-foundation.md.
+- **Bump:** patch
 - **Status:** open
-- **Fix:** Apply exactly the prior driver-approved receipt2 expectation to the maintained script, including explicit ordering. Python compilation passes; exact whole-script delta matches the qualified adapter proposal. No other verifier predicate/timeout changes. Full integrated runtime remains pending and historical runtime flake stays RED.
-- **Docs:** backend/README.md static runtime verification; future registry changes update the exact ledger expectation together.
