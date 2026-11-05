@@ -101,7 +101,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Read the three linked Actions runs and gate configs. Preserve exact-commit health validation. Scope exception: one release-gate contract spans existing publishers; separate deployables do not justify independent bypasses.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** PhaseG source722fa9f adds one six-row exact-S/C report gate, named protected publisher contracts, source/schema/capability floors and default-disabled external policy; alternate iOS writes fail closed. Root actual42methods/827records and S4 omission controls pass. Prior23-path review resolves S1/S2/S3/command; focused S4 review pending. PhaseF processed-build promotion, hosted check/settings/credential/old-writer/recovery clearance remain open. No deployment/global pass.
+- **Docs:** ops/ci/README.md; VERIFICATION.md; docs/reviews/2026-11-05-delivery-gate.md
 
 ### [BUG-1793644502] Resolve the three current Next.js security alerts
 - [ ] **Severity:** high
@@ -437,7 +440,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Review mechanical 17 errors/9 warnings as grouped config findings, not 17 product vulnerabilities. Mirror retirement may remove its SSH path.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Source722fa9f pins reviewed action SHAs/SSH host identity, read-only default permissions, bounded jobs and serialized noncancelling publishers. Source mechanical validator0errors/6 retained top-level-concurrency warnings; actual42method/827record contracts pass. Protected jobs carry concurrency; unavailable iOS paths cannot mutate. Hosted enforcement/credential/queue controls and focused post-integration review remain unverified.
+- **Docs:** ops/ci/README.md; VERIFICATION.md; docs/reviews/2026-11-05-delivery-gate.md
 
 ### [BUG-1793652308] Make the Flutter 3.41.5 committed lock reproducible
 - [x] **Severity:** med

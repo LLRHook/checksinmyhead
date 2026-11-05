@@ -189,7 +189,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Test plan:** Existing Ruby release tests and offline workflow/gate validation; inspect processed-build selection without dispatching publication.
 - **Out of scope:** Unrelated redesign, new framework, live destructive operations, unapproved publication.
 - **Bump:** minor
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Implementation:** PhaseG722fa9f binds S/C/all/run/attempt/manifest/reports through exact-source backend/mirror contracts, with documented provider source-build exceptions. All iOS mutation remains unavailable; processed-build/IPA/ASC eligibility promotion and hosted/rollback clearance remain unimplemented/unverified. Root42methods/827records pass; focused S4 re-review pending.
+- **Docs:** ops/ci/README.md; docs/reviews/2026-11-05-delivery-gate.md
 
 ### [FEAT-1793644509] Prepare outcome-focused App Store screenshots
 - [ ] **Priority:** med
