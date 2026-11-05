@@ -82,8 +82,9 @@ kernel/application artifact and result receipts; distinguish app assertions, XCT
 counts, wrapper exit and missing diagnostics. Retain failed attempts.
 
 The retained unsigned attempt reports `errSecMissingEntitlement` (`-34018`): native
-Keychain is **BLOCKED**. Its two passing injected status/error tests and the host/wire
-results do not qualify actual native storage. Root owns any separately bounded next
+Keychain is **BLOCKED**. Its reported2/5 XCTest passes and the host/wire
+results do not qualify actual native storage; lookup failed before one intended
+random-failure seam was reached. Root owns any separately bounded next
 native path. No signing/project-entitlement workaround follows. Simulator proof,
 even if later successful, would not establish physical/signed/default-trust/release
 acceptance. Delete only exact task-owned simulator/schema/process fixtures.
