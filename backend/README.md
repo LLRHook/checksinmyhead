@@ -250,6 +250,9 @@ modes, one-query live readiness, API/authorized HTML, Docker health failure and
 recovery during a paused database. Public HTTPS uses a host-resolved `example.com`
 address injected into the fixture hosts file; the dedicated DNS fixture handles
 synthetic names only. Failed controls stay failures; no selected test skips.
+The fresh-ledger check requires the exact ordered current registry, versions1 and2;
+missing or extra versions fail. Append any future registry version and its verifier
+expectation in the same change. This does not relax any runtime timing budget.
 
 Verify the base's official keyless signature before building; the harness itself
 does not authenticate registry signatures or replace an unsuppressed image scan.

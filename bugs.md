@@ -554,3 +554,17 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** fixed-pending-migration
 - **Fix:** 7bddfa9 replaces five raw persistence-error interpolations with finite labels. Real SQLite rejection:1 intended confidentiality failure/8 healthy before,9 pass after; rows unchanged. Root clean467/510 retains all prior cases/495 sources. Independent Standards0/Spec0 APPROVE; scoped source criterion accepted, whole security/integrated acceptance remains RED.
 - **Docs:** docs/mobile-save-verification.md; docs/reviews/2026-11-04-mobile-save-{corrections,acceptance}.md; mobile/lib/screens/recent_bills/models/recent_bill_manager.dart
+
+### [BUG-1793852257] Recognize the current ledger in static runtime verification
+- [ ] **Severity:** med
+- **Area:** verification, runtime
+- **File(s):** scripts/verify_static_runtime.py; backend/README.md
+- **Observation:** The maintained fresh-ledger predicate requires only version1 although the committed registry applies1,2. An actual final-image campaign stopped at check45 with the valid ledger; a separately approved exact1,2 adapter completed75/75.
+- **Expected:** Fresh-ledger verification selects versions ORDER BY version and requires exactly1,2. Missing/extra versions fail; all remaining predicates, compiler selection, limits and timing budgets remain unchanged.
+- **Req:** FEAT-1793644506 integrated verification; committed migrations registry1,2
+- **Depends on:** none
+- **Repro / Notes:** Compare scripts/verify_static_runtime.py at43aba14 with backend/migrations/registry.go. Retained replay0002 runtime45 failure and75 completion are separate from this source-only correction. No fresh canonical container run is claimed.
+- **Bump:** patch
+- **Status:** open
+- **Fix:** Apply exactly the prior driver-approved receipt2 expectation to the maintained script, including explicit ordering. Python compilation passes; exact whole-script delta matches the qualified adapter proposal. No other verifier predicate/timeout changes. Full integrated runtime remains pending and historical runtime flake stays RED.
+- **Docs:** backend/README.md static runtime verification; future registry changes update the exact ledger expectation together.
