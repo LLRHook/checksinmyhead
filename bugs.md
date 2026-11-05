@@ -5,7 +5,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 ## Open
 
 ### [BUG-1793644497] Require source-bill ownership for tab attachment
-- [ ] **Severity:** crit
+- [x] **Severity:** crit
 - **Area:** backend, security
 - **File(s):** backend/internal/tab/{handler,service,repository}.go; backend/internal/tab/{handler,repository}_test.go
 - **Observation:** The handler permits an empty bill_token; repository AddBill only filters ownership when nonempty. A destination tab token does not authorize the source bill.
@@ -18,11 +18,11 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Read AddBillToTab and AddBill at baseline. Review reproduced synthetic victim receipt/payment disclosure; re-run as a failing regression, never against customer IDs.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
-- **Fix:** Transactional attachment remains implemented: independent source/destination proof, authenticated membership attribution, tab-before-bill locks, stable retries and stale standalone guards. Correction 28eab76 preserves these controls; 316 Go leaf cases and 157 integration-tagged tab leaf cases (16 PostgreSQL-specific), zero failures/skips. docs/reviews/2026-11-02-authorization-corrections.md records scope and proof. Full acceptance remains RED for recorded Flutter locked-acquisition and retained-image findings; independent driver review pending.
-- **Docs:** docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-02-authorization-batch.md; docs/reviews/2026-11-02-authorization-corrections.md
+- **Status:** fixed-pending-migration
+- **Fix:** Source accepted: independent source/destination proof and scoped membership under tab-before-bill locks; no victim disclosure, stale standalone claim or attribution-changing retry. Authorization correction review0/0 and current retained regressions pass in root clean908 ordinary/1189 PG leaves (1614 distinct). Ready for integrated V&V migration only; deployment/public-client acceptance remains separate.
+- **Docs:** docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-02-authorization-corrections.md; docs/reviews/2026-11-05-scoped-source-acceptance.md
 - **Log:**
-  - 2026-11-02 Validation: Approved authorization corrections preserve all attachment controls. Current race/real-PostgreSQL suites have zero skips; 21 task-owned generated schemas removed and shared fixture retained. Source 28eab76; in-progress retained for independent acceptance and separate full-gate blockers.
+  - 2026-11-05 Source acceptance: Driver reconciles completed scoped reviews/current clean committed-source proof; source criteria met, pending integrated V&V migration only. Historical handoffs remain in Git/dated notes. Deployment, public clients and whole acceptance are separate/RED.
 
 ### [BUG-1793644498] Restrict public bill creation to authorized input
 - [ ] **Severity:** crit
@@ -125,7 +125,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-04 Maintenance: Condense inherited oversized tracker through official writer; historical fields remain in Git and dated reports.
 
 ### [BUG-1793644503] Patch the Go build toolchain for GO-2026-6809
-- [ ] **Severity:** high
+- [x] **Severity:** high
 - **Area:** backend, dependencies
 - **File(s):** backend/go.mod; backend/services/bill-service/Dockerfile; backend/services/web-service/Dockerfile; backend/.dockerignore; backend/README.md; docs/reviews/2026-11-02-go-dependency-maintenance.md
 - **Observation:** Module and builder images align on Go 1.27.2, which the review scan reports affected by GO-2026-6809.
@@ -138,16 +138,14 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** https://pkg.go.dev/vuln/GO-2026-6809 ; patch 1.27.3 was identified by review, not a claim of live interception. The old version-alignment chore is shipped; this is the remaining security patch.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
-- **Fix:** Module and both digest-pinned builders select Go 1.27.3 with GOTOOLCHAIN=local; retained Debian 12 runtime is digest-pinned; minimal context exclusions verified using Docker. Build/vet/format, 272 Go leaf cases, 147 tab integration leaf cases (11 PostgreSQL-specific), both linux/amd64 Docker builds and zero-reachable govulncheck pass. Full acceptance remains RED: enforced Flutter lock acquisition fails and Trivy reports retained-image/package findings; no unconditional security/deployment claim.
-- **Docs:** backend/README.md; docs/reviews/2026-11-02-go-dependency-maintenance.md. No API/schema changes; dated historical records, VERIFICATION.md and publication workflows unchanged.
+- **Status:** fixed-pending-migration
+- **Fix:** Source accepted: module and both digest-pinned builders use Go1.27.3/GOTOOLCHAIN=local. Current final static Debian13/nonroot artifacts supersede historical Debian12/libssl findings. Root clean format/build/vet/tagged-vet,908 ordinary/1189 PG leaves and pinned govulncheck pass; zero reported vulnerabilities. Qualified artifact/source/toolchain identities are retained in foundation/static-runtime evidence. Hosted deployment and whole gates remain unverified.
+- **Docs:** backend/README.md; docs/reviews/2026-11-02-go-dependency-maintenance.md; docs/reviews/2026-11-03-static-runtime.md; docs/reviews/2026-11-05-scoped-source-acceptance.md
 - **Log:**
-  - 2026-11-02 Approval: Driver-approved DEPENDENCY_PHASE_APPROVAL.md at f1d62374 permits Go 1.27.3, aligned digest-pinned builders/runtime base, minimal context exclusions and full local compatibility/security checks. Official go.dev feed, advisory and registry identities reverified November 2. No application-module, API, schema, runtime distribution or publication changes.
-  - 2026-11-02 Validation: Local implementation evidence recorded. In-progress retained: locked Flutter acquisition fails twice for four SDK-required entries; both retained images have root/no-healthcheck policy findings plus 1 HIGH/22 MEDIUM/14 LOW/7 UNKNOWN package findings each. Driver proposal: separate four-entry Flutter lock alignment and verified Debian 12 package/non-root follow-up. Independent review, hosting identities and full protocol remain pending; no new finding waived or source/publication gate closed.
-  - 2026-11-02 Follow-up: Approved RUNTIME_LOCK_APPROVAL.md follow-ups: BUG-1793652308 owns Flutter lock reproducibility; BUG-1793652309 owns Debian13 base-nossl/nonroot/probe repair, superseding the earlier Debian12 hold after verified deprecation. GO-2026-6809 remains the distinct Go standard-library advisory. See docs/reviews/2026-11-02-go-dependency-maintenance.md and DEPENDENCY_REVIEW.md.
+  - 2026-11-05 Source acceptance: Driver reconciles completed scoped reviews/current clean committed-source proof; source criteria met, pending integrated V&V migration only. Historical handoffs remain in Git/dated notes. Deployment, public clients and whole acceptance are separate/RED.
 
 ### [BUG-1793644504] Finalize tabs within one retry-safe transaction
-- [ ] **Severity:** high
+- [x] **Severity:** high
 - **Area:** backend, persistence
 - **File(s):** backend/internal/{bill,tab}/{handler,service,repository}.go; bill/{accounting,assignments}.go; tab/{commands,settlement}.go; backend/pkg/mutation/; related tests
 - **Observation:** FinalizeTab reads tab, creates settlements and marks finalized in separate operations. Competing assignment mutations check state outside the common boundary.
@@ -158,12 +156,14 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - PostgreSQL failure injection and finalize/edit race tests preserve original bills, links and totals.
 - **Req:** TR engineering 6; TR fix 7; SR atomic finalization; docs/reviews/2026-11-02-baseline.md
 - **Depends on:** none
-- **Repro / Notes:** Actual pre-fix PostgreSQL HTTP regression failed four assertions (paid 6->5.50, child/time changes, retry 400 and changed result); seven removed-control overlays fail executed assertions. Raw evidence: .vv/local-gate/atomic-lifecycle/. Independent review/driver acceptance pending.
+- **Repro / Notes:** Actual pre-fix PostgreSQL HTTP regression failed four assertions (paid 6->5.50, child/time changes, retry 400 and changed result); seven removed-control overlays fail executed assertions. Raw evidence: .vv/local-gate/atomic-lifecycle/. Historical pre-acceptance evidence.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
-- **Fix:** Atomic lifecycle and competing writes implemented; original accounting review approved. Corrected the P2 Unicode ambiguity guard with one EqualFold name projection under existing locks. Twelve HTTP/PG regressions pass after seven expected before failures. Driver fresh af43655:414 default/557 PG leaves,635 distinct,zero failures/skips; build/vet/format/govulncheck and scoped scanners pass; six-query paid budget retained. Independent correction review pending; signed-client/deployment and integrated gates remain.
-- **Docs:** docs/backend-api.md; docs/technical-overview.md; backend/README.md; VERIFICATION.md; docs/reviews/2026-11-03-atomic-lifecycle.md; docs/reviews/2026-11-03-unicode-share-ambiguity.md
+- **Status:** fixed-pending-migration
+- **Fix:** Atomic source accepted: tab-first FinalizeOnce and competing writes, checked commit/rollback, stable stored-snapshot retries/share IDs and paid economics; Unicode correction independently0/0. Current root clean908 ordinary/1189 PG leaves retain lifecycle races, failure controls and all prior IDs. Stable participant authority remains separately open in BUG-1793644505; no integrated/deployed/old-writer approval.
+- **Docs:** docs/backend-api.md; backend/README.md; VERIFICATION.md; docs/reviews/2026-11-03-atomic-lifecycle.md; docs/reviews/2026-11-03-unicode-share-ambiguity.md; docs/reviews/2026-11-05-scoped-source-acceptance.md
+- **Log:**
+  - 2026-11-05 Source acceptance: Driver reconciles completed scoped reviews/current clean committed-source proof; source criteria met, pending integrated V&V migration only. Historical handoffs remain in Git/dated notes. Deployment, public clients and whole acceptance are separate/RED.
 
 ### [BUG-1793644505] Authorize accounting by stable participant identity
 - [ ] **Severity:** high
@@ -440,7 +440,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** open
 
 ### [BUG-1793652308] Make the Flutter 3.41.5 committed lock reproducible
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** mobile, dependencies
 - **File(s):** mobile/pubspec.lock; mobile/README.md
 - **Observation:** At f9f8fb86, Flutter 3.41.5 enforced acquisition exits 65: characters, matcher, material_color_utilities and test_api differ from the committed lock. Existing dependency evidence records the same failure twice.
@@ -452,11 +452,11 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** cd mobile && flutter pub get --enforce-lockfile under Flutter 3.41.5. Baseline .vv/local-gate/dependencies/flutter-pub{,-retry}.log reports Would change 4 dependencies, exit 65. CI enforcement belongs to BUG-1793644501.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
-- **Fix:** Regenerate exactly four SDK-controlled records/checksums with Flutter 3.41.5 pub: characters 1.4.1, matcher 0.12.19, material_color_utilities 0.13.0, test_api 0.7.10. Enforced acquisition and analysis exit 0; 203 visible Flutter tests plus 21 hidden suite loads pass, zero failed/skipped. All other lock bytes, manifest, mobile source, generated databases, CocoaPods and workflow pins preserved. Lead scope=affected clean=no; retain in-progress for driver clean committed-snapshot acceptance and separate global/security gates.
-- **Docs:** mobile/README.md; docs/reviews/2026-11-02-flutter-lock-reproducibility.md. Existing dated dependency evidence preserved; follows BUG-1793644502/4503. CI enforcement remains workflow-phase work.
+- **Status:** fixed-pending-migration
+- **Fix:** Source accepted: pub-generated characters1.4.1/matcher0.12.19/material_color_utilities0.13.0/test_api0.7.10 and checksums remain unchanged since c376ef25. Fresh root clean Flutter3.41.5 enforced acquisition/analyze/format pass with480 visible tests and524 complete starts/terminals; all owner identities/multiplicities retained and committed inputs unchanged. Later scoped CocoaPods repair is separate. Whole/device/release gates remain open.
+- **Docs:** mobile/README.md; docs/reviews/2026-11-02-flutter-lock-reproducibility.md; docs/reviews/2026-11-05-scoped-source-acceptance.md
 - **Log:**
-  - 2026-11-02 Validation: Official writer dry-run preview shown before apply; RUNTIME_LOCK_APPROVAL.md deliverable 1 authorizes this narrow correction. Official pinned Flutter manifests and pub enforcement docs verified before pub generated the resolution. Raw reports: .vv/local-gate/runtime-lock/. No clean-checkout claim or CHANGELOG migration.
+  - 2026-11-05 Source acceptance: Driver reconciles completed scoped reviews/current clean committed-source proof; source criteria met, pending integrated V&V migration only. Historical handoffs remain in Git/dated notes. Deployment, public clients and whole acceptance are separate/RED.
 
 ### [BUG-1793652309] Use supported nonroot minimal service images with bounded local probes
 - [ ] **Severity:** high
@@ -480,7 +480,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-03 Validation: November 3 SECURITY_INVENTORY_APPROVAL.md conditional static exception exercised: current supported signed index and unchanged Go security release reverified before final build; exact final images/binaries/scanner archive identities tied together. Local owned PG17.11 TLS/DNS fixtures prove actual production CGO0 behavior, one-query readiness, negative trust/host/authorization/ledger/DB controls and Docker health failure/recovery. Preserve three setup-failed harness iterations plus passing candidate-v4/final; no app source rewrite. Shared driver PG and normal volumes retained. Raw .vv/local-gate/security-inventory/ and dated note contain current counts/sizes/packages/signatures/ELF/commands and remaining limits.
 
 ### [BUG-1793714791] Clear unused advisory matches in the required Go module inventory
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** backend, dependencies, security
 - **File(s):** backend/go.mod; backend/go.sum
 - **Observation:** At 95553f7 the required x/net v0.60.0 and x/crypto v0.57.0 match GO-2026-6860, GO-2026-6866 and GO-2026-5932. A fresh November 3 govulncheck JSON run confirms three module-only findings, zero imported-package or reachable-symbol findings. These are inventory findings, not proven application exploitability.
@@ -490,14 +490,14 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** https://vuln.go.dev/ID/GO-2026-5932.json ; https://vuln.go.dev/ID/GO-2026-6860.json ; https://vuln.go.dev/ID/GO-2026-6866.json . Upstream crypto 2f1f834330b2 adds only openpgp/go.mod; this separates unsafe unused OpenPGP, not repaired cryptography. Raw .vv/local-gate/security-inventory/baseline-vuln.log. Fingerprint: required-go-modules-net-html-crypto-openpgp-20261103. No suppression or overall acceptance.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
-- **Fix:** Pin x/net 0.62.0 and the explicitly approved x/crypto v0.58.1-0.20261009181718-2f1f834330b2 boundary; retain only necessary graph floors (sys/text/sync plus graph-only term/tools). Fresh govulncheck clears all three module-only records, imported0/reachable0. CGO1 default385/PG413 uncached leaf cases pass with fail0/skip0 (unique union481); preserve initial invalid-fixture run and scanner setup errors. No OpenPGP module/replacement, application/schema/framework change or global pass. Independent review pending; keep in-progress.
-- **Docs:** docs/reviews/2026-11-03-go-module-inventory.md; no living docs quote changed module versions. Historical reviews/baseline and CHANGELOG preserved.
+- **Status:** fixed-pending-migration
+- **Fix:** Source accepted: approved x/net0.62.0/x/crypto pseudo-version boundary and minimum graph delta retained; independent inventory review0/0. Current root pinned govulncheck reports no vulnerabilities, with clean908 ordinary/1189 PG leaves and production graph/build proof retained. No OpenPGP module/replacement or unrelated dependency upgrade. No deployment or whole security pass.
+- **Docs:** docs/reviews/2026-11-03-go-module-inventory.md; docs/reviews/2026-11-03-static-runtime.md; docs/reviews/2026-11-05-scoped-source-acceptance.md
 - **Log:**
-  - 2026-11-03 Validation: SECURITY_INVENTORY_APPROVAL.md authorizes the exact crypto pseudo-version exception. Current official proxy/tag/commit/manifests/signed sums and Go stable feed reverified before resolution. Raw .vv/local-gate/security-inventory/ preserves actual counts, seven necessary graph version changes, no module additions/removals, fixture correction and all unsuppressed scanner results. Scoped source result only; independent review/integrated acceptance pending.
+  - 2026-11-05 Source acceptance: Driver reconciles completed scoped reviews/current clean committed-source proof; source criteria met, pending integrated V&V migration only. Historical handoffs remain in Git/dated notes. Deployment, public clients and whole acceptance are separate/RED.
 
 ### [BUG-1793725849] Keep panic recovery logs free of private requests and panic values
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** backend, security
 - **File(s):** backend/cmd/{bill-service,web-service}/main.go; backend/pkg/safehttp/; Gin recovery middleware
 - **Observation:** Pinned13be27b actual middleware chain: debug recovery logged synthetic query capability and X-Member-Token; release recovery logged synthetic private panic text (3 confidentiality failures, 2 controls). Source defaults to debug; production GIN_MODE is unknown.
@@ -507,14 +507,14 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - Executed synthetic taint tests prove query, member/Authorization header and panic secrecy with positive500/logging controls.
 - **Req:** SR sensitive data/provider confidentiality; docs/reviews/2026-11-03-local-workflow.md
 - **Depends on:** none
-- **Repro / Notes:** Historical driver PANIC_LOGGING_BASELINE.md at13be27b:5leaves/3failed/2controls/0skips, retained in docs/reviews/2026-11-03-local-workflow.md. A1 d60bedc actual production routers/TCP/removed-control proof is in docs/reviews/2026-11-04-api-a1.md and committed evidence; independent acceptance/host proof pending. No real leak or production-mode claim; distinct from SQL-specific BUG-1793644509.
+- **Repro / Notes:** Historical driver PANIC_LOGGING_BASELINE.md at13be27b:5leaves/3failed/2controls/0skips, retained in docs/reviews/2026-11-03-local-workflow.md. A1 d60bedc actual production routers/TCP/removed-control proof is in docs/reviews/2026-11-04-api-a1.md and committed evidence; source accepted; deployed mode unverified. No real leak or production-mode claim; distinct from SQL-specific BUG-1793644509.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
-- **Fix:** A1 d60bedc replaces Gin raw recovery in BOTH actual production routers with one finite event/category/allowlisted-route recovery plus opaque Server.ErrorLog. Generic500 only before commitment; partial/disconnect/ErrAbortHandler/EPIPE/reset abort safely. Debug/release Error/Stringer/query/header/body/Location/stack taint controls,real TCP partial/kernel-RST/fallback controls and raw-recovery/ErrorLog removal assertions execute successfully; ordinary query-free logger preserved. No real/deployed leak claim. Independent review/clean/host verification pending; stays in-progress.
-- **Docs:** docs/backend-api.md; docs/technical-overview.md; backend/README.md; docs/reviews/2026-11-04-api-a1.md; docs/reviews/evidence/2026-11-04-api-a1.json
+- **Status:** fixed-pending-migration
+- **Fix:** Source accepted: both actual routers share finite recovery and opaque Server.ErrorLog; no raw request/query/header/body/panic formatting. Independent HTTP corrections review0/0 and current root clean Go suite retain debug/release taint, disconnect/partial/RST/fallback and removal controls. Ordinary query-free logging preserved. Listener/JSON/OCR/performance scope remains separately open; no deployed confidentiality or whole-security certification.
+- **Docs:** backend/README.md; docs/backend-api.md; VERIFICATION.md; docs/reviews/2026-11-04-api-a1.md; docs/reviews/2026-11-04-api-a1-review-corrections.md; docs/reviews/2026-11-05-scoped-source-acceptance.md
 - **Log:**
-  - 2026-11-04 Validation: Shared source/actual constructor before evidence and final uncached Go/PG gates retained with hashes. Removed Gin recovery restores2failed confidentiality leaves; removed opaque ErrorLog fails parent secrecy/finite-event assertions after positive TCP leaves. Go may format before the opaque sink; no input is retained/forwarded by it. Scoped source/image scans and runtime75PASS,root acceptance pending.
+  - 2026-11-05 Source acceptance: Driver reconciles completed scoped reviews/current clean committed-source proof; source criteria met, pending integrated V&V migration only. Historical handoffs remain in Git/dated notes. Deployment, public clients and whole acceptance are separate/RED.
 
 ### [BUG-1793725850] Deny OCR provider redirects across the API-key boundary
 - [x] **Severity:** med
