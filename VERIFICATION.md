@@ -57,13 +57,10 @@ a successful probe for every row before proceeding.
       intended commit. Record `vv_compose images` and image IDs alongside the clean
       source SHA. The health commit is operator-injected locally; it is not independent
       binary provenance. Stop if image/source identity cannot be tied to this build.
-- [ ] Build the viewer using the matrix command with
-      `NEXT_PUBLIC_API_URL=http://localhost:8080`, then start in `web-bill-viewer` with
-      `npm run start -- -p 3100`. Point the browser to that viewer. Use an iOS simulator
-      debug build (`flutter run` in `mobile`) for local API access. Record this profile
-      exception: `ApiConfig` hardcodes the hosted API in release mode. Never run isolated
-      write journeys against the release-mode production endpoint. Record actual signed
-      public-binary compatibility separately using approved non-customer fixtures.
+- [ ] Build viewer with `NEXT_PUBLIC_API_URL=http://localhost:8080`; run
+      `npm run start -- -p 3100` in `web-bill-viewer`; browse. iOS:
+      debug `flutter run` in `mobile`. Release `ApiConfig` targets production: never
+      send isolated writes there. Verify signed clients only with approved fixtures.
 - [ ] Restore/probe D1–D5; block on missing fixtures/provider/migration support. Record
       the build/profile exceptions, restore IDs and backup path in the run report.
 
@@ -187,16 +184,15 @@ implied by these functional cases.
       installed/cold-start/onboarding/not-installed handoff, duplicate join/returning
       member, invalid invite and successive incoming links. Distinguish stored pending
       invites from proven post-install recovery (FEAT-1793644779).
-- [ ] Exercise local remove/delete on two devices and verify honest wording/totals;
-      exercise authorized online lifecycle only when implemented. Check settlement
-      payment confirmation/error/undo (FEAT-1793644778), configured and absent payment
-      apps, and self-reported paid state. Do not send real transfers.
-- [ ] Run `gui-walkthrough` in verification mode on the isolated stack at this SHA;
-      include browser keyboard/focus/contrast and direct iOS VoiceOver, large text,
-      reduced motion, iPad and small supported iPhone. Keep a11y best-effort until a
-      specific supported claim is approved. If GUI tools are unavailable, record NOT RUN;
-      if all other stages pass, use GREEN ON APPROVAL and obtain an explicit waiver
-      before recording a final green run.
+- [ ] Check local removal/totals on two devices against [scope/failure rules](docs/privacy.md#local-removal-online-retention-and-requests)
+      and `mobile/test/local_tab_removal_test.dart`; prove independent reopen.
+      Online lifecycle only when implemented. Check settlement confirmation/error/undo
+      (FEAT-1793644778), configured/absent payment apps and self-reported paid state;
+      no real transfers.
+- [ ] Run `gui-walkthrough` on this SHA's isolated stack: browser keyboard/focus/
+      contrast; iOS VoiceOver/large text/reduced motion/iPad/small supported iPhone.
+      A11y is best-effort pending approval. GUI unavailable → NOT RUN;
+      if all other stages pass, obtain an explicit waiver for GREEN ON APPROVAL.
 
 ## Stage 4 — adversarial, persistence and performance
 
@@ -223,10 +219,9 @@ implied by these functional cases.
 - [ ] Verify actual receipt/currency provider runtime behavior, current supported
       currencies and outage handling. Record external access/config gaps explicitly;
       fake-provider tests prove application wiring only.
-- [ ] Verify current privacy policy destinations/support contacts, data flows/store label,
-      private-page indexing/cache/referrer controls and released-feature claims. PR #149
-      intentionally removed viewer `/privacy`; verify the marketing destination instead
-      of assuming the missing route itself is a regression.
+- [ ] Execute [public/private qualification](web-bill-viewer/README.md#maintained-public-pages)
+      and [privacy release gates](docs/privacy.md#release-sequencing). Keep `/privacy`
+      absent; serve `/privacy-policy` before its Settings client ships.
 - [ ] Verify a signed public binary's version/build/OS/storefront against live policy,
       valid old links and current API using approved synthetic fixtures. A TestFlight
       processing success or source version number is insufficient.

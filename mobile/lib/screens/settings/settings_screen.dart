@@ -875,7 +875,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           onPressed:
                                               () => launchUrl(
                                                 Uri.parse(
-                                                  'https://getbillington.vercel.app/#privacy',
+                                                  'https://billingtonapp.vercel.app/privacy-policy',
                                                 ),
                                                 mode:
                                                     LaunchMode

@@ -179,7 +179,14 @@ endpoint's whitespace set, including retained U+FEFF. See [review corrections](r
 ### Next.js (Web Viewer)
 
 - **Rendering**: App Router with React Server Components for initial data fetch
-- **Pages**: `/b/[id]` for bill viewing, `/t/[id]` for tab viewing
+- **Pages**: `/b/[id]` for bill viewing, `/t/[id]` for tab viewing; the static
+  `(public)` group owns `/` and `/privacy-policy` at `https://billingtonapp.vercel.app`.
+  Its literal site configuration, semantic policy JSX, scoped CSS and brand-only
+  social image need no API, private component or browser storage. Root metadata
+  remains generic/noindex; only public pages override indexing and add canonical/
+  social metadata. Homepage-only SoftwareApplication data uses visible claims.
+  Robots permits private crawling so noindex can be read; sitemap lists only the
+  two public documents, without dates or resource enumeration.
 - **Client Components**: LazyBillBoard, MemberList, and bill/tab breakdowns
 - **Settlements**: Presentational `SettlementCard` shows names, amounts and paid status,
   directs status updates to Billington, and retains the external Venmo link. The sole

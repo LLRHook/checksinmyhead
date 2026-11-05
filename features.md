@@ -227,7 +227,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Test plan:** Public HTML/header and metadata validation plus sitemap/robots requests; source/access confirmation precedes edits.
 - **Out of scope:** Unrelated redesign, new framework, live destructive operations, unapproved publication.
 - **Bump:** minor
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Implementation:** Maintained editable source now lives in web-bill-viewer/src/app/(public)/ plus robots.ts/sitemap.ts; external-only notes are historical. Canonical billingtonapp.vercel.app has separate home/policy cards and brand-only PNG, public-only indexing and homepage escaped software data; sitemap has only2 public URLs/no dates. Private generic/noindex/no-referrer/no-store remains qualified across real synthetic capabilities. Web77/HTTP127 pass; no hosted indexing, legacy-host, Search Console or field-performance claim. Independent/root/release gates open.
+- **Docs:** web-bill-viewer/README.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-05-public-web.md
 
 ### [FEAT-1793644511] Establish an evidence-based acquisition learning loop
 - [ ] **Priority:** med

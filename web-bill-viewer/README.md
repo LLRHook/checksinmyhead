@@ -12,16 +12,18 @@ successful local checks do not establish the deployed Vercel revision.
 
 ## Private viewer privacy
 
-This application serves private bill and tab links. The public marketing and policy
-site lives in a separate repository; its search acquisition policy does not apply
-here. PR #149 intentionally removed the viewer's `/privacy` route. Privacy disclosure
-destinations and contact ownership remain separate verification obligations.
+This application serves private bill and tab links and the independently authored
+public homepage and complete `/privacy-policy` in `src/app/(public)`. Its canonical
+origin is `https://billingtonapp.vercel.app`. The separate legacy public host/repository
+is unchanged. PR #149's removed `/privacy` route stays absent.
 
 The root layout supplies a generic Billington title and description with
 `noindex, nofollow`. Bill and tab metadata needs no authorized API lookup and contains
 no resource names, bearer URLs, canonical/social URLs or resource preview assets.
-The global `X-Robots-Tag: noindex, nofollow` also covers access-required and error
-responses. These crawler directives do not authorize access or revoke an old link.
+The default `X-Robots-Tag: noindex, nofollow` covers unknown/error routes. Private
+`/b` and `/t` rules also specify `nosnippet, noimageindex`, including access errors.
+Only `/` and `/privacy-policy` override the header and metadata to `index, follow`.
+These crawler directives do not authorize access or revoke an old link.
 
 `Referrer-Policy: no-referrer` prevents the private page URL from being sent as a
 browser `Referer`, including on same-origin navigation. Authorized bill, tab, member
@@ -58,6 +60,46 @@ the exact owned process groups/ports and close the owned tab. Local evidence is 
 deployed-hosting, whole-security or release acceptance. See the
 [dated implementation evidence](../docs/reviews/2026-11-04-private-viewer-privacy.md).
 
+## Maintained public pages
+
+The public layout and pages render complete semantic HTML without JavaScript or an
+API. Keep Inter/JetBrains Mono and existing teal/light/dark tokens; public CSS stays
+scoped. The labeled receipt is a static example, not customer data or a simulated
+payment. Every download action opens `https://apps.apple.com/app/id6746379502` directly.
+Payments are external and paid status is manual. Contact links are exactly
+`mailto:checkmateapp@duck.com`, without link/token prefill.
+
+Each public document owns its canonical/title/description/social cards. A static
+1200×630 brand image is served at `/social-image.png`; only the homepage emits
+escaped SoftwareApplication JSON-LD. `robots.ts` allows crawling (including private
+noindex responses) and advertises `sitemap.xml`, which contains only home and policy.
+Do not move canonical/social metadata to the private root or enumerate API records.
+
+After the locked checks, run the standard-library verifier against an owned local
+production server (never customer URLs):
+
+```bash
+python3 ../scripts/verify_web_routes.py --base-url http://127.0.0.1:<owned-port> \
+  --output <new-evidence-directory> --fixtures <owned-fixture-records.json> \
+  --api-log <owned-api-requests.jsonl> --build-dir .next
+```
+
+The verifier checks actual public HTML/cards/CTAs/schema/robots/sitemap/image and
+alternating private HTML/RSC capabilities. It neither starts nor replaces the real
+Go/PostgreSQL fixture or headed browser walkthrough. Fixture JSON has a `records`
+array with `kind` (`bill`/`tab`), `id`, `label`, `name`, `token`, and optional
+`visibleName` for historical lazy tabs whose existing heading shows the receipt.
+The API-log option expects owned JSONL method/path/query/headers/status observations.
+Retain raw failures, no-API/JavaScript-disabled checks, error cases, browser and cleanup
+evidence separately; see [current scoped evidence](../docs/reviews/2026-11-05-public-web.md).
+
+The Settings source points to the canonical `/privacy-policy`. Serve and verify
+that route before shipping a client that depends on it. Reconcile actual released
+flows, establish an operative notice date, verify mailbox control and complete store
+privacy/destination review separately. The page contains no preparation-date claim.
+Source implementation does not change provider settings, logs, the legacy host,
+App Store metadata, entitlements or custom-scheme behavior.
+
 ## Getting Started
 
 From the repository root, prepare explicitly, then start the backend and viewer:
@@ -75,7 +117,8 @@ readiness, retains private per-run logs, and stops its exact npm/Next process gr
 exit. See the [root workflow](../README.md#quickstart). The legacy Go renderer on
 8081 is retained under the explicit `legacy-web` Compose profile.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Edit the public homepage in `src/app/(public)/page.tsx`; keep bill/tab body and
+capability transport in their existing owners.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 

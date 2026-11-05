@@ -47,6 +47,19 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      ...["/", "/privacy-policy"].map((source) => ({
+        source,
+        headers: [{ key: "X-Robots-Tag", value: "index, follow" }],
+      })),
+      ...["/b/:path*", "/t/:path*"].map((source) => ({
+        source,
+        headers: [
+          {
+            key: "X-Robots-Tag",
+            value: "noindex, nofollow, nosnippet, noimageindex",
+          },
+        ],
+      })),
     ];
   },
 };

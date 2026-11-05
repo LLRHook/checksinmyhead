@@ -1,6 +1,6 @@
 # Billington
 
-**Privacy-first bill splitting for group trips** — [Demo](https://youtube.com/shorts/T1GHR6JgOX8?feature=share) | [Website](https://getbillington.vercel.app/)
+**Privacy-first bill splitting for group trips** — [Demo](https://youtube.com/shorts/T1GHR6JgOX8?feature=share) | [Maintained website](https://billingtonapp.vercel.app/)
 
 Billington lets groups split bills, track expenses, and settle up — all without creating accounts. Share a link, add bills, and see who owes what.
 
@@ -114,9 +114,10 @@ billington/
 │   └── Makefile
 ├── web-bill-viewer/          # Next.js web client
 │   ├── src/app/              # App Router pages
+│   │   ├── (public)/         #   Homepage and /privacy-policy
 │   │   ├── b/[id]/           #   Bill viewer (/b/:id?t=token)
-│   │   └── t/[id]/           #   Tab viewer (/t/:id?t=token)
-│   │   └── privacy/          #   Public privacy policy
+│   │   ├── t/[id]/           #   Tab viewer (/t/:id?t=token)
+│   │   └── {robots,sitemap}.ts # Public discovery only
 │   ├── src/components/       # React components
 │   └── src/lib/api.ts        # API client + types
 ├── mobile/                   # Flutter iOS app
@@ -197,6 +198,14 @@ cd mobile && flutter test
 - [ ] Production Deployment — Cloud hosting, CDN, monitoring
 
 ## Documentation
+
+The maintained public pages and private viewer share `web-bill-viewer` at the
+canonical origin `https://billingtonapp.vercel.app`. Source preparation does not
+establish that a branch revision is served. The complete policy route must be
+served and verified before shipping a client using the new Settings destination.
+Effective notice date, released workflow, mailbox control and App Store disclosures
+remain release gates; the separate legacy marketing site is unchanged. See the
+[privacy inventory](docs/privacy.md) and [scoped evidence](docs/reviews/2026-11-05-public-web.md).
 
 - [Technical Overview](docs/technical-overview.md) — Architecture, data models, design decisions
 - [Backend API Reference](docs/backend-api.md) — Full endpoint documentation

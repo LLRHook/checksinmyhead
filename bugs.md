@@ -275,7 +275,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Review source flows and https://apps.apple.com/us/app/billington/id6746379502 plus https://getbillington.vercel.app/privacy-policy. Recheck current public observations; provider retention and production configuration need owner evidence.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Source-policy slice prepared: maintained /privacy-policy implements all23 adopted V2 paragraphs, summary/contact and retained no-sale commitment, with qualified Anthropic/hosting retention, secure-storage distinctions, save/retry, local/online deletion and manual payments. Inventory updated; Settings changes only canonical full-policy URL. Route must be served before its client ships. Actual effective date, mailbox control, released workflow/provider/account evidence, public labels/store destinations and legacy host remain OPEN; no publication/compliance/binary-parity claim.
+- **Docs:** docs/privacy.md; web-bill-viewer/src/app/(public)/privacy-policy/page.tsx; web-bill-viewer/README.md; docs/reviews/2026-11-05-public-web.md
 
 ### [BUG-1793644511] Gate minimum app versions on public store availability
 - [ ] **Severity:** high
@@ -396,7 +399,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Revalidate https://getbillington.vercel.app/ before editing its separately owned source; source location/access is currently unverified. No new repository is authorized by this ticket alone.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Editable maintained source is web-bill-viewer/src/app/(public)/; the external-only source note is historical. Receipt-led home uses the labeled USD128 example and direct numeric Store CTAs. Copy limits payment to external Venmo/shared details and manual status. Web77 cases preserve72 originals; real Go/PG HTTP/RSC127,12 error controls and headed desktop/narrow/theme/navigation evidence retained with browser limits. Legacy host remains untouched; independent/root and release acceptance pending.
+- **Docs:** README.md; web-bill-viewer/README.md; docs/reviews/2026-11-05-public-web.md
 
 ### [BUG-1793644518] Exclude private bearer-link pages from indexing
 - [x] **Severity:** med
