@@ -15,6 +15,7 @@ import {
   getCurrentMember,
   getTab,
   type ItemAssignment,
+  type ItemUpdate,
   joinTab,
   updateLazyBillItemAssignmentsBatch,
   updatePersonSharePaid,
@@ -54,6 +55,213 @@ interface LazyBillBoardProps {
 }
 
 type Stage = "receipt" | "picker" | "pay";
+export interface LazyReadRecovery {
+  message: string;
+  afterRead: Stage;
+  refreshedMessage?: string;
+}
+export interface LazyActionHost {
+  bill: Bill;
+  token: string;
+  tabId?: string;
+  member?: StoredMember | null;
+  refresh: (updatedBill?: Bill) => Promise<void>;
+  onRecovery: (recovery: LazyReadRecovery | null) => void;
+  onError: (message: string | null) => void;
+  onStage: (stage: Stage) => void;
+  clearDrafts: () => void;
+  onBusy: (busy: boolean) => void;
+}
+
+// These are the existing lazy action owners, with their current-read transition
+// explicit. Recovery calls only the same scoped reader, never the mutation.
+export async function readLazyViewerBill(
+  billId: number,
+  token: string,
+  tabId?: string,
+  memberToken?: string,
+) {
+  if (tabId) {
+    const tab = await getTab(tabId, token, memberToken);
+    const current = tab.bills.find((entry) => entry.id === billId);
+    if (!current) throw new Error("Current receipt unavailable in this tab");
+    return current;
+  }
+  return getBill(String(billId), token);
+}
+
+export async function recoverLazyRead(
+  host: LazyActionHost,
+  recovery: LazyReadRecovery,
+  updatedBill?: Bill,
+) {
+  try {
+    await host.refresh(updatedBill);
+    host.onRecovery(null);
+    host.onError(recovery.refreshedMessage ?? null);
+    host.clearDrafts();
+    host.onStage(recovery.afterRead);
+  } catch {
+    host.onRecovery(recovery);
+    host.onError(recovery.message);
+  }
+}
+
+export async function markLazyPaid(
+  host: LazyActionHost,
+  participantId: number | null,
+) {
+  if (participantId === null) return;
+  const share = host.bill.person_shares.find(
+    (s) => s.participant_id === participantId,
+  );
+  const participant = host.bill.participants?.find(
+    (p) => p.participant_id === participantId,
+  );
+  if (
+    !share?.id ||
+    (host.tabId &&
+      (participant?.binding_state !== "confirmed" ||
+        participant.member_id !== host.member?.member_id))
+  )
+    return;
+  host.onBusy(true);
+  host.onError(null);
+  try {
+    try {
+      if (host.tabId)
+        await updateTabPersonSharePaid(
+          host.tabId,
+          host.bill.id,
+          share.id,
+          true,
+          host.token,
+          host.member?.member_token,
+        );
+      else
+        await updatePersonSharePaid(host.bill.id, share.id, true, host.token);
+    } catch {
+      await recoverLazyRead(host, {
+        message:
+          "Paid marker could not be confirmed. Current receipt status is unavailable; retry the read before another action.",
+        afterRead: "receipt",
+        refreshedMessage:
+          "Paid marker response was unavailable. Review the refreshed receipt before retrying.",
+      });
+      return;
+    }
+    host.onStage("receipt");
+    await recoverLazyRead(host, {
+      message:
+        "Paid marker saved. Current receipt status is unavailable; retry the read.",
+      afterRead: "receipt",
+    });
+  } finally {
+    host.onBusy(false);
+  }
+}
+
+export async function reviewLazySelection(
+  host: LazyActionHost,
+  updates: ItemUpdate[],
+) {
+  host.onBusy(true);
+  host.onError(null);
+  try {
+    if (updates.some((update) => !update.expected_updated_at)) {
+      await recoverLazyRead(host, {
+        message:
+          "Could not verify the receipt version. Current receipt is unavailable; retry the read.",
+        afterRead: "picker",
+        refreshedMessage:
+          "Receipt refreshed. Review item versions before deliberately retrying.",
+      });
+      return;
+    }
+    let updatedBill: Bill | undefined;
+    try {
+      if (host.tabId && updates.length)
+        await updateTabBillItemAssignmentsBatch(
+          host.tabId,
+          host.bill.id,
+          updates,
+          host.token,
+          host.member?.member_token,
+          host.bill.identity_revision,
+        );
+      else if (updates.length)
+        updatedBill = await updateLazyBillItemAssignmentsBatch(
+          host.bill.id,
+          updates,
+          host.token,
+          host.bill.identity_revision,
+        );
+    } catch {
+      host.clearDrafts();
+      await recoverLazyRead(host, {
+        message:
+          "Selection could not be confirmed. Current receipt is unavailable; retry the read before deliberately editing again.",
+        afterRead: "picker",
+        refreshedMessage:
+          "Receipt refreshed. Review the current selection before deliberately retrying.",
+      });
+      return;
+    }
+    host.clearDrafts();
+    await recoverLazyRead(
+      host,
+      {
+        message: updates.length
+          ? "Selection saved. Current total is unavailable; retry the read."
+          : "Current total is unavailable; retry the read.",
+        afterRead: "pay",
+      },
+      updatedBill,
+    );
+  } finally {
+    host.onBusy(false);
+  }
+}
+
+export function LazyReadNotice({
+  recovery,
+  busy,
+  onRetry,
+}: {
+  recovery: LazyReadRecovery;
+  busy: boolean;
+  onRetry: () => Promise<void>;
+}) {
+  return (
+    <div className="mb-4 rounded-2xl border border-[var(--border-light)] p-4 dark:border-[var(--border-dark)]">
+      <p role="status">{recovery.message}</p>
+      <button
+        type="button"
+        disabled={busy}
+        aria-label="Retry current receipt read"
+        onClick={onRetry}
+        className="mt-3 rounded-xl border px-4 py-2 font-semibold disabled:opacity-50"
+      >
+        Retry current receipt read
+      </button>
+    </div>
+  );
+}
+
+export function hasCurrentLazyShare(bill: Bill, participantId: number | null) {
+  const share = bill.person_shares.find(
+    (s) => s.participant_id === participantId,
+  );
+  return Boolean(
+    bill.identity_version === 2 &&
+      bill.identity_state === "ready" &&
+      bill.identity_review_status === "ready" &&
+      share &&
+      [share.total, share.subtotal, share.tax_share, share.tip_share].every(
+        Number.isFinite,
+      ),
+  );
+}
 function round(value: number) {
   return Math.round(value * 100) / 100;
 }
@@ -87,6 +295,10 @@ export default function LazyBillBoard({
   const [isSavingSelection, setIsSavingSelection] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [readRecovery, setReadRecovery] = useState<LazyReadRecovery | null>(
+    null,
+  );
+  const [isReadingCurrent, setIsReadingCurrent] = useState(false);
   const currency = bill.currency_code ?? "USD";
   const remainingCurrency = lazyBillRemainingCurrency(bill);
 
@@ -135,12 +347,14 @@ export default function LazyBillBoard({
   }, [bill.id, bill.participants, tabId, token]);
 
   const selectParticipant = (id: number) => {
+    if (readRecovery) return;
     localStorage.setItem(
       selectionKey(bill.id),
       JSON.stringify({ version: 2, bill_id: bill.id, participant_id: id }),
     );
     setParticipantId(id);
     setDraftAssignments(null);
+    if (id !== participantId) setStage("picker");
   };
 
   useEffect(() => {
@@ -229,6 +443,7 @@ export default function LazyBillBoard({
   };
 
   const toggleItem = (item: Bill["items"][number]) => {
+    if (readRecovery) return;
     const assignments = getAssignments(item);
     const mine = assignments.some(
       (assignment) =>
@@ -264,19 +479,52 @@ export default function LazyBillBoard({
       setBillOverride({ source: initialBill, bill: updatedBill });
       return;
     }
-    if (tabId) {
-      const tab = await getTab(tabId, token, member?.member_token);
-      const refreshedBill = tab.bills.find((entry) => entry.id === bill.id);
-      if (!refreshedBill)
-        throw new Error("Current receipt unavailable in this tab");
-      setBillOverride({ source: initialBill, bill: refreshedBill });
-      return;
-    }
-    const current = await getBill(String(bill.id), token);
+    const current = await readLazyViewerBill(
+      bill.id,
+      token,
+      tabId,
+      member?.member_token,
+    );
     setBillOverride({ source: initialBill, bill: current });
   };
 
+  const actionHost = (onBusy: (busy: boolean) => void): LazyActionHost => ({
+    bill,
+    token,
+    tabId,
+    member,
+    refresh: refreshViewerBill,
+    onRecovery: setReadRecovery,
+    onError: setError,
+    onStage: setStage,
+    clearDrafts: () => setDraftAssignments(null),
+    onBusy,
+  });
+  const retryCurrentRead = async () => {
+    if (!readRecovery || isReadingCurrent) return;
+    setIsReadingCurrent(true);
+    try {
+      await recoverLazyRead(actionHost(setIsReadingCurrent), readRecovery);
+    } finally {
+      setIsReadingCurrent(false);
+    }
+  };
+  const refreshIdentity = async () => {
+    try {
+      await refreshViewerBill();
+    } catch {
+      const recovery: LazyReadRecovery = {
+        message:
+          "Identity action needs a current receipt read. Current state is unavailable; retry the read.",
+        afterRead: "picker",
+      };
+      setReadRecovery(recovery);
+      setError(recovery.message);
+    }
+  };
+
   const beginPicking = () => {
+    if (readRecovery) return;
     setError(null);
     if (tabId && !member) setShowJoin(true);
     else if (!participant)
@@ -289,10 +537,11 @@ export default function LazyBillBoard({
       !identityReady ||
       participantId === null ||
       isSavingSelection ||
+      readRecovery ||
       currentShare?.paid
     )
       return;
-    if (!selectionChanged) {
+    if (!selectionChanged && hasCurrentLazyShare(bill, participantId)) {
       setStage("pay");
       return;
     }
@@ -307,57 +556,14 @@ export default function LazyBillBoard({
         },
       ];
     });
-    if (updates.some((update) => !update.expectedUpdatedAt)) {
-      setError("Could not verify the receipt version. Refresh and try again.");
-      await refreshViewerBill();
-      setDraftAssignments(null);
-      return;
-    }
-    setIsSavingSelection(true);
-    setError(null);
-    try {
-      let updatedBill: Bill | undefined;
-      if (tabId) {
-        if (updates.length) {
-          await updateTabBillItemAssignmentsBatch(
-            tabId,
-            bill.id,
-            updates.map(({ itemId, expectedUpdatedAt, assignments }) => ({
-              item_id: itemId,
-              expected_updated_at: expectedUpdatedAt,
-              assignments,
-            })),
-            token,
-            member?.member_token,
-            bill.identity_revision,
-          );
-        }
-      } else if (updates.length) {
-        updatedBill = await updateLazyBillItemAssignmentsBatch(
-          bill.id,
-          updates.map(({ itemId, expectedUpdatedAt, assignments }) => ({
-            item_id: itemId,
-            expected_updated_at: expectedUpdatedAt,
-            assignments,
-          })),
-          token,
-          bill.identity_revision,
-        );
-      }
-      await refreshViewerBill(updatedBill);
-      setDraftAssignments(null);
-      setStage("pay");
-    } catch (caught) {
-      setError(
-        caught instanceof Error && caught.message.includes("item changed")
-          ? "Someone updated an item. The receipt has been refreshed."
-          : "Could not save your choices. Try again.",
-      );
-      await refreshViewerBill();
-      setDraftAssignments(null);
-    } finally {
-      setIsSavingSelection(false);
-    }
+    await reviewLazySelection(
+      actionHost(setIsSavingSelection),
+      updates.map(({ itemId, expectedUpdatedAt, assignments }) => ({
+        item_id: itemId,
+        expected_updated_at: expectedUpdatedAt,
+        assignments,
+      })),
+    );
   };
 
   const saveName = async () => {
@@ -399,6 +605,7 @@ export default function LazyBillBoard({
   };
 
   const openSplit = (item: Bill["items"][number]) => {
+    if (readRecovery) return;
     const assignments = getAssignments(item);
     setSplitItemId(item.id);
     const available = remainingLazyPercentage(assignments, participantId ?? 0);
@@ -415,6 +622,7 @@ export default function LazyBillBoard({
   };
 
   const setSplit = () => {
+    if (readRecovery) return;
     const item = bill.items.find((entry) => entry.id === splitItemId);
     if (!item) return;
     updateDraftAssignments(
@@ -430,35 +638,8 @@ export default function LazyBillBoard({
   };
 
   const markPaid = async () => {
-    if (
-      !currentShare?.id ||
-      (tabId &&
-        (participant?.binding_state !== "confirmed" ||
-          participant.member_id !== member?.member_id))
-    )
-      return;
-    setIsPaying(true);
-    setError(null);
-    try {
-      if (tabId) {
-        await updateTabPersonSharePaid(
-          tabId,
-          bill.id,
-          currentShare.id,
-          true,
-          token,
-          member?.member_token,
-        );
-      } else {
-        await updatePersonSharePaid(bill.id, currentShare.id, true, token);
-      }
-      setStage("receipt");
-      await refreshViewerBill();
-    } catch {
-      setError("We could not save that payment yet.");
-    } finally {
-      setIsPaying(false);
-    }
+    if (readRecovery || isPaying) return;
+    await markLazyPaid(actionHost(setIsPaying), participantId);
   };
 
   const venmo = bill.payment_methods?.find((method) =>
@@ -467,6 +648,13 @@ export default function LazyBillBoard({
 
   return (
     <>
+      {readRecovery && (
+        <LazyReadNotice
+          recovery={readRecovery}
+          busy={isReadingCurrent || isPaying || isSavingSelection}
+          onRetry={retryCurrentRead}
+        />
+      )}
       {!identityReady && (
         <RecordedShares
           bill={bill}
@@ -475,19 +663,21 @@ export default function LazyBillBoard({
           onChanged={() => refreshViewerBill()}
         />
       )}
-      <IdentityControls
-        bill={bill}
-        context={{
-          billId: bill.id,
-          token,
-          tabId,
-          memberToken: member?.member_token,
-        }}
-        member={member as CurrentMember | null}
-        selected={participantId}
-        onSelect={selectParticipant}
-        onChanged={() => refreshViewerBill()}
-      />
+      <fieldset disabled={readRecovery !== null} className="m-0 border-0 p-0">
+        <IdentityControls
+          bill={bill}
+          context={{
+            billId: bill.id,
+            token,
+            tabId,
+            memberToken: member?.member_token,
+          }}
+          member={member as CurrentMember | null}
+          selected={participantId}
+          onSelect={selectParticipant}
+          onChanged={refreshIdentity}
+        />
+      </fieldset>
       <div className="space-y-5">
         {stage === "receipt" && (
           <>
@@ -545,6 +735,7 @@ export default function LazyBillBoard({
               <button
                 type="button"
                 onClick={beginPicking}
+                disabled={readRecovery !== null}
                 className="mt-4 inline-flex w-full items-center justify-center gap-3 rounded-2xl bg-white px-5 py-4 text-base font-bold text-[var(--primary-dark)]"
               >
                 {name ? "Pick my items" : "Choose my items"}
@@ -656,7 +847,7 @@ export default function LazyBillBoard({
             {((totals?.total ?? 0) > 0 || selectionChanged) && (
               <button
                 type="button"
-                disabled={isSavingSelection}
+                disabled={isSavingSelection || readRecovery !== null}
                 onClick={() => void reviewSelection()}
                 className="flex w-full items-center justify-center gap-3 rounded-2xl bg-[var(--primary)] px-5 py-4 font-bold text-white shadow-md disabled:opacity-70"
               >
@@ -667,80 +858,101 @@ export default function LazyBillBoard({
           </>
         )}
 
-        {stage === "pay" && totals && (
-          <>
-            <button
-              type="button"
-              onClick={() => setStage("picker")}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--text-secondary)]"
-            >
-              <FaChevronLeft size={12} /> Back to items
-            </button>
-            <div className="rounded-3xl bg-[var(--card-bg-light)] p-6 shadow-sm dark:bg-[var(--card-bg-dark)] dark:border dark:border-[var(--border-dark)]">
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--text-secondary)]">
-                Your total
+        {stage === "pay" &&
+          !hasCurrentLazyShare(bill, participantId) &&
+          !readRecovery && (
+            <div>
+              <p role="status">
+                The current amount for this occurrence is unavailable. Review
+                its items before payment.
               </p>
-              <p className="mt-2 text-5xl font-bold tracking-tight text-[var(--accent)] dark:text-white">
-                {formatMoney(totals.total, currency)}
-              </p>
-              <div className="mt-6 space-y-2 border-t border-[var(--border-light)] pt-4 text-sm text-[var(--accent)] dark:border-[var(--border-dark)] dark:text-white">
-                <div className="flex justify-between">
-                  <span>Your items</span>
-                  <span>{formatMoney(totals.subtotal, currency)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Tax</span>
-                  <span>{formatMoney(totals.tax_share, currency)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Tip</span>
-                  <span>{formatMoney(totals.tip_share, currency)}</span>
-                </div>
-              </div>
-            </div>
-            <div className="rounded-3xl bg-[var(--card-bg-light)] p-5 shadow-sm dark:bg-[var(--card-bg-dark)] dark:border dark:border-[var(--border-dark)]">
-              <h2 className="font-bold text-[var(--accent)] dark:text-white">
-                Pay {name}
-              </h2>
-              {venmo && (
-                <a
-                  href={buildVenmoPayUrl(
-                    venmo.identifier,
-                    totals.total.toFixed(2),
-                    bill.name,
-                  )}
-                  className="mt-4 flex items-center justify-center rounded-2xl bg-[#4b938d] px-4 py-4 font-bold text-white"
-                >
-                  Pay with Venmo
-                </a>
-              )}
-              {bill.payment_methods?.map((method) => (
-                <p
-                  key={`${method.name}-${method.identifier}`}
-                  className="mt-3 text-sm text-[var(--text-secondary)]"
-                >
-                  {method.name}: {method.identifier}
-                </p>
-              ))}
               <button
                 type="button"
-                disabled={
-                  isPaying ||
-                  !currentShare?.id ||
-                  Boolean(
-                    tabId &&
-                      (participant?.binding_state !== "confirmed" ||
-                        participant.member_id !== member?.member_id),
-                  )
-                }
-                onClick={markPaid}
-                className="mt-5 w-full rounded-2xl border border-[var(--border-light)] px-4 py-3 text-sm font-semibold text-[var(--accent)] disabled:opacity-50 dark:border-[var(--border-dark)] dark:text-white"
+                onClick={() => setStage("picker")}
+                className="mt-3 rounded-xl border px-4 py-2 font-semibold"
               >
-                {isPaying ? "Saving…" : "Mark as paid"}
+                Back to items
               </button>
             </div>
-          </>
-        )}
+          )}
+        {stage === "pay" &&
+          totals &&
+          hasCurrentLazyShare(bill, participantId) &&
+          !readRecovery && (
+            <>
+              <button
+                type="button"
+                onClick={() => setStage("picker")}
+                className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--text-secondary)]"
+              >
+                <FaChevronLeft size={12} /> Back to items
+              </button>
+              <div className="rounded-3xl bg-[var(--card-bg-light)] p-6 shadow-sm dark:bg-[var(--card-bg-dark)] dark:border dark:border-[var(--border-dark)]">
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--text-secondary)]">
+                  Your total
+                </p>
+                <p className="mt-2 text-5xl font-bold tracking-tight text-[var(--accent)] dark:text-white">
+                  {formatMoney(totals.total, currency)}
+                </p>
+                <div className="mt-6 space-y-2 border-t border-[var(--border-light)] pt-4 text-sm text-[var(--accent)] dark:border-[var(--border-dark)] dark:text-white">
+                  <div className="flex justify-between">
+                    <span>Your items</span>
+                    <span>{formatMoney(totals.subtotal, currency)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Tax</span>
+                    <span>{formatMoney(totals.tax_share, currency)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Tip</span>
+                    <span>{formatMoney(totals.tip_share, currency)}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-3xl bg-[var(--card-bg-light)] p-5 shadow-sm dark:bg-[var(--card-bg-dark)] dark:border dark:border-[var(--border-dark)]">
+                <h2 className="font-bold text-[var(--accent)] dark:text-white">
+                  Pay {name}
+                </h2>
+                {venmo && (
+                  <a
+                    href={buildVenmoPayUrl(
+                      venmo.identifier,
+                      totals.total.toFixed(2),
+                      bill.name,
+                    )}
+                    className="mt-4 flex items-center justify-center rounded-2xl bg-[#4b938d] px-4 py-4 font-bold text-white"
+                  >
+                    Pay with Venmo
+                  </a>
+                )}
+                {bill.payment_methods?.map((method) => (
+                  <p
+                    key={`${method.name}-${method.identifier}`}
+                    className="mt-3 text-sm text-[var(--text-secondary)]"
+                  >
+                    {method.name}: {method.identifier}
+                  </p>
+                ))}
+                <button
+                  type="button"
+                  disabled={
+                    isPaying ||
+                    readRecovery !== null ||
+                    !currentShare?.id ||
+                    Boolean(
+                      tabId &&
+                        (participant?.binding_state !== "confirmed" ||
+                          participant.member_id !== member?.member_id),
+                    )
+                  }
+                  onClick={markPaid}
+                  className="mt-5 w-full rounded-2xl border border-[var(--border-light)] px-4 py-3 text-sm font-semibold text-[var(--accent)] disabled:opacity-50 dark:border-[var(--border-dark)] dark:text-white"
+                >
+                  {isPaying ? "Saving…" : "Mark as paid"}
+                </button>
+              </div>
+            </>
+          )}
 
         {error && (
           <p

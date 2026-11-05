@@ -280,6 +280,9 @@ a validated current amount for that selected share. After a paid-marker acknowle
 browser keep recorded rows if the current read fails, show saved-but-unavailable
 status and offer a GET-only retry. A failed read never repeats the paid mutation
 or substitutes credentials; tab and settlement read errors remain separate.
+Lazy claim/paid actions apply the same acknowledgement/read distinction. Denied,
+stale or uncertain edits retain a deliberate read recovery path; failed recovery
+reads are handled without repeating the write or rejecting the UI event promise.
 Foreign values without an audit stay unavailable; frozen zero stays zero. Display
 rates are temporary values and never write frozen quote columns. Versioned JPY
 precision and the known local/server `.005` allocation difference remain open. See [API contracts](backend-api.md#currency-quotes)
