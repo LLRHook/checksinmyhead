@@ -38,6 +38,16 @@ function makeShare(
   };
 }
 
+function availableTotals(tab: Tab) {
+  const totals = computeTabPersonTotals(tab);
+  if (totals === null) throw new Error("Unexpected review fixture");
+  return totals.map(({ person_name, total, bill_count, all_paid }) => ({
+    person_name,
+    total,
+    bill_count,
+    all_paid,
+  }));
+}
 function makeBill(overrides: Partial<Bill> & Pick<Bill, "id">): Bill {
   return {
     name: `Bill ${overrides.id}`,
@@ -55,6 +65,34 @@ function makeBill(overrides: Partial<Bill> & Pick<Bill, "id">): Bill {
 }
 
 function makeTab(bills: Bill[], name = "Trip"): Tab {
+  const fixtureMembers = new Map<string, number>();
+  bills = bills.map((b) => ({
+    ...b,
+    identity_version: 2,
+    identity_state: "ready",
+    identity_revision: 0,
+    identity_review_status: "ready",
+    participants: b.person_shares.map((s, i) => {
+      const key = s.person_name.toLowerCase();
+      if (!fixtureMembers.has(key))
+        fixtureMembers.set(key, fixtureMembers.size + 1);
+      return {
+        participant_id: i + 1,
+        bill_id: b.id,
+        client_ref: `ref${i}`,
+        label: s.person_name,
+        binding_state: "confirmed" as const,
+        member_id: fixtureMembers.get(key) ?? 0,
+        pending_member_id: null,
+        pending_request_revision: null,
+      };
+    }),
+    person_shares: b.person_shares.map((s, i) => ({
+      ...s,
+      participant_id: i + 1,
+      label: s.person_name,
+    })),
+  }));
   return {
     id: 1,
     name,
@@ -92,7 +130,7 @@ describe("computeTabPersonTotals", () => {
       "Fractional split",
     );
 
-    const totals = computeTabPersonTotals(tab);
+    const totals = availableTotals(tab);
     expect(
       totals.map(({ person_name, total }) => ({ person_name, total })),
     ).toEqual([
@@ -123,7 +161,7 @@ describe("computeTabPersonTotals", () => {
       "Ordinal split",
     );
 
-    const totals = computeTabPersonTotals(tab);
+    const totals = availableTotals(tab);
     expect(totals.find((entry) => entry.person_name === "z")?.total).toBe(0.34);
     expect(totals.find((entry) => entry.person_name === "ä")?.total).toBe(0.33);
   });
@@ -148,7 +186,7 @@ describe("computeTabPersonTotals", () => {
       "UTF-8 split",
     );
 
-    const totals = computeTabPersonTotals(tab);
+    const totals = availableTotals(tab);
     expect(totals.find((entry) => entry.person_name === "😀")?.total).toBe(0);
     expect(totals.find((entry) => entry.person_name === "Ａ")?.total).toBe(
       0.01,
@@ -173,7 +211,7 @@ describe("computeTabPersonTotals", () => {
       "In-progress split",
     );
 
-    expect(computeTabPersonTotals(tab)[0].total).toBe(10);
+    expect(availableTotals(tab)[0].total).toBe(10);
   });
 
   it("aggregates mixed-currency shares in frozen USD values", () => {
@@ -213,7 +251,7 @@ describe("computeTabPersonTotals", () => {
       "International trip",
     );
 
-    expect(computeTabPersonTotals(tab)).toEqual([
+    expect(availableTotals(tab)).toEqual([
       {
         person_name: "Alice",
         total: 71.05,
@@ -273,7 +311,7 @@ describe("computeTabPersonTotals", () => {
       }),
     ]);
 
-    const result = computeTabPersonTotals(tab);
+    const result = availableTotals(tab);
     expect(result).toHaveLength(2);
     expect(result[0].person_name).toBe("Alice");
     expect(result[0].total).toBe(90);
@@ -297,7 +335,7 @@ describe("computeTabPersonTotals", () => {
       }),
     ]);
 
-    const result = computeTabPersonTotals(tab);
+    const result = availableTotals(tab);
     expect(result).toHaveLength(1);
     expect(result[0].person_name).toBe("Alice");
     expect(result[0].total).toBe(80);
@@ -319,14 +357,14 @@ describe("computeTabPersonTotals", () => {
       }),
     ]);
 
-    const result = computeTabPersonTotals(tab);
+    const result = availableTotals(tab);
     expect(result[0].person_name).toBe("Alice");
     expect(result[1].person_name).toBe("Bob");
     expect(result[2].person_name).toBe("Charlie");
   });
 
   it("returns empty array for tab with no bills", () => {
-    const result = computeTabPersonTotals(makeTab([], "Empty"));
+    const result = availableTotals(makeTab([], "Empty"));
     expect(result).toEqual([]);
   });
 
@@ -349,7 +387,7 @@ describe("computeTabPersonTotals", () => {
       }),
     ]);
 
-    const result = computeTabPersonTotals(tab);
+    const result = availableTotals(tab);
     expect(result[0].all_paid).toBe(true);
   });
 
@@ -372,7 +410,7 @@ describe("computeTabPersonTotals", () => {
       }),
     ]);
 
-    const result = computeTabPersonTotals(tab);
+    const result = availableTotals(tab);
     expect(result[0].all_paid).toBe(false);
   });
 
@@ -387,7 +425,7 @@ describe("computeTabPersonTotals", () => {
       }),
     ]);
 
-    const result = computeTabPersonTotals(tab);
+    const result = availableTotals(tab);
     expect(result[0].all_paid).toBe(false);
   });
 });
@@ -412,7 +450,7 @@ describe("getBill", () => {
       vi.fn().mockResolvedValue({ ok: false, status: 404 }),
     );
 
-    await expect(getBill("999", "token")).rejects.toThrow("Bill not found");
+    await expect(getBill("999", "token")).rejects.toThrow("Resource not found");
   });
 
   it("returns data on success", async () => {
@@ -451,7 +489,7 @@ describe("getTab", () => {
       vi.fn().mockResolvedValue({ ok: false, status: 500 }),
     );
 
-    await expect(getTab("1", "token")).rejects.toThrow("Failed to fetch tab");
+    await expect(getTab("1", "token")).rejects.toThrow("Service unavailable");
   });
 });
 
@@ -462,33 +500,50 @@ describe("tab collections", () => {
   ] as const)("loads %s with the access token", async (_name, get, path) => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve([{ id: 1 }]),
+      json: () =>
+        Promise.resolve(
+          _name === "settlements"
+            ? {
+                settlements: [{ id: 1 }],
+                identity_review_status: "ready",
+                accounting_currency: "USD",
+              }
+            : [{ id: 1 }],
+        ),
     });
     vi.stubGlobal("fetch", mockFetch);
 
     await expect(get("7", "token")).resolves.toEqual([{ id: 1 }]);
-    expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining(path), {
-      cache: "no-store",
-      headers: { Authorization: "Bearer token" },
-    });
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining(path),
+      expect.objectContaining({
+        cache: "no-store",
+        headers: expect.objectContaining({
+          Authorization: "Bearer token",
+          "X-Billington-Identity-Version": "2",
+        }),
+      }),
+    );
   });
 
   it.each([getSettlements, getTabMembers])(
-    "keeps returning an empty list when the request fails",
+    "propagates unavailable collections without fabricating an empty list",
     async (get) => {
       vi.stubGlobal(
         "fetch",
         vi.fn().mockResolvedValue({ ok: false, status: 500 }),
       );
 
-      await expect(get("7", "token")).resolves.toEqual([]);
+      await expect(get("7", "token")).rejects.toThrow("Service unavailable");
     },
   );
 });
 
 describe("updatePersonSharePaid", () => {
   it("sends PATCH with correct body", async () => {
-    const mockFetch = vi.fn().mockResolvedValue({ ok: true });
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
     vi.stubGlobal("fetch", mockFetch);
 
     await updatePersonSharePaid(1, 5, true, "test-token");
@@ -514,7 +569,9 @@ describe("updatePersonSharePaid", () => {
 
 describe("updateTabPersonSharePaid", () => {
   it("sends the paid change with both tab and member credentials", async () => {
-    const mockFetch = vi.fn().mockResolvedValue({ ok: true });
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
     vi.stubGlobal("fetch", mockFetch);
 
     await updateTabPersonSharePaid(
@@ -542,15 +599,20 @@ describe("updateTabPersonSharePaid", () => {
 
 describe("updateTabBillItemAssignments", () => {
   it("sends PATCH with assignments payload", async () => {
-    const mockFetch = vi.fn().mockResolvedValue({ ok: true });
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
     vi.stubGlobal("fetch", mockFetch);
 
     await updateTabBillItemAssignments(
       "1",
       2,
       3,
-      [{ person_name: "Alice", percentage: 100 }],
+      [{ participant_id: 1, percentage: 100 }],
       "tab-token",
+      undefined,
+      undefined,
+      0,
     );
 
     expect(mockFetch).toHaveBeenCalledWith(
@@ -558,7 +620,8 @@ describe("updateTabBillItemAssignments", () => {
       expect.objectContaining({
         method: "PATCH",
         body: JSON.stringify({
-          assignments: [{ person_name: "Alice", percentage: 100 }],
+          expected_revision: 0,
+          assignments: [{ participant_id: 1, percentage: 100 }],
         }),
       }),
     );
@@ -573,12 +636,13 @@ describe("updateTabBillItemAssignments", () => {
         "1",
         2,
         3,
-        [{ person_name: "Alice", percentage: 100 }],
+        [{ participant_id: 1, percentage: 100 }],
         "tab-token",
         "2026-10-10T17:30:54.055105Z",
         "member-token",
+        0,
       ),
-    ).rejects.toThrow("item changed; refresh and try again");
+    ).rejects.toThrow("State changed or requires review");
     expect(mockFetch.mock.calls[0][1]).toMatchObject({
       headers: expect.objectContaining({ "X-Member-Token": "member-token" }),
     });
@@ -587,15 +651,17 @@ describe("updateTabBillItemAssignments", () => {
 
 describe("updateTabBillItemAssignmentsBatch", () => {
   it("uses the authorized tab bill batch route", async () => {
-    const mockFetch = vi.fn().mockResolvedValue({ ok: true });
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
     vi.stubGlobal("fetch", mockFetch);
     const updates = [
       {
         item_id: 159,
         expected_updated_at: "2026-10-10T17:30:54.055105Z",
         assignments: [
-          { person_name: "Alex", percentage: 65 },
-          { person_name: "Sam", percentage: 35 },
+          { participant_id: 2, percentage: 65 },
+          { participant_id: 3, percentage: 35 },
         ],
       },
     ];
@@ -606,6 +672,7 @@ describe("updateTabBillItemAssignmentsBatch", () => {
       updates,
       "tab-token",
       "member-token",
+      0,
     );
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining("/api/tabs/19/bills/27/assignments"),
@@ -615,7 +682,7 @@ describe("updateTabBillItemAssignmentsBatch", () => {
           Authorization: "Bearer tab-token",
           "X-Member-Token": "member-token",
         }),
-        body: JSON.stringify({ updates }),
+        body: JSON.stringify({ expected_revision: 0, updates }),
       }),
     );
   });
@@ -626,22 +693,32 @@ describe("updateTabBillItemAssignmentsBatch", () => {
       vi.fn().mockResolvedValue({ status: 404, ok: false }),
     );
     await expect(
-      updateTabBillItemAssignmentsBatch("19", 27, [], "tab-token"),
-    ).rejects.toThrow("item changed; refresh and try again");
+      updateTabBillItemAssignmentsBatch(
+        "19",
+        27,
+        [],
+        "tab-token",
+        undefined,
+        0,
+      ),
+    ).rejects.toThrow("Resource not found");
   });
 });
 
 describe("updateLazyBillItemAssignments", () => {
   it("writes claims to the standalone bill route with its share token", async () => {
-    const mockFetch = vi.fn().mockResolvedValue({ ok: true });
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
     vi.stubGlobal("fetch", mockFetch);
 
     await updateLazyBillItemAssignments(
       27,
       159,
-      [{ person_name: "Alex", percentage: 100 }],
+      [{ participant_id: 2, percentage: 100 }],
       "bill-token",
       "2026-10-10T17:30:54.055105Z",
+      0,
     );
 
     expect(mockFetch).toHaveBeenCalledWith(
@@ -652,8 +729,9 @@ describe("updateLazyBillItemAssignments", () => {
           Authorization: "Bearer bill-token",
         }),
         body: JSON.stringify({
-          assignments: [{ person_name: "Alex", percentage: 100 }],
+          expected_revision: 0,
           expected_updated_at: "2026-10-10T17:30:54.055105Z",
+          assignments: [{ participant_id: 2, percentage: 100 }],
         }),
       }),
     );
@@ -672,7 +750,7 @@ describe("updateLazyBillItemAssignmentsBatch", () => {
       {
         item_id: 159,
         expected_updated_at: "2026-10-10T17:30:54.055105Z",
-        assignments: [{ person_name: "Alex", percentage: 100 }],
+        assignments: [{ participant_id: 2, percentage: 100 }],
       },
       {
         item_id: 160,
@@ -682,7 +760,7 @@ describe("updateLazyBillItemAssignmentsBatch", () => {
     ];
 
     await expect(
-      updateLazyBillItemAssignmentsBatch(27, updates, "bill-token"),
+      updateLazyBillItemAssignmentsBatch(27, updates, "bill-token", 0),
     ).resolves.toEqual(bill);
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining("/api/bills/27/assignments"),
@@ -691,7 +769,7 @@ describe("updateLazyBillItemAssignmentsBatch", () => {
         headers: expect.objectContaining({
           Authorization: "Bearer bill-token",
         }),
-        body: JSON.stringify({ updates }),
+        body: JSON.stringify({ expected_revision: 0, updates }),
       }),
     );
   });
@@ -702,14 +780,20 @@ describe("updateLazyBillItemAssignmentsBatch", () => {
       vi.fn().mockResolvedValue({ status: 404, ok: false }),
     );
     await expect(
-      updateLazyBillItemAssignmentsBatch(27, [], "bill-token"),
-    ).rejects.toThrow("item changed; refresh and try again");
+      updateLazyBillItemAssignmentsBatch(27, [], "bill-token", 0),
+    ).rejects.toThrow("Resource not found");
   });
 });
 
 describe("joinTab", () => {
   it("persists a display name and returns the member capability", async () => {
-    const member = { display_name: "Alex", member_token: "member-token" };
+    const member = {
+      member_id: 2,
+      tab_id: 19,
+      role: "member",
+      display_name: "Alex",
+      member_token: "member-token",
+    };
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => member,

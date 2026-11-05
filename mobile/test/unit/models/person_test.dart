@@ -9,16 +9,16 @@ void main() {
       expect(person == person, isTrue);
     });
 
-    test('same name and color are equal', () {
+    test('same name and color are separate receipt occurrences', () {
       final a = Person(name: 'Alice', color: Colors.blue);
       final b = Person(name: 'Alice', color: Colors.blue);
-      expect(a, equals(b));
+      expect(a, isNot(equals(b)));
     });
 
-    test('equality is case-insensitive on name', () {
+    test('case-folded labels remain separate receipt occurrences', () {
       final a = Person(name: 'alice', color: Colors.blue);
       final b = Person(name: 'Alice', color: Colors.blue);
-      expect(a, equals(b));
+      expect(a, isNot(equals(b)));
     });
 
     test('different names are not equal', () {
@@ -27,9 +27,9 @@ void main() {
       expect(a, isNot(equals(b)));
     });
 
-    test('different colors are still equal (name-only equality)', () {
+    test('color and rename preserve a receipt reference', () {
       final a = Person(name: 'Alice', color: Colors.blue);
-      final b = Person(name: 'Alice', color: Colors.red);
+      final b = a.copyWith(name: 'Renamed', color: Colors.red);
       expect(a, equals(b));
     });
 
@@ -43,13 +43,13 @@ void main() {
   group('Person hashCode', () {
     test('equal objects have equal hash codes', () {
       final a = Person(name: 'Alice', color: Colors.blue);
-      final b = Person(name: 'Alice', color: Colors.blue);
+      final b = a.copyWith(name: 'Renamed', color: Colors.red);
       expect(a.hashCode, equals(b.hashCode));
     });
 
-    test('case-insensitive names produce same hash code', () {
+    test('server association never changes a receipt hash', () {
       final a = Person(name: 'alice', color: Colors.blue);
-      final b = Person(name: 'ALICE', color: Colors.blue);
+      final b = a.copyWith(participantId: 42);
       expect(a.hashCode, equals(b.hashCode));
     });
 
@@ -57,7 +57,7 @@ void main() {
       final a = Person(name: 'Alice', color: Colors.blue);
       final b = Person(name: 'alice', color: Colors.blue);
       final set = {a, b};
-      expect(set.length, equals(1));
+      expect(set.length, equals(2));
     });
 
     test('works correctly as Map key', () {
@@ -65,8 +65,8 @@ void main() {
       final b = Person(name: 'alice', color: Colors.blue);
       final map = <Person, int>{a: 1};
       map[b] = 2;
-      expect(map.length, equals(1));
-      expect(map[a], equals(2));
+      expect(map.length, equals(2));
+      expect(map[a], equals(1));
     });
   });
 }

@@ -19,13 +19,16 @@ void main() {
             raw.execute(
               '''INSERT INTO recent_bills VALUES(11,'Raw legacy','["Alex"]',1,1.005,'2001-01-01',1.005,0,0,0,'[{"name":"Raw","price":1.005,"assignments":{"Alex":-1}}]',4280391411,978307200,'https://billington.app/b/73?t=synthetic-legacy','JPY',0.01,'2001-01-01','synthetic-old')''',
             );
+            raw.execute(
+              "CREATE TABLE tabs(id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,description TEXT NOT NULL DEFAULT '',bill_ids TEXT NOT NULL DEFAULT '',backend_id INTEGER NULL,access_token TEXT NULL,share_url TEXT NULL,finalized INTEGER NOT NULL DEFAULT 0,member_token TEXT NULL,role TEXT NULL,is_remote INTEGER NOT NULL DEFAULT 0,created_at INTEGER NOT NULL)",
+            );
             raw.userVersion = 8;
           },
         ),
       );
       addTearDown(db.close);
       final row = (await db.getRecentBills()).single;
-      expect(db.schemaVersion, 9);
+      expect(db.schemaVersion, 10);
       expect(row.id, 11);
       expect(row.total, 1.005);
       expect(row.currencyCode, 'JPY');

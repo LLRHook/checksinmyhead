@@ -317,7 +317,9 @@ class _PersonCardState extends State<PersonCard>
             backgroundColor: widget.person.color,
             radius: 20,
             child: Text(
-              widget.person.name[0].toUpperCase(),
+              (widget.person.name.isEmpty
+                  ? '?'
+                  : widget.person.name[0].toUpperCase()),
               style: TextStyle(
                 color: ColorUtils.getContrastiveTextColor(widget.person.color),
                 fontWeight: FontWeight.bold,

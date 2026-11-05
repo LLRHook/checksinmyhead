@@ -990,7 +990,9 @@ class _ItemCardState extends State<ItemCard>
                   radius: 10,
                   backgroundColor: displayPeople[i].color,
                   child: Text(
-                    displayPeople[i].name[0].toUpperCase(),
+                    displayPeople[i].name.isEmpty
+                        ? '?'
+                        : displayPeople[i].name[0].toUpperCase(),
                     style: TextStyle(
                       color: ColorUtils.getContrastiveTextColor(
                         displayPeople[i].color,

@@ -20,6 +20,7 @@ import 'package:checks_frontend/screens/quick_split/bill_summary/widgets/bill_na
 import 'package:checks_frontend/screens/quick_split/bill_summary/widgets/enhanced_share_sheet.dart';
 import 'package:checks_frontend/screens/recent_bills/components/participants_card.dart';
 import 'package:flutter/material.dart';
+import 'package:checks_frontend/screens/lazy_bill_claim_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
@@ -164,6 +165,35 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
                     const BouncingScrollPhysics(), // Bouncy scroll for iOS-like feel
                 padding: EdgeInsets.zero,
                 children: [
+                  if (_bill.shareUrl?.startsWith('https://') == true)
+                    TextButton(
+                      onPressed: () {
+                        final uri = Uri.tryParse(_bill.shareUrl!);
+                        final token = uri?.queryParameters['t'];
+                        if (token != null &&
+                            uri!.pathSegments.length == 2 &&
+                            uri.pathSegments.first == 'b') {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (_) => LazyBillClaimScreen(
+                                    billId: uri.pathSegments.last,
+                                    token: token,
+                                  ),
+                            ),
+                          );
+                        }
+                      },
+                      child: const Text(
+                        'Current receipt participants and claims',
+                      ),
+                    ),
+                  if (_bill.identityNeedsReview)
+                    const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text('Recorded history; ownership needs review.'),
+                    ),
                   // Animated premium header with bill date and total
                   _buildPremiumHeader(context, headerShadowColor, (
                     newName,
@@ -177,6 +207,8 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
                         // Create a new bill model with updated name
                         _bill = RecentBillModel(
                           id: _bill.id,
+                          receiptParticipants: _bill.receiptParticipants,
+                          currentGraph: _bill.currentGraph,
                           billName: newName,
                           participantNames: _bill.participantNames,
                           participantCount: _bill.participantCount,
@@ -999,34 +1031,22 @@ class SortedParticipantsCard extends StatelessWidget {
     final hasRealAssignments = calculations.hasRealAssignments();
     final equalShare = calculations.calculateEqualShare();
 
-    // Create a sorted list of participants based on their total amounts
-    final sortedParticipants = List<String>.from(bill.participantNames);
-    sortedParticipants.sort((a, b) {
-      final amountA =
-          hasRealAssignments ? (personTotals[a] ?? 0.0) : equalShare;
-      final amountB =
-          hasRealAssignments ? (personTotals[b] ?? 0.0) : equalShare;
-      return amountB.compareTo(amountA); // Descending order
-    });
-
-    // Create a new bill with sorted participants
-    final sortedBill = RecentBillModel(
-      id: bill.id,
-      billName: bill.billName,
-      participantNames: sortedParticipants,
-      participantCount: bill.participantCount,
-      total: bill.total,
-      date: bill.date,
-      subtotal: bill.subtotal,
-      tax: bill.tax,
-      tipAmount: bill.tipAmount,
-      tipPercentage: bill.tipPercentage,
-      items: bill.items,
-      color: bill.color,
-      itemAssignments: bill.itemAssignments,
-      shareUrl: bill.shareUrl,
+    final order = List.generate(bill.participants.length, (i) => i)
+      ..sort((a, b) {
+        final amountA =
+            hasRealAssignments
+                ? personTotals[bill.participants[a].clientRef] ?? 0
+                : equalShare;
+        final amountB =
+            hasRealAssignments
+                ? personTotals[bill.participants[b].clientRef] ?? 0
+                : equalShare;
+        return amountB.compareTo(amountA);
+      });
+    return ParticipantsCard(
+      bill: bill,
+      calculations: calculations,
+      participantOrder: order,
     );
-
-    return ParticipantsCard(bill: sortedBill, calculations: calculations);
   }
 }

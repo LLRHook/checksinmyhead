@@ -23,9 +23,13 @@ class TabManager extends ChangeNotifier {
   TabManager.withDependencies({
     required AppDatabase database,
     required RecentBillsManager receipts,
+    ApiService? api,
   }) : _database = database,
-       _receiptOwner = receipts;
+       _receiptOwner = receipts,
+       _apiDependency = api;
 
+  ApiService? _apiDependency;
+  ApiService get _api => _apiDependency ??= ApiService();
   final AppDatabase? _database;
   final RecentBillsManager? _receiptOwner;
   AppDatabase get _db => _database ?? DatabaseProvider.db;
@@ -124,7 +128,7 @@ class TabManager extends ChangeNotifier {
     String? creatorDisplayName,
   }) async {
     try {
-      final apiService = ApiService();
+      final apiService = _api;
       final response = await apiService.createTab(
         name,
         description,
@@ -136,6 +140,7 @@ class TabManager extends ChangeNotifier {
         accessToken: Value(response.accessToken),
         shareUrl: Value(response.shareUrl),
         memberToken: Value(response.memberToken),
+        memberId: Value(response.memberId),
         role: Value(response.memberToken != null ? 'creator' : null),
       );
       await _db.updateTab(localId, companion);
@@ -210,7 +215,7 @@ class TabManager extends ChangeNotifier {
         return false;
       }
 
-      final apiService = ApiService();
+      final apiService = _api;
       final settlements = await apiService.finalizeTab(
         tabData.backendId!,
         tabData.accessToken!,
@@ -247,7 +252,7 @@ class TabManager extends ChangeNotifier {
       final accessToken = uri.queryParameters['t'];
       if (tabId == null || accessToken == null) return null;
 
-      final apiService = ApiService();
+      final apiService = _api;
 
       // Join the tab
       final existing = (await _db.getAllTabs()).where(
@@ -257,7 +262,17 @@ class TabManager extends ChangeNotifier {
             tab.memberToken != null,
       );
       if (existing.isNotEmpty) {
-        return _tabDataToAppTab(existing.first);
+        final saved = existing.first;
+        final me = await apiService.getCurrentMember(
+          tabId,
+          accessToken,
+          saved.memberToken!,
+        );
+        await _db.updateTab(
+          saved.id,
+          TabsCompanion(memberId: Value(me.memberId), role: Value(me.role)),
+        );
+        return _tabDataToAppTab((await _db.getTabById(saved.id))!);
       }
 
       final joinResponse = await apiService.joinTab(
@@ -279,6 +294,7 @@ class TabManager extends ChangeNotifier {
           accessToken: Value(accessToken),
           shareUrl: Value(shareUrl),
           memberToken: Value(joinResponse.memberToken),
+          memberId: Value(joinResponse.memberId),
           role: Value(joinResponse.role),
           isRemote: const Value(true),
           createdAt: Value(DateTime.now()),
@@ -316,7 +332,7 @@ class TabManager extends ChangeNotifier {
           tabData.memberToken == null) {
         return false;
       }
-      await ApiService().leaveTab(
+      await _api.leaveTab(
         tabData.backendId!,
         tabData.accessToken!,
         tabData.memberToken!,
@@ -343,6 +359,7 @@ class TabManager extends ChangeNotifier {
       shareUrl: tabData.shareUrl,
       finalized: tabData.finalized,
       memberToken: tabData.memberToken,
+      memberId: tabData.memberId,
       role: tabData.role,
       isRemote: tabData.isRemote,
       displayCurrency: 'USD',

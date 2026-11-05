@@ -1,6 +1,6 @@
 /// The participant-label contract of POST /api/bills, independent of tab joining.
 /// Check the server's sanitized label without changing local/history text.
-String? receiptParticipantNameError(String? name) {
+String? receiptParticipantNameError(String? name, {bool allowEmpty = false}) {
   // Match Go strings.TrimSpace (Unicode White_Space). Dart's trim also removes
   // U+FEFF, which the receipt endpoint retains and counts toward the rune limit.
   final label = (name ?? '')
@@ -12,7 +12,7 @@ String? receiptParticipantNameError(String? name) {
         ),
         '',
       );
-  if (label.isEmpty) return 'Please enter a participant name';
+  if (label.isEmpty && !allowEmpty) return 'Please enter a participant name';
   if (label.runes.length > 30) {
     return 'Receipt participant names can use at most 30 Unicode characters. '
         'Use a shorter name for this receipt; saved people and bills are unchanged.';

@@ -7,7 +7,7 @@ import { formatMoney } from "@/lib/currency";
 interface TabHeaderProps {
   name: string;
   description: string;
-  total: number;
+  total: number | null;
   billCount: number;
   finalized?: boolean;
   currency?: string;
@@ -44,7 +44,9 @@ export default function TabHeader({
       <div className="inline-flex items-center gap-2 bg-[var(--secondary)] dark:bg-white/10 px-5 py-2 rounded-full">
         <span className="text-sm text-[var(--text-secondary)]">Total</span>
         <span className="text-xl font-bold font-mono text-[var(--accent)] dark:text-white">
-          {formatMoney(total, currency)}
+          {total === null
+            ? "Unavailable · needs review"
+            : formatMoney(total, currency)}
         </span>
       </div>
       <div className="mt-2 flex items-center justify-center lg:justify-start gap-2">

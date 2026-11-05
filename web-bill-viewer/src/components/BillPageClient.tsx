@@ -9,7 +9,7 @@ import DesktopLayout from "@/components/DesktopLayout";
 import LazyBillBoard from "@/components/LazyBillBoard";
 import PaymentDetails from "@/components/PaymentDetails";
 import PersonShare from "@/components/PersonShare";
-import { type Bill, getBill } from "@/lib/api";
+import { ApiError, type Bill, getBill } from "@/lib/api";
 import { lazyBillRemainingTotal } from "@/lib/lazy-bill";
 
 interface BillPageClientProps {
@@ -46,7 +46,11 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
           setState({ status: "error", errorType: "invalid_token" });
           return;
         }
-        if (error instanceof Error && error.message === "Bill not found") {
+        if (
+          error instanceof Error &&
+          error instanceof ApiError &&
+          error.status === 404
+        ) {
           setState({ status: "error", errorType: "not_found" });
           return;
         }
@@ -327,6 +331,13 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
         </div>
       </div>
 
+      {bill.identity_review_status !== "ready" && (
+        <p role="status">Recorded history; ownership needs review.</p>
+      )}
+      <details>
+        <summary>Receipt participants</summary>
+        <LazyBillBoard bill={bill} token={token} refreshBill={refreshBill} />
+      </details>
       <BillBreakdown bill={bill} />
     </DesktopLayout>
   );

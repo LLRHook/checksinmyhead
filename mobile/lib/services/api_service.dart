@@ -10,17 +10,20 @@ import 'package:checks_frontend/services/api_config.dart';
 import 'package:checks_frontend/models/bill_item.dart';
 import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/models/exchange_rate_quote.dart';
+import 'package:checks_frontend/models/participant_identity.dart';
 
 /// Exception thrown when an API request fails.
 class ApiException implements Exception {
   final String message;
   final int? statusCode;
+  final String? code;
   final bool isTimeout;
   final bool isNetworkError;
 
   ApiException(
     this.message, {
     this.statusCode,
+    this.code,
     this.isTimeout = false,
     this.isNetworkError = false,
   });
@@ -73,7 +76,7 @@ class ApiService {
     final response = await _client
         .get(
           Uri.parse('$baseUrl/api/bills/$billId'),
-          headers: {'Authorization': 'Bearer $token'},
+          headers: identityHeaders(token),
         )
         .timeout(_timeout);
     if (response.statusCode != 200) {
@@ -93,15 +96,22 @@ class ApiService {
     required String billId,
     required String token,
     required List<Map<String, dynamic>> updates,
+    required int expectedRevision,
+    String? tabId,
+    String? memberToken,
   }) async {
     final response = await _client
         .patch(
-          Uri.parse('$baseUrl/api/bills/$billId/assignments'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
-          body: jsonEncode({'updates': updates}),
+          Uri.parse(
+            tabId == null
+                ? '$baseUrl/api/bills/$billId/assignments'
+                : '$baseUrl/api/tabs/$tabId/bills/$billId/assignments',
+          ),
+          headers: identityHeaders(token, memberToken),
+          body: jsonEncode({
+            'updates': updates,
+            'expected_revision': expectedRevision,
+          }),
         )
         .timeout(_timeout);
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -130,6 +140,7 @@ class ApiService {
           Uri.parse('$baseUrl/api/bills/$billId/shares/$shareId'),
           headers: {
             'Content-Type': 'application/json',
+            'X-Billington-Identity-Version': '2',
             'Authorization': 'Bearer $token',
           },
           body: jsonEncode({'paid': paid}),
@@ -138,6 +149,23 @@ class ApiService {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw ApiException('Could not update payment status');
     }
+  }
+
+  Future<void> updateTabBillPaid({
+    required String tabId,
+    required String billId,
+    required int shareId,
+    required String token,
+    required String memberToken,
+    required bool paid,
+  }) async {
+    await identityRequest(
+      'PATCH',
+      '/api/tabs/$tabId/bills/$billId/shares/$shareId/paid',
+      token,
+      memberToken: memberToken,
+      body: {'paid': paid},
+    );
   }
 
   Future<double> getCurrencyRate(String from, String to) =>
@@ -184,56 +212,91 @@ class ApiService {
 
   /// Exactly one POST of the persisted bytes; the owner controls durable attempt
   /// ordering and explicit later recovery. No fallback or automatic POST retry.
-  Future<BillUploadResponse> publishSnapshot(String snapshot, String key) =>
-      _withStandardErrors(() async {
-        if (!RegExp(r'^[A-Za-z0-9_-]{43}$').hasMatch(key) ||
-            base64Url.encode(base64Url.decode('$key=')).replaceAll('=', '') !=
-                key) {
-          throw BillValidationException('Invalid recovery key');
-        }
-        final request = jsonDecode(snapshot) as Map<String, dynamic>;
-        final body = await _sendCreation(snapshot, key);
-        const requiredFields = [
-          'bill_id',
+  Future<BillUploadResponse> publishSnapshot(
+    String snapshot,
+    String key, {
+    int identityVersion = 1,
+  }) => _withStandardErrors(() async {
+    if (!RegExp(r'^[A-Za-z0-9_-]{43}$').hasMatch(key) ||
+        base64Url.encode(base64Url.decode('$key=')).replaceAll('=', '') !=
+            key) {
+      throw BillValidationException('Invalid recovery key');
+    }
+    if (!{1,2}.contains(identityVersion)) {throw BillValidationException('Unsupported saved wire version');}
+    final request = jsonDecode(snapshot) as Map<String, dynamic>;
+    final body = await _sendCreation(snapshot, key, identityVersion);
+    const requiredFields = [
+      'bill_id',
+      'access_token',
+      'share_url',
+      'currency_code',
+      'usd_exchange_rate',
+      'exchange_rate_date',
+      'exchange_rate_source',
+      'usd_total',
+    ];
+    if (requiredFields.any((field) => !body.containsKey(field))) {
+      throw InvalidCreationResponse();
+    }
+    if (body['bill_id'] is! int ||
+        body['usd_exchange_rate'] is! num ||
+        body['usd_total'] is! num ||
+        [
           'access_token',
           'share_url',
           'currency_code',
-          'usd_exchange_rate',
           'exchange_rate_date',
           'exchange_rate_source',
-          'usd_total',
-        ];
-        if (requiredFields.any((field) => !body.containsKey(field))) {
+        ].any((field) => body[field] is! String)) {
+      throw InvalidCreationResponse();
+    }
+    if (identityVersion == 2) {
+      final refs =
+          (request['participants'] as List)
+              .map((p) => p['client_ref'])
+              .toList();
+      final mapping = body['participant_map'];
+      if (body['response_version'] != 2 ||
+          body['identity_version'] != 2 ||
+          body['identity_revision'] != 0 ||
+          mapping is! List ||
+          mapping.length != refs.length) {
+        throw InvalidCreationResponse();
+      }
+      final ids = <int>{};
+      for (var i = 0; i < refs.length; i++) {
+        final row = mapping[i];
+        if (row is! Map ||
+            row.length != 2 ||
+            row['client_ref'] != refs[i] ||
+            row['participant_id'] is! int ||
+            row['participant_id'] <= 0 ||
+            !ids.add(row['participant_id'] as int)) {
           throw InvalidCreationResponse();
         }
-        if (body['bill_id'] is! int ||
-            body['usd_exchange_rate'] is! num ||
-            body['usd_total'] is! num ||
-            [
-              'access_token',
-              'share_url',
-              'currency_code',
-              'exchange_rate_date',
-              'exchange_rate_source',
-            ].any((field) => body[field] is! String)) {
-          throw InvalidCreationResponse();
-        }
-        final result = BillUploadResponse.fromJson(body);
-        final nativeTotal = (request['total'] as num).toDouble();
-        if (!result.isAuthoritativeFor(request['currency_code'] as String) ||
-            result.billId <= 0 ||
-            result.accessToken.isEmpty ||
-            !result.hasValidSourceLink ||
-            !result.hasFrozenProvenance ||
-            !result.matchesNativeTotal(nativeTotal)) {
-          throw InvalidCreationResponse();
-        }
-        return result;
-      });
+      }
+    } else if (identityVersion != 1 ||
+        body.containsKey('participant_map') ||
+        body.containsKey('response_version')) {
+      throw InvalidCreationResponse();
+    }
+    final result = BillUploadResponse.fromJson(body);
+    final nativeTotal = (request['total'] as num).toDouble();
+    if (!result.isAuthoritativeFor(request['currency_code'] as String) ||
+        result.billId <= 0 ||
+        result.accessToken.isEmpty ||
+        !result.hasValidSourceLink ||
+        !result.hasFrozenProvenance ||
+        !result.matchesNativeTotal(nativeTotal)) {
+      throw InvalidCreationResponse();
+    }
+    return result;
+  });
 
   Future<Map<String, dynamic>> _sendCreation(
     String snapshot,
     String key,
+    int identityVersion,
   ) async {
     final abort = Completer<void>();
     final deadline = Timer(_timeout, () {
@@ -251,6 +314,7 @@ class ApiService {
             ..headers.addAll({
               'Content-Type': 'application/json',
               'Idempotency-Key': key,
+              if (identityVersion == 2) 'X-Billington-Identity-Version': '2',
             })
             ..body = snapshot;
       final response = await _client.send(request).timeout(_timeout);
@@ -328,10 +392,27 @@ class ApiService {
     required String currencyCode,
     String? displayCurrency,
     bool lazyMode = false,
+    int identityVersion = 1,
   }) {
     for (final person in [...participants, ...personShares.keys]) {
-      final error = receiptParticipantNameError(person.name);
+      final error = receiptParticipantNameError(
+        person.name,
+        allowEmpty: identityVersion == 2,
+      );
       if (error != null) throw BillValidationException(error);
+    }
+    if (identityVersion == 2) {
+      final refs = participants.map((p) => p.clientRef).toSet();
+      if (refs.length != participants.length ||
+          refs.any((r) => !RegExp(r'^[A-Za-z0-9_-]{1,64}$').hasMatch(r)) ||
+          [
+            ...personShares.keys,
+            ...items.expand((i) => i.assignments.keys),
+          ].any((p) => !refs.contains(p.clientRef))) {
+        throw BillValidationException(
+          'Review receipt participant references before sharing.',
+        );
+      }
     }
     return {
       'name': billName,
@@ -343,20 +424,32 @@ class ApiService {
       'currency_code': currencyCode,
       'display_currency': displayCurrency ?? currencyCode,
       'lazy_mode': lazyMode,
-      'participants': participants.map((p) => {'name': p.name}).toList(),
-      'items': _buildItemsJson(items),
+      'participants':
+          participants
+              .map(
+                (p) => {
+                  if (identityVersion == 2) 'client_ref': p.clientRef,
+                  'name': p.name,
+                },
+              )
+              .toList(),
+      'items': _buildItemsJson(items, identityVersion),
       'person_shares': _buildPersonSharesJson(
         personShares,
         items,
         tax,
         tipAmount,
         total,
+        identityVersion,
       ),
       'payment_methods': paymentMethods,
     };
   }
 
-  List<Map<String, dynamic>> _buildItemsJson(List<BillItem> items) {
+  List<Map<String, dynamic>> _buildItemsJson(
+    List<BillItem> items,
+    int identityVersion,
+  ) {
     return items.map((item) {
       // Map person assignments using person names
       final assignments = <Map<String, dynamic>>[];
@@ -366,12 +459,19 @@ class ApiService {
         if (percentageError != null) {
           throw BillValidationException(percentageError);
         }
-        final error = receiptParticipantNameError(person.name);
+        final error = receiptParticipantNameError(
+          person.name,
+          allowEmpty: identityVersion == 2,
+        );
         if (error != null) throw BillValidationException(error);
         // Zero means unassigned locally. Keep the person/share rows, but do not
         // send an assignment that the creation endpoint correctly rejects.
         if (percentage == 0) return;
-        assignments.add({'person_name': person.name, 'percentage': percentage});
+        assignments.add({
+          identityVersion == 2 ? 'participant_ref' : 'person_name':
+              identityVersion == 2 ? person.clientRef : person.name,
+          'percentage': percentage,
+        });
       });
       if (item.assignments.values.fold(0.0, (sum, value) => sum + value) >
           100 + 1e-9) {
@@ -444,8 +544,9 @@ class ApiService {
     final headers = <String, String>{
       'Content-Type': 'application/json',
       'Authorization': 'Bearer $accessToken',
+      'X-Billington-Identity-Version': '2',
     };
-    if (memberToken != null && memberToken.isNotEmpty) {
+    if (memberToken != null) {
       headers['X-Member-Token'] = memberToken;
     }
     final response = await _client
@@ -469,22 +570,32 @@ class ApiService {
     int billId,
     String accessToken, {
     required String billToken,
+    int? expectedRevision,
     String? memberToken,
   }) async {
     await _withStandardErrors(() async {
       final headers = <String, String>{
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $accessToken',
+        'X-Billington-Identity-Version': '2',
       };
       if (memberToken != null) {
         headers['X-Member-Token'] = memberToken;
       }
 
+      if (expectedRevision == null) {
+        headers.remove('X-Billington-Identity-Version');
+      }
       final response = await _client
           .post(
             Uri.parse('$baseUrl/api/tabs/$tabId/bills'),
             headers: headers,
-            body: jsonEncode({'bill_id': billId, 'bill_token': billToken}),
+            body: jsonEncode({
+              'bill_id': billId,
+              'bill_token': billToken,
+              if (expectedRevision != null)
+                'expected_revision': expectedRevision,
+            }),
           )
           .timeout(_timeout);
 
@@ -504,7 +615,7 @@ class ApiService {
     String? memberToken,
   }) async {
     return _withStandardErrors(() async {
-      final headers = <String, String>{'Authorization': 'Bearer $accessToken'};
+      final headers = identityHeaders(accessToken);
       if (memberToken != null) {
         headers['X-Member-Token'] = memberToken;
       }
@@ -517,7 +628,8 @@ class ApiService {
           .timeout(_timeout);
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
+        final envelope = jsonDecode(response.body);
+        final List<dynamic> data = envelope['settlements'];
         return data
             .map(
               (json) =>
@@ -542,12 +654,13 @@ class ApiService {
       final response = await _client
           .get(
             Uri.parse('$baseUrl/api/tabs/$tabId/settlements'),
-            headers: {'Authorization': 'Bearer $accessToken'},
+            headers: identityHeaders(accessToken),
           )
           .timeout(_timeout);
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
+        final envelope = jsonDecode(response.body);
+        final List<dynamic> data = envelope['settlements'];
         return data
             .map(
               (json) =>
@@ -575,8 +688,9 @@ class ApiService {
       final headers = <String, String>{
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $accessToken',
+        'X-Billington-Identity-Version': '2',
       };
-      if (memberToken != null && memberToken.isNotEmpty) {
+      if (memberToken != null) {
         headers['X-Member-Token'] = memberToken;
       }
       final response = await _client
@@ -606,8 +720,9 @@ class ApiService {
       final headers = <String, String>{
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $accessToken',
+        'X-Billington-Identity-Version': '2',
       };
-      if (memberToken != null && memberToken.isNotEmpty) {
+      if (memberToken != null) {
         headers['X-Member-Token'] = memberToken;
       }
       final response = await _client
@@ -652,6 +767,7 @@ class ApiService {
             Uri.parse('$baseUrl/api/tabs/$tabId/members/me'),
             headers: {
               'Authorization': 'Bearer $accessToken',
+              'X-Billington-Identity-Version': '2',
               'X-Member-Token': memberToken,
             },
           )
@@ -676,7 +792,7 @@ class ApiService {
       final response = await _client
           .get(
             Uri.parse('$baseUrl/api/tabs/$tabId/members'),
-            headers: {'Authorization': 'Bearer $accessToken'},
+            headers: identityHeaders(accessToken),
           )
           .timeout(_timeout);
 
@@ -703,7 +819,7 @@ class ApiService {
       final response = await _client
           .get(
             Uri.parse('$baseUrl/api/tabs/$tabId'),
-            headers: {'Authorization': 'Bearer $accessToken'},
+            headers: identityHeaders(accessToken),
           )
           .timeout(_timeout);
 
@@ -722,6 +838,128 @@ class ApiService {
     });
   }
 
+  static Map<String, String> identityHeaders(
+    String token, [
+    String? memberToken,
+  ]) => {
+    'Authorization': 'Bearer $token',
+    'Content-Type': 'application/json',
+    'X-Billington-Identity-Version': '2',
+    if (memberToken != null) 'X-Member-Token': memberToken,
+  };
+
+  Future<Map<String, dynamic>> identityRequest(
+    String method,
+    String path,
+    String token, {
+    String? memberToken,
+    Map<String, dynamic>? body,
+  }) => _withStandardErrors(() async {
+    final request =
+        http.Request(method, Uri.parse('$baseUrl$path'))
+          ..headers.addAll(identityHeaders(token, memberToken))
+          ..followRedirects = false;
+    if (body != null) request.body = jsonEncode(body);
+    final response = await http.Response.fromStream(
+      await _client.send(request).timeout(_timeout),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      String? code;
+      try {
+        code = (jsonDecode(response.body) as Map)['code'] as String?;
+      } catch (_) {}
+      throw ApiException(
+        response.statusCode == 409
+            ? 'State changed or needs review. Refresh and deliberately retry.'
+            : response.statusCode == 403
+            ? 'Current membership or source proof was denied.'
+            : 'Could not complete this identity action.',
+        statusCode: response.statusCode,
+        code: code,
+      );
+    }
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  });
+
+  Future<MemberIdentity> getCurrentMember(
+    int tabId,
+    String token,
+    String memberToken,
+  ) async => MemberIdentity.fromJson(
+    await identityRequest(
+      'GET',
+      '/api/tabs/$tabId/members/me',
+      token,
+      memberToken: memberToken,
+    ),
+    tabId,
+  );
+  Future<MemberIdentity> renameCurrentMember(
+    int tabId,
+    String token,
+    String memberToken,
+    String label,
+  ) async => MemberIdentity.fromJson(
+    await identityRequest(
+      'PATCH',
+      '/api/tabs/$tabId/members/me',
+      token,
+      memberToken: memberToken,
+      body: {'display_name': label},
+    ),
+    tabId,
+  );
+  Future<BillIdentity> getBillIdentity(String billId, String token) async =>
+      BillIdentity.fromJson(await getSharedBill(billId, token));
+
+  Future<ParticipantCommandResult> participantCommand({
+    required String billId,
+    required String token,
+    required int expectedRevision,
+    String? tabId,
+    String? memberToken,
+    int? participantId,
+    String? clientRef,
+    String? label,
+    String? decision,
+    int? requestRevision,
+    int? memberId,
+    String? billToken,
+    bool bindingRequest = false,
+  }) async {
+    final root =
+        tabId == null ? '/api/bills/$billId' : '/api/tabs/$tabId/bills/$billId';
+    final suffix =
+        bindingRequest
+            ? '/binding-request'
+            : decision != null
+            ? '/binding'
+            : '';
+    final path =
+        '$root/participants${participantId == null ? '' : '/$participantId'}$suffix';
+    return ParticipantCommandResult.fromJson(
+      await identityRequest(
+        decision != null
+            ? 'PUT'
+            : bindingRequest || participantId == null
+            ? 'POST'
+            : 'PATCH',
+        path,
+        token,
+        memberToken: memberToken,
+        body: {
+          'expected_revision': expectedRevision,
+          if (clientRef != null) 'client_ref': clientRef,
+          if (label != null) 'name': label,
+          if (decision != null) 'decision': decision,
+          if (requestRevision != null) 'request_revision': requestRevision,
+          if (memberId != null) 'member_id': memberId,
+          if (billToken != null) 'bill_token': billToken,
+        },
+      ),
+    );
+  }
+
   /// Builds the person_shares JSON structure
   List<Map<String, dynamic>> _buildPersonSharesJson(
     Map<Person, double> personShares,
@@ -729,6 +967,7 @@ class ApiService {
     double tax,
     double tipAmount,
     double total,
+    int identityVersion,
   ) {
     final personSharesList = <Map<String, dynamic>>[];
 
@@ -759,7 +998,8 @@ class ApiService {
       final tipShare = tipAmount * proportion;
 
       personSharesList.add({
-        'person_name': person.name,
+        identityVersion == 2 ? 'participant_ref' : 'person_name':
+            identityVersion == 2 ? person.clientRef : person.name,
         'items': personItems,
         'subtotal': subtotalForPerson,
         'tax_share': taxShare,
@@ -835,6 +1075,8 @@ class BillUploadResponse {
   final String shareUrl;
   final ExchangeRateQuote exchangeRateQuote;
   final double usdTotal;
+  final int? responseVersion;
+  final List<Map<String, dynamic>>? participantMap;
 
   BillUploadResponse({
     required this.billId,
@@ -842,6 +1084,8 @@ class BillUploadResponse {
     required this.shareUrl,
     this.exchangeRateQuote = const ExchangeRateQuote.usd(),
     this.usdTotal = 0,
+    this.responseVersion,
+    this.participantMap,
   });
 
   factory BillUploadResponse.fromJson(Map<String, dynamic> json) {
@@ -858,6 +1102,9 @@ class BillUploadResponse {
       shareUrl: json['share_url'] as String? ?? '',
       exchangeRateQuote: quote,
       usdTotal: (json['usd_total'] as num?)?.toDouble() ?? 0,
+      responseVersion: json['response_version'] as int?,
+      participantMap:
+          (json['participant_map'] as List?)?.cast<Map<String, dynamic>>(),
     );
   }
 

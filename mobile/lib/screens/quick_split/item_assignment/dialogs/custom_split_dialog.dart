@@ -650,7 +650,9 @@ Widget _buildPersonSlider({
                     isBirthdayPerson
                         ? const Icon(Icons.cake, color: Colors.white, size: 16)
                         : Text(
-                          person.name[0].toUpperCase(),
+                          (person.name.isEmpty
+                              ? '?'
+                              : person.name[0].toUpperCase()),
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,

@@ -30,8 +30,32 @@ describe("private authorized reads", () => {
     async (_name, read, path, data) => {
       const fetchMock = vi
         .fn()
-        .mockResolvedValueOnce(new Response(JSON.stringify(data)))
-        .mockResolvedValueOnce(new Response(JSON.stringify(data)));
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify(
+              _name === "settlements"
+                ? {
+                    settlements: data,
+                    identity_review_status: "ready",
+                    accounting_currency: "USD",
+                  }
+                : data,
+            ),
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify(
+              _name === "settlements"
+                ? {
+                    settlements: data,
+                    identity_review_status: "ready",
+                    accounting_currency: "USD",
+                  }
+                : data,
+            ),
+          ),
+        );
       vi.stubGlobal("fetch", fetchMock);
       await expect(read("702", "first-synthetic")).resolves.toEqual(data);
       await expect(read("702", "second-synthetic")).resolves.toEqual(data);

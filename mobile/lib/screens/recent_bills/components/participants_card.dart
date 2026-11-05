@@ -40,6 +40,7 @@ import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_fo
 class ParticipantsCard extends StatefulWidget {
   /// The bill model containing participant and item data
   final RecentBillModel bill;
+  final List<int>? participantOrder;
 
   /// Pre-calculated bill data to avoid redundant calculations
   final BillCalculations calculations;
@@ -47,6 +48,7 @@ class ParticipantsCard extends StatefulWidget {
   const ParticipantsCard({
     super.key,
     required this.bill,
+    this.participantOrder,
     required this.calculations,
   });
 
@@ -65,7 +67,7 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
 
     // Initialize expansion state - first participant expanded by default
     if (widget.bill.participantNames.isNotEmpty) {
-      _expansionState[widget.bill.participantNames[0]] = true;
+      _expansionState[widget.bill.participants[0].clientRef] = true;
     }
   }
 
@@ -195,20 +197,23 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
             shrinkWrap: true, // Use only the space needed
             physics:
                 const NeverScrollableScrollPhysics(), // Disable scrolling within this list
-            itemCount: widget.bill.participantNames.length,
+            itemCount: widget.bill.participants.length,
             itemBuilder: (context, index) {
-              final name = widget.bill.participantNames[index];
+              final ordinal = widget.participantOrder?[index] ?? index;
+              final person = widget.bill.participants[ordinal];
+              final ref = person.clientRef;
+              final name = '${person.displayName} · ${ordinal + 1}';
               // Get expansion state for this participant
-              final isExpanded = _expansionState[name] ?? false;
+              final isExpanded = _expansionState[ref] ?? false;
 
               // Calculate amounts for this person
               // Use pre-calculated totals or fallback to equal share if no assignments exist
               final totalAmount =
-                  hasRealAssignments ? (personTotals[name] ?? 0.0) : equalShare;
+                  hasRealAssignments ? (personTotals[ref] ?? 0.0) : equalShare;
 
               // Get tax and tip portion for this person
               final taxAndTipAmount =
-                  widget.calculations.calculatePersonTaxAndTip()[name] ?? 0.0;
+                  widget.calculations.calculatePersonTaxAndTip()[ref] ?? 0.0;
 
               // Extract items this person is paying for from the bill data
               List<Map<String, dynamic>> personItems = [];
@@ -220,8 +225,17 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                       item['assignments'] as Map<String, dynamic>?;
 
                   // If this person has an assignment for this item
-                  if (assignments != null && assignments.containsKey(name)) {
-                    final percentage = assignments[name] as num;
+                  if (assignments != null &&
+                      assignments.containsKey(
+                        widget.bill.receiptParticipants == null
+                            ? person.name
+                            : ref,
+                      )) {
+                    final percentage =
+                        assignments[widget.bill.receiptParticipants == null
+                                ? person.name
+                                : ref]
+                            as num;
                     if (percentage > 0) {
                       // Only include if percentage is positive
                       final itemAmount = price * percentage / 100;
@@ -277,7 +291,7 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
 
                         // Update the expansion state when toggled
                         setState(() {
-                          _expansionState[name] = expanded;
+                          _expansionState[ref] = expanded;
                         });
                       },
 

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:checks_frontend/screens/participant_identity_panel.dart';
+import 'package:checks_frontend/screens/lazy_bill_claim_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:checks_frontend/models/tab.dart';
 import 'package:checks_frontend/screens/tabs/tab_manager.dart';
@@ -41,6 +43,8 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
   List<RecentBillModel> _tabBills = [];
   List<SettlementResponse> _settlements = [];
   List<TabMemberResponse> _members = [];
+  Map<String, dynamic>? _remoteTab;
+  String? _readError;
   bool _isLoading = true;
   bool _isFinalizing = false;
   bool _isRetryingInvite = false;
@@ -61,6 +65,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
   }
 
   String _formatCurrency(double value) {
+    if (!value.isFinite) return 'Unavailable · needs review';
     if (_rateCurrency != _currentTab.displayCurrency) {
       return '${_currentTab.displayCurrency} conversion unavailable';
     }
@@ -96,6 +101,19 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
           _currentTab.backendId!,
           _currentTab.accessToken!,
         );
+        if (_currentTab.memberToken != null) {
+          final me = await _apiService.getCurrentMember(
+            _currentTab.backendId!,
+            _currentTab.accessToken!,
+            _currentTab.memberToken!,
+          );
+          await DatabaseProvider.db.updateTab(
+            _currentTab.id!,
+            TabsCompanion(memberId: Value(me.memberId), role: Value(me.role)),
+          );
+        }
+        _remoteTab = remoteTab;
+        _readError = null;
         final remoteBills = remoteTab['bills'];
         if (remoteBills is List) {
           final syncedBillIds = await _billsManager.importRemoteTabBills(
@@ -110,6 +128,8 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
           if (refreshed != null) _currentTab = refreshed;
         }
       } on ApiException {
+        _readError =
+            'Current tab unavailable. Showing recorded history; balances need review.';
         // Preserve the last cached dashboard while the trip is offline.
       }
     }
@@ -528,35 +548,30 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
   }
 
   double _calculateTotal() {
-    return _tabBills.fold(
-      0.0,
-      (sum, bill) => sum + (bill.verifiedUsdTotal ?? 0),
-    );
+    if (_remoteTab != null) {
+      return (_remoteTab!['total_amount'] as num?)?.toDouble() ?? double.nan;
+    }
+    if (_tabBills.any((b) => b.verifiedUsdTotal == null)) return double.nan;
+    return _tabBills.fold(0.0, (sum, bill) => sum + bill.verifiedUsdTotal!);
   }
 
-  // Known limitation: Person equality uses both name and color, so the same
-  // person with different colors across bills appears as separate entries.
-  // We mitigate this by aggregating on lowercase name below.
   Map<String, double> _calculatePersonTotals() {
-    final Map<String, double> personTotals = {};
-    final Map<String, String> nameMapping = {};
-
+    final totals = <String, double>{};
+    final labels = <String, String>{};
     for (final bill in _tabBills) {
-      final billShares = bill.generateUSDPersonShares();
-
-      billShares.forEach((person, amount) {
-        final nameLower = person.name.toLowerCase();
-
-        if (!nameMapping.containsKey(nameLower)) {
-          nameMapping[nameLower] = person.name;
-        }
-
-        final displayName = nameMapping[nameLower]!;
-        personTotals[displayName] = (personTotals[displayName] ?? 0.0) + amount;
-      });
+      if (!bill.hasUSDValuation || bill.identityNeedsReview) return {};
+      for (final entry in bill.generateUSDPersonShares().entries) {
+        final p = entry.key;
+        final key =
+            p.memberId == null
+                ? 'receipt:${bill.id}:${p.clientRef}'
+                : 'member:${_currentTab.backendId}:${p.memberId}';
+        labels[key] =
+            '${p.displayName} · ${p.memberId == null ? 'receipt ${bill.id} #${p.participantId ?? bill.participants.indexOf(p) + 1}' : 'member #${p.memberId}'}';
+        totals[key] = (totals[key] ?? 0) + entry.value;
+      }
     }
-
-    return personTotals;
+    return {for (final e in totals.entries) labels[e.key]!: e.value};
   }
 
   @override
@@ -655,7 +670,62 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: const EdgeInsets.only(bottom: 100),
                         children: [
+                          if (_readError != null)
+                            Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Text(_readError!),
+                            ),
+                          if (_remoteTab?['net_balance_status'] != null &&
+                              _remoteTab?['net_balance_status'] != 'available')
+                            const Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Text(
+                                'Net balances unavailable; identity or accounting needs review. Recorded receipts remain visible.',
+                              ),
+                            ),
+                          if (_tabBills.any((b) => b.identityNeedsReview))
+                            const Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Text(
+                                'Recorded history; ownership needs review.',
+                              ),
+                            ),
                           if (_tabBills.isNotEmpty) _buildTotalCard(),
+                          for (final bill
+                              in (_remoteTab?['bills'] as List? ?? [])
+                                  .whereType<Map<String, dynamic>>())
+                            ExpansionTile(
+                              title: Text('Participants · ${bill['name']}'),
+                              children: [
+                                TextButton(
+                                  onPressed:
+                                      () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder:
+                                              (_) => LazyBillClaimScreen(
+                                                billId: '${bill['id']}',
+                                                token: _currentTab.accessToken!,
+                                                tabId:
+                                                    '${_currentTab.backendId}',
+                                                memberToken:
+                                                    _currentTab.memberToken,
+                                              ),
+                                        ),
+                                      ),
+                                  child: const Text(
+                                    'Select occurrence and items',
+                                  ),
+                                ),
+                                ParticipantIdentityPanel(
+                                  bill: bill,
+                                  token: _currentTab.accessToken!,
+                                  tabId: '${_currentTab.backendId}',
+                                  memberToken: _currentTab.memberToken,
+                                  onChanged: _loadBills,
+                                ),
+                              ],
+                            ),
                           if (_members.isNotEmpty) _buildMembersCard(),
                           if (_currentTab.isFinalized &&
                               _settlements.isNotEmpty)

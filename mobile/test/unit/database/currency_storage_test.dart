@@ -145,6 +145,9 @@ void main() {
         raw.execute(
           "INSERT INTO recent_bills (bill_name, participants, participant_count, total, date, subtotal, tax, tip_amount, created_at) VALUES ('Legacy', '[]', 0, 12.5, '2026-08-01', 12.5, 0, 0, 1754006400)",
         );
+        raw.execute(
+          "CREATE TABLE tabs(id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,description TEXT NOT NULL DEFAULT '',bill_ids TEXT NOT NULL DEFAULT '',backend_id INTEGER NULL,access_token TEXT NULL,share_url TEXT NULL,finalized INTEGER NOT NULL DEFAULT 0,member_token TEXT NULL,role TEXT NULL,is_remote INTEGER NOT NULL DEFAULT 0,created_at INTEGER NOT NULL)",
+        );
         raw.userVersion = 7;
       },
     );

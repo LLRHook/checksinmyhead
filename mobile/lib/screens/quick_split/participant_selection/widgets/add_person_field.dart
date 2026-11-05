@@ -55,7 +55,7 @@ class _AddPersonFieldState extends State<AddPersonField> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('This person is already in the list'),
+            content: Text('Review the participant label'),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -133,7 +133,8 @@ class _AddPersonFieldState extends State<AddPersonField> {
               ),
               style: TextStyle(color: colorScheme.onSurface),
               onFieldSubmitted: (_) => _addPerson(context),
-              validator: receiptParticipantNameError,
+              validator:
+                  (name) => receiptParticipantNameError(name, allowEmpty: true),
             ),
           ),
           const SizedBox(width: 10),

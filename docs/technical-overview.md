@@ -162,19 +162,40 @@ internal/
 - **State Management**: Provider pattern for unidirectional data flow
 - **Local Database**: Drift ORM (SQLite) for offline bill storage and tab metadata
 - **API Client**: HTTP service for backend communication with fire-and-forget sync
-- **Schema Migrations**: Drift schema v9
+- **Schema Migrations**: Drift schema v10
 
-`ApiService.buildBillRequest` remains the creation serialization owner. It omits valid
-zero assignment entries without changing Provider state, participants or zero shares,
-and rejects invalid percentages. Receipt participant entry (typed, recent, auto-added
-self and groups) and upload share the endpoint's 30-Unicode-code-point name check.
-Groups validate every member before adding any. Done validates through the builder
-before local serialization; explicit history Get Link surfaces validation errors while
-retaining the stored receipt. This does not resolve the separate save/replay operation
-or the established client/server one-cent tie mismatch.
-Pending-history upload checks the original saved assignment values before its display
-projection, using the serializer's shared percentage rule. Name checks match the
-endpoint's whitespace set, including retained U+FEFF. See [review corrections](reviews/2026-11-03-client-validation-correction.md).
+`Person` is a receipt occurrence whose equality/hash use only immutable `clientRef`.
+Its optional server `participantId` and confirmed member association are separate
+selectors. Copy/rename/color preserve the ref and allocation label; People/groups
+remain suggestions copied into fresh occurrences. Receipt JSON has one persisted
+ordered registry shared by assignment, birthday, saved-share and history readers.
+Legacy name JSON remains readable with review state; it cannot establish ownership.
+The existing calculator and frozen-USD allocator keep their arithmetic; immutable
+allocation labels preserve rename-independent ties. The separate `.005` and JPY
+precision contracts remain open.
+
+`ApiService.buildBillRequest` remains the creation serializer. New saves explicitly
+select wire2, declaring case-sensitive refs for duplicate/blank/Unicode labels and
+omitting valid zero assignment entries while retaining zero shares. Its wire1 mode
+remains for frozen compatibility fixtures; attempted old requests are never rebuilt.
+`RecentBillsManager.saveReceipt`/`resumeReceipt` remains the sole publication owner.
+Drift10 additively stores original wire/response versions, original ordered participant
+map, receipt registry and separate current graph/revision observations. One exact-row
+checkpoint stores a validated response2 map with original source authority before
+sharing/attachment. Original revision0 is historical evidence. Unknown outcomes retain
+the same native key locator and exact bytes/header; missing attempted keys and release
+publication guards remain. No second save journal/uploader or key fallback exists.
+
+Tab member IDs are persisted from create/join or authenticated `members/me`; cached
+IDs/names never prove membership. Existing tokens recover through `members/me`, without
+label rejoin. Both receipt/tab screens expose current occurrence selection, rename,
+unbound/pending/confirmed states, binding requests and creator/source decisions with
+revision and item timestamp checks. Stale conflicts refresh and require deliberate
+retry. Attachment recovery first observes the same-tab postcondition, then reauthorizes
+source/destination/member through the existing read-only attach retry before checkpoint.
+A denied reauthorization or local checkpoint failure terminates that recovery pass.
+Atomic fresh-self binding is unavailable in the current server/schema contract; clients
+use explicit create-unbound/request/approval and never fabricate confirmation.
 
 ### Next.js (Web Viewer)
 
@@ -191,7 +212,14 @@ endpoint's whitespace set, including retained U+FEFF. See [review corrections](r
 - **Settlements**: Presentational `SettlementCard` shows names, amounts and paid status,
   directs status updates to Billington, and retains the external Venmo link. The sole
   tab-page caller has no writable browser settlement mode or mutation helper.
-- **API Client**: `src/lib/api.ts` with typed fetch functions and `computeTabPersonTotals` aggregation
+- **API Client**: `src/lib/api.ts` negotiates wire2 and carries participant IDs,
+  current revisions, item timestamps and independent member/source proof. Browser
+  participant selection is version2/bill-scoped; membership is version2/tab-scoped and
+  authenticated on reopen. Old names are suggestions. Confirmed totals group by scoped
+  member ID; unbound/pending occurrences remain distinct guests. Collection errors and
+  nullable net/totals remain explicit review/unavailable states. Computed accounting
+  advertises USD separately from display preference. Ordinary settlement cards stay
+  read-only, with raw legacy snapshot/review notices.
 
 ## Key Technical Decisions
 
@@ -224,7 +252,7 @@ explicit zero totals are preserved on reads. Tab summaries and share allocation 
 one checked frozen USD audit; sums use checked cents and never display/native foreign
 fallbacks. Missing/inconsistent valuation requires an authorized accounting review,
 without fetching or rewriting history. Mobile `RecentBillsManager` now owns the
-Drift9 save/resume transaction, immutable request and exact-ID checkpoints; Done,
+Drift10 save/resume transaction, immutable request and exact-ID checkpoints; Done,
 launch/history retry and tab additions enter that owner. Its API/storage/key-store
 seams expose durable publication, valuation and attachment results. No time/content
 deduplication or newest-row identity lookup remains on that path. Imported tab

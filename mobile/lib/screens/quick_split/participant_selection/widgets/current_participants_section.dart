@@ -65,13 +65,13 @@ class _CurrentParticipantsSectionState
     final fadeAnimation = widget.animationController.drive(
       Tween<double>(begin: 1.0, end: 0.0),
     );
-    provider.registerAnimation(person.name, fadeAnimation);
+    provider.registerAnimation(person.clientRef, fadeAnimation);
 
     // Reset and run the animation, then remove the person when complete
     widget.animationController.reset();
     widget.animationController.forward().then((_) {
       provider.removePerson(index);
-      provider.unregisterAnimation(person.name);
+      provider.unregisterAnimation(person.clientRef);
     });
 
     HapticFeedback.mediumImpact();
@@ -115,7 +115,9 @@ class _CurrentParticipantsSectionState
   ) {
     return Row(
       children: [
-        ExcludeSemantics(child: Icon(Icons.people, size: 18, color: labelColor)),
+        ExcludeSemantics(
+          child: Icon(Icons.people, size: 18, color: labelColor),
+        ),
         const SizedBox(width: 8),
         Text(
           "Current Participants",
@@ -153,7 +155,7 @@ class _CurrentParticipantsSectionState
       itemBuilder: (context, index) {
         final person = participants[index];
         final animations = participantsProvider.listItemAnimations;
-        final animation = animations[person.name];
+        final animation = animations[person.clientRef];
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -190,6 +192,7 @@ class _CurrentParticipantsSectionState
           axisAlignment: 0.0,
           child: _ParticipantListItem(
             person: person,
+            ordinal: index + 1,
             onRemove: () => _removePerson(index, context, person),
           ),
         ),
@@ -202,8 +205,13 @@ class _CurrentParticipantsSectionState
 class _ParticipantListItem extends StatelessWidget {
   final Person person;
   final VoidCallback onRemove;
+  final int ordinal;
 
-  const _ParticipantListItem({required this.person, required this.onRemove});
+  const _ParticipantListItem({
+    required this.person,
+    required this.onRemove,
+    required this.ordinal,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -240,7 +248,7 @@ class _ParticipantListItem extends StatelessWidget {
         leading: CircleAvatar(
           backgroundColor: person.color,
           child: Text(
-            person.name[0].toUpperCase(),
+            person.name.isEmpty ? '?' : person.name[0].toUpperCase(),
             style: TextStyle(
               color: ColorUtils.getContrastiveTextColor(person.color),
               fontWeight: FontWeight.bold,
@@ -248,7 +256,7 @@ class _ParticipantListItem extends StatelessWidget {
           ),
         ),
         title: Text(
-          person.name,
+          '${person.displayName} · $ordinal',
           style: TextStyle(
             fontWeight: FontWeight.w600,
             color: textColor,

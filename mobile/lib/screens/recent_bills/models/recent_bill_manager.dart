@@ -33,6 +33,8 @@ export 'save_receipt_result.dart';
 import 'package:flutter/material.dart';
 import 'recent_bill_model.dart';
 
+enum _AttachmentRecovery { absent, attached, unresolved, checkpointFailed }
+
 class RecentBillsManager extends ChangeNotifier {
   static final RecentBillsManager _instance = RecentBillsManager._internal();
 
@@ -144,9 +146,41 @@ class RecentBillsManager extends ChangeNotifier {
       final existing = _findLocalCopy(localBills, remoteBillId, marker);
       final localBillId = existing?.id;
 
-      final people = _peopleFromRemoteBill(rawBill);
+      var people = _peopleFromRemoteBill(rawBill);
+      if (existing?.receiptParticipants != null &&
+          existing?.originalParticipantMap != null) {
+        final original =
+            (jsonDecode(existing!.receiptParticipants!) as List)
+                .map((p) => Person.fromReceiptJson(p as Map<String, dynamic>))
+                .toList();
+        final mapping =
+            (jsonDecode(existing.originalParticipantMap!) as List)
+                .cast<Map<String, dynamic>>();
+        people =
+            people.map((p) {
+              final ref =
+                  mapping
+                      .where((m) => m['participant_id'] == p.participantId)
+                      .firstOrNull?['client_ref'];
+              final old = original.where((o) => o.clientRef == ref).firstOrNull;
+              return old == null
+                  ? p
+                  : Person(
+                    name: p.name,
+                    color: old.color,
+                    clientRef: old.clientRef,
+                    allocationLabel: old.allocationLabel,
+                    participantId: p.participantId,
+                    memberId: p.memberId,
+                  );
+            }).toList();
+      }
       final peopleByName = {
-        for (final person in people) person.name.toLowerCase(): person,
+        for (final person in people)
+          person.participantId != null
+                  ? 'id:${person.participantId}'
+                  : person.name:
+              person,
       };
       final items = _itemsFromRemoteBill(rawBill, peopleByName);
       final shares = _sharesFromRemoteBill(rawBill, peopleByName);
@@ -157,10 +191,22 @@ class RecentBillsManager extends ChangeNotifier {
         await _db.checkpointReceipt(
           existing!.id,
           RecentBillsCompanion(
+            receiptParticipants: Value(
+              jsonEncode(people.map((p) => p.toReceiptJson()).toList()),
+            ),
+            currentIdentityRevision: Value(
+              rawBill['identity_revision'] as int?,
+            ),
+            currentIdentityState: Value(rawBill['identity_state'] as String?),
+            currentGraph: Value(jsonEncode(rawBill)),
             savedShares: Value(
               jsonEncode([
                 for (final entry in shares.entries)
-                  {'name': entry.key.name, 'total': entry.value},
+                  {
+                    'client_ref': entry.key.clientRef,
+                    'name': entry.key.name,
+                    'total': entry.value,
+                  },
               ]),
             ),
           ),
@@ -194,6 +240,9 @@ class RecentBillsManager extends ChangeNotifier {
         importedId,
         RecentBillsCompanion(
           publicationState: const Value('imported'),
+          currentIdentityRevision: Value(rawBill['identity_revision'] as int?),
+          currentIdentityState: Value(rawBill['identity_state'] as String?),
+          currentGraph: Value(jsonEncode(rawBill)),
           remoteBillId: Value(remoteBillId),
           authoritativeUsdTotal: Value(
             remoteUSD != null && remoteUSD.isFinite && remoteUSD >= 0
@@ -203,7 +252,11 @@ class RecentBillsManager extends ChangeNotifier {
           savedShares: Value(
             jsonEncode([
               for (final entry in shares.entries)
-                {'name': entry.key.name, 'total': entry.value},
+                {
+                  'client_ref': entry.key.clientRef,
+                  'name': entry.key.name,
+                  'total': entry.value,
+                },
             ]),
           ),
         ),
@@ -241,28 +294,45 @@ class RecentBillsManager extends ChangeNotifier {
   }
 
   List<Person> _peopleFromRemoteBill(Map<String, dynamic> bill) {
-    final names = <String>{};
-    final participants = bill['participants'];
-    if (participants is List) {
-      for (final participant in participants) {
-        final name =
-            participant is Map<String, dynamic>
-                ? participant['name'] as String?
-                : null;
-        if (name != null && name.trim().isNotEmpty) names.add(name.trim());
+    final rows = bill['participants'];
+    if (bill['identity_version'] == 2 && rows is List) {
+      return rows
+          .whereType<Map<String, dynamic>>()
+          .map(
+            (p) => Person(
+              name: p['label'] as String? ?? '',
+              color: Colors.blue,
+              clientRef: 'remote_${bill['id']}_${p['participant_id']}',
+              participantId: p['participant_id'] as int?,
+              memberId:
+                  p['binding_state'] == 'confirmed'
+                      ? p['member_id'] as int?
+                      : null,
+            ),
+          )
+          .toList();
+    }
+    // Raw legacy names remain a presentation-only registry, never binding proof.
+    final names = <String>[];
+    for (final p in rows is List ? rows : []) {
+      if (p is Map && p['name'] is String) names.add(p['name'] as String);
+    }
+    for (final p
+        in bill['person_shares'] is List ? bill['person_shares'] : []) {
+      if (p is Map &&
+          p['person_name'] is String &&
+          !names.contains(p['person_name'])) {
+        names.add(p['person_name'] as String);
       }
     }
-    final shares = bill['person_shares'];
-    if (shares is List) {
-      for (final share in shares) {
-        final name =
-            share is Map<String, dynamic>
-                ? share['person_name'] as String?
-                : null;
-        if (name != null && name.trim().isNotEmpty) names.add(name.trim());
-      }
-    }
-    return names.map((name) => Person(name: name, color: Colors.blue)).toList();
+    return [
+      for (var i = 0; i < names.length; i++)
+        Person(
+          name: names[i],
+          color: Colors.blue,
+          clientRef: 'legacy_${bill['id']}_$i',
+        ),
+    ];
   }
 
   List<BillItem> _itemsFromRemoteBill(
@@ -278,7 +348,12 @@ class RecentBillsManager extends ChangeNotifier {
         for (final assignment
             in rawAssignments.whereType<Map<String, dynamic>>()) {
           final name = assignment['person_name'] as String?;
-          final person = name == null ? null : peopleByName[name.toLowerCase()];
+          final person =
+              assignment['participant_id'] is int
+                  ? peopleByName['id:${assignment['participant_id']}']
+                  : name == null
+                  ? null
+                  : peopleByName[name];
           final percentage = (assignment['percentage'] as num?)?.toDouble();
           if (person != null && percentage != null && percentage > 0) {
             assignments[person] = percentage;
@@ -302,7 +377,12 @@ class RecentBillsManager extends ChangeNotifier {
     if (shares is! List) return result;
     for (final share in shares.whereType<Map<String, dynamic>>()) {
       final name = share['person_name'] as String?;
-      final person = name == null ? null : peopleByName[name.toLowerCase()];
+      final person =
+          share['participant_id'] is int
+              ? peopleByName['id:${share['participant_id']}']
+              : name == null
+              ? null
+              : peopleByName[name];
       final total = (share['total'] as num?)?.toDouble();
       if (person != null && total != null) result[person] = total;
     }
@@ -399,6 +479,7 @@ class RecentBillsManager extends ChangeNotifier {
           currencyCode: receipt.currencyCode,
           displayCurrency: displayCurrency,
           lazyMode: lazyMode,
+          identityVersion: 2,
         ),
       );
       final id = await _db.insertReceipt(
@@ -423,7 +504,7 @@ class RecentBillsManager extends ChangeNotifier {
                       'price': i.price,
                       'assignments': {
                         for (final e in i.assignments.entries)
-                          e.key.name: e.value,
+                          e.key.clientRef: e.value,
                       },
                     },
                   )
@@ -438,7 +519,13 @@ class RecentBillsManager extends ChangeNotifier {
           creationHandle: Value(operationHandle),
           keyLocator: Value('receipt-v1:$operationHandle'),
           creationSnapshot: Value(snapshot),
-          snapshotVersion: const Value(1),
+          snapshotVersion: const Value(2),
+          creationWireVersion: const Value(2),
+          receiptParticipants: Value(
+            jsonEncode(
+              receipt.participants.map((p) => p.toReceiptJson()).toList(),
+            ),
+          ),
           publicationState: const Value('pending'),
           valuationState: Value(
             receipt.currencyCode == 'USD' ? 'native' : 'pending',
@@ -449,12 +536,17 @@ class RecentBillsManager extends ChangeNotifier {
             jsonEncode({
               'is_custom_tip_amount': receipt.isCustomTipAmount,
               'birthday_name': receipt.birthdayPerson?.name,
+              'birthday_ref': receipt.birthdayPerson?.clientRef,
             }),
           ),
           savedShares: Value(
             jsonEncode([
               for (final e in receipt.personShares.entries)
-                {'name': e.key.name, 'total': e.value},
+                {
+                  'client_ref': e.key.clientRef,
+                  'name': e.key.name,
+                  'total': e.value,
+                },
             ]),
           ),
         ),
@@ -621,7 +713,8 @@ class RecentBillsManager extends ChangeNotifier {
       return _result(row.id);
     }
     if (row.publicationState == 'published') return _attach(row);
-    if (row.snapshotVersion != 1 ||
+    if (!{1, 2}.contains(row.snapshotVersion) ||
+        (row.snapshotVersion == 2 && row.creationWireVersion != 2) ||
         row.creationSnapshot == null ||
         row.keyLocator == null) {
       return _pending(row, SaveFailure.snapshotReview, blocked: true);
@@ -674,6 +767,7 @@ class RecentBillsManager extends ChangeNotifier {
       response = await _api.publishSnapshot(
         row.creationSnapshot!,
         key.canonicalKey!,
+        identityVersion: row.creationWireVersion ?? 1,
       );
     } on InvalidCreationResponse {
       return _pending(row, SaveFailure.invalidResponse);
@@ -696,6 +790,12 @@ class RecentBillsManager extends ChangeNotifier {
         row.id,
         RecentBillsCompanion(
           remoteBillId: Value(response.billId),
+          creationResponseVersion: Value(response.responseVersion),
+          originalParticipantMap: Value(
+            response.participantMap == null
+                ? null
+                : jsonEncode(response.participantMap),
+          ),
           shareUrl: Value(response.shareUrl),
           usdExchangeRate: Value(response.exchangeRateQuote.usdRate),
           exchangeRateDate: Value(response.exchangeRateQuote.rateDate),
@@ -738,24 +838,58 @@ class RecentBillsManager extends ChangeNotifier {
         tab?.accessToken == null) {
       return _pending(row, SaveFailure.destinationUnavailable);
     }
-    Future<bool> reconcile() async {
+    Future<_AttachmentRecovery> reconcile() async {
       try {
         final data = await _api.getTabData(tab!.backendId!, tab.accessToken!);
         final bills = data['bills'];
         if (bills is List &&
             bills.any((b) => b is Map && b['id'] == remoteId)) {
-          await _db.checkpointAttachment(row.id, tabId);
-          return true;
+          // The read establishes the no-op postcondition, not source authority.
+          // Reauthorize source, destination and member at the maintained attach
+          // boundary even after finalization before recording local completion.
+          int? revision;
+          if (row.creationWireVersion == 2) {
+            final current = await _api.getSharedBill('$remoteId', billToken);
+            revision = current['identity_revision'] as int?;
+            if (revision == null) return _AttachmentRecovery.unresolved;
+          }
+          await _api.addBillToTab(
+            tab.backendId!,
+            remoteId,
+            tab.accessToken!,
+            billToken: billToken,
+            memberToken: tab.memberToken,
+            expectedRevision: revision,
+          );
+          try {
+            await _db.checkpointAttachment(row.id, tabId);
+          } catch (_) {
+            return _AttachmentRecovery.checkpointFailed;
+          }
+          return _AttachmentRecovery.attached;
         }
+        return bills is List
+            ? _AttachmentRecovery.absent
+            : _AttachmentRecovery.unresolved;
       } catch (_) {
-        /* A failed read proves nothing about the earlier POST. */
+        // Known association/read uncertainty is terminal for this explicit pass.
+        return _AttachmentRecovery.unresolved;
       }
-      return false;
     }
 
-    // Read before any retry, even if a later finalization prevents writes.
-    if (row.attachmentState == 'attempted' && await reconcile()) {
-      return _result(row.id);
+    Future<SaveReceiptResult> recoveryResult(_AttachmentRecovery result) =>
+        result == _AttachmentRecovery.attached
+            ? _result(row.id)
+            : result == _AttachmentRecovery.checkpointFailed
+            ? _result(row.id, checkpointFailure: SaveFailure.checkpointFailed)
+            : _pending(row, SaveFailure.attachmentUnknown);
+
+    // Read before any retry, even if a later finalization prevents new writes.
+    if (row.attachmentState == 'attempted') {
+      final observed = await reconcile();
+      if (observed != _AttachmentRecovery.absent) {
+        return recoveryResult(observed);
+      }
     }
     if (tab!.finalized) return _pending(row, SaveFailure.attachmentUnknown);
     try {
@@ -767,18 +901,29 @@ class RecentBillsManager extends ChangeNotifier {
       return _result(row.id, checkpointFailure: SaveFailure.checkpointFailed);
     }
     try {
+      int? currentRevision;
+      if (row.creationWireVersion == 2) {
+        final current = await _api.getSharedBill('$remoteId', billToken);
+        currentRevision = current['identity_revision'] as int?;
+        if (currentRevision == null) {
+          throw ApiException('Current identity revision unavailable');
+        }
+      }
       await _api.addBillToTab(
         tab.backendId!,
         remoteId,
         tab.accessToken!,
         billToken: billToken,
+        expectedRevision: currentRevision,
         memberToken: tab.memberToken,
       );
+    } catch (_) {
+      return recoveryResult(await reconcile());
+    }
+    try {
       await _db.checkpointAttachment(row.id, tabId);
     } catch (_) {
-      if (!await reconcile()) {
-        return _pending(row, SaveFailure.attachmentUnknown);
-      }
+      return _result(row.id, checkpointFailure: SaveFailure.checkpointFailed);
     }
     return _result(row.id);
   }

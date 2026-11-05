@@ -36,10 +36,15 @@ class RecentBillShareUtils {
       tipAmount: bill.tipAmount,
       total: bill.total,
       birthdayPerson:
-          bill.birthdayName == null
+          bill.birthdayRef == null && bill.birthdayName == null
               ? null
               : participants
-                  .where((p) => p.name == bill.birthdayName)
+                  .where(
+                    (p) =>
+                        bill.birthdayRef != null
+                            ? p.clientRef == bill.birthdayRef
+                            : p.name == bill.birthdayName,
+                  )
                   .firstOrNull,
       tipPercentage: bill.tipPercentage,
       isCustomTipAmount: bill.isCustomTipAmount,

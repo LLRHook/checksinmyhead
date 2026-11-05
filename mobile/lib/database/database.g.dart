@@ -1426,6 +1426,82 @@ class $RecentBillsTable extends RecentBills
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _creationWireVersionMeta =
+      const VerificationMeta('creationWireVersion');
+  @override
+  late final GeneratedColumn<int> creationWireVersion = GeneratedColumn<int>(
+    'creation_wire_version',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _creationResponseVersionMeta =
+      const VerificationMeta('creationResponseVersion');
+  @override
+  late final GeneratedColumn<int> creationResponseVersion =
+      GeneratedColumn<int>(
+        'creation_response_version',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _originalParticipantMapMeta =
+      const VerificationMeta('originalParticipantMap');
+  @override
+  late final GeneratedColumn<String> originalParticipantMap =
+      GeneratedColumn<String>(
+        'original_participant_map',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _receiptParticipantsMeta =
+      const VerificationMeta('receiptParticipants');
+  @override
+  late final GeneratedColumn<String> receiptParticipants =
+      GeneratedColumn<String>(
+        'receipt_participants',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _currentIdentityRevisionMeta =
+      const VerificationMeta('currentIdentityRevision');
+  @override
+  late final GeneratedColumn<int> currentIdentityRevision =
+      GeneratedColumn<int>(
+        'current_identity_revision',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _currentIdentityStateMeta =
+      const VerificationMeta('currentIdentityState');
+  @override
+  late final GeneratedColumn<String> currentIdentityState =
+      GeneratedColumn<String>(
+        'current_identity_state',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _currentGraphMeta = const VerificationMeta(
+    'currentGraph',
+  );
+  @override
+  late final GeneratedColumn<String> currentGraph = GeneratedColumn<String>(
+    'current_graph',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1460,6 +1536,13 @@ class $RecentBillsTable extends RecentBills
     attachmentState,
     savedShares,
     receiptMetadata,
+    creationWireVersion,
+    creationResponseVersion,
+    originalParticipantMap,
+    receiptParticipants,
+    currentIdentityRevision,
+    currentIdentityState,
+    currentGraph,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1736,6 +1819,69 @@ class $RecentBillsTable extends RecentBills
         ),
       );
     }
+    if (data.containsKey('creation_wire_version')) {
+      context.handle(
+        _creationWireVersionMeta,
+        creationWireVersion.isAcceptableOrUnknown(
+          data['creation_wire_version']!,
+          _creationWireVersionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('creation_response_version')) {
+      context.handle(
+        _creationResponseVersionMeta,
+        creationResponseVersion.isAcceptableOrUnknown(
+          data['creation_response_version']!,
+          _creationResponseVersionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('original_participant_map')) {
+      context.handle(
+        _originalParticipantMapMeta,
+        originalParticipantMap.isAcceptableOrUnknown(
+          data['original_participant_map']!,
+          _originalParticipantMapMeta,
+        ),
+      );
+    }
+    if (data.containsKey('receipt_participants')) {
+      context.handle(
+        _receiptParticipantsMeta,
+        receiptParticipants.isAcceptableOrUnknown(
+          data['receipt_participants']!,
+          _receiptParticipantsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('current_identity_revision')) {
+      context.handle(
+        _currentIdentityRevisionMeta,
+        currentIdentityRevision.isAcceptableOrUnknown(
+          data['current_identity_revision']!,
+          _currentIdentityRevisionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('current_identity_state')) {
+      context.handle(
+        _currentIdentityStateMeta,
+        currentIdentityState.isAcceptableOrUnknown(
+          data['current_identity_state']!,
+          _currentIdentityStateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('current_graph')) {
+      context.handle(
+        _currentGraphMeta,
+        currentGraph.isAcceptableOrUnknown(
+          data['current_graph']!,
+          _currentGraphMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1891,6 +2037,34 @@ class $RecentBillsTable extends RecentBills
         DriftSqlType.string,
         data['${effectivePrefix}receipt_metadata'],
       ),
+      creationWireVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}creation_wire_version'],
+      ),
+      creationResponseVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}creation_response_version'],
+      ),
+      originalParticipantMap: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}original_participant_map'],
+      ),
+      receiptParticipants: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}receipt_participants'],
+      ),
+      currentIdentityRevision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}current_identity_revision'],
+      ),
+      currentIdentityState: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}current_identity_state'],
+      ),
+      currentGraph: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}current_graph'],
+      ),
     );
   }
 
@@ -1933,6 +2107,13 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
   final String attachmentState;
   final String? savedShares;
   final String? receiptMetadata;
+  final int? creationWireVersion;
+  final int? creationResponseVersion;
+  final String? originalParticipantMap;
+  final String? receiptParticipants;
+  final int? currentIdentityRevision;
+  final String? currentIdentityState;
+  final String? currentGraph;
   const RecentBill({
     required this.id,
     required this.billName,
@@ -1966,6 +2147,13 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
     required this.attachmentState,
     this.savedShares,
     this.receiptMetadata,
+    this.creationWireVersion,
+    this.creationResponseVersion,
+    this.originalParticipantMap,
+    this.receiptParticipants,
+    this.currentIdentityRevision,
+    this.currentIdentityState,
+    this.currentGraph,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2029,6 +2217,29 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
     }
     if (!nullToAbsent || receiptMetadata != null) {
       map['receipt_metadata'] = Variable<String>(receiptMetadata);
+    }
+    if (!nullToAbsent || creationWireVersion != null) {
+      map['creation_wire_version'] = Variable<int>(creationWireVersion);
+    }
+    if (!nullToAbsent || creationResponseVersion != null) {
+      map['creation_response_version'] = Variable<int>(creationResponseVersion);
+    }
+    if (!nullToAbsent || originalParticipantMap != null) {
+      map['original_participant_map'] = Variable<String>(
+        originalParticipantMap,
+      );
+    }
+    if (!nullToAbsent || receiptParticipants != null) {
+      map['receipt_participants'] = Variable<String>(receiptParticipants);
+    }
+    if (!nullToAbsent || currentIdentityRevision != null) {
+      map['current_identity_revision'] = Variable<int>(currentIdentityRevision);
+    }
+    if (!nullToAbsent || currentIdentityState != null) {
+      map['current_identity_state'] = Variable<String>(currentIdentityState);
+    }
+    if (!nullToAbsent || currentGraph != null) {
+      map['current_graph'] = Variable<String>(currentGraph);
     }
     return map;
   }
@@ -2107,6 +2318,34 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
           receiptMetadata == null && nullToAbsent
               ? const Value.absent()
               : Value(receiptMetadata),
+      creationWireVersion:
+          creationWireVersion == null && nullToAbsent
+              ? const Value.absent()
+              : Value(creationWireVersion),
+      creationResponseVersion:
+          creationResponseVersion == null && nullToAbsent
+              ? const Value.absent()
+              : Value(creationResponseVersion),
+      originalParticipantMap:
+          originalParticipantMap == null && nullToAbsent
+              ? const Value.absent()
+              : Value(originalParticipantMap),
+      receiptParticipants:
+          receiptParticipants == null && nullToAbsent
+              ? const Value.absent()
+              : Value(receiptParticipants),
+      currentIdentityRevision:
+          currentIdentityRevision == null && nullToAbsent
+              ? const Value.absent()
+              : Value(currentIdentityRevision),
+      currentIdentityState:
+          currentIdentityState == null && nullToAbsent
+              ? const Value.absent()
+              : Value(currentIdentityState),
+      currentGraph:
+          currentGraph == null && nullToAbsent
+              ? const Value.absent()
+              : Value(currentGraph),
     );
   }
 
@@ -2154,6 +2393,25 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
       attachmentState: serializer.fromJson<String>(json['attachmentState']),
       savedShares: serializer.fromJson<String?>(json['savedShares']),
       receiptMetadata: serializer.fromJson<String?>(json['receiptMetadata']),
+      creationWireVersion: serializer.fromJson<int?>(
+        json['creationWireVersion'],
+      ),
+      creationResponseVersion: serializer.fromJson<int?>(
+        json['creationResponseVersion'],
+      ),
+      originalParticipantMap: serializer.fromJson<String?>(
+        json['originalParticipantMap'],
+      ),
+      receiptParticipants: serializer.fromJson<String?>(
+        json['receiptParticipants'],
+      ),
+      currentIdentityRevision: serializer.fromJson<int?>(
+        json['currentIdentityRevision'],
+      ),
+      currentIdentityState: serializer.fromJson<String?>(
+        json['currentIdentityState'],
+      ),
+      currentGraph: serializer.fromJson<String?>(json['currentGraph']),
     );
   }
   @override
@@ -2194,6 +2452,19 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
       'attachmentState': serializer.toJson<String>(attachmentState),
       'savedShares': serializer.toJson<String?>(savedShares),
       'receiptMetadata': serializer.toJson<String?>(receiptMetadata),
+      'creationWireVersion': serializer.toJson<int?>(creationWireVersion),
+      'creationResponseVersion': serializer.toJson<int?>(
+        creationResponseVersion,
+      ),
+      'originalParticipantMap': serializer.toJson<String?>(
+        originalParticipantMap,
+      ),
+      'receiptParticipants': serializer.toJson<String?>(receiptParticipants),
+      'currentIdentityRevision': serializer.toJson<int?>(
+        currentIdentityRevision,
+      ),
+      'currentIdentityState': serializer.toJson<String?>(currentIdentityState),
+      'currentGraph': serializer.toJson<String?>(currentGraph),
     };
   }
 
@@ -2230,6 +2501,13 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
     String? attachmentState,
     Value<String?> savedShares = const Value.absent(),
     Value<String?> receiptMetadata = const Value.absent(),
+    Value<int?> creationWireVersion = const Value.absent(),
+    Value<int?> creationResponseVersion = const Value.absent(),
+    Value<String?> originalParticipantMap = const Value.absent(),
+    Value<String?> receiptParticipants = const Value.absent(),
+    Value<int?> currentIdentityRevision = const Value.absent(),
+    Value<String?> currentIdentityState = const Value.absent(),
+    Value<String?> currentGraph = const Value.absent(),
   }) => RecentBill(
     id: id ?? this.id,
     billName: billName ?? this.billName,
@@ -2277,6 +2555,31 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
     savedShares: savedShares.present ? savedShares.value : this.savedShares,
     receiptMetadata:
         receiptMetadata.present ? receiptMetadata.value : this.receiptMetadata,
+    creationWireVersion:
+        creationWireVersion.present
+            ? creationWireVersion.value
+            : this.creationWireVersion,
+    creationResponseVersion:
+        creationResponseVersion.present
+            ? creationResponseVersion.value
+            : this.creationResponseVersion,
+    originalParticipantMap:
+        originalParticipantMap.present
+            ? originalParticipantMap.value
+            : this.originalParticipantMap,
+    receiptParticipants:
+        receiptParticipants.present
+            ? receiptParticipants.value
+            : this.receiptParticipants,
+    currentIdentityRevision:
+        currentIdentityRevision.present
+            ? currentIdentityRevision.value
+            : this.currentIdentityRevision,
+    currentIdentityState:
+        currentIdentityState.present
+            ? currentIdentityState.value
+            : this.currentIdentityState,
+    currentGraph: currentGraph.present ? currentGraph.value : this.currentGraph,
   );
   RecentBill copyWithCompanion(RecentBillsCompanion data) {
     return RecentBill(
@@ -2370,6 +2673,34 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
           data.receiptMetadata.present
               ? data.receiptMetadata.value
               : this.receiptMetadata,
+      creationWireVersion:
+          data.creationWireVersion.present
+              ? data.creationWireVersion.value
+              : this.creationWireVersion,
+      creationResponseVersion:
+          data.creationResponseVersion.present
+              ? data.creationResponseVersion.value
+              : this.creationResponseVersion,
+      originalParticipantMap:
+          data.originalParticipantMap.present
+              ? data.originalParticipantMap.value
+              : this.originalParticipantMap,
+      receiptParticipants:
+          data.receiptParticipants.present
+              ? data.receiptParticipants.value
+              : this.receiptParticipants,
+      currentIdentityRevision:
+          data.currentIdentityRevision.present
+              ? data.currentIdentityRevision.value
+              : this.currentIdentityRevision,
+      currentIdentityState:
+          data.currentIdentityState.present
+              ? data.currentIdentityState.value
+              : this.currentIdentityState,
+      currentGraph:
+          data.currentGraph.present
+              ? data.currentGraph.value
+              : this.currentGraph,
     );
   }
 
@@ -2407,7 +2738,14 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
           ..write('intendedTabId: $intendedTabId, ')
           ..write('attachmentState: $attachmentState, ')
           ..write('savedShares: $savedShares, ')
-          ..write('receiptMetadata: $receiptMetadata')
+          ..write('receiptMetadata: $receiptMetadata, ')
+          ..write('creationWireVersion: $creationWireVersion, ')
+          ..write('creationResponseVersion: $creationResponseVersion, ')
+          ..write('originalParticipantMap: $originalParticipantMap, ')
+          ..write('receiptParticipants: $receiptParticipants, ')
+          ..write('currentIdentityRevision: $currentIdentityRevision, ')
+          ..write('currentIdentityState: $currentIdentityState, ')
+          ..write('currentGraph: $currentGraph')
           ..write(')'))
         .toString();
   }
@@ -2446,6 +2784,13 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
     attachmentState,
     savedShares,
     receiptMetadata,
+    creationWireVersion,
+    creationResponseVersion,
+    originalParticipantMap,
+    receiptParticipants,
+    currentIdentityRevision,
+    currentIdentityState,
+    currentGraph,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -2482,7 +2827,14 @@ class RecentBill extends DataClass implements Insertable<RecentBill> {
           other.intendedTabId == this.intendedTabId &&
           other.attachmentState == this.attachmentState &&
           other.savedShares == this.savedShares &&
-          other.receiptMetadata == this.receiptMetadata);
+          other.receiptMetadata == this.receiptMetadata &&
+          other.creationWireVersion == this.creationWireVersion &&
+          other.creationResponseVersion == this.creationResponseVersion &&
+          other.originalParticipantMap == this.originalParticipantMap &&
+          other.receiptParticipants == this.receiptParticipants &&
+          other.currentIdentityRevision == this.currentIdentityRevision &&
+          other.currentIdentityState == this.currentIdentityState &&
+          other.currentGraph == this.currentGraph);
 }
 
 class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
@@ -2518,6 +2870,13 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
   final Value<String> attachmentState;
   final Value<String?> savedShares;
   final Value<String?> receiptMetadata;
+  final Value<int?> creationWireVersion;
+  final Value<int?> creationResponseVersion;
+  final Value<String?> originalParticipantMap;
+  final Value<String?> receiptParticipants;
+  final Value<int?> currentIdentityRevision;
+  final Value<String?> currentIdentityState;
+  final Value<String?> currentGraph;
   const RecentBillsCompanion({
     this.id = const Value.absent(),
     this.billName = const Value.absent(),
@@ -2551,6 +2910,13 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
     this.attachmentState = const Value.absent(),
     this.savedShares = const Value.absent(),
     this.receiptMetadata = const Value.absent(),
+    this.creationWireVersion = const Value.absent(),
+    this.creationResponseVersion = const Value.absent(),
+    this.originalParticipantMap = const Value.absent(),
+    this.receiptParticipants = const Value.absent(),
+    this.currentIdentityRevision = const Value.absent(),
+    this.currentIdentityState = const Value.absent(),
+    this.currentGraph = const Value.absent(),
   });
   RecentBillsCompanion.insert({
     this.id = const Value.absent(),
@@ -2585,6 +2951,13 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
     this.attachmentState = const Value.absent(),
     this.savedShares = const Value.absent(),
     this.receiptMetadata = const Value.absent(),
+    this.creationWireVersion = const Value.absent(),
+    this.creationResponseVersion = const Value.absent(),
+    this.originalParticipantMap = const Value.absent(),
+    this.receiptParticipants = const Value.absent(),
+    this.currentIdentityRevision = const Value.absent(),
+    this.currentIdentityState = const Value.absent(),
+    this.currentGraph = const Value.absent(),
   }) : participants = Value(participants),
        participantCount = Value(participantCount),
        total = Value(total),
@@ -2625,6 +2998,13 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
     Expression<String>? attachmentState,
     Expression<String>? savedShares,
     Expression<String>? receiptMetadata,
+    Expression<int>? creationWireVersion,
+    Expression<int>? creationResponseVersion,
+    Expression<String>? originalParticipantMap,
+    Expression<String>? receiptParticipants,
+    Expression<int>? currentIdentityRevision,
+    Expression<String>? currentIdentityState,
+    Expression<String>? currentGraph,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2662,6 +3042,19 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
       if (attachmentState != null) 'attachment_state': attachmentState,
       if (savedShares != null) 'saved_shares': savedShares,
       if (receiptMetadata != null) 'receipt_metadata': receiptMetadata,
+      if (creationWireVersion != null)
+        'creation_wire_version': creationWireVersion,
+      if (creationResponseVersion != null)
+        'creation_response_version': creationResponseVersion,
+      if (originalParticipantMap != null)
+        'original_participant_map': originalParticipantMap,
+      if (receiptParticipants != null)
+        'receipt_participants': receiptParticipants,
+      if (currentIdentityRevision != null)
+        'current_identity_revision': currentIdentityRevision,
+      if (currentIdentityState != null)
+        'current_identity_state': currentIdentityState,
+      if (currentGraph != null) 'current_graph': currentGraph,
     });
   }
 
@@ -2698,6 +3091,13 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
     Value<String>? attachmentState,
     Value<String?>? savedShares,
     Value<String?>? receiptMetadata,
+    Value<int?>? creationWireVersion,
+    Value<int?>? creationResponseVersion,
+    Value<String?>? originalParticipantMap,
+    Value<String?>? receiptParticipants,
+    Value<int?>? currentIdentityRevision,
+    Value<String?>? currentIdentityState,
+    Value<String?>? currentGraph,
   }) {
     return RecentBillsCompanion(
       id: id ?? this.id,
@@ -2733,6 +3133,16 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
       attachmentState: attachmentState ?? this.attachmentState,
       savedShares: savedShares ?? this.savedShares,
       receiptMetadata: receiptMetadata ?? this.receiptMetadata,
+      creationWireVersion: creationWireVersion ?? this.creationWireVersion,
+      creationResponseVersion:
+          creationResponseVersion ?? this.creationResponseVersion,
+      originalParticipantMap:
+          originalParticipantMap ?? this.originalParticipantMap,
+      receiptParticipants: receiptParticipants ?? this.receiptParticipants,
+      currentIdentityRevision:
+          currentIdentityRevision ?? this.currentIdentityRevision,
+      currentIdentityState: currentIdentityState ?? this.currentIdentityState,
+      currentGraph: currentGraph ?? this.currentGraph,
     );
   }
 
@@ -2837,6 +3247,35 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
     if (receiptMetadata.present) {
       map['receipt_metadata'] = Variable<String>(receiptMetadata.value);
     }
+    if (creationWireVersion.present) {
+      map['creation_wire_version'] = Variable<int>(creationWireVersion.value);
+    }
+    if (creationResponseVersion.present) {
+      map['creation_response_version'] = Variable<int>(
+        creationResponseVersion.value,
+      );
+    }
+    if (originalParticipantMap.present) {
+      map['original_participant_map'] = Variable<String>(
+        originalParticipantMap.value,
+      );
+    }
+    if (receiptParticipants.present) {
+      map['receipt_participants'] = Variable<String>(receiptParticipants.value);
+    }
+    if (currentIdentityRevision.present) {
+      map['current_identity_revision'] = Variable<int>(
+        currentIdentityRevision.value,
+      );
+    }
+    if (currentIdentityState.present) {
+      map['current_identity_state'] = Variable<String>(
+        currentIdentityState.value,
+      );
+    }
+    if (currentGraph.present) {
+      map['current_graph'] = Variable<String>(currentGraph.value);
+    }
     return map;
   }
 
@@ -2874,7 +3313,14 @@ class RecentBillsCompanion extends UpdateCompanion<RecentBill> {
           ..write('intendedTabId: $intendedTabId, ')
           ..write('attachmentState: $attachmentState, ')
           ..write('savedShares: $savedShares, ')
-          ..write('receiptMetadata: $receiptMetadata')
+          ..write('receiptMetadata: $receiptMetadata, ')
+          ..write('creationWireVersion: $creationWireVersion, ')
+          ..write('creationResponseVersion: $creationResponseVersion, ')
+          ..write('originalParticipantMap: $originalParticipantMap, ')
+          ..write('receiptParticipants: $receiptParticipants, ')
+          ..write('currentIdentityRevision: $currentIdentityRevision, ')
+          ..write('currentIdentityState: $currentIdentityState, ')
+          ..write('currentGraph: $currentGraph')
           ..write(')'))
         .toString();
   }
@@ -2990,6 +3436,17 @@ class $TabsTable extends Tabs with TableInfo<$TabsTable, Tab> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _memberIdMeta = const VerificationMeta(
+    'memberId',
+  );
+  @override
+  late final GeneratedColumn<int> memberId = GeneratedColumn<int>(
+    'member_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _roleMeta = const VerificationMeta('role');
   @override
   late final GeneratedColumn<String> role = GeneratedColumn<String>(
@@ -3037,6 +3494,7 @@ class $TabsTable extends Tabs with TableInfo<$TabsTable, Tab> {
     shareUrl,
     finalized,
     memberToken,
+    memberId,
     role,
     isRemote,
     createdAt,
@@ -3115,6 +3573,12 @@ class $TabsTable extends Tabs with TableInfo<$TabsTable, Tab> {
         ),
       );
     }
+    if (data.containsKey('member_id')) {
+      context.handle(
+        _memberIdMeta,
+        memberId.isAcceptableOrUnknown(data['member_id']!, _memberIdMeta),
+      );
+    }
     if (data.containsKey('role')) {
       context.handle(
         _roleMeta,
@@ -3183,6 +3647,10 @@ class $TabsTable extends Tabs with TableInfo<$TabsTable, Tab> {
         DriftSqlType.string,
         data['${effectivePrefix}member_token'],
       ),
+      memberId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}member_id'],
+      ),
       role: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}role'],
@@ -3216,6 +3684,7 @@ class Tab extends DataClass implements Insertable<Tab> {
   final String? shareUrl;
   final bool finalized;
   final String? memberToken;
+  final int? memberId;
   final String? role;
   final bool isRemote;
   final DateTime createdAt;
@@ -3229,6 +3698,7 @@ class Tab extends DataClass implements Insertable<Tab> {
     this.shareUrl,
     required this.finalized,
     this.memberToken,
+    this.memberId,
     this.role,
     required this.isRemote,
     required this.createdAt,
@@ -3252,6 +3722,9 @@ class Tab extends DataClass implements Insertable<Tab> {
     map['finalized'] = Variable<bool>(finalized);
     if (!nullToAbsent || memberToken != null) {
       map['member_token'] = Variable<String>(memberToken);
+    }
+    if (!nullToAbsent || memberId != null) {
+      map['member_id'] = Variable<int>(memberId);
     }
     if (!nullToAbsent || role != null) {
       map['role'] = Variable<String>(role);
@@ -3284,6 +3757,10 @@ class Tab extends DataClass implements Insertable<Tab> {
           memberToken == null && nullToAbsent
               ? const Value.absent()
               : Value(memberToken),
+      memberId:
+          memberId == null && nullToAbsent
+              ? const Value.absent()
+              : Value(memberId),
       role: role == null && nullToAbsent ? const Value.absent() : Value(role),
       isRemote: Value(isRemote),
       createdAt: Value(createdAt),
@@ -3305,6 +3782,7 @@ class Tab extends DataClass implements Insertable<Tab> {
       shareUrl: serializer.fromJson<String?>(json['shareUrl']),
       finalized: serializer.fromJson<bool>(json['finalized']),
       memberToken: serializer.fromJson<String?>(json['memberToken']),
+      memberId: serializer.fromJson<int?>(json['memberId']),
       role: serializer.fromJson<String?>(json['role']),
       isRemote: serializer.fromJson<bool>(json['isRemote']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -3323,6 +3801,7 @@ class Tab extends DataClass implements Insertable<Tab> {
       'shareUrl': serializer.toJson<String?>(shareUrl),
       'finalized': serializer.toJson<bool>(finalized),
       'memberToken': serializer.toJson<String?>(memberToken),
+      'memberId': serializer.toJson<int?>(memberId),
       'role': serializer.toJson<String?>(role),
       'isRemote': serializer.toJson<bool>(isRemote),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -3339,6 +3818,7 @@ class Tab extends DataClass implements Insertable<Tab> {
     Value<String?> shareUrl = const Value.absent(),
     bool? finalized,
     Value<String?> memberToken = const Value.absent(),
+    Value<int?> memberId = const Value.absent(),
     Value<String?> role = const Value.absent(),
     bool? isRemote,
     DateTime? createdAt,
@@ -3352,6 +3832,7 @@ class Tab extends DataClass implements Insertable<Tab> {
     shareUrl: shareUrl.present ? shareUrl.value : this.shareUrl,
     finalized: finalized ?? this.finalized,
     memberToken: memberToken.present ? memberToken.value : this.memberToken,
+    memberId: memberId.present ? memberId.value : this.memberId,
     role: role.present ? role.value : this.role,
     isRemote: isRemote ?? this.isRemote,
     createdAt: createdAt ?? this.createdAt,
@@ -3370,6 +3851,7 @@ class Tab extends DataClass implements Insertable<Tab> {
       finalized: data.finalized.present ? data.finalized.value : this.finalized,
       memberToken:
           data.memberToken.present ? data.memberToken.value : this.memberToken,
+      memberId: data.memberId.present ? data.memberId.value : this.memberId,
       role: data.role.present ? data.role.value : this.role,
       isRemote: data.isRemote.present ? data.isRemote.value : this.isRemote,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
@@ -3388,6 +3870,7 @@ class Tab extends DataClass implements Insertable<Tab> {
           ..write('shareUrl: $shareUrl, ')
           ..write('finalized: $finalized, ')
           ..write('memberToken: $memberToken, ')
+          ..write('memberId: $memberId, ')
           ..write('role: $role, ')
           ..write('isRemote: $isRemote, ')
           ..write('createdAt: $createdAt')
@@ -3406,6 +3889,7 @@ class Tab extends DataClass implements Insertable<Tab> {
     shareUrl,
     finalized,
     memberToken,
+    memberId,
     role,
     isRemote,
     createdAt,
@@ -3423,6 +3907,7 @@ class Tab extends DataClass implements Insertable<Tab> {
           other.shareUrl == this.shareUrl &&
           other.finalized == this.finalized &&
           other.memberToken == this.memberToken &&
+          other.memberId == this.memberId &&
           other.role == this.role &&
           other.isRemote == this.isRemote &&
           other.createdAt == this.createdAt);
@@ -3438,6 +3923,7 @@ class TabsCompanion extends UpdateCompanion<Tab> {
   final Value<String?> shareUrl;
   final Value<bool> finalized;
   final Value<String?> memberToken;
+  final Value<int?> memberId;
   final Value<String?> role;
   final Value<bool> isRemote;
   final Value<DateTime> createdAt;
@@ -3451,6 +3937,7 @@ class TabsCompanion extends UpdateCompanion<Tab> {
     this.shareUrl = const Value.absent(),
     this.finalized = const Value.absent(),
     this.memberToken = const Value.absent(),
+    this.memberId = const Value.absent(),
     this.role = const Value.absent(),
     this.isRemote = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -3465,6 +3952,7 @@ class TabsCompanion extends UpdateCompanion<Tab> {
     this.shareUrl = const Value.absent(),
     this.finalized = const Value.absent(),
     this.memberToken = const Value.absent(),
+    this.memberId = const Value.absent(),
     this.role = const Value.absent(),
     this.isRemote = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -3479,6 +3967,7 @@ class TabsCompanion extends UpdateCompanion<Tab> {
     Expression<String>? shareUrl,
     Expression<bool>? finalized,
     Expression<String>? memberToken,
+    Expression<int>? memberId,
     Expression<String>? role,
     Expression<bool>? isRemote,
     Expression<DateTime>? createdAt,
@@ -3493,6 +3982,7 @@ class TabsCompanion extends UpdateCompanion<Tab> {
       if (shareUrl != null) 'share_url': shareUrl,
       if (finalized != null) 'finalized': finalized,
       if (memberToken != null) 'member_token': memberToken,
+      if (memberId != null) 'member_id': memberId,
       if (role != null) 'role': role,
       if (isRemote != null) 'is_remote': isRemote,
       if (createdAt != null) 'created_at': createdAt,
@@ -3509,6 +3999,7 @@ class TabsCompanion extends UpdateCompanion<Tab> {
     Value<String?>? shareUrl,
     Value<bool>? finalized,
     Value<String?>? memberToken,
+    Value<int?>? memberId,
     Value<String?>? role,
     Value<bool>? isRemote,
     Value<DateTime>? createdAt,
@@ -3523,6 +4014,7 @@ class TabsCompanion extends UpdateCompanion<Tab> {
       shareUrl: shareUrl ?? this.shareUrl,
       finalized: finalized ?? this.finalized,
       memberToken: memberToken ?? this.memberToken,
+      memberId: memberId ?? this.memberId,
       role: role ?? this.role,
       isRemote: isRemote ?? this.isRemote,
       createdAt: createdAt ?? this.createdAt,
@@ -3559,6 +4051,9 @@ class TabsCompanion extends UpdateCompanion<Tab> {
     if (memberToken.present) {
       map['member_token'] = Variable<String>(memberToken.value);
     }
+    if (memberId.present) {
+      map['member_id'] = Variable<int>(memberId.value);
+    }
     if (role.present) {
       map['role'] = Variable<String>(role.value);
     }
@@ -3583,6 +4078,7 @@ class TabsCompanion extends UpdateCompanion<Tab> {
           ..write('shareUrl: $shareUrl, ')
           ..write('finalized: $finalized, ')
           ..write('memberToken: $memberToken, ')
+          ..write('memberId: $memberId, ')
           ..write('role: $role, ')
           ..write('isRemote: $isRemote, ')
           ..write('createdAt: $createdAt')
@@ -5064,6 +5560,13 @@ typedef $$RecentBillsTableCreateCompanionBuilder =
       Value<String> attachmentState,
       Value<String?> savedShares,
       Value<String?> receiptMetadata,
+      Value<int?> creationWireVersion,
+      Value<int?> creationResponseVersion,
+      Value<String?> originalParticipantMap,
+      Value<String?> receiptParticipants,
+      Value<int?> currentIdentityRevision,
+      Value<String?> currentIdentityState,
+      Value<String?> currentGraph,
     });
 typedef $$RecentBillsTableUpdateCompanionBuilder =
     RecentBillsCompanion Function({
@@ -5099,6 +5602,13 @@ typedef $$RecentBillsTableUpdateCompanionBuilder =
       Value<String> attachmentState,
       Value<String?> savedShares,
       Value<String?> receiptMetadata,
+      Value<int?> creationWireVersion,
+      Value<int?> creationResponseVersion,
+      Value<String?> originalParticipantMap,
+      Value<String?> receiptParticipants,
+      Value<int?> currentIdentityRevision,
+      Value<String?> currentIdentityState,
+      Value<String?> currentGraph,
     });
 
 class $$RecentBillsTableFilterComposer
@@ -5267,6 +5777,41 @@ class $$RecentBillsTableFilterComposer
 
   ColumnFilters<String> get receiptMetadata => $composableBuilder(
     column: $table.receiptMetadata,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get creationWireVersion => $composableBuilder(
+    column: $table.creationWireVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get creationResponseVersion => $composableBuilder(
+    column: $table.creationResponseVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get originalParticipantMap => $composableBuilder(
+    column: $table.originalParticipantMap,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get receiptParticipants => $composableBuilder(
+    column: $table.receiptParticipants,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get currentIdentityRevision => $composableBuilder(
+    column: $table.currentIdentityRevision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currentIdentityState => $composableBuilder(
+    column: $table.currentIdentityState,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currentGraph => $composableBuilder(
+    column: $table.currentGraph,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -5439,6 +5984,41 @@ class $$RecentBillsTableOrderingComposer
     column: $table.receiptMetadata,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get creationWireVersion => $composableBuilder(
+    column: $table.creationWireVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get creationResponseVersion => $composableBuilder(
+    column: $table.creationResponseVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get originalParticipantMap => $composableBuilder(
+    column: $table.originalParticipantMap,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get receiptParticipants => $composableBuilder(
+    column: $table.receiptParticipants,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get currentIdentityRevision => $composableBuilder(
+    column: $table.currentIdentityRevision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get currentIdentityState => $composableBuilder(
+    column: $table.currentIdentityState,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get currentGraph => $composableBuilder(
+    column: $table.currentGraph,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$RecentBillsTableAnnotationComposer
@@ -5589,6 +6169,41 @@ class $$RecentBillsTableAnnotationComposer
     column: $table.receiptMetadata,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get creationWireVersion => $composableBuilder(
+    column: $table.creationWireVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get creationResponseVersion => $composableBuilder(
+    column: $table.creationResponseVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get originalParticipantMap => $composableBuilder(
+    column: $table.originalParticipantMap,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get receiptParticipants => $composableBuilder(
+    column: $table.receiptParticipants,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get currentIdentityRevision => $composableBuilder(
+    column: $table.currentIdentityRevision,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get currentIdentityState => $composableBuilder(
+    column: $table.currentIdentityState,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get currentGraph => $composableBuilder(
+    column: $table.currentGraph,
+    builder: (column) => column,
+  );
 }
 
 class $$RecentBillsTableTableManager
@@ -5655,6 +6270,13 @@ class $$RecentBillsTableTableManager
                 Value<String> attachmentState = const Value.absent(),
                 Value<String?> savedShares = const Value.absent(),
                 Value<String?> receiptMetadata = const Value.absent(),
+                Value<int?> creationWireVersion = const Value.absent(),
+                Value<int?> creationResponseVersion = const Value.absent(),
+                Value<String?> originalParticipantMap = const Value.absent(),
+                Value<String?> receiptParticipants = const Value.absent(),
+                Value<int?> currentIdentityRevision = const Value.absent(),
+                Value<String?> currentIdentityState = const Value.absent(),
+                Value<String?> currentGraph = const Value.absent(),
               }) => RecentBillsCompanion(
                 id: id,
                 billName: billName,
@@ -5688,6 +6310,13 @@ class $$RecentBillsTableTableManager
                 attachmentState: attachmentState,
                 savedShares: savedShares,
                 receiptMetadata: receiptMetadata,
+                creationWireVersion: creationWireVersion,
+                creationResponseVersion: creationResponseVersion,
+                originalParticipantMap: originalParticipantMap,
+                receiptParticipants: receiptParticipants,
+                currentIdentityRevision: currentIdentityRevision,
+                currentIdentityState: currentIdentityState,
+                currentGraph: currentGraph,
               ),
           createCompanionCallback:
               ({
@@ -5723,6 +6352,13 @@ class $$RecentBillsTableTableManager
                 Value<String> attachmentState = const Value.absent(),
                 Value<String?> savedShares = const Value.absent(),
                 Value<String?> receiptMetadata = const Value.absent(),
+                Value<int?> creationWireVersion = const Value.absent(),
+                Value<int?> creationResponseVersion = const Value.absent(),
+                Value<String?> originalParticipantMap = const Value.absent(),
+                Value<String?> receiptParticipants = const Value.absent(),
+                Value<int?> currentIdentityRevision = const Value.absent(),
+                Value<String?> currentIdentityState = const Value.absent(),
+                Value<String?> currentGraph = const Value.absent(),
               }) => RecentBillsCompanion.insert(
                 id: id,
                 billName: billName,
@@ -5756,6 +6392,13 @@ class $$RecentBillsTableTableManager
                 attachmentState: attachmentState,
                 savedShares: savedShares,
                 receiptMetadata: receiptMetadata,
+                creationWireVersion: creationWireVersion,
+                creationResponseVersion: creationResponseVersion,
+                originalParticipantMap: originalParticipantMap,
+                receiptParticipants: receiptParticipants,
+                currentIdentityRevision: currentIdentityRevision,
+                currentIdentityState: currentIdentityState,
+                currentGraph: currentGraph,
               ),
           withReferenceMapper:
               (p0) =>
@@ -5800,6 +6443,7 @@ typedef $$TabsTableCreateCompanionBuilder =
       Value<String?> shareUrl,
       Value<bool> finalized,
       Value<String?> memberToken,
+      Value<int?> memberId,
       Value<String?> role,
       Value<bool> isRemote,
       Value<DateTime> createdAt,
@@ -5815,6 +6459,7 @@ typedef $$TabsTableUpdateCompanionBuilder =
       Value<String?> shareUrl,
       Value<bool> finalized,
       Value<String?> memberToken,
+      Value<int?> memberId,
       Value<String?> role,
       Value<bool> isRemote,
       Value<DateTime> createdAt,
@@ -5870,6 +6515,11 @@ class $$TabsTableFilterComposer extends Composer<_$AppDatabase, $TabsTable> {
 
   ColumnFilters<String> get memberToken => $composableBuilder(
     column: $table.memberToken,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get memberId => $composableBuilder(
+    column: $table.memberId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5942,6 +6592,11 @@ class $$TabsTableOrderingComposer extends Composer<_$AppDatabase, $TabsTable> {
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get memberId => $composableBuilder(
+    column: $table.memberId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get role => $composableBuilder(
     column: $table.role,
     builder: (column) => ColumnOrderings(column),
@@ -6000,6 +6655,9 @@ class $$TabsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get memberId =>
+      $composableBuilder(column: $table.memberId, builder: (column) => column);
+
   GeneratedColumn<String> get role =>
       $composableBuilder(column: $table.role, builder: (column) => column);
 
@@ -6047,6 +6705,7 @@ class $$TabsTableTableManager
                 Value<String?> shareUrl = const Value.absent(),
                 Value<bool> finalized = const Value.absent(),
                 Value<String?> memberToken = const Value.absent(),
+                Value<int?> memberId = const Value.absent(),
                 Value<String?> role = const Value.absent(),
                 Value<bool> isRemote = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -6060,6 +6719,7 @@ class $$TabsTableTableManager
                 shareUrl: shareUrl,
                 finalized: finalized,
                 memberToken: memberToken,
+                memberId: memberId,
                 role: role,
                 isRemote: isRemote,
                 createdAt: createdAt,
@@ -6075,6 +6735,7 @@ class $$TabsTableTableManager
                 Value<String?> shareUrl = const Value.absent(),
                 Value<bool> finalized = const Value.absent(),
                 Value<String?> memberToken = const Value.absent(),
+                Value<int?> memberId = const Value.absent(),
                 Value<String?> role = const Value.absent(),
                 Value<bool> isRemote = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -6088,6 +6749,7 @@ class $$TabsTableTableManager
                 shareUrl: shareUrl,
                 finalized: finalized,
                 memberToken: memberToken,
+                memberId: memberId,
                 role: role,
                 isRemote: isRemote,
                 createdAt: createdAt,

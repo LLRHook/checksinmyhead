@@ -83,6 +83,7 @@ class Tabs extends Table {
   TextColumn get shareUrl => text().nullable()();
   BoolColumn get finalized => boolean().withDefault(const Constant(false))();
   TextColumn get memberToken => text().nullable()();
+  IntColumn get memberId => integer().nullable()();
   TextColumn get role => text().nullable()();
   BoolColumn get isRemote => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt =>
@@ -136,6 +137,14 @@ class RecentBills extends Table {
       text().withDefault(const Constant('none'))();
   TextColumn get savedShares => text().nullable()();
   TextColumn get receiptMetadata => text().nullable()();
+  // Immutable creation receipt and current observation occupy separate columns.
+  IntColumn get creationWireVersion => integer().nullable()();
+  IntColumn get creationResponseVersion => integer().nullable()();
+  TextColumn get originalParticipantMap => text().nullable()();
+  TextColumn get receiptParticipants => text().nullable()();
+  IntColumn get currentIdentityRevision => integer().nullable()();
+  TextColumn get currentIdentityState => text().nullable()();
+  TextColumn get currentGraph => text().nullable()();
 }
 
 @DriftDatabase(
@@ -158,7 +167,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -224,6 +233,20 @@ class AppDatabase extends _$AppDatabase {
         await customStatement(
           'CREATE UNIQUE INDEX idx_receipt_creation_handle ON recent_bills(creation_handle)',
         );
+      }
+      if (from < 10) {
+        await migrator.addColumn(tabs, tabs.memberId);
+        for (final column in [
+          recentBills.creationWireVersion,
+          recentBills.creationResponseVersion,
+          recentBills.originalParticipantMap,
+          recentBills.receiptParticipants,
+          recentBills.currentIdentityRevision,
+          recentBills.currentIdentityState,
+          recentBills.currentGraph,
+        ]) {
+          await migrator.addColumn(recentBills, column);
+        }
       }
     },
     beforeOpen: (details) async {
@@ -422,7 +445,7 @@ class AppDatabase extends _$AppDatabase {
           items.map((item) {
             Map<String, double> assignmentsByName = {};
             item.assignments.forEach((person, percentage) {
-              assignmentsByName[person.name] = percentage;
+              assignmentsByName[person.clientRef] = percentage;
             });
 
             return {
@@ -440,6 +463,19 @@ class AppDatabase extends _$AppDatabase {
       billName: Value(billName),
       participants: Value(participantsJson),
       participantCount: Value(participants.length),
+      receiptParticipants: Value(
+        jsonEncode(participants.map((p) => p.toReceiptJson()).toList()),
+      ),
+      savedShares: Value(
+        jsonEncode([
+          for (final e in personShares.entries)
+            {
+              'client_ref': e.key.clientRef,
+              'name': e.key.name,
+              'total': e.value,
+            },
+        ]),
+      ),
       total: Value(total),
       date: Value(DateTime.now().toIso8601String()),
       subtotal: Value(subtotal),

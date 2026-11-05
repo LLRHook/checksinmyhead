@@ -29,8 +29,8 @@ status `web service - ok`. The `--healthcheck` loopback command treats HTTP 503 
 See [schema startup modes](../backend/README.md#postgresql-schema-startup) for migration-only
 and verify startup behavior. Registry remains exactly1,2,3. Historical defaults remain
 graph1/`legacy_review`; fresh application creation explicitly constructs ready graph2.
-The server implements participant-reference behavior below. Matched browser/mobile
-clients, old-writer exclusion and rollout remain separate, unqualified gates.
+The server implements participant-reference behavior below. Matched browser/mobile source clients now use the reference contract; independent
+client/integrated acceptance, old-writer exclusion and rollout remain unqualified gates.
 
 ### `GET /api/app/version-policy`
 
@@ -369,11 +369,15 @@ and does not represent a market observation. Invalid/unavailable pairs return 50
 freeze or change any saved receipt. The mobile decoder accepts finite positive JSON
 numbers from `rate`, including integer encodings, without a rate-1 fallback.
 
-New mobile save operations persist their ordered creation request, snapshot version,
+New mobile wire2 save operations persist their ordered creation request, original wire/header version, snapshot version,
 nonsecret operation/key locator, native amounts and optional attachment intent in
-Drift9 before publication. They commit an attempted marker before their one keyed
-POST and checkpoint all eight persisted201 authority fields to the exact row before
-sharing or attachment. A lost/invalid response or checkpoint failure retains the
+Drift10 before publication. They commit an attempted marker before their one keyed
+POST and checkpoint the eight persisted201 authority fields plus the strictly validated
+ordered response2 participant map to the exact row before sharing or attachment.
+Response2/identity2/revision0 and exact unique positive map IDs/ordered declared refs
+are required. Current identity revisions come from a fresh authenticated GET. Old
+attempted snapshot1 rows retain original bytes/key/absent-header semantics and expect
+the original eight-field response; they are never converted to wire2 on resume. A lost/invalid response or checkpoint failure retains the
 same recovery capability and snapshot. Missing keys after an attempt block further
 publication; imports/ambiguous old history are never automatic create work.
 

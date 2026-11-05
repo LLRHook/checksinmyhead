@@ -338,11 +338,12 @@ void main() {
       final longName = Person(name: '界' * 31, color: Colors.red);
       final group = [alex, longName];
       expect(provider.addGroup(group), isFalse);
-      expect(provider.participants, [sam]);
+      expect(provider.participants.map((p) => p.name), [sam.name]);
+      expect(provider.participants.single.clientRef, isNot(sam.clientRef));
       expect(provider.validationError, contains('30'));
       expect(group.map((p) => p.name), ['Alex', '界' * 31]);
       expect(provider.addGroup([alex]), isTrue);
-      expect(provider.participants, [sam, alex]);
+      expect(provider.participants.map((p) => p.name), [sam.name, alex.name]);
     },
   );
 

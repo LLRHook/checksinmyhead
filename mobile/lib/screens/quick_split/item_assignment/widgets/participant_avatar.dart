@@ -221,7 +221,10 @@ class ParticipantAvatar extends StatelessWidget {
                                   size: 18,
                                 )
                                 : Text(
-                                  person.name[0].toUpperCase(), // First initial
+                                  (person.name.isEmpty
+                                      ? '?'
+                                      : person.name[0]
+                                          .toUpperCase()), // First initial
                                   style: TextStyle(
                                     color: ColorUtils.getContrastiveTextColor(
                                       person.color,
@@ -276,7 +279,7 @@ class ParticipantAvatar extends StatelessWidget {
                   SizedBox(
                     height: 16,
                     child: Text(
-                      person.name,
+                      person.displayName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.center,

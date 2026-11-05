@@ -89,6 +89,19 @@ Map<String, dynamic> creationResponse(
   final currency = body['currency_code'] as String;
   final rate = currency == 'USD' ? 1.0 : 1.25;
   return {
+    if ((body['participants'] as List).isEmpty ||
+        (body['participants'] as List).first.containsKey('client_ref')) ...{
+      'response_version': 2,
+      'identity_version': 2,
+      'identity_revision': 0,
+      'participant_map': [
+        for (var i = 0; i < (body['participants'] as List).length; i++)
+          {
+            'client_ref': body['participants'][i]['client_ref'],
+            'participant_id': 100 + i,
+          },
+      ],
+    },
     'bill_id': id,
     'access_token': 'synthetic-source-$id',
     'share_url': 'https://billington.app/b/$id?t=synthetic-source-$id',
@@ -116,6 +129,9 @@ class Harness {
           return http.Response(replay ? capability : '{}', 200);
         }
         if (request.method == 'GET') {
+          if (request.url.path.startsWith('/api/bills/')) {
+            return http.Response('{"identity_revision":0}', 200);
+          }
           return http.Response(jsonEncode(tabRead), 200);
         }
         if (request.url.path == '/api/bills') {
@@ -610,6 +626,7 @@ void main() {
       expect(jsonDecode(request.body), {
         'bill_id': 19,
         'bill_token': 'synthetic-source-19',
+        'expected_revision': 0,
       });
       expect((await h.db.getTabById(tab))!.billIds, '${result.localId}');
     },
@@ -621,6 +638,7 @@ void main() {
       addTearDown(h.db.close);
       final tab = await h.tab();
       h.onAttach = (_) async {
+        if (h.attachments > 1) return http.Response('{}', 200);
         h.tabRead = {
           'finalized': true,
           'bills': [
@@ -636,9 +654,9 @@ void main() {
         intendedTabId: tab,
       );
       expect(result.attachment, AttachmentState.attached);
-      expect(h.attachments, 1);
+      expect(h.attachments, 2);
       await h.owner.resumeReceipt(result.localId);
-      expect(h.attachments, 1);
+      expect(h.attachments, 2);
       expect(h.posts, 1);
     },
   );
@@ -664,12 +682,13 @@ void main() {
           {'id': 19},
         ],
       };
+      h.onAttach = (_) async => http.Response('{}', 200);
       expect(
         (await h.owner.resumeReceipt(result.localId)).attachment,
         AttachmentState.attached,
       );
       expect(h.posts, 1);
-      expect(h.attachments, 1);
+      expect(h.attachments, 2);
     },
   );
   test(
