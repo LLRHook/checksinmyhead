@@ -89,7 +89,7 @@ This guide will help you set up Flutter for iOS development on macOS and get our
    ```
 
 2. **Install dependencies:**
-   Use Flutter **3.41.5**, matching the CI and iOS publication SDK pins. The
+   Use Flutter **3.41.5**, matching the canonical validation SDK pin in `.github/workflows/checks.yml`. The
    committed lock includes that SDK's exact framework/test dependencies. Verify
    acquisition without rewriting it:
    ```bash

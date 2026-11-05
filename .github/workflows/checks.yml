@@ -1,0 +1,331 @@
+# Phase G only. NOT CI-CONFIRMED: native/signed/GUI, images, live providers, adoption/drain, recovery and performance qualification.
+name: Selected delivery checks
+'on':
+  workflow_call:
+    inputs:
+      source_sha:
+        required: true
+        type: string
+      controller_sha:
+        required: true
+        type: string
+      scope:
+        required: true
+        type: string
+    outputs:
+      receipt:
+        value: ${{ jobs.aggregate.outputs.receipt }}
+      source:
+        value: ${{ jobs.aggregate.outputs.source }}
+      controller:
+        value: ${{ jobs.aggregate.outputs.controller }}
+permissions:
+  contents: read
+env:
+  CONTROLLER: ${{ inputs.controller_sha }}
+  SOURCE: ${{ inputs.source_sha }}
+  CHECK_SCOPE: ${{ inputs.scope }}
+  REPORT_DIR: ${{ github.workspace }}/reports
+defaults:
+  run:
+    shell: bash
+jobs:
+  automation:
+    name: Gate automation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      report: ${{ steps.report.outputs.report }}
+    steps:
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      with:
+        ref: ${{ inputs.controller_sha }}
+        path: control
+        fetch-depth: 0
+        persist-credentials: false
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      with:
+        ref: ${{ inputs.source_sha }}
+        path: candidate
+        fetch-depth: 0
+        persist-credentials: false
+    - run: python3 control/ops/ci/delivery_gate.py assert-checkout --repo control --source "$CONTROLLER"
+    - run: python3 control/ops/ci/delivery_gate.py assert-checkout --repo candidate --source "$SOURCE"
+    - run: mkdir -p reports
+    - name: Canonical automation row
+      run: |-
+        set -euo pipefail
+        python3 -c 'import sys; assert sys.version_info[:2] == (3,12)'
+        python3 -m venv "$RUNNER_TEMP/delivery-python"
+        "$RUNNER_TEMP/delivery-python/bin/pip" install --require-hashes --only-binary=:all: -r control/ops/ci/requirements-ci.txt
+        CASE_REPORT="$REPORT_DIR/gate-tests.json" "$RUNNER_TEMP/delivery-python/bin/python" control/ops/ci/unittest_report.py control/ops/ci/test_delivery_gate.py
+        CASE_REPORT="$REPORT_DIR/ruby.json" ruby -r "$GITHUB_WORKSPACE/control/ops/ci/minitest_report.rb" candidate/.github/scripts/asc_release_test.rb
+        for script in candidate/.github/scripts/*.rb control/ops/ci/*.rb; do ruby -c "$script"; done
+    - id: report
+      run: python3 control/ops/ci/delivery_gate.py summarize --repo control --controller "$CONTROLLER" --source "$SOURCE"
+        --row automation --reports cases:reports/gate-tests.json cases:reports/ruby.json
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: reports-automation-${{ github.run_attempt }}
+        path: reports/
+        if-no-files-found: error
+        retention-days: 7
+      if: always()
+  local-workflow:
+    name: Gate local-workflow
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      report: ${{ steps.report.outputs.report }}
+    steps:
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      with:
+        ref: ${{ inputs.controller_sha }}
+        path: control
+        fetch-depth: 0
+        persist-credentials: false
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      with:
+        ref: ${{ inputs.source_sha }}
+        path: candidate
+        fetch-depth: 0
+        persist-credentials: false
+    - run: python3 control/ops/ci/delivery_gate.py assert-checkout --repo control --source "$CONTROLLER"
+    - run: python3 control/ops/ci/delivery_gate.py assert-checkout --repo candidate --source "$SOURCE"
+    - run: mkdir -p reports
+    - name: Canonical local-workflow row
+      run: |-
+        set -euo pipefail
+        /bin/bash -n candidate/dev.sh
+        CASE_REPORT="$REPORT_DIR/local-workflow.json" python3 control/ops/ci/unittest_report.py candidate/scripts/test_local_workflow.py
+    - id: report
+      run: python3 control/ops/ci/delivery_gate.py summarize --repo control --controller "$CONTROLLER" --source "$SOURCE"
+        --row local-workflow --reports cases:reports/local-workflow.json
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: reports-local-workflow-${{ github.run_attempt }}
+        path: reports/
+        if-no-files-found: error
+        retention-days: 7
+      if: always()
+  backend:
+    name: Gate backend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    outputs:
+      report: ${{ steps.report.outputs.report }}
+    steps:
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      with:
+        ref: ${{ inputs.controller_sha }}
+        path: control
+        fetch-depth: 0
+        persist-credentials: false
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      with:
+        ref: ${{ inputs.source_sha }}
+        path: candidate
+        fetch-depth: 0
+        persist-credentials: false
+    - run: python3 control/ops/ci/delivery_gate.py assert-checkout --repo control --source "$CONTROLLER"
+    - run: python3 control/ops/ci/delivery_gate.py assert-checkout --repo candidate --source "$SOURCE"
+    - run: mkdir -p reports
+    - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+      with:
+        go-version-file: candidate/backend/go.mod
+        cache: false
+    - name: Canonical backend row
+      run: |-
+        set -euo pipefail
+        cd candidate/backend
+        test -z "$(gofmt -l .)" || { gofmt -l .; echo "::error::Run 'gofmt -w .' in backend/"; exit 1; }
+        go mod download
+        go mod verify
+        go build ./...
+        go vet ./...
+        go test -race -count=1 -json ./... | tee "$REPORT_DIR/go-default.jsonl"
+        go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
+    - id: report
+      run: python3 control/ops/ci/delivery_gate.py summarize --repo control --controller "$CONTROLLER" --source "$SOURCE"
+        --row backend --reports go:reports/go-default.jsonl
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: reports-backend-${{ github.run_attempt }}
+        path: reports/
+        if-no-files-found: error
+        retention-days: 7
+      if: always()
+  postgres:
+    name: Gate postgres
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    outputs:
+      report: ${{ steps.report.outputs.report }}
+    steps:
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      with:
+        ref: ${{ inputs.controller_sha }}
+        path: control
+        fetch-depth: 0
+        persist-credentials: false
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      with:
+        ref: ${{ inputs.source_sha }}
+        path: candidate
+        fetch-depth: 0
+        persist-credentials: false
+    - run: python3 control/ops/ci/delivery_gate.py assert-checkout --repo control --source "$CONTROLLER"
+    - run: python3 control/ops/ci/delivery_gate.py assert-checkout --repo candidate --source "$SOURCE"
+    - run: mkdir -p reports
+    - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+      with:
+        go-version-file: candidate/backend/go.mod
+        cache: false
+    - name: Canonical postgres row
+      run: |-
+        set -euo pipefail
+        cd candidate/backend
+        go mod download
+        go mod verify
+        go test -race -count=1 -json -tags=integration ./cmd/bill-service ./internal/bill ./internal/tab ./pkg/database ./migrations ./internal/startup ./internal/readiness ./internal/testpostgres | tee "$REPORT_DIR/go-postgres.jsonl"
+    - id: report
+      run: python3 control/ops/ci/delivery_gate.py summarize --repo control --controller "$CONTROLLER" --source "$SOURCE"
+        --row postgres --reports go:reports/go-postgres.jsonl
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: reports-postgres-${{ github.run_attempt }}
+        path: reports/
+        if-no-files-found: error
+        retention-days: 7
+      if: always()
+    services:
+      postgres:
+        image: postgres:17.11-bookworm@sha256:839fbb5a4942a7758dd93e18b42ea5649807491a0545b5eeeb8f0b8bb11857a5
+        env:
+          POSTGRES_DB: billington_test
+          POSTGRES_USER: billington_test
+          POSTGRES_PASSWORD: synthetic-ci-only
+        ports:
+        - 127.0.0.1:5432:5432
+        options: --health-cmd "pg_isready -U billington_test -d billington_test" --health-interval 5s --health-timeout 5s
+          --health-retries 10
+    env:
+      BILLINGTON_TEST_POSTGRES_DSN: host=127.0.0.1 port=5432 user=billington_test password=synthetic-ci-only dbname=billington_test
+        sslmode=disable
+  mobile:
+    name: Gate mobile
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    outputs:
+      report: ${{ steps.report.outputs.report }}
+    steps:
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      with:
+        ref: ${{ inputs.controller_sha }}
+        path: control
+        fetch-depth: 0
+        persist-credentials: false
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      with:
+        ref: ${{ inputs.source_sha }}
+        path: candidate
+        fetch-depth: 0
+        persist-credentials: false
+    - run: python3 control/ops/ci/delivery_gate.py assert-checkout --repo control --source "$CONTROLLER"
+    - run: python3 control/ops/ci/delivery_gate.py assert-checkout --repo candidate --source "$SOURCE"
+    - run: mkdir -p reports
+    - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+      with:
+        channel: stable
+        flutter-version: 3.41.5
+        cache: 'false'
+        pub-cache: 'false'
+    - name: Canonical mobile row
+      run: |-
+        set -euo pipefail
+        cd candidate/mobile
+        flutter pub get --enforce-lockfile
+        flutter analyze
+        flutter test --no-pub --reporter=json | tee "$REPORT_DIR/flutter.jsonl"
+    - id: report
+      run: python3 control/ops/ci/delivery_gate.py summarize --repo control --controller "$CONTROLLER" --source "$SOURCE"
+        --row mobile --reports flutter:reports/flutter.jsonl
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: reports-mobile-${{ github.run_attempt }}
+        path: reports/
+        if-no-files-found: error
+        retention-days: 7
+      if: always()
+  web:
+    name: Gate web
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    outputs:
+      report: ${{ steps.report.outputs.report }}
+    steps:
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      with:
+        ref: ${{ inputs.controller_sha }}
+        path: control
+        fetch-depth: 0
+        persist-credentials: false
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      with:
+        ref: ${{ inputs.source_sha }}
+        path: candidate
+        fetch-depth: 0
+        persist-credentials: false
+    - run: python3 control/ops/ci/delivery_gate.py assert-checkout --repo control --source "$CONTROLLER"
+    - run: python3 control/ops/ci/delivery_gate.py assert-checkout --repo candidate --source "$SOURCE"
+    - run: mkdir -p reports
+    - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+      with:
+        node-version-file: candidate/web-bill-viewer/.node-version
+        package-manager-cache: false
+    - name: Canonical web row
+      run: |-
+        set -euo pipefail
+        cd candidate/web-bill-viewer
+        npm ci
+        npm run lint
+        npm test -- --reporter=json --outputFile="$REPORT_DIR/vitest.json"
+        npm run build
+        npm audit --audit-level=moderate
+    - id: report
+      run: python3 control/ops/ci/delivery_gate.py summarize --repo control --controller "$CONTROLLER" --source "$SOURCE"
+        --row web --reports vitest:reports/vitest.json
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: reports-web-${{ github.run_attempt }}
+        path: reports/
+        if-no-files-found: error
+        retention-days: 7
+      if: always()
+  aggregate:
+    name: Selected checks all
+    if: always()
+    needs:
+    - automation
+    - local-workflow
+    - backend
+    - postgres
+    - mobile
+    - web
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      receipt: ${{ steps.gate.outputs.receipt }}
+      source: ${{ steps.gate.outputs.source }}
+      controller: ${{ steps.gate.outputs.controller }}
+    steps:
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      with:
+        ref: ${{ inputs.controller_sha }}
+        path: control
+        fetch-depth: 0
+        persist-credentials: false
+    - id: gate
+      env:
+        NEEDS: ${{ toJSON(needs) }}
+      run: python3 control/ops/ci/delivery_gate.py collect --repo control --controller "$CONTROLLER" --source "$SOURCE"

@@ -1,19 +1,19 @@
 # Billington — local verification procedure
 
-Last verified: never — bootstrap only; no integrated V&V run has been recorded.
+Last verified: never — no integrated V&V run recorded.
 
-Stack: Flutter/Provider/Drift, Go/Gin/PostgreSQL, Next.js. Authoritative:
+Stack: Flutter/Provider/Drift, Go/Gin/PostgreSQL, Next.js. Sources:
 [architecture](docs/technical-overview.md), [API](docs/backend-api.md),
 [privacy](docs/privacy.md), [design](DESIGN_SYSTEM.md), live [bugs](bugs.md)/[features](features.md),
 verified [history](CHANGELOG.md). File budget: 20 KiB.
 
 ## Execution rules
 
-1. Record the exact SHA and run every applicable stage locally. Treat failed checks as
-   RED and unavailable prerequisites/missing coverage as BLOCKED; never call skips green.
-   Use `local-gate` with `scope=full` and `clean` for Stage 2 when executing the protocol.
-2. Keep logs, fixture credentials, backups and `.vv/last-run.md` under ignored `.vv/`.
-   Keep this file procedural; overwrite baseline counts and Last verified only on green.
+1. Record exact SHA and run all applicable local stages. Failure is RED; missing
+   prerequisites/coverage is BLOCKED; skips are never green. Stage 2 uses `local-gate`
+   with `scope=full` and `clean`.
+2. Keep logs, fixture credentials, backups and report in ignored `.vv/`. This file is
+   procedural; change baseline counts/Last verified only on green.
 3. Use synthetic data in `billington-vv-*`. Preserve existing developer/production data
    and shutdown volumes. Inventory/back up verification state before authorized reset.
 4. Block on Stage 0/1/2/5 failures, Stage 4 migration failure or critical/high performance
@@ -24,10 +24,9 @@ verified [history](CHANGELOG.md). File budget: 20 KiB.
 
 ## Verification data (restore manifest)
 
-Restore through the real UI/API contracts; never hand-edit accounting rows. Save IDs
-and synthetic tokens in `.vv/fixture-ids.json`. Probe saved IDs first and reuse them
-when valid; otherwise recreate the row after reset and replace the checkpoint. Require
-a successful probe for every row before proceeding.
+Restore via real UI/API contracts, never accounting-row edits. Save synthetic IDs/tokens
+in `.vv/fixture-ids.json`; probe/reuse valid entries, recreate invalid ones after reset,
+and update the checkpoint. Require every probe to succeed.
 
 | ID | Data | Restore / dependency | Probe |
 |---|---|---|---|
@@ -66,49 +65,50 @@ a successful probe for every row before proceeding.
 
 ## Stage 1 — static checks and source invariants
 
-- [ ] Run `python3 .cycle/trackers.py lint` first; require 0 errors/warnings. Confirm clone
-      merge driver and hooks with `python3 .cycle/trackers.py install`.
-- [ ] Run all static/security rows below verbatim in their specified directory. Confirm
-      no unexpected lockfile/generated source changes. Resolve installed toolchain or
-      dependency drift before interpreting a pass.
-- [ ] Review auth boundaries, caller DTOs, parameterized SQL/log redaction, provider
-      injection, immutable money/quote metadata and migration readiness in changed code.
-      Inspect eager tab reads/query shape and repeat-save/upload loops for hot-path drift.
-- [ ] Check affected documentation against code and ticket acceptance. Keep proposed or
-      historical work clearly labeled; do not duplicate architecture/API documents.
+- [ ] Run `python3 .cycle/trackers.py lint`: 0 errors/warnings. Confirm clone hooks/merge
+      driver with `python3 .cycle/trackers.py install`.
+- [ ] Run all rows below in their stated directory; resolve toolchain/dependency drift
+      and unexpected lock/generated-source changes before interpreting passes.
+- [ ] Review changed auth/DTO boundaries, parameterized SQL, log redaction, provider
+      injection, immutable money/quotes and migration readiness. Inspect eager tab/query
+      shape and repeat-save/upload loops for hot-path drift.
+- [ ] Reconcile docs/ticket acceptance, label proposed/history, avoid duplicate API docs.
 
-| Directory | Static/security command (from CI) | Expected |
-|---|---|---|
-| `backend` | `test -z "$(gofmt -l .)" || { gofmt -l .; echo "::error::Run 'gofmt -w .' in backend/"; exit 1; }` | No formatting drift |
-| `backend` | `go vet ./...` | Exit 0 |
-| `backend` | `go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...` | No applicable vulnerabilities |
-| `mobile` | `flutter analyze` | No issues |
-| `web-bill-viewer` | `npm run lint` | No issues |
-| `web-bill-viewer` | `npm audit --audit-level=moderate` | Exit 0, including all three current web alerts |
-| root | `/bin/bash -n dev.sh` | Bash syntax (also check maintained Bash) |
-| root | `ruby -c .github/scripts/asc_api.rb` | Syntax OK |
-| root | `ruby -c .github/scripts/asc_next_build.rb` | Syntax OK |
-| root | `ruby -c .github/scripts/asc_release.rb` | Syntax OK |
-| root | `ruby -c .github/scripts/asc_update_notes.rb` | Syntax OK |
+| Directory | Static/security command (also in CI) |
+|---|---|
+| `backend` | `test -z "$(gofmt -l .)" \|\| { gofmt -l .; echo "::error::Run 'gofmt -w .' in backend/"; exit 1; }` |
+| `backend` | `go vet ./...`; `go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...` |
+| `mobile` | `flutter analyze` |
+| `web-bill-viewer` | `npm run lint`; `npm audit --audit-level=moderate` |
+| root | `/bin/bash -n dev.sh` |
+| root | `for script in .github/scripts/*.rb ops/ci/*.rb; do ruby -c "$script"; done` |
+
+Require exit0 for each command, no applicable vulnerabilities or lock drift.
 
 ## Stage 2 — builds and automated tests
 
-Refresh this matrix after tooling changes. Require locked acquisition (`npm ci`,
-`flutter pub get --enforce-lockfile`, `pod install --deployment`, existing Go toolchain/modules)
-in a clean environment; inspect lock drift. Go covers SQL/startup/request-error secrecy
-and SQLite; PostgreSQL adds lifecycle, adoption, catalog guard v2, history/locks/readiness.
+Use one uncached report-producing execution, with Bash `set -euo pipefail`.
+At root set `export REPORT_DIR="$PWD/.vv/delivery-reports"; mkdir -p "$REPORT_DIR"`.
+CI sets the same absolute variable to its `reports/` directory. Keep acquisition
+locked: `go mod download`/`go mod verify`, `npm ci`, `flutter pub get --enforce-lockfile`;
+`pod install --deployment` remains a prerequisite only for separately authorized iOS work.
 
-| Layer / directory | Command (CI where wired) | Baseline count |
-|---|---|---|
-| Go unit + SQLite integration / `backend` | `go test -race ./...` | Not measured in this bootstrap |
-| Go build / `backend` | `go build ./...` | Build, not a test count |
-| Flutter unit/widget + Drift / `mobile` | `flutter test` | Not measured in this bootstrap |
-| Web unit / `web-bill-viewer` | `npm test` | Not measured in this bootstrap |
-| Web production build / `web-bill-viewer` | `npm run build` | Build, not a test count |
-| Local workflow / root | `python3 scripts/test_local_workflow.py` | Stubbed CLI/ownership regressions; not integrated baseline |
-| Ruby release automation / root | `ruby .github/scripts/asc_release_test.rb` | Not yet an integrated baseline |
-| Live PostgreSQL authorization + migrations/readiness / `backend` | `go test -race -tags=integration ./cmd/bill-service ./internal/bill ./internal/tab ./pkg/database ./migrations ./internal/startup ./internal/readiness ./internal/testpostgres` | Not yet an integrated baseline; test-only DSN required |
-| App/browser E2E, a11y, realistic load | No wired automated runner: FEAT-1793644507, FEAT-1793644512, FEAT-1793644502 | Manual stages required; automation gap remains |
+| Layer / directory | Command (same report flags/files in CI) |
+|---|---|
+| Go unit + SQLite / `backend` | `go test -race -count=1 -json ./... \| tee "$REPORT_DIR/go-default.jsonl"` |
+| Go build / `backend` | `go build ./...` |
+| Flutter unit/widget + Drift / `mobile` | `flutter test --no-pub --reporter=json \| tee "$REPORT_DIR/flutter.jsonl"` |
+| Web unit / `web-bill-viewer` | `npm test -- --reporter=json --outputFile="$REPORT_DIR/vitest.json"` |
+| Web build / `web-bill-viewer` | `npm run build` |
+| Local workflow / root | `CASE_REPORT="$REPORT_DIR/local-workflow.json" python3 ops/ci/unittest_report.py scripts/test_local_workflow.py` |
+| Ruby automation / root | `CASE_REPORT="$REPORT_DIR/ruby.json" ruby -r "$PWD/ops/ci/minitest_report.rb" .github/scripts/asc_release_test.rb` |
+| Delivery contracts / root | `CASE_REPORT="$REPORT_DIR/gate-tests.json" python3 ops/ci/unittest_report.py ops/ci/test_delivery_gate.py` |
+| Live PG authorization/migrations/readiness / `backend` | `go test -race -count=1 -json -tags=integration ./cmd/bill-service ./internal/bill ./internal/tab ./pkg/database ./migrations ./internal/startup ./internal/readiness ./internal/testpostgres \| tee "$REPORT_DIR/go-postgres.jsonl"` |
+| E2E/a11y/load | No wired runner: FEAT-1793644507, FEAT-1793644512, FEAT-1793644502; manual stages remain |
+
+Baselines remain unaccepted; builds/stub tests are not integration. Validate the same
+files via [delivery controls](ops/ci/README.md), retaining IDs/multiplicity and overlap.
+Never rerun solely for counts; missing/zero/skip/failure/malformed selections fail.
 
 Set `BILLINGTON_TEST_POSTGRES_DSN` for PG, e.g.
 `host=127.0.0.1 port=<fixture-port> user=billington_test dbname=billington_test sslmode=disable`.
@@ -156,12 +156,9 @@ separately; unsigned `-34018` is BLOCKED, never a native/release pass. Retain ca
 OCR native/M2/TLS obligations unchanged. No numerical performance qualification is
 implied by these functional cases.
 
-- [ ] Enumerate (`go test ./... -list '.*'`, `npm exec -- vitest list`, Flutter/Ruby
-      runner output); record actual tests/skips/failures, never historical 202/52 counts.
-- [ ] Run the full local gate, collect real execution counts and prove every batch
-      ticket with a failing-before/passing-after regression where applicable.
-- [ ] Rerun failures once for flakiness; repeat passes only for changes/unresolved concerns.
-      Record measured coverage; CI has no changed-line threshold. Never invent one.
+- [ ] Record runner IDs/skips/failures from the same run; never use historical totals
+      as thresholds. Prove affected regressions, preserving initial failures. Diagnose
+      before rerunning; no retry into green or invented coverage/changed-line threshold.
 
 ## Stage 3 — integrated functional walkthrough
 
@@ -225,9 +222,10 @@ implied by these functional cases.
 - [ ] Verify a signed public binary's version/build/OS/storefront against live policy,
       valid old links and current API using approved synthetic fixtures. A TestFlight
       processing success or source version number is insufficient.
-- [ ] Inspect publication gates, source/artifact identities, automatic-deploy settings,
-      rollback/recovery and required accessibility claims. Prepare evidence without
-      dispatching production publication or deleting cloud resources.
+- [ ] Assess [phase G controls](ops/ci/README.md), provenance, recovery and a11y.
+      iOS/notes writes await phase F; source rebuilds are not identical-artifact promotion.
+      Settings/ownership, queues/credentials, floors/capabilities and drain remain external.
+      No hosted mutation or Render/Vercel control-plane work is authorized here.
 
 ## Stage 6 — report and ledger
 

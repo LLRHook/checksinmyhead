@@ -64,6 +64,10 @@ module ASC
   end
 
   def request(method, path, body: nil, allow_failure: false)
+    # Phase G: no alternate ASC mutation transport until exact processed-build
+    # receipts and promotion/notes authorization are implemented in phase F.
+    raise Error, "F-phase required: ASC writes are unavailable" unless method == :get
+
     uri = URI("https://#{HOST}#{path}")
     klass = {
       get: Net::HTTP::Get,

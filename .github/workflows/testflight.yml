@@ -1,236 +1,67 @@
-name: Deploy to TestFlight
-
-on:
+# Phase G only. NOT CI-CONFIRMED: native/signed/GUI, images, live providers, adoption/drain, recovery and performance qualification.
+name: Deploy to TestFlight (phase F unavailable)
+'on':
   workflow_dispatch:
     inputs:
       build_number:
-        description: 'Build number (blank = next available from App Store Connect)'
+        description: Build number (blank = next available from App Store Connect)
         required: false
         type: string
       release_notes:
-        description: 'What to test (TestFlight notes)'
+        description: What to test (TestFlight notes)
         required: false
-        default: 'Billington 2.0: collaborative trip tabs, app-first invites, multi-currency receipts with conversion previews, creator-controlled tab settings, currency-aware balances, and a read-only web handoff. Receipt scanning, external payment links, and the existing Quick Split and Lazy Mode flows remain supported.'
+        default: 'Billington 2.0: collaborative trip tabs, app-first invites, multi-currency receipts with conversion previews,
+          creator-controlled tab settings, currency-aware balances, and a read-only web handoff. Receipt scanning, external
+          payment links, and the existing Quick Split and Lazy Mode flows remain supported.'
         type: string
-      skip_tests:
-        description: 'Skip analyze/test (emergency builds only)'
+      source:
+        type: string
+        description: Full source SHA (blank = C); phase F publication unavailable
         required: false
-        default: false
-        type: boolean
-
 permissions:
-  contents: write
-
-concurrency:
-  # Two concurrent uploads race for the same build number.
-  group: ios-upload
-  cancel-in-progress: false
-
-env:
-  BUNDLE_ID: com.checksinmyhead-vng.app
-  TEAM_ID: D9QD5DUKNC
-  FLUTTER_VERSION: 3.41.5
-
+  contents: read
 jobs:
-  build-and-upload:
-    runs-on: macos-26
-    timeout-minutes: 60
-    defaults:
-      run:
-        working-directory: mobile
-
+  resolve:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      candidate: ${{ steps.resolve.outputs.candidate }}
+      controller: ${{ steps.resolve.outputs.controller }}
+      backend: ${{ steps.resolve.outputs.backend }}
+      web: ${{ steps.resolve.outputs.web }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - name: Select Xcode and verify SDK
-        working-directory: .
-        run: |
-          set -euo pipefail
-          # Prefer the newest installed Xcode 26.x; App Store uploads require
-          # the iOS 26 SDK and the runner image ships several side by side.
-          for candidate in $(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -Vr) /Applications/Xcode.app; do
-            if [ -d "$candidate" ]; then
-              sudo xcode-select -s "$candidate"
-              break
-            fi
-          done
-
-          xcodebuild -version
-          IOS_SDK_VERSION="$(xcrun --sdk iphoneos --show-sdk-version)"
-          echo "iOS SDK: ${IOS_SDK_VERSION}"
-          # Numeric compare, not a 26.* glob: the glob would reject iOS 27+
-          # and fail every upload with an error claiming "26 or later".
-          if [[ "${IOS_SDK_VERSION%%.*}" -lt 26 ]]; then
-            echo "::error::App Store uploads require the iOS 26 SDK or later. Found iOS SDK ${IOS_SDK_VERSION}."
-            exit 1
-          fi
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          cache: true
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Analyze
-        if: ${{ !inputs.skip_tests }}
-        run: flutter analyze
-
-      - name: Test
-        if: ${{ !inputs.skip_tests }}
-        run: flutter test
-
-      - name: Install CocoaPods
-        run: cd ios && pod install
-
-      - name: Write App Store Connect API key
-        env:
-          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-        run: |
-          set -euo pipefail
-          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
-          printf '%s' "$ASC_API_KEY_P8" > "$KEY_PATH"
-          # altool discovers keys here by convention.
-          mkdir -p "$HOME/.private_keys"
-          cp "$KEY_PATH" "$HOME/.private_keys/AuthKey_${ASC_KEY_ID}.p8"
-          echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
-
-      - name: Resolve version and build number
-        id: version
-        env:
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-        run: |
-          set -euo pipefail
-          VERSION="$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f1 | tr -d '[:space:]')"
-
-          if [ -n "${{ inputs.build_number }}" ]; then
-            BUILD="${{ inputs.build_number }}"
-            echo "Using operator-supplied build number $BUILD"
-          else
-            BUILD="$(ruby ../.github/scripts/asc_next_build.rb)"
-          fi
-
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
-          echo "Building $VERSION ($BUILD)"
-
-      - name: Build signed IPA
-        id: ipa
-        uses: ./.github/actions/build-signed-ipa
-        with:
-          build-number: ${{ steps.version.outputs.build }}
-          build-name: ${{ steps.version.outputs.version }}
-          certificate-base64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
-          p12-password: ${{ secrets.P12_PASSWORD }}
-          provisioning-profile-base64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
-          team-id: ${{ env.TEAM_ID }}
-          bundle-id: ${{ env.BUNDLE_ID }}
-
-      # Catches entitlement/asset problems locally instead of via a rejection
-      # email twenty minutes after a "successful" upload.
-      - name: Validate IPA
-        env:
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-        run: |
-          set -euo pipefail
-          xcrun altool --validate-app \
-            --type ios \
-            -f "${{ steps.ipa.outputs.ipa-path }}" \
-            --apiKey "$ASC_KEY_ID" \
-            --apiIssuer "$ASC_ISSUER_ID"
-
-      - name: Upload to TestFlight
-        id: upload
-        env:
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-        run: |
-          set -euo pipefail
-          xcrun altool --upload-app \
-            --type ios \
-            -f "${{ steps.ipa.outputs.ipa-path }}" \
-            --apiKey "$ASC_KEY_ID" \
-            --apiIssuer "$ASC_ISSUER_ID" \
-            --output-format json | tee "$RUNNER_TEMP/upload.json"
-
-          DELIVERY_ID="$(sed -n 's/.*"delivery-uuid" : "\([^"]*\)".*/\1/p' "$RUNNER_TEMP/upload.json" | tail -1)"
-          if [ -z "$DELIVERY_ID" ]; then
-            echo "::warning::Could not parse delivery UUID; skipping the processing wait."
-          fi
-          echo "delivery_id=$DELIVERY_ID" >> "$GITHUB_OUTPUT"
-
-      - name: Wait for TestFlight processing
-        if: steps.upload.outputs.delivery_id != ''
-        env:
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-        run: |
-          set -euo pipefail
-          # Xcode 26 altool can abort while serializing an NSError with
-          # --output-format json. Plain output preserves the processing wait
-          # without turning an Apple-side status response into a crash.
-          xcrun altool --build-status \
-            --delivery-id "${{ steps.upload.outputs.delivery_id }}" \
-            --wait \
-            --apiKey "$ASC_KEY_ID" \
-            --apiIssuer "$ASC_ISSUER_ID"
-
-      # Tagged only after a confirmed upload, so tags never claim a build that
-      # does not exist in App Store Connect.
-      - name: Tag build
-        working-directory: .
-        run: |
-          set -euo pipefail
-          TAG="v${{ steps.version.outputs.version }}+${{ steps.version.outputs.build }}"
-          git config user.name 'Victor Ivanov'
-          git config user.email 'vivanov@paradigmtesting.com'
-
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "::warning::Tag $TAG already exists; leaving it untouched."
-          else
-            git tag "$TAG"
-            git push origin "$TAG"
-            echo "Tagged $TAG"
-          fi
-
-      - name: Summary
-        if: always()
-        working-directory: .
-        env:
-          # Passed as an env var rather than interpolated into the script: a
-          # note containing backticks or $(...) would otherwise be executed.
-          RELEASE_NOTES: ${{ inputs.release_notes }}
-          VERSION: ${{ steps.version.outputs.version }}
-          BUILD: ${{ steps.version.outputs.build }}
-        run: |
-          # Escape pipes so a note cannot break out of the table cell.
-          SAFE_NOTES="${RELEASE_NOTES//|/\\|}"
-          SAFE_NOTES="${SAFE_NOTES//$'\n'/ }"
-          {
-            echo "### TestFlight build"
-            echo
-            echo "| Field | Value |"
-            echo "| --- | --- |"
-            echo "| Version | \`${VERSION}\` |"
-            echo "| Build | \`${BUILD}\` |"
-            echo "| Notes | ${SAFE_NOTES} |"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Clean up signing material
-        if: always()
-        working-directory: .
-        run: |
-          security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" || true
-          rm -f "$RUNNER_TEMP/build_certificate.p12" \
-                "$RUNNER_TEMP/build_pp.mobileprovision" \
-                "$RUNNER_TEMP"/AuthKey_*.p8
-          rm -rf "$HOME/.private_keys"
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      with:
+        ref: ${{ github.sha }}
+        path: control
+        fetch-depth: 0
+        persist-credentials: false
+    - id: resolve
+      env:
+        CONTROLLER: ${{ github.sha }}
+        REQUESTED_SOURCE: ${{ inputs.source || '' }}
+        REQUESTED_TARGET: ${{ inputs.target || 'checks' }}
+        RELEASE_POLICY: ${{ vars.RELEASE_POLICY }}
+        BEFORE_SOURCE: ${{ github.event.before || '' }}
+      run: python3 control/ops/ci/delivery_gate.py resolve --repo control --controller "$CONTROLLER"
+  checks:
+    needs: resolve
+    uses: ./.github/workflows/checks.yml
+    with:
+      source_sha: ${{ needs.resolve.outputs.candidate }}
+      controller_sha: ${{ needs.resolve.outputs.controller }}
+      scope: all
+  unavailable:
+    needs:
+    - resolve
+    - checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      with:
+        ref: ${{ github.sha }}
+        path: control
+        fetch-depth: 0
+        persist-credentials: false
+    - run: python3 control/ops/ci/delivery_gate.py ios-unavailable

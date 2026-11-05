@@ -117,7 +117,9 @@ class StartupFixture(unittest.TestCase):
         (self.root/'web-bill-viewer/.env.local').write_bytes(self.env_bytes)
         (self.root/'web-bill-viewer/.node-version').write_text('24\n')
         (self.root/'web-bill-viewer/node_modules/.bin/next').touch(mode=0o700)
-        (self.root/'.github/workflows/ci.yml').write_text('FLUTTER_VERSION: 3.41.5\n')
+        # Exercise the maintained workflow files; a manufactured SDK pin hid drift.
+        for workflow in ('ci.yml', 'checks.yml'):
+            shutil.copy(ROOT/'.github/workflows'/workflow, self.root/'.github/workflows'/workflow)
         (self.root/'mobile/.dart_tool/package_config.json').write_text('{}')
         for name in ('Podfile.lock', 'Pods/Manifest.lock'):
             (self.root/'mobile/ios'/name).write_text('COCOAPODS: 1.16.2\n')

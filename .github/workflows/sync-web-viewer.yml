@@ -1,30 +1,43 @@
-name: Sync web-bill-viewer to Vercel repo
-
-on:
-  push:
-    branches: [main]
-    paths:
-      - 'web-bill-viewer/**'
-
+# Phase G only. NOT CI-CONFIRMED: native/signed/GUI, images, live providers, adoption/drain, recovery and performance qualification.
+name: Publish checked web
+'on':
+  workflow_call:
+    secrets:
+      DELIVERY_VERCEL_DEPLOY_KEY:
+        required: true
+    inputs:
+      source:
+        type: string
+        required: true
+      controller:
+        type: string
+        required: true
+      receipt:
+        type: string
+        required: true
+permissions:
+  contents: read
 jobs:
-  sync:
-    runs-on: ubuntu-latest
+  publish:
+    if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: web-production
+    concurrency:
+      group: web-production
+      cancel-in-progress: false
     steps:
-      - name: Checkout full history
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - name: Configure SSH for private repo
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.VERCEL_DEPLOY_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
-          git config core.sshCommand "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no"
-
-      - name: Subtree split and force push
-        run: |
-          SPLIT_SHA=$(git subtree split --prefix=web-bill-viewer)
-          git remote add vercel-deploy git@github.com:dhaliwalg/checksinmyhead.git
-          git push vercel-deploy "$SPLIT_SHA":refs/heads/main --force
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      with:
+        ref: ${{ inputs.controller }}
+        path: control
+        fetch-depth: 0
+        persist-credentials: false
+    - env:
+        CONTROLLER: ${{ inputs.controller }}
+        SOURCE: ${{ inputs.source }}
+        GATE_RECEIPT: ${{ inputs.receipt }}
+        RELEASE_POLICY: ${{ vars.RELEASE_POLICY }}
+        DELIVERY_TARGET: web
+        DELIVERY_VERCEL_DEPLOY_KEY: ${{ secrets.DELIVERY_VERCEL_DEPLOY_KEY }}
+      run: python3 control/ops/ci/delivery_gate.py publish --repo control --controller "$CONTROLLER" --source "$SOURCE"

@@ -140,11 +140,19 @@ probe_capture NPM_VERSION npm --version
 [[ "$NPM_VERSION" == 11.* ]] || fail 'Use npm 11 (web-bill-viewer/README.md).'
 if $MOBILE; then
   for tool in flutter pod xcrun; do need "$tool"; done
-  FLUTTER_PIN=$(python3 -c 'import re; print(re.search(r"FLUTTER_VERSION: ([\d.]+)", open(".github/workflows/ci.yml").read())[1])')
+  FLUTTER_PIN=$(python3 - <<'PY'
+import re
+from pathlib import Path
+versions = re.findall(r"(?m)^\s*flutter-version:\s*([0-9]+\.[0-9]+\.[0-9]+)\s*$", Path(".github/workflows/checks.yml").read_text())
+if len(versions) != 1:
+    raise SystemExit("Expected one literal Flutter SDK pin in .github/workflows/checks.yml.")
+print(versions[0])
+PY
+  )
   begin_stage 'Flutter version'
   probe_capture FLUTTER_JSON flutter --version --machine
   FLUTTER_VERSION=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["frameworkVersion"])' "$LAST_PROBE_FILE")
-  [[ "$FLUTTER_VERSION" == "$FLUTTER_PIN" ]] || fail "Use Flutter $FLUTTER_PIN (.github/workflows/ci.yml)."
+  [[ "$FLUTTER_VERSION" == "$FLUTTER_PIN" ]] || fail "Use Flutter $FLUTTER_PIN (.github/workflows/checks.yml)."
   POD_PIN=$(sed -n 's/^COCOAPODS: //p' mobile/ios/Podfile.lock)
   begin_stage 'CocoaPods version'
   probe_capture POD_VERSION pod --version
