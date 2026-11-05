@@ -357,6 +357,10 @@ func (h *TabHandler) GetSettlements(c *gin.Context) {
 		if version == 2 {
 			safehttp.JSONValue(c, 200, history)
 		} else {
+			if history.ReviewStatus != "ready" && history.ReviewStatus != "legacy_identity_review_required" {
+				mutation.WriteError(c, bill.ErrClientUpgrade)
+				return
+			}
 			safehttp.JSONValue(c, 200, history.RawRows)
 		}
 		return

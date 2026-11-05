@@ -182,7 +182,12 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** FEAT-1793644505
 - **Repro / Notes:** Read JoinTab, AddMember, UpdateBillPersonSharePaid and ComputeNetBalances. Shared contract exception: identity migration must cover producer/client compatibility in one root ticket; split implementation by migration phase if needed.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Backend reference-authority checkpoint plus read/proof corrections implemented;962 ordinary/1272 selected PG leaves pass(1722 distinct). Numerical/runtime,matched clients,independent source acceptance and rollout remain open.
+- **Docs:** docs/backend-api.md; docs/reviews/2026-11-05-participant-identity-behavior.md; docs/reviews/2026-11-05-identity-review-corrections.md
+- **Log:**
+  - 2026-11-05 Verification: Three unique P2 review gaps corrected;14 failing before cases/12 controls,26 after pass;5 independent removals discriminate. Correction review pending;broader B gate RED.
 
 ### [BUG-1793644506] Label local bill and tab removal accurately
 - [ ] **Severity:** med

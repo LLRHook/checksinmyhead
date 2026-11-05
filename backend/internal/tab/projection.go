@@ -120,7 +120,10 @@ func (r *tabRepository) ReadSettlements(ctx context.Context, a TabAccess) (Settl
 		if err := tx.Select(models.SettlementColumns).Where("tab_id = ?", t.ID).Order("amount DESC, id ASC").Find(&rows).Error; err != nil {
 			return err
 		}
-		validation := validateStoredSnapshot(tx, t, rows, roster)
+		var validation error
+		if t.Finalized || t.FinalizedAt != nil || len(rows) != 0 {
+			validation = validateStoredSnapshot(tx, t, rows, roster)
+		}
 		result = viewSettlements(t, rows, viewer, validation)
 		return nil
 	}, &sql.TxOptions{Isolation: sql.LevelRepeatableRead, ReadOnly: true})

@@ -4,6 +4,7 @@ import (
 	"backend/pkg/models"
 	"backend/pkg/mutation"
 	"crypto/subtle"
+	"errors"
 	"strings"
 )
 
@@ -64,9 +65,9 @@ func BillViewer(b models.Bill, token string) (*uint, error) {
 func ViewBill(b models.Bill, viewer *uint) BillView {
 	b.AccessToken = ""
 	v := BillView{Bill: b, IdentityVersion: b.IdentityVersion, IdentityState: b.IdentityState, IdentityRevision: b.IdentityRevision, IdentityReviewStatus: "ready", ViewerMemberID: viewer, Participants: []ParticipantView{}, Items: []ItemView{}, PersonShares: []ShareView{}}
-	v.AccountingReviewStatus = "available"
-	if _, err := FrozenUSDTotalCents(b); err != nil {
-		v.AccountingReviewStatus = "accounting_review_required"
+	v.AccountingReviewStatus = allocationReviewStatus(b)
+	if v.AccountingReviewStatus == "identity_review_required" {
+		v.IdentityReviewStatus = "identity_review_required"
 	}
 	index, err := ParticipantIndex(b)
 	if err != nil {
@@ -131,8 +132,18 @@ func ViewBill(b models.Bill, viewer *uint) BillView {
 	}
 	return v
 }
+func allocationReviewStatus(b models.Bill) string {
+	if _, err := FrozenUSDShareCents(b); err != nil {
+		if errors.Is(err, ErrIdentityReview) {
+			return "identity_review_required"
+		}
+		return "accounting_review_required"
+	}
+	return "available"
+}
+
 func LegacyBillRepresentable(b models.Bill) error {
-	if _, err := FrozenUSDTotalCents(b); err != nil {
+	if allocationReviewStatus(b) != "available" {
 		return ErrClientUpgrade
 	}
 	if b.IdentityVersion != 2 {

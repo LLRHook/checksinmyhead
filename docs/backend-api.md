@@ -88,9 +88,17 @@ with the same key/original content. New wire1 translation occurs only on a miss;
 ambiguous Unicode case-fold mapping requires409 client_upgrade_required without
 invalidating an admissible historical hit. New people/participations are always fresh.
 
+Without a member header, malformed query encoding is invalid supplied member proof,
+including a malformed `m`; it never falls back to a new join. A valid member header
+retains its existing precedence over query proof.
+
 Wire2 authenticated GET returns stored `identity_version`, `identity_state`,
 `identity_revision`, plus derived `identity_review_status` and
-`accounting_review_status`. Participants expose scoped `participant_id`, `bill_id`,
+`accounting_review_status`. Allocation status is `available` only when the checked
+frozen USD share owner accepts the saved shares. Invalid references give
+`identity_review_required`; invalid saved money gives `accounting_review_required`.
+Recorded bill/frozen totals and safe raw shares are retained without rewriting them.
+Participants expose scoped `participant_id`, `bill_id`,
 `client_ref`, `label`, location, `binding_state` (unbound/pending/confirmed), current
 member/pending IDs, request generation and approval facts. Assignment/share rows expose
 `identity_version`, `participant_id` and current `label`; historical `person_name`

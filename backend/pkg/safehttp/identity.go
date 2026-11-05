@@ -2,6 +2,7 @@ package safehttp
 
 import (
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -86,7 +87,11 @@ func MemberToken(c *gin.Context) string {
 		}
 		return value
 	}
-	if values, present := c.Request.URL.Query()["m"]; present {
+	query, err := url.ParseQuery(c.Request.URL.RawQuery)
+	if err != nil {
+		return "\x00"
+	}
+	if values, present := query["m"]; present {
 		if len(values) != 1 || values[0] == "" {
 			return "\x00"
 		}
