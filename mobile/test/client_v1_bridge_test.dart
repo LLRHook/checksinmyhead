@@ -95,7 +95,7 @@ void main() {
       );
       await tester.tap(find.text('Snack'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Alex').first);
+      await tester.tap(find.text('1. Alex').first);
       await tester.pump();
       expect(item.assignments, {alex: 100, sam: 0});
       expect(provider.personFinalShares, {alex: 10, sam: 0});

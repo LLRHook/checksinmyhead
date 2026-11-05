@@ -7,6 +7,10 @@ proof. It does not launch a browser or prove native Keychain, signed builds, pub
 rollout, timing budgets or complete identity acceptance. Atomic fresh-self binding is
 not supported by the current backend/schema; create remains unbound and requests
 require a creator/source decision.
+An independent one-dollar probe also exercises the production mobile command
+serializer against strict handlers with a filled source field: create/request omit
+that field, while attached rename/decision include their permitted source proof.
+It does not change the primary receipt's revision or the browser assertions.
 
 Use the repository's locked Flutter3.41.5, Node24/npm11, Go and existing dependencies.
 Coordinate the stage with the shared-host integrator first. The launcher rejects any

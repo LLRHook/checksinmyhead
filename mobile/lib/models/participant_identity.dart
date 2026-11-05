@@ -48,6 +48,16 @@ class ParticipantIdentity {
     }
   }
   String get displayLabel => '${label.isEmpty ? 'Unnamed' : label} · #$id';
+  Map<String, dynamic> toJson() => {
+    'participant_id': id,
+    'bill_id': billId,
+    'client_ref': clientRef,
+    'label': label,
+    'binding_state': bindingState,
+    'member_id': memberId,
+    'pending_member_id': pendingMemberId,
+    'pending_request_revision': requestRevision,
+  };
 }
 
 class BillIdentity {

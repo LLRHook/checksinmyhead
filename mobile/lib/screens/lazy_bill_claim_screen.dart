@@ -14,19 +14,21 @@ class LazyBillClaimScreen extends StatefulWidget {
     required this.token,
     this.tabId,
     this.memberToken,
+    this.api,
   });
 
   final String billId;
   final String token;
   final String? tabId;
   final String? memberToken;
+  final ApiService? api;
 
   @override
   State<LazyBillClaimScreen> createState() => _LazyBillClaimScreenState();
 }
 
 class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
-  final ApiService _api = ApiService();
+  late final ApiService _api = widget.api ?? ApiService();
   Map<String, dynamic>? _bill;
   String _name = '';
   int? _participantId;
@@ -36,6 +38,8 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
   bool _paying = false;
   String? _error;
   bool _showPayment = false;
+  bool _claimSavedNeedsRead = false;
+  bool _resumePaymentOnRead = false;
   Map<int, List<Map<String, dynamic>>>? _draftAssignments;
 
   String get _nameKey => 'lazy_bill_name_${widget.billId}';
@@ -49,10 +53,10 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
   Future<void> _loadBill() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final bill = await _api.identityRequest(
-        'GET',
-        '/api/bills/${widget.billId}',
-        widget.token,
+      final bill = await _api.getCurrentBill(
+        billId: widget.billId,
+        token: widget.token,
+        tabId: widget.tabId,
         memberToken: widget.memberToken,
       );
       final profileName = await PreferencesService().getDisplayName();
@@ -69,14 +73,24 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
         _suggestedName = prefs.getString(_nameKey) ?? profileName ?? '';
         _draftAssignments = null;
         _loading = false;
-        _error = null;
+        _claimSavedNeedsRead = false;
+        _showPayment = _resumePaymentOnRead && _hasPaymentShare;
+        _error =
+            _resumePaymentOnRead && !_showPayment
+                ? 'Selection saved. The current amount is unavailable; review the current receipt before payment.'
+                : null;
+        _resumePaymentOnRead = false;
       });
     } catch (error) {
       if (!mounted) return;
       setState(() {
         _loading = false;
         _error =
-            error is ApiException ? error.message : 'Could not load this bill.';
+            _claimSavedNeedsRead
+                ? 'Selection saved. Current total is unavailable. Retry current total to read it.'
+                : error is ApiException
+                ? error.message
+                : 'Could not load this bill.';
       });
     }
   }
@@ -118,6 +132,14 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
     return null;
   }
 
+  bool get _hasPaymentShare =>
+      _bill?['identity_review_status'] == 'ready' &&
+      _myShare != null &&
+      ['total', 'subtotal', 'tax_share', 'tip_share'].every((field) {
+        final value = _myShare![field];
+        return value is num && value.isFinite;
+      });
+
   bool get _canMarkPaid {
     if (_myShare == null) return false;
     if (widget.tabId == null) {
@@ -144,6 +166,7 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
   }
 
   Future<void> _toggleItem(Map<String, dynamic> item) async {
+    if (_claimSavedNeedsRead) return;
     if (!canChangeLazyBillSelection(
       saving: _saving,
       paid: _myShare?['paid'] == true,
@@ -182,7 +205,7 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
   }
 
   Future<void> _editSplit(Map<String, dynamic> item) async {
-    if (_saving || _myShare?['paid'] == true) return;
+    if (_saving || _claimSavedNeedsRead || _myShare?['paid'] == true) return;
     if (_participantId == null) {
       await _chooseName();
       if (_participantId == null || !mounted) return;
@@ -279,7 +302,7 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
       );
       return;
     }
-    if (_saving || _myShare?['paid'] == true) return;
+    if (_saving || _claimSavedNeedsRead || _myShare?['paid'] == true) return;
     final updates = <Map<String, dynamic>>[];
     for (final item in _items) {
       final assignments = _assignmentsFor(item);
@@ -293,7 +316,13 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
       });
     }
     if (updates.isEmpty) {
-      setState(() => _showPayment = true);
+      setState(() {
+        _showPayment = _hasPaymentShare;
+        if (!_showPayment) {
+          _error =
+              'The current amount is unavailable; refresh the receipt before payment.';
+        }
+      });
       return;
     }
 
@@ -327,11 +356,25 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
         expectedRevision: _bill!['identity_revision'] as int,
       );
       if (!mounted) return;
-      setState(() {
-        _bill = updatedBill;
-        _draftAssignments = null;
-        _showPayment = true;
-      });
+      if (updatedBill == null) {
+        setState(() {
+          _draftAssignments = null;
+          _claimSavedNeedsRead = true;
+          _resumePaymentOnRead = true;
+          _showPayment = false;
+        });
+        await _loadBill();
+      } else {
+        setState(() {
+          _bill = updatedBill;
+          _draftAssignments = null;
+          _showPayment = _hasPaymentShare;
+          if (!_showPayment) {
+            _error =
+                'Selection saved. The current amount is unavailable; refresh the receipt before payment.';
+          }
+        });
+      }
     } catch (error) {
       await _loadBill();
       if (mounted) {
@@ -351,6 +394,8 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
   Future<void> _markPaid([Map<String, dynamic>? exactSourceShare]) async {
     final share = exactSourceShare ?? _myShare;
     if (share == null ||
+        share['id'] is! int ||
+        share['id'] <= 0 ||
         (exactSourceShare == null ? !_canMarkPaid : widget.tabId != null)) {
       return;
     }
@@ -452,7 +497,7 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
       );
     }
     final bill = _bill!;
-    final total = (_myShare?['total'] as num?)?.toDouble() ?? 0;
+    final total = (_myShare?['total'] as num?)?.toDouble();
     final isPaid = _myShare?['paid'] == true;
     final venmoExists = ((_bill?['payment_methods'] as List<dynamic>?) ??
             const [])
@@ -477,10 +522,36 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
             memberToken: widget.memberToken,
             selectedId: _participantId,
             onChanged: _loadBill,
+            onParticipantChanged: (result) {
+              if (result.participant.billId != _bill!['id']) return;
+              final people =
+                  (_bill!['participants'] as List).cast<Map<String, dynamic>>();
+              setState(
+                () =>
+                    _bill = {
+                      ..._bill!,
+                      'identity_revision': result.revision,
+                      'participants': [
+                        for (final p in people)
+                          if (p['participant_id'] == result.participant.id)
+                            result.participant.toJson()
+                          else
+                            p,
+                        if (!people.any(
+                          (p) => p['participant_id'] == result.participant.id,
+                        ))
+                          result.participant.toJson(),
+                      ],
+                    },
+              );
+            },
             onSelected: (id) {
-              final p = (bill['participants'] as List)
-                  .cast<Map<String, dynamic>>()
-                  .firstWhere((p) => p['participant_id'] == id);
+              final p =
+                  (_bill!['participants'] as List)
+                      .cast<Map<String, dynamic>>()
+                      .where((p) => p['participant_id'] == id)
+                      .firstOrNull;
+              if (p == null) return;
               setState(() {
                 _participantId = id;
                 _name = p['label'] as String;
@@ -495,12 +566,10 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
                   const ListTile(
                     title: Text('Recorded result; ownership needs review'),
                   ),
-                  for (final share in _shares)
+                  for (final (index, share) in _shares.indexed)
                     ListTile(
                       title: Text(
-                        '${share['person_name'] ?? ''}'.isEmpty
-                            ? 'Unnamed · recorded row #${share['id']}'
-                            : '${share['person_name']} · recorded row #${share['id']}',
+                        '${'${share['person_name'] ?? ''}'.isEmpty ? 'Unnamed' : share['person_name']} · ${share['id'] is int && share['id'] > 0 ? 'recorded row #${share['id']}' : 'recorded occurrence ${index + 1}'}',
                       ),
                       subtitle: Text(
                         share['paid'] == true
@@ -519,7 +588,9 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
                                 )
                                 : 'Amount unavailable',
                           ),
-                          if (widget.tabId == null)
+                          if (widget.tabId == null &&
+                              share['id'] is int &&
+                              share['id'] > 0)
                             TextButton(
                               onPressed:
                                   _paying ? null : () => _markPaid(share),
@@ -573,6 +644,7 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
                                     .toDouble();
                         final paid = isLazyItemFullyPaid(assignments, _shares);
                         final locked =
+                            _claimSavedNeedsRead ||
                             isPaid ||
                             paid ||
                             bill['identity_review_status'] != 'ready' ||
@@ -634,6 +706,11 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
                   style: TextStyle(color: theme.colorScheme.error),
                 ),
               ),
+            if (_claimSavedNeedsRead)
+              TextButton(
+                onPressed: _saving ? null : _loadBill,
+                child: const Text('Retry current total'),
+              ),
             if (_selectionChanged && !isPaid) ...[
               const SizedBox(height: 18),
               FilledButton(
@@ -645,7 +722,7 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
             Text('Your total', style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
             Text(
-              CurrencyFormatter.formatCurrency(total, currencyCode: _currency),
+              CurrencyFormatter.formatCurrency(total!, currencyCode: _currency),
               style: theme.textTheme.displaySmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -658,7 +735,7 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
                     title: const Text('Your items'),
                     trailing: Text(
                       CurrencyFormatter.formatCurrency(
-                        (_myShare?['subtotal'] as num?)?.toDouble() ?? 0,
+                        (_myShare!['subtotal'] as num).toDouble(),
                         currencyCode: _currency,
                       ),
                     ),
@@ -667,7 +744,7 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
                     title: const Text('Tax'),
                     trailing: Text(
                       CurrencyFormatter.formatCurrency(
-                        (_myShare?['tax_share'] as num?)?.toDouble() ?? 0,
+                        (_myShare!['tax_share'] as num).toDouble(),
                         currencyCode: _currency,
                       ),
                     ),
@@ -676,7 +753,7 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
                     title: const Text('Tip'),
                     trailing: Text(
                       CurrencyFormatter.formatCurrency(
-                        (_myShare?['tip_share'] as num?)?.toDouble() ?? 0,
+                        (_myShare!['tip_share'] as num).toDouble(),
                         currencyCode: _currency,
                       ),
                     ),

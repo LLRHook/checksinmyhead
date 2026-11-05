@@ -264,6 +264,17 @@ seams expose durable publication, valuation and attachment results. No time/cont
 deduplication or newest-row identity lookup remains on that path. Imported tab
 snapshots cannot acquire source/publication authority. Pending/referenced receipts
 survive capacity handling; inability to evict safely fails the new transaction.
+Save/resume rejects mismatched snapshot/wire versions before a network mutation,
+without replacing the stored bytes or key. Finalized tab history reads retain their
+review status and exact recorded settlement rows even when no receipt list is
+available; failed reads offer an explicit retry and never imply an empty balance.
+Only valid ready/legacy snapshots retain the existing exact-row paid control.
+Mobile occurrence creation merges the typed response before selecting its ID; an
+uncertain explicit retry keeps the original client reference. Browser review receipts
+show raw share rows in recorded order, using exact remote row IDs or an ordered local
+occurrence when absent. Their paid action requires the independent source capability;
+tab/member proof and labels cannot substitute, and ordinary browser settlements stay
+read-only.
 Foreign values without an audit stay unavailable; frozen zero stays zero. Display
 rates are temporary values and never write frozen quote columns. Versioned JPY
 precision and the known local/server `.005` allocation difference remain open. See [API contracts](backend-api.md#currency-quotes)

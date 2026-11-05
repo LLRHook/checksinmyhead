@@ -119,6 +119,11 @@ New participant routes require header2. All bodies are strict, at most4KiB:
 | `POST …/participants/:participantId/binding-request` | `expected_revision` | Own current tab member; target is derived from proof |
 | `PUT …/participants/:participantId/binding` | `expected_revision,request_revision,member_id,decision,bill_token?` | Current creator or independent source+destination/current member |
 
+Mobile and browser serializers use these operation-specific fields. A filled source
+field is omitted from create, binding-request and standalone bodies; only attached
+rename/decision bodies may carry `bill_token`. Destination and member proofs remain
+independent headers and never fall back to that source field.
+
 Successful participant commands return200 `{participant:{…},identity_revision:N}`.
 Actual additions/requests/decisions require active ready/unpaid eligibility; maximum100
 participants. A member cannot request another participation while already bound/pending
@@ -431,7 +436,11 @@ With header2, single claims use `{expected_revision,expected_updated_at?,assignm
 An empty assignments array releases unpaid claims; percentages remain `(0,100]`,
 unique within each item and total ≤100+1e-9. IDs must belong to this bill. Mixed name/
 reference or unknown wire2 fields fail400. All siblings use the same replacement owner.
-Single success is200 status ok; batch success returns the current selected representation.
+Single success is200 status ok; standalone batch success returns the current selected representation.
+The attached tab batch endpoint returns200 `{status:"ok"}`. Mobile treats it as an
+acknowledgement, then reads the current tab with destination/member proof and selects
+the exact bill. A failed read offers read-only retry and cannot produce a zero payment
+total or automatically repeat the committed PATCH.
 
 The old wire1 content decoder still ignores unknown fields and retains standard known-
 field duplicate/null semantics; ignored paid/association/reference fields never enter

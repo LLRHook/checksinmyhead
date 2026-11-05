@@ -107,7 +107,10 @@ func TestCDMatchedClientHTTPFixture(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "sanitized-server.log"), logs.Bytes(), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "server-result.json"), []byte(fmt.Sprintf(`{"status":"pass","client_receipts":1,"quote_calls":0,"schema":%q}`, schema)), 0600); err != nil {
+	if fixture["strict_source_body_probe"] != true {
+		t.Fatal("real transport strict source body probe was not completed")
+	}
+	if err := os.WriteFile(filepath.Join(root, "server-result.json"), []byte(fmt.Sprintf(`{"status":"pass","primary_client_receipt_occurrences":1,"strict_source_body_probe":true,"quote_calls":0,"schema":%q}`, schema)), 0600); err != nil {
 		t.Fatal(err)
 	}
 }

@@ -44,6 +44,7 @@ import {
 } from "@/lib/lazy-bill";
 import { buildVenmoPayUrl } from "@/lib/venmo";
 import IdentityControls from "./IdentityControls";
+import RecordedShares from "./RecordedShares";
 
 interface LazyBillBoardProps {
   bill: Bill;
@@ -264,16 +265,12 @@ export default function LazyBillBoard({
       return;
     }
     if (tabId) {
-      try {
-        const tab = await getTab(tabId, token, member?.member_token);
-        const refreshedBill = tab.bills.find((entry) => entry.id === bill.id);
-        if (refreshedBill) {
-          setBillOverride({ source: initialBill, bill: refreshedBill });
-          return;
-        }
-      } catch {
-        // Fall back to the route refresh if the tab read fails.
-      }
+      const tab = await getTab(tabId, token, member?.member_token);
+      const refreshedBill = tab.bills.find((entry) => entry.id === bill.id);
+      if (!refreshedBill)
+        throw new Error("Current receipt unavailable in this tab");
+      setBillOverride({ source: initialBill, bill: refreshedBill });
+      return;
     }
     const current = await getBill(String(bill.id), token);
     setBillOverride({ source: initialBill, bill: current });
@@ -470,6 +467,14 @@ export default function LazyBillBoard({
 
   return (
     <>
+      {!identityReady && (
+        <RecordedShares
+          bill={bill}
+          sourceToken={tabId ? undefined : token}
+          allowSourceEntry={Boolean(tabId)}
+          onChanged={() => refreshViewerBill()}
+        />
+      )}
       <IdentityControls
         bill={bill}
         context={{

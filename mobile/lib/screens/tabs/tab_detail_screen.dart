@@ -42,6 +42,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
   List<RecentBillModel> _allBills = [];
   List<RecentBillModel> _tabBills = [];
   List<SettlementResponse> _settlements = [];
+  String? _settlementReviewStatus;
   List<TabMemberResponse> _members = [];
   Map<String, dynamic>? _remoteTab;
   String? _readError;
@@ -83,7 +84,10 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
 
   Future<void> _loadBills() async {
     if (!mounted) return;
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _readError = null;
+    });
 
     // Refresh tab from DB to get latest data (e.g. shareUrl after sync)
     if (_currentTab.id != null) {
@@ -197,16 +201,20 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
     if (!_currentTab.isFinalized) return;
 
     try {
-      final settlements = await _apiService.getSettlements(
+      final history = await _apiService.getSettlementHistory(
         _currentTab.backendId!,
         _currentTab.accessToken!,
       );
 
       if (mounted) {
-        setState(() => _settlements = settlements);
+        setState(() {
+          _settlements = history.rows;
+          _settlementReviewStatus = history.reviewStatus;
+        });
       }
     } on ApiException {
-      // Settlements are non-critical; silently fail
+      _readError =
+          'Recorded settlements are unavailable. Cached receipts remain visible; no empty result or zero debt has been inferred.';
     }
   }
 
@@ -267,7 +275,12 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
         await _loadSettlements();
       }
     } on ApiException {
-      // Toggle failed; silently fail
+      if (mounted) {
+        _showSnackBar(
+          'Payment status could not be updated. Refresh and review before retrying.',
+          isError: true,
+        );
+      }
     }
   }
 
@@ -659,7 +672,10 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
               ? Center(
                 child: CircularProgressIndicator(color: colorScheme.primary),
               )
-              : _tabBills.isEmpty
+              : _tabBills.isEmpty &&
+                  _settlements.isEmpty &&
+                  _settlementReviewStatus == null &&
+                  _readError == null
               ? _buildEmptyState()
               : Column(
                 children: [
@@ -673,7 +689,16 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
                           if (_readError != null)
                             Padding(
                               padding: const EdgeInsets.all(16),
-                              child: Text(_readError!),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(_readError!),
+                                  TextButton(
+                                    onPressed: _loadBills,
+                                    child: const Text('Retry current history'),
+                                  ),
+                                ],
+                              ),
                             ),
                           if (_remoteTab?['net_balance_status'] != null &&
                               _remoteTab?['net_balance_status'] != 'available')
@@ -688,6 +713,14 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
                               padding: EdgeInsets.all(16),
                               child: Text(
                                 'Recorded history; ownership needs review.',
+                              ),
+                            ),
+                          if (_settlementReviewStatus != null &&
+                              _settlementReviewStatus != 'ready')
+                            const Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Text(
+                                'Recorded settlements; ownership needs review. Original rows and flags are retained.',
                               ),
                             ),
                           if (_tabBills.isNotEmpty) _buildTotalCard(),
@@ -730,7 +763,14 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
                           if (_currentTab.isFinalized &&
                               _settlements.isNotEmpty)
                             _buildSettlementsCard()
-                          else if (_calculatePersonTotals().isNotEmpty)
+                          else if (_currentTab.isFinalized &&
+                              _settlementReviewStatus == 'ready')
+                            const Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Text('No recorded settlement rows.'),
+                            )
+                          else if (!_currentTab.isFinalized &&
+                              _calculatePersonTotals().isNotEmpty)
                             _buildPersonTotalsCard(),
                           if (_tabBills.isNotEmpty) ..._buildBillCards(),
                         ],
@@ -1105,15 +1145,23 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
             separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final settlement = _settlements[index];
+              final label =
+                  '${settlement.personName.trim().isEmpty ? 'Unnamed' : settlement.personName} · recorded row ${settlement.id}';
+              final canUpdate =
+                  _settlementReviewStatus == 'ready' ||
+                  _settlementReviewStatus == 'legacy_identity_review_required';
               return Semantics(
                 label:
-                    '${settlement.personName}, ${_formatCurrency(settlement.amount)}, ${settlement.paid ? 'paid' : 'unpaid'}. Tap to toggle',
-                button: true,
+                    '$label, ${_formatCurrency(settlement.amount)}, ${settlement.paid ? 'paid' : 'unpaid'}${canUpdate ? '. Tap to toggle' : '. Recorded history; needs review'}',
+                button: canUpdate,
                 child: GestureDetector(
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    _toggleSettlementPaid(settlement);
-                  },
+                  onTap:
+                      canUpdate
+                          ? () {
+                            HapticFeedback.selectionClick();
+                            _toggleSettlementPaid(settlement);
+                          }
+                          : null,
                   child: Row(
                     children: [
                       CircleAvatar(
@@ -1130,7 +1178,10 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
                                   color: Colors.green.shade700,
                                 )
                                 : Text(
-                                  settlement.personName[0].toUpperCase(),
+                                  settlement.personName.trim().isEmpty
+                                      ? '?'
+                                      : settlement.personName.characters.first
+                                          .toUpperCase(),
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.bold,
@@ -1141,7 +1192,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
                       const SizedBox(width: 14),
                       Expanded(
                         child: Text(
-                          settlement.personName,
+                          label,
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,

@@ -736,11 +736,15 @@ class RecentBillsManager extends ChangeNotifier {
       _guardRawHistory(row);
       return _result(row.id);
     }
-    if (row.publicationState == 'published') return _attach(row);
     if (!{1, 2}.contains(row.snapshotVersion) ||
         (row.snapshotVersion == 2 && row.creationWireVersion != 2) ||
-        row.creationSnapshot == null ||
-        row.keyLocator == null) {
+        (row.snapshotVersion == 1 &&
+            row.creationWireVersion != null &&
+            row.creationWireVersion != 1)) {
+      return _pending(row, SaveFailure.snapshotReview, blocked: true);
+    }
+    if (row.publicationState == 'published') return _attach(row);
+    if (row.creationSnapshot == null || row.keyLocator == null) {
       return _pending(row, SaveFailure.snapshotReview, blocked: true);
     }
     CreationKeyResult key;

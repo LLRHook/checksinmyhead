@@ -9,6 +9,7 @@ import DesktopLayout from "@/components/DesktopLayout";
 import LazyBillBoard from "@/components/LazyBillBoard";
 import PaymentDetails from "@/components/PaymentDetails";
 import PersonShare from "@/components/PersonShare";
+import RecordedShares from "@/components/RecordedShares";
 import { ApiError, type Bill, getBill } from "@/lib/api";
 import { lazyBillRemainingTotal } from "@/lib/lazy-bill";
 
@@ -306,38 +307,51 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
             Individual Shares
           </h2>
           <p className="text-xs text-[var(--text-secondary)] opacity-60 mt-0.5">
-            Tap an avatar to mark as paid
+            Recorded paid flags are manual status; select an exact receipt row
+            to update them.
           </p>
         </div>
         <div className="space-y-3">
-          {[...bill.person_shares]
-            .sort((a, b) =>
-              a.person_name.localeCompare(b.person_name, undefined, {
-                sensitivity: "base",
-              }),
-            )
-            .map((share) => (
-              <PersonShare
-                key={share.id}
-                personShare={share}
-                bill={bill}
-                hasVenmo={hasVenmo}
-                billId={bill.id}
-                token={token}
-                readOnly
-                currency={bill.display_currency ?? bill.currency_code ?? "USD"}
-              />
-            ))}
+          {bill.identity_review_status !== "ready" ? (
+            <RecordedShares
+              bill={bill}
+              sourceToken={token}
+              onChanged={() => refreshBill()}
+            />
+          ) : (
+            [...bill.person_shares]
+              .sort((a, b) =>
+                a.person_name.localeCompare(b.person_name, undefined, {
+                  sensitivity: "base",
+                }),
+              )
+              .map((share) => (
+                <PersonShare
+                  key={share.id}
+                  personShare={share}
+                  bill={bill}
+                  hasVenmo={hasVenmo}
+                  billId={bill.id}
+                  token={token}
+                  readOnly
+                  currency={
+                    bill.display_currency ?? bill.currency_code ?? "USD"
+                  }
+                />
+              ))
+          )}
         </div>
       </div>
 
       {bill.identity_review_status !== "ready" && (
         <p role="status">Recorded history; ownership needs review.</p>
       )}
-      <details>
-        <summary>Receipt participants</summary>
-        <LazyBillBoard bill={bill} token={token} refreshBill={refreshBill} />
-      </details>
+      {bill.identity_review_status === "ready" && (
+        <details>
+          <summary>Receipt participants</summary>
+          <LazyBillBoard bill={bill} token={token} refreshBill={refreshBill} />
+        </details>
+      )}
       <BillBreakdown bill={bill} />
     </DesktopLayout>
   );

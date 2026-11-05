@@ -13,6 +13,7 @@ class ParticipantIdentityPanel extends StatefulWidget {
     required this.token,
     required this.onChanged,
     this.onSelected,
+    this.onParticipantChanged,
     this.selectedId,
     this.tabId,
     this.memberToken,
@@ -24,6 +25,7 @@ class ParticipantIdentityPanel extends StatefulWidget {
   final String? memberToken;
   final int? selectedId;
   final ValueChanged<int>? onSelected;
+  final ValueChanged<ParticipantCommandResult>? onParticipantChanged;
   final Future<void> Function() onChanged;
   final ApiService? api;
   @override
@@ -157,6 +159,7 @@ class _ParticipantIdentityPanelState extends State<ParticipantIdentityPanel> {
       requestRevision: generation,
       billToken: _source.text.isEmpty ? null : _source.text,
     );
+    widget.onParticipantChanged?.call(result);
     if (ref != null) {
       await _select(result.participant.id);
       _creation = null;

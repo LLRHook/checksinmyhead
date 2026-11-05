@@ -236,6 +236,122 @@ void main() {
         current.participants.every((p) => p.bindingState == 'unbound'),
         true,
       );
+      // A separate tiny receipt leaves the primary bill/revisions unchanged.
+      // Supplying the source field exercises operation-specific real transport:
+      // strict create/request reject an extra bill_token, rename/decision allow it.
+      final probePerson = Person(name: 'Probe', color: Colors.blue);
+      final probeSave = await owner.saveReceipt(
+        operationHandle: 'strict-source-body-probe',
+        receipt: BillSummaryData(
+          participants: [probePerson],
+          personShares: {probePerson: 1},
+          items: [
+            BillItem(name: 'Probe', price: 1, assignments: {probePerson: 100}),
+          ],
+          subtotal: 1,
+          tax: 0,
+          tipAmount: 0,
+          total: 1,
+          billName: 'Strict source body probe',
+        ),
+      );
+      expect(probeSave.publication, PublicationState.published);
+      final probeRow = (await db.getBillById(probeSave.localId))!;
+      final probeTab =
+          (await tabs.createTab(
+            'Strict DTO probe',
+            creatorDisplayName: 'Probe',
+          ))!;
+      db.failAttachment = false;
+      expect(await tabs.addBillsToTab(probeTab.id!, [probeRow.id]), true);
+      final probeSource = Uri.parse(probeRow.shareUrl!).queryParameters['t']!;
+      final created = await api.participantCommand(
+        billId: '${probeRow.remoteBillId}',
+        token: probeTab.accessToken!,
+        tabId: '${probeTab.backendId}',
+        memberToken: probeTab.memberToken,
+        expectedRevision: 1,
+        clientRef: 'strict-command-probe',
+        label: '',
+        billToken: probeSource,
+      );
+      expect(created.revision, 2);
+      expect(created.participant.bindingState, 'unbound');
+      final renamed = await api.participantCommand(
+        billId: '${probeRow.remoteBillId}',
+        token: probeTab.accessToken!,
+        tabId: '${probeTab.backendId}',
+        memberToken: probeTab.memberToken,
+        participantId: created.participant.id,
+        expectedRevision: 2,
+        label: 'Renamed probe',
+        billToken: probeSource,
+      );
+      expect(renamed.revision, 3);
+      final requested = await api.participantCommand(
+        billId: '${probeRow.remoteBillId}',
+        token: probeTab.accessToken!,
+        tabId: '${probeTab.backendId}',
+        memberToken: probeTab.memberToken,
+        participantId: created.participant.id,
+        expectedRevision: 3,
+        bindingRequest: true,
+        billToken: probeSource,
+      );
+      expect(requested.revision, 4);
+      expect(requested.participant.bindingState, 'pending');
+      final rejected = await api.participantCommand(
+        billId: '${probeRow.remoteBillId}',
+        token: probeTab.accessToken!,
+        tabId: '${probeTab.backendId}',
+        memberToken: probeTab.memberToken,
+        participantId: created.participant.id,
+        expectedRevision: 4,
+        decision: 'reject',
+        requestRevision: 4,
+        memberId: probeTab.memberId,
+        billToken: probeSource,
+      );
+      expect(rejected.revision, 5);
+      expect(rejected.participant.bindingState, 'unbound');
+      final probeGraph = await api.getCurrentBill(
+        billId: '${probeRow.remoteBillId}',
+        token: probeTab.accessToken!,
+        tabId: '${probeTab.backendId}',
+        memberToken: probeTab.memberToken,
+      );
+      final probeItem =
+          (probeGraph['items'] as List).single as Map<String, dynamic>;
+      final claimAck = await api.updateLazyBillItemAssignments(
+        billId: '${probeRow.remoteBillId}',
+        token: probeTab.accessToken!,
+        tabId: '${probeTab.backendId}',
+        memberToken: probeTab.memberToken,
+        expectedRevision: 5,
+        updates: [
+          {
+            'item_id': probeItem['id'],
+            'expected_updated_at': probeItem['updated_at'],
+            'assignments': [
+              {'participant_id': created.participant.id, 'percentage': 100},
+            ],
+          },
+        ],
+      );
+      expect(claimAck, isNull);
+      final afterClaim = await api.getCurrentBill(
+        billId: '${probeRow.remoteBillId}',
+        token: probeTab.accessToken!,
+        tabId: '${probeTab.backendId}',
+        memberToken: probeTab.memberToken,
+      );
+      expect(afterClaim['identity_revision'], 6);
+      expect(
+        (afterClaim['person_shares'] as List).singleWhere(
+          (s) => s['participant_id'] == created.participant.id,
+        )['total'],
+        1,
+      );
       await File(out).writeAsString(
         jsonEncode({
           'local_database': file.path,
@@ -255,6 +371,7 @@ void main() {
           'member_id': joined.memberId,
           'member_token': joined.memberToken,
           'participant_ids': current.participants.map((p) => p.id).toList(),
+          'strict_source_body_probe': true,
         }),
       );
     },

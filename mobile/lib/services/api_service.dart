@@ -92,7 +92,46 @@ class ApiService {
     return data;
   }
 
-  Future<Map<String, dynamic>> updateLazyBillItemAssignments({
+  /// Attached reads authenticate the tab and member independently. A destination
+  /// token is never retried against the standalone source route.
+  Future<Map<String, dynamic>> getCurrentBill({
+    required String billId,
+    required String token,
+    String? tabId,
+    String? memberToken,
+  }) => _withStandardErrors(() async {
+    var graph = await identityRequest(
+      'GET',
+      tabId == null ? '/api/bills/$billId' : '/api/tabs/$tabId',
+      token,
+      memberToken: memberToken,
+    );
+    if (tabId != null) {
+      if (graph['id'] != int.tryParse(tabId) || graph['bills'] is! List) {
+        throw ApiException('Current tab response could not be verified.');
+      }
+      final matches =
+          (graph['bills'] as List)
+              .whereType<Map<String, dynamic>>()
+              .where((bill) => bill['id'] == int.tryParse(billId))
+              .toList();
+      if (matches.length != 1) {
+        throw ApiException('This receipt is unavailable in the current tab.');
+      }
+      graph = matches.single;
+    }
+    if (graph['id'] != int.tryParse(billId) ||
+        graph['items'] is! List ||
+        graph['person_shares'] is! List) {
+      throw ApiException('Current receipt response could not be verified.');
+    }
+    BillIdentity.fromJson(graph);
+    return graph;
+  });
+
+  /// Null is a committed attached ACK, never a bill graph. The caller must read
+  /// current state before offering payment review, without repeating the PATCH.
+  Future<Map<String, dynamic>?> updateLazyBillItemAssignments({
     required String billId,
     required String token,
     required List<Map<String, dynamic>> updates,
@@ -126,6 +165,18 @@ class ApiService {
     if (data is! Map<String, dynamic>) {
       throw ApiException('Invalid bill response');
     }
+    if (tabId != null) {
+      if (data['status'] != 'ok') {
+        throw ApiException('Invalid claim acknowledgement');
+      }
+      return null;
+    }
+    if (data['id'] != int.tryParse(billId) ||
+        data['items'] is! List ||
+        data['person_shares'] is! List) {
+      throw ApiException('Invalid bill response');
+    }
+    BillIdentity.fromJson(data);
     return data;
   }
 
@@ -222,7 +273,9 @@ class ApiService {
             key) {
       throw BillValidationException('Invalid recovery key');
     }
-    if (!{1,2}.contains(identityVersion)) {throw BillValidationException('Unsupported saved wire version');}
+    if (!{1, 2}.contains(identityVersion)) {
+      throw BillValidationException('Unsupported saved wire version');
+    }
     final request = jsonDecode(snapshot) as Map<String, dynamic>;
     final body = await _sendCreation(snapshot, key, identityVersion);
     const requiredFields = [
@@ -645,36 +698,50 @@ class ApiService {
     });
   }
 
-  /// Gets settlements for a finalized tab
+  /// Header2 history preserves review/unavailable separately from an empty array.
+  Future<SettlementHistoryResponse> getSettlementHistory(
+    int tabId,
+    String token, {
+    String? memberToken,
+  }) async {
+    final body = await identityRequest(
+      'GET',
+      '/api/tabs/$tabId/settlements',
+      token,
+      memberToken: memberToken,
+    );
+    final rows = body['settlements'];
+    if (rows is! List ||
+        body['identity_review_status'] is! String ||
+        body['accounting_currency'] != 'USD') {
+      throw ApiException('Recorded settlement history could not be verified.');
+    }
+    final parsed = <SettlementResponse>[];
+    for (final row in rows) {
+      if (row is! Map<String, dynamic> ||
+          row['id'] is! int ||
+          row['id'] <= 0 ||
+          row['tab_id'] != tabId ||
+          row['amount'] is! num ||
+          !(row['amount'] as num).isFinite ||
+          row['paid'] is! bool ||
+          row['person_name'] is! String) {
+        throw ApiException(
+          'Recorded settlement history could not be verified.',
+        );
+      }
+      parsed.add(SettlementResponse.fromJson(row));
+    }
+    return SettlementHistoryResponse(
+      parsed,
+      body['identity_review_status'] as String,
+    );
+  }
+
   Future<List<SettlementResponse>> getSettlements(
     int tabId,
     String accessToken,
-  ) async {
-    return _withStandardErrors(() async {
-      final response = await _client
-          .get(
-            Uri.parse('$baseUrl/api/tabs/$tabId/settlements'),
-            headers: identityHeaders(accessToken),
-          )
-          .timeout(_timeout);
-
-      if (response.statusCode == 200) {
-        final envelope = jsonDecode(response.body);
-        final List<dynamic> data = envelope['settlements'];
-        return data
-            .map(
-              (json) =>
-                  SettlementResponse.fromJson(json as Map<String, dynamic>),
-            )
-            .toList();
-      } else {
-        throw ApiException(
-          'Failed to get settlements',
-          statusCode: response.statusCode,
-        );
-      }
-    });
-  }
+  ) async => (await getSettlementHistory(tabId, accessToken)).rows;
 
   /// Toggles the paid status of a settlement
   Future<void> updateSettlement(
@@ -954,7 +1021,11 @@ class ApiService {
           if (decision != null) 'decision': decision,
           if (requestRevision != null) 'request_revision': requestRevision,
           if (memberId != null) 'member_id': memberId,
-          if (billToken != null) 'bill_token': billToken,
+          if (billToken != null &&
+              tabId != null &&
+              participantId != null &&
+              !bindingRequest)
+            'bill_token': billToken,
         },
       ),
     );
@@ -1183,4 +1254,10 @@ class SettlementResponse {
       createdAt: json['created_at'] ?? '',
     );
   }
+}
+
+class SettlementHistoryResponse {
+  final List<SettlementResponse> rows;
+  final String reviewStatus;
+  const SettlementHistoryResponse(this.rows, this.reviewStatus);
 }
