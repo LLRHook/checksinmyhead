@@ -26,6 +26,17 @@ type LoadingState =
 
 const RETRY_DELAYS = [5000, 10000, 15000];
 
+// The /b mutation caller must observe read failure while retaining its last graph.
+export async function refreshSourceBill(
+  id: string,
+  token: string,
+  onCurrent: (bill: Bill) => void,
+  updatedBill?: Bill,
+) {
+  const bill = updatedBill ?? (await getBill(id, token));
+  onCurrent(bill);
+}
+
 export default function BillPageClient({ id, token }: BillPageClientProps) {
   const [state, setState] = useState<LoadingState>({ status: "loading" });
   const [progress, setProgress] = useState(0);
@@ -89,22 +100,16 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
 
   const refreshBill = useCallback(
     async (updatedBill?: Bill) => {
-      if (updatedBill) {
-        setState((current) =>
-          current.status === "success"
-            ? { ...current, bill: updatedBill }
-            : current,
-        );
-        return;
-      }
-      try {
-        const bill = await getBill(id, token);
-        setState((current) =>
-          current.status === "success" ? { ...current, bill } : current,
-        );
-      } catch {
-        // Keep the current viewer and its interaction state if refresh fails.
-      }
+      await refreshSourceBill(
+        id,
+        token,
+        (bill) => {
+          setState((current) =>
+            current.status === "success" ? { ...current, bill } : current,
+          );
+        },
+        updatedBill,
+      );
     },
     [id, token],
   );

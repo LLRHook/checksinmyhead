@@ -275,6 +275,11 @@ show raw share rows in recorded order, using exact remote row IDs or an ordered 
 occurrence when absent. Their paid action requires the independent source capability;
 tab/member proof and labels cannot substitute, and ordinary browser settlements stay
 read-only.
+Selecting a different occurrence resets payment review; rendering also requires
+a validated current amount for that selected share. After a paid-marker acknowledgement, mobile and
+browser keep recorded rows if the current read fails, show saved-but-unavailable
+status and offer a GET-only retry. A failed read never repeats the paid mutation
+or substitutes credentials; tab and settlement read errors remain separate.
 Foreign values without an audit stay unavailable; frozen zero stays zero. Display
 rates are temporary values and never write frozen quote columns. Versioned JPY
 precision and the known local/server `.005` allocation difference remain open. See [API contracts](backend-api.md#currency-quotes)

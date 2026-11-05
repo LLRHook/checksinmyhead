@@ -46,6 +46,10 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
   List<TabMemberResponse> _members = [];
   Map<String, dynamic>? _remoteTab;
   String? _readError;
+  String? _settlementReadError;
+  int? _savedSettlementMarker;
+  bool _settlementReading = false;
+  bool _settlementWriting = false;
   bool _isLoading = true;
   bool _isFinalizing = false;
   bool _isRetryingInvite = false;
@@ -199,6 +203,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
       return;
     }
     if (!_currentTab.isFinalized) return;
+    if (mounted) setState(() => _settlementReading = true);
 
     try {
       final history = await _apiService.getSettlementHistory(
@@ -210,11 +215,20 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
         setState(() {
           _settlements = history.rows;
           _settlementReviewStatus = history.reviewStatus;
+          _settlementReadError = null;
+          _savedSettlementMarker = null;
         });
       }
     } on ApiException {
-      _readError =
-          'Recorded settlements are unavailable. Cached receipts remain visible; no empty result or zero debt has been inferred.';
+      if (mounted) {
+        setState(
+          () =>
+              _settlementReadError =
+                  'Recorded settlements are unavailable. Cached receipts remain visible; no empty result or zero debt has been inferred.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _settlementReading = false);
     }
   }
 
@@ -262,6 +276,12 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
       return;
     }
 
+    if (_settlementReading ||
+        _settlementWriting ||
+        _settlementReadError != null) {
+      return;
+    }
+    setState(() => _settlementWriting = true);
     try {
       await _apiService.updateSettlement(
         _currentTab.backendId!,
@@ -272,6 +292,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
       );
 
       if (mounted) {
+        setState(() => _savedSettlementMarker = settlement.id);
         await _loadSettlements();
       }
     } on ApiException {
@@ -281,6 +302,8 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
           isError: true,
         );
       }
+    } finally {
+      if (mounted) setState(() => _settlementWriting = false);
     }
   }
 
@@ -675,6 +698,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
               : _tabBills.isEmpty &&
                   _settlements.isEmpty &&
                   _settlementReviewStatus == null &&
+                  _settlementReadError == null &&
                   _readError == null
               ? _buildEmptyState()
               : Column(
@@ -696,6 +720,31 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
                                   TextButton(
                                     onPressed: _loadBills,
                                     child: const Text('Retry current history'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          if (_settlementReadError != null)
+                            Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (_savedSettlementMarker != null)
+                                    Text(
+                                      'Marker saved for recorded row $_savedSettlementMarker. Current settlement status is unavailable.',
+                                    ),
+                                  Text(_settlementReadError!),
+                                  TextButton(
+                                    onPressed:
+                                        _settlementReading
+                                            ? null
+                                            : _loadSettlements,
+                                    child: Text(
+                                      _savedSettlementMarker == null
+                                          ? 'Retry current history'
+                                          : 'Retry current settlement status',
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1148,8 +1197,12 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
               final label =
                   '${settlement.personName.trim().isEmpty ? 'Unnamed' : settlement.personName} · recorded row ${settlement.id}';
               final canUpdate =
-                  _settlementReviewStatus == 'ready' ||
-                  _settlementReviewStatus == 'legacy_identity_review_required';
+                  !_settlementReading &&
+                  !_settlementWriting &&
+                  _settlementReadError == null &&
+                  (_settlementReviewStatus == 'ready' ||
+                      _settlementReviewStatus ==
+                          'legacy_identity_review_required');
               return Semantics(
                 label:
                     '$label, ${_formatCurrency(settlement.amount)}, ${settlement.paid ? 'paid' : 'unpaid'}${canUpdate ? '. Tap to toggle' : '. Recorded history; needs review'}',

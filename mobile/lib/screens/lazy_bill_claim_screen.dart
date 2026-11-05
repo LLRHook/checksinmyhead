@@ -497,6 +497,7 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
       );
     }
     final bill = _bill!;
+    final showPayment = _showPayment && _hasPaymentShare;
     final total = (_myShare?['total'] as num?)?.toDouble();
     final isPaid = _myShare?['paid'] == true;
     final venmoExists = ((_bill?['payment_methods'] as List<dynamic>?) ??
@@ -553,6 +554,9 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
                       .firstOrNull;
               if (p == null) return;
               setState(() {
+                if (_participantId != id) {
+                  _showPayment = false;
+                }
                 _participantId = id;
                 _name = p['label'] as String;
                 _draftAssignments = null;
@@ -602,7 +606,7 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
                 ],
               ),
             ),
-          if (!_showPayment) ...[
+          if (!showPayment) ...[
             Text(
               'Choose what you had',
               style: theme.textTheme.headlineSmall?.copyWith(

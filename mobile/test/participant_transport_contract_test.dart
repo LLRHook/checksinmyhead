@@ -240,6 +240,54 @@ void main() {
   };
 
   testWidgets(
+    'settlement marker ACK then failed read retains raw rows and renders GET-only recovery without another PATCH',
+    (tester) async {
+      var reads = 0;
+      final writes = <http.Request>[];
+      await showHistory(tester, (request) async {
+        if (request.method == 'PATCH') {
+          writes.add(request);
+          return http.Response('{}', 200);
+        }
+        if (request.url.path.endsWith('/members')) {
+          return http.Response('[]', 200);
+        }
+        reads++;
+        if (reads == 2) return http.Response('{}', 503);
+        final history = rawHistory('legacy_identity_review_required');
+        if (reads == 3) (history['settlements'] as List).last['paid'] = true;
+        return http.Response(jsonEncode(history), 200);
+      });
+      await tester.tap(find.text('Unnamed · recorded row 12'));
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('Marker saved for recorded row 12'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('Recorded settlements are unavailable'),
+        findsOneWidget,
+      );
+      expect(find.text('Unnamed · recorded row 11'), findsOneWidget);
+      expect(find.text('Unnamed · recorded row 12'), findsOneWidget);
+      expect(reads, 2);
+      expect(writes, hasLength(1));
+      await tester.ensureVisible(find.text('Retry current settlement status'));
+      await tester.tap(find.text('Retry current settlement status'));
+      await tester.pumpAndSettle();
+      expect(reads, 3);
+      expect(writes, hasLength(1));
+      expect(writes.single.url.path, '/api/tabs/9/settlements/12');
+      expect(
+        find.textContaining('Marker saved for recorded row 12'),
+        findsNothing,
+      );
+      expect(find.text('Retry current settlement status'), findsNothing);
+      expect(find.text('2/2 paid'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'unavailable finalized snapshot never substitutes cached current person totals',
     (tester) async {
       await showHistory(

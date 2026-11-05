@@ -10,6 +10,9 @@ interface RecordedShareRowsProps {
   busy?: boolean;
   onBusy?: (busy: boolean) => void;
   onError?: (message: string | null) => void;
+  savedMarkerId?: number | null;
+  onMarkerSaved?: (rowId: number) => void;
+  onReadRecovered?: () => void;
   onChanged: () => Promise<void>;
 }
 
@@ -21,6 +24,9 @@ export function RecordedShareRows({
   busy = false,
   onBusy,
   onError,
+  savedMarkerId = null,
+  onMarkerSaved,
+  onReadRecovered,
   onChanged,
 }: RecordedShareRowsProps) {
   return (
@@ -29,6 +35,37 @@ export function RecordedShareRows({
         Recorded history; ownership needs review. Original amounts and manual
         paid flags are retained.
       </p>
+      {savedMarkerId !== null && (
+        <div>
+          <p role="status">
+            Marker saved for recorded row {savedMarkerId}. Current status is
+            unavailable until reread.
+          </p>
+          <button
+            type="button"
+            disabled={busy}
+            aria-label="Retry current receipt status"
+            className="rounded-xl border px-4 py-2 font-semibold disabled:opacity-50"
+            onClick={async () => {
+              if (busy) return;
+              onBusy?.(true);
+              onError?.(null);
+              try {
+                await onChanged();
+                onReadRecovered?.();
+              } catch {
+                onError?.(
+                  "Marker saved. Current receipt status is unavailable; retry the read after review.",
+                );
+              } finally {
+                onBusy?.(false);
+              }
+            }}
+          >
+            Retry current receipt status
+          </button>
+        </div>
+      )}
       {bill.person_shares.map((share, index) => {
         const remoteId = Number.isSafeInteger(share.id) && share.id > 0;
         const occurrence = remoteId
@@ -55,13 +92,14 @@ export function RecordedShareRows({
             {remoteId && sourceToken && (
               <button
                 type="button"
-                disabled={busy}
+                disabled={busy || savedMarkerId !== null}
                 className="mt-3 rounded-xl border border-[var(--border-light)] px-4 py-2 font-semibold disabled:opacity-50 dark:border-[var(--border-dark)]"
                 aria-label={`Mark ${occurrence} ${share.paid ? "unpaid" : "paid"} with source proof`}
                 onClick={async () => {
-                  if (busy || !sourceToken) return;
+                  if (busy || savedMarkerId !== null || !sourceToken) return;
                   onBusy?.(true);
                   onError?.(null);
+                  let saved = false;
                   try {
                     await updatePersonSharePaid(
                       bill.id,
@@ -69,10 +107,15 @@ export function RecordedShareRows({
                       !share.paid,
                       sourceToken,
                     );
+                    saved = true;
+                    onMarkerSaved?.(share.id);
                     await onChanged();
+                    onReadRecovered?.();
                   } catch {
                     onError?.(
-                      "Recorded payment status is unavailable. Refresh and review before retrying.",
+                      saved
+                        ? "Marker saved. Current receipt status is unavailable; retry the read after review."
+                        : "Recorded payment status is unavailable. Refresh and review before retrying.",
                     );
                   } finally {
                     onBusy?.(false);
@@ -105,6 +148,7 @@ export default function RecordedShares({
   const [source, setSource] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savedMarkerId, setSavedMarkerId] = useState<number | null>(null);
   return (
     <div className="space-y-4">
       {allowSourceEntry && (
@@ -127,6 +171,9 @@ export default function RecordedShares({
         busy={busy}
         onBusy={setBusy}
         onError={setError}
+        savedMarkerId={savedMarkerId}
+        onMarkerSaved={setSavedMarkerId}
+        onReadRecovered={() => setSavedMarkerId(null)}
         onChanged={onChanged}
       />
       {error && <p role="alert">{error}</p>}

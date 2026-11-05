@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:checks_frontend/screens/lazy_bill_claim_screen.dart';
@@ -83,6 +84,109 @@ Map<String, dynamic> occurrence({
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+  for (final create in [false, true]) {
+    testWidgets(
+      'payment-open ${create ? 'create' : 'select'} occurrence without a share returns to items without zero or null access',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1200);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        var claimed = false;
+        var created = false;
+        var otherRef = 'existing-other';
+        var patches = 0;
+        final releaseRead = Completer<void>();
+        addTearDown(() {
+          if (!releaseRead.isCompleted) releaseRead.complete();
+        });
+        Map<String, dynamic> current() => {
+          ...graph(claimed: claimed, attached: false),
+          'identity_revision':
+              created
+                  ? 5
+                  : claimed
+                  ? 4
+                  : 3,
+          'participants': [
+            {...occurrence(), 'binding_state': 'unbound', 'member_id': null},
+            if (!create || created)
+              {
+                ...occurrence(label: 'Other'),
+                'participant_id': 12,
+                'client_ref': otherRef,
+                'binding_state': 'unbound',
+                'member_id': null,
+              },
+          ],
+        };
+        final api = ApiService(
+          baseUrl: 'https://synthetic.invalid',
+          client: MockClient((request) async {
+            if (request.method == 'PATCH') {
+              patches++;
+              claimed = true;
+              return http.Response(jsonEncode(current()), 200);
+            }
+            if (request.method == 'POST') {
+              final body = jsonDecode(request.body);
+              created = true;
+              otherRef = body['client_ref'] as String;
+              return http.Response(
+                jsonEncode({
+                  'participant': {
+                    ...occurrence(label: 'Other', ref: body['client_ref']),
+                    'participant_id': 12,
+                    'binding_state': 'unbound',
+                    'member_id': null,
+                  },
+                  'identity_revision': 5,
+                }),
+                200,
+              );
+            }
+            if (created) await releaseRead.future;
+            return http.Response(jsonEncode(current()), 200);
+          }),
+        );
+        await tester.pumpWidget(
+          MaterialApp(
+            home: LazyBillClaimScreen(billId: '7', token: 'source', api: api),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Alex · #11'));
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.text('Meal'));
+        await tester.tap(find.text('Meal'));
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.text('Review total'));
+        await tester.tap(find.text('Review total'));
+        await tester.pumpAndSettle();
+        expect(find.text('Your total'), findsOneWidget);
+        expect(find.text(r'$12.00'), findsOneWidget);
+        if (create) {
+          await tester.ensureVisible(find.byType(TextField).first);
+          await tester.enterText(find.byType(TextField).first, 'Other');
+          await tester.ensureVisible(find.text('Add occurrence'));
+          await tester.tap(find.text('Add occurrence'));
+          await tester.pump();
+          await tester.pump();
+        } else {
+          await tester.ensureVisible(find.text('Other · #12'));
+          await tester.tap(find.text('Other · #12'));
+          await tester.pumpAndSettle();
+        }
+        expect(tester.takeException(), isNull);
+        expect(find.text('Your total'), findsNothing);
+        expect(find.text(r'$0.00'), findsNothing);
+        expect(find.text('Picking as Other'), findsOneWidget);
+        expect(patches, 1);
+        if (!releaseRead.isCompleted) releaseRead.complete();
+        await tester.pumpAndSettle();
+      },
+    );
+  }
   for (final loseRead in [false, true]) {
     testWidgets(
       'attached claim ACK ${loseRead ? 'read failure retries only GET' : 'reads scoped nonzero graph before payment'}',
