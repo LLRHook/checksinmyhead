@@ -193,7 +193,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Trace removeBillFromTab/deleteTab and confirmation strings, then inspect registered API routes. Shared lifecycle is separate; do not falsely announce online deletion.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Tab-list removal now identifies this device and acknowledges actual Drift success. The manager returns bool and refuses synced/finalized bill-list removal; their cards omit removal swipes/instructions. Local-only active removal keeps history; cancel/DB failure retains the card. Before tests reproduced synced mutation/swipe; final Flutter480/524 preserves467/510 originals, with13 focused cases including file-backed reopen and an independent local view. Real owned API/PG graph stays USD128 and genuine Leave remains separate. No shared-delete, signed/two-device or release claim; independent/root pending.
+- **Docs:** docs/privacy.md; VERIFICATION.md; docs/reviews/2026-11-05-public-web.md
 
 ### [BUG-1793644507] Bound public API request resources
 - [ ] **Severity:** med

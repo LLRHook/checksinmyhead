@@ -352,8 +352,22 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
 
   Future<void> _removeBill(int billId) async {
     if (_currentTab.id == null) return;
-    await _tabManager.removeBillFromTab(_currentTab.id!, billId);
+    final removed = await _tabManager.removeBillFromTab(
+      _currentTab.id!,
+      billId,
+    );
+    if (!mounted) return;
+    if (!removed) {
+      _showSnackBar(
+        'Could not remove this bill from the local tab. Please try again.',
+        isError: true,
+      );
+      return;
+    }
     await _loadBills();
+    if (mounted) {
+      _showSnackBar('Removed from this local tab. Saved receipt kept.');
+    }
   }
 
   Future<void> _chooseDisplayCurrency() async {
@@ -1238,14 +1252,16 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
   List<Widget> _buildBillCards() {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
+    final canRemove =
+        !_currentTab.isSynced &&
+        !_currentTab.isRemote &&
+        !_currentTab.isFinalized;
 
     return _tabBills.map((bill) {
       return Dismissible(
         key: Key('bill_${bill.id}'),
         direction:
-            _currentTab.isFinalized
-                ? DismissDirection.none
-                : DismissDirection.endToStart,
+            canRemove ? DismissDirection.endToStart : DismissDirection.none,
         background: Container(
           alignment: Alignment.centerRight,
           padding: const EdgeInsets.only(right: 24),
@@ -1263,17 +1279,21 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
           ),
         ),
         confirmDismiss: (_) async {
+          if (!canRemove) return false;
           HapticFeedback.mediumImpact();
 
           final confirmed = await showModalBottomSheet<bool>(
             context: context,
             backgroundColor: Colors.transparent,
+            isScrollControlled: true,
+            useSafeArea: true,
             builder: (context) => _RemoveBillSheet(billName: bill.billName),
           );
 
-          return confirmed ?? false;
+          if (confirmed == true && mounted) await _removeBill(bill.id);
+          // Reload removes a successful local row. A failed write keeps the card.
+          return false;
         },
-        onDismissed: (_) => _removeBill(bill.id),
         child: Container(
           margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
           decoration: BoxDecoration(
@@ -1295,7 +1315,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
           ),
           child: Semantics(
             label:
-                '${bill.billName}, ${bill.hasUSDValuation ? _formatCurrency(bill.usdTotal) : '${bill.currencyCode} ${bill.total.toStringAsFixed(2)}, USD pending'}, ${bill.formattedDate}${!_currentTab.isFinalized ? '. Swipe left to remove' : ''}',
+                '${bill.billName}, ${bill.hasUSDValuation ? _formatCurrency(bill.usdTotal) : '${bill.currencyCode} ${bill.total.toStringAsFixed(2)}, USD pending'}, ${bill.formattedDate}${canRemove ? '. Swipe left to remove from this local tab' : ''}',
             button: true,
             child: Material(
               color: Colors.transparent,
@@ -1758,91 +1778,97 @@ class _RemoveBillSheet extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
-    return Container(
-      decoration: BoxDecoration(
-        color:
-            brightness == Brightness.dark ? colorScheme.surface : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.remove_circle_outline,
-                color: Colors.orange,
-                size: 28,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Remove from Tab',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Remove "$billName" from this tab? The bill will not be deleted.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 15,
-                color: colorScheme.onSurface.withValues(alpha: 0.7),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      HapticFeedback.selectionClick();
-                      Navigator.pop(context, false);
-                    },
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      side: BorderSide(
-                        color: colorScheme.outline.withValues(alpha: 0.5),
-                      ),
-                    ),
-                    child: const Text('Cancel'),
-                  ),
+    return SingleChildScrollView(
+      child: Container(
+        decoration: BoxDecoration(
+          color:
+              brightness == Brightness.dark
+                  ? colorScheme.surface
+                  : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () {
-                      HapticFeedback.mediumImpact();
-                      Navigator.pop(context, true);
-                    },
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                child: const Icon(
+                  Icons.remove_circle_outline,
+                  color: Colors.orange,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Remove from this local tab?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Remove "$billName" from this local tab\'s list? The saved receipt stays in your history. Shared online content and other people\'s access are not deleted.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        Navigator.pop(context, false);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        side: BorderSide(
+                          color: colorScheme.outline.withValues(alpha: 0.5),
+                        ),
                       ),
-                    ),
-                    child: const Text(
-                      'Remove',
-                      style: TextStyle(fontWeight: FontWeight.w600),
+                      child: const Text('Cancel'),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () {
+                        HapticFeedback.mediumImpact();
+                        Navigator.pop(context, true);
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text(
+                        'Remove from local tab',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

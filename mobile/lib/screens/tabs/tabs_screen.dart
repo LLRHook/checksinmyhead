@@ -10,8 +10,9 @@ import 'package:checks_frontend/services/api_service.dart';
 
 class TabsScreen extends StatefulWidget {
   final String? initialInviteUrl;
+  final TabManager? tabManager;
 
-  const TabsScreen({super.key, this.initialInviteUrl});
+  const TabsScreen({super.key, this.initialInviteUrl, this.tabManager});
 
   @override
   State<TabsScreen> createState() => _TabsScreenState();
@@ -21,7 +22,7 @@ class _TabsScreenState extends State<TabsScreen> {
   List<AppTab> _tabs = [];
   bool _isLoading = false;
   bool _initialInviteShown = false;
-  final _tabManager = TabManager();
+  late final _tabManager = widget.tabManager ?? TabManager();
   final _prefsService = PreferencesService();
 
   @override
@@ -149,17 +150,30 @@ class _TabsScreenState extends State<TabsScreen> {
     }
   }
 
-  Future<void> _deleteTab(AppTab tab) async {
+  Future<void> _removeLocalTab(AppTab tab) async {
     HapticFeedback.mediumImpact();
 
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) => _DeleteConfirmationSheet(tabName: tab.name),
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => _RemoveLocalTabSheet(tabName: tab.name),
     );
 
     if (confirmed == true && tab.id != null && mounted) {
-      await _tabManager.deleteTab(tab.id!);
+      final removed = await _tabManager.deleteTab(tab.id!);
+      if (!mounted) return;
+      if (!removed) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Could not remove this tab from this device. Please try again.',
+            ),
+          ),
+        );
+        return;
+      }
       setState(() => _tabs.removeWhere((t) => t.id == tab.id));
 
       if (mounted) {
@@ -169,7 +183,7 @@ class _TabsScreenState extends State<TabsScreen> {
               children: [
                 const Icon(Icons.check_circle, color: Colors.white, size: 18),
                 const SizedBox(width: 10),
-                Text('Deleted "${tab.name}"'),
+                Expanded(child: Text('Removed "${tab.name}" from this device')),
               ],
             ),
             behavior: SnackBarBehavior.floating,
@@ -232,44 +246,46 @@ class _TabsScreenState extends State<TabsScreen> {
     final textTheme = Theme.of(context).textTheme;
 
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: colorScheme.primary.withValues(
-                  alpha: brightness == Brightness.dark ? 0.15 : 0.08,
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: colorScheme.primary.withValues(
+                    alpha: brightness == Brightness.dark ? 0.15 : 0.08,
+                  ),
+                  shape: BoxShape.circle,
                 ),
-                shape: BoxShape.circle,
+                child: Icon(
+                  Icons.folder_special_outlined,
+                  size: 64,
+                  color: colorScheme.primary,
+                ),
               ),
-              child: Icon(
-                Icons.folder_special_outlined,
-                size: 64,
-                color: colorScheme.primary,
+              const SizedBox(height: 28),
+              Text(
+                'No Tabs Yet',
+                style: textTheme.displaySmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                  letterSpacing: -0.5,
+                ),
               ),
-            ),
-            const SizedBox(height: 28),
-            Text(
-              'No Tabs Yet',
-              style: textTheme.displaySmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurface,
-                letterSpacing: -0.5,
+              const SizedBox(height: 12),
+              Text(
+                'Group your bills by trip or event.\nPerfect for weekend getaways!',
+                textAlign: TextAlign.center,
+                style: textTheme.bodyLarge?.copyWith(
+                  height: 1.5,
+                  color: colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Group your bills by trip or event.\nPerfect for weekend getaways!',
-              textAlign: TextAlign.center,
-              style: textTheme.bodyLarge?.copyWith(
-                height: 1.5,
-                color: colorScheme.onSurface.withValues(alpha: 0.7),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -372,7 +388,7 @@ class _TabsScreenState extends State<TabsScreen> {
               );
               if (result == true) _loadTabs();
             },
-            onDelete: () => _deleteTab(tab),
+            onRemove: () => _removeLocalTab(tab),
           );
         },
       ),
@@ -424,12 +440,12 @@ class _TabsScreenState extends State<TabsScreen> {
 class _TabCard extends StatelessWidget {
   final AppTab tab;
   final VoidCallback onTap;
-  final VoidCallback onDelete;
+  final VoidCallback onRemove;
 
   const _TabCard({
     required this.tab,
     required this.onTap,
-    required this.onDelete,
+    required this.onRemove,
   });
 
   @override
@@ -449,7 +465,7 @@ class _TabCard extends StatelessWidget {
       direction: DismissDirection.endToStart,
       confirmDismiss: (_) async {
         HapticFeedback.mediumImpact();
-        onDelete();
+        onRemove();
         return false;
       },
       background: Container(
@@ -462,7 +478,11 @@ class _TabCard extends StatelessWidget {
           ),
           borderRadius: BorderRadius.circular(20),
         ),
-        child: const Icon(Icons.delete_outline, color: Colors.white, size: 28),
+        child: const Icon(
+          Icons.remove_circle_outline,
+          color: Colors.white,
+          size: 28,
+        ),
       ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -479,7 +499,7 @@ class _TabCard extends StatelessWidget {
         ),
         child: Semantics(
           label:
-              '${tab.name}, ${tab.billIds.length} bill${tab.billIds.length == 1 ? '' : 's'}. Swipe left to delete',
+              '${tab.name}, ${tab.billIds.length} bill${tab.billIds.length == 1 ? '' : 's'}. Swipe left to remove from this device',
           button: true,
           child: Material(
             color: Colors.transparent,
@@ -546,14 +566,16 @@ class _TabCard extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(width: 4),
-                              Text(
-                                '${tab.billIds.length} bill${tab.billIds.length == 1 ? '' : 's'}',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: colorScheme.onSurface.withValues(
-                                    alpha: 0.6,
+                              Expanded(
+                                child: Text(
+                                  '${tab.billIds.length} bill${tab.billIds.length == 1 ? '' : 's'}',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: colorScheme.onSurface.withValues(
+                                      alpha: 0.6,
+                                    ),
+                                    fontWeight: FontWeight.w500,
                                   ),
-                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                             ],
@@ -904,102 +926,108 @@ class _JoinTabSheetState extends State<_JoinTabSheet> {
   }
 }
 
-// Delete Confirmation Sheet
-class _DeleteConfirmationSheet extends StatelessWidget {
+// Local tab removal confirmation
+class _RemoveLocalTabSheet extends StatelessWidget {
   final String tabName;
 
-  const _DeleteConfirmationSheet({required this.tabName});
+  const _RemoveLocalTabSheet({required this.tabName});
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
-    return Container(
-      decoration: BoxDecoration(
-        color:
-            brightness == Brightness.dark ? colorScheme.surface : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.delete_outline,
-                color: Colors.red,
-                size: 28,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Delete Tab?',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Delete "$tabName"? Your bills will not be deleted.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 15,
-                color: colorScheme.onSurface.withValues(alpha: 0.7),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      HapticFeedback.selectionClick();
-                      Navigator.pop(context, false);
-                    },
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      side: BorderSide(
-                        color: colorScheme.outline.withValues(alpha: 0.5),
-                      ),
-                    ),
-                    child: const Text('Cancel'),
-                  ),
+    return SingleChildScrollView(
+      child: Container(
+        decoration: BoxDecoration(
+          color:
+              brightness == Brightness.dark
+                  ? colorScheme.surface
+                  : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () {
-                      HapticFeedback.mediumImpact();
-                      Navigator.pop(context, true);
-                    },
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                child: const Icon(
+                  Icons.remove_circle_outline,
+                  color: Colors.red,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Remove from this device?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Remove the saved "$tabName" tab entry from this device? The shared tab, bills, recorded totals and other people\'s access remain online. Saved receipts stay in your history.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        Navigator.pop(context, false);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        side: BorderSide(
+                          color: colorScheme.outline.withValues(alpha: 0.5),
+                        ),
                       ),
-                    ),
-                    child: const Text(
-                      'Delete',
-                      style: TextStyle(fontWeight: FontWeight.w600),
+                      child: const Text('Cancel'),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () {
+                        HapticFeedback.mediumImpact();
+                        Navigator.pop(context, true);
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text(
+                        'Remove from this device',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

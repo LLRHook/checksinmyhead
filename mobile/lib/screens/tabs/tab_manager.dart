@@ -85,13 +85,16 @@ class TabManager extends ChangeNotifier {
     }
   }
 
-  Future<void> deleteTab(int id) async {
+  /// Removes only the saved tab entry on this device, never the shared tab.
+  Future<bool> deleteTab(int id) async {
     try {
       await _db.deleteTab(id);
       await getAllTabs();
       notifyListeners();
+      return true;
     } catch (_) {
-      debugPrint('Error deleting tab');
+      debugPrint('Unable to remove local tab');
+      return false;
     }
   }
 
@@ -163,13 +166,17 @@ class TabManager extends ChangeNotifier {
     return getTabById(localId);
   }
 
-  Future<void> removeBillFromTab(int tabId, int billId) async {
+  /// Local list edit only. Shared membership has no supported detach operation.
+  Future<bool> removeBillFromTab(int tabId, int billId) async {
     try {
       final tabData = await _db.getTabById(tabId);
-      if (tabData == null) return;
+      if (tabData == null) return true;
+      if (tabData.backendId != null || tabData.isRemote || tabData.finalized) {
+        return false;
+      }
 
       final existingIds = AppTab.parseBillIds(tabData.billIds);
-      existingIds.remove(billId);
+      if (!existingIds.remove(billId)) return true;
 
       await _db.updateTab(
         tabId,
@@ -177,8 +184,10 @@ class TabManager extends ChangeNotifier {
       );
 
       notifyListeners();
-    } catch (e) {
-      debugPrint('Error removing bill from tab');
+      return true;
+    } catch (_) {
+      debugPrint('Unable to remove bill from local tab');
+      return false;
     }
   }
 
