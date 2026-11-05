@@ -13,7 +13,7 @@ import RecordedShares, { RecordedShareRows } from "../RecordedShares";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 afterEach(() => vi.unstubAllGlobals());
-const bill = {
+const bill: Bill = {
   id: 7,
   name: "Recorded legacy",
   identity_version: 1,
@@ -25,16 +25,45 @@ const bill = {
   subtotal: 5,
   tax: 0,
   tip_amount: 0,
+  tip_percentage: 0,
   total: 5,
+  date: "2001-01-01T00:00:00Z",
   items: [],
   participants: [],
   payment_methods: [],
   person_shares: [
-    { id: 811, person_name: "", total: 2, paid: true },
-    { id: 812, person_name: "", total: 3, paid: false },
-    { id: 0, person_name: "", total: 4, paid: false },
+    {
+      id: 811,
+      person_name: "",
+      total: 2,
+      subtotal: 2,
+      tax_share: 0,
+      tip_share: 0,
+      items: [],
+      paid: true,
+    },
+    {
+      id: 812,
+      person_name: "",
+      total: 3,
+      subtotal: 3,
+      tax_share: 0,
+      tip_share: 0,
+      items: [],
+      paid: false,
+    },
+    {
+      id: 0,
+      person_name: "",
+      total: 4,
+      subtotal: 4,
+      tax_share: 0,
+      tip_share: 0,
+      items: [],
+      paid: false,
+    },
   ],
-} as Bill;
+};
 
 type NodeProps = {
   children?: ReactNode;
