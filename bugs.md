@@ -82,8 +82,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** 11e6f67 fixes tab intent/validation feedback;7bddfa9 finite diagnostics. Root467/510 retains458/500;3 guards; corrections0/0 APPROVE. At276 native33/33 real MethodChannel/Drift lost201/reopen+synthetic loopback is accepted Std0/Spec0; OSexit unavailable; PG wire retained. Remove unused uploader; retarget helpers; local34/467 pass. .005/identity/precision/integrated/release open; retirement independent/root/CI pending.
-- **Docs:** docs/mobile-save-verification.md; docs/reviews/2026-11-04-mobile-save-{reopen,corrections,acceptance}.md; docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-05-legacy-uploader-retirement.md
+- **Fix:** 11e6f67 tab intent/validation;7bddfa9 finite logs; corrections0/0 APPROVE. Root467/510; at276 native33/33 real MethodChannel/Drift lost201/reopen+synthetic loopback accepted Std0/Spec0; OSexit unavailable; PG wire retained. 42e23f87 retires unused uploader; root0/0 and fresh clean467/510 pass; local affected34 retained. .005/identity/precision/integrated/release remain open.
+- **Docs:** docs/mobile-save-verification.md; docs/reviews/2026-11-04-mobile-save-{reopen,corrections,acceptance}.md; docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-05-legacy-uploader-retirement.md; docs/reviews/2026-11-05-scoped-source-acceptance.md
 - **Log:**
   - 2026-11-03 Evidence: Driver fb6b4b9 actual provider penny capture: client Alex=.01/Sam=0; v1 server Alex=0/Sam=.01 with .005 raw details. No math change in 43772a7. Preserve server/historical contracts; deliberately align local/published allocation in currency/save scope. See docs/reviews/2026-11-03-client-v1-bridge.md.
 
@@ -361,8 +361,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Provider/replay frozen/display/zero contracts retained. Mobile corrections independently0/0 APPROVE; root clean467/510 preserves prior458/500. At276 maintained Runner native33/33 passes exact-key/snapshot process-reopen and EUR25/USD31.25 with synthetic loopback; OSexit unavailable, native review pending. .005, identity0003, versioned JPY and combined/signed rollout remain open.
-- **Docs:** docs/mobile-save-verification.md; docs/reviews/2026-11-04-mobile-save-{reopen,corrections,acceptance}.md; docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md
+- **Fix:** Provider/replay frozen/display/zero contracts retained. Mobile corrections independently0/0 APPROVE; root clean467/510. At276 maintained Runner33/33 exact-key/snapshot process-reopen and EUR25/USD31.25 with synthetic loopback is independently accepted Std0/Spec0; OSexit unavailable. .005, identity0003, versioned JPY and combined/signed rollout remain open.
+- **Docs:** docs/mobile-save-verification.md; docs/reviews/2026-11-04-mobile-save-{reopen,corrections,acceptance}.md; docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-05-scoped-source-acceptance.md
 - **Log:**
   - 2026-11-03 Scope: Approved one-adapter/no-TTL decision supersedes old dual-provider/cache proposal. Keep open: display provenance0002; mobile rate decoder/quote state/save/replay/Keychain; required versioned JPY step. Global security/integrated acceptance RED.
 
@@ -396,7 +396,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** open
 
 ### [BUG-1793644518] Exclude private bearer-link pages from indexing
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** web, privacy
 - **File(s):** web-bill-viewer/src/app/{layout.tsx,b/[id]/page.tsx,t/[id]/page.tsx}; web-bill-viewer/next.config.ts
 - **Observation:** Private viewer metadata includes bill/tab names with no explicit noindex; caching/referrer behavior needs validation.
@@ -409,9 +409,9 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Read generateMetadata and layout metadata at baseline; tokens remain authorization credentials. Defense in depth does not replace ownership fixes.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
-- **Fix:** Use generic resource-free root metadata, noindex/nofollow HTTP policy, no-referrer, and explicit no-store authorized reads. Local72 cases and nine built-Next HTTP cases pass; independent review/root acceptance pending.
-- **Docs:** web-bill-viewer/README.md; docs/reviews/2026-11-04-private-viewer-privacy.md
+- **Status:** fixed-pending-migration
+- **Fix:** b1ec44fb generic resource-free metadata, noindex/nofollow, no-referrer and explicit no-store reads. Independent Standards0/Spec0 APPROVE; fresh root clean Node24/npm11 acquisition/lint/72tests/build/audit pass. Lead HTTP9/browser destination evidence retained. Source accepted pending integrated migration; public deployment unverified, no hosting changes.
+- **Docs:** web-bill-viewer/README.md; docs/reviews/2026-11-04-private-viewer-privacy.md; docs/reviews/2026-11-05-scoped-source-acceptance.md
 - **Log:**
   - 2026-11-04 Verification: Approved private-viewer scope implemented; before/removal controls and local browser destination headers retained. No hosting/release action; wider gates remain RED.
 
