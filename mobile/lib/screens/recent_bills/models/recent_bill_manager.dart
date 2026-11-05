@@ -147,22 +147,32 @@ class RecentBillsManager extends ChangeNotifier {
       final localBillId = existing?.id;
 
       var people = _peopleFromRemoteBill(rawBill);
-      if (existing?.receiptParticipants != null &&
-          existing?.originalParticipantMap != null) {
+      if (existing?.receiptParticipants != null) {
         final original =
             (jsonDecode(existing!.receiptParticipants!) as List)
                 .map((p) => Person.fromReceiptJson(p as Map<String, dynamic>))
                 .toList();
         final mapping =
-            (jsonDecode(existing.originalParticipantMap!) as List)
-                .cast<Map<String, dynamic>>();
+            existing.originalParticipantMap == null
+                ? <Map<String, dynamic>>[]
+                : (jsonDecode(existing.originalParticipantMap!) as List)
+                    .cast<Map<String, dynamic>>();
         people =
             people.map((p) {
               final ref =
                   mapping
                       .where((m) => m['participant_id'] == p.participantId)
                       .firstOrNull?['client_ref'];
-              final old = original.where((o) => o.clientRef == ref).firstOrNull;
+              final old =
+                  original
+                      .where(
+                        (o) =>
+                            ref != null
+                                ? o.clientRef == ref
+                                : p.participantId != null &&
+                                    o.participantId == p.participantId,
+                      )
+                      .firstOrNull;
               return old == null
                   ? p
                   : Person(
@@ -184,6 +194,27 @@ class RecentBillsManager extends ChangeNotifier {
       };
       final items = _itemsFromRemoteBill(rawBill, peopleByName);
       final shares = _sharesFromRemoteBill(rawBill, peopleByName);
+      final savedShareRows =
+          rawBill['identity_version'] == 2
+              ? [
+                for (final e in shares.entries)
+                  {
+                    'client_ref': e.key.clientRef,
+                    'name': e.key.name,
+                    'total': e.value,
+                  },
+              ]
+              : [
+                for (final raw
+                    in (rawBill['person_shares'] as List? ?? [])
+                        .whereType<Map<String, dynamic>>())
+                  {
+                    'recorded_share_id': raw['id'],
+                    'name': raw['person_name'] ?? '',
+                    'total': raw['total'],
+                    if (raw.containsKey('paid')) 'paid': raw['paid'],
+                  },
+              ];
 
       if (existing?.creationHandle != null) {
         // Authorized tab refresh is a current share projection. It cannot replace
@@ -199,16 +230,7 @@ class RecentBillsManager extends ChangeNotifier {
             ),
             currentIdentityState: Value(rawBill['identity_state'] as String?),
             currentGraph: Value(jsonEncode(rawBill)),
-            savedShares: Value(
-              jsonEncode([
-                for (final entry in shares.entries)
-                  {
-                    'client_ref': entry.key.clientRef,
-                    'name': entry.key.name,
-                    'total': entry.value,
-                  },
-              ]),
-            ),
+            savedShares: Value(jsonEncode(savedShareRows)),
           ),
         );
         localIds.add(existing.id);
@@ -249,16 +271,7 @@ class RecentBillsManager extends ChangeNotifier {
                 ? remoteUSD
                 : null,
           ),
-          savedShares: Value(
-            jsonEncode([
-              for (final entry in shares.entries)
-                {
-                  'client_ref': entry.key.clientRef,
-                  'name': entry.key.name,
-                  'total': entry.value,
-                },
-            ]),
-          ),
+          savedShares: Value(jsonEncode(savedShareRows)),
         ),
       );
       localIds.add(importedId);
@@ -301,6 +314,16 @@ class RecentBillsManager extends ChangeNotifier {
           .map(
             (p) => Person(
               name: p['label'] as String? ?? '',
+              allocationLabel:
+                  (bill['person_shares'] as List? ?? [])
+                          .whereType<Map<String, dynamic>>()
+                          .where(
+                            (s) => s['participant_id'] == p['participant_id'],
+                          )
+                          .firstOrNull?['person_name']
+                      as String? ??
+                  p['label'] as String? ??
+                  '',
               color: Colors.blue,
               clientRef: 'remote_${bill['id']}_${p['participant_id']}',
               participantId: p['participant_id'] as int?,
@@ -534,6 +557,7 @@ class RecentBillsManager extends ChangeNotifier {
           attachmentState: Value(intendedTabId == null ? 'none' : 'pending'),
           receiptMetadata: Value(
             jsonEncode({
+              'representation_version': 2,
               'is_custom_tip_amount': receipt.isCustomTipAmount,
               'birthday_name': receipt.birthdayPerson?.name,
               'birthday_ref': receipt.birthdayPerson?.clientRef,
@@ -703,13 +727,13 @@ class RecentBillsManager extends ChangeNotifier {
       }
     }
     if (row.creationHandle == null) {
-      _guardRawHistory(row);
       // A valid existing source link can attach, but history/import content is
       // never reconstructed into a new publication request.
       if (row.intendedTabId != null &&
           row.shareUrl?.startsWith('https://') == true) {
         return _attach(row);
       }
+      _guardRawHistory(row);
       return _result(row.id);
     }
     if (row.publicationState == 'published') return _attach(row);

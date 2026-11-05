@@ -55,6 +55,11 @@ class RecentBillModel {
     return (savedShares ?? []).any((s) => !refs.contains(s['client_ref']));
   }
 
+  List<Map<String, dynamic>> get recordedShares =>
+      (currentGraph?['person_shares'] as List? ?? savedShares ?? [])
+          .whereType<Map<String, dynamic>>()
+          .toList();
+
   String? get birthdayRef => receiptMetadata?['birthday_ref'] as String?;
 
   /// Original receipt currency and the immutable daily conversion audit.
@@ -262,7 +267,8 @@ class RecentBillModel {
     }
 
     final cents = List<int>.filled(entries.length, 0);
-    final remainders = <({int index, double fraction, List<int> nameBytes})>[];
+    final remainders =
+        <({int index, int ordinal, double fraction, List<int> nameBytes})>[];
     for (var index = 0; index < entries.length; index++) {
       final amount = entries[index].value > 0 ? entries[index].value : 0;
       final exactCents = targetCents * amount / shareTotal;
@@ -270,6 +276,10 @@ class RecentBillModel {
       cents[index] = wholeCents;
       remainders.add((
         index: index,
+        ordinal:
+            !_registry.contains(entries[index].key)
+                ? index
+                : _registry.indexOf(entries[index].key),
         fraction: exactCents - wholeCents,
         nameBytes: utf8.encode(entries[index].key.allocationLabel),
       ));
@@ -291,7 +301,7 @@ class RecentBillModel {
         nameOrder = a.nameBytes.length.compareTo(b.nameBytes.length);
       }
       if (nameOrder != 0) return nameOrder;
-      return a.index.compareTo(b.index);
+      return a.ordinal.compareTo(b.ordinal);
     });
     final remaining =
         targetCents - cents.fold<int>(0, (sum, value) => sum + value);
@@ -427,12 +437,19 @@ class RecentBillModel {
   Map<Person, double> generatePersonShares() {
     if (savedShares != null) {
       return {
-        for (final share in savedShares!)
-          _savedPerson(
-                share['client_ref'] as String? ?? share['name'] as String,
-                label: share['name'] as String,
-              ):
-              (share['total'] as num).toDouble(),
+        for (var i = 0; i < savedShares!.length; i++)
+          (savedShares![i]['client_ref'] is String
+                  ? _savedPerson(
+                    savedShares![i]['client_ref'] as String,
+                    label: savedShares![i]['name'] as String?,
+                  )
+                  : Person(
+                    name: savedShares![i]['name'] as String? ?? '',
+                    color: color,
+                    clientRef:
+                        'legacy_${id}_share_${savedShares![i]['recorded_share_id'] ?? i}',
+                  )):
+              (savedShares![i]['total'] as num).toDouble(),
       };
     }
     // Create Person objects from participant names

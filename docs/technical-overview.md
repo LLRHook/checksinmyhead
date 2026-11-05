@@ -170,8 +170,14 @@ selectors. Copy/rename/color preserve the ref and allocation label; People/group
 remain suggestions copied into fresh occurrences. Receipt JSON has one persisted
 ordered registry shared by assignment, birthday, saved-share and history readers.
 Legacy name JSON remains readable with review state; it cannot establish ownership.
+Imported/raw legacy share rows retain exact row IDs, labels, amounts and manual flags,
+including duplicate blank labels. History cards and shared text show recorded rows or
+raw assignments rather than guessed per-person zeros. Receipt JSON metadata marks the
+ref-bearing representation independently of immutable wire/ack versions.
 The existing calculator and frozen-USD allocator keep their arithmetic; immutable
-allocation labels preserve rename-independent ties. The separate `.005` and JPY
+allocation labels preserve rename-independent ties. Duplicate-label remainders use the
+receipt registry ordinal rather than mutable database share-row order; imports retain
+observed allocation labels by participant ID across label changes. The separate `.005` and JPY
 precision contracts remain open.
 
 `ApiService.buildBillRequest` remains the creation serializer. New saves explicitly

@@ -208,7 +208,7 @@ export default function IdentityControls({
           </button>
         </form>
       )}
-      {context.tabId && member && (
+      {context.tabId && (
         <label className="block mt-3 text-sm">
           Source bill capability for approval (optional)
           <input

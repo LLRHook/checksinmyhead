@@ -149,15 +149,15 @@ void main() {
       final link = result.shareUrl;
       expect(link, 'https://billington.app/b/1?t=synthetic-source-1');
       expect(payload!['participants'], [
-        {'name': 'Alex'},
-        {'name': 'Sam'},
+        {'client_ref': alex.clientRef, 'name': 'Alex'},
+        {'client_ref': sam.clientRef, 'name': 'Sam'},
       ]);
       expect((payload!['items'] as List).single['assignments'], [
-        {'person_name': 'Alex', 'percentage': 100},
+        {'participant_ref': alex.clientRef, 'percentage': 100},
       ]);
       expect(
         (payload!['person_shares'] as List).singleWhere(
-          (p) => p['person_name'] == 'Sam',
+          (p) => p['participant_ref'] == sam.clientRef,
         )['total'],
         0,
       );
@@ -216,7 +216,10 @@ void main() {
       () => DatabaseProvider.db.getBillById(104),
     );
     expect(retained!.shareUrl, isNull);
-    expect(jsonDecode(retained.items!).single['assignments']['Sam'], -1);
+    expect(
+      jsonDecode(retained.items!).single['assignments'][sam.clientRef],
+      -1,
+    );
     expect(tester.takeException(), isNull);
   });
 

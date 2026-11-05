@@ -342,6 +342,8 @@ void showCustomSplitDialog({
 
                           return _buildPersonSlider(
                             person: person,
+                            occurrenceLabel:
+                                '${participants.indexOf(person) + 1}. ${person.displayName}',
                             percentage: percentage,
                             price: item.price,
                             personColor: personColor,
@@ -558,6 +560,7 @@ void showCustomSplitDialog({
 ///         increment/decrement buttons, and preset percentage buttons
 Widget _buildPersonSlider({
   required Person person,
+  required String occurrenceLabel,
   required double percentage,
   required double price,
   required Color personColor,
@@ -670,7 +673,7 @@ Widget _buildPersonSlider({
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    person.name,
+                    occurrenceLabel,
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
@@ -731,7 +734,7 @@ Widget _buildPersonSlider({
                       }
                       : null, // Disabled when already at 0%
               icon: const Icon(Icons.remove_circle_outline, size: 18),
-              tooltip: 'Decrease ${person.name} by 1 percent',
+              tooltip: 'Decrease $occurrenceLabel by 1 percent',
               color: percentage > 0 ? personColor : inactiveButtonColor,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
@@ -782,7 +785,7 @@ Widget _buildPersonSlider({
                   label: '${percentage.toStringAsFixed(0)}%',
                   semanticFormatterCallback:
                       (value) =>
-                          '${value.toStringAsFixed(0)} percent for ${person.name}',
+                          '${value.toStringAsFixed(0)} percent for $occurrenceLabel',
                   onChanged: onChanged,
                 ),
               ),
@@ -798,7 +801,7 @@ Widget _buildPersonSlider({
                       }
                       : null, // Disabled when already at 100%
               icon: const Icon(Icons.add_circle_outline, size: 18),
-              tooltip: 'Increase ${person.name} by 1 percent',
+              tooltip: 'Increase $occurrenceLabel by 1 percent',
               color: percentage < 100 ? personColor : inactiveButtonColor,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
@@ -822,7 +825,7 @@ Widget _buildPersonSlider({
                   return Padding(
                     padding: const EdgeInsets.only(right: 6),
                     child: Semantics(
-                      label: 'Set ${person.name} to $presetValue percent',
+                      label: 'Set $occurrenceLabel to $presetValue percent',
                       button: true,
                       selected: isSelected,
                       child: TextButton(

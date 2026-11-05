@@ -1,4 +1,7 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import IdentityControls from "../../components/IdentityControls";
 import {
   ApiError,
   type Bill,
@@ -12,6 +15,7 @@ import {
   type Tab,
   updateLazyBillItemAssignmentsBatch,
 } from "../api";
+import { allocateBillUSDShareAmounts } from "../currency";
 import {
   legacySuggestion,
   readMember,
@@ -36,6 +40,51 @@ const person = (
 });
 afterEach(() => vi.unstubAllGlobals());
 describe("participant identity", () => {
+  it("duplicate allocation-label ties follow receipt occurrence order after share-row reorder", () => {
+    const bill = {
+      id: 7,
+      total: 0.008,
+      usd_total: 0.01,
+      usd_exchange_rate: 1.25,
+      currency_code: "EUR",
+      participants: [person(11), person(12)],
+      person_shares: [
+        { id: 12, participant_id: 12, person_name: "Alex", total: 0.004 },
+        { id: 11, participant_id: 11, person_name: "Alex", total: 0.004 },
+      ],
+    } as Bill;
+    expect(allocateBillUSDShareAmounts(bill)).toEqual([0, 0.01]);
+    if (bill.participants) bill.participants[0].label = "Renamed";
+    expect(allocateBillUSDShareAmounts(bill)).toEqual([0, 0.01]);
+  });
+
+  it("memberless destination exposes independent source input without inferring a member from a blank occurrence", () => {
+    const bill = {
+      id: 7,
+      identity_version: 2,
+      identity_state: "ready",
+      identity_revision: 0,
+      identity_review_status: "ready",
+      participants: [person(11, ""), person(12, "")],
+    } as Bill;
+    const html = renderToStaticMarkup(
+      createElement(IdentityControls, {
+        bill,
+        context: { billId: 7, tabId: "9", token: "destination" },
+        member: null,
+        selected: null,
+        onSelect: () => {},
+        onChanged: async () => {},
+      }),
+    );
+    expect(html).toContain("Source bill capability for approval");
+    expect(html).toContain("Unnamed");
+    expect(html).toContain("#11");
+    expect(html).toContain("#12");
+    expect(html).not.toContain("Request my binding");
+    expect(html).not.toContain("Rename</button>");
+  });
+
   it("paid and draft identities discriminate same blank casefold labels and retain rename", () => {
     const shares = [{ person_name: "Alex", participant_id: 11, paid: true }];
     expect(

@@ -9,6 +9,7 @@ import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.
 import 'package:checks_frontend/screens/tabs/tab_manager.dart';
 import 'package:checks_frontend/services/api_service.dart';
 import 'package:drift/native.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -49,6 +50,15 @@ class CaptureCreation extends http.BaseClient {
 class CheckpointFile extends AppDatabase {
   CheckpointFile(File file) : super.forTesting(NativeDatabase(file));
   bool fail = false;
+  bool failAttachment = false;
+  @override
+  Future<void> checkpointAttachment(int id, int tabId) async {
+    if (failAttachment) {
+      throw StateError('synthetic attach checkpoint uncertainty');
+    }
+    return super.checkpointAttachment(id, tabId);
+  }
+
   @override
   Future<void> checkpointReceipt(int id, RecentBillsCompanion values) {
     if (fail && values.remoteBillId.present) {
@@ -58,8 +68,13 @@ class CheckpointFile extends AppDatabase {
   }
 }
 
+class LiveClientBinding extends AutomatedTestWidgetsFlutterBinding {
+  @override
+  bool get overrideHttpClient => false;
+}
+
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
+  LiveClientBinding();
   SharedPreferences.setMockInitialValues({});
   test(
     'maintained mobile builder save lost201 checkpoint reopen and two independently authenticated members',
@@ -69,10 +84,33 @@ void main() {
       if (base == null || out == null || Uri.parse(base).host != '127.0.0.1') {
         fail('Strict live loopback fixture required');
       }
-      final dir = await Directory.systemTemp.createTemp(
-        'billington-cd-client-',
-      );
-      addTearDown(() => dir.delete(recursive: true));
+      final dir = Directory(File(out).parent.path);
+      if (Platform.environment['BILLINGTON_CD_PHASE'] == 'recover-attachment') {
+        final fixture =
+            jsonDecode(await File(out).readAsString()) as Map<String, dynamic>;
+        final db = CheckpointFile(File(fixture['local_database'] as String));
+        addTearDown(db.close);
+        final api = ApiService(baseUrl: base);
+        final owner = RecentBillsManager.withDependencies(
+          database: db,
+          api: api,
+          keyStore: FakeCreationKeys(),
+        );
+        addTearDown(owner.dispose);
+        await db.updateTab(
+          fixture['local_tab_id'] as int,
+          const TabsCompanion(finalized: Value(true)),
+        );
+        final result = await owner.resumeReceipt(
+          fixture['local_receipt_id'] as int,
+        );
+        expect(result.attachment, AttachmentState.attached);
+        expect(result.failure, isNull);
+        final row = (await db.getBillById(result.localId))!;
+        expect(row.originalParticipantMap, fixture['original_map']);
+        expect(row.creationSnapshot, fixture['original_body']);
+        return;
+      }
       final file = File('${dir.path}/a.sqlite');
       final capture = CaptureCreation();
       addTearDown(capture.close);
@@ -154,8 +192,9 @@ void main() {
       expect(creator, isNotNull);
       expect(creator!.memberId, greaterThan(0));
       expect((await db.getTabById(creator.id!))!.memberId, creator.memberId);
-      expect(await tabs.addBillsToTab(creator.id!, [row.id]), true);
-      expect((await db.getBillById(row.id))!.attachmentState, 'attached');
+      db.failAttachment = true;
+      expect(await tabs.addBillsToTab(creator.id!, [row.id]), false);
+      expect((await db.getBillById(row.id))!.attachmentState, 'attempted');
       final dbB = AppDatabase.forTesting(
         NativeDatabase(File('${dir.path}/b.sqlite')),
       );
@@ -199,6 +238,10 @@ void main() {
       );
       await File(out).writeAsString(
         jsonEncode({
+          'local_database': file.path,
+          'local_tab_id': creator.id,
+          'local_receipt_id': row.id,
+          'original_map': row.originalParticipantMap,
           'base': base,
           'bill_id': row.remoteBillId,
           'source': sourceUri.queryParameters['t'],

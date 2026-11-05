@@ -271,6 +271,14 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
   }
 
   Future<void> _reviewSelection() async {
+    if (_participantId == null || _bill?['identity_review_status'] != 'ready') {
+      setState(
+        () =>
+            _error =
+                'Choose a current receipt occurrence. Recorded ownership needing review cannot produce a payment amount.',
+      );
+      return;
+    }
     if (_saving || _myShare?['paid'] == true) return;
     final updates = <Map<String, dynamic>>[];
     for (final item in _items) {
@@ -340,9 +348,12 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
     }
   }
 
-  Future<void> _markPaid() async {
-    final share = _myShare;
-    if (share == null || !_canMarkPaid) return;
+  Future<void> _markPaid([Map<String, dynamic>? exactSourceShare]) async {
+    final share = exactSourceShare ?? _myShare;
+    if (share == null ||
+        (exactSourceShare == null ? !_canMarkPaid : widget.tabId != null)) {
+      return;
+    }
     setState(() => _paying = true);
     try {
       if (widget.tabId != null) {
@@ -477,6 +488,49 @@ class _LazyBillClaimScreenState extends State<LazyBillClaimScreen> {
               });
             },
           ),
+          if (bill['identity_review_status'] != 'ready')
+            Card(
+              child: Column(
+                children: [
+                  const ListTile(
+                    title: Text('Recorded result; ownership needs review'),
+                  ),
+                  for (final share in _shares)
+                    ListTile(
+                      title: Text(
+                        '${share['person_name'] ?? ''}'.isEmpty
+                            ? 'Unnamed · recorded row #${share['id']}'
+                            : '${share['person_name']} · recorded row #${share['id']}',
+                      ),
+                      subtitle: Text(
+                        share['paid'] == true
+                            ? 'Marked paid (manual)'
+                            : 'Not marked paid',
+                      ),
+                      trailing: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            share['total'] is num &&
+                                    (share['total'] as num).isFinite
+                                ? CurrencyFormatter.formatCurrency(
+                                  (share['total'] as num).toDouble(),
+                                  currencyCode: _currency,
+                                )
+                                : 'Amount unavailable',
+                          ),
+                          if (widget.tabId == null)
+                            TextButton(
+                              onPressed:
+                                  _paying ? null : () => _markPaid(share),
+                              child: const Text('Mark recorded row paid'),
+                            ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
           if (!_showPayment) ...[
             Text(
               'Choose what you had',

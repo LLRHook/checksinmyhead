@@ -85,12 +85,17 @@ Map<String, dynamic> creationResponse(
   Map<String, dynamic> body, {
   int id = 19,
   double? usd,
+  int? identityVersion,
 }) {
   final currency = body['currency_code'] as String;
   final rate = currency == 'USD' ? 1.0 : 1.25;
   return {
-    if ((body['participants'] as List).isEmpty ||
-        (body['participants'] as List).first.containsKey('client_ref')) ...{
+    if (identityVersion == 2 ||
+        (identityVersion == null &&
+            (body['participants'] as List).isNotEmpty &&
+            (body['participants'] as List).first.containsKey(
+              'client_ref',
+            ))) ...{
       'response_version': 2,
       'identity_version': 2,
       'identity_revision': 0,
@@ -150,7 +155,9 @@ class Harness {
           );
           if (onCreate != null) return onCreate!(request);
           return http.Response(
-            jsonEncode(creationResponse(jsonDecode(request.body))),
+            jsonEncode(
+              creationResponse(jsonDecode(request.body), identityVersion: 2),
+            ),
             201,
           );
         }
@@ -294,7 +301,9 @@ void main() {
           "UPDATE recent_bills SET created_at = created_at + 10 WHERE bill_name='Other'",
         );
         return http.Response(
-          jsonEncode(creationResponse(jsonDecode(request.body))),
+          jsonEncode(
+            creationResponse(jsonDecode(request.body), identityVersion: 2),
+          ),
           201,
         );
       };
@@ -329,7 +338,9 @@ void main() {
         entered.complete();
         await release.future;
         return http.Response(
-          jsonEncode(creationResponse(jsonDecode(request.body))),
+          jsonEncode(
+            creationResponse(jsonDecode(request.body), identityVersion: 2),
+          ),
           201,
         );
       };

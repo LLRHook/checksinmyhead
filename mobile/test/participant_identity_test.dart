@@ -17,6 +17,66 @@ import 'save_receipt_test.dart'
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   test(
+    'USD duplicate-label ties retain receipt ordinal after saved-share reorder and import rename',
+    () async {
+      final h = Harness();
+      addTearDown(h.db.close);
+      Map<String, dynamic> remote(String label) => {
+        'id': 71,
+        'identity_version': 2,
+        'identity_state': 'ready',
+        'identity_revision': 1,
+        'identity_review_status': 'ready',
+        'currency_code': 'EUR',
+        'usd_exchange_rate': 1.25,
+        'exchange_rate_date': '2001-01-01',
+        'exchange_rate_source': 'synthetic-old',
+        'usd_total': .01,
+        'total': .008,
+        'subtotal': .008,
+        'participants': [
+          {'participant_id': 11, 'label': label, 'binding_state': 'unbound'},
+          {'participant_id': 12, 'label': 'Alex', 'binding_state': 'unbound'},
+        ],
+        'person_shares': [
+          {
+            'id': 12,
+            'participant_id': 12,
+            'person_name': 'Alex',
+            'total': .004,
+          },
+          {
+            'id': 11,
+            'participant_id': 11,
+            'person_name': 'Alex',
+            'total': .004,
+          },
+        ],
+      };
+      final ids = await h.owner.importRemoteTabBills(9, [remote('Alex')]);
+      var model = RecentBillModel.fromData(
+        (await h.db.getBillById(ids.single))!,
+      );
+      expect(
+        model.generateUSDPersonShares().map(
+          (p, v) => MapEntry(p.participantId, v),
+        ),
+        {12: 0, 11: .01},
+      );
+      final ref = model.participants.first.clientRef;
+      await h.owner.importRemoteTabBills(9, [remote('Renamed')]);
+      model = RecentBillModel.fromData((await h.db.getBillById(ids.single))!);
+      expect(model.participants.first.clientRef, ref);
+      expect(model.participants.first.allocationLabel, 'Alex');
+      expect(
+        model.generateUSDPersonShares().map(
+          (p, v) => MapEntry(p.participantId, v),
+        ),
+        {12: 0, 11: .01},
+      );
+    },
+  );
+  test(
     'receipt registry preserves duplicate blank Unicode identities after file reopen rename and birthday',
     () async {
       final dir = await Directory.systemTemp.createTemp('billington-identity-');

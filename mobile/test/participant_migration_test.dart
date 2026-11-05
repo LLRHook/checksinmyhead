@@ -18,6 +18,7 @@ void main() {
               'test/fixtures/drift${version}_identity.sql',
             ).readAsStringSync();
         final oldRows = <Map<String, dynamic>>[];
+        final oldTabRows = <Map<String, dynamic>>[];
         var db = AppDatabase.forTesting(
           NativeDatabase(
             file,
@@ -66,6 +67,9 @@ void main() {
                   );
                 }
               }
+              for (final row in raw.select('SELECT * FROM tabs ORDER BY id')) {
+                oldTabRows.add(Map.of(row));
+              }
               for (final row in raw.select(
                 'SELECT * FROM recent_bills ORDER BY id',
               )) {
@@ -92,6 +96,17 @@ void main() {
           expect(upgraded[i].data['creation_wire_version'], isNull);
           expect(upgraded[i].data['original_participant_map'], isNull);
           expect(upgraded[i].data['receipt_participants'], isNull);
+        }
+        final tabsAfter =
+            await db.customSelect('SELECT * FROM tabs ORDER BY id').get();
+        for (var i = 0; i < oldTabRows.length; i++) {
+          for (final e in oldTabRows[i].entries) {
+            expect(
+              tabsAfter[i].data[e.key],
+              e.value,
+              reason: 'Drift$version tab$i ${e.key}',
+            );
+          }
         }
         final tab = (await db.getTabById(3))!;
         expect(tab.memberId, isNull);

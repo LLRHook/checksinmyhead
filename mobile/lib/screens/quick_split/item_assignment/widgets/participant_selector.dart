@@ -194,13 +194,15 @@ class ParticipantSelector extends StatelessWidget {
                     scale: isSelected ? 0.95 : 1.0,
                     child: ParticipantAvatar(
                       person: person,
+                      occurrenceLabel: '${index + 1}. ${person.displayName}',
                       isAssigned: showAssignedIndicator,
                       isSelected: isSelected,
                       isBirthdayPerson: isBirthdayPerson,
                       onTap: () => onPersonTap(person),
-                      onLongPress: participants.length > 1
-                          ? () => onBirthdayToggle(person)
-                          : null,
+                      onLongPress:
+                          participants.length > 1
+                              ? () => onBirthdayToggle(person)
+                              : null,
                       assignedPercentage: percentage,
                     ),
                   ),

@@ -81,6 +81,10 @@ export function allocateBillUSDShareAmounts(bill: Bill): number[] {
     result[index] = wholeCents;
     return {
       index,
+      ordinal:
+        bill.participants?.findIndex(
+          (p) => p.participant_id === share.participant_id,
+        ) ?? index,
       fraction: exactCents - wholeCents,
       nameBytes: utf8Encoder.encode(share.person_name),
     };
@@ -90,6 +94,7 @@ export function allocateBillUSDShareAmounts(bill: Bill): number[] {
     (a, b) =>
       b.fraction - a.fraction ||
       compareUTF8(a.nameBytes, b.nameBytes) ||
+      a.ordinal - b.ordinal ||
       a.index - b.index,
   );
   const allocated = result.reduce((sum, cents) => sum + cents, 0);

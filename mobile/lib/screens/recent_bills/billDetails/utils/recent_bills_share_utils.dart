@@ -18,9 +18,32 @@
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.dart';
 import 'package:checks_frontend/screens/quick_split/bill_summary/utils/share_utils.dart';
 import 'package:checks_frontend/screens/settings/services/settings_manager.dart';
+import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 
 class RecentBillShareUtils {
   static Future<void> shareBill(RecentBillModel bill) async {
+    if (bill.identityNeedsReview) {
+      final text = StringBuffer(
+        '${bill.billName}\nRecorded receipt; ownership needs review.\nTotal: ${CurrencyFormatter.formatCurrency(bill.total, currencyCode: bill.currencyCode)}\n',
+      );
+      for (var i = 0; i < bill.recordedShares.length; i++) {
+        final row = bill.recordedShares[i];
+        final amount = row['total'];
+        text.writeln(
+          'Recorded row ${row['id'] ?? row['recorded_share_id'] ?? i + 1} · ${row['person_name'] ?? row['name'] ?? 'Unnamed'}: ${amount is num && amount.isFinite ? CurrencyFormatter.formatCurrency(amount.toDouble(), currencyCode: bill.currencyCode) : 'amount unavailable'}',
+        );
+      }
+      if (bill.recordedShares.isEmpty) {
+        text.writeln(
+          'Per-person amounts unavailable; recorded item assignments need review.',
+        );
+      }
+      if (bill.shareUrl?.startsWith('https://') == true) {
+        text.writeln(bill.shareUrl);
+      }
+      ShareUtils.shareBillSummary(summary: text.toString());
+      return;
+    }
     final shareOptions = await SettingsManager.getShareOptions();
     final participants = bill.participants;
     final personShares = bill.generatePersonShares();

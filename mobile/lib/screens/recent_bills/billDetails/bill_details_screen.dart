@@ -26,6 +26,7 @@ import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.da
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
 import 'utils/bill_calculations.dart';
+import 'utils/recent_bills_share_utils.dart';
 
 /// BillDetailsScreen
 ///
@@ -118,6 +119,10 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
 
   /// Shows the enhanced share sheet with link options (if URL exists) and text receipt
   void _promptShareOptions() {
+    if (_bill.identityNeedsReview) {
+      RecentBillShareUtils.shareBill(_bill);
+      return;
+    }
     final summaryData = BillSummaryData.fromRecentBill(_bill);
     EnhancedShareSheet.show(
       context: context,
@@ -1024,6 +1029,9 @@ class SortedParticipantsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (bill.identityNeedsReview) {
+      return RecordedParticipationHistory(bill: bill);
+    }
     // Get pre-calculated person totals from the BillCalculations utility
     final personTotals = calculations.calculatePersonTotals();
 
@@ -1047,6 +1055,65 @@ class SortedParticipantsCard extends StatelessWidget {
       bill: bill,
       calculations: calculations,
       participantOrder: order,
+    );
+  }
+}
+
+/// Raw historical rows preserve recorded amounts/flags without inferred ownership.
+class RecordedParticipationHistory extends StatelessWidget {
+  const RecordedParticipationHistory({super.key, required this.bill});
+  final RecentBillModel bill;
+  @override
+  Widget build(BuildContext context) {
+    final rows = bill.recordedShares;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Recorded result; ownership needs review',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            for (var i = 0; i < rows.length; i++)
+              ListTile(
+                title: Text(
+                  '${rows[i]['person_name'] ?? rows[i]['name'] ?? ''}'.isEmpty
+                      ? 'Unnamed · recorded row ${rows[i]['id'] ?? rows[i]['recorded_share_id'] ?? i + 1}'
+                      : '${rows[i]['person_name'] ?? rows[i]['name']} · recorded row ${rows[i]['id'] ?? rows[i]['recorded_share_id'] ?? i + 1}',
+                ),
+                subtitle: Text(
+                  rows[i]['paid'] == true
+                      ? 'Marked paid (manual)'
+                      : rows[i]['paid'] == false
+                      ? 'Not marked paid'
+                      : 'Paid state unavailable',
+                ),
+                trailing: Text(
+                  rows[i]['total'] is num && (rows[i]['total'] as num).isFinite
+                      ? CurrencyFormatter.formatCurrency(
+                        (rows[i]['total'] as num).toDouble(),
+                        currencyCode: bill.currencyCode,
+                      )
+                      : 'Amount unavailable',
+                ),
+              ),
+            if (rows.isEmpty) ...[
+              const Text(
+                'Per-person amounts are unavailable. Recorded item assignments are shown without assigning ownership.',
+              ),
+              for (final item in bill.items ?? <Map<String, dynamic>>[])
+                ListTile(
+                  title: Text(item['name'] as String? ?? 'Recorded item'),
+                  subtitle: Text(
+                    '${item['assignments'] ?? 'No recorded assignments'}',
+                  ),
+                ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

@@ -466,6 +466,12 @@ class AppDatabase extends _$AppDatabase {
       receiptParticipants: Value(
         jsonEncode(participants.map((p) => p.toReceiptJson()).toList()),
       ),
+      receiptMetadata: Value(
+        jsonEncode({
+          'representation_version': 2,
+          'is_custom_tip_amount': isCustomTipAmount,
+        }),
+      ),
       savedShares: Value(
         jsonEncode([
           for (final e in personShares.entries)

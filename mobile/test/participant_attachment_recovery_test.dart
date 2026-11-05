@@ -19,6 +19,44 @@ class AttachmentCheckpointDatabase extends AppDatabase {
 }
 
 void main() {
+  test(
+    'legacy source attach preserves blank long raw labels without rebuilding a create or minting a key',
+    () async {
+      final db = AttachmentCheckpointDatabase();
+      addTearDown(db.close);
+      final h = Harness(database: db);
+      final tab = await h.tab();
+      final id = await db.saveBill(
+        participants: [],
+        personShares: {},
+        items: [],
+        subtotal: 5,
+        tax: 0,
+        tipAmount: 0,
+        total: 5,
+        shareUrl: 'https://billington.app/b/71?t=original-legacy-source',
+      );
+      await db.customStatement(
+        'UPDATE recent_bills SET participants=?,participant_count=2 WHERE id=?',
+        ['["","${'界' * 31}"]', id],
+      );
+      final before = (await db.getBillById(id))!;
+      final result = await h.owner.resumeReceipt(id, intendedTabId: tab);
+      expect(result.attachment, AttachmentState.attached);
+      expect(h.posts, 0);
+      expect(h.attachments, 1);
+      expect(h.keys.creates, 0);
+      final after = (await db.getBillById(id))!;
+      expect(after.participants, before.participants);
+      expect(after.total, before.total);
+      expect(after.shareUrl, before.shareUrl);
+      expect(after.creationHandle, isNull);
+      expect(
+        h.requests.last.headers.containsKey('X-Billington-Identity-Version'),
+        false,
+      );
+    },
+  );
   for (final failure in ['member_denied', 'checkpoint_failed']) {
     test(
       'known attached nonfinalized $failure stops after one reauthorization without fallback POST',

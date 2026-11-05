@@ -95,10 +95,14 @@ class _ParticipantIdentityPanelState extends State<ParticipantIdentityPanel> {
     try {
       await action();
       _retry = null;
-      await widget.onChanged();
+      if (mounted) {
+        await widget.onChanged();
+      }
     } catch (e) {
       _retry = action;
-      await widget.onChanged();
+      if (mounted) {
+        await widget.onChanged();
+      }
       if (mounted) {
         setState(
           () =>
@@ -123,7 +127,9 @@ class _ParticipantIdentityPanelState extends State<ParticipantIdentityPanel> {
         'participant_id': id,
       }),
     );
-    widget.onSelected?.call(id);
+    if (mounted) {
+      widget.onSelected?.call(id);
+    }
   }
 
   Future<void> _command({
@@ -158,31 +164,16 @@ class _ParticipantIdentityPanelState extends State<ParticipantIdentityPanel> {
   }
 
   Future<void> _rename(ParticipantIdentity p) async {
-    final c = TextEditingController(text: p.label);
+    final revision = widget.bill['identity_revision'] as int;
     final label = await showDialog<String>(
       context: context,
       builder:
-          (context) => AlertDialog(
-            title: Text('Rename ${p.displayLabel}'),
-            content: TextField(
-              controller: c,
-              decoration: const InputDecoration(labelText: 'Label (optional)'),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, c.text),
-                child: const Text('Rename'),
-              ),
-            ],
+          (_) => _ParticipantLabelDialog(
+            title: 'Rename ${p.displayLabel}',
+            initialLabel: p.label,
           ),
     );
-    c.dispose();
-    if (label != null) {
-      final revision = widget.bill['identity_revision'] as int;
+    if (label != null && mounted) {
       await _run(() => _command(id: p.id, label: label, revision: revision));
     }
   }
@@ -236,7 +227,8 @@ class _ParticipantIdentityPanelState extends State<ParticipantIdentityPanel> {
                       children: [
                         if (widget.tabId == null ||
                             _member?.role == 'creator' ||
-                            p.memberId == _member?.memberId ||
+                            p.memberId != null &&
+                                p.memberId == _member?.memberId ||
                             _source.text.isNotEmpty)
                           TextButton(
                             onPressed: _busy ? null : () => _rename(p),
@@ -319,7 +311,7 @@ class _ParticipantIdentityPanelState extends State<ParticipantIdentityPanel> {
                 child: const Text('Add occurrence'),
               ),
             ],
-            if (widget.tabId != null && _member != null)
+            if (widget.tabId != null)
               TextField(
                 controller: _source,
                 obscureText: true,
@@ -338,27 +330,14 @@ class _ParticipantIdentityPanelState extends State<ParticipantIdentityPanel> {
                     _busy
                         ? null
                         : () async {
-                          final c = TextEditingController(text: _member!.label);
                           final label = await showDialog<String>(
                             context: context,
                             builder:
-                                (context) => AlertDialog(
-                                  title: const Text('My tab label'),
-                                  content: TextField(controller: c),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      child: const Text('Cancel'),
-                                    ),
-                                    FilledButton(
-                                      onPressed:
-                                          () => Navigator.pop(context, c.text),
-                                      child: const Text('Rename'),
-                                    ),
-                                  ],
+                                (_) => _ParticipantLabelDialog(
+                                  title: 'My tab label',
+                                  initialLabel: _member!.label,
                                 ),
                           );
-                          c.dispose();
                           if (label != null) {
                             await _run(() async {
                               final me = await _api.renameCurrentMember(
@@ -388,4 +367,44 @@ class _ParticipantIdentityPanelState extends State<ParticipantIdentityPanel> {
       ),
     );
   }
+}
+
+class _ParticipantLabelDialog extends StatefulWidget {
+  const _ParticipantLabelDialog({
+    required this.title,
+    required this.initialLabel,
+  });
+  final String title;
+  final String initialLabel;
+  @override
+  State<_ParticipantLabelDialog> createState() =>
+      _ParticipantLabelDialogState();
+}
+
+class _ParticipantLabelDialogState extends State<_ParticipantLabelDialog> {
+  late final _controller = TextEditingController(text: widget.initialLabel);
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text(widget.title),
+    content: TextField(
+      controller: _controller,
+      decoration: const InputDecoration(labelText: 'Label (optional)'),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Cancel'),
+      ),
+      FilledButton(
+        onPressed: () => Navigator.pop(context, _controller.text),
+        child: const Text('Rename'),
+      ),
+    ],
+  );
 }
