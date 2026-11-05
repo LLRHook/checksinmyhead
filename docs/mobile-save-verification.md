@@ -42,6 +42,13 @@ performs no network, repricing, content merge, deletion or automatic publication
 Existing native fractional JPY remains visible. `.005` local/server allocation
 and versioned precision/identity0003 remain separate open work.
 
+`save_tab_review_correction_test.dart` covers tab intent arriving during launch
+publication and after its published-row read. Destination intent must commit before
+joining that pass; conflicting destinations retain the first trip. A failed create
+or attachment is not automatically repeated by the joining caller. Mixed tab
+selections continue after history-review or missing-row failures, preserve earlier
+commits/raw history, and show review/pending feedback through the actual selector.
+
 ## Actual maintained-server wire proof
 
 Use the existing strict `backend/internal/testpostgres` loopback fixture with

@@ -18,7 +18,18 @@ class TabManager extends ChangeNotifier {
 
   Stream<List<AppTab>> get tabsStream => _tabsStreamController.stream;
 
-  TabManager._internal();
+  TabManager._internal() : _database = null, _receiptOwner = null;
+
+  TabManager.withDependencies({
+    required AppDatabase database,
+    required RecentBillsManager receipts,
+  }) : _database = database,
+       _receiptOwner = receipts;
+
+  final AppDatabase? _database;
+  final RecentBillsManager? _receiptOwner;
+  AppDatabase get _db => _database ?? DatabaseProvider.db;
+  RecentBillsManager get _receipts => _receiptOwner ?? RecentBillsManager();
 
   @override
   void dispose() {
@@ -28,7 +39,7 @@ class TabManager extends ChangeNotifier {
 
   Future<List<AppTab>> getAllTabs() async {
     try {
-      final tabsData = await DatabaseProvider.db.getAllTabs();
+      final tabsData = await _db.getAllTabs();
       final tabs = await Future.wait(tabsData.map(_tabDataToAppTab));
       if (!_tabsStreamController.isClosed) {
         _tabsStreamController.add(tabs);
@@ -46,7 +57,7 @@ class TabManager extends ChangeNotifier {
     String? creatorDisplayName,
   }) async {
     try {
-      final id = await DatabaseProvider.db.insertTab(
+      final id = await _db.insertTab(
         TabsCompanion(
           name: Value(name),
           description: Value(description),
@@ -62,7 +73,7 @@ class TabManager extends ChangeNotifier {
         creatorDisplayName: creatorDisplayName,
       );
 
-      final tabData = await DatabaseProvider.db.getTabById(id);
+      final tabData = await _db.getTabById(id);
       if (tabData == null) return null;
 
       final tab = await _tabDataToAppTab(tabData);
@@ -76,7 +87,7 @@ class TabManager extends ChangeNotifier {
 
   Future<void> deleteTab(int id) async {
     try {
-      await DatabaseProvider.db.deleteTab(id);
+      await _db.deleteTab(id);
       await getAllTabs();
       notifyListeners();
     } catch (_) {
@@ -87,11 +98,16 @@ class TabManager extends ChangeNotifier {
   Future<bool> addBillsToTab(int tabId, List<int> billIds) async {
     var complete = true;
     for (final id in billIds) {
-      final result = await RecentBillsManager().resumeReceipt(
-        id,
-        intendedTabId: tabId,
-      );
-      if (result.attachment != AttachmentState.attached) complete = false;
+      try {
+        final result = await _receipts.resumeReceipt(id, intendedTabId: tabId);
+        if (result.attachment != AttachmentState.attached ||
+            result.failure != null) {
+          complete = false;
+        }
+      } catch (_) {
+        // One review/read failure cannot undo earlier commits or skip later rows.
+        complete = false;
+      }
     }
     await getAllTabs();
     notifyListeners();
@@ -119,7 +135,7 @@ class TabManager extends ChangeNotifier {
         memberToken: Value(response.memberToken),
         role: Value(response.memberToken != null ? 'creator' : null),
       );
-      await DatabaseProvider.db.updateTab(localId, companion);
+      await _db.updateTab(localId, companion);
       notifyListeners();
     } catch (_) {
       debugPrint('Error syncing tab to backend');
@@ -132,7 +148,7 @@ class TabManager extends ChangeNotifier {
     int localId, {
     String? creatorDisplayName,
   }) async {
-    final tabData = await DatabaseProvider.db.getTabById(localId);
+    final tabData = await _db.getTabById(localId);
     if (tabData == null) return null;
     if (tabData.shareUrl != null && tabData.shareUrl!.isNotEmpty) {
       return _tabDataToAppTab(tabData);
@@ -149,13 +165,13 @@ class TabManager extends ChangeNotifier {
 
   Future<void> removeBillFromTab(int tabId, int billId) async {
     try {
-      final tabData = await DatabaseProvider.db.getTabById(tabId);
+      final tabData = await _db.getTabById(tabId);
       if (tabData == null) return;
 
       final existingIds = AppTab.parseBillIds(tabData.billIds);
       existingIds.remove(billId);
 
-      await DatabaseProvider.db.updateTab(
+      await _db.updateTab(
         tabId,
         TabsCompanion(billIds: Value(existingIds.join(','))),
       );
@@ -168,7 +184,7 @@ class TabManager extends ChangeNotifier {
 
   Future<AppTab?> getTabById(int id) async {
     try {
-      final tabData = await DatabaseProvider.db.getTabById(id);
+      final tabData = await _db.getTabById(id);
       if (tabData == null) return null;
       return _tabDataToAppTab(tabData);
     } catch (e) {
@@ -179,7 +195,7 @@ class TabManager extends ChangeNotifier {
 
   Future<bool> finalizeTab(int localId) async {
     try {
-      final tabData = await DatabaseProvider.db.getTabById(localId);
+      final tabData = await _db.getTabById(localId);
       if (tabData == null) return false;
       if (tabData.backendId == null || tabData.accessToken == null) {
         return false;
@@ -194,10 +210,7 @@ class TabManager extends ChangeNotifier {
 
       if (settlements.isEmpty) return false;
 
-      await DatabaseProvider.db.updateTab(
-        localId,
-        const TabsCompanion(finalized: Value(true)),
-      );
+      await _db.updateTab(localId, const TabsCompanion(finalized: Value(true)));
 
       notifyListeners();
       return true;
@@ -228,7 +241,7 @@ class TabManager extends ChangeNotifier {
       final apiService = ApiService();
 
       // Join the tab
-      final existing = (await DatabaseProvider.db.getAllTabs()).where(
+      final existing = (await _db.getAllTabs()).where(
         (tab) =>
             tab.backendId == tabId &&
             tab.accessToken == accessToken &&
@@ -248,7 +261,7 @@ class TabManager extends ChangeNotifier {
       final tabData = await apiService.getTabData(tabId, accessToken);
 
       // Insert as remote tab in local DB
-      final localId = await DatabaseProvider.db.insertTab(
+      final localId = await _db.insertTab(
         TabsCompanion(
           name: Value(tabData['name'] ?? 'Joined Tab'),
           description: Value(tabData['description'] ?? ''),
@@ -263,7 +276,7 @@ class TabManager extends ChangeNotifier {
         ),
       );
 
-      final insertedTab = await DatabaseProvider.db.getTabById(localId);
+      final insertedTab = await _db.getTabById(localId);
       if (insertedTab == null) return null;
 
       final displayCurrency =
@@ -287,7 +300,7 @@ class TabManager extends ChangeNotifier {
 
   Future<bool> leaveTab(int localId) async {
     try {
-      final tabData = await DatabaseProvider.db.getTabById(localId);
+      final tabData = await _db.getTabById(localId);
       if (tabData == null ||
           tabData.backendId == null ||
           tabData.accessToken == null ||
@@ -299,7 +312,7 @@ class TabManager extends ChangeNotifier {
         tabData.accessToken!,
         tabData.memberToken!,
       );
-      await DatabaseProvider.db.deleteTab(localId);
+      await _db.deleteTab(localId);
       await getAllTabs();
       notifyListeners();
       return true;

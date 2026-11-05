@@ -162,7 +162,7 @@ internal/
 - **State Management**: Provider pattern for unidirectional data flow
 - **Local Database**: Drift ORM (SQLite) for offline bill storage and tab metadata
 - **API Client**: HTTP service for backend communication with fire-and-forget sync
-- **Schema Migrations**: Drift schema v8
+- **Schema Migrations**: Drift schema v9
 
 `ApiService.buildBillRequest` remains the creation serialization owner. It omits valid
 zero assignment entries without changing Provider state, participants or zero shares,

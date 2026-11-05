@@ -484,13 +484,54 @@ class RecentBillsManager extends ChangeNotifier {
     int localId, {
     int? intendedTabId,
   }) async {
-    final row = await _db.getBillById(localId);
+    var row = await _db.getBillById(localId);
     if (row == null) throw StateError('Saved receipt missing');
-    return _coordinate(
-      row.creationHandle ?? 'history:$localId',
-      () async => _resumeCommitted(row, intendedTabId: intendedTabId),
-    );
+    final handle = row.creationHandle ?? 'history:$localId';
+    final current = _inFlight[handle];
+    if (intendedTabId != null) {
+      row = await _rememberDestination(localId, intendedTabId);
+      if (row.intendedTabId != intendedTabId) {
+        return _result(
+          localId,
+          checkpointFailure: SaveFailure.attachmentUnknown,
+        );
+      }
+    }
+    final savedRow = row;
+    final result =
+        await (current ??
+            _coordinate(handle, () async => _resumeCommitted(savedRow)));
+    // An older pass may have already read "no destination". Continue only its
+    // acknowledged publication: a failed create or attachment is never retried
+    // automatically by joining this newly recorded intent.
+    if (intendedTabId != null &&
+        result.publication == PublicationState.published &&
+        result.attachment != AttachmentState.attached &&
+        result.failure == null) {
+      return _coordinate(handle, () async {
+        final latest = await _db.getBillById(localId);
+        if (latest == null) throw StateError('Saved receipt missing');
+        if (latest.publicationState != 'published') return _result(localId);
+        return _resumeCommitted(latest);
+      });
+    }
+    return result;
   }
+
+  Future<RecentBill> _rememberDestination(int localId, int tabId) =>
+      _db.transaction(() async {
+        final row = await _db.getBillById(localId);
+        if (row == null) throw StateError('Saved receipt missing');
+        if (row.intendedTabId != null) return row;
+        await _db.checkpointReceipt(
+          localId,
+          RecentBillsCompanion(
+            intendedTabId: Value(tabId),
+            attachmentState: const Value('pending'),
+          ),
+        );
+        return (await _db.getBillById(localId))!;
+      });
 
   Future<SaveReceiptResult> _resumeCommitted(
     RecentBill row, {
@@ -561,17 +602,13 @@ class RecentBillsManager extends ChangeNotifier {
     int? intendedTabId,
   }) async {
     if (intendedTabId != null && row.intendedTabId != intendedTabId) {
-      if (row.intendedTabId != null) {
-        return _pending(row, SaveFailure.attachmentUnknown);
+      row = await _rememberDestination(row.id, intendedTabId);
+      if (row.intendedTabId != intendedTabId) {
+        return _result(
+          row.id,
+          checkpointFailure: SaveFailure.attachmentUnknown,
+        );
       }
-      await _db.checkpointReceipt(
-        row.id,
-        RecentBillsCompanion(
-          intendedTabId: Value(intendedTabId),
-          attachmentState: const Value('pending'),
-        ),
-      );
-      row = (await _db.getBillById(row.id))!;
     }
     if (row.creationHandle == null) {
       _guardRawHistory(row);

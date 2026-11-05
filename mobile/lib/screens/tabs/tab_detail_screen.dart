@@ -17,17 +17,26 @@ import 'package:share_plus/share_plus.dart';
 
 class TabDetailScreen extends StatefulWidget {
   final AppTab tab;
+  final TabManager? tabManager;
+  final RecentBillsManager? billsManager;
+  final ApiService? apiService;
 
-  const TabDetailScreen({super.key, required this.tab});
+  const TabDetailScreen({
+    super.key,
+    required this.tab,
+    this.tabManager,
+    this.billsManager,
+    this.apiService,
+  });
 
   @override
   State<TabDetailScreen> createState() => _TabDetailScreenState();
 }
 
 class _TabDetailScreenState extends State<TabDetailScreen> {
-  final _billsManager = RecentBillsManager();
-  final _tabManager = TabManager();
-  final _apiService = ApiService();
+  late final _billsManager = widget.billsManager ?? RecentBillsManager();
+  late final _tabManager = widget.tabManager ?? TabManager();
+  late final _apiService = widget.apiService ?? ApiService();
   List<RecentBillModel> _allBills = [];
   List<RecentBillModel> _tabBills = [];
   List<SettlementResponse> _settlements = [];
@@ -274,12 +283,14 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
         _currentTab.id!,
         selectedBills,
       );
+      if (!mounted) return;
       await _loadBills();
+      if (!mounted) return;
 
       _showSnackBar(
         synced
             ? 'Added ${selectedBills.length} bill${selectedBills.length == 1 ? '' : 's'}'
-            : 'Saved locally, but could not sync every bill. Check your connection.',
+            : 'Not every selected bill was added. Review saved receipts or retry pending links.',
         isError: !synced,
       );
     }
