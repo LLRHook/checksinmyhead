@@ -185,8 +185,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Scoped reference/read/proof reviews pass;962 ordinary/1272 selectedPG (1722distinct) retained. Matched C/D and atomic fresh-self participation remain incomplete; no adopted retirement established. Numerical/runtime/rollout and whole gates remain open.
-- **Docs:** docs/backend-api.md; docs/reviews/2026-11-05-participant-identity-behavior.md; docs/reviews/2026-11-05-identity-review-corrections.md; docs/reviews/2026-11-05-row-materialization.md
+- **Fix:** Backend reference/read/proof reviews pass. C/D74dd source reviews0/0; web98, affected Flutter14/analyze and owned HTTP/PG mobile+browser49 pass; integrated as ordered commits after9244ad0. Full d6 Flutter RED (two I/O errors; separate classification passes). Atomic fresh-self UNMET; supported create-unbound/request/creator-or-source approval only. Current artifact/numerical/native/public/rollout and whole gates open.
+- **Docs:** docs/backend-api.md; docs/reviews/2026-11-05-{participant-identity-behavior,identity-review-corrections,row-materialization,client-identity-integration}.md; docs/technical-overview.md; mobile/test/live/README.md
 - **Log:**
   - 2026-11-05 Verification: Three unique P2 review gaps corrected;14 failing before cases/12 controls,26 after pass;5 independent removals discriminate. Correction review pending;broader B gate RED.
   - 2026-11-05 Integration: Manager/source check: POST participants is unbound-only; original plan60/approval33-34 fresh-self capability UNMET. Creator/source flow remains; frozen0003 unchanged.
@@ -244,8 +244,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Use paired/budget8 TLS/M2 teardown; host392/source0/0 retained. Timer fixture uses logical time and checks cancel; production45s unchanged. Native/resource/B/spending/provider/old-writer/physical/signed/integrated/release remain open.
-- **Docs:** mobile/README.md; docs/{backend-api,technical-overview,mobile-ocr-verification}.md; docs/reviews/2026-11-04-{mobile-tls-integration,mobile-tls-acceptance,backend-native-acceptance}.md; prior M2/A2 records; VERIFICATION unchanged; docs/reviews/2026-11-05-ocr-timer-fixture.md
+- **Fix:** Paired TLS/M2 and logical timer cancel retained; production45s unchanged. d6 full Flutter RED: peer.received2s/TLS retry350ms; classification passes; cause unproved. Phase diagnostic inactive. Memory/B/spend/native/provider/full gates open.
+- **Docs:** mobile/README.md; docs/{backend-api,technical-overview,mobile-ocr-verification}.md; docs/reviews/2026-11-04-{mobile-tls-integration,mobile-tls-acceptance,backend-native-acceptance}.md; prior M2/A2 records; docs/reviews/2026-11-05-{ocr-timer-fixture,client-identity-integration}.md
 - **Log:**
   - 2026-11-04 History: M2 clean362/17native/all359prior APPROVE; backend1146/OCR3600: prior M2/A2/native dated records (Docs).
   - 2026-11-04 Acceptance: Mobile7e36 source APPROVE0/0/reviewer NOT RUN; root392 CI commands and retained-report reconciliation pass; raw parser failure/missing source-after receipt retained. See mobile-tls-acceptance.

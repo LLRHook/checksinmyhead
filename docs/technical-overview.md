@@ -316,7 +316,7 @@ renames, binding generations/receipts, gross/net and snapshots. Confirmed member
 by tab/member ID; unbound/pending guests remain distinct per bill/participant. Checked
 USD reads preserve explicit frozen zero and expose unavailable payer/valuation states.
 The earlier positive-only USD fallback source defect is corrected; native Keychain
-qualification, matched reference clients, old-writer drain and combined journeys remain open.
+qualification, old-writer drain and full combined journeys remain open. Supported mobile/browser reference clients are implemented; their [synthetic journey](../mobile/test/live/README.md) is scoped functional evidence.
 The narrow iOS MethodChannel uses OS random32 bytes and generic-password Keychain
 items accessible only when unlocked on this device, with foreground admission and
 create-if-absent retrieval on duplicate add. Drift stores only its nonsecret locator;

@@ -136,7 +136,7 @@ health checks ledger only, separate verify checks catalogs. Restore1,2,3/data. T
 ready2 reference authority/revision/receipts, persisted response2, same-label denial/
 confirmed-owner success, rename-stable cents, explicit unavailable net and raw legacy
 snapshots. Interim nonnumerical checkpoints exclude exactly four measured parents;
-full numerical/runtime gates stay RED. No matched-client/release claim.
+Numerical/runtime RED; [client journey](mobile/test/live/README.md) is scoped.
 Default apply serves; `--migrate-only` applies/exits; `--schema-mode=verify` verifies/serves.
 Health: one ledger query; rerun verify after external DDL. No payer backfill. Use owned
 schemas/overlays; retain additive schema/ledger on rollback. Production footprint,

@@ -639,7 +639,15 @@
       "mobile/test/unit/utils/currency_formatter_test.dart",
       "mobile/test/unit/utils/formatting_utils_test.dart",
       "mobile/test/unit/utils/share_utils_currency_test.dart",
-      "mobile/test/unit/utils/validation_utils_test.dart"
+      "mobile/test/unit/utils/validation_utils_test.dart",
+      "mobile/test/participant_attachment_recovery_test.dart",
+      "mobile/test/participant_claim_screen_test.dart",
+      "mobile/test/participant_identity_test.dart",
+      "mobile/test/participant_identity_widget_test.dart",
+      "mobile/test/participant_legacy_history_test.dart",
+      "mobile/test/participant_migration_test.dart",
+      "mobile/test/participant_transport_contract_test.dart",
+      "mobile/test/participant_v1_recovery_test.dart"
     ],
     "web": [
       "web-bill-viewer/src/components/__tests__/SettlementCard.test.ts",
@@ -648,7 +656,10 @@
       "web-bill-viewer/src/lib/__tests__/private-reads.test.ts",
       "web-bill-viewer/src/lib/__tests__/private-viewer.test.ts",
       "web-bill-viewer/src/lib/__tests__/public-web.test.ts",
-      "web-bill-viewer/src/lib/currency.test.ts"
+      "web-bill-viewer/src/lib/currency.test.ts",
+      "web-bill-viewer/src/components/__tests__/LazyBillActions.test.ts",
+      "web-bill-viewer/src/components/__tests__/RecordedShares.test.ts",
+      "web-bill-viewer/src/lib/__tests__/participant-identity.test.ts"
     ]
   },
   "reports": {
@@ -1014,13 +1025,13 @@
       ],
       "mobile/test/unit/models/person_test.dart": [
         "(?:^| )identical\\ objects\\ are\\ equal$",
-        "(?:^| )same\\ name\\ and\\ color\\ are\\ equal$",
-        "(?:^| )equality\\ is\\ case\\-insensitive\\ on\\ name$",
+        "(?:^| )Person\\ equality\\ same\\ name\\ and\\ color\\ are\\ separate\\ receipt\\ occurrences$",
+        "(?:^| )Person\\ equality\\ case\\-folded\\ labels\\ remain\\ separate\\ receipt\\ occurrences$",
         "(?:^| )different\\ names\\ are\\ not\\ equal$",
-        "(?:^| )different\\ colors\\ are\\ still\\ equal\\ \\(name\\-only\\ equality\\)$",
+        "(?:^| )Person\\ equality\\ color\\ and\\ rename\\ preserve\\ a\\ receipt\\ reference$",
         "(?:^| )not\\ equal\\ to\\ non\\-Person\\ object$",
         "(?:^| )equal\\ objects\\ have\\ equal\\ hash\\ codes$",
-        "(?:^| )case\\-insensitive\\ names\\ produce\\ same\\ hash\\ code$",
+        "(?:^| )Person\\ hashCode\\ server\\ association\\ never\\ changes\\ a\\ receipt\\ hash$",
         "(?:^| )works\\ correctly\\ in\\ a\\ Set$",
         "(?:^| )works\\ correctly\\ as\\ Map\\ key$"
       ],
@@ -1130,7 +1141,7 @@
       ],
       "mobile/test/unit/utils/share_utils_currency_test.dart": [
         "(?:^| )share\\ text\\ labels\\ original\\ non\\-USD\\ receipt\\ amounts$",
-        "(?:^| )share\\ details\\ match\\ reconstructed\\ people\\ by\\ name$"
+        "(?:^| )share\\ details\\ match\\ reconstructed\\ receipt\\ refs\\ after\\ rename$"
       ],
       "mobile/test/unit/utils/validation_utils_test.dart": [
         "(?:^| )accepts\\ 10\\-digit\\ number$",
@@ -1155,6 +1166,56 @@
         "(?:^| )rejects\\ without\\ \\$$",
         "(?:^| )rejects\\ bare\\ \\$$",
         "(?:^| )rejects\\ empty\\ string$"
+      ],
+      "mobile/test/participant_attachment_recovery_test.dart": [
+        "(?:^| )legacy\\ source\\ attach\\ preserves\\ blank\\ long\\ raw\\ labels\\ without\\ rebuilding\\ a\\ create\\ or\\ minting\\ a\\ key$",
+        "(?:^| )known\\ attached\\ nonfinalized\\ member_denied\\ stops\\ after\\ one\\ reauthorization\\ without\\ fallback\\ POST$",
+        "(?:^| )known\\ attached\\ nonfinalized\\ checkpoint_failed\\ stops\\ after\\ one\\ reauthorization\\ without\\ fallback\\ POST$"
+      ],
+      "mobile/test/participant_claim_screen_test.dart": [
+        "(?:^| )payment\\-open\\ select\\ occurrence\\ without\\ a\\ share\\ returns\\ to\\ items\\ without\\ zero\\ or\\ null\\ access$",
+        "(?:^| )payment\\-open\\ create\\ occurrence\\ without\\ a\\ share\\ returns\\ to\\ items\\ without\\ zero\\ or\\ null\\ access$",
+        "(?:^| )attached\\ claim\\ ACK\\ reads\\ scoped\\ nonzero\\ graph\\ before\\ payment$",
+        "(?:^| )attached\\ claim\\ ACK\\ read\\ failure\\ retries\\ only\\ GET$",
+        "(?:^| )actual\\ claim\\ parent\\ creates\\ first\\ occurrence\\ before\\ selecting\\ returned\\ row$",
+        "(?:^| )actual\\ claim\\ parent\\ creates\\ first\\ occurrence\\ with\\ same\\ ref\\ explicit\\ recovery$"
+      ],
+      "mobile/test/participant_identity_test.dart": [
+        "(?:^| )USD\\ duplicate\\-label\\ ties\\ retain\\ receipt\\ ordinal\\ after\\ saved\\-share\\ reorder\\ and\\ import\\ rename$",
+        "(?:^| )receipt\\ registry\\ preserves\\ duplicate\\ blank\\ Unicode\\ identities\\ after\\ file\\ reopen\\ rename\\ and\\ birthday$",
+        "(?:^| )new\\ v2\\ original\\ map\\ is\\ exact\\ ordered\\ unique\\ and\\ atomic\\ with\\ source\\ authority$",
+        "(?:^| )original201\\ missing\\ map\\ retains\\ the\\ same\\ key\\ and\\ bytes\\ for\\ explicit\\ recovery$",
+        "(?:^| )original201\\ reordered\\ map\\ retains\\ the\\ same\\ key\\ and\\ bytes\\ for\\ explicit\\ recovery$",
+        "(?:^| )original201\\ duplicate_id\\ map\\ retains\\ the\\ same\\ key\\ and\\ bytes\\ for\\ explicit\\ recovery$",
+        "(?:^| )original201\\ extra\\ map\\ retains\\ the\\ same\\ key\\ and\\ bytes\\ for\\ explicit\\ recovery$",
+        "(?:^| )original201\\ wrong_version\\ map\\ retains\\ the\\ same\\ key\\ and\\ bytes\\ for\\ explicit\\ recovery$",
+        "(?:^| )suggestion\\ and\\ group\\ additions\\ copy\\ fresh\\ refs\\ and\\ reject\\ none\\ of\\ duplicate\\ blank\\ casefold\\ labels$",
+        "(?:^| )paid\\ locks\\ use\\ exact\\ occurrence\\ IDs\\ and\\ cannot\\ lock\\ a\\ same\\-label\\ sibling$"
+      ],
+      "mobile/test/participant_identity_widget_test.dart": [
+        "(?:^| )duplicate\\ occurrence\\ selection\\ survives\\ label\\ rename\\ with\\ exact\\ source\\ participant\\ revision$",
+        "(?:^| )pending\\ request\\ shows\\ generation\\ and\\ deliberate\\ uncertain\\ decision\\ retry\\ keeps\\ original\\ body$"
+      ],
+      "mobile/test/participant_legacy_history_test.dart": [
+        "(?:^| )legacy\\ duplicate\\ blank\\ raw\\ share\\ rows\\ retain\\ exact\\ amounts\\ flags\\ and\\ IDs\\ after\\ import\\ without\\ guessed\\ zeros$",
+        "(?:^| )legacy\\ local\\ assignments\\ without\\ recorded\\ shares\\ display\\ review\\ and\\ raw\\ percentages\\ rather\\ than\\ a\\ computed\\ zero\\ debt$"
+      ],
+      "mobile/test/participant_migration_test.dart": [
+        "(?:^| )file\\-backed\\ Drift8\\ to10\\ reopens\\ preserving\\ every\\ old\\ column\\ and\\ row$",
+        "(?:^| )file\\-backed\\ Drift9\\ to10\\ reopens\\ preserving\\ every\\ old\\ column\\ and\\ row$"
+      ],
+      "mobile/test/participant_transport_contract_test.dart": [
+        "(?:^| )strict\\ participant\\ commands\\ send\\ independent\\ source\\ body\\ proof\\ only\\ on\\ attached\\ rename\\ or\\ decision$",
+        "(?:^| )settlement\\ history\\ retains\\ raw\\ legacy\\ rows\\ and\\ review\\ while\\ denied\\ unavailable\\ malformed\\ and\\ cross\\-scope\\ stay\\ errors$",
+        "(?:^| )attempted\\ version1\\ envelope\\ never\\ upgrades\\ to\\ wire2\\ after\\ metadata\\ mismatch$",
+        "(?:^| )settlement\\ marker\\ ACK\\ then\\ failed\\ read\\ retains\\ raw\\ rows\\ and\\ renders\\ GET\\-only\\ recovery\\ without\\ another\\ PATCH$",
+        "(?:^| )unavailable\\ finalized\\ snapshot\\ never\\ substitutes\\ cached\\ current\\ person\\ totals$",
+        "(?:^| )empty\\ bill\\ list\\ retains\\ blank\\ legacy\\ settlement\\ rows\\ and\\ exact\\ row\\ paid\\ control$",
+        "(?:^| )invalid\\ settlement\\ history\\ retains\\ raw\\ rows\\ without\\ enabling\\ a\\ paid\\ mutation$",
+        "(?:^| )unavailable\\ history\\ with\\ no\\ bills\\ has\\ finite\\ deliberate\\ retry\\ and\\ legitimate\\ empty\\ recovery$"
+      ],
+      "mobile/test/participant_v1_recovery_test.dart": [
+        "(?:^| )actual\\ frozen\\ Drift9\\ attempted\\-v1\\ reopens\\ replays\\ original\\ HTTP\\ bytes\\ key\\ absent\\-header\\ and\\ lost201\\ again$"
       ]
     },
     "web": {
@@ -1194,8 +1255,8 @@
         "(?:^| )persists\\ a\\ display\\ name\\ and\\ returns\\ the\\ member\\ capability$",
         "(?:^| )loads settlements with the access token$",
         "(?:^| )loads members with the access token$",
-        "(?:^| )keeps returning an empty list when the request fails$",
-        "(?:^| )keeps returning an empty list when the request fails$"
+        "(?:^| )tab\\ collections\\ propagates\\ unavailable\\ collections\\ without\\ fabricating\\ an\\ empty\\ list$",
+        "(?:^| )tab\\ collections\\ propagates\\ unavailable\\ collections\\ without\\ fabricating\\ an\\ empty\\ list$"
       ],
       "web-bill-viewer/src/lib/__tests__/lazy-bill.test.ts": [
         "(?:^| )keeps\\ the\\ item\\ version\\ from\\ the\\ first\\ edit\\ through\\ later\\ refreshes$",
@@ -1248,6 +1309,33 @@
         "(?:^| )shows\\ the\\ original\\ EUR\\ amount\\ and\\ its\\ frozen\\ USD\\ value$",
         "(?:^| )treats\\ legacy\\ bills\\ without\\ currency\\ fields\\ as\\ USD$",
         "(?:^| )uses\\ the\\ frozen\\ JPY\\ rate\\ for\\ another\\ non\\-USD\\ currency$"
+      ],
+      "web-bill-viewer/src/components/__tests__/LazyBillActions.test.ts": [
+        "(?:^| )maintained\\ lazy\\ action\\ read\\ recovery\\ paid\\ ACK\\ plus\\ failed\\ shared\\ /b\\ refresh\\ retains\\ saved\\ marker\\ and\\ rendered\\ retry\\ performs\\ GET\\ only$",
+        "(?:^| )maintained\\ lazy\\ action\\ read\\ recovery\\ selection\\ 403\\ and\\ failed\\ refresh\\ settles\\ without\\ unhandled\\ promise\\ or\\ repeated\\ mutation$",
+        "(?:^| )maintained\\ lazy\\ action\\ read\\ recovery\\ selection\\ 409\\ and\\ failed\\ refresh\\ settles\\ without\\ unhandled\\ promise\\ or\\ repeated\\ mutation$",
+        "(?:^| )maintained\\ lazy\\ action\\ read\\ recovery\\ selection\\ network\\ and\\ failed\\ refresh\\ settles\\ without\\ unhandled\\ promise\\ or\\ repeated\\ mutation$",
+        "(?:^| )maintained\\ lazy\\ action\\ read\\ recovery\\ missing\\ item\\ version\\ and\\ unavailable\\ read\\ settle\\ without\\ any\\ mutation$",
+        "(?:^| )maintained\\ lazy\\ action\\ read\\ recovery\\ attached\\ claim\\ ACK\\ and\\ unavailable\\ current\\ graph\\ recover\\ through\\ the\\ same\\ member\\-scoped\\ tab\\ read$"
+      ],
+      "web-bill-viewer/src/components/__tests__/RecordedShares.test.ts": [
+        "(?:^| )recorded\\ browser\\ receipt\\ rows\\ actual\\ /b\\ source\\ refresh\\ keeps\\ saved\\ marker\\ on\\ failed\\ GET\\ and\\ rendered\\ recovery\\ reads\\ without\\ another\\ PATCH$",
+        "(?:^| )recorded\\ browser\\ receipt\\ rows\\ renders\\ legacy\\ lazy\\ raw\\ blank\\ rows\\ amounts\\ flags\\ exact\\ IDs\\ and\\ ordered\\ local\\ occurrence$",
+        "(?:^| )recorded\\ browser\\ receipt\\ rows\\ rendered\\ exact\\-row\\ action\\ sends\\ only\\ independent\\ source\\ proof\\ and\\ preserves\\ the\\ other\\ blank\\ row$",
+        "(?:^| )recorded\\ browser\\ receipt\\ rows\\ destination\\ member\\ and\\ labels\\ expose\\ no\\ paid\\ action\\ until\\ an\\ independent\\ source\\ is\\ entered$",
+        "(?:^| )recorded\\ browser\\ receipt\\ rows\\ denied\\ source\\ proof\\ has\\ finite\\ error\\ and\\ does\\ not\\ refresh\\ or\\ substitute\\ another\\ credential$"
+      ],
+      "web-bill-viewer/src/lib/__tests__/participant-identity.test.ts": [
+        "(?:^| )participant\\ identity\\ duplicate\\ allocation\\-label\\ ties\\ follow\\ receipt\\ occurrence\\ order\\ after\\ share\\-row\\ reorder$",
+        "(?:^| )participant\\ identity\\ memberless\\ destination\\ exposes\\ independent\\ source\\ input\\ without\\ inferring\\ a\\ member\\ from\\ a\\ blank\\ occurrence$",
+        "(?:^| )participant\\ identity\\ paid\\ and\\ draft\\ identities\\ discriminate\\ same\\ blank\\ casefold\\ labels\\ and\\ retain\\ rename$",
+        "(?:^| )participant\\ identity\\ version2\\ bill\\-scoped\\ storage\\ never\\ selects\\ from\\ legacy\\ names\\ or\\ another\\ bill$",
+        "(?:^| )participant\\ identity\\ legacy\\ membership\\ keeps\\ its\\ token\\ for\\ authentication\\ and\\ label\\ as\\ suggestion\\ only$",
+        "(?:^| )participant\\ identity\\ members/me\\ validates\\ the\\ returned\\ tab\\ scope\\ and\\ never\\ sends\\ a\\ name\\ rejoin$",
+        "(?:^| )participant\\ identity\\ label\\-only\\ and\\ missing\\ revision\\ writes\\ fail\\ before\\ HTTP;\\ stale\\ current\\ writes\\ do\\ not\\ automatically\\ retry$",
+        "(?:^| )participant\\ identity\\ binding\\ generation\\ actor\\ proof\\ and\\ source\\ proof\\ stay\\ separate;\\ exact\\ deliberate\\ retry\\ retains\\ original\\ body$",
+        "(?:^| )participant\\ identity\\ unavailable\\ and\\ raw\\ legacy\\ settlement\\ history\\ stay\\ explicit\\ rather\\ than\\ becoming\\ an\\ empty\\ result$",
+        "(?:^| )participant\\ identity\\ confirmed\\ members\\ group\\ by\\ scoped\\ ID\\ while\\ same\\-label\\ unbound\\ occurrences\\ stay\\ separate$"
       ]
     }
   },

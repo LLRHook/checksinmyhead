@@ -168,7 +168,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Out of scope:** Unrelated redesign, new framework, live destructive operations, unapproved publication.
 - **Bump:** minor
 - **Status:** open
-- **Docs:** docs/reviews/2026-11-03-client-v1-bridge.md; VERIFICATION.md
+- **Implementation:** C/D74dd reference clients integrated. Owned USD save/reopen/attach/member/claim/paid/finalize journey, web98 and affected Flutter14 pass. Full d6 Flutter RED; no complete/native/provider/public/rollout acceptance.
+- **Docs:** docs/reviews/2026-11-03-client-v1-bridge.md; docs/reviews/2026-11-05-client-identity-integration.md; mobile/test/live/README.md; VERIFICATION.md
 - **Log:**
   - 2026-11-03 Validation: 43772a7 adds real ItemCard/provider upload, receipt-name/percentage and read-only settlement/Venmo tests; preserved source/member callers verified. 228 Flutter/54 web pass, zero skips. Scoped evidence: docs/reviews/2026-11-03-client-v1-bridge.md. Public signed bridge and full journeys unverified; remain open.
 
