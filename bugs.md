@@ -163,8 +163,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Persist stored RETURNING timestamps and checked row counts; identityB snapshot/retry controls pass. Reviewed row loader uses pointer temporaries/exact grouped capacity with physical scanner coverage. Full gate RED: tested merge b5f08199 misses750ms and alarms600s; no performance/artifact/integrated/rollout acceptance.
-- **Docs:** docs/backend-api.md; backend/README.md; VERIFICATION.md; docs/reviews/2026-11-03-atomic-lifecycle.md; docs/reviews/2026-11-03-unicode-share-ambiguity.md; docs/reviews/2026-11-05-scoped-source-acceptance.md; docs/reviews/2026-11-05-row-materialization.md
+- **Fix:** Stored RETURNING/count guards and typed complete-row reader retain atomic retries. Source/S1 reviews, 50 focused cases, control failures and physical scanner coverage pass; raw candidates triaged. Full gate RED: tested71937623 startup60s kill, creation/tab600s, tab1.484s>750ms. No performance/artifact/integrated/rollout acceptance.
+- **Docs:** docs/backend-api.md; backend/README.md; VERIFICATION.md; docs/reviews/{2026-11-03-atomic-lifecycle,2026-11-03-unicode-share-ambiguity,2026-11-05-scoped-source-acceptance,2026-11-05-row-materialization,2026-11-05-complete-row-conversion}.md
 - **Log:**
   - 2026-11-05 Contrary execution: run42012762828 mandatory8 PG fails snapshot equality across two lifecycle parents/five currency children; first/stored CreatedAt803580958/803580000ns. Other five rows pass; Required delivery checks fails. Reopen in-progress; no flake/rerun waiver. See committed gate note and retained raw job log.
   - 2026-11-05 Integration: Loader source0/0, physical build/vet/scanner coverage pass;1734 selected leaves retained. No numerical waiver.

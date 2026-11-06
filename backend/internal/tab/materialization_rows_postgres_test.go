@@ -122,29 +122,55 @@ func assertMaterializationValues(t *testing.T, got, want any) {
 func TestPostgresMaterializationCompleteRows(t *testing.T) {
 	db := authorizationPostgres(t)
 	tab, _, bills, access := seedMaterialization(t, db)
+	// The existing GORM materializer is an independent database-value oracle.
+	var oracleP []models.BillParticipant
+	var oracleS []models.PersonShare
+	ids := []uint{bills[0].ID, bills[1].ID}
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Select(models.ParticipantColumns).Where("bill_id IN ?", ids).Order("id ASC").Clauses(clause.Locking{Strength: "UPDATE"}).Find(&oracleP).Error; err != nil {
+			return err
+		}
+		return tx.Select(models.ShareColumns).Where("bill_id IN ?", ids).Order("id ASC").Clauses(clause.Locking{Strength: "UPDATE"}).Find(&oracleS).Error
+	}); err != nil {
+		t.Fatal(err)
+	}
 	var gotP []models.BillParticipant
 	var gotS []models.PersonShare
 	reads := []string{}
 	callback := "test:materialization_complete"
-	if err := db.Callback().Query().After("gorm:after_query").Register(callback, func(tx *gorm.DB) {
+	if err := db.Callback().Row().After("gorm:row").Register(callback, func(tx *gorm.DB) {
 		if tx.Statement.Table != "bill_participants" && tx.Statement.Table != "person_shares" {
 			return
 		}
 		lock, ok := tx.Statement.Clauses["FOR"].Expression.(clause.Locking)
 		if !ok || lock.Strength != "UPDATE" {
 			return
-		} // Stored retry has its separate unlocked lookup.
-		reads = append(reads, tx.Statement.SQL.String())
-		switch tx.Statement.Table {
-		case "bill_participants":
-			gotP = materializationRows[models.BillParticipant](tx.Statement.Dest)
-		case "person_shares":
-			gotS = materializationRows[models.PersonShare](tx.Statement.Dest)
 		}
+		reads = append(reads, tx.Statement.SQL.String())
 	}); err != nil {
 		t.Fatal(err)
 	}
-	defer db.Callback().Query().Remove(callback)
+	defer db.Callback().Row().Remove(callback)
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		p, err := readFinalizationParticipants(tx, ids)
+		if err != nil {
+			return err
+		}
+		s, err := readFinalizationShares(tx, ids)
+		if err != nil {
+			return err
+		}
+		gotP = materializationRows[models.BillParticipant](&p)
+		gotS = materializationRows[models.PersonShare](&s)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	assertMaterializationValues(t, gotP, oracleP)
+	assertMaterializationValues(t, gotS, oracleS)
+	// Discard direct-helper observations. The retained SQL guards below must
+	// observe the actual finalization call, with the observer still registered.
+	reads = nil
 	first, err := NewTabRepository(db).FinalizeOnce(context.Background(), FinalizeCommand{access})
 	if err != nil || len(first) != 5 {
 		t.Fatalf("first finalize rows=%d error=%v", len(first), err)
@@ -221,14 +247,14 @@ func TestPostgresMaterializationReadFailures(t *testing.T) {
 				if stage == "share_query" {
 					table = "person_shares"
 				}
-				if e := db.Callback().Query().Before("gorm:query").Register(cb, func(tx *gorm.DB) {
+				if e := db.Callback().Row().Before("gorm:row").Register(cb, func(tx *gorm.DB) {
 					if tx.Statement.Table == table {
 						tx.AddError(marker)
 					}
 				}); e != nil {
 					t.Fatal(e)
 				}
-				defer db.Callback().Query().Remove(cb)
+				defer db.Callback().Row().Remove(cb)
 			}
 			before := lifecycleSnapshot(t, db)
 			rows, err := NewTabRepository(db).FinalizeOnce(context.Background(), FinalizeCommand{access})
@@ -240,7 +266,7 @@ func TestPostgresMaterializationReadFailures(t *testing.T) {
 					t.Fatal(e)
 				}
 			} else {
-				if e := db.Callback().Query().Remove(cb); e != nil {
+				if e := db.Callback().Row().Remove(cb); e != nil {
 					t.Fatal(e)
 				}
 			}
@@ -257,49 +283,41 @@ func TestPostgresMaterializationInvalidEvidence(t *testing.T) {
 			db := authorizationPostgres(t)
 			_, _, _, access := seedMaterialization(t, db)
 			cb := "test:materialization_invalid"
-			if e := db.Callback().Query().After("gorm:after_query").Register(cb, func(tx *gorm.DB) {
+			if e := db.Callback().Row().Before("gorm:row").Register(cb, func(tx *gorm.DB) {
+				replacements := map[string]string{}
+				columns := ""
 				if tx.Statement.Table == "bill_participants" && kind != "invalid_json_money" {
-					v := reflect.Indirect(reflect.ValueOf(tx.Statement.Dest))
-					for i := 0; i < v.Len(); i++ {
-						row := v.Index(i)
-						if row.Kind() == reflect.Pointer {
-							row = row.Elem()
-						}
-						p := row.Addr().Interface().(*models.BillParticipant)
-						if p.ID != 16 {
-							continue
-						}
-						switch kind {
-						case "partial_receipt":
-							p.LastBindingActorKind = nil
-						case "future_pending":
-							target := uint(9)
-							rev := int64(1<<34 + 5)
-							when := time.Date(2026, 11, 5, 0, 0, 0, 0, time.UTC)
-							p.PendingMemberID = &target
-							p.PendingRequestRevision = &rev
-							p.RequestedAt = &when
-						case "legacy_row":
-							p.IdentityVersion = 1
-						case "unused_wrong_tab":
-							id := uint(999)
-							p.TabID = &id
-						}
+					columns = models.ParticipantColumns
+					switch kind {
+					case "partial_receipt":
+						replacements["last_binding_actor_kind"] = "CASE WHEN id=16 THEN NULL ELSE last_binding_actor_kind END AS last_binding_actor_kind"
+					case "future_pending":
+						replacements["pending_member_id"] = "CASE WHEN id=16 THEN 9::bigint ELSE pending_member_id END AS pending_member_id"
+						replacements["pending_request_revision"] = "CASE WHEN id=16 THEN 17179869189::bigint ELSE pending_request_revision END AS pending_request_revision"
+						replacements["requested_at"] = "CASE WHEN id=16 THEN '2026-11-05T00:00:00Z'::timestamptz ELSE requested_at END AS requested_at"
+					case "legacy_row":
+						replacements["identity_version"] = "CASE WHEN id=16 THEN 1::smallint ELSE identity_version END AS identity_version"
+					case "unused_wrong_tab":
+						replacements["tab_id"] = "CASE WHEN id=16 THEN 999::bigint ELSE tab_id END AS tab_id"
 					}
 				}
 				if tx.Statement.Table == "person_shares" && kind == "invalid_json_money" {
-					v := reflect.Indirect(reflect.ValueOf(tx.Statement.Dest))
-					row := v.Index(4)
-					if row.Kind() == reflect.Pointer {
-						row = row.Elem()
+					columns = models.ShareColumns
+					replacements["items"] = `CASE WHEN id=34 THEN items || '[{"name":"invalid","amount":1e300}]'::jsonb ELSE items END AS items`
+				}
+				if columns != "" {
+					selected := strings.Split(columns, ",")
+					for i, name := range selected {
+						if changed, ok := replacements[name]; ok {
+							selected[i] = changed
+						}
 					}
-					s := row.Addr().Interface().(*models.PersonShare)
-					s.Items = append(s.Items, models.ItemDetail{Name: "invalid", Amount: 1e300})
+					tx.Statement.Selects = []string{strings.Join(selected, ",")}
 				}
 			}); e != nil {
 				t.Fatal(e)
 			}
-			defer db.Callback().Query().Remove(cb)
+			defer db.Callback().Row().Remove(cb)
 			before := lifecycleSnapshot(t, db)
 			rows, err := NewTabRepository(db).FinalizeOnce(context.Background(), FinalizeCommand{access})
 			want := error(billpkg.ErrIdentityReview)
@@ -309,7 +327,7 @@ func TestPostgresMaterializationInvalidEvidence(t *testing.T) {
 			if !errors.Is(err, want) || rows != nil || lifecycleSnapshot(t, db) != before {
 				t.Fatalf("invalid complete evidence accepted: kind=%s rows=%v error=%v", kind, rows, err)
 			}
-			if e := db.Callback().Query().Remove(cb); e != nil {
+			if e := db.Callback().Row().Remove(cb); e != nil {
 				t.Fatal(e)
 			}
 			if rows := mustFinalize(t, db, access); len(rows) != 5 {
