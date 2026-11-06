@@ -244,8 +244,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Paired TLS/M2 and logical timer cancel retained; production45s unchanged. d6 full Flutter RED: peer.received2s/TLS retry350ms; classification passes; cause unproved. Phase diagnostic inactive. Memory/B/spend/native/provider/full gates open.
-- **Docs:** mobile/README.md; docs/{backend-api,technical-overview,mobile-ocr-verification}.md; docs/reviews/2026-11-04-{mobile-tls-integration,mobile-tls-acceptance,backend-native-acceptance}.md; prior M2/A2 records; docs/reviews/2026-11-05-{ocr-timer-fixture,client-identity-integration}.md
+- **Fix:** Production45s unchanged. Fixtures7PASS;5removals:8assertionFAIL/5healthy. OriginalIDs/joins retained. d6fullRED/classification2PASS unchanged; full/native/memory/B/spend/provider open.
+- **Docs:** mobile/README.md; docs/{backend-api,technical-overview,mobile-ocr-verification}.md; docs/reviews/2026-11-04-{mobile-tls-integration,mobile-tls-acceptance,backend-native-acceptance}.md; docs/reviews/2026-11-05-{ocr-timer-fixture,client-identity-integration}.md; docs/reviews/2026-11-06-receipt-deadline-fixtures.md
 - **Log:**
   - 2026-11-04 History: M2 clean362/17native/all359prior APPROVE; backend1146/OCR3600: prior M2/A2/native dated records (Docs).
   - 2026-11-04 Acceptance: Mobile7e36 source APPROVE0/0/reviewer NOT RUN; root392 CI commands and retained-report reconciliation pass; raw parser failure/missing source-after receipt retained. See mobile-tls-acceptance.

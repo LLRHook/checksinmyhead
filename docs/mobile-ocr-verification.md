@@ -9,8 +9,8 @@ From `mobile/`:
 ```sh
 flutter pub get --enforce-lockfile
 flutter analyze
-flutter test --machine
-flutter test --machine test/receipt_native_io_test.dart test/tls_ownership_test.dart test/receipt_relay_pairing_test.dart
+flutter test --reporter=json
+flutter test --reporter=json test/receipt_native_io_test.dart test/tls_ownership_test.dart test/receipt_relay_pairing_test.dart
 ```
 
 Retain raw machine JSON, exact commands/exits and source hashes. Count visible case
@@ -21,7 +21,8 @@ failures and explain fixture corrections before any green rerun.
 
 The focused cases are:
 
-- `receipt_native_io_test.dart`: the canonical 17 native/M2 cases using the real
+- `receipt_native_io_test.dart`: the original 17 native/M2 cases and the real
+  held-setup expiry regression, using the real
   `ReceiptIoClient` and a send observer forwarding its joined teardown capability,
   stalled headers/body, slow streaming upload, timeout/explicit cancellation/disposal,
   actual peer disconnect and joined asynchronous input cleanup (including source/
@@ -30,10 +31,16 @@ The focused cases are:
   Join every owned listener/server/socket/client and temporary directory in cleanup.
   A timeout in the fixture is a failed liveness observation, never evidence that
   surviving native work stopped.
+  The original complete-POST timeout case selects a logical100-ms deadline only
+  after the actual wire witness. The separate real100-ms setup case requires
+  zero POSTs and production close/join/resource postconditions before test cleanup.
 - `tls_ownership_test.dart`: 21 real TLS cases: complete ClientHello followed by
   silence, timeout/cancel/dispose settlement and peer disconnect before fixture
   cleanup, held setup/post-TCP/teardown, trusted CA/hostname and actual invalid
   certificate HandshakeExceptions, redirects and deliberate retry wire counts.
+  The first stalled deadline attempt keeps its real350-ms timer. Only its healthy
+  explicit retry controls logical elapsed/timer at350ms, proving success and timer
+  cancellation without claiming a response-time SLA. All wire/cleanup bounds remain.
 - `receipt_relay_pairing_test.dart`: actual competing first peers, honest acceptance
   before local future registration, the eight-endpoint budget before/after local
   connect, cancellation/error cleanup and independent overlapping attempts.

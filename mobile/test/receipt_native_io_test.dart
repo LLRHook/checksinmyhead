@@ -5,6 +5,31 @@ import 'package:checks_frontend/services/receipt_api_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:checks_frontend/services/receipt_io_client.dart';
 import 'package:http/http.dart' as http;
+import 'fixtures/receipt_deadline_clock.dart';
+
+// Observe production ownership before independent test cleanup can complete it.
+class _SetupObservedClient extends http.BaseClient
+    implements JoinedReceiptClient {
+  final inner = ReceiptIoClient();
+  int closes = 0;
+  bool joined = false;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) =>
+      inner.send(request);
+
+  @override
+  void close() {
+    closes++;
+    inner.close();
+  }
+
+  @override
+  Future<void> finish() async {
+    await inner.finish();
+    joined = true;
+  }
+}
 
 class _SendObservedClient extends http.BaseClient
     implements JoinedReceiptClient {
@@ -107,6 +132,7 @@ void main() {
     final dir = await Directory.systemTemp.createTemp('ocr-a2-mobile-');
     final image = await File('${dir.path}/receipt.jpg').writeAsBytes([1, 2, 3]);
     final clients = <ReceiptIoClient>[];
+    final clock = ReceiptDeadlineClock(const Duration(milliseconds: 100));
     final service = ReceiptApiService.forTesting(
       baseUrl: peer.url,
       createClient: () {
@@ -115,10 +141,11 @@ void main() {
         return c;
       },
       timeout: const Duration(milliseconds: 100),
+      elapsed: () => clock.elapsed,
     );
     Object? result;
-    final pending = service
-        .parseReceipt(image.path)
+    final pending = clock
+        .run(() => service.parseReceipt(image.path))
         .then<void>(
           (_) => result = 'unexpected success',
           onError: (Object error) {
@@ -127,6 +154,10 @@ void main() {
         );
     try {
       await peer.received.future.timeout(const Duration(seconds: 2));
+      expect(clock.timers, hasLength(1));
+      // Select the100-ms deadline phase only after the actual POST exists.
+      // Separate real100-ms setup-expiry coverage remains below.
+      clock.expire();
       await pending.timeout(
         const Duration(milliseconds: 300),
         onTimeout: () {},
@@ -142,15 +173,99 @@ void main() {
       );
       expect(result, isA<ReceiptParseException>());
       expect(peer.posts, 1);
+      expect(clock.timers.single.isActive, isFalse);
+      for (final client in clients) {
+        for (final key in [
+          'sockets',
+          'pendingAccepts',
+          'tasks',
+          'pumps',
+          'listeners',
+        ]) {
+          expect(
+            client.resourceCounts[key],
+            0,
+            reason: 'operation returned before $key joined',
+          );
+        }
+      }
     } finally {
+      service.dispose();
+      clock.close();
       for (final c in clients) {
         c.close();
+        await c.finish().timeout(const Duration(seconds: 2));
       }
       await peer.close();
       await pending;
       await dir.delete(recursive: true);
     }
   });
+  test(
+    'native real setup deadline can expire before any complete POST',
+    () async {
+      final peer = await WirePeer.start();
+      final prepared = Completer<http.MultipartFile>();
+      final client = _SetupObservedClient();
+      final service = ReceiptApiService.forTesting(
+        baseUrl: peer.url,
+        createClient: () => client,
+        prepareImage: (_) => prepared.future,
+        timeout: const Duration(milliseconds: 100),
+      );
+      final pending = service
+          .parseReceipt('synthetic')
+          .then<Object?>(
+            (_) => 'unexpected success',
+            onError: (Object error) => error,
+          );
+      try {
+        final outcome = await pending.timeout(const Duration(seconds: 2));
+        expect(
+          outcome,
+          isA<ReceiptParseException>().having(
+            (e) => e.message,
+            'real setup deadline',
+            contains('timed out'),
+          ),
+        );
+        expect(peer.posts, 0);
+        expect(peer.received.isCompleted, isFalse);
+        expect(
+          client.closes,
+          1,
+          reason: 'production must close the setup client',
+        );
+        expect(
+          client.joined,
+          isTrue,
+          reason: 'production must join before returning',
+        );
+        for (final key in [
+          'sockets',
+          'pendingAccepts',
+          'tasks',
+          'pumps',
+          'listeners',
+        ]) {
+          expect(
+            client.inner.resourceCounts[key],
+            0,
+            reason: 'setup retained $key',
+          );
+        }
+      } finally {
+        service.dispose();
+        if (!prepared.isCompleted) {
+          prepared.complete(http.MultipartFile.fromBytes('image', [1, 2, 3]));
+        }
+        client.close();
+        await peer.close();
+        await pending.timeout(const Duration(seconds: 2));
+        await client.finish().timeout(const Duration(seconds: 2));
+      }
+    },
+  );
   for (final phase in ['headers', 'body']) {
     for (final stop in ['timeout', 'cancel', 'dispose']) {
       test(

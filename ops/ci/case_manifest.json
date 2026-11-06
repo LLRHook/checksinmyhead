@@ -784,7 +784,8 @@
         "(?:^| )native\\ .*\\ never\\ follows\\ Location\\ and\\ counts\\ only\\ one\\ wire\\ POST$",
         "(?:^| )native\\ failed\\ POST\\ is\\ never\\ retried\\ and\\ a\\ deliberate\\ manual\\ retry\\ sends\\ one\\ new\\ POST$",
         "(?:^| )native\\ compressed\\ response\\ enforces\\ decoded\\ 1MiB\\ and\\ closes\\ stream$",
-        "(?:^| )native\\ dropped\\ response\\ after\\ upload\\ never\\ replays\\ a\\ POST$"
+        "(?:^| )native\\ dropped\\ response\\ after\\ upload\\ never\\ replays\\ a\\ POST$",
+        "(?:^| )native\\ real\\ setup\\ deadline\\ can\\ expire\\ before\\ any\\ complete\\ POST$"
       ],
       "mobile/test/receipt_parser_test.dart": [
         "(?:^| )parses\\ a\\ complete\\ receipt\\ response$",

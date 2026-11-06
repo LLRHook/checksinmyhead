@@ -7,6 +7,7 @@ import 'package:checks_frontend/services/receipt_io_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'fixtures/receipt_tls_fixture.dart';
+import 'fixtures/receipt_deadline_clock.dart';
 
 const budget = Duration(seconds: 3);
 late ReceiptTlsFixture fixture;
@@ -115,10 +116,12 @@ ReceiptApiService makeService(
   Uri url,
   http.Client Function() client, {
   Duration timeout = const Duration(seconds: 5),
+  Duration Function()? elapsed,
 }) => ReceiptApiService.forTesting(
   baseUrl: url,
   createClient: client,
   timeout: timeout,
+  elapsed: elapsed,
   prepareImage:
       (_) async => http.MultipartFile.fromString(
         'image',
@@ -462,170 +465,205 @@ void main() {
     });
   }
   for (final action in ['deadline', 'cancel', 'dispose']) {
-    test(
-      'stalled TLS $action preserves deliberate retry wire ownership',
-      () async {
-        final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
-        final serverContext =
-            SecurityContext()
-              ..useCertificateChain(fixture.cert)
-              ..usePrivateKey(fixture.key);
-        final hello = Completer<void>(), gone = Completer<void>();
-        final sockets = <Socket>[],
-            tasks = <Future<void>>[],
-            subscriptions = <StreamSubscription<dynamic>>[];
-        final requests = <String>[];
-        final failures = <Object>[];
-        var connections = 0;
-        final accept = server.listen((socket) {
-          sockets.add(socket);
-          connections++;
-          unawaited(socket.done.then<void>((_) {}, onError: (Object _) {}));
-          if (connections == 1) {
-            final bytes = <int>[];
-            subscriptions.add(
-              socket.listen(
-                (data) {
-                  bytes.addAll(data);
-                  if (bytes.length >= 9 &&
-                      bytes[0] == 22 &&
-                      bytes[5] == 1 &&
-                      bytes.length >= 5 + bytes[3] * 256 + bytes[4] &&
-                      !hello.isCompleted) {
-                    hello.complete();
-                  }
-                },
-                onDone: () {
-                  if (!gone.isCompleted) gone.complete();
-                },
-                onError: (Object _) {
-                  if (!gone.isCompleted) gone.complete();
-                },
-              ),
-            );
-          } else {
-            tasks.add(
-              () async {
-                final secure = await SecureSocket.secureServer(
-                  socket,
-                  serverContext,
-                );
-                sockets.add(secure);
-                unawaited(
-                  secure.done.then<void>((_) {}, onError: (Object _) {}),
-                );
-                final ended = Completer<void>();
-                final bytes = <int>[];
-                var replied = false;
-                subscriptions.add(
-                  secure.listen(
-                    (data) {
-                      bytes.addAll(data);
-                      final text = latin1.decode(bytes);
-                      final end = text.indexOf('\r\n\r\n');
-                      if (replied || end < 0) return;
-                      final match = RegExp(
-                        r'content-length: (\d+)',
-                        caseSensitive: false,
-                      ).firstMatch(text);
-                      if (match == null ||
-                          bytes.length < end + 4 + int.parse(match.group(1)!)) {
-                        return;
-                      }
-                      replied = true;
-                      requests.add(text.split('\r\n').first);
-                      secure.write(
-                        'HTTP/1.1 200 OK\r\nContent-Length: 12\r\nConnection: close\r\n\r\n{"items":[]}',
-                      );
-                      unawaited(
-                        secure.flush().then<void>(
-                          (_) async {
-                            await secure.close();
-                          },
-                          onError: (Object error) {
-                            failures.add(error);
-                          },
-                        ),
-                      );
-                    },
-                    onDone: () {
-                      if (!ended.isCompleted) ended.complete();
-                    },
-                    onError: (Object error) {
-                      failures.add(error);
-                      if (!ended.isCompleted) ended.complete();
-                    },
-                  ),
-                );
-                await ended.future;
-              }().catchError((Object error) {
-                failures.add(error);
-              }),
-            );
-          }
-        });
-        final clients = <ReceiptIoClient>[];
-        final service = makeService(
-          Uri.parse('https://localhost:${server.port}'),
-          () {
-            final client = ReceiptIoClient.forTesting(context: trustFixture());
-            clients.add(client);
-            return client;
-          },
-          timeout:
-              action == 'deadline'
-                  ? const Duration(milliseconds: 350)
-                  : const Duration(seconds: 5),
-        );
-        final attempt = ObservedAttempt(service);
-        try {
-          await hello.future.timeout(budget);
-          if (action == 'cancel') service.cancel();
-          if (action == 'dispose') service.dispose();
-          await attempt.done.timeout(budget);
-          await gone.future.timeout(budget);
-          expect(attempt.failure, isA<ReceiptParseException>());
-          expect(requests, isEmpty);
-          expect(connections, 1);
-          if (action == 'dispose') {
-            await expectLater(
-              service.parseReceipt('synthetic'),
-              throwsA(
-                isA<ReceiptParseException>().having(
-                  (e) => e.isCancelled,
-                  'disposed',
-                  true,
+    test('stalled TLS $action preserves deliberate retry wire ownership', () async {
+      final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+      final serverContext =
+          SecurityContext()
+            ..useCertificateChain(fixture.cert)
+            ..usePrivateKey(fixture.key);
+      final hello = Completer<void>(), gone = Completer<void>();
+      final sockets = <Socket>[],
+          tasks = <Future<void>>[],
+          subscriptions = <StreamSubscription<dynamic>>[];
+      final requests = <String>[];
+      final failures = <Object>[];
+      var connections = 0;
+      final accept = server.listen((socket) {
+        sockets.add(socket);
+        connections++;
+        unawaited(socket.done.then<void>((_) {}, onError: (Object _) {}));
+        if (connections == 1) {
+          final bytes = <int>[];
+          subscriptions.add(
+            socket.listen(
+              (data) {
+                bytes.addAll(data);
+                if (bytes.length >= 9 &&
+                    bytes[0] == 22 &&
+                    bytes[5] == 1 &&
+                    bytes.length >= 5 + bytes[3] * 256 + bytes[4] &&
+                    !hello.isCompleted) {
+                  hello.complete();
+                }
+              },
+              onDone: () {
+                if (!gone.isCompleted) gone.complete();
+              },
+              onError: (Object _) {
+                if (!gone.isCompleted) gone.complete();
+              },
+            ),
+          );
+        } else {
+          tasks.add(
+            () async {
+              final secure = await SecureSocket.secureServer(
+                socket,
+                serverContext,
+              );
+              sockets.add(secure);
+              unawaited(secure.done.then<void>((_) {}, onError: (Object _) {}));
+              final ended = Completer<void>();
+              final bytes = <int>[];
+              var replied = false;
+              subscriptions.add(
+                secure.listen(
+                  (data) {
+                    bytes.addAll(data);
+                    final text = latin1.decode(bytes);
+                    final end = text.indexOf('\r\n\r\n');
+                    if (replied || end < 0) return;
+                    final match = RegExp(
+                      r'content-length: (\d+)',
+                      caseSensitive: false,
+                    ).firstMatch(text);
+                    if (match == null ||
+                        bytes.length < end + 4 + int.parse(match.group(1)!)) {
+                      return;
+                    }
+                    replied = true;
+                    requests.add(text.split('\r\n').first);
+                    secure.write(
+                      'HTTP/1.1 200 OK\r\nContent-Length: 12\r\nConnection: close\r\n\r\n{"items":[]}',
+                    );
+                    unawaited(
+                      secure.flush().then<void>(
+                        (_) async {
+                          await secure.close();
+                        },
+                        onError: (Object error) {
+                          failures.add(error);
+                        },
+                      ),
+                    );
+                  },
+                  onDone: () {
+                    if (!ended.isCompleted) ended.complete();
+                  },
+                  onError: (Object error) {
+                    failures.add(error);
+                    if (!ended.isCompleted) ended.complete();
+                  },
                 ),
+              );
+              await ended.future;
+            }().catchError((Object error) {
+              failures.add(error);
+            }),
+          );
+        }
+      });
+      final clients = <ReceiptIoClient>[];
+      final retryClock = ReceiptDeadlineClock(
+        const Duration(milliseconds: 350),
+      );
+      var retryPhase = false;
+      final firstElapsed = Stopwatch()..start();
+      final service = makeService(
+        Uri.parse('https://localhost:${server.port}'),
+        () {
+          final client = ReceiptIoClient.forTesting(context: trustFixture());
+          clients.add(client);
+          return client;
+        },
+        timeout:
+            action == 'deadline'
+                ? const Duration(milliseconds: 350)
+                : const Duration(seconds: 5),
+        elapsed:
+            action == 'deadline'
+                ? () => retryPhase ? retryClock.elapsed : firstElapsed.elapsed
+                : null,
+      );
+      final attempt = ObservedAttempt(service);
+      try {
+        await hello.future.timeout(budget);
+        if (action == 'cancel') service.cancel();
+        if (action == 'dispose') service.dispose();
+        await attempt.done.timeout(budget);
+        await gone.future.timeout(budget);
+        expect(attempt.failure, isA<ReceiptParseException>());
+        expect(requests, isEmpty);
+        expect(connections, 1);
+        if (action == 'dispose') {
+          await expectLater(
+            service.parseReceipt('synthetic'),
+            throwsA(
+              isA<ReceiptParseException>().having(
+                (e) => e.isCancelled,
+                'disposed',
+                true,
               ),
+            ),
+          );
+          expect(connections, 1);
+        } else {
+          if (action == 'deadline') {
+            // Keep the first stalled attempt's real 350-ms deadline.
+            // Healthy retry proves wire ownership, not a latency SLA.
+            retryPhase = true;
+            expect(
+              (await retryClock.run(
+                () => service.parseReceipt('synthetic'),
+              )).items,
+              isEmpty,
             );
-            expect(connections, 1);
+            expect(retryClock.timers, hasLength(1));
+            expect(retryClock.timers.single.isActive, isFalse);
           } else {
             expect((await service.parseReceipt('synthetic')).items, isEmpty);
-            expect(requests, ['POST /api/receipts/parse HTTP/1.1']);
-            expect(connections, 2);
           }
-          for (final client in clients) {
-            await client.finish().timeout(budget);
-          }
-          expect(failures, isEmpty);
-        } finally {
-          service.dispose();
-          for (final client in clients) {
-            await client.finish().timeout(budget);
-          }
-          for (final socket in sockets) {
-            socket.destroy();
-          }
-          await attempt.done.timeout(budget);
-          await server.close();
-          await accept.cancel();
-          for (final sub in subscriptions) {
-            await sub.cancel();
-          }
-          await Future.wait(tasks).timeout(budget);
+          expect(requests, ['POST /api/receipts/parse HTTP/1.1']);
+          expect(connections, 2);
+          expect(clients, hasLength(2));
+          expect(identical(clients[0], clients[1]), isFalse);
         }
-      },
-    );
+        for (final client in clients) {
+          // Inspect the operation postcondition before independent fixture cleanup.
+          for (final key in [
+            'sockets',
+            'pendingAccepts',
+            'tasks',
+            'pumps',
+            'listeners',
+          ]) {
+            expect(
+              client.resourceCounts[key],
+              0,
+              reason: 'retry returned before $key joined',
+            );
+          }
+          await client.finish().timeout(budget);
+        }
+        expect(failures, isEmpty);
+      } finally {
+        service.dispose();
+        retryClock.close();
+        for (final client in clients) {
+          await client.finish().timeout(budget);
+        }
+        for (final socket in sockets) {
+          socket.destroy();
+        }
+        await attempt.done.timeout(budget);
+        await server.close();
+        await accept.cancel();
+        for (final sub in subscriptions) {
+          await sub.cancel();
+        }
+        await Future.wait(tasks).timeout(budget);
+      }
+    });
   }
   test(
     'TLS manual retry is exactly one new POST per explicit attempt',

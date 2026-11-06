@@ -176,6 +176,9 @@ native-currency receipt from continuing or saving locally.
 See [local mobile OCR verification](../docs/mobile-ocr-verification.md) for loopback native
 I/O, TLS, fixture regeneration, widget disposal, negative controls and evidence limits.
 Host qualification is recorded in the [integration note](../docs/reviews/2026-11-04-mobile-tls-integration.md).
+The [deadline fixture note](../docs/reviews/2026-11-06-receipt-deadline-fixtures.md)
+separates real setup expiry from controlled post-wire expiry and healthy retry;
+production's real45-second deadline is unchanged. Full/native/resource gates remain open.
 The [iOS lock and native qualification note](../docs/reviews/2026-11-04-ios-lock-qualification.md)
 records the generated lock correction, maintained simulator/unsigned release builds
 and local transport assertions on one owned simulator. Physical devices, signed public
