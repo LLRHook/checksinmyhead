@@ -538,13 +538,25 @@ class ManifestReportTests(unittest.TestCase):
 
     def go_events(self, families):
         events = []
+        migration_children = (
+            'early_deadline_result_survives_missing_barrier',
+            'observer_error_keeps_primary_outcome',
+            'missing_result_remains_unresolved',
+            'closed_channel_is_not_success',
+            'barrier_and_single_receive_preserve_original_cause',
+        )
         packages = sorted({f.rsplit('/', 1)[0] for f in families})
         for package in packages:
             events.append({'Action': 'start', 'Package': package})
             for family in families:
                 if family.rsplit('/', 1)[0] == package:
                     test = family.rsplit('/', 1)[1]
-                    events.extend([{'Action': action, 'Package': package, 'Test': test} for action in ('run', 'pass')])
+                    events.append({'Action': 'run', 'Package': package, 'Test': test})
+                    if family == 'backend/migrations/TestMigrationOutcomeObservation':
+                        for child in migration_children:
+                            events.extend([{'Action': action, 'Package': package,
+                                            'Test': test + '/' + child} for action in ('run', 'pass')])
+                    events.append({'Action': 'pass', 'Package': package, 'Test': test})
             events.append({'Action': 'pass', 'Package': package})
         return events
 
@@ -560,14 +572,32 @@ class ManifestReportTests(unittest.TestCase):
         self.assertTrue(overlap)
         for row, filename in [('backend','go-default.jsonl'), ('postgres','go-postgres.jsonl')]:
             families = self.manifest['rows'][row]
-            path = self.write(filename, self.go_events(families), True)
+            events = self.go_events(families)
+            child_prefix = 'TestMigrationOutcomeObservation/'
+            children = [event['Test'] for event in events
+                        if event['Action'] == 'run' and event.get('Test', '').startswith(child_prefix)]
+            path = self.write(filename, events, True)
             healthy = gate.summarize(row, [('go', str(path))], self.manifest, B)
-            self.assertEqual(healthy['passed'], len(families))
+            self.assertEqual(healthy['passed'], len(families) + len(children))
             for absent in families:
                 with self.subTest(row=row, absent=absent):
                     self.write(filename, self.go_events([f for f in families if f != absent]), True)
                     with self.assertRaises(gate.Rejected):
                         gate.summarize(row, [('go', str(path))], self.manifest, B)
+            if row == 'postgres':
+                self.assertEqual(len(children), 5)
+                self.assertEqual(len(set(children)), 5)
+                for absent in children:
+                    with self.subTest(row=row, absent_child=absent):
+                        selected = [event for event in events if event.get('Test') != absent]
+                        self.assertEqual([event['Action'] for event in selected
+                                          if event.get('Test') == child_prefix[:-1]], ['run', 'pass'])
+                        self.assertEqual({event['Test'] for event in selected if event['Action'] == 'run'
+                                          and event.get('Test', '').startswith(child_prefix)}, set(children) - {absent})
+                        path = self.write(filename, selected, True)
+                        gate.validate_cases(gate.read_report('go', path)[1], families)
+                        with self.assertRaisesRegex(gate.Rejected, 'missing mandatory test registration'):
+                            gate.summarize(row, [('go', str(path))], self.manifest, B)
 
     def test_no_test_packages_are_distinct_from_skipped_or_unfinished_tests(self):
         good = self.go_events(['backend/example/TestSelected'])

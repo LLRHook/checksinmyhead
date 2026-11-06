@@ -41,7 +41,10 @@ Adapters retain every Go package/test terminal (parents and subtests), Flutter
 runner ID, Vitest assertion ordinal/title, Python method invocation/subtest and
 Ruby class/method invocation. Those record counts are not interchangeable with
 leaf-only counts. Default/tagged overlap is retained separately per row; do not
-sum them into a distinct-test claim. File/literal families do not statically infer
+sum them into a distinct-test claim. Go literal selections use the full report-prefixed
+runner ID when no display name exists. The tagged migration outcome family requires
+all five exact children ([scoped evidence](../../docs/reviews/2026-11-06-migration-outcomes.md));
+this does not qualify the real PgSleep/rollback gate. File/literal families do not statically infer
 all expansions of Dart's runtime data loops. Runtime starts must all finish and
 any reported skip/failure/zero/malformed or missing required family/registration
 fails. No-test Go packages are allowed only with the actual `[no test files]`

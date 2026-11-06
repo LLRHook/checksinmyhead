@@ -127,21 +127,21 @@ legacy containment. Preserve HTTP/mobile full/partial/zero/discount/custom-tip/h
 Separate misses/transaction control; compare raw IDs/children/money/quotes/flags/times
 via PG lock waits/channels ([lifecycle](docs/reviews/2026-11-03-atomic-lifecycle.md)).
 
-Registry1,2,3: preserve original rows/columns/PK/FK actions and ledger1/2 bytes. Test
-structural backfill/legacy defaults, NULL-safe scoped groups, sequence/default/ownership,
-strict prefixes/future drift, rollback/cancel/apply locks and actual old prefix1/2
-startup/verify/reads. Retain old warm-reader failures/old-writer gates. Prove current
+Registry1,2,3: retain rows/columns/PK/FK actions and ledger1/2 bytes. Test structural
+backfill/legacy defaults, NULL-safe scoped groups, sequence/default/ownership, strict
+prefixes/future drift, rollback/cancel/apply locks and old prefix1/2 startup/verify/reads.
+Retain old warm-reader failures/old-writer gates. Prove current
 API/HTML on the same observed warm PID/pool1 through owned additive columns/suffix4;
-health checks ledger only, separate verify checks catalogs. Restore1,2,3/data. Test
+health reads only ledger; verify checks catalogs. Restore1,2,3/data. Test
 ready2 reference authority/revision/receipts, persisted response2, same-label denial/
 confirmed-owner success, rename-stable cents, explicit unavailable net and raw legacy
-snapshots. Interim nonnumerical checkpoints exclude exactly four measured parents;
-Numerical/runtime RED; [client journey](mobile/test/live/README.md) is scoped.
+snapshots. Interim nonnumerical: exclude exactly four measured parents; numerical/runtime RED.
+[Journey](mobile/test/live/README.md) is scoped.
 Default apply serves; `--migrate-only` applies/exits; `--schema-mode=verify` verifies/serves.
 Health: one ledger query; rerun verify after external DDL. No payer backfill. Use owned
-schemas/overlays; retain additive schema/ledger on rollback. Production footprint,
-backup/restore/predeploy/drain/rollout need [separate proof](backend/README.md#postgresql-schema-startup).
-Local proof is no integrated pass.
+schemas/overlays; retain additive schema/ledger on rollback. Production footprint/
+backup/restore/predeploy/drain/rollout need [proof](backend/README.md#postgresql-schema-startup).
+[Outcome](docs/reviews/2026-11-06-migration-outcomes.md) is not PgSleep/integrated proof.
 
 For local workflow changes, also run `python3 scripts/verify_local_lifecycle.py
 --postgres-image sha256:<local-image-id> --output .vv/local-lifecycle-<unique-run>`.

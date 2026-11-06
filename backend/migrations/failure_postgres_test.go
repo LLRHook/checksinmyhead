@@ -248,8 +248,34 @@ func TestPostgresMigrationParentDeadline(t *testing.T) {
 	steps := pendingSQL("CREATE TABLE deadline_marker(id bigint);SELECT pg_sleep(30)")
 	result := make(chan error, 1)
 	go func() { _, err := run(ctx, db, Apply, steps); result <- err }()
-	waitActivity(t, db, "wait_event='PgSleep'")
-	if err := receive(t, result); !errors.Is(err, context.DeadlineExceeded) {
+	outcome := &observedMigrationOutcome{result: result}
+	observerCtx, observerCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	activity := observeMigrationActivity(observerCtx, func(queryCtx context.Context) (bool, error) {
+		var found bool
+		err := db.QueryRowContext(queryCtx, "SELECT EXISTS(SELECT FROM pg_stat_activity WHERE application_name=current_setting('application_name') AND wait_event='PgSleep')").Scan(&found)
+		return found, err
+	}, outcome)
+	observerCancel()
+	joinCtx, joinCancel := context.WithTimeout(context.Background(), 15*time.Second)
+	joinErr := outcome.join(joinCtx)
+	joinCancel()
+	if !activity.barrierSeen || activity.err != nil || joinErr != nil {
+		evidence := outcome.evidence(ctx, activity)
+		// A failed observer must not discard an already joined result or prevent
+		// an independent, bounded rollback read. Unjoined workers stay UNKNOWN.
+		if outcome.received {
+			rollbackCtx, rollbackCancel := context.WithTimeout(context.Background(), 10*time.Second)
+			var relations int
+			readErr := db.QueryRowContext(rollbackCtx, "SELECT count(*) FROM pg_class WHERE relnamespace=current_schema()::regnamespace").Scan(&relations)
+			rollbackCancel()
+			evidence.RollbackReadError = readErr != nil
+			evidence.RollbackObserved = readErr == nil
+			evidence.RollbackEmpty = readErr == nil && relations == 0
+		}
+		t.Logf("migration deadline observation: %+v", evidence)
+		t.Fatal("required PostgreSQL barrier/outcome was not qualified")
+	}
+	if err := outcome.err; !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatal("total context deadline lost", err)
 	}
 	if scalar(t, db, "SELECT count(*) FROM pg_class WHERE relnamespace=current_schema()::regnamespace") != 0 {

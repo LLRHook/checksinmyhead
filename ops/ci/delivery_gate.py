@@ -234,7 +234,7 @@ def summarize(row, reports, manifest, b):
         assigned = {}
         def match(index, visited):
             for case_index, case in enumerate(available):
-                if case_index not in visited and re.search(patterns[index], case.get('name', '')):
+                if case_index not in visited and re.search(patterns[index], case.get('name', case['id'])):
                     visited.add(case_index)
                     if case_index not in assigned or match(assigned[case_index], visited):
                         assigned[case_index] = index

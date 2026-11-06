@@ -564,6 +564,7 @@
       "backend/migrations/TestFrozenLegacyFixture",
       "backend/migrations/TestIdentity0003RecognizerPinsAndPrivateView",
       "backend/migrations/TestInvalidRegistryFailsClosed",
+      "backend/migrations/TestMigrationOutcomeObservation",
       "backend/migrations/TestPostgresAllPendingVersionsRollbackTogether",
       "backend/migrations/TestPostgresAtomicPendingFailures",
       "backend/migrations/TestPostgresBaselineDefinitions",
@@ -1359,6 +1360,15 @@
         "(?:^| )participant\\ identity\\ binding\\ generation\\ actor\\ proof\\ and\\ source\\ proof\\ stay\\ separate;\\ exact\\ deliberate\\ retry\\ retains\\ original\\ body$",
         "(?:^| )participant\\ identity\\ unavailable\\ and\\ raw\\ legacy\\ settlement\\ history\\ stay\\ explicit\\ rather\\ than\\ becoming\\ an\\ empty\\ result$",
         "(?:^| )participant\\ identity\\ confirmed\\ members\\ group\\ by\\ scoped\\ ID\\ while\\ same\\-label\\ unbound\\ occurrences\\ stay\\ separate$"
+      ]
+    },
+    "postgres": {
+      "backend/migrations/TestMigrationOutcomeObservation": [
+        "^go\\-postgres\\.jsonl:backend/migrations/TestMigrationOutcomeObservation/early_deadline_result_survives_missing_barrier$",
+        "^go\\-postgres\\.jsonl:backend/migrations/TestMigrationOutcomeObservation/observer_error_keeps_primary_outcome$",
+        "^go\\-postgres\\.jsonl:backend/migrations/TestMigrationOutcomeObservation/missing_result_remains_unresolved$",
+        "^go\\-postgres\\.jsonl:backend/migrations/TestMigrationOutcomeObservation/closed_channel_is_not_success$",
+        "^go\\-postgres\\.jsonl:backend/migrations/TestMigrationOutcomeObservation/barrier_and_single_receive_preserve_original_cause$"
       ]
     }
   },

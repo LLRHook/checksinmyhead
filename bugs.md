@@ -674,3 +674,25 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** open
 - **Docs:** docs/reviews/2026-11-06-combined-flutter-acceptance.md; frozen layout handoff
 - **Cross-ref:** BUG-1793927492 (separate horizontal body issue, not this sheet)
+
+### [BUG-1793958334] Retain migration producer evidence when activity observation fails
+- [ ] **Severity:** med
+- **Area:** tests, backend, migrations
+- **File(s):** backend/migrations/failure_observation_test.go; backend/migrations/failure_postgres_test.go
+- **Observation:** At8371 TestPostgresMigrationParentDeadline calls waitActivity before receive. A missing-PgSleep Fatal can prevent inspection of an already buffered producer result, leaving the actual cause/join and rollback evidence unresolved. This is a test-proof defect; production cause and recovery are unproved.
+- **Expected:**
+  - Retain one actual producer result and original cause independently of observer error; never treat an unreceived/closed channel as nil success.
+  - Missing PgSleep still fails; preserve real500ms caller,10s observer,15s one-time join, whole-batch rollback and recovery requirements.
+  - Record finite outcome evidence and attempt bounded rollback observation only after the worker joined; keep real PG qualification open until executed.
+- **Req:** FEAT-1793644505; VERIFICATION.md migration cancellation/rollback proof
+- **Depends on:** none; diagnostic correction uses the existing migration contract
+- **Repro / Notes:** Source trace at8371 failure_postgres_test.go waitActivity before receive; retained PG missing-witness failure is not a causal production diagnosis. Source-reviewed fe039511/13926a96 and R02 fd34a40e compile four variants first; five pure helper leaves pass and three removals fail intended assertions with healthy siblings. Report fc98d254; independent verification1e3271a4. No real PG rerun.
+- **Bump:** patch
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Reviewed test-only outcome holder and bounded evidence path adopted; Go formatting changes only alignment spaces on seven evidence fields. Pure helper/control proof passes; real500ms/PgSleep/rollback/recovery and prior170s/198.64s/full gates remain unqualified.
+- **Docs:** docs/reviews/2026-11-06-migration-outcomes.md; ops/ci/README.md; VERIFICATION.md
+- **Cross-ref:** FEAT-1793644505
+- **Log:**
+  - 2026-11-06 Verification: R02 pure helper qualification: four complete compiles/list selections pass, five clean helper leaves pass and all three source removals fail their intended assertions with healthy siblings. Manager independent verification1e3271a4; reportfc98d254. Only seven evidence-field alignment lines changed under gofmt; no test rerun for whitespace. Real500ms/PgSleep/rollback/recovery and historical170s/198.64s/full gates remain open.
+  - 2026-11-06 Verification: Local integration static checks: gofmt0 with seven spacing-only evidence fields; complete offline controller42methods/916 method+subtest records PASS including all five exact-child omissions and existing mobile/web named selections; official tracker lint0errors/0warnings. Only PG family+five anchored namespaced child IDs added; ordinary/backend obligations and all inherited fields preserved. Current real PG/full/native gates remain unqualified.
