@@ -215,3 +215,22 @@ See [the mobile save procedure](../docs/mobile-save-verification.md) and
 [scoped source evidence](../docs/reviews/2026-11-04-mobile-save-reopen.md). Host/wire
 checks do not close identity0003, versioned JPY, the local/server `.005` allocation
 mismatch, resources, full integrated/security or release gates.
+
+## Participant identity and UI qualification
+
+Saved participant colors, including single-person rosters and deliberately shared
+colors, stay attached to their occurrence rather than amount rank. Existing
+composited-surface ink owner is reused for changed light-theme rows and avatars. Bill
+Details avatar initials use it in both themes; other dark-theme branches are unchanged.
+Item counts, disclosure chevrons and four-person avatar stacks describe the actual state;
+auto-added owners retain saved custom colors with fresh references. Amounts, receipt
+occurrence ordinals, allocation, save and recovery contracts are unchanged.
+
+The [UI candidate evidence](../docs/reviews/2026-11-06-ui-quality-candidate.md) records
+formatter/analyzer exit0 and widget-tooling exit1 before any test event. The15 new
+mandatory cases and106-case affected selection remain unstarted. Existing automatic
+Linux mobile CI is the selected future functional route;573 prior +15 new =588
+canonical records is an expectation until its actual source-bound raw report is
+reconciled. The older E9c full-row result does not transfer to these app inputs. No
+local Apple-tooling expansion, native build/capture, physical accessibility, quality95,
+public artifact or release acceptance follows from source/analyzer checks.

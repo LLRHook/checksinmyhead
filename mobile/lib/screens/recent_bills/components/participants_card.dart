@@ -15,7 +15,7 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_utils.dart';
+import 'package:checks_frontend/config/theme.dart';
 import 'package:checks_frontend/screens/recent_bills/billDetails/utils/bill_calculations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -60,16 +60,6 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
   /// Track the expansion state of each participant panel
   /// Map keys are participant names, values are boolean expansion states
   final Map<String, bool> _expansionState = {};
-
-  @override
-  void initState() {
-    super.initState();
-
-    // Initialize expansion state - first participant expanded by default
-    if (widget.bill.participantNames.isNotEmpty) {
-      _expansionState[widget.bill.participants[0].clientRef] = true;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -203,6 +193,9 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
               final person = widget.bill.participants[ordinal];
               final ref = person.clientRef;
               final name = '${person.displayName} · ${ordinal + 1}';
+              // Color belongs to the saved occurrence, even for one person or
+              // when multiple people intentionally chose the same color.
+              final avatarColor = person.color;
               // Get expansion state for this participant
               final isExpanded = _expansionState[ref] ?? false;
 
@@ -297,16 +290,19 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
 
                       // Avatar with first letter of participant's name
                       leading: CircleAvatar(
-                        backgroundColor: ColorUtils.getPersonColor(
-                          index,
-                          colorScheme,
-                          brightness,
-                        ),
+                        backgroundColor: avatarColor,
                         radius: 20,
                         child: Text(
-                          name.isNotEmpty ? name[0].toUpperCase() : '?',
+                          person.name.isEmpty
+                              ? '?'
+                              : person.name[0].toUpperCase(),
                           style: TextStyle(
-                            color: Colors.white,
+                            color: AppTheme.foregroundOn(
+                              Color.alphaBlend(
+                                avatarColor,
+                                Color.alphaBlend(tileBgColor, cardBgColor),
+                              ),
+                            ),
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -326,7 +322,7 @@ class _ParticipantsCardState extends State<ParticipantsCard> {
                       subtitle:
                           personItems.isNotEmpty
                               ? Text(
-                                '${personItems.length} item(s)',
+                                '${personItems.length} item${personItems.length == 1 ? '' : 's'}',
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: subtitleColor,

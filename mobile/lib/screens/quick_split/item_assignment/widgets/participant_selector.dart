@@ -51,6 +51,7 @@ class ParticipantSelector extends StatelessWidget {
   final Function(Person) onPersonTap;
   final Function(Person) onBirthdayToggle;
   final bool isMultiSelectMode; // Controlled by parent
+  final Color? surfaceColor;
   final Map<Person, double>? assignments; // Optional assignment percentages
 
   const ParticipantSelector({
@@ -63,6 +64,7 @@ class ParticipantSelector extends StatelessWidget {
     required this.onBirthdayToggle,
     this.isMultiSelectMode = false,
     this.assignments,
+    this.surfaceColor,
   });
 
   @override
@@ -187,24 +189,22 @@ class ParticipantSelector extends StatelessWidget {
                     isMultiSelectMode ? false : isAssigned;
                 final percentage = assignments?[person];
 
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: AnimatedScale(
-                    duration: const Duration(milliseconds: 200),
-                    scale: isSelected ? 0.95 : 1.0,
-                    child: ParticipantAvatar(
-                      person: person,
-                      occurrenceLabel: '${index + 1}. ${person.displayName}',
-                      isAssigned: showAssignedIndicator,
-                      isSelected: isSelected,
-                      isBirthdayPerson: isBirthdayPerson,
-                      onTap: () => onPersonTap(person),
-                      onLongPress:
-                          participants.length > 1
-                              ? () => onBirthdayToggle(person)
-                              : null,
-                      assignedPercentage: percentage,
-                    ),
+                return AnimatedScale(
+                  duration: const Duration(milliseconds: 200),
+                  scale: isSelected ? 0.95 : 1.0,
+                  child: ParticipantAvatar(
+                    person: person,
+                    surfaceColor: surfaceColor,
+                    occurrenceLabel: '${index + 1}. ${person.displayName}',
+                    isAssigned: showAssignedIndicator,
+                    isSelected: isSelected,
+                    isBirthdayPerson: isBirthdayPerson,
+                    onTap: () => onPersonTap(person),
+                    onLongPress:
+                        participants.length > 1
+                            ? () => onBirthdayToggle(person)
+                            : null,
+                    assignedPercentage: percentage,
                   ),
                 );
               },

@@ -698,3 +698,35 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Log:**
   - 2026-11-06 Verification: R02 pure helper qualification: four complete compiles/list selections pass, five clean helper leaves pass and all three source removals fail their intended assertions with healthy siblings. Manager independent verification1e3271a4; reportfc98d254. Only seven evidence-field alignment lines changed under gofmt; no test rerun for whitespace. Real500ms/PgSleep/rollback/recovery and historical170s/198.64s/full gates remain open.
   - 2026-11-06 Verification: Local integration static checks: gofmt0 with seven spacing-only evidence fields; complete offline controller42methods/916 method+subtest records PASS including all five exact-child omissions and existing mobile/web named selections; official tracker lint0errors/0warnings. Only PG family+five anchored namespaced child IDs added; ordinary/backend obligations and all inherited fields preserved. Current real PG/full/native gates remain unqualified.
+
+### [BUG-1793996842] Preserve saved participant colors and readable identity ink
+- [ ] **Severity:** med
+- **Area:** mobile, ui, identity
+- **File(s):** mobile/lib/screens/recent_bills/components/participants_card.dart; mobile/lib/screens/quick_split/participant_selection/participant_selection_sheet.dart; mobile/lib/screens/quick_split/item_assignment/utils/color_utils.dart; mobile/lib/screens/quick_split/item_assignment/widgets/participant_avatar.dart; mobile/test/screenshot_quality_test.dart
+- **Observation:** At a021, Bill Details derives avatar colors from amount rank instead of the saved occurrence; auto-added owners omit saved custom color, and shared items take the first assignee color. Selected light-theme text/avatar callsites do not derive ink from their actual composited surface. This is a source-confirmed defect; current widget/native behavior is not yet qualified.
+- **Expected:** Preserve saved colors for single-person and intentionally same-color rosters, receipt ordinals/refs and recorded values. Bill Details initials use composited ink in both themes; changed light-theme callsites reuse AppTheme.foregroundOn, with other dark branches unchanged. Shared items use the existing neutral palette; auto-added owners reuse saved custom color but receive fresh occurrence refs. Require the exact screenshot_quality_test.dart literals: Bill Details identity uses each saved roster color, not the amount rank; Bill Details identity preserves a single saved roster color; Bill Details identity keeps saved colors when multiple people choose the same color; Person color ink every palette color reads on white and on its own row tint; Person color ink keeps ink that already reads; Person color ink avatar ink meets normal text contrast on every palette color; Person color ink a shared item never takes one person's color; Participant visual controls auto-added owner keeps saved color with fresh occurrence refs. Actual widget and native/capture proof remains pending.
+- **Req:** FEAT-1793644509; DESIGN_SYSTEM.md participant occurrence/color guidance
+- **Depends on:** none; existing saved occurrence and theme owners
+- **Repro / Notes:** Read a021 SortedParticipantsCard rank color selection, participant sheet auto-add and ColorUtils.getDominantColor. Distinct from BUG-1793898429 Settings-only ink. Private R02 formatter/analyzer0; widget loader failed before all106 cases. Offline controller R03 verifies literal-enforcement fixtures only; raw2129dd79/manager8fde2490, not Flutter or screenshot acceptance.
+- **Bump:** patch
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Adopt the exact reviewed nine-lib/T1 source subset with saved-color provenance and existing composited-ink ownership. Automatic Linux mobile is the selected functional route;588 canonical records EXPECTED only. No native, physical accessibility,95-quality or release acceptance.
+- **Docs:** docs/reviews/2026-11-06-ui-quality-candidate.md; DESIGN_SYSTEM.md; mobile/README.md
+- **Cross-ref:** FEAT-1793644509 (acceptance and status unchanged)
+
+### [BUG-1793996843] Show four actual assignees before avatar overflow
+- [ ] **Severity:** med
+- **Area:** mobile, ui, layout
+- **File(s):** mobile/lib/screens/quick_split/item_assignment/widgets/item_card.dart; mobile/test/screenshot_quality_test.dart
+- **Observation:** At a021, ItemCard limits its collapsed assignee stack to three avatars whenever more than three people are assigned, so a four-person item shows three initials plus +1. The source geometry also uses 12pt steps for 20pt avatars. No current widget/native result is asserted.
+- **Expected:** Four assignees show all four real avatars without +1; above four, show three real avatars and the correct remaining-person count. Preserve receipt ordinals/refs, assignments, amounts, toggles and other app behavior. Require exact literals Assignee stack shows four people instead of a +1 and Assignee stack summarises everyone past four. Default/enlarged-text widget and later pinned native/capture proof remain pending.
+- **Req:** FEAT-1793644509; DESIGN_SYSTEM.md participant occurrence/color guidance
+- **Depends on:** none; existing saved occurrence and theme owners
+- **Repro / Notes:** Read a021 ItemCard._buildAssigneeAvatars displayPeople and overflow conditions. No existing tracker covers this source defect; unrelated Settings targets and Finalize overflow remain separate. All106 affected widget cases are unstarted; R03 offline omission checks are delivery-gate controls only.
+- **Bump:** patch
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Adopt exact reviewed hasOverflow >4 and four-slot stack geometry, preserving the full assigned list. No runtime, physical-device,95-quality or screenshot recovery claim.
+- **Docs:** docs/reviews/2026-11-06-ui-quality-candidate.md; DESIGN_SYSTEM.md; mobile/README.md
+- **Cross-ref:** FEAT-1793644509 (acceptance and status unchanged)

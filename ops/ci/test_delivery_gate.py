@@ -783,6 +783,55 @@ class ManifestReportTests(unittest.TestCase):
             for titles in (['group first'], ['group second'], [], ['first','first']):
                 with self.subTest(row=row,titles=titles),self.assertRaises(gate.Rejected):
                     gate.summarize(row,[(kind,str(report(titles)))],manifest,B)
+        # All inherited families remain present; isolate the new exact literals.
+        # The inherited mobile/web selection and terminal controls stay unchanged.
+        quality_family = 'mobile/test/screenshot_quality_test.dart'
+        quality_titles = (
+            'Bill Details identity uses each saved roster color, not the amount rank',
+            'Bill Details identity preserves a single saved roster color',
+            'Bill Details identity keeps saved colors when multiple people choose the same color',
+            'Bill Details identity counts items in plain English',
+            'Bill Details identity chevrons follow the actual expanded row',
+            'Person color ink every palette color reads on white and on its own row tint',
+            'Person color ink keeps ink that already reads',
+            'Person color ink avatar ink meets normal text contrast on every palette color',
+            "Person color ink a shared item never takes one person's color",
+            'Assignee stack shows four people instead of a +1',
+            'Assignee stack summarises everyone past four',
+            'Participant visual controls four-person selector fits the safe viewport at default text size',
+            'Participant visual controls custom split rows remain usable at enlarged text size',
+            'Participant visual controls summary amount ink changes no recorded values',
+            'Participant visual controls auto-added owner keeps saved color with fresh occurrence refs',
+        )
+        quality_manifest = {
+            'rows': {'mobile': self.manifest['rows']['mobile']},
+            'reports': {'mobile': self.manifest['reports']['mobile']},
+            'required_selections': {'mobile': {quality_family:
+                self.manifest['required_selections']['mobile'][quality_family]}},
+        }
+        def quality_report(absent=None):
+            events = []
+            test_id = 0
+            for suite_id, selected_family in enumerate(quality_manifest['rows']['mobile']):
+                events.append({'type': 'suite', 'suite': {
+                    'id': suite_id, 'path': '/tmp/candidate/' + selected_family}})
+                titles = quality_titles if selected_family == quality_family else ('inherited family registration',)
+                for title in titles:
+                    if selected_family == quality_family and title == absent:
+                        continue
+                    events.extend([
+                        {'type': 'testStart', 'test': {'id': test_id, 'name': title, 'suiteID': suite_id}},
+                        {'type': 'testDone', 'testID': test_id, 'result': 'success', 'skipped': False},
+                    ])
+                    test_id += 1
+            events.append({'type': 'done', 'success': True})
+            return self.write('flutter.jsonl', events, True)
+        healthy = gate.summarize('mobile', [('flutter', str(quality_report()))], quality_manifest, B)
+        self.assertEqual(healthy['passed'], len(quality_manifest['rows']['mobile']) - 1 + len(quality_titles))
+        for absent in quality_titles:
+            with self.subTest(row='mobile', omitted_quality_literal=absent), self.assertRaisesRegex(
+                    gate.Rejected, 'missing mandatory test registration'):
+                gate.summarize('mobile', [('flutter', str(quality_report(absent)))], quality_manifest, B)
         for defect in ('missing-done','after-done','duplicate-id','failed-done','unknown-event'):
             events=[{'type':'suite','suite':{'id':1,'path':'/tmp/mobile/test/x.dart'}},
                     {'type':'testStart','test':{'id':1,'name':'x','suiteID':1}},

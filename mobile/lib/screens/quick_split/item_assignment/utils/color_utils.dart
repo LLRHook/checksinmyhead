@@ -34,25 +34,14 @@ class ColorUtils {
   /// Determines the most appropriate color to represent a group of people
   ///
   /// This method analyzes a list of assigned people and returns:
-  /// - The default slate gray if no people are assigned
   /// - The color of the single person if only one person is assigned
-  /// - The first person's color for multiple people (simple implementation)
+  /// - The default slate gray otherwise, so a shared item never reads as one
+  ///   person's
   ///
   /// Parameters:
   /// - [assignedPeople]: List of Person objects assigned to an item/task
-  ///
-  /// Note: For multiple people, a more sophisticated color blending algorithm
-  /// could be implemented here in future versions
   static Color getDominantColor(List<Person> assignedPeople) {
-    if (assignedPeople.isEmpty) {
-      return slateGray;
-    } else if (assignedPeople.length == 1) {
-      return assignedPeople.first.color;
-    } else {
-      // For multiple people, use the first person's color
-      // You could also implement a more sophisticated blending here
-      return assignedPeople.first.color;
-    }
+    return assignedPeople.length == 1 ? assignedPeople.first.color : slateGray;
   }
 
   /// Lightens a color by a specified factor

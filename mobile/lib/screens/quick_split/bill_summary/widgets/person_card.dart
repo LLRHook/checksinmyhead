@@ -300,7 +300,10 @@ class _PersonCardState extends State<PersonCard>
             ? birthdayPillTextColor
             : brightness == Brightness.dark
             ? ColorUtils.getLightenedColor(widget.person.color, 0.4)
-            : ColorUtils.getDarkenedColor(widget.person.color, 0.2);
+            : AppTheme.foregroundOn(
+              Color.alphaBlend(headerBgColor, Colors.white),
+              preferred: ColorUtils.getDarkenedColor(widget.person.color, 0.2),
+            );
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -321,7 +324,17 @@ class _PersonCardState extends State<PersonCard>
                   ? '?'
                   : widget.person.name[0].toUpperCase()),
               style: TextStyle(
-                color: ColorUtils.getContrastiveTextColor(widget.person.color),
+                color:
+                    brightness == Brightness.dark
+                        ? ColorUtils.getContrastiveTextColor(
+                          widget.person.color,
+                        )
+                        : AppTheme.foregroundOn(
+                          Color.alphaBlend(
+                            widget.person.color,
+                            Color.alphaBlend(headerBgColor, Colors.white),
+                          ),
+                        ),
                 fontWeight: FontWeight.bold,
               ),
             ),

@@ -96,13 +96,23 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
     if (!autoAdd) return;
     final displayName = await prefsService.getDisplayName();
     if (displayName == null || displayName.trim().isEmpty) return;
+    final name = displayName.trim();
+    final recents = await RecentPeopleManager.loadRecentPeople();
     if (!mounted) return;
 
-    provider.addPerson(displayName.trim());
+    // Keep the color this person already has, so they look the same on every bill.
+    final saved =
+        recents
+            .where((person) => person.name.toLowerCase() == name.toLowerCase())
+            .firstOrNull;
+    provider.addPerson(name, color: saved?.color);
   }
 
   /// Adds all members of a group as participants
-  void _onGroupTapped(PeopleGroupWithMembers group, ParticipantsProvider provider) {
+  void _onGroupTapped(
+    PeopleGroupWithMembers group,
+    ParticipantsProvider provider,
+  ) {
     if (!provider.addGroup(group.members)) return;
     GroupManager.markGroupUsed(group.group.id);
     HapticFeedback.selectionClick();
@@ -177,7 +187,10 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
         builder: (context) {
           if (!_didAutoAdd) {
             _didAutoAdd = true;
-            final provider = Provider.of<ParticipantsProvider>(context, listen: false);
+            final provider = Provider.of<ParticipantsProvider>(
+              context,
+              listen: false,
+            );
             _autoAddSelf(provider);
           }
           return Container(
@@ -215,21 +228,23 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
                 const SizedBox(height: 20),
                 _buildSheetHeader(context),
                 Consumer<ParticipantsProvider>(
-                  builder: (context, provider, _) =>
-                      provider.validationError == null
-                          ? const SizedBox.shrink()
-                          : Semantics(
-                            liveRegion: true,
-                            child: Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: Text(
-                                provider.validationError!,
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.error,
+                  builder:
+                      (context, provider, _) =>
+                          provider.validationError == null
+                              ? const SizedBox.shrink()
+                              : Semantics(
+                                liveRegion: true,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: Text(
+                                    provider.validationError!,
+                                    style: TextStyle(
+                                      color:
+                                          Theme.of(context).colorScheme.error,
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
                 ),
                 const SizedBox(height: 20),
                 _buildScrollableContent(context),
@@ -343,9 +358,10 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
           decoration: BoxDecoration(
-            color: isActive
-                ? colorScheme.primary.withValues(alpha: 0.15)
-                : Colors.transparent,
+            color:
+                isActive
+                    ? colorScheme.primary.withValues(alpha: 0.15)
+                    : Colors.transparent,
             borderRadius: BorderRadius.circular(17),
           ),
           alignment: Alignment.center,
@@ -354,9 +370,10 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
             style: TextStyle(
               fontSize: 14,
               fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-              color: isActive
-                  ? colorScheme.primary
-                  : colorScheme.onSurface.withValues(alpha: 0.5),
+              color:
+                  isActive
+                      ? colorScheme.primary
+                      : colorScheme.onSurface.withValues(alpha: 0.5),
             ),
             child: Text(label),
           ),
@@ -382,19 +399,21 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet>
               secondChild: GroupsSection(
                 savedGroups: _savedGroups,
                 suggestedGroups: _suggestedGroups,
-                onGroupTapped: (group) => _onGroupTapped(
-                  group,
-                  Provider.of<ParticipantsProvider>(context, listen: false),
-                ),
+                onGroupTapped:
+                    (group) => _onGroupTapped(
+                      group,
+                      Provider.of<ParticipantsProvider>(context, listen: false),
+                    ),
                 onGroupSaved: _onGroupSaved,
                 onGroupDeleted: _onGroupDeleted,
                 onGroupRenamed: _onGroupRenamed,
                 onCreateGroup: _onCreateGroup,
                 recentPeople: _recentPeople,
               ),
-              crossFadeState: _selectedTab == 0
-                  ? CrossFadeState.showFirst
-                  : CrossFadeState.showSecond,
+              crossFadeState:
+                  _selectedTab == 0
+                      ? CrossFadeState.showFirst
+                      : CrossFadeState.showSecond,
               duration: const Duration(milliseconds: 300),
             ),
             const SizedBox(height: 24),

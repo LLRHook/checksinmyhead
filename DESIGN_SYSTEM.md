@@ -23,6 +23,8 @@ Web CSS variables in `web-bill-viewer/src/app/globals.css` are the source for we
 
 Flutter uses the matching `AppTheme` colors in `mobile/lib/config/theme.dart`. Users can change the primary accent through the existing app setting.
 
+Participant colors belong to their saved occurrence, not amount rank. Single-person rosters and several people choosing the same color are valid data. Preserve receipt occurrence ordinals and references. Use the existing `AppTheme.foregroundOn` on the changed light-theme avatar, panel and row surfaces; preserve ink that already reads. Bill Details avatar initials derive ink from their composited surface in both themes. Other dark-theme branches are unchanged by this candidate. Shared items use the existing neutral palette instead of implying one person owns them.
+
 ## Typography
 
 - Web uses Inter for interface text and JetBrains Mono for monetary figures and other aligned numeric values.
@@ -42,6 +44,9 @@ Flutter uses the matching `AppTheme` colors in `mobile/lib/config/theme.dart`. U
 
 - One primary action per step, with secondary navigation presented as a quiet text or outlined action.
 - Keep item selection rows thumb-friendly and visibly distinguish available, selected, unavailable, and paid items.
+- Show four real avatars for four assignees; above four, show three avatars and the remaining-person count. Keep item counts singular/plural and chevrons consistent with actual expansion. Auto-added owners may reuse their saved custom color while receiving fresh occurrence references.
 - Settings accent choices expose distinct color names, button roles and selected states. Keep at least 48 logical points per target by reducing columns at narrow widths; allow Settings row titles and action text to wrap. Payment-row options use a method-name tooltip without an identifier.
 - Preserve keyboard operation, descriptive labels, and accessible error announcements in web controls.
 - Respect system light/dark mode. Do not hard-code a new brand color or introduce a competing component style.
+
+The [UI candidate note](docs/reviews/2026-11-06-ui-quality-candidate.md) separates source guidance and proposed checks from unexecuted widget/native/accessibility/screenshot acceptance.

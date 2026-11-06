@@ -656,7 +656,8 @@
       "mobile/test/participant_migration_test.dart",
       "mobile/test/participant_transport_contract_test.dart",
       "mobile/test/participant_v1_recovery_test.dart",
-      "mobile/test/side_inset_layout_test.dart"
+      "mobile/test/side_inset_layout_test.dart",
+      "mobile/test/screenshot_quality_test.dart"
     ],
     "web": [
       "web-bill-viewer/src/components/__tests__/SettlementCard.test.ts",
@@ -1247,6 +1248,23 @@
         "(?:^| )Tab\\ detail\\ keeps\\ the\\ empty\\ state\\ in\\ wide\\ display\\ with\\ a\\ right\\ status\\ column$",
         "(?:^| )Tab\\ detail\\ keeps\\ the\\ full\\ width\\ on\\ a\\ phone\\ without\\ side\\ insets$",
         "(?:^| )Tab\\ detail\\ keeps\\ the\\ full\\ width\\ on\\ a\\ tablet\\ without\\ side\\ insets$"
+      ],
+      "mobile/test/screenshot_quality_test.dart": [
+        "^Bill\\ Details\\ identity\\ uses\\ each\\ saved\\ roster\\ color,\\ not\\ the\\ amount\\ rank$",
+        "^Bill\\ Details\\ identity\\ preserves\\ a\\ single\\ saved\\ roster\\ color$",
+        "^Bill\\ Details\\ identity\\ keeps\\ saved\\ colors\\ when\\ multiple\\ people\\ choose\\ the\\ same\\ color$",
+        "^Bill\\ Details\\ identity\\ counts\\ items\\ in\\ plain\\ English$",
+        "^Bill\\ Details\\ identity\\ chevrons\\ follow\\ the\\ actual\\ expanded\\ row$",
+        "^Person\\ color\\ ink\\ every\\ palette\\ color\\ reads\\ on\\ white\\ and\\ on\\ its\\ own\\ row\\ tint$",
+        "^Person\\ color\\ ink\\ keeps\\ ink\\ that\\ already\\ reads$",
+        "^Person\\ color\\ ink\\ avatar\\ ink\\ meets\\ normal\\ text\\ contrast\\ on\\ every\\ palette\\ color$",
+        "^Person\\ color\\ ink\\ a\\ shared\\ item\\ never\\ takes\\ one\\ person's\\ color$",
+        "^Assignee\\ stack\\ shows\\ four\\ people\\ instead\\ of\\ a\\ \\+1$",
+        "^Assignee\\ stack\\ summarises\\ everyone\\ past\\ four$",
+        "^Participant\\ visual\\ controls\\ four\\-person\\ selector\\ fits\\ the\\ safe\\ viewport\\ at\\ default\\ text\\ size$",
+        "^Participant\\ visual\\ controls\\ custom\\ split\\ rows\\ remain\\ usable\\ at\\ enlarged\\ text\\ size$",
+        "^Participant\\ visual\\ controls\\ summary\\ amount\\ ink\\ changes\\ no\\ recorded\\ values$",
+        "^Participant\\ visual\\ controls\\ auto\\-added\\ owner\\ keeps\\ saved\\ color\\ with\\ fresh\\ occurrence\\ refs$"
       ]
     },
     "web": {

@@ -18,6 +18,7 @@
 import 'package:checks_frontend/screens/quick_split/item_assignment/utils/animation_utils.dart';
 import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_utils.dart';
 import 'package:flutter/material.dart';
+import 'package:checks_frontend/config/theme.dart';
 import 'dart:math';
 import 'package:checks_frontend/models/person.dart';
 
@@ -56,6 +57,7 @@ class ParticipantAvatar extends StatelessWidget {
 
   final double? assignedPercentage;
   final String? occurrenceLabel;
+  final Color? surfaceColor;
 
   /// Creates a participant avatar with the specified states and callbacks
   ///
@@ -70,6 +72,7 @@ class ParticipantAvatar extends StatelessWidget {
     required this.onLongPress,
     this.assignedPercentage,
     this.occurrenceLabel,
+    this.surfaceColor,
   });
 
   @override
@@ -77,6 +80,10 @@ class ParticipantAvatar extends StatelessWidget {
     // Get theme information for adaptive styling
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
+    final effectiveSurface = Color.alphaBlend(
+      surfaceColor ?? Theme.of(context).scaffoldBackgroundColor,
+      colorScheme.surface,
+    );
 
     // Special color for the birthday person - adjusted for theme brightness
     // Use lighter purple in dark mode for better visibility
@@ -111,7 +118,7 @@ class ParticipantAvatar extends StatelessWidget {
           onLongPress: onLongPress,
           child: SizedBox(
             width: 70,
-            height: 90, // Increased height to accommodate percentage text
+            height: 92, // Avatar, name and percentage text
             // Use a flexible layout with proper constraints to prevent overflow
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -120,22 +127,22 @@ class ParticipantAvatar extends StatelessWidget {
               children: [
                 // Avatar with selection indication - explicit height for consistency
                 SizedBox(
-                  height: 46, // Fixed height contains all avatar elements
+                  height: 52, // Fixed height contains all avatar elements
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
                       // Circular progress indicator for custom split percentages
                       if (hasCustomSplit)
                         SizedBox(
-                          width: 48,
-                          height: 48,
+                          width: 54,
+                          height: 54,
                           child: Stack(
                             alignment: Alignment.center,
                             children: [
                               // Background circle
                               Container(
-                                width: 48,
-                                height: 48,
+                                width: 54,
+                                height: 54,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   border: Border.all(
@@ -146,8 +153,8 @@ class ParticipantAvatar extends StatelessWidget {
                               ),
                               // Progress arc
                               SizedBox(
-                                width: 48,
-                                height: 48,
+                                width: 54,
+                                height: 54,
                                 child: CustomPaint(
                                   painter: ArcPainter(
                                     color: person.color,
@@ -164,8 +171,8 @@ class ParticipantAvatar extends StatelessWidget {
                       if (!hasCustomSplit)
                         AnimatedContainer(
                           duration: const Duration(milliseconds: 300),
-                          width: (isSelected || isAssigned) ? 46 : 42,
-                          height: (isSelected || isAssigned) ? 46 : 42,
+                          width: (isSelected || isAssigned) ? 52 : 48,
+                          height: (isSelected || isAssigned) ? 52 : 48,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: Colors.transparent,
@@ -192,8 +199,8 @@ class ParticipantAvatar extends StatelessWidget {
                       // Animated pulse effect for selected avatars (except birthday person)
                       if (isSelected && !isBirthdayPerson)
                         SizedBox(
-                          width: 54,
-                          height: 54,
+                          width: 60,
+                          height: 60,
                           child: CustomPaint(
                             painter: PulsePainter(color: person.color),
                           ),
@@ -202,8 +209,8 @@ class ParticipantAvatar extends StatelessWidget {
                       // Main avatar circle with person's color and initial
                       Container(
                         margin: const EdgeInsets.all(4),
-                        width: 38,
-                        height: 38,
+                        width: 44,
+                        height: 44,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color:
@@ -225,7 +232,7 @@ class ParticipantAvatar extends StatelessWidget {
                                   ? const Icon(
                                     Icons.cake,
                                     color: Colors.white,
-                                    size: 18,
+                                    size: 20,
                                   )
                                   : Text(
                                     (person.name.isEmpty
@@ -233,11 +240,19 @@ class ParticipantAvatar extends StatelessWidget {
                                         : person.name[0]
                                             .toUpperCase()), // First initial
                                     style: TextStyle(
-                                      color: ColorUtils.getContrastiveTextColor(
-                                        person.color,
-                                      ),
+                                      color:
+                                          brightness == Brightness.dark
+                                              ? ColorUtils.getContrastiveTextColor(
+                                                person.color,
+                                              )
+                                              : AppTheme.foregroundOn(
+                                                Color.alphaBlend(
+                                                  person.color,
+                                                  effectiveSurface,
+                                                ),
+                                              ),
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 16,
+                                      fontSize: 18,
                                     ),
                                   ),
                         ),
@@ -253,8 +268,8 @@ class ParticipantAvatar extends StatelessWidget {
                           bottom: 0,
                           right: 0,
                           child: Container(
-                            width: 16,
-                            height: 16,
+                            width: 18,
+                            height: 18,
                             decoration: BoxDecoration(
                               color: person.color,
                               shape: BoxShape.circle,
@@ -266,7 +281,7 @@ class ParticipantAvatar extends StatelessWidget {
                             child: const Center(
                               child: Icon(
                                 Icons.check,
-                                size: 10,
+                                size: 11,
                                 color: Colors.white,
                               ),
                             ),
@@ -284,14 +299,14 @@ class ParticipantAvatar extends StatelessWidget {
                   children: [
                     // Name label with explicit constraints and overflow handling
                     SizedBox(
-                      height: 16,
+                      height: 20,
                       child: Text(
                         occurrenceLabel ?? person.displayName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 14,
                           fontWeight:
                               isSelected || isAssigned || isBirthdayPerson
                                   ? FontWeight
@@ -308,9 +323,15 @@ class ParticipantAvatar extends StatelessWidget {
                       Text(
                         '${assignedPercentage!.toStringAsFixed(0)}%',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: person.color,
+                          color:
+                              brightness == Brightness.dark
+                                  ? person.color
+                                  : AppTheme.foregroundOn(
+                                    effectiveSurface,
+                                    preferred: person.color,
+                                  ),
                         ),
                       ),
                   ],
@@ -360,7 +381,8 @@ class ParticipantAvatar extends StatelessWidget {
           ); // 30% lighter for other colors
         }
       }
-      return person.color; // Use original color in light mode
+      // The ring and check carry the person's color; the name stays readable.
+      return Theme.of(context).colorScheme.onSurface;
     }
 
     // Default color for inactive state - lighter in dark mode
