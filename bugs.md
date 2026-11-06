@@ -644,3 +644,18 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Fix:** Use one effective-surface foreground owner for Settings and populated payment rows, preserving accents/actions. Actual513/558 mobile and mandatory-case omission checks pass; prior contrast/2x/populated-row and8 meaningful guard controls retained. Full app/device accessibility stays open.
 - **Docs:** DESIGN_SYSTEM.md; docs/reviews/2026-11-05-settings-accessibility.md
 - **Cross-ref:** FEAT-1793644512
+
+### [BUG-1793927492] Side status column covers content on Assign, Entry and Tab screens
+- [ ] **Severity:** med
+- **Area:** mobile, ui, layout
+- **File(s):** mobile/lib/screens/quick_split/item_assignment/item_assignment_screen.dart; mobile/lib/screens/quick_split/bill_entry/bill_entry_screen.dart; mobile/lib/screens/tabs/tab_detail_screen.dart; mobile/test/side_inset_layout_test.dart
+- **Observation:** On a native iPhone Duo simulator (Xcode 27.2, iOS 27.1) the Closed display reports right 84pt and bottom 34pt insets. The Scaffold bodies of Assign Items, Enter Bill Details and Tab detail have no horizontal SafeArea, so content runs under the status column: the Assigned amount reads $1 and then the column. Open landscape shows the same collision. Landing, Onboarding and Bill Details already use SafeArea and stay clear.
+- **Expected:** Body content stays between the system side insets on every display. The Assigned amount is fully visible, amounts and calculations do not change, the progress bar still shows the assigned share, and displays without side insets keep their full-width layout.
+- **Req:** none (found by native Duo capture for App Store screenshots)
+- **Depends on:** none
+- **Repro / Notes:** Closed pose in Device Hub, Quick Split, four people, $122 with items, Continue to Assign Items. Before evidence: /tmp/appshot-quality-20261105/capture/ios27.2/raw/iphone-duo-outer-1398x2034/03-assign.png. Regression test: mobile/test/side_inset_layout_test.dart. SafeArea alone left the progress bar reading full screen width, so at 50% it overstated the share by 42pt on the Closed display; the bar now sizes from its track.
+- **Bump:** patch
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Horizontal SafeArea and track-relative fill; final19/analyze0; no money/save/provider change. Native/default-font/full combined qualification pending; status remains in-progress.
+- **Docs:** DESIGN_SYSTEM.md; docs/reviews/2026-11-06-layout-insets.md; exact19 canonical cases. Separate Finalize short-height overflow remains open.

@@ -647,7 +647,8 @@
       "mobile/test/participant_legacy_history_test.dart",
       "mobile/test/participant_migration_test.dart",
       "mobile/test/participant_transport_contract_test.dart",
-      "mobile/test/participant_v1_recovery_test.dart"
+      "mobile/test/participant_v1_recovery_test.dart",
+      "mobile/test/side_inset_layout_test.dart"
     ],
     "web": [
       "web-bill-viewer/src/components/__tests__/SettlementCard.test.ts",
@@ -1216,6 +1217,27 @@
       ],
       "mobile/test/participant_v1_recovery_test.dart": [
         "(?:^| )actual\\ frozen\\ Drift9\\ attempted\\-v1\\ reopens\\ replays\\ original\\ HTTP\\ bytes\\ key\\ absent\\-header\\ and\\ lost201\\ again$"
+      ],
+      "mobile/test/side_inset_layout_test.dart": [
+        "(?:^| )Assign\\ Items\\ keeps\\ text\\ and\\ the\\ progress\\ bar\\ in\\ status\\ column\\ on\\ the\\ right$",
+        "(?:^| )Assign\\ Items\\ keeps\\ text\\ and\\ the\\ progress\\ bar\\ in\\ status\\ column\\ on\\ the\\ left$",
+        "(?:^| )Assign\\ Items\\ keeps\\ text\\ and\\ the\\ progress\\ bar\\ in\\ wide\\ display\\ with\\ a\\ right\\ status\\ column$",
+        "(?:^| )Assign\\ Items\\ keeps\\ the\\ full\\ width\\ on\\ a\\ phone\\ without\\ side\\ insets$",
+        "(?:^| )Assign\\ Items\\ keeps\\ the\\ full\\ width\\ on\\ a\\ tablet\\ without\\ side\\ insets$",
+        "(?:^| )Assign\\ Items\\ shows\\ the\\ same\\ amounts\\ with\\ or\\ without\\ side\\ insets$",
+        "(?:^| )Enter\\ Bill\\ Details\\ keeps\\ the\\ form\\ in\\ status\\ column\\ on\\ the\\ right$",
+        "(?:^| )Enter\\ Bill\\ Details\\ keeps\\ the\\ form\\ in\\ status\\ column\\ on\\ the\\ left$",
+        "(?:^| )Enter\\ Bill\\ Details\\ keeps\\ the\\ form\\ in\\ wide\\ display\\ with\\ a\\ right\\ status\\ column$",
+        "(?:^| )Enter\\ Bill\\ Details\\ keeps\\ the\\ full\\ width\\ on\\ a\\ phone\\ without\\ side\\ insets$",
+        "(?:^| )Enter\\ Bill\\ Details\\ keeps\\ the\\ full\\ width\\ on\\ a\\ tablet\\ without\\ side\\ insets$",
+        "(?:^| )Tab\\ detail\\ keeps\\ totals\\ and\\ bills\\ in\\ status\\ column\\ on\\ the\\ right$",
+        "(?:^| )Tab\\ detail\\ keeps\\ the\\ empty\\ state\\ in\\ status\\ column\\ on\\ the\\ right$",
+        "(?:^| )Tab\\ detail\\ keeps\\ totals\\ and\\ bills\\ in\\ status\\ column\\ on\\ the\\ left$",
+        "(?:^| )Tab\\ detail\\ keeps\\ the\\ empty\\ state\\ in\\ status\\ column\\ on\\ the\\ left$",
+        "(?:^| )Tab\\ detail\\ keeps\\ totals\\ and\\ bills\\ in\\ wide\\ display\\ with\\ a\\ right\\ status\\ column$",
+        "(?:^| )Tab\\ detail\\ keeps\\ the\\ empty\\ state\\ in\\ wide\\ display\\ with\\ a\\ right\\ status\\ column$",
+        "(?:^| )Tab\\ detail\\ keeps\\ the\\ full\\ width\\ on\\ a\\ phone\\ without\\ side\\ insets$",
+        "(?:^| )Tab\\ detail\\ keeps\\ the\\ full\\ width\\ on\\ a\\ tablet\\ without\\ side\\ insets$"
       ]
     },
     "web": {

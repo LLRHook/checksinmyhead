@@ -348,65 +348,73 @@ class _BillEntryScreenState extends State<BillEntryScreen> {
               ),
             ],
           ),
-          body: GestureDetector(
-            // Dismiss keyboard when tapping outside input fields
-            onTap: () => FocusScope.of(context).unfocus(),
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              children: [
-                if (!widget.lazyMode) ...[
-                  // Horizontal scrollable list of participant avatars
-                  ParticipantAvatars(participants: widget.participants),
+          body: SafeArea(
+            top: false,
+            bottom: false,
+            child: GestureDetector(
+              // Dismiss keyboard when tapping outside input fields
+              onTap: () => FocusScope.of(context).unfocus(),
+              child: ListView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+                children: [
+                  if (!widget.lazyMode) ...[
+                    // Horizontal scrollable list of participant avatars
+                    ParticipantAvatars(participants: widget.participants),
+
+                    const SizedBox(height: AppSpacing.large),
+                  ],
+
+                  // Scan a receipt to auto-fill bill details
+                  const ScanReceiptButton(),
+
+                  const SizedBox(height: AppSpacing.large),
+
+                  // Preview the bill in the tab's display currency.
+                  Consumer<BillData>(
+                    builder: (context, billData, _) {
+                      return widget.tab != null &&
+                              widget.tab!.displayCurrency !=
+                                  billData.currencyCode
+                          ? CurrencyConversionPreview(
+                            amount: billData.total,
+                            fromCurrency: billData.currencyCode,
+                            toCurrency: widget.tab!.displayCurrency,
+                          )
+                          : const SizedBox.shrink();
+                    },
+                  ),
+
+                  const SizedBox(height: AppSpacing.large),
+
+                  // Subtotal and tax input fields
+                  const BillTotalSection(),
+
+                  const SizedBox(height: AppSpacing.large),
+
+                  // Tip configuration (percentage or custom amount)
+                  const TipOptionsSection(),
+
+                  const SizedBox(height: AppSpacing.large),
+
+                  // Itemized bill entry with progress tracking
+                  ItemsSection(showSnackBar: _showSnackBar),
+
+                  const SizedBox(height: AppSpacing.large),
+
+                  // Overview of bill totals
+                  const BillSummarySection(),
+
+                  const SizedBox(height: AppSpacing.large),
+
+                  // Adaptive continue button with validation
+                  ContinueButton(onPressed: _continueToItemAssignment),
 
                   const SizedBox(height: AppSpacing.large),
                 ],
-
-                // Scan a receipt to auto-fill bill details
-                const ScanReceiptButton(),
-
-                const SizedBox(height: AppSpacing.large),
-
-                // Preview the bill in the tab's display currency.
-                Consumer<BillData>(
-                  builder: (context, billData, _) {
-                    return widget.tab != null &&
-                            widget.tab!.displayCurrency != billData.currencyCode
-                        ? CurrencyConversionPreview(
-                          amount: billData.total,
-                          fromCurrency: billData.currencyCode,
-                          toCurrency: widget.tab!.displayCurrency,
-                        )
-                        : const SizedBox.shrink();
-                  },
-                ),
-
-                const SizedBox(height: AppSpacing.large),
-
-                // Subtotal and tax input fields
-                const BillTotalSection(),
-
-                const SizedBox(height: AppSpacing.large),
-
-                // Tip configuration (percentage or custom amount)
-                const TipOptionsSection(),
-
-                const SizedBox(height: AppSpacing.large),
-
-                // Itemized bill entry with progress tracking
-                ItemsSection(showSnackBar: _showSnackBar),
-
-                const SizedBox(height: AppSpacing.large),
-
-                // Overview of bill totals
-                const BillSummarySection(),
-
-                const SizedBox(height: AppSpacing.large),
-
-                // Adaptive continue button with validation
-                ContinueButton(onPressed: _continueToItemAssignment),
-
-                const SizedBox(height: AppSpacing.large),
-              ],
+              ),
             ),
           ),
         ),

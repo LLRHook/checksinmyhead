@@ -34,6 +34,7 @@ Flutter uses the matching `AppTheme` colors in `mobile/lib/config/theme.dart`. U
 
 - Flutter spacing constants are 8, 16, and 24 px (`AppSpacing.small`, `medium`, `large`).
 - Web layouts use Tailwind spacing utilities already present in adjacent components; keep new screens aligned to their card padding and vertical rhythm.
+- Keep Flutter screen bodies between the system side insets with `SafeArea(top: false, bottom: false)` when the app bar and footer handle their own insets. Size proportional bars from layout constraints, not `MediaQuery.size`, because side insets narrow the body.
 - Cards and input fields use a 16 px radius in Flutter. Web cards use the established rounded-xl through rounded-3xl treatments according to hierarchy.
 - Existing web cards use subtle shadows in light mode and border definition in dark mode. Keep focus and disabled states visible.
 

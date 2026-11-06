@@ -690,144 +690,152 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
             ),
         ],
       ),
-      body:
-          _isLoading
-              ? Center(
-                child: CircularProgressIndicator(color: colorScheme.primary),
-              )
-              : _tabBills.isEmpty &&
-                  _settlements.isEmpty &&
-                  _settlementReviewStatus == null &&
-                  _settlementReadError == null &&
-                  _readError == null
-              ? _buildEmptyState()
-              : Column(
-                children: [
-                  Expanded(
-                    child: RefreshIndicator(
-                      onRefresh: _loadBills,
-                      child: ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.only(bottom: 100),
-                        children: [
-                          if (_readError != null)
-                            Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(_readError!),
-                                  TextButton(
-                                    onPressed: _loadBills,
-                                    child: const Text('Retry current history'),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          if (_settlementReadError != null)
-                            Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (_savedSettlementMarker != null)
-                                    Text(
-                                      'Marker saved for recorded row $_savedSettlementMarker. Current settlement status is unavailable.',
+      body: SafeArea(
+        top: false,
+        bottom: false,
+        child:
+            _isLoading
+                ? Center(
+                  child: CircularProgressIndicator(color: colorScheme.primary),
+                )
+                : _tabBills.isEmpty &&
+                    _settlements.isEmpty &&
+                    _settlementReviewStatus == null &&
+                    _settlementReadError == null &&
+                    _readError == null
+                ? _buildEmptyState()
+                : Column(
+                  children: [
+                    Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: _loadBills,
+                        child: ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.only(bottom: 100),
+                          children: [
+                            if (_readError != null)
+                              Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(_readError!),
+                                    TextButton(
+                                      onPressed: _loadBills,
+                                      child: const Text(
+                                        'Retry current history',
+                                      ),
                                     ),
-                                  Text(_settlementReadError!),
+                                  ],
+                                ),
+                              ),
+                            if (_settlementReadError != null)
+                              Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (_savedSettlementMarker != null)
+                                      Text(
+                                        'Marker saved for recorded row $_savedSettlementMarker. Current settlement status is unavailable.',
+                                      ),
+                                    Text(_settlementReadError!),
+                                    TextButton(
+                                      onPressed:
+                                          _settlementReading
+                                              ? null
+                                              : _loadSettlements,
+                                      child: Text(
+                                        _savedSettlementMarker == null
+                                            ? 'Retry current history'
+                                            : 'Retry current settlement status',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            if (_remoteTab?['net_balance_status'] != null &&
+                                _remoteTab?['net_balance_status'] !=
+                                    'available')
+                              const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: Text(
+                                  'Net balances unavailable; identity or accounting needs review. Recorded receipts remain visible.',
+                                ),
+                              ),
+                            if (_tabBills.any((b) => b.identityNeedsReview))
+                              const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: Text(
+                                  'Recorded history; ownership needs review.',
+                                ),
+                              ),
+                            if (_settlementReviewStatus != null &&
+                                _settlementReviewStatus != 'ready')
+                              const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: Text(
+                                  'Recorded settlements; ownership needs review. Original rows and flags are retained.',
+                                ),
+                              ),
+                            if (_tabBills.isNotEmpty) _buildTotalCard(),
+                            for (final bill
+                                in (_remoteTab?['bills'] as List? ?? [])
+                                    .whereType<Map<String, dynamic>>())
+                              ExpansionTile(
+                                title: Text('Participants · ${bill['name']}'),
+                                children: [
                                   TextButton(
                                     onPressed:
-                                        _settlementReading
-                                            ? null
-                                            : _loadSettlements,
-                                    child: Text(
-                                      _savedSettlementMarker == null
-                                          ? 'Retry current history'
-                                          : 'Retry current settlement status',
+                                        () => Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder:
+                                                (_) => LazyBillClaimScreen(
+                                                  billId: '${bill['id']}',
+                                                  token:
+                                                      _currentTab.accessToken!,
+                                                  tabId:
+                                                      '${_currentTab.backendId}',
+                                                  memberToken:
+                                                      _currentTab.memberToken,
+                                                ),
+                                          ),
+                                        ),
+                                    child: const Text(
+                                      'Select occurrence and items',
                                     ),
+                                  ),
+                                  ParticipantIdentityPanel(
+                                    bill: bill,
+                                    token: _currentTab.accessToken!,
+                                    tabId: '${_currentTab.backendId}',
+                                    memberToken: _currentTab.memberToken,
+                                    onChanged: _loadBills,
                                   ),
                                 ],
                               ),
-                            ),
-                          if (_remoteTab?['net_balance_status'] != null &&
-                              _remoteTab?['net_balance_status'] != 'available')
-                            const Padding(
-                              padding: EdgeInsets.all(16),
-                              child: Text(
-                                'Net balances unavailable; identity or accounting needs review. Recorded receipts remain visible.',
-                              ),
-                            ),
-                          if (_tabBills.any((b) => b.identityNeedsReview))
-                            const Padding(
-                              padding: EdgeInsets.all(16),
-                              child: Text(
-                                'Recorded history; ownership needs review.',
-                              ),
-                            ),
-                          if (_settlementReviewStatus != null &&
-                              _settlementReviewStatus != 'ready')
-                            const Padding(
-                              padding: EdgeInsets.all(16),
-                              child: Text(
-                                'Recorded settlements; ownership needs review. Original rows and flags are retained.',
-                              ),
-                            ),
-                          if (_tabBills.isNotEmpty) _buildTotalCard(),
-                          for (final bill
-                              in (_remoteTab?['bills'] as List? ?? [])
-                                  .whereType<Map<String, dynamic>>())
-                            ExpansionTile(
-                              title: Text('Participants · ${bill['name']}'),
-                              children: [
-                                TextButton(
-                                  onPressed:
-                                      () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder:
-                                              (_) => LazyBillClaimScreen(
-                                                billId: '${bill['id']}',
-                                                token: _currentTab.accessToken!,
-                                                tabId:
-                                                    '${_currentTab.backendId}',
-                                                memberToken:
-                                                    _currentTab.memberToken,
-                                              ),
-                                        ),
-                                      ),
-                                  child: const Text(
-                                    'Select occurrence and items',
-                                  ),
-                                ),
-                                ParticipantIdentityPanel(
-                                  bill: bill,
-                                  token: _currentTab.accessToken!,
-                                  tabId: '${_currentTab.backendId}',
-                                  memberToken: _currentTab.memberToken,
-                                  onChanged: _loadBills,
-                                ),
-                              ],
-                            ),
-                          if (_members.isNotEmpty) _buildMembersCard(),
-                          if (_currentTab.isFinalized &&
-                              _settlements.isNotEmpty)
-                            _buildSettlementsCard()
-                          else if (_currentTab.isFinalized &&
-                              _settlementReviewStatus == 'ready')
-                            const Padding(
-                              padding: EdgeInsets.all(16),
-                              child: Text('No recorded settlement rows.'),
-                            )
-                          else if (!_currentTab.isFinalized &&
-                              _calculatePersonTotals().isNotEmpty)
-                            _buildPersonTotalsCard(),
-                          if (_tabBills.isNotEmpty) ..._buildBillCards(),
-                        ],
+                            if (_members.isNotEmpty) _buildMembersCard(),
+                            if (_currentTab.isFinalized &&
+                                _settlements.isNotEmpty)
+                              _buildSettlementsCard()
+                            else if (_currentTab.isFinalized &&
+                                _settlementReviewStatus == 'ready')
+                              const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: Text('No recorded settlement rows.'),
+                              )
+                            else if (!_currentTab.isFinalized &&
+                                _calculatePersonTotals().isNotEmpty)
+                              _buildPersonTotalsCard(),
+                            if (_tabBills.isNotEmpty) ..._buildBillCards(),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+      ),
       floatingActionButton: _currentTab.isFinalized ? null : _buildFAB(),
     );
   }
