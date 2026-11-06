@@ -397,12 +397,22 @@ void main() {
     testWidgets('summarises everyone past four', (tester) async {
       useDisplay(tester);
       await tester.pumpWidget(app(assignedCard(people(5))));
-      expect(find.byType(CircleAvatar), findsNWidgets(4));
-      expect(find.text('+2'), findsOneWidget);
+      final avatars = find.byType(CircleAvatar);
+      expect(avatars, findsNWidgets(4));
+      expect(
+        find.descendant(of: avatars, matching: find.text('+2')),
+        findsOneWidget,
+      );
       for (final label in ['A', 'B', 'C']) {
-        expect(find.text(label), findsOneWidget);
+        expect(
+          find.descendant(of: avatars, matching: find.text(label)),
+          findsOneWidget,
+        );
       }
-      expect(find.text('D'), findsNothing);
+      expect(
+        find.descendant(of: avatars, matching: find.text('D')),
+        findsNothing,
+      );
       expect(tester.takeException(), isNull);
     });
   });

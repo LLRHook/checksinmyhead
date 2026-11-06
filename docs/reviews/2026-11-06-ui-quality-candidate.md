@@ -4,6 +4,8 @@ Reviewable source from a02108d7759079e17f8d32905fc14a9a16be668e. This note does 
 claim accepted widget, native or screenshot evidence. The ten UI files are the exact
 final R02 formatter bytes; no further UI edit or formatting was performed.
 
+2026-11-06 CI correction: [run42289112203/mobile job128137633416](https://github.com/LLRHook/checksinmyhead/actions/runs/42289112203/job/128137633416) at a962 failed `Assignee stack summarises everyone past four` (test70): global `find.text('A')` matched the11px avatar initial and18px other item content, after the four-circle and `+2` checks passed. This proves a finder-scope defect, not a production UI defect. The exact test-only correction scopes `A`/`B`/`C`, `+2` and no-`D` finders to `CircleAvatar` descendants, retaining all four-circle/label/remainder/absence/no-exception obligations and literal IDs. It supersedes the test-file byte-equality statement above; the nine production UI files and app140b0bec558 remain unchanged. No local test or formatter ran; corrected functional acceptance awaits automatic source-triggered CI. The failed raw row is retained, and PG/full/native/quality95/release limits remain open.
+
 ## Source scope
 
 Nine existing UI library files plus `mobile/test/screenshot_quality_test.dart` preserve

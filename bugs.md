@@ -730,3 +730,5 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Fix:** Adopt exact reviewed hasOverflow >4 and four-slot stack geometry, preserving the full assigned list. No runtime, physical-device,95-quality or screenshot recovery claim.
 - **Docs:** docs/reviews/2026-11-06-ui-quality-candidate.md; DESIGN_SYSTEM.md; mobile/README.md
 - **Cross-ref:** FEAT-1793644509 (acceptance and status unchanged)
+- **Log:**
+  - 2026-11-06 CI proof correction: Automatic CI42289112203/mobile128137633416 at a962 failed the overflow test global A finder after four CircleAvatar and +2 checks passed: it matched the11px avatar and18px other item content. This is a test-proof scope defect, not a demonstrated production UI defect. Apply exact09e54ebc correction to scope all ABC/+2/noD finders to CircleAvatar descendants, retaining every assertion and literal ID; no local test/formatter or retry. Corrective source-triggered CI acceptance remains pending; status in-progress and native/capture/quality limits unchanged. See docs/reviews/2026-11-06-ui-quality-candidate.md.
