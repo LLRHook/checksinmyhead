@@ -244,8 +244,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Production45s unchanged. Fixtures7PASS;5removals:8assertionFAIL/5healthy. OriginalIDs/joins retained. d6fullRED/classification2PASS unchanged; full/native/memory/B/spend/provider open.
-- **Docs:** mobile/README.md; docs/{backend-api,technical-overview,mobile-ocr-verification}.md; docs/reviews/2026-11-04-{mobile-tls-integration,mobile-tls-acceptance,backend-native-acceptance}.md; docs/reviews/2026-11-05-{ocr-timer-fixture,client-identity-integration}.md; docs/reviews/2026-11-06-receipt-deadline-fixtures.md
+- **Fix:** Production45s unchanged. 7positives/5controls PASS; 3460Flutter567visible/573canonicalPASS. d6fullRED/classification2PASS retained; native/memory/B/spend/provider/whole open.
+- **Docs:** mobile/README.md; docs/{backend-api,technical-overview,mobile-ocr-verification}.md; docs/reviews/2026-11-04-{mobile-tls-integration,mobile-tls-acceptance,backend-native-acceptance}.md; docs/reviews/2026-11-05-{ocr-timer-fixture,client-identity-integration}.md; docs/reviews/2026-11-06-{receipt-deadline-fixtures,combined-flutter-acceptance}.md
 - **Log:**
   - 2026-11-04 History: M2 clean362/17native/all359prior APPROVE; backend1146/OCR3600: prior M2/A2/native dated records (Docs).
   - 2026-11-04 Acceptance: Mobile7e36 source APPROVE0/0/reviewer NOT RUN; root392 CI commands and retained-report reconciliation pass; raw parser failure/missing source-after receipt retained. See mobile-tls-acceptance.
@@ -657,5 +657,20 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Horizontal SafeArea and track-relative fill; final19/analyze0; no money/save/provider change. Native/default-font/full combined qualification pending; status remains in-progress.
-- **Docs:** DESIGN_SYSTEM.md; docs/reviews/2026-11-06-layout-insets.md; exact19 canonical cases. Separate Finalize short-height overflow remains open.
+- **Fix:** Horizontal SafeArea/track-relative fill: final19/analyze0 and combined3460 Flutter567visible/573canonicalPASS. Native/default-font/integrated capture pending; separate Finalize overflow not fixed.
+- **Docs:** DESIGN_SYSTEM.md; docs/reviews/2026-11-06-{layout-insets,combined-flutter-acceptance}.md; exact19 canonical cases. Separate Finalize short-height overflow remains open.
+
+### [BUG-1793935715] Keep the Finalize confirmation usable on short displays
+- [ ] **Severity:** med
+- **Area:** mobile, ui, layout
+- **File(s):** mobile/lib/screens/tabs/tab_detail_screen.dart (_FinalizeConfirmSheet)
+- **Observation:** The retained native capture handoff reports 14px and 21px Finalize sheet overflows on short displays. Current source still caps a non-scroll Column at 70% screen height. The horizontal-body fix does not change this sheet; current native reproduction remains pending.
+- **Expected:** All settlement preview rows and Cancel/Finalize actions remain reachable without overflow on short displays and default/large text; keep money, confirmation and finalization behavior unchanged.
+- **Req:** none (separate retained native capture finding; DESIGN_SYSTEM.md responsive layout)
+- **Depends on:** none
+- **Repro / Notes:** Frozen /tmp/appshot-quality-20261105/capture/frozen-layout-milestone/HANDOFF.md, Separate findings; BEFORE frames are f4abc78, not current native proof. Open Tab detail > Finalize on a short display. Source caps maxHeight at 0.7 and uses an unscrollable Column. Body inset tests use textscale0.5 and do not qualify this modal. No fix or new native execution claimed.
+- **Bump:** patch
+- **Assignee:** Victor Ivanov
+- **Status:** open
+- **Docs:** docs/reviews/2026-11-06-combined-flutter-acceptance.md; frozen layout handoff
+- **Cross-ref:** BUG-1793927492 (separate horizontal body issue, not this sheet)

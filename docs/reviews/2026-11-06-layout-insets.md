@@ -27,9 +27,9 @@ rewrite them or any historical application failure.
 These geometry tests intentionally use text scale0.5 for the test font. They
 do not establish default-font, large-text, accessibility or native artifact
 acceptance. The earlier owner full Flutter566 result predates the final six
-formatting wraps. One combined committed-source full Flutter row remains pending
-after the separate receipt fixture checkpoint. No patched native app has been
-built or captured. Existing f4 BEFORE frames remain immutable; a future capture
+formatting wraps. The subsequent combined3460d692 full Flutter row passed567
+visible cases/573 canonical records; see the [scoped acceptance](2026-11-06-combined-flutter-acceptance.md).
+No patched native app has been built or captured. Existing f4 BEFORE frames remain immutable; a future capture
 must bind its app, backend and scripts to the selected committed checkpoint.
 
 The separate short-display Finalize confirmation overflow remains open and is

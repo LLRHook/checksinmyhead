@@ -98,6 +98,9 @@ must receive host-generated PEM material without requiring OpenSSL inside the ap
 The historical prototype's 17 extra native-adapter executions are consolidated into
 the canonical suite: 362 originals + 21 TLS = 383, plus nine pairing/resource guards
 = 392 visible occurrences. Preserve repeated suite/name multiplicities using Counters.
+The later [combined3460d692 full Flutter row](reviews/2026-11-06-combined-flutter-acceptance.md)
+passed567 visible cases/573 canonical records with all inherited multiplicities
+plus the new setup case. The earlier392 result is retained historical evidence.
 
 No package addition, application cache, paid inference, customer API/SQL, hosting or
 store action is needed. Do not launch signed release QA against the hardcoded public

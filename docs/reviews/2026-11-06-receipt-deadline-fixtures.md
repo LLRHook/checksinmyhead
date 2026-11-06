@@ -43,7 +43,8 @@ TMP/PKI were independently absent and permissions revoked before host release.
 The earlier controller failures, original d6 full Flutter RED and its two passing
 classification cases remain immutable. Those historical causes are unproved.
 
-One combined committed-source full Flutter row is still pending. These results
+The subsequent combined3460d692 full Flutter row passed567 visible cases/573
+canonical records; see the [scoped acceptance](2026-11-06-combined-flutter-acceptance.md). These results
 establish neither real45-second wall-clock performance nor native/device/signed
 qualification, memory plateau, durable allowanceB, provider spending, old-writer
 safety or integrated/release acceptance. BUG-1793644508 stays in progress; no
