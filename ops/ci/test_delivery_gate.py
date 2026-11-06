@@ -545,6 +545,82 @@ class ManifestReportTests(unittest.TestCase):
             'closed_channel_is_not_success',
             'barrier_and_single_receive_preserve_original_cause',
         )
+        assignment_children = {
+            'TestCreateAssignmentDecodeDifferential': (
+                'absent',
+                'root_null',
+                'name_null',
+                'name_empty',
+                'ref_null',
+                'ref_empty',
+                'both_null',
+                'full_values',
+                'folded_keys',
+                'escaped_keys',
+                'unicode_folded_key',
+                'name_value_then_null',
+                'name_null_then_value',
+                'name_value_then_empty',
+                'ref_value_then_null',
+                'ref_null_then_value',
+                'ref_value_then_empty',
+                'folded_duplicate_name',
+                'folded_duplicate_ref',
+                'percentage_value_then_null',
+                'percentage_null_then_value',
+                'percentage_negative_zero',
+                'percentage_negative',
+                'percentage_subnormal',
+                'percentage_underflow',
+                'percentage_max_finite',
+                'percentage_overflow',
+                'wrong_name_type',
+                'wrong_ref_type',
+                'wrong_percentage_type',
+                'wrong_name_before_valid',
+                'wrong_name_after_valid',
+                'wrong_ref_before_valid',
+                'wrong_ref_after_valid',
+                'wrong_percentage_before_valid',
+                'wrong_percentage_after_valid',
+                'unknown_null',
+                'unknown_after_valid',
+                'hidden_ref_flag',
+                'hidden_name_flag',
+                'untagged_name_alias',
+                'invalid_utf8_value',
+                'unpaired_surrogate',
+                'root_array',
+                'root_string',
+                'root_number',
+                'root_boolean',
+                'empty_input',
+                'truncated_object',
+                'truncated_value',
+                'malformed_separator',
+                'trailing_document',
+                'trailing_null',
+                'trailing_garbage',
+                'non_json_whitespace',
+                'trailing_whitespace',
+            ),
+            'TestCreateAssignmentDecodeRequestContracts': (
+                'wire1_absent_ref',
+                'wire1_scalar_null_duplicate',
+                'wire1_folded_name',
+                'wire1_null_ref',
+                'wire1_empty_ref',
+                'wire1_duplicate_ref_to_null',
+                'wire2_absent_name',
+                'wire2_pointer_null_duplicate',
+                'wire2_folded_ref',
+                'wire2_null_name',
+                'wire2_empty_name',
+                'wire2_duplicate_name_to_null',
+                'wire2_missing_ref',
+                'wire2_null_ref',
+            ),
+        }
         packages = sorted({f.rsplit('/', 1)[0] for f in families})
         for package in packages:
             events.append({'Action': 'start', 'Package': package})
@@ -553,9 +629,14 @@ class ManifestReportTests(unittest.TestCase):
                     test = family.rsplit('/', 1)[1]
                     events.append({'Action': 'run', 'Package': package, 'Test': test})
                     if family == 'backend/migrations/TestMigrationOutcomeObservation':
-                        for child in migration_children:
-                            events.extend([{'Action': action, 'Package': package,
-                                            'Test': test + '/' + child} for action in ('run', 'pass')])
+                        children = migration_children
+                    elif package == 'backend/internal/bill':
+                        children = assignment_children.get(test, ())
+                    else:
+                        children = ()
+                    for child in children:
+                        events.extend([{'Action': action, 'Package': package,
+                                        'Test': test + '/' + child} for action in ('run', 'pass')])
                     events.append({'Action': 'pass', 'Package': package, 'Test': test})
             events.append({'Action': 'pass', 'Package': package})
         return events
@@ -568,14 +649,22 @@ class ManifestReportTests(unittest.TestCase):
     def test_every_source_grounded_Go_family_is_mandatory_and_overlap_is_retained(self):
         self.assertEqual(self.manifest['postgres_packages'], list(gate.PG_PACKAGES))
         self.assertIn('backend/migrations/TestPostgresIdentity0003NullSafeGroups', self.manifest['rows']['postgres'])
+        snapshot_family = 'backend/internal/tab/TestPostgresLifecycleSnapshotCanonicalRows'
+        self.assertIn(snapshot_family, self.manifest['rows']['postgres'])
+        self.assertNotIn(snapshot_family, self.manifest['rows']['backend'])
         overlap = set(self.manifest['rows']['backend']) & set(self.manifest['rows']['postgres'])
         self.assertTrue(overlap)
+        assignment_prefixes = ('TestCreateAssignmentDecodeDifferential/',
+                               'TestCreateAssignmentDecodeRequestContracts/')
         for row, filename in [('backend','go-default.jsonl'), ('postgres','go-postgres.jsonl')]:
             families = self.manifest['rows'][row]
+            for parent in ('TestCreateAssignmentDecodeDifferential',
+                           'TestCreateAssignmentDecodeReceiverSequence',
+                           'TestCreateAssignmentDecodeRequestContracts'):
+                self.assertIn('backend/internal/bill/' + parent, families)
             events = self.go_events(families)
-            child_prefix = 'TestMigrationOutcomeObservation/'
             children = [event['Test'] for event in events
-                        if event['Action'] == 'run' and event.get('Test', '').startswith(child_prefix)]
+                        if event['Action'] == 'run' and '/' in event.get('Test', '')]
             path = self.write(filename, events, True)
             healthy = gate.summarize(row, [('go', str(path))], self.manifest, B)
             self.assertEqual(healthy['passed'], len(families) + len(children))
@@ -585,19 +674,36 @@ class ManifestReportTests(unittest.TestCase):
                     with self.assertRaises(gate.Rejected):
                         gate.summarize(row, [('go', str(path))], self.manifest, B)
             if row == 'postgres':
-                self.assertEqual(len(children), 5)
-                self.assertEqual(len(set(children)), 5)
-                for absent in children:
+                child_prefix = 'TestMigrationOutcomeObservation/'
+                migration_children = [child for child in children if child.startswith(child_prefix)]
+                self.assertEqual(len(migration_children), 5)
+                self.assertEqual(len(set(migration_children)), 5)
+                for absent in migration_children:
                     with self.subTest(row=row, absent_child=absent):
                         selected = [event for event in events if event.get('Test') != absent]
                         self.assertEqual([event['Action'] for event in selected
                                           if event.get('Test') == child_prefix[:-1]], ['run', 'pass'])
                         self.assertEqual({event['Test'] for event in selected if event['Action'] == 'run'
-                                          and event.get('Test', '').startswith(child_prefix)}, set(children) - {absent})
+                                          and event.get('Test', '').startswith(child_prefix)}, set(migration_children) - {absent})
                         path = self.write(filename, selected, True)
                         gate.validate_cases(gate.read_report('go', path)[1], families)
                         with self.assertRaisesRegex(gate.Rejected, 'missing mandatory test registration'):
                             gate.summarize(row, [('go', str(path))], self.manifest, B)
+            assignment_children = [child for child in children if child.startswith(assignment_prefixes)]
+            self.assertEqual(len(assignment_children), 70)
+            self.assertEqual(len(set(assignment_children)), 70)
+            for absent in assignment_children:
+                with self.subTest(row=row, absent_assignment_child=absent):
+                    selected = [event for event in events if event.get('Test') != absent]
+                    parent = absent.rsplit('/', 1)[0]
+                    self.assertEqual([event['Action'] for event in selected
+                                      if event.get('Test') == parent], ['run', 'pass'])
+                    self.assertEqual({event['Test'] for event in selected if event['Action'] == 'run'
+                                      and event.get('Test', '').startswith(assignment_prefixes)}, set(assignment_children) - {absent})
+                    path = self.write(filename, selected, True)
+                    gate.validate_cases(gate.read_report('go', path)[1], families)
+                    with self.assertRaisesRegex(gate.Rejected, 'missing mandatory test registration'):
+                        gate.summarize(row, [('go', str(path))], self.manifest, B)
 
     def test_no_test_packages_are_distinct_from_skipped_or_unfinished_tests(self):
         good = self.go_events(['backend/example/TestSelected'])

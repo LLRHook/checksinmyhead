@@ -60,6 +60,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Out of scope:** Unrelated redesign, new framework, live destructive operations, unapproved publication.
 - **Bump:** minor
 - **Status:** open
+- **Log:**
+  - 2026-11-06 Source: Prepared source-compatible decode/test-snapshot cost reductions; unchanged workload/targets and current full PG RED. No capacity/performance recovery established.
 
 ### [FEAT-1793644503] Simplify Vercel publishing source ownership
 - [ ] **Priority:** med

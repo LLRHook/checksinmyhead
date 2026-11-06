@@ -237,6 +237,13 @@ independent standalone graphs; keyed requests recover the original persisted cre
 capabilities, resolves member attribution inside the destination, and locks tab before
 bill. Same-tab retries preserve original attribution. Membership writers take the same
 tab lock; standalone claims recheck `tab_id IS NULL` at their locked write boundary.
+The private assignment decoder tracks field presence separately from decoded values,
+including explicit null and ordered duplicates, using encoding/json. It rejects
+unknown/trailing input and changes its receiver only after success. DTOs, person/share
+decoders and public wire errors remain unchanged. The test-only lifecycle snapshot
+keeps all nine whole-record sets while ordering rows by unique numeric id; it is not
+an API projection. See [scoped evidence](reviews/2026-11-06-assignment-snapshot.md).
+
 Creation normalizes and validates before indexed replay lookup. Only a miss derives
 shares and obtains bounded display/frozen quotes; the service owns secure token creation.
 The repository elects a parent with digest-only `ON CONFLICT DO NOTHING`, then inserts

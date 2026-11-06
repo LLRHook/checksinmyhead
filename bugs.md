@@ -40,11 +40,12 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Auth/client evidence: docs/reviews/2026-11-03-client-validation-correction.md. Driver Flutter237 pass; re-review/public bridge/integrated gates pending.
-- **Docs:** docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-02-authorization-batch.md; docs/reviews/2026-11-02-authorization-corrections.md; docs/reviews/2026-11-03-client-v1-bridge.md; docs/reviews/2026-11-03-client-validation-correction.md
+- **Fix:** Auth/client evidence: docs/reviews/2026-11-03-client-validation-correction.md. Driver Flutter237 pass; re-review/public bridge/integrated gates pending. 2026-11-06 assignment decoding source preserves exact old value/presence/null/duplicate/error behavior. Source0/0; candidate73 plus corrected goldens81 PASS across two scoped rows; baseline73 and four intended-negative/healthy controls retained. Original setupRED remains; no precision, PG, performance or integrated acceptance.
+- **Docs:** docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-02-authorization-batch.md; docs/reviews/2026-11-02-authorization-corrections.md; docs/reviews/2026-11-03-client-v1-bridge.md; docs/reviews/2026-11-03-client-validation-correction.md; docs/reviews/2026-11-06-assignment-snapshot.md
 - **Log:**
   - 2026-11-02 Validation: Driver-approved AUTH_CORRECTION_APPROVAL.md findings 1-3 implemented in 28eab76. Six safe before leaf failures; five temporary overlay variants yield 18 expected failing leaf cases. Extreme-denominator arithmetic tested only as bounded pure calculation, never HTTP. Real PostgreSQL covers safe money boundaries and calculation-error rollback. Five actual mobile-builder tests pass with --no-pub; this does not resolve locked acquisition. Keep in-progress; no CHANGELOG migration.
   - 2026-11-03 Validation: 43772a7 client slice: real widget/provider upload plus 30/31-rune entry/builder and validation checks; 228 Flutter/54 web pass, zero skips. See docs/reviews/2026-11-03-client-v1-bridge.md; broader acceptance unchanged.
+  - 2026-11-06 Source: 2026-11-06 assignment decoding source preserves exact old value/presence/null/duplicate/error behavior. Source0/0; candidate73 plus corrected goldens81 PASS across two scoped rows; baseline73 and four intended-negative/healthy controls retained. Original setupRED remains; no precision, PG, performance or integrated acceptance.
 
 ### [BUG-1793644499] Inject the frozen exchange-rate provider at startup
 - [x] **Severity:** high
@@ -163,11 +164,12 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Stored RETURNING/count guards and typed complete-row reader retain atomic retries. Source/S1 reviews, 50 focused cases, control failures and physical scanner coverage pass; raw candidates triaged. Full gate RED: tested71937623 startup60s kill, creation/tab600s, tab1.484s>750ms. No performance/artifact/integrated/rollout acceptance.
-- **Docs:** docs/backend-api.md; backend/README.md; VERIFICATION.md; docs/reviews/{2026-11-03-atomic-lifecycle,2026-11-03-unicode-share-ambiguity,2026-11-05-scoped-source-acceptance,2026-11-05-row-materialization,2026-11-05-complete-row-conversion}.md
+- **Fix:** Stored RETURNING/count guards and typed complete-row reader retain atomic retries. Source/S1 reviews, 50 focused cases, control failures and physical scanner coverage pass; raw candidates triaged. Full gate RED: tested71937623 startup60s kill, creation/tab600s, tab1.484s>750ms. No performance/artifact/integrated/rollout acceptance. 2026-11-06 test-only snapshot ordering uses unique numeric id while preserving nine whole-record sets and unknown fields. Source0/0 and four complete variant compiles; actual snapshot PG characterization/mutation controls UNRUN. Latest04e1 tested merge524b startup60s/cmd+tab600s and maxUSD2.114s>2s remain RED; first large block715.9ms does not complete3cohorts.
+- **Docs:** docs/backend-api.md; backend/README.md; VERIFICATION.md; docs/reviews/{2026-11-03-atomic-lifecycle,2026-11-03-unicode-share-ambiguity,2026-11-05-scoped-source-acceptance,2026-11-05-row-materialization,2026-11-05-complete-row-conversion}.md; docs/reviews/2026-11-06-assignment-snapshot.md
 - **Log:**
   - 2026-11-05 Contrary execution: run42012762828 mandatory8 PG fails snapshot equality across two lifecycle parents/five currency children; first/stored CreatedAt803580958/803580000ns. Other five rows pass; Required delivery checks fails. Reopen in-progress; no flake/rerun waiver. See committed gate note and retained raw job log.
   - 2026-11-05 Integration: Loader source0/0, physical build/vet/scanner coverage pass;1734 selected leaves retained. No numerical waiver.
+  - 2026-11-06 Source: 2026-11-06 test-only snapshot ordering uses unique numeric id while preserving nine whole-record sets and unknown fields. Source0/0 and four complete variant compiles; actual snapshot PG characterization/mutation controls UNRUN. Latest04e1 tested merge524b startup60s/cmd+tab600s and maxUSD2.114s>2s remain RED; first large block715.9ms does not complete3cohorts.
 
 ### [BUG-1793644505] Authorize accounting by stable participant identity
 - [ ] **Severity:** high

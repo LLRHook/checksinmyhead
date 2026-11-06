@@ -85,7 +85,7 @@ func lifecycleSnapshot(t *testing.T, db *gorm.DB) string {
 	tables := []string{"tabs", "tab_members", "bills", "people", "bill_participants", "bill_items", "item_assignments", "person_shares", "tab_settlements"}
 	parts := make([]string, 0, len(tables))
 	for _, table := range tables {
-		parts = append(parts, "'"+table+"',(SELECT coalesce(jsonb_agg(to_jsonb(r) ORDER BY to_jsonb(r)::text),'[]') FROM "+table+" r)")
+		parts = append(parts, "'"+table+"',(SELECT coalesce(jsonb_agg(to_jsonb(r) ORDER BY r.id),'[]') FROM "+table+" r)")
 	}
 	var result string
 	if err := db.Raw("SELECT jsonb_build_object(" + strings.Join(parts, ",") + ")::text").Scan(&result).Error; err != nil {

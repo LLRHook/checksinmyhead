@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"io"
 	"math"
 	"net/http"
 	"sort"
@@ -605,16 +606,44 @@ func (v *createPerson) UnmarshalJSON(data []byte) error {
 	v.RefPresent = fieldPresent(fields, "client_ref")
 	return nil
 }
+
+// createAssignmentField keeps presence separate from the decoded value, including
+// null, while encoding/json retains ordered duplicate-key and scalar semantics.
+type createAssignmentField[T any] struct {
+	value   T
+	present bool
+}
+
+func (v *createAssignmentField[T]) UnmarshalJSON(data []byte) error {
+	v.present = true
+	return json.Unmarshal(data, &v.value)
+}
+
 func (v *createAssignment) UnmarshalJSON(data []byte) error {
-	type plain createAssignment
-	var p plain
-	fields, err := creationObjectFields(data, &p)
-	if err != nil {
+	var p struct {
+		PersonName     createAssignmentField[string]  `json:"person_name"`
+		ParticipantRef createAssignmentField[*string] `json:"participant_ref"`
+		Percentage     float64                        `json:"percentage"`
+	}
+	d := json.NewDecoder(bytes.NewReader(data))
+	d.DisallowUnknownFields()
+	if err := d.Decode(&p); err != nil {
 		return err
 	}
-	*v = createAssignment(p)
-	v.RefPresent = fieldPresent(fields, "participant_ref")
-	v.NamePresent = fieldPresent(fields, "person_name")
+	// Direct callers, as well as enclosing decoders, must supply one document.
+	if _, err := d.Token(); err != io.EOF {
+		if err != nil {
+			return err
+		}
+		return ErrInvalidCreation
+	}
+	*v = createAssignment{
+		RefPresent:     p.ParticipantRef.present,
+		NamePresent:    p.PersonName.present,
+		PersonName:     p.PersonName.value,
+		ParticipantRef: p.ParticipantRef.value,
+		Percentage:     p.Percentage,
+	}
 	return nil
 }
 func (v *createShare) UnmarshalJSON(data []byte) error {

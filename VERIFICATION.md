@@ -83,14 +83,13 @@ and update the checkpoint. Require every probe to succeed.
 | root | `/bin/bash -n dev.sh` |
 | root | `for script in .github/scripts/*.rb ops/ci/*.rb; do ruby -c "$script"; done` |
 
-Require exit0 for each command, no applicable vulnerabilities or lock drift.
+Require every exit0, no applicable vulnerabilities or lock drift.
 
 ## Stage 2 — builds and automated tests
 
-Use one uncached report-producing execution, with Bash `set -euo pipefail`.
-At root set `export REPORT_DIR="$PWD/.vv/delivery-reports"; mkdir -p "$REPORT_DIR"`.
-CI sets the same absolute variable to its `reports/` directory. Keep acquisition
-locked: `go mod download`/`go mod verify`, `npm ci`, `flutter pub get --enforce-lockfile`;
+Run once, uncached, retaining reports with Bash `set -euo pipefail`.
+Root: `export REPORT_DIR="$PWD/.vv/delivery-reports"; mkdir -p "$REPORT_DIR"`.
+CI uses absolute `REPORT_DIR` for `reports/`. Keep acquisition locked: `go mod download`/`go mod verify`, `npm ci`, `flutter pub get --enforce-lockfile`;
 `pod install --deployment` remains a prerequisite only for separately authorized iOS work.
 
 | Layer / directory | Command (same report flags/files in CI) |
@@ -107,8 +106,8 @@ locked: `go mod download`/`go mod verify`, `npm ci`, `flutter pub get --enforce-
 | Live PG authorization/migrations/readiness / `backend` | `go test -race -count=1 -json -tags=integration ./cmd/bill-service ./internal/bill ./internal/tab ./pkg/database ./migrations ./internal/startup ./internal/readiness ./internal/testpostgres \| tee "$REPORT_DIR/go-postgres.jsonl"` |
 | E2E/a11y/load | No wired runner: FEAT-1793644507, FEAT-1793644512, FEAT-1793644502; manual stages remain |
 
-Baselines remain unaccepted; builds/stub tests are not integration. Validate the same
-files via [delivery controls](ops/ci/README.md), retaining IDs/multiplicity and overlap.
+Baselines stay unaccepted; builds/stubs are not integration. Validate these files
+via [delivery controls](ops/ci/README.md); retain IDs/multiplicity and overlap.
 Never rerun solely for counts; missing/zero/skip/failure/malformed selections fail.
 
 Set `BILLINGTON_TEST_POSTGRES_DSN` for PG, e.g.
@@ -142,6 +141,7 @@ Health: one ledger query; rerun verify after external DDL. No payer backfill. Us
 schemas/overlays; retain additive schema/ledger on rollback. Production footprint/
 backup/restore/predeploy/drain/rollout need [proof](backend/README.md#postgresql-schema-startup).
 [Outcome](docs/reviews/2026-11-06-migration-outcomes.md) is not PgSleep/integrated proof.
+[Scoped](docs/reviews/2026-11-06-assignment-snapshot.md)
 
 For local workflow changes, also run `python3 scripts/verify_local_lifecycle.py
 --postgres-image sha256:<local-image-id> --output .vv/local-lifecycle-<unique-run>`.

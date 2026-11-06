@@ -44,7 +44,13 @@ leaf-only counts. Default/tagged overlap is retained separately per row; do not
 sum them into a distinct-test claim. Go literal selections use the full report-prefixed
 runner ID when no display name exists. The tagged migration outcome family requires
 all five exact children ([scoped evidence](../../docs/reviews/2026-11-06-migration-outcomes.md));
-this does not qualify the real PgSleep/rollback gate. File/literal families do not statically infer
+this does not qualify the real PgSleep/rollback gate. Assignment decoder families require
+all70 exact child IDs in both backend and PostgreSQL report namespaces; their
+standalone receiver-sequence parent is mandatory in both rows. Snapshot canonical-row
+characterization is PostgreSQL-only. Existing-method fixtures independently declare
+the literals and reject each omitted run+terminal pair with all families retained.
+[Scoped results](../../docs/reviews/2026-11-06-assignment-snapshot.md) do not establish
+SQL fidelity, performance recovery or a full gate. File/literal families do not statically infer
 all expansions of Dart's runtime data loops. Runtime starts must all finish and
 any reported skip/failure/zero/malformed or missing required family/registration
 fails. No-test Go packages are allowed only with the actual `[no test files]`
