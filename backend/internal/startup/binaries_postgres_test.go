@@ -29,7 +29,7 @@ func TestPostgresServiceBinaryModes(t *testing.T) {
 			build := exec.CommandContext(ctx, "go", "build", "-o", bin, "./cmd/"+service)
 			build.Dir = "../.."
 			if output, err := build.CombinedOutput(); err != nil {
-				t.Fatalf("binary build: %v %s", err, output)
+				t.Fatalf("binary build: %v; context=%v; process=%v; output=%s", err, ctx.Err(), build.ProcessState, output)
 			}
 			db := testpostgres.Open(t)
 			var schema string
