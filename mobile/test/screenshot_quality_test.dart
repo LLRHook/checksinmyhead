@@ -486,16 +486,19 @@ void main() {
       expect(content, findsOneWidget);
       expect(tester.getSize(content).width, lessThanOrEqualTo(560));
       final list = find.descendant(of: dialog, matching: find.byType(ListView));
+      expect(list, findsOneWidget);
+      final participantScroll = find.descendant(
+        of: list,
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is Scrollable &&
+              widget.axisDirection == AxisDirection.down,
+        ),
+      );
+      expect(participantScroll, findsOneWidget);
       for (var i = 0; i < 4; i++) {
         final label = find.text('${i + 1}. ${roster[i].displayName}');
-        await tester.scrollUntilVisible(
-          label,
-          100,
-          scrollable: find.descendant(
-            of: list,
-            matching: find.byType(Scrollable),
-          ),
-        );
+        await tester.scrollUntilVisible(label, 100, scrollable: participantScroll);
         expectInside(tester, label, tester.getRect(dialog));
       }
       await tester.tap(find.text('Apply Split'));
