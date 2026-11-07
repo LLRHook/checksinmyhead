@@ -305,7 +305,7 @@ jobs:
     - run: python3 control/ops/ci/delivery_gate.py assert-checkout --repo control --source "$CONTROLLER"
     - run: python3 control/ops/ci/delivery_gate.py assert-checkout --repo candidate --source "$SOURCE"
     - run: mkdir -p reports
-    - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
       with:
         node-version-file: candidate/web-bill-viewer/.node-version
         package-manager-cache: false
