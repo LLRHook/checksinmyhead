@@ -28,6 +28,11 @@ import 'package:flutter/material.dart' hide Table, Tab;
 // Generated with dart run build_runner build --delete-conflicting-outputs
 part 'database.g.dart';
 
+class ReceiptHistoryFull extends StateError {
+  ReceiptHistoryFull()
+    : super('History is full of pending or referenced receipts');
+}
+
 class People extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text()();
@@ -434,6 +439,7 @@ class AppDatabase extends _$AppDatabase {
     String? exchangeRateDate,
     String exchangeRateSource = 'native-usd',
     bool skipDuplicateCheck = false,
+    Set<int> protectedReceiptIds = const {},
   }) async {
     final normalizedCurrencyCode = currencyCode.trim().toUpperCase();
     final participantNames = participants.map((p) => p.name).toList();
@@ -503,7 +509,7 @@ class AppDatabase extends _$AppDatabase {
 
     return transaction(() async {
       if (billId == null) {
-        await _makeReceiptRoom();
+        await _makeReceiptRoom(protectedReceiptIds: protectedReceiptIds);
         return into(recentBills).insert(companion);
       }
       // Existing history/import callers retain exact-row update semantics.
@@ -525,7 +531,11 @@ class AppDatabase extends _$AppDatabase {
       final existing = await getReceiptByHandle(receipt.creationHandle.value!);
       if (existing != null) return existing.id;
       await _makeReceiptRoom();
-      return into(recentBills).insert(receipt);
+      return into(recentBills).insert(
+        receipt.createdAt.present
+            ? receipt
+            : receipt.copyWith(createdAt: Value(DateTime.now())),
+      );
     },
   );
 
@@ -565,13 +575,15 @@ class AppDatabase extends _$AppDatabase {
                 b.attachmentState.equals('attempted')),
       )).get();
 
-  Future<void> _makeReceiptRoom() async {
+  Future<void> _makeReceiptRoom({
+    Set<int> protectedReceiptIds = const {},
+  }) async {
     final count =
         await (selectOnly(recentBills)..addColumns([
           recentBills.id.count(),
         ])).map((r) => r.read(recentBills.id.count())!).getSingle();
     if (count < maxRecentBills) return;
-    final referenced = <int>{};
+    final referenced = <int>{...protectedReceiptIds};
     for (final tab in await getAllTabs()) {
       referenced.addAll(
         tab.billIds.split(',').map(int.tryParse).whereType<int>(),
@@ -592,7 +604,7 @@ class AppDatabase extends _$AppDatabase {
               ..limit(1))
             .get();
     if (candidates.isEmpty) {
-      throw StateError('History is full of pending or referenced receipts');
+      throw ReceiptHistoryFull();
     }
     await (delete(recentBills)
       ..where((b) => b.id.equals(candidates.single.id))).go();

@@ -97,12 +97,62 @@ func allocateRoundedCentsOrdered(raw map[string]float64, lastClaimByPerson map[s
 	return result, nil
 }
 
-// Equivalent to cycling one cent at a time in claim/name order, with at most
-// one adjustment per participant even if the remainder is unexpectedly large.
+// Cycle in the already sorted claim/name order. Negative adjustments skip zero
+// balances. Whole rounds are collapsed so work never depends on the cent count.
 func distributeRemainder(shares []roundedShare, remaining int64) error {
 	if len(shares) == 0 {
 		if remaining != 0 {
 			return ErrInvalidCreation
+		}
+		return nil
+	}
+	if remaining < 0 {
+		if remaining == math.MinInt64 {
+			return ErrInvalidCreation
+		}
+		levels := make([]int64, 0, len(shares))
+		var available int64
+		for _, s := range shares {
+			if s.cents < 0 {
+				return ErrInvalidCreation
+			}
+			var err error
+			available, err = addCents(available, s.cents)
+			if err != nil {
+				return err
+			}
+			if s.cents > 0 {
+				levels = append(levels, s.cents)
+			}
+		}
+		debt := -remaining
+		if debt > available {
+			return ErrInvalidCreation
+		}
+		sort.Slice(levels, func(i, j int) bool { return levels[i] < levels[j] })
+		var rounds int64
+		active := int64(len(levels))
+		for _, next := range levels {
+			step := next - rounds
+			if step > debt/active {
+				rounds += debt / active
+				debt %= active
+				break
+			}
+			debt -= step * active
+			rounds = next
+			active--
+			if debt == 0 {
+				break
+			}
+		}
+		for i := range shares {
+			before := shares[i].cents
+			shares[i].cents -= min(before, rounds)
+			if before > rounds && debt > 0 {
+				shares[i].cents--
+				debt--
+			}
 		}
 		return nil
 	}
@@ -112,9 +162,6 @@ func distributeRemainder(shares []roundedShare, remaining int64) error {
 		delta := each
 		if residual > 0 && int64(i) < residual {
 			delta++
-		}
-		if residual < 0 && int64(i) < -residual {
-			delta--
 		}
 		cents, err := addCents(shares[i].cents, delta)
 		if err != nil {

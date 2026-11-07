@@ -106,11 +106,12 @@ func FrozenUSDShareCents(b models.Bill) ([]int64, error) {
 	if err != nil {
 		return nil, mutation.Review
 	}
-	if math.Abs(total-b.Total) < 0.005 {
+	if math.Abs(total-b.Total) < 0.005 || total > b.Total {
 		target = frozenCents
 	}
-	// Retain the established full/partial rule; never scale an unclaimed receipt.
-	if total > b.Total+0.005 {
+	// Creation accepts raw fractional tax/tip and cent-rounded shares within this
+	// tolerance. Preserve partial allocations rather than scaling them up.
+	if total > b.Total+moneyTolerance {
 		return nil, mutation.Review
 	}
 	type remainder struct {

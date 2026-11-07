@@ -59,6 +59,9 @@ func guardCreationInsert(c CreationInsert) error {
 	if _, err := FrozenUSDTotalCents(*v); err != nil {
 		return ErrInvalidCreation
 	}
+	if _, err := FrozenUSDShareCents(*v); err != nil {
+		return ErrInvalidCreation
+	}
 	if c.Replay != nil && (c.Replay.Version != 1 && c.Replay.Version != 2 || (c.Replay.Version == 2) != (v.InputVersion == 2)) {
 		return ErrInvalidCreation
 	}

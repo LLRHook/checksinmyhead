@@ -201,6 +201,11 @@ history/launch retry and tab additions use that owner and the same exact Drift I
 A valid persisted201 response atomically checkpoints source link, remote ID, frozen
 quote and authoritative USD total before presentation or attachment. Failed HTTP,
 checkpoint, attachment or presentation leaves truthful saved/pending state.
+New durable rows record their insertion time explicitly; this does not rewrite old
+history. A remote Trip import protects its entire incoming set and commits all rows
+with the tab's local IDs, or rolls the pass back. The30-row limit and pending/referenced
+receipt protection remain. Full history and read/cache/parse errors end loading with
+an explicit retry, without presenting partial balances or a finalization preview.
 
 The iOS adapter generates32 bytes with Security and stores only the recovery capability
 in device-only unlocked Keychain. Drift does not hold that capability. This does not

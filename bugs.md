@@ -732,3 +732,78 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Cross-ref:** FEAT-1793644509 (acceptance and status unchanged)
 - **Log:**
   - 2026-11-06 CI proof correction: Automatic CI42289112203/mobile128137633416 at a962 failed the overflow test global A finder after four CircleAvatar and +2 checks passed: it matched the11px avatar and18px other item content. This is a test-proof scope defect, not a demonstrated production UI defect. Apply exact09e54ebc correction to scope all ABC/+2/noD finders to CircleAvatar descendants, retaining every assertion and literal ID; no local test/formatter or retry. Corrective source-triggered CI acceptance remains pending; status in-progress and native/capture/quality limits unchanged. See docs/reviews/2026-11-06-ui-quality-candidate.md.
+
+### [BUG-1794045425] Preserve accounting availability for accepted fractional receipts
+- [ ] **Severity:** high
+- **Area:** backend, accounting
+- **File(s):** backend/internal/bill/accounting.go; backend/internal/bill/creation_repository.go; backend/internal/bill/accounting_creation_regression_test.go
+- **Observation:** SPEC-001: actual CreateBill accepts 18.50 subtotal + 2.775 tip /21.275 total but saved21.28 fails the stricter frozen-share audit; documented one-cent tolerance also reproduces.
+- **Expected:** Use the maintained accounting tolerance at creation and frozen allocation; genuinely partial claims are never scaled up. Reject malformed, overallocated or invalid foreign evidence before persistence; preserve valid legacy/fresh-reference inputs.
+- **Req:** docs/backend-api.md accounting and identity contracts; docs/technical-overview.md durable history/read-failure contracts
+- **Depends on:** none; independent postmerge regression
+- **Repro / Notes:** Real creation + persistence-preflight regressions failed before the fix; affected bill/tab -race row now532 named PASS. Actual PG/finalization/whole V&V remain pending.
+- **Bump:** patch
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Implemented aligned creation/frozen-share tolerance and pre-insert share audit; manager combined-scope source review accepted. Actual affected bill/tab Go race row:532 named PASS, with original red regressions retained. Status remains in-progress; real PostgreSQL persistence/finalization, current CI and integrated V&V remain pending.
+- **Docs:** docs/reviews/2026-11-07-postmerge-money-client-regressions.md
+
+### [BUG-1794045426] Keep negative cent remainders off zero obligations
+- [ ] **Severity:** med
+- **Area:** backend, accounting
+- **File(s):** backend/internal/bill/shares.go; backend/internal/bill/creation_correction_test.go; backend/internal/bill/accounting_creation_regression_test.go
+- **Observation:** SPEC-002: real creation derives Alice tax=-0.01 for the .10/30 +1.01 tax split, or rejects a valid zero-total participant split.
+- **Expected:** Debit only positive balances in existing claim/name priority, preserve signed discount lines and zero participants, bound work independently of cent count, and reject insufficient/invalid balances rather than persist negatives.
+- **Req:** docs/backend-api.md accounting and identity contracts; docs/technical-overview.md durable history/read-failure contracts
+- **Depends on:** none; independent postmerge regression
+- **Repro / Notes:** Both real creation triggers failed before correction. Positive/negative priority controls, huge bounded counts, signed-discount creation and independent small one-cent oracle pass in the affected Go row. Existing historical negative rows are not rewritten.
+- **Bump:** patch
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Implemented bounded negative-cent deductions from eligible positive balances in claim/name order, preserving zero shares and signed discounts. Manager combined-scope source review accepted; affected Go race532 PASS includes bounded-count and independent small-oracle controls. No historical amount rewrite. Status remains in-progress; real PG/current CI/integrated V&V remain pending.
+- **Docs:** docs/reviews/2026-11-07-postmerge-money-client-regressions.md
+
+### [BUG-1794045427] Import complete Trip history atomically at capacity
+- [ ] **Severity:** high
+- **Area:** mobile, persistence, tabs
+- **File(s):** mobile/lib/database/database.dart; mobile/lib/screens/recent_bills/models/recent_bill_manager.dart; mobile/lib/screens/tabs/tab_detail_screen.dart; mobile/test/tab_import_capacity_test.dart
+- **Observation:** SP-1: real Drift31-row import evicts an earlier returned ID; later existing target is evicted, and parse failure leaves prior refresh committed. Read failures can silently look empty or escape into permanent loading.
+- **Expected:** Retain cap30 and all pending/referenced/current-pass IDs. Import plus local tab-ID checkpoint commits together or rolls back. Every read/cache/parse failure clears loading, offers retry and withholds partial balance/finalize claims.
+- **Req:** docs/backend-api.md accounting and identity contracts; docs/technical-overview.md durable history/read-failure contracts
+- **Depends on:** none; independent postmerge regression
+- **Repro / Notes:** Before-fix real Drift and widget assertions fail; after-fix related Flutter116 visible PASS, including30/31, separate pending/referenced history, checkpoint rollback and error/retry controls. No migration or remote receipt deletion.
+- **Bump:** patch
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Implemented atomic complete Trip import plus local-ID checkpoint, protected incoming/pending/referenced history, and finite loading/error/retry with no partial balances. Manager combined-scope review accepted. Retained affected Flutter116 PASS; later completion-witness correction separately passes10 focused cases, without repeating116. Status remains in-progress; current CI/real PG/integrated V&V remain pending.
+- **Docs:** docs/reviews/2026-11-07-postmerge-money-client-regressions.md
+
+### [BUG-1794045428] Stamp durable receipts at their actual insertion time
+- [ ] **Severity:** med
+- **Area:** mobile, persistence
+- **File(s):** mobile/lib/database/database.dart; mobile/test/receipt_timestamp_test.dart
+- **Observation:** SP-4: omitted createdAt uses the historical Drift9 table literal1793912155 rather than receipt insertion time.
+- **Expected:** New durable receipts have an explicit insertion timestamp when omitted; explicit timestamps/existing handles remain unchanged. Do not backfill historical rows under this fix.
+- **Req:** docs/backend-api.md accounting and identity contracts; docs/technical-overview.md durable history/read-failure contracts
+- **Depends on:** none; independent postmerge regression
+- **Repro / Notes:** The maintained historical-schema SQLite fixture fails before the fix and passes afterward within the affected Flutter row. Schema version10 and migration files remain unchanged.
+- **Bump:** patch
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Implemented explicit new durable-receipt insertion timestamp, preserving existing handles and historical rows without migration/backfill. Manager combined-scope source review accepted; historical Drift9-default regression passes in retained affected Flutter116 row. No repeat row after test-only witness correction. Status remains in-progress; current CI/real PG/integrated V&V remain pending.
+- **Docs:** docs/reviews/2026-11-07-postmerge-money-client-regressions.md
+
+### [BUG-1794045429] Retain browser join input across refreshed bill graphs
+- [ ] **Severity:** med
+- **Area:** web, identity
+- **File(s):** web-bill-viewer/src/components/LazyBillBoard.tsx; web-bill-viewer/src/components/__tests__/LazyBillSession.test.ts
+- **Observation:** SP-2: participant-array refresh re-runs a combined selection/suggestion/recovery effect, erasing typed or deliberately empty join input and repeating membership recovery.
+- **Expected:** Selection follows current participant graph; suggestion seeding follows bill/tab identity; recovery follows tab/token identity. Successful recovery clears only its own warning and preserves unrelated errors.
+- **Req:** docs/backend-api.md accounting and identity contracts; docs/technical-overview.md durable history/read-failure contracts
+- **Depends on:** none; independent postmerge regression
+- **Repro / Notes:** Exact manager patch b6c3240d: baseline4/4 intended failures, fixed4/4 PASS, maintained web102/102. Integrated actual component hook/handler4/4 PASS plus TypeScript/Biome0; no browser-pixel or service claim.
+- **Bump:** patch
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Integrated exact manager SP-2 selection/suggestion/recovery ownership correction; manager combined-scope source review accepted. Integrated actual component/handler4 PASS, TypeScript/Biome0; retained manager whole-web102 row remains separate evidence. Status remains in-progress; full current CI, real PG and integrated V&V remain pending.
+- **Docs:** docs/reviews/2026-11-07-postmerge-money-client-regressions.md
