@@ -28,7 +28,23 @@ import 'package:provider/provider.dart';
 /// uploads the image to the backend for AI-powered parsing, and lets
 /// the user review parsed results before applying to BillData.
 class ScanReceiptButton extends StatefulWidget {
-  const ScanReceiptButton({super.key});
+  const ScanReceiptButton({
+    super.key,
+    this.createReceiptApi,
+    this.pickImage,
+    this.reviewReceipt,
+  });
+
+  @visibleForTesting
+  final ReceiptApiService Function()? createReceiptApi;
+  @visibleForTesting
+  final Future<XFile?> Function(ImageSource source)? pickImage;
+  @visibleForTesting
+  final Future<ParsedReceipt?> Function(
+    BuildContext context,
+    ParsedReceipt receipt,
+  )?
+  reviewReceipt;
 
   @override
   State<ScanReceiptButton> createState() => _ScanReceiptButtonState();
@@ -36,36 +52,53 @@ class ScanReceiptButton extends StatefulWidget {
 
 class _ScanReceiptButtonState extends State<ScanReceiptButton> {
   bool _isProcessing = false;
-  final _receiptApi = ReceiptApiService();
+  bool _busy = false;
+  int _attempt = 0;
+  late final ReceiptApiService _receiptApi;
+
+  @override
+  void initState() {
+    super.initState();
+    _receiptApi = widget.createReceiptApi?.call() ?? ReceiptApiService();
+  }
+
+  @override
+  void dispose() {
+    _attempt++;
+    _receiptApi.dispose();
+    super.dispose();
+  }
+
+  bool _active(int attempt) => mounted && attempt == _attempt;
 
   Future<void> _scanReceipt() async {
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => const _ImageSourceSheet(),
-    );
-
-    if (source == null || !mounted) return;
-
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: source,
-      maxWidth: 1500,
-      imageQuality: 75,
-      preferredCameraDevice: CameraDevice.rear,
-    );
-
-    if (pickedFile == null || !mounted) return;
-
-    setState(() => _isProcessing = true);
-    HapticFeedback.mediumImpact();
-
+    if (_busy) return;
+    final attempt = ++_attempt;
+    _busy = true;
     try {
+      final source = await showModalBottomSheet<ImageSource>(
+        context: context,
+        backgroundColor: Colors.transparent,
+        builder: (context) => const _ImageSourceSheet(),
+      );
+      if (!_active(attempt) || source == null) return;
+
+      final pickedFile =
+          await (widget.pickImage?.call(source) ??
+              ImagePicker().pickImage(
+                source: source,
+                maxWidth: 1500,
+                imageQuality: 75,
+                preferredCameraDevice: CameraDevice.rear,
+              ));
+      if (!_active(attempt) || pickedFile == null) return;
+      setState(() => _isProcessing = true);
+      HapticFeedback.mediumImpact();
+
       final parsed = await _receiptApi.parseReceipt(pickedFile.path);
-
-      if (!mounted) return;
+      if (!mounted || attempt != _attempt) return;
+      parsed.validate();
       setState(() => _isProcessing = false);
-
       if (parsed.items.isEmpty &&
           parsed.subtotal == null &&
           parsed.tax == null) {
@@ -73,33 +106,38 @@ class _ScanReceiptButtonState extends State<ScanReceiptButton> {
         return;
       }
 
-      if (!mounted) return;
-      final confirmed = await showModalBottomSheet<ParsedReceipt>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (context) => ReceiptReviewSheet(receipt: parsed),
-      );
-
-      if (confirmed != null && mounted) {
-        final billData = Provider.of<BillData>(context, listen: false);
-        billData.populateFromScan(confirmed);
-        HapticFeedback.heavyImpact();
-      }
+      final billData = Provider.of<BillData>(context, listen: false);
+      final confirmed =
+          await (widget.reviewReceipt?.call(context, parsed) ??
+              showModalBottomSheet<ParsedReceipt>(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => ReceiptReviewSheet(receipt: parsed),
+              ));
+      if (!_active(attempt) || confirmed == null) return;
+      billData.populateFromScan(confirmed);
+      HapticFeedback.heavyImpact();
+    } on ReceiptValidationException {
+      if (_active(attempt)) _showError(ReceiptValidationException.message);
     } on ReceiptParseException catch (e) {
-      if (mounted) {
-        setState(() => _isProcessing = false);
-        _showError(e.message);
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isProcessing = false);
+      if (_active(attempt) && !e.isCancelled) _showError(e.message);
+    } catch (_) {
+      if (_active(attempt)) {
         _showError('Failed to process receipt. Please try again.');
+      }
+    } finally {
+      if (_active(attempt)) {
+        setState(() {
+          _isProcessing = false;
+          _busy = false;
+        });
       }
     }
   }
 
   void _showError(String message) {
+    if (!mounted) return;
     HapticFeedback.vibrate();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -123,12 +161,12 @@ class _ScanReceiptButtonState extends State<ScanReceiptButton> {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
-    final bgColor = brightness == Brightness.dark
-        ? colorScheme.surface
-        : Colors.white;
-    final shadowColor = brightness == Brightness.dark
-        ? Colors.black.withValues(alpha: .2)
-        : Colors.black.withValues(alpha: .05);
+    final bgColor =
+        brightness == Brightness.dark ? colorScheme.surface : Colors.white;
+    final shadowColor =
+        brightness == Brightness.dark
+            ? Colors.black.withValues(alpha: .2)
+            : Colors.black.withValues(alpha: .05);
 
     return Container(
       decoration: BoxDecoration(
@@ -147,7 +185,7 @@ class _ScanReceiptButtonState extends State<ScanReceiptButton> {
         borderRadius: BorderRadius.circular(20),
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
-          onTap: _isProcessing ? null : _scanReceipt,
+          onTap: _busy ? null : _scanReceipt,
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
             child: Row(
@@ -158,20 +196,21 @@ class _ScanReceiptButtonState extends State<ScanReceiptButton> {
                     color: colorScheme.primary.withValues(alpha: .1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: _isProcessing
-                      ? SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
+                  child:
+                      _isProcessing
+                          ? SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: colorScheme.primary,
+                            ),
+                          )
+                          : Icon(
+                            Icons.document_scanner_outlined,
                             color: colorScheme.primary,
+                            size: 22,
                           ),
-                        )
-                      : Icon(
-                          Icons.document_scanner_outlined,
-                          color: colorScheme.primary,
-                          size: 22,
-                        ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -197,10 +236,7 @@ class _ScanReceiptButtonState extends State<ScanReceiptButton> {
                     ],
                   ),
                 ),
-                Icon(
-                  Icons.chevron_right,
-                  color: colorScheme.onSurfaceVariant,
-                ),
+                Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant),
               ],
             ),
           ),
@@ -221,9 +257,8 @@ class _ImageSourceSheet extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: brightness == Brightness.dark
-            ? colorScheme.surface
-            : Colors.white,
+        color:
+            brightness == Brightness.dark ? colorScheme.surface : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: SafeArea(

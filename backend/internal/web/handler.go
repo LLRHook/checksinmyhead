@@ -1,10 +1,10 @@
 package web
 
 import (
-	"backend/internal/bill"
+	billpkg "backend/internal/bill"
+	"backend/pkg/database"
 	"backend/pkg/safehttp"
 	"crypto/subtle"
-	"log"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -12,10 +12,10 @@ import (
 )
 
 type WebpageHandler struct {
-	service bill.BillService
+	service billpkg.BillService
 }
 
-func NewWebpageHandler(service bill.BillService) *WebpageHandler {
+func NewWebpageHandler(service billpkg.BillService) *WebpageHandler {
 	return &WebpageHandler{service: service}
 }
 
@@ -42,15 +42,21 @@ func (h *WebpageHandler) CreateHTML(c *gin.Context) {
 			c.JSON(404, gin.H{"error": "bill not found"})
 			return
 		}
-		log.Printf("internal error: %v", err)
+		database.LogRequestError(err)
 		c.JSON(500, gin.H{"error": "an internal error occurred"})
 		return
 	}
-	if subtle.ConstantTimeCompare([]byte(URLtoken), []byte(bill.AccessToken)) != 1 {
+	if URLtoken == "" || bill.AccessToken == "" || subtle.ConstantTimeCompare([]byte(URLtoken), []byte(bill.AccessToken)) != 1 {
 		c.JSON(403, gin.H{"error": "token mismatch"})
 		return
 	}
 
 	bill.AccessToken = ""
-	c.HTML(200, "bill.html", bill)
+	view := billpkg.ViewBill(*bill, nil)
+	for i := range view.PersonShares {
+		if view.PersonShares[i].Label != nil {
+			view.PersonShares[i].PersonName = *view.PersonShares[i].Label
+		}
+	}
+	c.HTML(200, "bill.html", view)
 }

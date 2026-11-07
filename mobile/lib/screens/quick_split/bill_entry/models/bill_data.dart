@@ -49,6 +49,7 @@ class BillData extends ChangeNotifier {
     'CHF': 'Swiss Franc',
   };
   String currencyCode = defaultCurrencyCode;
+  bool currencyConfirmed = false;
   ExchangeRateQuote _exchangeRateQuote = const ExchangeRateQuote.usd();
   bool _isLoadingExchangeRate = false;
   String? _exchangeRateError;
@@ -64,6 +65,7 @@ class BillData extends ChangeNotifier {
 
   void selectCurrency(String value) {
     currencyCode = value.toUpperCase();
+    currencyConfirmed = supportedCurrencies.containsKey(currencyCode);
     _exchangeRateQuote =
         currencyCode == defaultCurrencyCode
             ? const ExchangeRateQuote.usd()
@@ -232,57 +234,67 @@ class BillData extends ChangeNotifier {
   /// Clears existing items and replaces them with the parsed data.
   /// Sets subtotal, tax, and tip from the scan results.
   void populateFromScan(ParsedReceipt receipt) {
-    if (receipt.currencyCode != null &&
-        receipt.currencyCode!.trim().isNotEmpty) {
-      currencyCode = receipt.currencyCode!.trim().toUpperCase();
-    }
-    // Clear existing items
-    while (items.isNotEmpty) {
-      items.removeLast();
-    }
+    // Validate and build all replacement values before touching live state or
+    // controllers. Direct callers receive exactly the same guard as network data.
+    final expanded = receipt.expandedItems();
+    final replacement =
+        expanded
+            .map(
+              (item) =>
+                  BillItem(name: item.name, price: item.price, assignments: {}),
+            )
+            .toList();
+    final scannedSubtotal =
+        receipt.subtotal ??
+        (receipt.items.isEmpty
+            ? null
+            : receipt.items.fold<double>(0.0, (sum, item) => sum + item.price));
+    final subtotalText = scannedSubtotal?.toStringAsFixed(2);
+    final taxText = receipt.tax?.toStringAsFixed(2);
+    final tipText = receipt.tip?.toStringAsFixed(2);
+    final replacementTotal = replacement.fold(
+      0.0,
+      (sum, item) => sum + item.price,
+    );
 
-    // Set subtotal (compute from items if OCR didn't detect one)
-    if (receipt.subtotal != null) {
-      subtotalController.text = receipt.subtotal!.toStringAsFixed(2);
-    } else if (receipt.items.isNotEmpty) {
-      final computed = receipt.items.fold(0.0, (sum, item) => sum + item.price);
-      subtotalController.text = computed.toStringAsFixed(2);
+    // Scan evidence suggests a code; only the explicit receipt selector confirms
+    // it. A dollar symbol or absent evidence cannot silently establish USD.
+    final scannedCode = receipt.currencyCode?.toUpperCase();
+    if (scannedCode != null && supportedCurrencies.containsKey(scannedCode)) {
+      currencyCode = scannedCode;
+      _exchangeRateQuote =
+          currencyCode == 'USD'
+              ? const ExchangeRateQuote.usd()
+              : ExchangeRateQuote(
+                currencyCode: currencyCode,
+                usdRate: 0,
+                rateDate: '',
+                source: '',
+              );
+      _isLoadingExchangeRate = false;
+      _exchangeRateError = null;
     }
-
-    // Set tax
-    if (receipt.tax != null) {
-      taxController.text = receipt.tax!.toStringAsFixed(2);
-    }
-
-    // Set tip if detected
-    if (receipt.tip != null) {
-      useCustomTipAmount = true;
-      customTipController.text = receipt.tip!.toStringAsFixed(2);
-    }
-
-    // Store vendor for bill name pre-fill
+    currencyConfirmed = false;
+    items = replacement;
+    itemsTotal = replacementTotal;
     scannedVendor = receipt.vendor;
+    if (receipt.tip != null) useCustomTipAmount = true;
 
-    // Add scanned items, expanding quantity > 1 into individual line items
-    for (final item in receipt.items) {
-      if (item.quantity > 1) {
-        final perUnit = double.parse(
-          (item.price / item.quantity).toStringAsFixed(2),
-        );
-        final lastUnit = double.parse(
-          (item.price - perUnit * (item.quantity - 1)).toStringAsFixed(2),
-        );
-        for (int i = 0; i < item.quantity - 1; i++) {
-          addItem(item.name, perUnit);
-        }
-        addItem(item.name, lastUnit);
-      } else {
-        addItem(item.name, item.price);
-      }
+    // Publish one coherent bill notification, rather than calculating every
+    // partially updated controller and every expanded line.
+    subtotalController.removeListener(calculateBill);
+    taxController.removeListener(calculateBill);
+    customTipController.removeListener(calculateBill);
+    try {
+      if (subtotalText != null) subtotalController.text = subtotalText;
+      if (taxText != null) taxController.text = taxText;
+      if (tipText != null) customTipController.text = tipText;
+    } finally {
+      subtotalController.addListener(calculateBill);
+      taxController.addListener(calculateBill);
+      customTipController.addListener(calculateBill);
     }
-
-    calculateBill();
-    // Sync animated total so items_section shows correct value immediately
     animatedItemsTotal = itemsTotal;
+    calculateBill();
   }
 }

@@ -3,278 +3,529 @@ package tab
 import (
 	billpkg "backend/internal/bill"
 	"backend/pkg/models"
+	"backend/pkg/mutation"
+	"backend/pkg/security"
+	"context"
+	"crypto/subtle"
+	"database/sql"
 	"errors"
+	"math"
 	"sort"
-	"strings"
 	"time"
+	"unicode/utf8"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
-var ErrAssignmentConflict = errors.New("bill item changed since it was loaded")
-var ErrItemAlreadyPaid = errors.New("item belongs to a paid share")
-var ErrDuplicateItemUpdate = errors.New("bill item appears more than once in assignment updates")
-
-type BillItemAssignmentsUpdate struct {
-	ItemID            uint
-	Assignments       []models.ItemAssignment
-	ExpectedUpdatedAt *time.Time
-}
+type BillItemAssignmentsUpdate = billpkg.ItemAssignmentsUpdate
 
 type TabRepository interface {
-	Create(tab *models.Tab) error
-	GetById(id uint) (tab *models.Tab, err error)
-	GetAuthById(id uint) (tab *models.Tab, err error)
-	GetForFinalization(id uint) (tab *models.Tab, err error)
-	Update(tab *models.Tab) error
-	AddBill(tabID uint, billID uint, billToken string, memberID *uint) error
-	UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error
-	UpdateBillItemAssignmentsBatch(tabID uint, billID uint, updates []BillItemAssignmentsUpdate) error
-	UpdateBillPersonSharePaid(tabID uint, billID uint, shareID uint, paid bool) error
-	Finalize(id uint) error
-	GetSettlements(tabID uint) ([]models.TabSettlement, error)
-	CreateSettlements(settlements []models.TabSettlement) error
-	UpdateSettlementPaid(tabID uint, id uint, paid bool) error
-	CreateMember(member *models.TabMember) error
-	GetMemberByToken(token string) (*models.TabMember, error)
-	GetMembersByTabID(tabID uint) ([]models.TabMember, error)
-	DeleteMember(tabID uint, memberID uint) error
+	Create(context.Context, *models.Tab, *models.TabMember) error
+	GetById(uint) (*models.Tab, error)
+	GetAuthById(uint) (*models.Tab, error)
+	Update(context.Context, SettingsCommand) error
+	AttachBill(context.Context, AttachBillCommand) error
+	UpdateBillItemAssignmentsBatch(context.Context, AssignmentCommand) error
+	UpdateBillPersonSharePaid(context.Context, SharePaidCommand) error
+	FinalizeOnce(context.Context, FinalizeCommand) ([]models.TabSettlement, error)
+	GetSettlements(uint) ([]models.TabSettlement, error)
+	UpdateSettlementPaid(context.Context, SettlementPaidCommand) error
+	Join(context.Context, JoinCommand) (*models.TabMember, bool, error)
+	GetMemberByToken(string) (*models.TabMember, error)
+	GetMembersByTabID(uint) ([]models.TabMember, error)
+	Leave(context.Context, LeaveCommand) error
 }
+type tabRepository struct{ db *gorm.DB }
 
-type tabRepository struct {
-	db *gorm.DB
-}
-
-func (r *tabRepository) Create(tab *models.Tab) error {
-	return r.db.Create(tab).Error
-}
-
-func (r *tabRepository) GetById(id uint) (tab *models.Tab, err error) {
-	tab = &models.Tab{}
-	err = r.db.
-		Preload("Bills.Items.Assignments").
-		Preload("Bills.Participants").
-		Preload("Bills.PersonShares").
-		Preload("Members").
-		First(tab, id).Error
-	return tab, err
-}
-
-func (r *tabRepository) GetAuthById(id uint) (tab *models.Tab, err error) {
-	tab = &models.Tab{}
-	err = r.db.
-		Select("id", "access_token", "finalized").
-		First(tab, id).Error
-	return tab, err
-}
-
-func (r *tabRepository) GetForFinalization(id uint) (tab *models.Tab, err error) {
-	tab = &models.Tab{}
-	err = r.db.
-		Preload("Bills.PersonShares").
-		First(tab, id).Error
-	return tab, err
-}
-
-func (r *tabRepository) Update(tab *models.Tab) error {
-	return r.db.Model(tab).Updates(models.Tab{
-		Name:            tab.Name,
-		Description:     tab.Description,
-		DisplayCurrency: tab.DisplayCurrency,
-	}).Error
-}
-
-func (r *tabRepository) AddBill(tabID uint, billID uint, billToken string, memberID *uint) error {
-	updates := map[string]interface{}{"tab_id": tabID}
-	if memberID != nil {
-		updates["added_by_member_id"] = *memberID
-		updates["paid_by_member_id"] = *memberID
+func NewTabRepository(db *gorm.DB) TabRepository { return &tabRepository{db} }
+func (r *tabRepository) Create(ctx context.Context, t *models.Tab, creator *models.TabMember) error {
+	if t.ID != 0 || len(t.Bills) != 0 || len(t.Members) != 0 || t.Finalized || t.FinalizedAt != nil {
+		return mutation.Invalid
 	}
-	query := r.db.Model(&models.Bill{}).Where("id = ? AND (tab_id IS NULL OR tab_id = ?)", billID, tabID)
-	if billToken != "" {
-		query = query.Where("access_token = ?", billToken)
-	}
-	result := query.Updates(updates)
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
-	}
-	return nil
-}
-
-func (r *tabRepository) UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error {
-	return r.UpdateBillItemAssignmentsBatch(tabID, billID, []BillItemAssignmentsUpdate{{
-		ItemID: itemID, Assignments: assignments, ExpectedUpdatedAt: expectedUpdatedAt,
-	}})
-}
-
-func (r *tabRepository) UpdateBillItemAssignmentsBatch(tabID uint, billID uint, updates []BillItemAssignmentsUpdate) error {
-	if len(updates) == 0 {
-		return errors.New("item assignment updates are required")
-	}
-	updates = append([]BillItemAssignmentsUpdate(nil), updates...)
-	sort.Slice(updates, func(i, j int) bool { return updates[i].ItemID < updates[j].ItemID })
-	for i := 1; i < len(updates); i++ {
-		if updates[i-1].ItemID == updates[i].ItemID {
-			return ErrDuplicateItemUpdate
-		}
-	}
-
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		var bill models.Bill
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("id = ? AND tab_id = ?", billID, tabID).
-			First(&bill).Error; err != nil {
+	ctx, cancel := mutation.Bound(ctx)
+	defer cancel()
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(t).Error; err != nil {
 			return err
 		}
+		if creator != nil {
+			creator.TabID = t.ID
+			creator.Role = "creator"
+			return tx.Create(creator).Error
+		}
+		return nil
+	}, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+}
+func (r *tabRepository) GetById(id uint) (*models.Tab, error) {
+	t := &models.Tab{}
+	ctx, cancel := mutation.Bound(context.Background())
+	defer cancel()
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return tx.Select(models.TabColumns).Preload("Bills", func(q *gorm.DB) *gorm.DB { return billpkg.GraphQuery(q).Order("id ASC") }).Preload("Members", func(q *gorm.DB) *gorm.DB { return q.Select(models.MemberColumns).Order("id ASC") }).First(t, id).Error
+	}, &sql.TxOptions{Isolation: sql.LevelRepeatableRead, ReadOnly: true})
+	if err == nil {
+		for i := range t.Bills {
+			billpkg.PopulateLegacyParticipants(&t.Bills[i])
+		}
+	}
+	return t, err
+}
+func (r *tabRepository) GetAuthById(id uint) (*models.Tab, error) {
+	t := &models.Tab{}
+	err := r.db.Select("id", "access_token", "finalized").First(t, id).Error
+	return t, err
+}
 
-		for _, update := range updates {
-			var item models.BillItem
-			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND bill_id = ?", update.ItemID, billID).First(&item).Error; err != nil {
-				return err
-			}
-			if update.ExpectedUpdatedAt != nil && !item.UpdatedAt.Equal(*update.ExpectedUpdatedAt) {
-				return ErrAssignmentConflict
+// lockAccess is only called at the beginning of a tab transaction, before any
+// bill/item/share lock. Membership writers use the same root lock.
+func lockAccess(tx *gorm.DB, a TabAccess) (models.Tab, error) {
+	var t models.Tab
+	if err := tx.Select(models.TabColumns).Clauses(clause.Locking{Strength: "UPDATE"}).First(&t, a.TabID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return t, mutation.Forbidden
+		}
+		return t, err
+	}
+	if a.TabToken == "" || t.AccessToken == "" || subtle.ConstantTimeCompare([]byte(a.TabToken), []byte(t.AccessToken)) != 1 {
+		return t, mutation.Forbidden
+	}
+	return t, nil
+}
+func members(tx *gorm.DB, id uint) ([]models.TabMember, error) {
+	var result []models.TabMember
+	err := tx.Select(models.MemberColumns).Where("tab_id = ?", id).Order("id ASC").Find(&result).Error
+	return result, err
+}
+func currentMember(rows []models.TabMember, a TabAccess, creator, required bool) (*models.TabMember, error) {
+	if a.MemberToken != "" {
+		for i := range rows {
+			if subtle.ConstantTimeCompare([]byte(rows[i].MemberToken), []byte(a.MemberToken)) == 1 {
+				if creator && rows[i].Role != "creator" {
+					return nil, mutation.Forbidden
+				}
+				return &rows[i], nil
 			}
 		}
-
-		var existingShares []models.PersonShare
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("bill_id = ?", billID).Find(&existingShares).Error; err != nil {
+		return nil, mutation.Forbidden
+	}
+	if required || len(rows) != 0 {
+		return nil, mutation.Forbidden
+	}
+	return nil, nil
+}
+func (r *tabRepository) FinalizeOnce(ctx context.Context, c FinalizeCommand) ([]models.TabSettlement, error) {
+	ctx, cancel := mutation.Bound(ctx)
+	defer cancel()
+	var result []models.TabSettlement
+	var viewer *uint
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		t, err := lockAccess(tx, c.Access)
+		if err != nil {
 			return err
 		}
-		paidByName := make(map[string]bool, len(existingShares))
-		for _, share := range existingShares {
-			paidByName[strings.ToLower(share.PersonName)] = share.Paid
+		roster, err := members(tx, t.ID)
+		if err != nil {
+			return err
 		}
-		for _, update := range updates {
-			var currentAssignments []models.ItemAssignment
-			if err := tx.Where("bill_item_id = ?", update.ItemID).Find(&currentAssignments).Error; err != nil {
-				return err
+		actor, err := currentMember(roster, c.Access, true, false)
+		if err != nil {
+			return err
+		}
+		if actor != nil {
+			id := actor.ID
+			viewer = &id
+		}
+		if err := tx.Select(models.SettlementColumns).Where("tab_id = ?", t.ID).Order("amount DESC, id ASC").Find(&result).Error; err != nil {
+			return err
+		}
+		if t.Finalized {
+			return validateStoredSnapshot(tx, t, result, roster)
+		}
+		if len(result) != 0 || t.FinalizedAt != nil {
+			return mutation.Review
+		}
+		// Check assignment/reference completeness inside the existing locked
+		// bill projection. This adds no statement or financial recalculation.
+		type finalizationBill struct {
+			models.Bill
+			InvalidAssignmentRefs bool
+		}
+		var projected []finalizationBill
+		columns := models.BillColumns + `, EXISTS (
+ SELECT 1 FROM bill_items i JOIN item_assignments a ON a.bill_item_id=i.id
+ WHERE i.bill_id=bills.id AND (a.identity_version<>2 OR a.bill_id IS DISTINCT FROM bills.id OR a.participant_id IS NULL OR
+ NOT EXISTS (SELECT 1 FROM bill_participants p WHERE p.id=a.participant_id AND p.bill_id=bills.id AND p.identity_version=2) OR
+ NOT EXISTS (SELECT 1 FROM person_shares s WHERE s.bill_id=bills.id AND s.participant_id=a.participant_id AND s.identity_version=2))
+) AS invalid_assignment_refs`
+		if err := tx.Table("bills").Session(&gorm.Session{SkipHooks: true}).Select(columns).Where("tab_id = ?", t.ID).Order("id ASC").Clauses(clause.Locking{Strength: "UPDATE"}).Find(&projected).Error; err != nil {
+			return err
+		}
+		bills := make([]models.Bill, len(projected))
+		invalidReferences := false
+		for i, p := range projected {
+			bills[i] = p.Bill
+			if p.IdentityVersion == 2 && p.InvalidAssignmentRefs {
+				invalidReferences = true
 			}
-			if !billpkg.PreservesPaidAssignments(currentAssignments, update.Assignments, paidByName) {
-				return ErrItemAlreadyPaid
-			}
-			update.Assignments = billpkg.PreserveAssignmentClaimTimes(currentAssignments, update.Assignments)
-
-			if err := tx.Where("bill_item_id = ?", update.ItemID).Delete(&models.ItemAssignment{}).Error; err != nil {
-				return err
-			}
-			assignments := append([]models.ItemAssignment(nil), update.Assignments...)
-			for i := range assignments {
-				assignments[i].BillItemID = update.ItemID
-			}
-			if len(assignments) > 0 {
-				if err := tx.Create(&assignments).Error; err != nil {
-					return err
+		}
+		participants, err := loadFinalizationRows(tx, bills)
+		if err != nil {
+			return err
+		}
+		allocated := 0
+		for _, b := range bills {
+			allocated += len(b.PersonShares)
+		}
+		if allocated > 0 && invalidReferences {
+			return billpkg.ErrIdentityReview
+		}
+		result, err = grossSettlements(t.ID, bills, roster)
+		if err != nil {
+			return err
+		}
+		// Scan the stored values, including PostgreSQL timestamp precision, before
+		// acknowledging. A trigger may suppress rows and RETURNING may resize the
+		// slice, so retain the expected count before executing the insert.
+		expected := int64(len(result))
+		inserted := tx.Clauses(clause.Returning{Columns: []clause.Column{
+			{Name: "id"}, {Name: "tab_id"}, {Name: "person_name"},
+			{Name: "amount"}, {Name: "paid"}, {Name: "created_at"},
+			{Name: "snapshot_version"}, {Name: "member_id"}, {Name: "participant_id"},
+		}}).CreateInBatches(&result, 500)
+		if inserted.Error != nil {
+			return inserted.Error
+		}
+		if inserted.RowsAffected != expected {
+			return mutation.Review
+		}
+		for i := range result {
+			if result[i].ParticipantID != nil {
+				for _, p := range participants {
+					if p.ID == *result[i].ParticipantID {
+						result[i].GuestBillID = p.BillID
+						break
+					}
 				}
 			}
 		}
-
-		if err := tx.Where("bill_id = ?", billID).Delete(&models.PersonShare{}).Error; err != nil {
+		now := time.Now()
+		updated := tx.Model(&models.Tab{}).Where("id = ? AND finalized = ?", t.ID, false).Updates(map[string]any{"finalized": true, "finalized_at": now})
+		if updated.Error != nil {
+			return updated.Error
+		}
+		if updated.RowsAffected != 1 {
+			return mutation.Review
+		}
+		sort.Slice(result, func(i, j int) bool {
+			if result[i].Amount != result[j].Amount {
+				return result[i].Amount > result[j].Amount
+			}
+			return result[i].ID < result[j].ID
+		})
+		return nil
+	}, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+	if err != nil {
+		return nil, err
+	}
+	for i := range result {
+		result[i].ViewerMemberID = viewer
+	}
+	return result, nil
+}
+func (r *tabRepository) AttachBill(ctx context.Context, c AttachBillCommand) error {
+	if err := validateAttach(c); err != nil {
+		return err
+	}
+	ctx, cancel := mutation.Bound(ctx)
+	defer cancel()
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		a := TabAccess{c.TabID, c.TabToken, c.MemberToken}
+		t, err := lockAccess(tx, a)
+		if err != nil {
 			return err
 		}
-
-		var refreshed models.Bill
-		if err := tx.
-			Preload("Items.Assignments").
-			Where("id = ?", billID).
-			First(&refreshed).Error; err != nil {
+		roster, err := members(tx, t.ID)
+		if err != nil {
 			return err
 		}
-
-		shares := billpkg.BuildPersonShares(&refreshed)
-		if bill.LazyMode {
-			shares = billpkg.BuildLazyPersonShares(&refreshed)
+		member, err := currentMember(roster, a, false, false)
+		if err != nil {
+			return err
 		}
-		for i := range shares {
-			shares[i].Paid = paidByName[strings.ToLower(shares[i].PersonName)]
+		var source models.Bill
+		if err := tx.Session(&gorm.Session{SkipHooks: true}).Clauses(clause.Locking{Strength: "UPDATE"}).Select(models.BillColumns).Where("id = ? AND access_token = ?", c.BillID, c.BillToken).First(&source).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrSourceUnavailable
+			}
+			return err
 		}
-		if len(shares) > 0 {
-			if err := tx.Create(&shares).Error; err != nil {
+		if source.TabID != nil {
+			if *source.TabID == t.ID {
+				return nil
+			}
+			return ErrSourceUnavailable
+		}
+		if t.Finalized {
+			return ErrTabFinalized
+		}
+		expected := c.ExpectedRevision
+		if c.IdentityVersion != 2 {
+			v := source.IdentityRevision
+			expected = &v
+		}
+		if source.IdentityRevision == math.MaxInt64 || expected == nil || *expected != source.IdentityRevision {
+			return billpkg.ErrRevision
+		}
+		var memberID *uint
+		if member != nil {
+			memberID = &member.ID
+		}
+		return attachLocationLocked(tx, source, t.ID, memberID)
+	}, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+}
+func (r *tabRepository) UpdateBillItemAssignmentsBatch(ctx context.Context, c AssignmentCommand) error {
+	if err := billpkg.ValidateAssignmentUpdates(c.Updates); err != nil {
+		return err
+	}
+	ctx, cancel := mutation.Bound(ctx)
+	defer cancel()
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		t, err := lockAccess(tx, c.Access)
+		if err != nil {
+			return err
+		}
+		roster, err := members(tx, t.ID)
+		if err != nil {
+			return err
+		}
+		if _, err = currentMember(roster, c.Access, false, false); err != nil {
+			return err
+		}
+		if t.Finalized {
+			return ErrTabFinalized
+		}
+		var b models.Bill
+		if err := tx.Session(&gorm.Session{SkipHooks: true}).Select(models.BillColumns).Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND tab_id = ?", c.BillID, t.ID).First(&b).Error; err != nil {
+			return err
+		}
+		t.Members = roster
+		b.Tab = &t
+		return billpkg.ReplaceAssignmentsLocked(tx, b, c.Updates, c.ExpectedRevision)
+	}, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+}
+func (r *tabRepository) UpdateBillPersonSharePaid(ctx context.Context, c SharePaidCommand) error {
+	ctx, cancel := mutation.Bound(ctx)
+	defer cancel()
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		t, err := lockAccess(tx, c.Access)
+		if err != nil {
+			return err
+		}
+		roster, err := members(tx, t.ID)
+		if err != nil {
+			return err
+		}
+		actor, err := currentMember(roster, c.Access, false, true)
+		if err != nil {
+			return err
+		}
+		var b models.Bill
+		if err := tx.Session(&gorm.Session{SkipHooks: true}).Select(models.BillColumns).Where("id = ? AND tab_id = ?", c.BillID, t.ID).Clauses(clause.Locking{Strength: "UPDATE"}).First(&b).Error; err != nil {
+			return err
+		}
+		if !billpkg.Ready(b) {
+			return billpkg.ErrIdentityReview
+		}
+		if err := tx.Select(models.ParticipantColumns).Where("bill_id = ?", b.ID).Order("id ASC").Clauses(clause.Locking{Strength: "UPDATE"}).Find(&b.ParticipantRows).Error; err != nil {
+			return err
+		}
+		index, err := billpkg.ParticipantIndex(b)
+		if err != nil {
+			return err
+		}
+		rosterByID := map[uint]models.TabMember{}
+		for _, m := range roster {
+			rosterByID[m.ID] = m
+		}
+		for _, p := range b.ParticipantRows {
+			if _, err := billpkg.PartyFor(t.ID, b, p, rosterByID); err != nil {
 				return err
 			}
 		}
-		itemIDs := make([]uint, len(updates))
-		for i, update := range updates {
-			itemIDs[i] = update.ItemID
-		}
-		return tx.Model(&models.BillItem{}).Where("id IN ?", itemIDs).Update("updated_at", time.Now()).Error
-	})
-}
-
-func (r *tabRepository) UpdateBillPersonSharePaid(tabID uint, billID uint, shareID uint, paid bool) error {
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		var bill models.Bill
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND tab_id = ?", billID, tabID).First(&bill).Error; err != nil {
-			return err
-		}
 		var share models.PersonShare
-		if err := tx.Joins("JOIN bills ON bills.id = person_shares.bill_id").Where("person_shares.id = ? AND person_shares.bill_id = ? AND bills.tab_id = ?", shareID, billID, tabID).First(&share).Error; err != nil {
+		if err := tx.Select(models.ShareColumns).Where("id = ? AND bill_id = ?", c.ShareID, b.ID).Clauses(clause.Locking{Strength: "UPDATE"}).First(&share).Error; err != nil {
 			return err
 		}
-		return tx.Model(&models.PersonShare{}).Where("id = ?", shareID).Update("paid", paid).Error
-	})
+		if share.IdentityVersion != 2 || share.ParticipantID == nil {
+			return billpkg.ErrIdentityReview
+		}
+		p, ok := index[*share.ParticipantID]
+		if !ok {
+			return billpkg.ErrIdentityReview
+		}
+		if p.MemberID == nil || *p.MemberID != actor.ID {
+			return mutation.Forbidden
+		}
+		if share.Paid == c.Paid {
+			return nil
+		}
+		return tx.Model(&share).Update("paid", c.Paid).Error
+	}, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 }
-
-func (r *tabRepository) Finalize(id uint) error {
-	now := time.Now()
-	return r.db.Model(&models.Tab{}).Where("id = ?", id).Updates(map[string]interface{}{
-		"finalized":    true,
-		"finalized_at": now,
-	}).Error
+func (r *tabRepository) GetSettlements(id uint) ([]models.TabSettlement, error) {
+	var rows []models.TabSettlement
+	err := r.db.Select(models.SettlementColumns).Where("tab_id = ?", id).Order("amount DESC, id ASC").Find(&rows).Error
+	return rows, err
 }
-
-func (r *tabRepository) GetSettlements(tabID uint) ([]models.TabSettlement, error) {
-	var settlements []models.TabSettlement
-	err := r.db.Where("tab_id = ?", tabID).Order("amount DESC").Find(&settlements).Error
-	return settlements, err
-}
-
-func (r *tabRepository) CreateSettlements(settlements []models.TabSettlement) error {
-	return r.db.Create(&settlements).Error
-}
-
-func (r *tabRepository) UpdateSettlementPaid(tabID uint, id uint, paid bool) error {
-	result := r.db.Model(&models.TabSettlement{}).Where("id = ? AND tab_id = ?", id, tabID).Update("paid", paid)
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
+func (r *tabRepository) UpdateSettlementPaid(ctx context.Context, c SettlementPaidCommand) error {
+	ctx, cancel := mutation.Bound(ctx)
+	defer cancel()
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		t, err := lockAccess(tx, c.Access)
+		if err != nil {
+			return err
+		}
+		roster, err := members(tx, t.ID)
+		if err != nil {
+			return err
+		}
+		if _, err = currentMember(roster, c.Access, false, false); err != nil {
+			return err
+		}
+		var rows []models.TabSettlement
+		if err := tx.Select(models.SettlementColumns).Where("tab_id = ?", t.ID).Order("id ASC").Clauses(clause.Locking{Strength: "UPDATE"}).Find(&rows).Error; err != nil {
+			return err
+		}
+		if err := validateStoredSnapshot(tx, t, rows, roster); err != nil {
+			return err
+		}
+		for _, s := range rows {
+			if s.ID == c.SettlementID {
+				if s.Paid == c.Paid {
+					return nil
+				}
+				return tx.Model(&s).Update("paid", c.Paid).Error
+			}
+		}
 		return gorm.ErrRecordNotFound
+	}, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+}
+func (r *tabRepository) Update(ctx context.Context, c SettingsCommand) error {
+	ctx, cancel := mutation.Bound(ctx)
+	defer cancel()
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		t, err := lockAccess(tx, c.Access)
+		if err != nil {
+			return err
+		}
+		roster, err := members(tx, t.ID)
+		if err != nil {
+			return err
+		}
+		if _, err = currentMember(roster, c.Access, true, false); err != nil {
+			return err
+		}
+		if t.Finalized {
+			return ErrTabFinalized
+		}
+		values := map[string]any{}
+		// Retain the existing zero-value omission contract for name/description.
+		if c.Name != nil && *c.Name != "" {
+			values["name"] = *c.Name
+		}
+		if c.Description != nil && *c.Description != "" {
+			values["description"] = *c.Description
+		}
+		if c.DisplayCurrency != nil {
+			values["display_currency"] = *c.DisplayCurrency
+		}
+		if len(values) == 0 {
+			return nil
+		}
+		return tx.Model(&t).Updates(values).Error
+	}, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+}
+func (r *tabRepository) Join(ctx context.Context, c JoinCommand) (*models.TabMember, bool, error) {
+	ctx, cancel := mutation.Bound(ctx)
+	defer cancel()
+	var result *models.TabMember
+	replay := false
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		t, err := lockAccess(tx, c.Access)
+		if err != nil {
+			return err
+		}
+		if c.Access.MemberToken != "" {
+			rows, err := members(tx, t.ID)
+			if err != nil {
+				return err
+			}
+			result, err = currentMember(rows, c.Access, false, true)
+			replay = err == nil
+			return err
+		}
+		if c.DisplayName == "" || utf8.RuneCountInString(c.DisplayName) > 30 || !utf8.ValidString(c.DisplayName) {
+			return mutation.Invalid
+		}
+		token, err := security.GenerateSecureToken()
+		if err != nil {
+			return err
+		}
+		result = &models.TabMember{TabID: t.ID, DisplayName: c.DisplayName, MemberToken: token, Role: "member", JoinedAt: time.Now()}
+		return tx.Create(result).Error
+	}, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+	if err != nil {
+		return nil, false, err
 	}
-	return nil
+	return result, replay, nil
 }
-
-func (r *tabRepository) CreateMember(member *models.TabMember) error {
-	return r.db.Create(member).Error
+func (r *tabRepository) Leave(ctx context.Context, c LeaveCommand) error {
+	ctx, cancel := mutation.Bound(ctx)
+	defer cancel()
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		t, err := lockAccess(tx, c.Access)
+		if err != nil {
+			return err
+		}
+		roster, err := members(tx, t.ID)
+		if err != nil {
+			return err
+		}
+		actor, err := currentMember(roster, c.Access, false, true)
+		if err != nil {
+			return err
+		}
+		if actor.Role == "creator" {
+			return mutation.CreatorLeave
+		}
+		var count int64
+		if err := tx.Model(&models.Bill{}).Where("added_by_member_id = ? OR paid_by_member_id = ?", actor.ID, actor.ID).Count(&count).Error; err != nil {
+			return err
+		}
+		if count != 0 {
+			return mutation.Referenced
+		}
+		if err := tx.Model(&models.BillParticipant{}).Where("member_id = ? OR pending_member_id = ? OR approved_by_member_id = ? OR last_binding_member_id = ? OR last_binding_actor_member_id = ?", actor.ID, actor.ID, actor.ID, actor.ID, actor.ID).Count(&count).Error; err != nil {
+			return err
+		}
+		if count != 0 {
+			return mutation.Referenced
+		}
+		if err := tx.Model(&models.TabSettlement{}).Where("tab_id = ? AND member_id = ?", t.ID, actor.ID).Count(&count).Error; err != nil {
+			return err
+		}
+		if count != 0 {
+			return mutation.Referenced
+		}
+		return tx.Delete(actor).Error
+	}, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 }
-
 func (r *tabRepository) GetMemberByToken(token string) (*models.TabMember, error) {
-	member := &models.TabMember{}
-	err := r.db.Where("member_token = ?", token).First(member).Error
-	return member, err
+	m := &models.TabMember{}
+	err := r.db.Select(models.MemberColumns).Where("member_token = ?", token).First(m).Error
+	return m, err
 }
-
-func (r *tabRepository) GetMembersByTabID(tabID uint) ([]models.TabMember, error) {
-	var members []models.TabMember
-	err := r.db.Where("tab_id = ?", tabID).Order("joined_at ASC").Find(&members).Error
-	return members, err
-}
-
-func (r *tabRepository) DeleteMember(tabID uint, memberID uint) error {
-	result := r.db.Where("id = ? AND tab_id = ? AND role <> ?", memberID, tabID, "creator").Delete(&models.TabMember{})
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
-	}
-	return nil
-}
-
-func NewTabRepository(db *gorm.DB) TabRepository {
-	return &tabRepository{db: db}
+func (r *tabRepository) GetMembersByTabID(id uint) ([]models.TabMember, error) {
+	return members(r.db, id)
 }

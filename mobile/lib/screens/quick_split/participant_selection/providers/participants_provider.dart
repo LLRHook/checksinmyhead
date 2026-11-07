@@ -17,6 +17,7 @@
 
 import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_utils.dart';
 import 'package:flutter/material.dart';
+import 'package:checks_frontend/services/receipt_validation.dart';
 import 'package:flutter/services.dart';
 import 'package:checks_frontend/models/person.dart';
 
@@ -26,21 +27,21 @@ class ParticipantsProvider extends ChangeNotifier {
   final List<Person> _participants = [];
   final Map<String, Animation<double>> _listItemAnimations = {};
   int _colorIndex = 0;
-  late final List<Color> _shuffledColors = ColorUtils.getParticipantColors()..shuffle();
+  String? _validationError;
+  late final List<Color> _shuffledColors =
+      ColorUtils.getParticipantColors()..shuffle();
 
   // Simple getters
+  String? get validationError => _validationError;
   List<Person> get participants => _participants;
   Map<String, Animation<double>> get listItemAnimations => _listItemAnimations;
   bool get hasParticipants => _participants.isNotEmpty;
 
   /// Adds a new person with automatic color assignment and duplicate prevention.
-  /// Returns true if the person was added, false if rejected (empty or duplicate).
+  /// Returns true if the person was added, false if rejected (invalid name or duplicate).
   bool addPerson(String name, {Color? color}) {
     final trimmedName = name.trim();
-    if (trimmedName.isEmpty) return false;
-
-    // Prevent duplicates (case-insensitive)
-    if (_isNameDuplicate(trimmedName)) return false;
+    if (!_validateName(trimmedName)) return false;
 
     _participants.add(
       Person(
@@ -58,11 +59,31 @@ class ParticipantsProvider extends ChangeNotifier {
   /// Adds an existing Person object if not already in the list
   /// Returns true if person was added, false otherwise
   bool addRecentPerson(Person person) {
-    if (_isNameDuplicate(person.name)) return false;
+    if (!_validateName(person.name)) return false;
 
-    _participants.add(person);
+    _participants.add(person.freshOccurrence());
     HapticFeedback.selectionClick();
     notifyListeners();
+    return true;
+  }
+
+  /// Validate every group member before adding any; never silently omit a name.
+  bool addGroup(List<Person> members) {
+    for (final person in members) {
+      if (!_validateName(person.name)) return false;
+    }
+    for (final person in members) {
+      addRecentPerson(person);
+    }
+    return true;
+  }
+
+  bool _validateName(String name) {
+    _validationError = receiptParticipantNameError(name, allowEmpty: true);
+    if (_validationError != null) {
+      notifyListeners();
+      return false;
+    }
     return true;
   }
 
@@ -75,26 +96,21 @@ class ParticipantsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Case-insensitive check for existing participants
-  bool isPersonSelected(Person person) {
-    return _isNameDuplicate(person.name);
-  }
+  // Suggestions add another occurrence; their labels do not select existing rows.
+  bool isPersonSelected(Person person) => false;
+  void toggleRecentPerson(Person person) => addRecentPerson(person);
 
-  /// Toggles a person's inclusion (add if absent, remove if present)
-  void toggleRecentPerson(Person person) {
-    if (isPersonSelected(person)) {
-      _participants.removeWhere(
-        (p) => p.name.toLowerCase() == person.name.toLowerCase(),
-      );
-      HapticFeedback.selectionClick();
-    } else {
-      addRecentPerson(person);
+  void renamePerson(int index, String label) {
+    if (index < 0 || index >= _participants.length || !_validateName(label)) {
+      return;
     }
+    _participants[index] = _participants[index].copyWith(name: label);
     notifyListeners();
   }
 
   /// Resets provider state entirely
   void clearAll() {
+    _validationError = null;
     _participants.clear();
     _listItemAnimations.clear();
     notifyListeners();
@@ -111,10 +127,5 @@ class ParticipantsProvider extends ChangeNotifier {
   void unregisterAnimation(String personName) {
     _listItemAnimations.remove(personName);
     notifyListeners();
-  }
-
-  // Private helper method to reduce code duplication for name comparison
-  bool _isNameDuplicate(String name) {
-    return _participants.any((p) => p.name.toLowerCase() == name.toLowerCase());
   }
 }

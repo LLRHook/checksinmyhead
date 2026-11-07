@@ -1,0 +1,8 @@
+package migrations
+
+// Independently captured PG17.11 additions; frozen v1/v2 inputs remain unchanged.
+const identitySQLChecksum = "91d41e648e91faf400f6b78d1d9457285ae092b888b08de892f449e25d34d6b3"
+const identityCatalogQueryChecksum = "872946d889cad5c89f3c52116f934684f7328b3b6b150fa3c67008dece9be06f"
+const identityManifestChecksum = "e357a7d9155038e88b8b024d73885ba5b5fab3167adddc3debd3f7c442e7a38d"
+const identityRecognizerChecksum = "8138b4a5d5ca4d85f7235e06a61f71a1331dc9a6ad0ce8926ab8f3fb5167d7bb"
+const identityCatalogObjectCount = 90

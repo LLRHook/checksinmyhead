@@ -328,22 +328,26 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
                         : null,
                 showHelpButton: _tutorialManagerInitialized,
               ),
-              body: Column(
-                children: [
-                  if (provider.unassignedAmount > 0.01)
-                    UnassignedAmountBanner(
-                      unassignedAmount: provider.unassignedAmount,
+              body: SafeArea(
+                top: false,
+                bottom: false,
+                child: Column(
+                  children: [
+                    if (provider.unassignedAmount > 0.01)
+                      UnassignedAmountBanner(
+                        unassignedAmount: provider.unassignedAmount,
+                        currencyCode: widget.currencyCode,
+                        onSplitEvenly: provider.splitUnassignedAmountEvenly,
+                      ),
+                    _buildBillInfoPanel(provider),
+                    Expanded(child: _buildItemsListView(provider)),
+                    AssignmentBottomBar(
+                      totalBill: widget.total,
                       currencyCode: widget.currencyCode,
-                      onSplitEvenly: provider.splitUnassignedAmountEvenly,
+                      onContinueTap: () => _continueToSummary(provider),
                     ),
-                  _buildBillInfoPanel(provider),
-                  Expanded(child: _buildItemsListView(provider)),
-                  AssignmentBottomBar(
-                    totalBill: widget.total,
-                    currencyCode: widget.currencyCode,
-                    onContinueTap: () => _continueToSummary(provider),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );
@@ -496,23 +500,24 @@ class _ItemAssignmentScreenState extends State<ItemAssignmentScreen>
                   ),
                 ),
 
-                // Progress indicator
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeOutCubic,
-                  height: 6,
-                  width:
-                      MediaQuery.of(context).size.width *
-                      (assignedPercentage / 100) *
-                      ((MediaQuery.of(context).size.width - 40) /
-                          MediaQuery.of(context).size.width),
-                  decoration: BoxDecoration(
-                    color:
-                        assignedPercentage >= 100
-                            ? successColor
-                            : colorScheme.primary,
-                    borderRadius: BorderRadius.circular(3),
-                  ),
+                // Progress indicator, sized from the track so side insets
+                // cannot overstate the assigned share.
+                LayoutBuilder(
+                  builder:
+                      (context, constraints) => AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOutCubic,
+                        height: 6,
+                        width:
+                            constraints.maxWidth * (assignedPercentage / 100),
+                        decoration: BoxDecoration(
+                          color:
+                              assignedPercentage >= 100
+                                  ? successColor
+                                  : colorScheme.primary,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
                 ),
               ],
             ),

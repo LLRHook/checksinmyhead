@@ -29,6 +29,10 @@
 // - Theme-aware styling (supports light and dark modes)
 // - Normalize function to fix percentages when total is not 100%
 
+import 'dart:math' as math;
+
+import 'package:checks_frontend/config/theme.dart';
+
 import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_utils.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 import 'package:flutter/material.dart';
@@ -144,7 +148,10 @@ void showCustomSplitDialog({
                 // Constrain dialog size for better appearance on different screen sizes
                 constraints: BoxConstraints(
                   maxHeight: MediaQuery.of(context).size.height * 0.8,
-                  maxWidth: MediaQuery.of(context).size.width * 0.9,
+                  maxWidth: math.min(
+                    MediaQuery.of(context).size.width * 0.9,
+                    560.0,
+                  ),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -342,6 +349,8 @@ void showCustomSplitDialog({
 
                           return _buildPersonSlider(
                             person: person,
+                            occurrenceLabel:
+                                '${participants.indexOf(person) + 1}. ${person.displayName}',
                             percentage: percentage,
                             price: item.price,
                             personColor: personColor,
@@ -415,8 +424,8 @@ void showCustomSplitDialog({
                                                   0xFF34D399,
                                                 ) // Lighter green for dark mode
                                                 : const Color(
-                                                  0xFF10B981,
-                                                ); // Original green for light mode
+                                                  0xFF047857,
+                                                ); // Dark enough for white text
 
                                         // Account for status bar height when positioning
                                         final topPadding =
@@ -496,8 +505,8 @@ void showCustomSplitDialog({
                                           0xFF34D399,
                                         ) // Lighter green for dark mode
                                         : const Color(
-                                          0xFF10B981,
-                                        ), // Original green for light mode
+                                          0xFF047857,
+                                        ), // Dark enough for white text
                                 foregroundColor:
                                     brightness == Brightness.dark
                                         ? Colors.black.withValues(
@@ -558,6 +567,7 @@ void showCustomSplitDialog({
 ///         increment/decrement buttons, and preset percentage buttons
 Widget _buildPersonSlider({
   required Person person,
+  required String occurrenceLabel,
   required double percentage,
   required double price,
   required Color personColor,
@@ -586,7 +596,14 @@ Widget _buildPersonSlider({
             personColor,
             0.2,
           ) // Lighter in dark mode
-          : personColor;
+          : AppTheme.foregroundOn(
+            // The badge's tint over the row
+            Color.alphaBlend(
+              personColor.withValues(alpha: .03),
+              containerBgColor,
+            ),
+            preferred: personColor,
+          );
 
   final percentageBgColor =
       brightness == Brightness.dark
@@ -611,7 +628,7 @@ Widget _buildPersonSlider({
             personColor,
             0.3,
           ) // Brighter in dark mode
-          : personColor;
+          : Colors.grey.shade900;
 
   final inactiveButtonColor =
       brightness == Brightness.dark
@@ -650,9 +667,19 @@ Widget _buildPersonSlider({
                     isBirthdayPerson
                         ? const Icon(Icons.cake, color: Colors.white, size: 16)
                         : Text(
-                          person.name[0].toUpperCase(),
-                          style: const TextStyle(
-                            color: Colors.white,
+                          (person.name.isEmpty
+                              ? '?'
+                              : person.name[0].toUpperCase()),
+                          style: TextStyle(
+                            color:
+                                brightness == Brightness.dark
+                                    ? Colors.white
+                                    : AppTheme.foregroundOn(
+                                      Color.alphaBlend(
+                                        personColor,
+                                        containerBgColor,
+                                      ),
+                                    ),
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
                           ),
@@ -668,10 +695,10 @@ Widget _buildPersonSlider({
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    person.name,
+                    occurrenceLabel,
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      fontSize: 14,
+                      fontSize: 16,
                       color: nameColor,
                     ),
                     maxLines: 1,
@@ -687,7 +714,7 @@ Widget _buildPersonSlider({
                         individualAmount,
                         currencyCode: currencyCode,
                       ),
-                      style: TextStyle(fontSize: 12, color: textColor),
+                      style: TextStyle(fontSize: 13, color: textColor),
                     ),
                   ),
                 ],
@@ -706,7 +733,7 @@ Widget _buildPersonSlider({
                 '${percentage.toStringAsFixed(0)}%',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontSize: 20,
                   color: percentageColor,
                 ),
               ),
@@ -729,7 +756,7 @@ Widget _buildPersonSlider({
                       }
                       : null, // Disabled when already at 0%
               icon: const Icon(Icons.remove_circle_outline, size: 18),
-              tooltip: 'Decrease ${person.name} by 1 percent',
+              tooltip: 'Decrease $occurrenceLabel by 1 percent',
               color: percentage > 0 ? personColor : inactiveButtonColor,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
@@ -741,6 +768,7 @@ Widget _buildPersonSlider({
               child: SliderTheme(
                 data: SliderThemeData(
                   trackHeight: 4,
+                  tickMarkShape: SliderTickMarkShape.noTickMark,
                   activeTrackColor: personColor,
                   inactiveTrackColor:
                       brightness == Brightness.dark
@@ -780,7 +808,7 @@ Widget _buildPersonSlider({
                   label: '${percentage.toStringAsFixed(0)}%',
                   semanticFormatterCallback:
                       (value) =>
-                          '${value.toStringAsFixed(0)} percent for ${person.name}',
+                          '${value.toStringAsFixed(0)} percent for $occurrenceLabel',
                   onChanged: onChanged,
                 ),
               ),
@@ -796,7 +824,7 @@ Widget _buildPersonSlider({
                       }
                       : null, // Disabled when already at 100%
               icon: const Icon(Icons.add_circle_outline, size: 18),
-              tooltip: 'Increase ${person.name} by 1 percent',
+              tooltip: 'Increase $occurrenceLabel by 1 percent',
               color: percentage < 100 ? personColor : inactiveButtonColor,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
@@ -820,7 +848,7 @@ Widget _buildPersonSlider({
                   return Padding(
                     padding: const EdgeInsets.only(right: 6),
                     child: Semantics(
-                      label: 'Set ${person.name} to $presetValue percent',
+                      label: 'Set $occurrenceLabel to $presetValue percent',
                       button: true,
                       selected: isSelected,
                       child: TextButton(
@@ -833,8 +861,18 @@ Widget _buildPersonSlider({
                               isSelected
                                   ? (brightness == Brightness.dark
                                       ? Colors.black.withValues(alpha: .9)
-                                      : Colors.white)
-                                  : personColor,
+                                      : AppTheme.foregroundOn(
+                                        Color.alphaBlend(
+                                          personColor,
+                                          containerBgColor,
+                                        ),
+                                      ))
+                                  : (brightness == Brightness.dark
+                                      ? personColor
+                                      : AppTheme.foregroundOn(
+                                        containerBgColor,
+                                        preferred: personColor,
+                                      )),
                           backgroundColor:
                               isSelected ? personColor : Colors.transparent,
                           padding: const EdgeInsets.symmetric(
@@ -890,7 +928,7 @@ Color _getStatusColor(double percentage, Brightness brightness) {
   final successGreen =
       brightness == Brightness.dark
           ? const Color(0xFF34D399) // Lighter green for dark mode
-          : const Color(0xFF10B981); // Original green for light mode
+          : const Color(0xFF047857); // Dark enough for small text
 
   final primaryBlue =
       brightness == Brightness.dark

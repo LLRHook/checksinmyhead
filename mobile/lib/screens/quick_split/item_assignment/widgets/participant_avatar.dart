@@ -18,6 +18,7 @@
 import 'package:checks_frontend/screens/quick_split/item_assignment/utils/animation_utils.dart';
 import 'package:checks_frontend/screens/quick_split/item_assignment/utils/color_utils.dart';
 import 'package:flutter/material.dart';
+import 'package:checks_frontend/config/theme.dart';
 import 'dart:math';
 import 'package:checks_frontend/models/person.dart';
 
@@ -55,6 +56,8 @@ class ParticipantAvatar extends StatelessWidget {
   final VoidCallback? onLongPress;
 
   final double? assignedPercentage;
+  final String? occurrenceLabel;
+  final Color? surfaceColor;
 
   /// Creates a participant avatar with the specified states and callbacks
   ///
@@ -68,6 +71,8 @@ class ParticipantAvatar extends StatelessWidget {
     required this.onTap,
     required this.onLongPress,
     this.assignedPercentage,
+    this.occurrenceLabel,
+    this.surfaceColor,
   });
 
   @override
@@ -75,6 +80,10 @@ class ParticipantAvatar extends StatelessWidget {
     // Get theme information for adaptive styling
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
+    final effectiveSurface = Color.alphaBlend(
+      surfaceColor ?? Theme.of(context).scaffoldBackgroundColor,
+      colorScheme.surface,
+    );
 
     // Special color for the birthday person - adjusted for theme brightness
     // Use lighter purple in dark mode for better visibility
@@ -98,214 +107,237 @@ class ParticipantAvatar extends StatelessWidget {
         assignedPercentage != 100.0 &&
         assignedPercentage! > 0;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: GestureDetector(
-        onTap: onTap,
-        onLongPress: onLongPress,
-        child: SizedBox(
-          width: 70,
-          height: 90, // Increased height to accommodate percentage text
-          // Use a flexible layout with proper constraints to prevent overflow
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize:
-                MainAxisSize.min, // Minimize column size to prevent overflow
-            children: [
-              // Avatar with selection indication - explicit height for consistency
-              SizedBox(
-                height: 46, // Fixed height contains all avatar elements
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Circular progress indicator for custom split percentages
-                    if (hasCustomSplit)
-                      SizedBox(
-                        width: 48,
-                        height: 48,
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            // Background circle
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: person.color.withValues(alpha: 0.15),
-                                  width: 2.5,
+    return Semantics(
+      label: occurrenceLabel ?? person.displayName,
+      button: true,
+      selected: isSelected || isAssigned,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: GestureDetector(
+          onTap: onTap,
+          onLongPress: onLongPress,
+          child: SizedBox(
+            width: 70,
+            height: 92, // Avatar, name and percentage text
+            // Use a flexible layout with proper constraints to prevent overflow
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize:
+                  MainAxisSize.min, // Minimize column size to prevent overflow
+              children: [
+                // Avatar with selection indication - explicit height for consistency
+                SizedBox(
+                  height: 52, // Fixed height contains all avatar elements
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Circular progress indicator for custom split percentages
+                      if (hasCustomSplit)
+                        SizedBox(
+                          width: 54,
+                          height: 54,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              // Background circle
+                              Container(
+                                width: 54,
+                                height: 54,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: person.color.withValues(alpha: 0.15),
+                                    width: 2.5,
+                                  ),
                                 ),
                               ),
+                              // Progress arc
+                              SizedBox(
+                                width: 54,
+                                height: 54,
+                                child: CustomPaint(
+                                  painter: ArcPainter(
+                                    color: person.color,
+                                    percentage: assignedPercentage!,
+                                    strokeWidth: 2.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                      // Outer selection ring - shows when selected or assigned (but not custom split)
+                      if (!hasCustomSplit)
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          width: (isSelected || isAssigned) ? 52 : 48,
+                          height: (isSelected || isAssigned) ? 52 : 48,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.transparent,
+                            border: Border.all(
+                              color:
+                                  isSelected
+                                      ? _getSelectionColor(
+                                        person.color,
+                                        brightness,
+                                      )
+                                      : isAssigned
+                                      ? person.color
+                                      : Colors.transparent,
+                              width:
+                                  isSelected
+                                      ? 3 // Thicker border for selected state
+                                      : isAssigned
+                                      ? 2 // Medium border for assigned state
+                                      : 0, // No border for default state
                             ),
-                            // Progress arc
-                            SizedBox(
-                              width: 48,
-                              height: 48,
-                              child: CustomPaint(
-                                painter: ArcPainter(
-                                  color: person.color,
-                                  percentage: assignedPercentage!,
-                                  strokeWidth: 2.5,
-                                ),
-                              ),
+                          ),
+                        ),
+
+                      // Animated pulse effect for selected avatars (except birthday person)
+                      if (isSelected && !isBirthdayPerson)
+                        SizedBox(
+                          width: 60,
+                          height: 60,
+                          child: CustomPaint(
+                            painter: PulsePainter(color: person.color),
+                          ),
+                        ),
+
+                      // Main avatar circle with person's color and initial
+                      Container(
+                        margin: const EdgeInsets.all(4),
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color:
+                              isBirthdayPerson ? birthdayColor : person.color,
+                          boxShadow: [
+                            BoxShadow(
+                              color:
+                                  isBirthdayPerson
+                                      ? birthdayColor.withValues(alpha: .3)
+                                      : person.color.withValues(alpha: .3),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
                             ),
                           ],
                         ),
-                      ),
-
-                    // Outer selection ring - shows when selected or assigned (but not custom split)
-                    if (!hasCustomSplit)
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        width: (isSelected || isAssigned) ? 46 : 42,
-                        height: (isSelected || isAssigned) ? 46 : 42,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.transparent,
-                          border: Border.all(
-                            color:
-                                isSelected
-                                    ? _getSelectionColor(
-                                      person.color,
-                                      brightness,
-                                    )
-                                    : isAssigned
-                                    ? person.color
-                                    : Colors.transparent,
-                            width:
-                                isSelected
-                                    ? 3 // Thicker border for selected state
-                                    : isAssigned
-                                    ? 2 // Medium border for assigned state
-                                    : 0, // No border for default state
-                          ),
-                        ),
-                      ),
-
-                    // Animated pulse effect for selected avatars (except birthday person)
-                    if (isSelected && !isBirthdayPerson)
-                      SizedBox(
-                        width: 54,
-                        height: 54,
-                        child: CustomPaint(
-                          painter: PulsePainter(color: person.color),
-                        ),
-                      ),
-
-                    // Main avatar circle with person's color and initial
-                    Container(
-                      margin: const EdgeInsets.all(4),
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isBirthdayPerson ? birthdayColor : person.color,
-                        boxShadow: [
-                          BoxShadow(
-                            color:
-                                isBirthdayPerson
-                                    ? birthdayColor.withValues(alpha: .3)
-                                    : person.color.withValues(alpha: .3),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child:
-                            isBirthdayPerson
-                                ? const Icon(
-                                  Icons.cake,
-                                  color: Colors.white,
-                                  size: 18,
-                                )
-                                : Text(
-                                  person.name[0].toUpperCase(), // First initial
-                                  style: TextStyle(
-                                    color: ColorUtils.getContrastiveTextColor(
-                                      person.color,
+                        child: Center(
+                          child:
+                              isBirthdayPerson
+                                  ? const Icon(
+                                    Icons.cake,
+                                    color: Colors.white,
+                                    size: 20,
+                                  )
+                                  : Text(
+                                    (person.name.isEmpty
+                                        ? '?'
+                                        : person.name[0]
+                                            .toUpperCase()), // First initial
+                                    style: TextStyle(
+                                      color:
+                                          brightness == Brightness.dark
+                                              ? ColorUtils.getContrastiveTextColor(
+                                                person.color,
+                                              )
+                                              : AppTheme.foregroundOn(
+                                                Color.alphaBlend(
+                                                  person.color,
+                                                  effectiveSurface,
+                                                ),
+                                              ),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
                                     ),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
                                   ),
-                                ),
+                        ),
+                      ),
+
+                      // Animated cake icon for birthday person with special effects
+                      if (isBirthdayPerson)
+                        _buildShakingCakeIcon(birthdayColor, brightness),
+
+                      // Checkmark indicator for selected or assigned state
+                      if (isSelected || isAssigned)
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Container(
+                            width: 18,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              color: person.color,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: checkmarkBorderColor,
+                                width: 2,
+                              ),
+                            ),
+                            child: const Center(
+                              child: Icon(
+                                Icons.check,
+                                size: 11,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+
+                // Small gap between avatar and name
+                const SizedBox(height: 2),
+
+                // Name and percentage labels stacked vertically
+                Column(
+                  children: [
+                    // Name label with explicit constraints and overflow handling
+                    SizedBox(
+                      height: 20,
+                      child: Text(
+                        occurrenceLabel ?? person.displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight:
+                              isSelected || isAssigned || isBirthdayPerson
+                                  ? FontWeight
+                                      .w600 // Bold for active states
+                                  : FontWeight
+                                      .w500, // Medium weight for default state
+                          color: nameColor,
+                        ),
                       ),
                     ),
 
-                    // Animated cake icon for birthday person with special effects
-                    if (isBirthdayPerson)
-                      _buildShakingCakeIcon(birthdayColor, brightness),
-
-                    // Checkmark indicator for selected or assigned state
-                    if (isSelected || isAssigned)
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          width: 16,
-                          height: 16,
-                          decoration: BoxDecoration(
-                            color: person.color,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: checkmarkBorderColor,
-                              width: 2,
-                            ),
-                          ),
-                          child: const Center(
-                            child: Icon(
-                              Icons.check,
-                              size: 10,
-                              color: Colors.white,
-                            ),
-                          ),
+                    // Percentage label if custom split
+                    if (hasCustomSplit)
+                      Text(
+                        '${assignedPercentage!.toStringAsFixed(0)}%',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color:
+                              brightness == Brightness.dark
+                                  ? person.color
+                                  : AppTheme.foregroundOn(
+                                    effectiveSurface,
+                                    preferred: person.color,
+                                  ),
                         ),
                       ),
                   ],
                 ),
-              ),
-
-              // Small gap between avatar and name
-              const SizedBox(height: 2),
-
-              // Name and percentage labels stacked vertically
-              Column(
-                children: [
-                  // Name label with explicit constraints and overflow handling
-                  SizedBox(
-                    height: 16,
-                    child: Text(
-                      person.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight:
-                            isSelected || isAssigned || isBirthdayPerson
-                                ? FontWeight
-                                    .w600 // Bold for active states
-                                : FontWeight
-                                    .w500, // Medium weight for default state
-                        color: nameColor,
-                      ),
-                    ),
-                  ),
-
-                  // Percentage label if custom split
-                  if (hasCustomSplit)
-                    Text(
-                      '${assignedPercentage!.toStringAsFixed(0)}%',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: person.color,
-                      ),
-                    ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -349,7 +381,8 @@ class ParticipantAvatar extends StatelessWidget {
           ); // 30% lighter for other colors
         }
       }
-      return person.color; // Use original color in light mode
+      // The ring and check carry the person's color; the name stays readable.
+      return Theme.of(context).colorScheme.onSurface;
     }
 
     // Default color for inactive state - lighter in dark mode

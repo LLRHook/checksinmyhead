@@ -90,7 +90,9 @@ class ParticipantAvatars extends StatelessWidget {
                     backgroundColor: person.color,
                     radius: 18,
                     child: Text(
-                      person.name[0].toUpperCase(),
+                      (person.name.isEmpty
+                          ? '?'
+                          : person.name[0].toUpperCase()),
                       style: TextStyle(
                         // Using ColorUtils to ensure readable text on any background color
                         color: ColorUtils.getContrastiveTextColor(person.color),

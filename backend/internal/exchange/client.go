@@ -1,113 +1,140 @@
 package exchange
 
 import (
+	"backend/internal/currency"
 	"backend/pkg/models"
+	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"io"
-	"math"
 	"net/http"
-	"net/url"
+	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
 const defaultBaseURL = "https://api.frankfurter.dev/v2"
+const maxResponseBytes = 64 << 10
 
-type cachedQuote struct {
-	quote     models.ExchangeRateQuote
-	expiresAt time.Time
-}
-
-// Client reads daily reference rates from Frankfurter v2. It deliberately
-// exposes only the one operation the product needs.
+// Client reads Frankfurter v2 daily blended pairs without an application cache.
+// Its HTTP transport retains normal connection pooling.
 type Client struct {
 	baseURL string
 	http    *http.Client
 	now     func() time.Time
-	mu      sync.Mutex
-	cache   map[string]cachedQuote
 }
 
 func NewClient(baseURL string) *Client {
 	if strings.TrimSpace(baseURL) == "" {
 		baseURL = defaultBaseURL
 	}
-	return &Client{
-		baseURL: strings.TrimRight(baseURL, "/"),
-		http:    &http.Client{Timeout: 4 * time.Second},
-		now:     time.Now,
-		cache:   make(map[string]cachedQuote),
-	}
+	return &Client{baseURL: strings.TrimRight(baseURL, "/"), now: time.Now, http: &http.Client{
+		Timeout:       currency.OperationTimeout,
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}}
 }
 
-func (c *Client) LatestUSD(ctx context.Context, currency string) (models.ExchangeRateQuote, error) {
-	currency = strings.ToUpper(strings.TrimSpace(currency))
-	now := c.now().UTC()
-
-	c.mu.Lock()
-	if hit, ok := c.cache[currency]; ok && now.Before(hit.expiresAt) {
-		c.mu.Unlock()
-		return hit.quote, nil
+func (c *Client) Latest(ctx context.Context, base, quote string) (models.ExchangeRateQuote, error) {
+	base, quote = currency.Normalize(base), currency.Normalize(quote)
+	if !currency.ValidCode(base) || !currency.ValidCode(quote) {
+		return models.ExchangeRateQuote{}, currency.ErrInvalidQuote
 	}
-	c.mu.Unlock()
-
-	var lastErr error
-	for attempt := 0; attempt < 2; attempt++ {
-		quote, retry, err := c.fetch(ctx, currency)
-		if err == nil {
-			nextMidnight := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, time.UTC)
-			c.mu.Lock()
-			c.cache[currency] = cachedQuote{quote: quote, expiresAt: nextMidnight}
-			c.mu.Unlock()
-			return quote, nil
-		}
-		lastErr = err
-		if !retry || attempt == 1 {
-			break
-		}
-		select {
-		case <-ctx.Done():
-			return models.ExchangeRateQuote{}, ctx.Err()
-		case <-time.After(100 * time.Millisecond):
-		}
+	ctx, cancel := context.WithTimeout(ctx, currency.OperationTimeout)
+	defer cancel()
+	if err := ctx.Err(); err != nil {
+		return models.ExchangeRateQuote{}, &currency.UnavailableError{Cause: err}
 	}
-	return models.ExchangeRateQuote{}, lastErr
-}
-
-func (c *Client) fetch(ctx context.Context, currency string) (models.ExchangeRateQuote, bool, error) {
-	endpoint := fmt.Sprintf("%s/rate/%s/USD", c.baseURL, url.PathEscape(currency))
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if base == quote {
+		return models.ExchangeRateQuote{Base: base, Quote: quote, Rate: 1, Source: "same_currency"}, nil
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/rate/"+base+"/"+quote, nil)
 	if err != nil {
-		return models.ExchangeRateQuote{}, false, err
+		return models.ExchangeRateQuote{}, &currency.UnavailableError{}
 	}
 	req.Header.Set("Accept", "application/json")
-
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return models.ExchangeRateQuote{}, true, err
+		return models.ExchangeRateQuote{}, &currency.UnavailableError{Cause: ctx.Err()}
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		retry := resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500
-		return models.ExchangeRateQuote{}, retry, fmt.Errorf("exchange provider returned HTTP %d", resp.StatusCode)
+		failure := &currency.UnavailableError{}
+		if resp.StatusCode == 429 || resp.StatusCode == 503 {
+			failure.RetryAfter = retryAfter(resp.Header.Get("Retry-After"))
+		}
+		return models.ExchangeRateQuote{}, failure
 	}
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes+1))
+	if err != nil {
+		return models.ExchangeRateQuote{}, &currency.UnavailableError{Cause: ctx.Err()}
+	}
+	if len(data) > maxResponseBytes {
+		return models.ExchangeRateQuote{}, currency.ErrInvalidQuote
+	}
+	// The pair route returns exactly one object, never the /rates array. Decode
+	// only documented wire fields; provenance comes from this selected adapter.
+	var wire struct {
+		Date  string  `json:"date"`
+		Base  string  `json:"base"`
+		Quote string  `json:"quote"`
+		Rate  float64 `json:"rate"`
+	}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	token, err := decoder.Token()
+	if err != nil || token != json.Delim('{') {
+		return models.ExchangeRateQuote{}, currency.ErrInvalidQuote
+	}
+	seen := make(map[string]bool, 4)
+	for decoder.More() {
+		token, err := decoder.Token()
+		if err != nil {
+			return models.ExchangeRateQuote{}, currency.ErrInvalidQuote
+		}
+		key, ok := token.(string)
+		if !ok || seen[key] {
+			return models.ExchangeRateQuote{}, currency.ErrInvalidQuote
+		}
+		seen[key] = true
+		switch key {
+		case "date":
+			err = decoder.Decode(&wire.Date)
+		case "base":
+			err = decoder.Decode(&wire.Base)
+		case "quote":
+			err = decoder.Decode(&wire.Quote)
+		case "rate":
+			err = decoder.Decode(&wire.Rate)
+		default:
+			return models.ExchangeRateQuote{}, currency.ErrInvalidQuote
+		}
+		if err != nil {
+			return models.ExchangeRateQuote{}, currency.ErrInvalidQuote
+		}
+	}
+	if token, err := decoder.Token(); err != nil || token != json.Delim('}') || len(seen) != 4 {
+		return models.ExchangeRateQuote{}, currency.ErrInvalidQuote
+	}
+	if err := decoder.Decode(new(any)); err != io.EOF {
+		return models.ExchangeRateQuote{}, currency.ErrInvalidQuote
+	}
+	retrieved := c.now().UTC().Truncate(time.Microsecond)
+	result := models.ExchangeRateQuote{RetrievedAt: &retrieved, Date: wire.Date, Base: wire.Base, Quote: wire.Quote, Rate: wire.Rate, Source: "frankfurter-v2-blended"}
+	if err := currency.ValidateQuote(result, base, quote, c.now()); err != nil {
+		return models.ExchangeRateQuote{}, err
+	}
+	return result, nil
+}
 
-	var quote models.ExchangeRateQuote
-	decoder := json.NewDecoder(io.LimitReader(resp.Body, 64<<10))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&quote); err != nil {
-		return models.ExchangeRateQuote{}, false, err
+func retryAfter(value string) string {
+	if len(value) > 128 {
+		return ""
 	}
-	if quote.Base != currency || quote.Quote != "USD" || quote.Date == "" || quote.Rate <= 0 || math.IsNaN(quote.Rate) || math.IsInf(quote.Rate, 0) {
-		return models.ExchangeRateQuote{}, false, errors.New("exchange provider returned an invalid quote")
+	value = strings.TrimSpace(value)
+	if seconds, err := strconv.ParseUint(value, 10, 32); err == nil {
+		return strconv.FormatUint(seconds, 10)
 	}
-	if _, err := time.Parse("2006-01-02", quote.Date); err != nil {
-		return models.ExchangeRateQuote{}, false, errors.New("exchange provider returned an invalid rate date")
+	if date, err := http.ParseTime(value); err == nil {
+		return date.UTC().Format(http.TimeFormat)
 	}
-	quote.Source = "frankfurter-v2-blended"
-	return quote, false, nil
+	return ""
 }

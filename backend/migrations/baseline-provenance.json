@@ -1,0 +1,45 @@
+{
+  "source_commit": "f1d62374fe50e5deb32f64a40c142fb33726232f",
+  "released_commit": "81a564f687067ab1d839d623dd5c1c01ae139d5f",
+  "source_dump_sha256": "710e153d44037915a09875f23ea77d87506b8c477ccd004a64a6dd2ace1ab350",
+  "baseline_sql_sha256": "d46084b1caae072be155d7e38c71eba986774853e7d004b08d19daa411992f55",
+  "server_version": "17.11",
+  "normalization": [
+    "Remove pg_dump psql restrict/unrestrict directives",
+    "Remove session SET statements and set_config search_path",
+    "Remove comments and blank lines",
+    "Remove literal public. qualification from object references and regclass sequence defaults; runner must pin target-schema search_path before execution",
+    "Preserve every column/default/sequence/key/index/FK definition; no data statements"
+  ],
+  "removed_statement_prefixes": [
+    "\\restrict",
+    "SET",
+    "SET",
+    "SET",
+    "SET",
+    "SET",
+    "SET",
+    "SELECT",
+    "SET",
+    "SET",
+    "SET",
+    "SET",
+    "SET",
+    "SET",
+    "\\unrestrict"
+  ],
+  "unchanged_source_blobs": [
+    "100644 blob 337643b17444736b6f899b52993a0ea1f7c19f0d\tbackend/go.mod",
+    "100644 blob 2168653471780f03cca02a74e590857885cd2ba1\tbackend/pkg/database/postgres.go",
+    "100644 blob 082f39c91f129b32f7fe8510ab96bd10ad809ecb\tbackend/pkg/models/bill.go",
+    "100644 blob a1b0441b8ad65b0d14a88911098525829a2bf144\tbackend/pkg/models/bill_test.go",
+    "100644 blob 2640e7f93eab1e86aeb41382d2c54933d93c06cc\tbackend/pkg/models/events.go",
+    "100644 blob 3360276c09557111a8bb6c531e6bdc2c7823aa3b\tbackend/pkg/models/exchange_rate.go",
+    "100644 blob 2c0c16c88cee7378424a44753ea2ad02f7c281c8\tbackend/pkg/models/net_balance.go",
+    "100644 blob 2640e7f93eab1e86aeb41382d2c54933d93c06cc\tbackend/pkg/models/payment.go",
+    "100644 blob 80ceb591e21c9ba4f3af394fcb7a1e37daa284cb\tbackend/pkg/models/tab.go",
+    "100644 blob 56d847ffba37de836d1dab8005f176e2be0c7b4a\tbackend/pkg/models/tab_member.go",
+    "100644 blob e8395d1e819262eff9b861be0a7d67f3816a301c\tbackend/pkg/models/tab_settlement.go"
+  ],
+  "status": "Immutable baseline 0001; runtime ordered runner and strict catalog-v1 recognizer in this directory."
+}

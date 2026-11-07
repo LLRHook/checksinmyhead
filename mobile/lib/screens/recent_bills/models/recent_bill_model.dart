@@ -36,10 +36,45 @@ class RecentBillModel {
   final Color color;
   final Map<String, Map<String, double>>? itemAssignments;
   final String? shareUrl;
+  final List<Person>? receiptParticipants;
+  final Map<String, dynamic>? currentGraph;
+  bool get identityNeedsReview {
+    if (receiptParticipants == null ||
+        currentGraph?['identity_review_status'] == 'identity_review_required') {
+      return true;
+    }
+    final refs = receiptParticipants!.map((p) => p.clientRef).toSet();
+    if (refs.length != receiptParticipants!.length) return true;
+    for (final item in items ?? <Map<String, dynamic>>[]) {
+      if ((item['assignments'] as Map? ?? {}).keys.any(
+        (ref) => !refs.contains(ref),
+      )) {
+        return true;
+      }
+    }
+    return (savedShares ?? []).any((s) => !refs.contains(s['client_ref']));
+  }
+
+  List<Map<String, dynamic>> get recordedShares =>
+      (currentGraph?['person_shares'] as List? ?? savedShares ?? [])
+          .whereType<Map<String, dynamic>>()
+          .toList();
+
+  String? get birthdayRef => receiptMetadata?['birthday_ref'] as String?;
 
   /// Original receipt currency and the immutable daily conversion audit.
   final String currencyCode;
   final double usdExchangeRate;
+  final double? authoritativeUsdTotal;
+  final String publicationState;
+  final String valuationState;
+  final String? failureCode;
+  final String? attachmentState;
+  final List<dynamic>? savedShares;
+  final Map<String, dynamic>? receiptMetadata;
+  bool get isCustomTipAmount =>
+      receiptMetadata?['is_custom_tip_amount'] as bool? ?? tipPercentage == 0;
+  String? get birthdayName => receiptMetadata?['birthday_name'] as String?;
   final String? exchangeRateDate;
   final String exchangeRateSource;
 
@@ -58,8 +93,17 @@ class RecentBillModel {
     required this.color,
     this.itemAssignments,
     this.shareUrl,
+    this.receiptParticipants,
+    this.currentGraph,
     this.currencyCode = 'USD',
     this.usdExchangeRate = 1,
+    this.authoritativeUsdTotal,
+    this.publicationState = 'legacy',
+    this.valuationState = 'legacy',
+    this.failureCode,
+    this.attachmentState,
+    this.savedShares,
+    this.receiptMetadata,
     this.exchangeRateDate,
     this.exchangeRateSource = 'native-usd',
   });
@@ -132,16 +176,76 @@ class RecentBillModel {
       itemAssignments: assignmentsMap,
       color: Color(data.colorValue),
       shareUrl: data.shareUrl,
+      receiptParticipants:
+          data.receiptParticipants == null
+              ? null
+              : (jsonDecode(data.receiptParticipants!) as List)
+                  .map((p) => Person.fromReceiptJson(p as Map<String, dynamic>))
+                  .toList(),
+      currentGraph:
+          data.currentGraph == null
+              ? null
+              : jsonDecode(data.currentGraph!) as Map<String, dynamic>,
       currencyCode: data.currencyCode,
       usdExchangeRate: data.usdExchangeRate,
+      authoritativeUsdTotal: data.authoritativeUsdTotal,
+      publicationState: data.publicationState,
+      valuationState: data.valuationState,
+      failureCode: data.failureCode,
+      attachmentState: data.attachmentState,
+      receiptMetadata:
+          data.receiptMetadata == null
+              ? null
+              : jsonDecode(data.receiptMetadata!) as Map<String, dynamic>,
+      savedShares:
+          data.savedShares == null
+              ? null
+              : jsonDecode(data.savedShares!) as List<dynamic>,
       exchangeRateDate: data.exchangeRateDate,
       exchangeRateSource: data.exchangeRateSource,
     );
   }
 
-  double get usdTotal => (total * usdExchangeRate * 100).roundToDouble() / 100;
+  bool get hasUSDValuation => verifiedUsdTotal != null;
+
+  double? get verifiedUsdTotal {
+    if (valuationState == 'pending' ||
+        !usdExchangeRate.isFinite ||
+        usdExchangeRate <= 0) {
+      return null;
+    }
+    if (currencyCode == 'USD' && usdExchangeRate != 1) return null;
+    if (currencyCode != 'USD') {
+      // Historical rates are never freshness-revalidated. Missing provenance
+      // still cannot make an unvalued foreign receipt a USD/default-1 amount.
+      final day = exchangeRateDate;
+      final parsed = day == null ? null : DateTime.tryParse(day);
+      if (!usdExchangeRate.isFinite ||
+          usdExchangeRate <= 0 ||
+          exchangeRateSource.isEmpty ||
+          exchangeRateSource == 'native-usd' ||
+          day == null ||
+          !RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(day) ||
+          parsed == null ||
+          !parsed.toIso8601String().startsWith('${day}T')) {
+        return null;
+      }
+    }
+    if (authoritativeUsdTotal != null) {
+      final value = authoritativeUsdTotal!;
+      final expected = (total * usdExchangeRate * 100).roundToDouble() / 100;
+      return value.isFinite && value >= 0 && (value - expected).abs() < 0.000001
+          ? value
+          : null;
+    }
+    if (currencyCode == 'USD') return total;
+    return (total * usdExchangeRate * 100).roundToDouble() / 100;
+  }
+
+  double get usdTotal => verifiedUsdTotal ?? double.nan;
 
   Map<Person, double> generateUSDPersonShares() {
+    if (!hasUSDValuation) return {};
     final shares = generatePersonShares();
     if (shares.isEmpty) return {};
 
@@ -163,7 +267,8 @@ class RecentBillModel {
     }
 
     final cents = List<int>.filled(entries.length, 0);
-    final remainders = <({int index, double fraction, List<int> nameBytes})>[];
+    final remainders =
+        <({int index, int ordinal, double fraction, List<int> nameBytes})>[];
     for (var index = 0; index < entries.length; index++) {
       final amount = entries[index].value > 0 ? entries[index].value : 0;
       final exactCents = targetCents * amount / shareTotal;
@@ -171,8 +276,12 @@ class RecentBillModel {
       cents[index] = wholeCents;
       remainders.add((
         index: index,
+        ordinal:
+            !_registry.contains(entries[index].key)
+                ? index
+                : _registry.indexOf(entries[index].key),
         fraction: exactCents - wholeCents,
-        nameBytes: utf8.encode(entries[index].key.name),
+        nameBytes: utf8.encode(entries[index].key.allocationLabel),
       ));
     }
 
@@ -192,7 +301,7 @@ class RecentBillModel {
         nameOrder = a.nameBytes.length.compareTo(b.nameBytes.length);
       }
       if (nameOrder != 0) return nameOrder;
-      return a.index.compareTo(b.index);
+      return a.ordinal.compareTo(b.ordinal);
     });
     final remaining =
         targetCents - cents.fold<int>(0, (sum, value) => sum + value);
@@ -238,10 +347,33 @@ class RecentBillModel {
   ///
   /// This getter creates a list of Person objects from the stored names,
   /// applying the bill's color to each person for consistent styling.
-  List<Person> get participants {
-    return participantNames
-        .map((name) => Person(name: name, color: color))
-        .toList();
+  late final List<Person> _registry =
+      receiptParticipants ??
+      [
+        for (var i = 0; i < participantNames.length; i++)
+          Person(
+            name: participantNames[i],
+            color: color,
+            clientRef: 'legacy_${id}_$i',
+          ),
+      ];
+  List<Person> get participants => List.unmodifiable(_registry);
+  Person _savedPerson(String key, {String? label, int ordinal = 0}) {
+    if (receiptParticipants != null) {
+      return _registry.where((p) => p.clientRef == key).firstOrNull ??
+          Person(name: label ?? key, color: color, clientRef: key);
+    }
+    final candidates = _registry.where((p) => p.name == key).toList();
+    // Only the old local representation is reconstructed here; ambiguous rows
+    // stay separate and explicitly require review, never inferred ownership.
+    return candidates.length == 1
+        ? candidates.single
+        : Person(
+          name: label ?? key,
+          color: color,
+          clientRef:
+              'legacy_${id}_raw_${ordinal}_${base64Url.encode(utf8.encode(key))}',
+        );
   }
 
   /// Generates bill items from the saved data
@@ -271,7 +403,7 @@ class RecentBillModel {
               // Only include positive percentages
               if (percentage is num && percentage > 0) {
                 // Create Person object with consistent color
-                personAssignments[Person(name: personName, color: color)] =
+                personAssignments[_savedPerson(personName)] =
                     percentage.toDouble();
               }
             });
@@ -303,6 +435,23 @@ class RecentBillModel {
   /// Returns:
   /// - A map of Person objects to their calculated share amounts
   Map<Person, double> generatePersonShares() {
+    if (savedShares != null) {
+      return {
+        for (var i = 0; i < savedShares!.length; i++)
+          (savedShares![i]['client_ref'] is String
+                  ? _savedPerson(
+                    savedShares![i]['client_ref'] as String,
+                    label: savedShares![i]['name'] as String?,
+                  )
+                  : Person(
+                    name: savedShares![i]['name'] as String? ?? '',
+                    color: color,
+                    clientRef:
+                        'legacy_${id}_share_${savedShares![i]['recorded_share_id'] ?? i}',
+                  )):
+              (savedShares![i]['total'] as num).toDouble(),
+      };
+    }
     // Create Person objects from participant names
     List<Person> personList = participants;
     Map<Person, double> shares = {};
@@ -325,7 +474,7 @@ class RecentBillModel {
 
           // Add to person's running total (or create entry if first item)
           shares.update(
-            Person(name: person.name, color: color),
+            person,
             (value) => value + amount,
             ifAbsent: () => amount,
           );

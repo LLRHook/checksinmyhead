@@ -74,16 +74,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Color? _customHexColor;
 
   /// Available accent color presets
-  static const List<Color> _colorPresets = [
-    Color(0xFF328983), // Teal (default)
-    Color(0xFF2196F3), // Blue
-    Color(0xFF9C27B0), // Purple
-    Color(0xFFE91E63), // Pink
-    Color(0xFFFF5722), // Deep Orange
-    Color(0xFF4CAF50), // Green
-    Color(0xFF607D8B), // Blue Grey
-    Color(0xFF795548), // Brown
-    Color(0xFF000000), // Black
+  static const _colorPresets = <({String name, Color color})>[
+    (name: 'Teal (default)', color: Color(0xFF328983)),
+    (name: 'Blue', color: Color(0xFF2196F3)),
+    (name: 'Purple', color: Color(0xFF9C27B0)),
+    (name: 'Pink', color: Color(0xFFE91E63)),
+    (name: 'Deep Orange', color: Color(0xFFFF5722)),
+    (name: 'Green', color: Color(0xFF4CAF50)),
+    (name: 'Blue Grey', color: Color(0xFF607D8B)),
+    (name: 'Brown', color: Color(0xFF795548)),
+    (name: 'Black', color: Color(0xFF000000)),
   ];
 
   @override
@@ -134,7 +134,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _selectedAccentColor = Color(savedAccentColor);
           // Check if saved color is a custom one (not in presets)
           final isPreset = _colorPresets.any(
-            (c) => c.toARGB32() == savedAccentColor,
+            (preset) => preset.color.toARGB32() == savedAccentColor,
           );
           if (!isPreset) {
             _customHexColor = Color(savedAccentColor);
@@ -269,22 +269,194 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  /// One semantics owner and one shared action for assistive and physical taps.
+  Widget _buildAccentChoice({
+    required String label,
+    String? value,
+    required bool selected,
+    required VoidCallback onTap,
+    required Widget child,
+  }) {
+    return Semantics(
+      container: true,
+      label: label,
+      value: value,
+      button: true,
+      selected: selected,
+      onTap: onTap,
+      excludeSemantics: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        excludeFromSemantics: true,
+        onTap: onTap,
+        child: child,
+      ),
+    );
+  }
+
+  Widget _buildAccentChoices(Color panelSurface) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const spacing = 12.0;
+        // Keep five columns where they fit; use Material's 48-point targets.
+        final columns = ((constraints.maxWidth + spacing) /
+                (kMinInteractiveDimension + spacing))
+            .floor()
+            .clamp(1, 5);
+        final circleSize =
+            (constraints.maxWidth - spacing * (columns - 1)) / columns;
+        final isCustomActive =
+            _customHexColor != null &&
+            _selectedAccentColor.toARGB32() == _customHexColor!.toARGB32();
+        final customSurface = Color.alphaBlend(
+          _customHexColor ?? Colors.black,
+          panelSurface,
+        );
+
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: [
+            ..._colorPresets.map((preset) {
+              final isSelected =
+                  !isCustomActive &&
+                  _selectedAccentColor.toARGB32() == preset.color.toARGB32();
+              final ink = AppTheme.foregroundOn(
+                Color.alphaBlend(preset.color, panelSurface),
+              );
+              return _buildAccentChoice(
+                label: '${preset.name} accent color',
+                selected: isSelected,
+                onTap: () {
+                  setState(() => _customHexColor = null);
+                  _onAccentColorTapped(preset.color);
+                },
+                child: Container(
+                  width: circleSize,
+                  height: circleSize,
+                  decoration: BoxDecoration(
+                    color: preset.color,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color:
+                          isSelected ? ink : Colors.white.withValues(alpha: .3),
+                      width: isSelected ? 3 : 1.5,
+                    ),
+                  ),
+                  child:
+                      isSelected
+                          ? Icon(
+                            Icons.check,
+                            color: ink,
+                            size: circleSize * 0.5,
+                          )
+                          : null,
+                ),
+              );
+            }),
+            _buildAccentChoice(
+              label: 'Custom accent color',
+              value:
+                  isCustomActive
+                      ? '#${_customHexColor!.toARGB32().toRadixString(16).substring(2).toUpperCase()}'
+                      : null,
+              selected: isCustomActive,
+              onTap: _showHexColorPicker,
+              child: Container(
+                width: circleSize,
+                height: circleSize,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient:
+                      isCustomActive
+                          ? null
+                          : const SweepGradient(
+                            colors: [
+                              Color(0xFFFF0000),
+                              Color(0xFFFF8000),
+                              Color(0xFFFFFF00),
+                              Color(0xFF00FF00),
+                              Color(0xFF0080FF),
+                              Color(0xFF8000FF),
+                              Color(0xFFFF0000),
+                            ],
+                          ),
+                  color: isCustomActive ? _customHexColor : null,
+                  border: Border.all(
+                    color:
+                        isCustomActive
+                            ? AppTheme.foregroundOn(customSurface)
+                            : Colors.white.withValues(alpha: .3),
+                    width: isCustomActive ? 3 : 1.5,
+                  ),
+                ),
+                child:
+                    isCustomActive
+                        ? Icon(
+                          Icons.check,
+                          color: AppTheme.foregroundOn(customSurface),
+                          size: circleSize * 0.5,
+                        )
+                        : Center(
+                          // A solid badge keeps the tag visible over every hue.
+                          child: DecoratedBox(
+                            decoration: const BoxDecoration(
+                              color: Colors.black,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(4),
+                              child: Icon(
+                                Icons.tag,
+                                color: Colors.white,
+                                size: circleSize * 0.4,
+                              ),
+                            ),
+                          ),
+                        ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Extract theme data for adaptive styling
     final colorScheme = Theme.of(context).colorScheme;
     final screenHeight = MediaQuery.of(context).size.height;
+    final baseSurface = Color.alphaBlend(
+      colorScheme.primary,
+      colorScheme.surface,
+    );
+    final panelOverlay = Colors.white.withValues(alpha: .15);
+    final panelSurface = Color.alphaBlend(panelOverlay, baseSurface);
+    final baseInk = AppTheme.foregroundOn(baseSurface);
+    final panelInk = AppTheme.foregroundOn(panelSurface);
+    final inputFill =
+        Theme.of(context).brightness == Brightness.dark
+            ? Colors.white.withValues(alpha: .1)
+            : Colors.white;
+    final inputSurface = Color.alphaBlend(inputFill, panelSurface);
+    final inputInk = AppTheme.foregroundOn(inputSurface);
+    final inputAccent = AppTheme.foregroundOn(
+      inputSurface,
+      preferred: colorScheme.primary,
+    );
 
     return Scaffold(
-      backgroundColor: colorScheme.primary,
+      backgroundColor: baseSurface,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text(
+        scrolledUnderElevation: 0,
+        iconTheme: IconThemeData(color: baseInk),
+        title: Text(
           'Settings',
           style: TextStyle(
-            color: Colors.white,
+            color: baseInk,
             fontSize: 20,
             fontWeight: FontWeight.w600,
           ),
@@ -293,9 +465,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: SafeArea(
         child:
             _isLoading
-                ? const Center(
-                  child: CircularProgressIndicator(color: Colors.white),
-                )
+                ? Center(child: CircularProgressIndicator(color: baseInk))
                 : SingleChildScrollView(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
@@ -329,12 +499,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const SizedBox(height: 8),
-                              const Center(
+                              Center(
                                 child: Text(
                                   'Made by a few friends tired of using\nspreadsheets to split the bill.',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    color: Colors.white70,
+                                    color: baseInk,
                                     fontSize: 16,
                                     height: 1.4,
                                   ),
@@ -346,26 +516,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               // Display name section
                               Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: .15),
+                                  color: panelOverlay,
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 padding: const EdgeInsets.all(16),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
+                                    Text(
                                       'Your Name',
                                       style: TextStyle(
-                                        color: Colors.white,
+                                        color: panelInk,
                                         fontSize: 18,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                     const SizedBox(height: 4),
-                                    const Text(
+                                    Text(
                                       'Used when creating or joining shared tabs.',
                                       style: TextStyle(
-                                        color: Colors.white70,
+                                        color: panelInk,
                                         fontSize: 13,
                                       ),
                                     ),
@@ -375,33 +545,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       textCapitalization:
                                           TextCapitalization.words,
                                       style: TextStyle(
-                                        color:
-                                            Theme.of(context).brightness ==
-                                                    Brightness.dark
-                                                ? Colors.white
-                                                : Colors.black87,
+                                        color: inputInk,
                                         fontSize: 16,
                                       ),
+                                      cursorColor: inputInk,
                                       decoration: InputDecoration(
                                         hintText: 'Alice',
-                                        hintStyle: TextStyle(
-                                          color:
-                                              Theme.of(context).brightness ==
-                                                      Brightness.dark
-                                                  ? Colors.white38
-                                                  : Colors.black26,
-                                        ),
+                                        hintStyle: TextStyle(color: inputInk),
                                         filled: true,
-                                        fillColor:
-                                            Theme.of(context).brightness ==
-                                                    Brightness.dark
-                                                ? Colors.white.withValues(
-                                                  alpha: .1,
-                                                )
-                                                : Colors.white,
+                                        fillColor: inputFill,
                                         prefixIcon: Icon(
                                           Icons.person_outline,
-                                          color: colorScheme.primary,
+                                          color: inputAccent,
                                         ),
                                         border: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(
@@ -439,17 +594,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
                                     SwitchListTile(
                                       contentPadding: EdgeInsets.zero,
-                                      title: const Text(
+                                      title: Text(
                                         'Auto-add me to bills',
                                         style: TextStyle(
-                                          color: Colors.white,
+                                          color: panelInk,
                                           fontSize: 15,
                                         ),
                                       ),
-                                      subtitle: const Text(
+                                      subtitle: Text(
                                         'Automatically add yourself as a participant',
                                         style: TextStyle(
-                                          color: Colors.white70,
+                                          color: panelInk,
                                           fontSize: 13,
                                         ),
                                       ),
@@ -476,17 +631,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 16,
                                 ),
-                                tileColor: Colors.white.withValues(alpha: .15),
+                                tileColor: panelOverlay,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),
                                 ),
-                                title: const Text(
+                                title: Text(
                                   'Show bill totals in USD',
-                                  style: TextStyle(color: Colors.white),
+                                  style: TextStyle(color: panelInk),
                                 ),
-                                subtitle: const Text(
+                                subtitle: Text(
                                   'Receipt details stay in their original currency. Trips keep their own setting.',
-                                  style: TextStyle(color: Colors.white70),
+                                  style: TextStyle(color: panelInk),
                                 ),
                                 value: _showBillTotalsInUSD,
                                 onChanged: (value) async {
@@ -504,24 +659,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               // Payment methods section - card with either add button or list of methods
                               Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: .15),
+                                  color: panelOverlay,
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Padding(
-                                      padding: EdgeInsets.all(16),
+                                    Padding(
+                                      padding: const EdgeInsets.all(16),
                                       child: Row(
                                         mainAxisAlignment:
                                             MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Text(
-                                            'Payment Options',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w600,
+                                          Expanded(
+                                            child: Text(
+                                              'Payment Options',
+                                              style: TextStyle(
+                                                color: panelInk,
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
                                           ),
                                         ],
@@ -536,7 +693,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                             style: FilledButton.styleFrom(
                                               backgroundColor: Colors.white,
                                               foregroundColor:
-                                                  colorScheme.primary,
+                                                  AppTheme.foregroundOn(
+                                                    Colors.white,
+                                                    preferred:
+                                                        colorScheme.primary,
+                                                  ),
                                               minimumSize:
                                                   const Size.fromHeight(50),
                                               shape: RoundedRectangleBorder(
@@ -546,6 +707,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                             ),
                                             child: const Text(
                                               'Add Payment Methods',
+                                              textAlign: TextAlign.center,
                                               style: TextStyle(
                                                 fontSize: 16,
                                                 fontWeight: FontWeight.w600,
@@ -577,6 +739,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                     : rawIdentifier;
 
                                             return PaymentMethodItem(
+                                              foregroundColor: panelInk,
                                               methodName: paymentMethod,
                                               identifier: identifier,
                                               onEdit: () {
@@ -645,10 +808,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         child: OutlinedButton(
                                           onPressed: _showPaymentSelection,
                                           style: OutlinedButton.styleFrom(
-                                            side: const BorderSide(
-                                              color: Colors.white70,
-                                            ),
-                                            foregroundColor: Colors.white,
+                                            side: BorderSide(color: panelInk),
+                                            foregroundColor: panelInk,
                                             minimumSize: const Size.fromHeight(
                                               50,
                                             ),
@@ -659,6 +820,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           ),
                                           child: const Text(
                                             'Edit Payment Methods',
+                                            textAlign: TextAlign.center,
                                             style: TextStyle(
                                               fontSize: 16,
                                               fontWeight: FontWeight.w500,
@@ -675,143 +837,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               // App color section
                               Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: .15),
+                                  color: panelOverlay,
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 padding: const EdgeInsets.all(16),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
+                                    Text(
                                       'App Color',
                                       style: TextStyle(
-                                        color: Colors.white,
+                                        color: panelInk,
                                         fontSize: 18,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                     const SizedBox(height: 4),
-                                    const Text(
+                                    Text(
                                       'Choose an accent color for the app.',
                                       style: TextStyle(
-                                        color: Colors.white70,
+                                        color: panelInk,
                                         fontSize: 13,
                                       ),
                                     ),
                                     const SizedBox(height: 16),
-                                    LayoutBuilder(
-                                      builder: (context, constraints) {
-                                        const columns = 5;
-                                        const spacing = 12.0;
-                                        final circleSize =
-                                            (constraints.maxWidth -
-                                                spacing * (columns - 1)) /
-                                            columns;
-                                        final isCustomActive =
-                                            _customHexColor != null &&
-                                            _selectedAccentColor.toARGB32() ==
-                                                _customHexColor!.toARGB32();
-
-                                        // 9 presets + 1 custom = 10 items, 2 rows of 5
-                                        final allItems = [
-                                          ..._colorPresets.map((color) {
-                                            final isSelected =
-                                                _selectedAccentColor
-                                                        .toARGB32() ==
-                                                    color.toARGB32() &&
-                                                !isCustomActive;
-                                            return GestureDetector(
-                                              onTap: () {
-                                                setState(
-                                                  () => _customHexColor = null,
-                                                );
-                                                _onAccentColorTapped(color);
-                                              },
-                                              child: Container(
-                                                width: circleSize,
-                                                height: circleSize,
-                                                decoration: BoxDecoration(
-                                                  color: color,
-                                                  shape: BoxShape.circle,
-                                                  border: Border.all(
-                                                    color:
-                                                        isSelected
-                                                            ? Colors.white
-                                                            : Colors.white
-                                                                .withValues(
-                                                                  alpha: .3,
-                                                                ),
-                                                    width: isSelected ? 3 : 1.5,
-                                                  ),
-                                                ),
-                                                child:
-                                                    isSelected
-                                                        ? Icon(
-                                                          Icons.check,
-                                                          color: Colors.white,
-                                                          size:
-                                                              circleSize * 0.5,
-                                                        )
-                                                        : null,
-                                              ),
-                                            );
-                                          }),
-                                          // Custom hex color circle
-                                          GestureDetector(
-                                            onTap: _showHexColorPicker,
-                                            child: Container(
-                                              width: circleSize,
-                                              height: circleSize,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                gradient:
-                                                    isCustomActive
-                                                        ? null
-                                                        : const SweepGradient(
-                                                          colors: [
-                                                            Color(0xFFFF0000),
-                                                            Color(0xFFFF8000),
-                                                            Color(0xFFFFFF00),
-                                                            Color(0xFF00FF00),
-                                                            Color(0xFF0080FF),
-                                                            Color(0xFF8000FF),
-                                                            Color(0xFFFF0000),
-                                                          ],
-                                                        ),
-                                                color:
-                                                    isCustomActive
-                                                        ? _customHexColor
-                                                        : null,
-                                                border: Border.all(
-                                                  color:
-                                                      isCustomActive
-                                                          ? Colors.white
-                                                          : Colors.white
-                                                              .withValues(
-                                                                alpha: .3,
-                                                              ),
-                                                  width:
-                                                      isCustomActive ? 3 : 1.5,
-                                                ),
-                                              ),
-                                              child: Icon(
-                                                isCustomActive
-                                                    ? Icons.check
-                                                    : Icons.tag,
-                                                color: Colors.white,
-                                                size: circleSize * 0.5,
-                                              ),
-                                            ),
-                                          ),
-                                        ];
-
-                                        return Wrap(
-                                          spacing: spacing,
-                                          runSpacing: spacing,
-                                          children: allItems,
-                                        );
-                                      },
-                                    ),
+                                    _buildAccentChoices(panelSurface),
                                   ],
                                 ),
                               ),
@@ -821,7 +871,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               // Privacy information section
                               Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: .15),
+                                  color: panelOverlay,
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: Theme(
@@ -830,25 +880,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ).copyWith(dividerColor: Colors.transparent),
                                   child: ExpansionTile(
                                     title: Row(
-                                      children: const [
+                                      children: [
                                         Icon(
                                           Icons.shield_outlined,
-                                          color: Colors.white,
+                                          color: panelInk,
                                           size: 20,
                                         ),
-                                        SizedBox(width: 8),
-                                        Text(
-                                          'Privacy & Data',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.w600,
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'Privacy & Data',
+                                            style: TextStyle(
+                                              color: panelInk,
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.w600,
+                                            ),
                                           ),
                                         ),
                                       ],
                                     ),
-                                    iconColor: Colors.white,
-                                    collapsedIconColor: Colors.white70,
+                                    iconColor: panelInk,
+                                    collapsedIconColor: panelInk,
                                     tilePadding: const EdgeInsets.symmetric(
                                       horizontal: 16,
                                       vertical: 8,
@@ -862,8 +914,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     children: [
                                       Text(
                                         'Billington has no accounts, but shared bills and tabs are stored online. Receipt scans are sent to Anthropic for extraction. Local data is removed when you clear app data or uninstall; shared data is not.',
-                                        style: const TextStyle(
-                                          color: Colors.white70,
+                                        style: TextStyle(
+                                          color: panelInk,
                                           fontSize: 14,
                                           height: 1.5,
                                         ),
@@ -875,15 +927,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           onPressed:
                                               () => launchUrl(
                                                 Uri.parse(
-                                                  'https://getbillington.vercel.app/#privacy',
+                                                  'https://billingtonapp.vercel.app/privacy-policy',
                                                 ),
                                                 mode:
                                                     LaunchMode
                                                         .externalApplication,
                                               ),
                                           style: TextButton.styleFrom(
-                                            foregroundColor: Colors.white,
-                                            padding: EdgeInsets.zero,
+                                            foregroundColor: panelInk,
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 12,
+                                            ),
+                                            minimumSize: const Size(48, 48),
                                           ),
                                           child: const Text(
                                             'Read the full privacy policy',
@@ -900,19 +955,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               // Support options
                               Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: .15),
+                                  color: panelOverlay,
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: Column(
                                   children: [
                                     ListTile(
-                                      title: const Text(
+                                      title: Text(
                                         'Contact Us',
-                                        style: TextStyle(color: Colors.white),
+                                        style: TextStyle(color: panelInk),
                                       ),
-                                      leading: const Icon(
+                                      leading: Icon(
                                         Icons.email_outlined,
-                                        color: Colors.white,
+                                        color: panelInk,
                                       ),
                                       onTap: () {
                                         final currentContext = context;
@@ -964,17 +1019,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
 
                                     ListTile(
-                                      title: const Text(
+                                      title: Text(
                                         'Rate Us on App Store',
-                                        style: TextStyle(color: Colors.white),
+                                        style: TextStyle(color: panelInk),
                                       ),
-                                      subtitle: const Text(
+                                      subtitle: Text(
                                         'Love Billington? Let us know!',
-                                        style: TextStyle(color: Colors.white70),
+                                        style: TextStyle(color: panelInk),
                                       ),
-                                      leading: const Icon(
+                                      leading: Icon(
                                         Icons.star_border_rounded,
-                                        color: Colors.white,
+                                        color: panelInk,
                                       ),
                                       onTap: _openAppStore,
                                     ),
@@ -987,17 +1042,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
 
                                     ListTile(
-                                      title: const Text(
+                                      title: Text(
                                         'Share with Friends',
-                                        style: TextStyle(color: Colors.white),
+                                        style: TextStyle(color: panelInk),
                                       ),
-                                      subtitle: const Text(
+                                      subtitle: Text(
                                         'Spread the word!',
-                                        style: TextStyle(color: Colors.white70),
+                                        style: TextStyle(color: panelInk),
                                       ),
-                                      leading: const Icon(
+                                      leading: Icon(
                                         Icons.ios_share,
-                                        color: Colors.white,
+                                        color: panelInk,
                                       ),
                                       onTap: _shareApp,
                                     ),
@@ -1007,11 +1062,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                               const SizedBox(height: 40),
 
-                              const Center(
+                              Center(
                                 child: Text(
                                   'Version 2.0.11',
                                   style: TextStyle(
-                                    color: Colors.white60,
+                                    color: baseInk,
                                     fontSize: 14,
                                   ),
                                 ),

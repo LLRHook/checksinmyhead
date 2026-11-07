@@ -19,7 +19,10 @@ func TestBuildLazyPersonSharesDistributesTaxAndTipRemainders(t *testing.T) {
 		},
 	}
 
-	shares := BuildLazyPersonShares(bill)
+	shares, err := BuildLazyPersonShares(bill)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var tax, tip, total float64
 	for _, share := range shares {
 		tax += share.TaxShare
@@ -51,7 +54,11 @@ func TestBuildLazyPersonSharesKeepsEarlierClaimTaxStable(t *testing.T) {
 			}},
 		}},
 	}
-	first := BuildLazyPersonShares(bill)[0]
+	firstShares, err := BuildLazyPersonShares(bill)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first := firstShares[0]
 	bill.Items = append(bill.Items, models.BillItem{
 		Name: "Second", Price: 1,
 		Assignments: []models.ItemAssignment{{
@@ -59,7 +66,10 @@ func TestBuildLazyPersonSharesKeepsEarlierClaimTaxStable(t *testing.T) {
 		}},
 	})
 
-	shares := BuildLazyPersonShares(bill)
+	shares, err := BuildLazyPersonShares(bill)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, share := range shares {
 		if share.PersonName == "Alex" && share.TaxShare != first.TaxShare {
 			t.Fatalf("earlier share changed from %.2f to %.2f", first.TaxShare, share.TaxShare)
@@ -81,7 +91,10 @@ func TestBuildLazyPersonSharesDoesNotCreateOrLoseSplitItemPennies(t *testing.T) 
 		}},
 	}
 
-	shares := BuildLazyPersonShares(bill)
+	shares, err := BuildLazyPersonShares(bill)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var subtotal float64
 	for _, share := range shares {
 		subtotal += share.Subtotal

@@ -1,122 +1,117 @@
+# Phase G only. NOT CI-CONFIRMED: native/signed/GUI, images, live providers, adoption/drain, recovery and performance qualification.
 name: CI
-
-on:
-  pull_request:
+'on':
+  pull_request: null
   push:
-    branches: [main]
-
+    branches:
+    - main
+    tags:
+    - backend-v*
+  workflow_dispatch:
+    inputs:
+      source:
+        description: Full candidate SHA or exact backend-vMAJOR.MINOR.PATCH tag; blank = controller C
+        type: string
+        required: false
+      target:
+        description: Publication remains disabled unless externally cleared RELEASE_POLICY enables it
+        type: choice
+        options:
+        - checks
+        - backend
+        - web
+        - both
+        default: checks
+        required: true
+      skip_deploy:
+        description: Backend exact health verification only; never call hook
+        type: boolean
+        default: false
 permissions:
   contents: read
-
-env:
-  # Must match the pin in testflight.yml and app-store-release.yml. Unpinned
-  # `channel: stable` meant CI validated a different Flutter than the one that
-  # actually ships: CI drifted to 3.44.8 and failed on an `axisAlignment`
-  # deprecation that does not exist in the version being released.
-  FLUTTER_VERSION: 3.41.5
-
+concurrency:
+  group: controller-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
-  release-automation:
-    runs-on: ubuntu-latest
+  resolve:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      candidate: ${{ steps.resolve.outputs.candidate }}
+      controller: ${{ steps.resolve.outputs.controller }}
+      backend: ${{ steps.resolve.outputs.backend }}
+      web: ${{ steps.resolve.outputs.web }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Test App Store Connect release automation
-        run: ruby .github/scripts/asc_release_test.rb
-
-      - name: Check App Store Connect script syntax
-        run: |
-          ruby -c .github/scripts/asc_api.rb
-          ruby -c .github/scripts/asc_next_build.rb
-          ruby -c .github/scripts/asc_release.rb
-          ruby -c .github/scripts/asc_update_notes.rb
-
-  backend:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      with:
+        ref: ${{ github.sha }}
+        path: control
+        fetch-depth: 0
+        persist-credentials: false
+    - id: resolve
+      env:
+        CONTROLLER: ${{ github.sha }}
+        REQUESTED_SOURCE: ${{ inputs.source || '' }}
+        REQUESTED_TARGET: ${{ inputs.target || 'checks' }}
+        RELEASE_POLICY: ${{ vars.RELEASE_POLICY }}
+        BEFORE_SOURCE: ${{ github.event.before || '' }}
+      run: python3 control/ops/ci/delivery_gate.py resolve --repo control --controller "$CONTROLLER"
+  checks:
+    needs: resolve
+    uses: ./.github/workflows/checks.yml
+    with:
+      source_sha: ${{ needs.resolve.outputs.candidate }}
+      controller_sha: ${{ needs.resolve.outputs.controller }}
+      scope: all
+  required:
+    name: Required delivery checks
+    if: always()
+    needs:
+    - resolve
+    - checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      receipt: ${{ steps.required.outputs.receipt }}
+      source: ${{ steps.required.outputs.source }}
+      controller: ${{ steps.required.outputs.controller }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: backend/go.mod
-          cache-dependency-path: backend/go.sum
-
-      - name: Format check
-        run: test -z "$(gofmt -l .)" || { gofmt -l .; echo "::error::Run 'gofmt -w .' in backend/"; exit 1; }
-
-      - name: Build
-        run: go build ./...
-
-      - name: Vet
-        run: go vet ./...
-
-      - name: Test
-        run: go test -race ./...
-
-      # Dependabot only sees module manifests, so it reported none of the 16
-      # reachable Go standard-library vulnerabilities. govulncheck also filters
-      # to what the code actually calls, so it does not drown in noise.
-      - name: Vulnerability scan
-        run: go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
-
-  mobile:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: mobile
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          cache: true
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Analyze
-        run: flutter analyze
-
-      - name: Test
-        run: flutter test
-
-  web:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: web-bill-viewer
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Set up Node
-        uses: actions/setup-node@v5
-        with:
-          node-version-file: web-bill-viewer/.node-version
-          cache: npm
-          cache-dependency-path: web-bill-viewer/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Test
-        run: npm test
-
-      - name: Build
-        run: npm run build
-
-      - name: Audit
-        run: npm audit --audit-level=moderate
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      with:
+        ref: ${{ github.sha }}
+        path: control
+        fetch-depth: 0
+        persist-credentials: false
+    - id: required
+      env:
+        CONTROLLER: ${{ github.sha }}
+        SOURCE: ${{ needs.resolve.outputs.candidate }}
+        NEEDS: ${{ toJSON(needs) }}
+      run: python3 control/ops/ci/delivery_gate.py required --repo control --controller "$CONTROLLER" --source "$SOURCE"
+  publish-backend:
+    needs:
+    - resolve
+    - required
+    if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      needs.required.result == 'success' && needs.resolve.outputs.backend == 'true' }}
+    uses: ./.github/workflows/deploy-backend.yml
+    secrets:
+      DELIVERY_RENDER_DEPLOY_HOOK_URL: ${{ secrets.DELIVERY_RENDER_DEPLOY_HOOK_URL }}
+    with:
+      source: ${{ needs.required.outputs.source }}
+      controller: ${{ needs.required.outputs.controller }}
+      receipt: ${{ needs.required.outputs.receipt }}
+      skip_deploy: ${{ inputs.skip_deploy || false }}
+  publish-web:
+    needs:
+    - resolve
+    - required
+    if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      needs.required.result == 'success' && needs.resolve.outputs.web == 'true' }}
+    uses: ./.github/workflows/sync-web-viewer.yml
+    secrets:
+      DELIVERY_VERCEL_DEPLOY_KEY: ${{ secrets.DELIVERY_VERCEL_DEPLOY_KEY }}
+    with:
+      source: ${{ needs.required.outputs.source }}
+      controller: ${{ needs.required.outputs.controller }}
+      receipt: ${{ needs.required.outputs.receipt }}

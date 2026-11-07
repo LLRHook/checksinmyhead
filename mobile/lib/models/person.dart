@@ -15,42 +15,66 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 
-/// A model class representing a person with a name, color, and optional icon.
-///
-/// This class provides a way to uniquely identify and compare people based on their
-/// name only (case-insensitive). The color property is used for UI representation
-/// but is not considered in equality checks.
-///
-/// Properties:
-/// * [name] - Unique identifier string for the person (case-insensitive equality)
-/// * [color] - Associated color, typically used for UI representation
-///
-/// Notable implementation details:
-/// * Custom equality operator using case-insensitive name comparison only
-/// * Proper hashCode implementation maintaining the object equality contract
-/// * Immutable design with final fields enforcing proper object state management
-///
-/// Example usage:
-/// ```dart
-/// final person = Person(name: "John", color: Colors.blue);
-/// ```
-
+/// A receipt occurrence. People/groups are suggestions copied into fresh occurrences.
+/// Labels and server selectors never determine equality or capability authority.
 class Person {
   final String name;
   final Color color;
+  final String clientRef;
+  final String allocationLabel;
+  final int? participantId;
+  final int? memberId;
 
-  Person({required this.name, required this.color});
+  Person({
+    required this.name,
+    required this.color,
+    String? clientRef,
+    String? allocationLabel,
+    this.participantId,
+    this.memberId,
+  }) : clientRef = clientRef ?? newClientRef(),
+       allocationLabel = allocationLabel ?? name;
 
+  static String newClientRef() => base64Url
+      .encode(List.generate(18, (_) => _random.nextInt(256)))
+      .replaceAll('=', '');
+  static final _random = Random.secure();
+
+  Person copyWith({String? name, Color? color, int? participantId}) => Person(
+    name: name ?? this.name,
+    color: color ?? this.color,
+    clientRef: clientRef,
+    allocationLabel: allocationLabel,
+    participantId: participantId ?? this.participantId,
+    memberId: memberId,
+  );
+  Person freshOccurrence() => Person(name: name, color: color);
+  String get displayName => name.isEmpty ? 'Unnamed' : name;
+  String labelIn(List<Person> roster) =>
+      '$displayName · ${roster.indexOf(this) + 1}';
+  Map<String, dynamic> toReceiptJson() => {
+    'client_ref': clientRef,
+    'name': name,
+    'allocation_label': allocationLabel,
+    'color': color.toARGB32(),
+    if (participantId != null) 'participant_id': participantId,
+    if (memberId != null) 'member_id': memberId,
+  };
+  factory Person.fromReceiptJson(Map<String, dynamic> json) => Person(
+    name: json['name'] as String,
+    color: Color(json['color'] as int? ?? 0xFF2196F3),
+    clientRef: json['client_ref'] as String,
+    allocationLabel: json['allocation_label'] as String?,
+    participantId: json['participant_id'] as int?,
+    memberId: json['member_id'] as int?,
+  );
   @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is Person &&
-        name.toLowerCase() == other.name.toLowerCase();
-  }
-
-  //If you override ==, you must override hashCode
+  bool operator ==(Object other) =>
+      other is Person && clientRef == other.clientRef;
   @override
-  int get hashCode => name.toLowerCase().hashCode;
+  int get hashCode => clientRef.hashCode;
 }

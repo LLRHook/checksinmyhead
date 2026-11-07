@@ -1,6 +1,6 @@
 # Billington
 
-**Privacy-first bill splitting for group trips** — [Demo](https://youtube.com/shorts/T1GHR6JgOX8?feature=share) | [Website](https://getbillington.vercel.app/)
+**Privacy-first bill splitting for group trips** — [Demo](https://youtube.com/shorts/T1GHR6JgOX8?feature=share) | [Maintained website](https://billingtonapp.vercel.app/)
 
 Billington lets groups split bills, track expenses, and settle up — all without creating accounts. Share a link, add bills, and see who owes what.
 
@@ -26,28 +26,74 @@ Billington lets groups split bills, track expenses, and settle up — all withou
 
 ## Quickstart
 
-```bash
-# One command — starts backend, web viewer, and iOS simulator
-./dev.sh
-```
-
-Or start each service manually:
+<!-- cycle:tracker-setup begin (written by trackers.py install) -->
+**Once per clone**, set up the tracker merge driver and pre-commit lint (Claude Code sessions do this automatically):
 
 ```bash
-# Terminal 1: Backend
-cd backend
-cp .env.example .env
-docker-compose up --build
-
-# Terminal 2: Web viewer
-cd web-bill-viewer
-echo "NEXT_PUBLIC_API_URL=http://localhost:8080" > .env.local
-npm install && npm run dev
-
-# Terminal 3: Flutter
-cd mobile
-flutter run -d simulator
+python3 .cycle/trackers.py install
 ```
+
+```powershell
+python .cycle\trackers.py install
+```
+<!-- cycle:tracker-setup end -->
+
+Use Node **24**, npm **11**, Docker with `docker compose`, Python 3, curl and
+lsof. Full iOS development also needs Flutter **3.41.5**, CocoaPods **1.16.2**,
+Xcode and an available iOS simulator. Pins come from the web `.node-version`, CI
+Flutter pin and committed `Podfile.lock`.
+
+```bash
+./dev.sh setup             # Explicit locked acquisition; preserves existing env files
+./dev.sh                   # PostgreSQL + API + Next.js + Flutter
+# Backend/web only (no Flutter, CocoaPods or simulator required):
+./dev.sh setup --no-mobile
+./dev.sh --no-mobile
+```
+
+Setup uses `npm ci`, `flutter pub get --enforce-lockfile` and
+`pod install --deployment`. It creates only missing local environment examples.
+Normal startup installs nothing; missing/stale prerequisites point back to setup.
+For iOS, use the sole booted available simulator, or select one explicitly:
+`BILLINGTON_SIMULATOR_ID=<UDID> ./dev.sh`. Ambiguous selection fails before services
+start; no simulator is erased or shut down. Flutter keeps terminal hot reload/quit.
+
+Readiness waits are bounded (90 seconds per stage; `BILLINGTON_READY_TIMEOUT=1..180`
+can adjust this), including blocked Docker/simulator commands and their children.
+Failed container inventory stops startup; cleanup retries a pending exact lookup and
+prints a manual inspection instruction if ownership remains unknown. Flutter keeps
+its terminal while the driver supervises both Flutter and Next.js. Direct driver
+INT/TERM preserves exit130/143; a web failure preserves its own status. Owned development
+process groups get two seconds to stop before forced cleanup. Occupied ports are refused.
+Ctrl-C stops only containers/process
+groups started by this invocation; pre-existing running backend services keep running.
+Stopped containers are reused; rebuild intentionally with `make -C backend up` when
+source/config changes. Private web logs remain at the unique path printed by startup;
+inspect/remove that run directory when finished. Acquisition errors retain their
+original diagnostics and status.
+
+For manual operation after setup:
+
+```bash
+make -C backend up        # PostgreSQL/API, foreground
+# In another terminal:
+(cd web-bill-viewer && npm run dev)  # http://localhost:3100
+# Normal shutdown, preserving PostgreSQL data:
+make -C backend down
+```
+
+The retained Go HTML viewer runs only with `docker compose --profile legacy-web up
+--build` from `backend`, on its original port 8081. Its source, templates, image and
+tests remain supported for compatibility; external consumers have not been ruled out.
+See [local reset and verification](backend/README.md#local-test-data-reset) for the
+separate guarded destructive operation. Never use a volume reset for ordinary shutdown.
+
+Backend startup applies/verifies the immutable PostgreSQL migration registry before
+serving. The existing binary also supports `--migrate-only` (apply and exit) and
+`--schema-mode=verify` (verify without applying, then serve). Both maintained service
+binaries share the policy; `/health` checks the live database/ledger within one second.
+See [backend startup and rollback](backend/README.md#postgresql-schema-startup) for strict
+legacy adoption, preserved historical payer data and unresolved production rollout gates.
 
 ## Project Structure
 
@@ -63,13 +109,15 @@ billington/
 │   │   ├── models/           #   GORM data models
 │   │   ├── database/         #   PostgreSQL connection
 │   │   └── security/         #   Token generation
+│   ├── migrations/           # Immutable ordered PostgreSQL SQL + catalog recognizer
 │   ├── docker-compose.yml    # PostgreSQL + bill-service
 │   └── Makefile
 ├── web-bill-viewer/          # Next.js web client
 │   ├── src/app/              # App Router pages
+│   │   ├── (public)/         #   Homepage and /privacy-policy
 │   │   ├── b/[id]/           #   Bill viewer (/b/:id?t=token)
-│   │   └── t/[id]/           #   Tab viewer (/t/:id?t=token)
-│   │   └── privacy/          #   Public privacy policy
+│   │   ├── t/[id]/           #   Tab viewer (/t/:id?t=token)
+│   │   └── {robots,sitemap}.ts # Public discovery only
 │   ├── src/components/       # React components
 │   └── src/lib/api.ts        # API client + types
 ├── mobile/                   # Flutter iOS app
@@ -93,11 +141,39 @@ No accounts needed. When someone creates a tab, they get an access token. Others
 ### Finalization & Settlements
 The tab creator can finalize a trip to aggregate each person's shares across its bills and create settlements. Settlements can be toggled as paid.
 
+## Development workflow
+
+Read [AGENTS.md](AGENTS.md) for shared contributor/agent rules. Use the root
+[bugs.md](bugs.md) and [features.md](features.md) as the active backlog, with Jira off.
+Create and update entries through `python3 .cycle/trackers.py`; see
+[.cycle/TRACKERS.md](.cycle/TRACKERS.md). Run `python3 .cycle/trackers.py lint` after
+tracker changes and merges. Complete relevant local checks and affected documentation
+before review; [VERIFICATION.md](VERIFICATION.md) defines the exact local matrix and
+isolated receipt/save/share/claim/attach/finalize/paid journeys. Its bootstrap is an
+unexecuted procedure, with missing integration coverage explicit. Only integrated V&V
+migrates completed tickets into
+[CHANGELOG.md](CHANGELOG.md).
+
+[Managed delivery controls](ops/ci/README.md) define one six-row source-bound CI
+gate. Publication requires separate protected-environment and policy clearance;
+integrated iOS origin/promotion/notes controls require separate hosted, ASC
+and signed-client qualification. Inspected IPA bytes stay bound through upload and
+receipt creation; parent exits and restore failures still trigger owned cleanup.
+Targets default disabled; whole acceptance remains RED. Convenience TestFlight tag
+emission is retired; immutable receipts carry identity. Existing tags remain. CI success does not replace the local integrated protocol.
+
+The [foundation baseline](docs/reviews/2026-11-02-baseline.md) records the approved scope
+and evidence reconciliation. Existing architecture and API documents linked below
+remain authoritative. Procedure preparation does not establish release readiness.
+
 ## Testing
+
+Run these from the repository root in separate shells; see [VERIFICATION.md](VERIFICATION.md)
+for static/security/build commands, prerequisites, skip accounting and full acceptance.
 
 ```bash
 # Backend (Go)
-cd backend && go test -v -race ./internal/... ./pkg/...
+cd backend && go test -race ./...
 
 # Web viewer (Vitest)
 cd web-bill-viewer && npm test
@@ -130,6 +206,14 @@ cd mobile && flutter test
 - [ ] Production Deployment — Cloud hosting, CDN, monitoring
 
 ## Documentation
+
+The maintained public pages and private viewer share `web-bill-viewer` at the
+canonical origin `https://billingtonapp.vercel.app`. Source preparation does not
+establish that a branch revision is served. The complete policy route must be
+served and verified before shipping a client using the new Settings destination.
+Effective notice date, released workflow, mailbox control and App Store disclosures
+remain release gates; the separate legacy marketing site is unchanged. See the
+[privacy inventory](docs/privacy.md) and [scoped evidence](docs/reviews/2026-11-05-public-web.md).
 
 - [Technical Overview](docs/technical-overview.md) — Architecture, data models, design decisions
 - [Backend API Reference](docs/backend-api.md) — Full endpoint documentation

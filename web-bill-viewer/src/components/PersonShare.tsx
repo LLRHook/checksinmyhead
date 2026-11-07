@@ -73,7 +73,11 @@ export default function PersonShare({
               className={`w-11 h-11 rounded-full flex items-center justify-center font-semibold text-base ${paid ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400" : "bg-[var(--secondary)] dark:bg-white/10 text-[var(--text-secondary)]"}`}
               aria-hidden="true"
             >
-              {paid ? <FaCheck size={16} /> : personShare.person_name[0]}
+              {paid ? (
+                <FaCheck size={16} />
+              ) : (
+                ((personShare.label ?? personShare.person_name) || "Unnamed")[0]
+              )}
             </div>
           ) : (
             <button
@@ -85,9 +89,13 @@ export default function PersonShare({
                   ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400"
                   : "bg-[var(--secondary)] dark:bg-white/10 text-[var(--text-secondary)] hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-500"
               } ${toggling ? "opacity-50" : ""}`}
-              aria-label={`Mark ${personShare.person_name} as ${paid ? "unpaid" : "paid"}`}
+              aria-label={`Mark ${(personShare.label ?? personShare.person_name) || "Unnamed"} as ${paid ? "unpaid" : "paid"}`}
             >
-              {paid ? <FaCheck size={16} /> : personShare.person_name[0]}
+              {paid ? (
+                <FaCheck size={16} />
+              ) : (
+                ((personShare.label ?? personShare.person_name) || "Unnamed")[0]
+              )}
             </button>
           )}
           <div className="text-left">
@@ -98,7 +106,7 @@ export default function PersonShare({
                   : "text-[var(--accent)] dark:text-white"
               }`}
             >
-              {personShare.person_name}
+              {(personShare.label ?? personShare.person_name) || "Unnamed"}
             </h3>
             <div
               className={`text-xl font-bold font-mono ${
@@ -172,7 +180,7 @@ export default function PersonShare({
                   href={buildVenmoPayUrl(
                     hasVenmo,
                     usdTotal.toFixed(2),
-                    `Split bill - ${personShare.person_name}`,
+                    `Split bill - ${(personShare.label ?? personShare.person_name) || "Unnamed"}`,
                   )}
                   target="_blank"
                   rel="noopener noreferrer"

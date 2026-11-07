@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:checks_frontend/screens/participant_identity_panel.dart';
+import 'package:checks_frontend/screens/lazy_bill_claim_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:checks_frontend/models/tab.dart';
 import 'package:checks_frontend/screens/tabs/tab_manager.dart';
@@ -17,21 +19,37 @@ import 'package:share_plus/share_plus.dart';
 
 class TabDetailScreen extends StatefulWidget {
   final AppTab tab;
+  final TabManager? tabManager;
+  final RecentBillsManager? billsManager;
+  final ApiService? apiService;
 
-  const TabDetailScreen({super.key, required this.tab});
+  const TabDetailScreen({
+    super.key,
+    required this.tab,
+    this.tabManager,
+    this.billsManager,
+    this.apiService,
+  });
 
   @override
   State<TabDetailScreen> createState() => _TabDetailScreenState();
 }
 
 class _TabDetailScreenState extends State<TabDetailScreen> {
-  final _billsManager = RecentBillsManager();
-  final _tabManager = TabManager();
-  final _apiService = ApiService();
+  late final _billsManager = widget.billsManager ?? RecentBillsManager();
+  late final _tabManager = widget.tabManager ?? TabManager();
+  late final _apiService = widget.apiService ?? ApiService();
   List<RecentBillModel> _allBills = [];
   List<RecentBillModel> _tabBills = [];
   List<SettlementResponse> _settlements = [];
+  String? _settlementReviewStatus;
   List<TabMemberResponse> _members = [];
+  Map<String, dynamic>? _remoteTab;
+  String? _readError;
+  String? _settlementReadError;
+  int? _savedSettlementMarker;
+  bool _settlementReading = false;
+  bool _settlementWriting = false;
   bool _isLoading = true;
   bool _isFinalizing = false;
   bool _isRetryingInvite = false;
@@ -52,6 +70,10 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
   }
 
   String _formatCurrency(double value) {
+    if (!value.isFinite) return 'Unavailable · needs review';
+    if (_rateCurrency != _currentTab.displayCurrency) {
+      return '${_currentTab.displayCurrency} conversion unavailable';
+    }
     return CurrencyFormatter.formatCurrency(
       value *
           (_rateCurrency == _currentTab.displayCurrency
@@ -66,7 +88,10 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
 
   Future<void> _loadBills() async {
     if (!mounted) return;
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _readError = null;
+    });
 
     // Refresh tab from DB to get latest data (e.g. shareUrl after sync)
     if (_currentTab.id != null) {
@@ -84,6 +109,19 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
           _currentTab.backendId!,
           _currentTab.accessToken!,
         );
+        if (_currentTab.memberToken != null) {
+          final me = await _apiService.getCurrentMember(
+            _currentTab.backendId!,
+            _currentTab.accessToken!,
+            _currentTab.memberToken!,
+          );
+          await DatabaseProvider.db.updateTab(
+            _currentTab.id!,
+            TabsCompanion(memberId: Value(me.memberId), role: Value(me.role)),
+          );
+        }
+        _remoteTab = remoteTab;
+        _readError = null;
         final remoteBills = remoteTab['bills'];
         if (remoteBills is List) {
           final syncedBillIds = await _billsManager.importRemoteTabBills(
@@ -98,6 +136,8 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
           if (refreshed != null) _currentTab = refreshed;
         }
       } on ApiException {
+        _readError =
+            'Current tab unavailable. Showing recorded history; balances need review.';
         // Preserve the last cached dashboard while the trip is offline.
       }
     }
@@ -163,18 +203,32 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
       return;
     }
     if (!_currentTab.isFinalized) return;
+    if (mounted) setState(() => _settlementReading = true);
 
     try {
-      final settlements = await _apiService.getSettlements(
+      final history = await _apiService.getSettlementHistory(
         _currentTab.backendId!,
         _currentTab.accessToken!,
       );
 
       if (mounted) {
-        setState(() => _settlements = settlements);
+        setState(() {
+          _settlements = history.rows;
+          _settlementReviewStatus = history.reviewStatus;
+          _settlementReadError = null;
+          _savedSettlementMarker = null;
+        });
       }
     } on ApiException {
-      // Settlements are non-critical; silently fail
+      if (mounted) {
+        setState(
+          () =>
+              _settlementReadError =
+                  'Recorded settlements are unavailable. Cached receipts remain visible; no empty result or zero debt has been inferred.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _settlementReading = false);
     }
   }
 
@@ -222,6 +276,12 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
       return;
     }
 
+    if (_settlementReading ||
+        _settlementWriting ||
+        _settlementReadError != null) {
+      return;
+    }
+    setState(() => _settlementWriting = true);
     try {
       await _apiService.updateSettlement(
         _currentTab.backendId!,
@@ -232,10 +292,18 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
       );
 
       if (mounted) {
+        setState(() => _savedSettlementMarker = settlement.id);
         await _loadSettlements();
       }
     } on ApiException {
-      // Toggle failed; silently fail
+      if (mounted) {
+        _showSnackBar(
+          'Payment status could not be updated. Refresh and review before retrying.',
+          isError: true,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _settlementWriting = false);
     }
   }
 
@@ -271,12 +339,14 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
         _currentTab.id!,
         selectedBills,
       );
+      if (!mounted) return;
       await _loadBills();
+      if (!mounted) return;
 
       _showSnackBar(
         synced
             ? 'Added ${selectedBills.length} bill${selectedBills.length == 1 ? '' : 's'}'
-            : 'Saved locally, but could not sync every bill. Check your connection.',
+            : 'Not every selected bill was added. Review saved receipts or retry pending links.',
         isError: !synced,
       );
     }
@@ -338,8 +408,22 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
 
   Future<void> _removeBill(int billId) async {
     if (_currentTab.id == null) return;
-    await _tabManager.removeBillFromTab(_currentTab.id!, billId);
+    final removed = await _tabManager.removeBillFromTab(
+      _currentTab.id!,
+      billId,
+    );
+    if (!mounted) return;
+    if (!removed) {
+      _showSnackBar(
+        'Could not remove this bill from the local tab. Please try again.',
+        isError: true,
+      );
+      return;
+    }
     await _loadBills();
+    if (mounted) {
+      _showSnackBar('Removed from this local tab. Saved receipt kept.');
+    }
   }
 
   Future<void> _chooseDisplayCurrency() async {
@@ -500,32 +584,30 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
   }
 
   double _calculateTotal() {
-    return _tabBills.fold(0.0, (sum, bill) => sum + bill.usdTotal);
+    if (_remoteTab != null) {
+      return (_remoteTab!['total_amount'] as num?)?.toDouble() ?? double.nan;
+    }
+    if (_tabBills.any((b) => b.verifiedUsdTotal == null)) return double.nan;
+    return _tabBills.fold(0.0, (sum, bill) => sum + bill.verifiedUsdTotal!);
   }
 
-  // Known limitation: Person equality uses both name and color, so the same
-  // person with different colors across bills appears as separate entries.
-  // We mitigate this by aggregating on lowercase name below.
   Map<String, double> _calculatePersonTotals() {
-    final Map<String, double> personTotals = {};
-    final Map<String, String> nameMapping = {};
-
+    final totals = <String, double>{};
+    final labels = <String, String>{};
     for (final bill in _tabBills) {
-      final billShares = bill.generateUSDPersonShares();
-
-      billShares.forEach((person, amount) {
-        final nameLower = person.name.toLowerCase();
-
-        if (!nameMapping.containsKey(nameLower)) {
-          nameMapping[nameLower] = person.name;
-        }
-
-        final displayName = nameMapping[nameLower]!;
-        personTotals[displayName] = (personTotals[displayName] ?? 0.0) + amount;
-      });
+      if (!bill.hasUSDValuation || bill.identityNeedsReview) return {};
+      for (final entry in bill.generateUSDPersonShares().entries) {
+        final p = entry.key;
+        final key =
+            p.memberId == null
+                ? 'receipt:${bill.id}:${p.clientRef}'
+                : 'member:${_currentTab.backendId}:${p.memberId}';
+        labels[key] =
+            '${p.displayName} · ${p.memberId == null ? 'receipt ${bill.id} #${p.participantId ?? bill.participants.indexOf(p) + 1}' : 'member #${p.memberId}'}';
+        totals[key] = (totals[key] ?? 0) + entry.value;
+      }
     }
-
-    return personTotals;
+    return {for (final e in totals.entries) labels[e.key]!: e.value};
   }
 
   @override
@@ -608,36 +690,152 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
             ),
         ],
       ),
-      body:
-          _isLoading
-              ? Center(
-                child: CircularProgressIndicator(color: colorScheme.primary),
-              )
-              : _tabBills.isEmpty
-              ? _buildEmptyState()
-              : Column(
-                children: [
-                  Expanded(
-                    child: RefreshIndicator(
-                      onRefresh: _loadBills,
-                      child: ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.only(bottom: 100),
-                        children: [
-                          if (_tabBills.isNotEmpty) _buildTotalCard(),
-                          if (_members.isNotEmpty) _buildMembersCard(),
-                          if (_currentTab.isFinalized &&
-                              _settlements.isNotEmpty)
-                            _buildSettlementsCard()
-                          else if (_calculatePersonTotals().isNotEmpty)
-                            _buildPersonTotalsCard(),
-                          if (_tabBills.isNotEmpty) ..._buildBillCards(),
-                        ],
+      body: SafeArea(
+        top: false,
+        bottom: false,
+        child:
+            _isLoading
+                ? Center(
+                  child: CircularProgressIndicator(color: colorScheme.primary),
+                )
+                : _tabBills.isEmpty &&
+                    _settlements.isEmpty &&
+                    _settlementReviewStatus == null &&
+                    _settlementReadError == null &&
+                    _readError == null
+                ? _buildEmptyState()
+                : Column(
+                  children: [
+                    Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: _loadBills,
+                        child: ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.only(bottom: 100),
+                          children: [
+                            if (_readError != null)
+                              Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(_readError!),
+                                    TextButton(
+                                      onPressed: _loadBills,
+                                      child: const Text(
+                                        'Retry current history',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            if (_settlementReadError != null)
+                              Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (_savedSettlementMarker != null)
+                                      Text(
+                                        'Marker saved for recorded row $_savedSettlementMarker. Current settlement status is unavailable.',
+                                      ),
+                                    Text(_settlementReadError!),
+                                    TextButton(
+                                      onPressed:
+                                          _settlementReading
+                                              ? null
+                                              : _loadSettlements,
+                                      child: Text(
+                                        _savedSettlementMarker == null
+                                            ? 'Retry current history'
+                                            : 'Retry current settlement status',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            if (_remoteTab?['net_balance_status'] != null &&
+                                _remoteTab?['net_balance_status'] !=
+                                    'available')
+                              const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: Text(
+                                  'Net balances unavailable; identity or accounting needs review. Recorded receipts remain visible.',
+                                ),
+                              ),
+                            if (_tabBills.any((b) => b.identityNeedsReview))
+                              const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: Text(
+                                  'Recorded history; ownership needs review.',
+                                ),
+                              ),
+                            if (_settlementReviewStatus != null &&
+                                _settlementReviewStatus != 'ready')
+                              const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: Text(
+                                  'Recorded settlements; ownership needs review. Original rows and flags are retained.',
+                                ),
+                              ),
+                            if (_tabBills.isNotEmpty) _buildTotalCard(),
+                            for (final bill
+                                in (_remoteTab?['bills'] as List? ?? [])
+                                    .whereType<Map<String, dynamic>>())
+                              ExpansionTile(
+                                title: Text('Participants · ${bill['name']}'),
+                                children: [
+                                  TextButton(
+                                    onPressed:
+                                        () => Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder:
+                                                (_) => LazyBillClaimScreen(
+                                                  billId: '${bill['id']}',
+                                                  token:
+                                                      _currentTab.accessToken!,
+                                                  tabId:
+                                                      '${_currentTab.backendId}',
+                                                  memberToken:
+                                                      _currentTab.memberToken,
+                                                ),
+                                          ),
+                                        ),
+                                    child: const Text(
+                                      'Select occurrence and items',
+                                    ),
+                                  ),
+                                  ParticipantIdentityPanel(
+                                    bill: bill,
+                                    token: _currentTab.accessToken!,
+                                    tabId: '${_currentTab.backendId}',
+                                    memberToken: _currentTab.memberToken,
+                                    onChanged: _loadBills,
+                                  ),
+                                ],
+                              ),
+                            if (_members.isNotEmpty) _buildMembersCard(),
+                            if (_currentTab.isFinalized &&
+                                _settlements.isNotEmpty)
+                              _buildSettlementsCard()
+                            else if (_currentTab.isFinalized &&
+                                _settlementReviewStatus == 'ready')
+                              const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: Text('No recorded settlement rows.'),
+                              )
+                            else if (!_currentTab.isFinalized &&
+                                _calculatePersonTotals().isNotEmpty)
+                              _buildPersonTotalsCard(),
+                            if (_tabBills.isNotEmpty) ..._buildBillCards(),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+      ),
       floatingActionButton: _currentTab.isFinalized ? null : _buildFAB(),
     );
   }
@@ -767,7 +965,9 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
         child: Column(
           children: [
             Text(
-              'Total',
+              _tabBills.any((bill) => !bill.hasUSDValuation)
+                  ? 'Valued total · some receipts pending'
+                  : 'Total',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.9),
                 fontSize: 14,
@@ -1002,15 +1202,27 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
             separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final settlement = _settlements[index];
+              final label =
+                  '${settlement.personName.trim().isEmpty ? 'Unnamed' : settlement.personName} · recorded row ${settlement.id}';
+              final canUpdate =
+                  !_settlementReading &&
+                  !_settlementWriting &&
+                  _settlementReadError == null &&
+                  (_settlementReviewStatus == 'ready' ||
+                      _settlementReviewStatus ==
+                          'legacy_identity_review_required');
               return Semantics(
                 label:
-                    '${settlement.personName}, ${_formatCurrency(settlement.amount)}, ${settlement.paid ? 'paid' : 'unpaid'}. Tap to toggle',
-                button: true,
+                    '$label, ${_formatCurrency(settlement.amount)}, ${settlement.paid ? 'paid' : 'unpaid'}${canUpdate ? '. Tap to toggle' : '. Recorded history; needs review'}',
+                button: canUpdate,
                 child: GestureDetector(
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    _toggleSettlementPaid(settlement);
-                  },
+                  onTap:
+                      canUpdate
+                          ? () {
+                            HapticFeedback.selectionClick();
+                            _toggleSettlementPaid(settlement);
+                          }
+                          : null,
                   child: Row(
                     children: [
                       CircleAvatar(
@@ -1027,7 +1239,10 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
                                   color: Colors.green.shade700,
                                 )
                                 : Text(
-                                  settlement.personName[0].toUpperCase(),
+                                  settlement.personName.trim().isEmpty
+                                      ? '?'
+                                      : settlement.personName.characters.first
+                                          .toUpperCase(),
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.bold,
@@ -1038,7 +1253,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
                       const SizedBox(width: 14),
                       Expanded(
                         child: Text(
-                          settlement.personName,
+                          label,
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -1219,14 +1434,16 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
   List<Widget> _buildBillCards() {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
+    final canRemove =
+        !_currentTab.isSynced &&
+        !_currentTab.isRemote &&
+        !_currentTab.isFinalized;
 
     return _tabBills.map((bill) {
       return Dismissible(
         key: Key('bill_${bill.id}'),
         direction:
-            _currentTab.isFinalized
-                ? DismissDirection.none
-                : DismissDirection.endToStart,
+            canRemove ? DismissDirection.endToStart : DismissDirection.none,
         background: Container(
           alignment: Alignment.centerRight,
           padding: const EdgeInsets.only(right: 24),
@@ -1244,17 +1461,21 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
           ),
         ),
         confirmDismiss: (_) async {
+          if (!canRemove) return false;
           HapticFeedback.mediumImpact();
 
           final confirmed = await showModalBottomSheet<bool>(
             context: context,
             backgroundColor: Colors.transparent,
+            isScrollControlled: true,
+            useSafeArea: true,
             builder: (context) => _RemoveBillSheet(billName: bill.billName),
           );
 
-          return confirmed ?? false;
+          if (confirmed == true && mounted) await _removeBill(bill.id);
+          // Reload removes a successful local row. A failed write keeps the card.
+          return false;
         },
-        onDismissed: (_) => _removeBill(bill.id),
         child: Container(
           margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
           decoration: BoxDecoration(
@@ -1276,7 +1497,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
           ),
           child: Semantics(
             label:
-                '${bill.billName}, ${_formatCurrency(bill.total)}, ${bill.formattedDate}${!_currentTab.isFinalized ? '. Swipe left to remove' : ''}',
+                '${bill.billName}, ${bill.hasUSDValuation ? _formatCurrency(bill.usdTotal) : '${bill.currencyCode} ${bill.total.toStringAsFixed(2)}, USD pending'}, ${bill.formattedDate}${canRemove ? '. Swipe left to remove from this local tab' : ''}',
             button: true,
             child: Material(
               color: Colors.transparent,
@@ -1359,7 +1580,9 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          _formatCurrency(bill.usdTotal),
+                          bill.hasUSDValuation
+                              ? _formatCurrency(bill.usdTotal)
+                              : '${bill.currencyCode} ${bill.total.toStringAsFixed(2)} · USD pending',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
@@ -1737,91 +1960,97 @@ class _RemoveBillSheet extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
 
-    return Container(
-      decoration: BoxDecoration(
-        color:
-            brightness == Brightness.dark ? colorScheme.surface : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.remove_circle_outline,
-                color: Colors.orange,
-                size: 28,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Remove from Tab',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Remove "$billName" from this tab? The bill will not be deleted.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 15,
-                color: colorScheme.onSurface.withValues(alpha: 0.7),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      HapticFeedback.selectionClick();
-                      Navigator.pop(context, false);
-                    },
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      side: BorderSide(
-                        color: colorScheme.outline.withValues(alpha: 0.5),
-                      ),
-                    ),
-                    child: const Text('Cancel'),
-                  ),
+    return SingleChildScrollView(
+      child: Container(
+        decoration: BoxDecoration(
+          color:
+              brightness == Brightness.dark
+                  ? colorScheme.surface
+                  : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () {
-                      HapticFeedback.mediumImpact();
-                      Navigator.pop(context, true);
-                    },
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                child: const Icon(
+                  Icons.remove_circle_outline,
+                  color: Colors.orange,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Remove from this local tab?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Remove "$billName" from this local tab\'s list? The saved receipt stays in your history. Shared online content and other people\'s access are not deleted.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        Navigator.pop(context, false);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        side: BorderSide(
+                          color: colorScheme.outline.withValues(alpha: 0.5),
+                        ),
                       ),
-                    ),
-                    child: const Text(
-                      'Remove',
-                      style: TextStyle(fontWeight: FontWeight.w600),
+                      child: const Text('Cancel'),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () {
+                        HapticFeedback.mediumImpact();
+                        Navigator.pop(context, true);
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text(
+                        'Remove from local tab',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

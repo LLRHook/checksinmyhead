@@ -1,8 +1,6 @@
 name: Build signed IPA
-description: >-
-  Installs Apple signing material into a throwaway keychain, configures manual
-  signing on the Runner target, and builds an App Store IPA.
-
+description: Authorize, build once with locked toolchain, inspect IPA identity and
+  always clean owned signing material.
 inputs:
   build-number:
     description: CFBundleVersion for this build
@@ -25,178 +23,24 @@ inputs:
   bundle-id:
     description: Bundle identifier being signed
     required: true
-
-outputs:
-  ipa-path:
-    description: Absolute path to the exported .ipa
-    value: ${{ steps.build.outputs.ipa_path }}
-
 runs:
   using: composite
   steps:
-    # The keychain is created fresh per run and deleted by the caller's
-    # cleanup step, so signing material never persists on the runner.
-    - name: Install signing certificate
-      shell: bash
-      env:
-        BUILD_CERTIFICATE_BASE64: ${{ inputs.certificate-base64 }}
-        P12_PASSWORD: ${{ inputs.p12-password }}
-      run: |
-        set -euo pipefail
-        CERT_PATH="$RUNNER_TEMP/build_certificate.p12"
-        KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
-        KEYCHAIN_PASSWORD="$(openssl rand -hex 16)"
-
-        printf '%s' "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o "$CERT_PATH"
-
-        security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-        security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-        security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-        security import "$CERT_PATH" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-        security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-        security list-keychain -d user -s "$KEYCHAIN_PATH"
-
-        echo "Codesigning identities available:"
-        security find-identity -v -p codesigning "$KEYCHAIN_PATH"
-
-    - name: Install provisioning profile
-      id: provisioning
-      shell: bash
-      env:
-        PROVISIONING_PROFILE_BASE64: ${{ inputs.provisioning-profile-base64 }}
-      run: |
-        set -euo pipefail
-        PP_PATH="$RUNNER_TEMP/build_pp.mobileprovision"
-        printf '%s' "$PROVISIONING_PROFILE_BASE64" | base64 --decode -o "$PP_PATH"
-
-        DECODED="$(security cms -D -i "$PP_PATH")"
-        PP_UUID="$(/usr/libexec/PlistBuddy -c 'Print UUID' /dev/stdin <<< "$DECODED")"
-        PP_NAME="$(/usr/libexec/PlistBuddy -c 'Print Name' /dev/stdin <<< "$DECODED")"
-        PP_APP_ID="$(/usr/libexec/PlistBuddy -c 'Print Entitlements:application-identifier' /dev/stdin <<< "$DECODED")"
-        PP_EXPIRY="$(/usr/libexec/PlistBuddy -c 'Print ExpirationDate' /dev/stdin <<< "$DECODED")"
-
-        # Fail loudly on a mismatched profile rather than producing an IPA that
-        # App Store Connect rejects minutes later.
-        if [[ "$PP_APP_ID" != *".${{ inputs.bundle-id }}" ]]; then
-          echo "::error::Provisioning profile is for '$PP_APP_ID' but this build signs '${{ inputs.bundle-id }}'."
-          exit 1
-        fi
-
-        # PlistBuddy prints a regional zone abbreviation ("Mon May 25 08:07:33
-        # EST 2026"). BSD date rejects those in -u mode, so parse in local mode.
-        # An unparseable date must not read as "expired".
-        if PP_EPOCH="$(date -j -f '%a %b %d %T %Z %Y' "$PP_EXPIRY" +%s 2>/dev/null)"; then
-          NOW="$(date +%s)"
-          if [ "$NOW" -ge "$PP_EPOCH" ]; then
-            echo "::error::Provisioning profile expired on $PP_EXPIRY. Renew it before releasing."
-            exit 1
-          fi
-          DAYS_LEFT=$(( (PP_EPOCH - NOW) / 86400 ))
-          echo "Profile valid for $DAYS_LEFT more day(s)."
-          if [ "$DAYS_LEFT" -lt 14 ]; then
-            echo "::warning::Provisioning profile expires in $DAYS_LEFT day(s) ($PP_EXPIRY)."
-          fi
-        else
-          echo "::notice::Could not parse profile expiry '$PP_EXPIRY'; skipping the expiry check."
-        fi
-
-        echo "Profile: $PP_NAME ($PP_UUID), expires $PP_EXPIRY"
-
-        mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-        cp "$PP_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$PP_UUID.mobileprovision"
-        echo "uuid=$PP_UUID" >> "$GITHUB_OUTPUT"
-
-    # Signing has to be set on the Runner target itself. Two tempting
-    # alternatives do not work:
-    #   * xcodebuild command-line build settings apply to EVERY target in the
-    #     workspace, so the Pods framework targets fail with "does not support
-    #     provisioning profiles".
-    #   * an xcconfig is outranked by the target-level CODE_SIGN_* values that
-    #     Runner.xcodeproj sets explicitly.
-    # Editing the Runner project is the only correctly-scoped lever, and it
-    # leaves Pods.xcodeproj untouched.
-    - name: Configure manual signing on the Runner target
-      shell: bash
-      working-directory: mobile
-      env:
-        PP_UUID: ${{ steps.provisioning.outputs.uuid }}
-        TEAM_ID: ${{ inputs.team-id }}
-      run: |
-        set -euo pipefail
-        PBXPROJ=ios/Runner.xcodeproj/project.pbxproj
-
-        sed -i '' \
-          -e 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' \
-          -e 's/CODE_SIGN_IDENTITY = "Apple Development";/CODE_SIGN_IDENTITY = "Apple Distribution";/g' \
-          -e "s#PROVISIONING_PROFILE_SPECIFIER = \"\";#PROVISIONING_PROFILE_SPECIFIER = \"${PP_UUID}\";#g" \
-          "$PBXPROJ"
-
-        # These substitutions used to run blind. If Xcode ever rewrites the
-        # file, a silent no-op would yield a wrongly-signed archive that only
-        # fails at upload, so assert each one landed.
-        fail=0
-        grep -q 'CODE_SIGN_STYLE = Manual;' "$PBXPROJ" \
-          || { echo "::error::CODE_SIGN_STYLE rewrite did not apply."; fail=1; }
-        grep -q 'CODE_SIGN_IDENTITY = "Apple Distribution";' "$PBXPROJ" \
-          || { echo "::error::CODE_SIGN_IDENTITY rewrite did not apply."; fail=1; }
-        grep -q "PROVISIONING_PROFILE_SPECIFIER = \"${PP_UUID}\";" "$PBXPROJ" \
-          || { echo "::error::PROVISIONING_PROFILE_SPECIFIER rewrite did not apply."; fail=1; }
-        if grep -q 'CODE_SIGN_STYLE = Automatic;' "$PBXPROJ"; then
-          echo "::error::Some targets still use automatic signing."
-          fail=1
-        fi
-        [ "$fail" -eq 0 ] || exit 1
-
-        echo "Runner target configured for manual signing with profile ${PP_UUID}."
-
-    - name: Create export options
-      shell: bash
-      working-directory: mobile
-      run: |
-        set -euo pipefail
-        cat > ios/ExportOptions.plist << EOF
-        <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0">
-        <dict>
-            <key>method</key>
-            <string>app-store-connect</string>
-            <key>teamID</key>
-            <string>${{ inputs.team-id }}</string>
-            <key>signingStyle</key>
-            <string>manual</string>
-            <key>uploadSymbols</key>
-            <true/>
-            <key>provisioningProfiles</key>
-            <dict>
-                <key>${{ inputs.bundle-id }}</key>
-                <string>${{ steps.provisioning.outputs.uuid }}</string>
-            </dict>
-        </dict>
-        </plist>
-        EOF
-
-    # flutter build ipa drives archive + export itself and knows how to handle
-    # the Flutter build phases, which is why it is preferred here over calling
-    # xcodebuild directly.
-    - name: Build IPA
-      id: build
-      shell: bash
-      working-directory: mobile
-      run: |
-        set -euo pipefail
-        flutter build ipa \
-          --release \
-          --build-name='${{ inputs.build-name }}' \
-          --build-number='${{ inputs.build-number }}' \
-          --export-options-plist=ios/ExportOptions.plist
-
-        IPA_PATH="$(find build/ios/ipa -name '*.ipa' -print -quit)"
-        if [ -z "$IPA_PATH" ]; then
-          echo "::error::No .ipa produced by flutter build ipa"
-          ls -R build/ios/ipa || true
-          exit 1
-        fi
-        IPA_PATH="$(cd "$(dirname "$IPA_PATH")" && pwd)/$(basename "$IPA_PATH")"
-        echo "Exported $IPA_PATH ($(du -h "$IPA_PATH" | cut -f1))"
-        echo "ipa_path=$IPA_PATH" >> "$GITHUB_OUTPUT"
+  - id: build
+    shell: bash
+    env:
+      BUILD_NUMBER: ${{ inputs.build-number }}
+      BUILD_NAME: ${{ inputs.build-name }}
+      CERTIFICATE_BASE64: ${{ inputs.certificate-base64 }}
+      P12_PASSWORD: ${{ inputs.p12-password }}
+      PROFILE_BASE64: ${{ inputs.provisioning-profile-base64 }}
+      TEAM_ID: ${{ inputs.team-id }}
+      BUNDLE_ID: ${{ inputs.bundle-id }}
+    run: python3 control/ops/ci/ios_sign.py
+outputs:
+  ipa-path:
+    description: Exact inspected IPA
+    value: ${{ steps.build.outputs.ipa_path }}
+  ipa-sha256:
+    description: SHA256 of inspected IPA
+    value: ${{ steps.build.outputs.ipa_sha256 }}

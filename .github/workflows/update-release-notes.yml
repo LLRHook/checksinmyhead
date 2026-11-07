@@ -1,74 +1,128 @@
-name: Update App Store release notes
-
-# Fixes the "What's New" text on an App Store version without rebuilding or
-# reuploading anything. Touches whatsNew only — never screenshots, previews,
-# description, keywords or the icon.
-#
-# If the version is already awaiting review Apple locks it, and editing means
-# cancelling the submission first. That forfeits your place in the review
-# queue, so it only happens when you tick allow_cancel.
-
-on:
+# Integrated phase F controls; external policy defaults disabled. Native/hosted/ASC qualification NOT RUN.
+name: Update proven App Store release notes
+'on':
   workflow_dispatch:
     inputs:
       version:
-        description: 'App Store version to edit, e.g. 1.3.0'
+        description: App Store version to edit, e.g. 1.3.0
         required: true
         type: string
       release_notes:
-        description: "New What's New text"
+        description: New What's New text
         required: true
         type: string
       allow_cancel:
-        description: 'If the version is locked, cancel the pending review submission to edit it (forfeits queue position)'
+        description: If the version is locked, cancel the pending review submission to edit it (forfeits queue position)
         required: false
         default: false
         type: boolean
       resubmit:
-        description: 'After a cancel + edit, resubmit for review'
+        description: After a cancel + edit, resubmit for review
         required: false
         default: true
         type: boolean
-
+      source:
+        type: string
+        description: Exact full source SHA; must match the selected origin for promotion/notes
+        required: false
+      verification_only:
+        description: Read eligibility only; no signing, credential files, upload, tags or ASC writes
+        type: boolean
+        default: false
+      origin_run:
+        type: string
+        description: Explicit successful TestFlight origin run ID
+        required: true
+      origin_attempt:
+        type: string
+        description: Exact successful origin attempt (no latest fallback)
+        required: true
+      asc_build_id:
+        type: string
+        description: Exact processed ASC build ID in that origin receipt
+        required: true
 permissions:
   contents: read
-
-concurrency:
-  group: ios-upload
-  cancel-in-progress: false
-
-env:
-  BUNDLE_ID: com.checksinmyhead-vng.app
-
 jobs:
-  update:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+  resolve:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      candidate: ${{ steps.resolve.outputs.candidate }}
+      controller: ${{ steps.resolve.outputs.controller }}
+      backend: ${{ steps.resolve.outputs.backend }}
+      web: ${{ steps.resolve.outputs.web }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Write App Store Connect API key
-        env:
-          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-        run: |
-          set -euo pipefail
-          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
-          printf '%s' "$ASC_API_KEY_P8" > "$KEY_PATH"
-          echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
-
-      - name: Update release notes
-        env:
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          BUNDLE_ID: ${{ env.BUNDLE_ID }}
-          VERSION_STRING: ${{ inputs.version }}
-          RELEASE_NOTES: ${{ inputs.release_notes }}
-          ALLOW_CANCEL: ${{ inputs.allow_cancel }}
-          RESUBMIT: ${{ inputs.resubmit }}
-        run: ruby .github/scripts/asc_update_notes.rb
-
-      - name: Clean up
-        if: always()
-        run: rm -f "$RUNNER_TEMP"/AuthKey_*.p8
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      with:
+        ref: ${{ github.sha }}
+        path: control
+        fetch-depth: 0
+        persist-credentials: false
+    - id: resolve
+      env:
+        CONTROLLER: ${{ github.sha }}
+        REQUESTED_SOURCE: ${{ inputs.source || '' }}
+        REQUESTED_TARGET: ${{ inputs.target || 'checks' }}
+        RELEASE_POLICY: ${{ vars.RELEASE_POLICY }}
+        BEFORE_SOURCE: ${{ github.event.before || '' }}
+      run: python3 control/ops/ci/delivery_gate.py resolve --repo control --controller "$CONTROLLER"
+  checks:
+    needs: resolve
+    uses: ./.github/workflows/checks.yml
+    with:
+      source_sha: ${{ needs.resolve.outputs.candidate }}
+      controller_sha: ${{ needs.resolve.outputs.controller }}
+      scope: all
+  required:
+    name: Required delivery checks
+    if: always()
+    needs:
+    - resolve
+    - checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      receipt: ${{ steps.required.outputs.receipt }}
+      source: ${{ steps.required.outputs.source }}
+      controller: ${{ steps.required.outputs.controller }}
+    steps:
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      with:
+        ref: ${{ github.sha }}
+        path: control
+        fetch-depth: 0
+        persist-credentials: false
+    - id: required
+      env:
+        CONTROLLER: ${{ github.sha }}
+        SOURCE: ${{ needs.resolve.outputs.candidate }}
+        NEEDS: ${{ toJSON(needs) }}
+      run: python3 control/ops/ci/delivery_gate.py required --repo control --controller "$CONTROLLER" --source "$SOURCE"
+  deliver:
+    needs:
+    - resolve
+    - required
+    if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && needs.required.result
+      == 'success' }}
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/ios-promote.yml
+    secrets:
+      DELIVERY_ASC_KEY_ID: ${{ secrets.DELIVERY_ASC_KEY_ID }}
+      DELIVERY_ASC_ISSUER_ID: ${{ secrets.DELIVERY_ASC_ISSUER_ID }}
+      DELIVERY_ASC_API_KEY_P8: ${{ secrets.DELIVERY_ASC_API_KEY_P8 }}
+    with:
+      source: ${{ needs.required.outputs.source }}
+      controller: ${{ needs.required.outputs.controller }}
+      receipt: ${{ needs.required.outputs.receipt }}
+      verification_only: ${{ inputs.verification_only }}
+      release_notes: ${{ inputs.release_notes }}
+      operation: notes
+      version: ${{ inputs.version }}
+      origin_run: ${{ inputs.origin_run }}
+      origin_attempt: ${{ inputs.origin_attempt }}
+      asc_build_id: ${{ inputs.asc_build_id }}
+      allow_cancel: ${{ inputs.allow_cancel }}
+      resubmit: ${{ inputs.resubmit }}

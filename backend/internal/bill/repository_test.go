@@ -1,7 +1,9 @@
 package bill
 
 import (
+	"backend/internal/testidentity"
 	"backend/pkg/models"
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -16,7 +18,7 @@ func newBillRepositoryTestDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.AutoMigrate(&models.Bill{}, &models.BillItem{}, &models.ItemAssignment{}, &models.PersonShare{}); err != nil {
+	if err := db.AutoMigrate(&models.BillParticipant{}, &models.Person{}, &models.Bill{AccessToken: "test"}, &models.BillItem{}, &models.ItemAssignment{}, &models.PersonShare{}); err != nil {
 		t.Fatal(err)
 	}
 	return db
@@ -36,7 +38,7 @@ func TestPreservesPaidAssignmentsRejectsPercentageChanges(t *testing.T) {
 
 func TestUpdateItemAssignmentsBatchRejectsAddingToPaidShare(t *testing.T) {
 	db := newBillRepositoryTestDB(t)
-	bill := models.Bill{LazyMode: true, Name: "Dinner", Subtotal: 12, Total: 12, Date: time.Now()}
+	bill := models.Bill{AccessToken: "test", LazyMode: true, Name: "Dinner", Subtotal: 12, Total: 12, Date: time.Now()}
 	if err := db.Create(&bill).Error; err != nil {
 		t.Fatal(err)
 	}
@@ -48,11 +50,12 @@ func TestUpdateItemAssignmentsBatchRejectsAddingToPaidShare(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	testidentity.Ready(t, db, &bill)
 	repo := NewBillRepository(db)
-	err := repo.UpdateItemAssignmentsBatch(bill.ID, []ItemAssignmentsUpdate{{
+	err := repo.UpdateItemAssignmentsBatch(context.Background(), referenceClaimFixture(t, db, ClaimCommand{Access: BillAccess{BillID: bill.ID, BillToken: "test"}, Updates: []ItemAssignmentsUpdate{{
 		ItemID:      item.ID,
 		Assignments: []models.ItemAssignment{{PersonName: "alex", Percentage: 100}},
-	}})
+	}}}))
 	if !errors.Is(err, ErrItemAlreadyPaid) {
 		t.Fatalf("expected paid share assignment rejection, got %v", err)
 	}
@@ -66,15 +69,15 @@ func TestUpdateItemAssignmentsBatchRejectsAddingToPaidShare(t *testing.T) {
 	}
 }
 
-func TestUpdatePersonSharePaidUpdatesRefreshedShareByBillAndName(t *testing.T) {
+func TestUpdatePersonSharePaidRejectsStaleShareID(t *testing.T) {
 	db := newBillRepositoryTestDB(t)
-	bill := models.Bill{
+	bill := models.Bill{AccessToken: "test",
 		LazyMode: true, Name: "Dinner", Subtotal: 12, Total: 12, Date: time.Now(),
 		Items: []models.BillItem{
 			{Name: "Wine", Price: 6, Assignments: []models.ItemAssignment{{PersonName: "Alex", Percentage: 100}}},
 			{Name: "Beer", Price: 6, Assignments: []models.ItemAssignment{{PersonName: "Sam", Percentage: 100}}},
 		},
-		PersonShares: []models.PersonShare{{PersonName: "Alex", Subtotal: 6, Total: 6}},
+		PersonShares: []models.PersonShare{{PersonName: "Alex", Subtotal: 6, Total: 6}, {PersonName: "Sam", Subtotal: 6, Total: 6}},
 	}
 	if err := db.Create(&bill).Error; err != nil {
 		t.Fatal(err)
@@ -88,18 +91,19 @@ func TestUpdatePersonSharePaidUpdatesRefreshedShareByBillAndName(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	testidentity.Ready(t, db, &bill)
 	repo := NewBillRepository(db)
-	if err := repo.UpdatePersonSharePaid(bill.ID, "Alex", false); err != nil {
+	if err := repo.UpdatePersonSharePaid(context.Background(), BillSharePaidCommand{Access: BillAccess{BillID: bill.ID, BillToken: "test"}, ShareID: oldShare.ID, Paid: false}); err != nil {
 		t.Fatalf("idempotent unpaid update should succeed: %v", err)
 	}
-	if err := repo.UpdateItemAssignmentsBatch(bill.ID, []ItemAssignmentsUpdate{{
+	if err := repo.UpdateItemAssignmentsBatch(context.Background(), referenceClaimFixture(t, db, ClaimCommand{Access: BillAccess{BillID: bill.ID, BillToken: "test"}, Updates: []ItemAssignmentsUpdate{{
 		ItemID:      alexItem.ID,
-		Assignments: []models.ItemAssignment{{PersonName: "Alex", Percentage: 100}},
-	}}); err != nil {
+		Assignments: []models.ItemAssignment{{PersonName: "Alex", Percentage: 50}},
+	}}})); err != nil {
 		t.Fatal(err)
 	}
-	if err := repo.UpdatePersonSharePaid(bill.ID, "aLeX", true); err != nil {
-		t.Fatalf("payment update should find the recreated share by name: %v", err)
+	if err := repo.UpdatePersonSharePaid(context.Background(), BillSharePaidCommand{Access: BillAccess{BillID: bill.ID, BillToken: "test"}, ShareID: oldShare.ID, Paid: true}); !errors.Is(err, ErrPersonShareNotFound) {
+		t.Fatalf("stale share ID must fail: %v", err)
 	}
 
 	var refreshed models.PersonShare
@@ -109,7 +113,21 @@ func TestUpdatePersonSharePaidUpdatesRefreshedShareByBillAndName(t *testing.T) {
 	if refreshed.ID == oldShare.ID {
 		t.Fatalf("expected assignment save to recreate share ID %d", oldShare.ID)
 	}
-	if !refreshed.Paid {
-		t.Fatal("payment update did not mark the refreshed share paid")
+	if refreshed.Paid {
+		t.Fatal("stale paid request changed the successor share")
 	}
+}
+
+func referenceClaimFixture(t *testing.T, db *gorm.DB, c ClaimCommand) ClaimCommand {
+	t.Helper()
+	for i := range c.Updates {
+		for j := range c.Updates[i].Assignments {
+			a := &c.Updates[i].Assignments[j]
+			p := testidentity.Participant(t, db, c.Access.BillID, a.PersonName)
+			a.PersonName = ""
+			a.ParticipantID = &p.ID
+		}
+	}
+	c.ExpectedRevision = testidentity.Revision(t, db, c.Access.BillID)
+	return c
 }

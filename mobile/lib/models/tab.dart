@@ -11,6 +11,7 @@ class AppTab {
   final String? shareUrl;
   final bool finalized;
   final String? memberToken;
+  final int? memberId;
   final String? role;
   final bool isRemote;
   final String displayCurrency;
@@ -26,6 +27,7 @@ class AppTab {
     this.shareUrl,
     this.finalized = false,
     this.memberToken,
+    this.memberId,
     this.role,
     this.isRemote = false,
     this.displayCurrency = 'USD',
@@ -67,6 +69,7 @@ class AppTab {
     String? shareUrl,
     bool? finalized,
     String? memberToken,
+    int? memberId,
     String? role,
     bool? isRemote,
     String? displayCurrency,
@@ -82,6 +85,7 @@ class AppTab {
       shareUrl: shareUrl ?? this.shareUrl,
       finalized: finalized ?? this.finalized,
       memberToken: memberToken ?? this.memberToken,
+      memberId: memberId ?? this.memberId,
       role: role ?? this.role,
       isRemote: isRemote ?? this.isRemote,
       displayCurrency: displayCurrency ?? this.displayCurrency,

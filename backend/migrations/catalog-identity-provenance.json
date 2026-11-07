@@ -1,0 +1,22 @@
+{
+  "format": 3,
+  "postgres": "17.11 (Debian 17.11-1.pgdg13+2)",
+  "capture": "TestCaptureIdentity0003Catalog: strict testpostgres owned fresh schema; exact baseline+receipt+identity SQL; no GORM; all frozen definitions compared before extracting additions",
+  "capture_raw_sha256": "e357a7d9155038e88b8b024d73885ba5b5fab3167adddc3debd3f7c442e7a38d",
+  "sql_sha256": "91d41e648e91faf400f6b78d1d9457285ae092b888b08de892f449e25d34d6b3",
+  "supplemental_query_sha256": "872946d889cad5c89f3c52116f934684f7328b3b6b150fa3c67008dece9be06f",
+  "manifest_sha256": "e357a7d9155038e88b8b024d73885ba5b5fab3167adddc3debd3f7c442e7a38d",
+  "object_count": 90,
+  "validation_inputs": {
+    "catalog.sql": "2fa9e34ee3048976dade7444d1e7d86887ee6b864b3614a83ec594fe6ca5daab",
+    "catalog-v1.json": "a33946343bd74b19c25e785a62d53a74a3cd8a104f75e50319e71aecd32201b3",
+    "ledger.sql": "ec6ea56e073f3b05694131049fd05865516c4e3a433b1a4a17c46c4291cafc8b",
+    "catalog-safety-v2.sql": "fa97060f905ba1bcdb4c5147dd21824f82e9ed7a7c757e3728b6bf499ce1bb00",
+    "catalog-receipt-v2.json": "3de0b93c674d6fa4140848226c6a91a04215c651c4c4e66929b07ebee9063e25",
+    "catalog-identity-v3.sql": "872946d889cad5c89f3c52116f934684f7328b3b6b150fa3c67008dece9be06f",
+    "catalog-identity-v3.json": "e357a7d9155038e88b8b024d73885ba5b5fab3167adddc3debd3f7c442e7a38d"
+  },
+  "validation_sha256": "8138b4a5d5ca4d85f7235e06a61f71a1331dc9a6ad0ce8926ab8f3fb5167d7bb",
+  "frozen_v1_v2_unchanged": true,
+  "review": "Exact column/default, immediate validated NULL-safe CHECK, scoped RESTRICT MATCH SIMPLE FK, full scoped UNIQUE target, partial unique/referencing btree, bigint sequence/default/ownership capture. Existing table keys come only from frozen catalog.sql; two supplemental sequence keys do not overlap."
+}

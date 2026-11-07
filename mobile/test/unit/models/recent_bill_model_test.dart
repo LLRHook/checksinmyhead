@@ -20,6 +20,10 @@ RecentBill _makeRecentBill({
   String exchangeRateSource = 'native-usd',
 }) {
   return RecentBill(
+    publicationAttempted: false,
+    publicationState: 'legacy',
+    valuationState: 'legacy',
+    attachmentState: 'none',
     id: id,
     billName: billName,
     participants: jsonEncode(participants),
@@ -35,8 +39,10 @@ RecentBill _makeRecentBill({
     createdAt: DateTime(2025, 1, 1),
     currencyCode: currencyCode,
     usdExchangeRate: usdExchangeRate,
-    exchangeRateDate: exchangeRateDate,
-    exchangeRateSource: exchangeRateSource,
+    exchangeRateDate:
+        exchangeRateDate ?? (currencyCode == 'USD' ? null : '2025-01-01'),
+    exchangeRateSource:
+        currencyCode == 'USD' ? exchangeRateSource : 'synthetic-historical',
   );
 }
 

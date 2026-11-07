@@ -8,7 +8,7 @@
   },
   "overrides": {
     "postcss": "8.5.25",
-    "sharp": "^0.35.4",
+    "sharp": "^0.35.5",
     "baseline-browser-mapping": "^2.11.22"
   },
   "scripts": {
@@ -21,7 +21,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "next": "^16.4.0",
+    "next": "16.4.5",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-icons": "^5.7.0"

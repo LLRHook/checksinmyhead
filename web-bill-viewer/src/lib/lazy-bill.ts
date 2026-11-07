@@ -1,5 +1,16 @@
 import type { ItemAssignment, PersonShare } from "./api";
 
+// Legacy string keys are for raw historical presentation/tests only. The API
+// mutation seam requires positive participant IDs and never sends a label.
+const identityKey = (row: {
+  participant_id?: number | null;
+  person_name?: string;
+}) =>
+  row.participant_id != null
+    ? row.participant_id
+    : (row.person_name ?? "").trim().toLowerCase();
+const selectorKey = (value: string | number) =>
+  typeof value === "number" ? value : value.toLowerCase();
 type LazyBillBalance = {
   total: number;
   person_shares: Pick<PersonShare, "total" | "paid">[];
@@ -55,7 +66,7 @@ export function lazyBillRemainingCurrency(bill: LazyBillBalance): string {
 
 export function isLazyItemPaid(
   assignments: ItemAssignment[] | undefined,
-  shares: Pick<PersonShare, "person_name" | "paid">[],
+  shares: Pick<PersonShare, "person_name" | "participant_id" | "paid">[],
 ): boolean {
   if (!assignments?.length) return false;
   const assignedPercentage = assignments.reduce(
@@ -64,26 +75,22 @@ export function isLazyItemPaid(
   );
   if (assignedPercentage < 99.99) return false;
   const paidPeople = new Set(
-    shares
-      .filter((share) => share.paid)
-      .map((share) => share.person_name.trim().toLowerCase()),
+    shares.filter((share) => share.paid).map((share) => identityKey(share)),
   );
   return assignments.every((assignment) =>
-    paidPeople.has(assignment.person_name.trim().toLowerCase()),
+    paidPeople.has(identityKey(assignment)),
   );
 }
 
 export function hasPaidLazyAssignment(
   assignments: ItemAssignment[] | undefined,
-  shares: Pick<PersonShare, "person_name" | "paid">[],
+  shares: Pick<PersonShare, "person_name" | "participant_id" | "paid">[],
 ): boolean {
   const paidPeople = new Set(
-    shares
-      .filter((share) => share.paid)
-      .map((share) => share.person_name.trim().toLowerCase()),
+    shares.filter((share) => share.paid).map((share) => identityKey(share)),
   );
   return (assignments ?? []).some((assignment) =>
-    paidPeople.has(assignment.person_name.trim().toLowerCase()),
+    paidPeople.has(identityKey(assignment)),
   );
 }
 
@@ -99,21 +106,16 @@ export function lazyAssignmentsEqual(
   right: ItemAssignment[] | undefined,
 ): boolean {
   const a = [...(left ?? [])].sort((x, y) =>
-    x.person_name.localeCompare(y.person_name, undefined, {
-      sensitivity: "base",
-    }),
+    String(identityKey(x)).localeCompare(String(identityKey(y))),
   );
   const b = [...(right ?? [])].sort((x, y) =>
-    x.person_name.localeCompare(y.person_name, undefined, {
-      sensitivity: "base",
-    }),
+    String(identityKey(x)).localeCompare(String(identityKey(y))),
   );
   return (
     a.length === b.length &&
     a.every(
       (assignment, index) =>
-        assignment.person_name.toLowerCase() ===
-          b[index].person_name.toLowerCase() &&
+        identityKey(assignment) === identityKey(b[index]) &&
         Math.abs(assignment.percentage - b[index].percentage) < 0.01,
     )
   );
@@ -121,11 +123,10 @@ export function lazyAssignmentsEqual(
 
 export function removeLazyAssignment(
   assignments: ItemAssignment[],
-  personName: string,
+  personName: string | number,
 ): ItemAssignment[] {
   const remaining = assignments.filter(
-    (assignment) =>
-      assignment.person_name.toLowerCase() !== personName.toLowerCase(),
+    (assignment) => identityKey(assignment) !== selectorKey(personName),
   );
   if (!remaining.length) return [];
   const total = remaining.reduce((sum, entry) => sum + entry.percentage, 0);
@@ -143,11 +144,12 @@ export function removeLazyAssignment(
 
 export function remainingLazyPercentage(
   assignments: ItemAssignment[] | undefined,
-  excludingPerson?: string,
+  excludingPerson?: string | number,
 ): number {
   const assigned = (assignments ?? []).reduce(
     (sum, assignment) =>
-      assignment.person_name.toLowerCase() === excludingPerson?.toLowerCase()
+      identityKey(assignment) ===
+      (excludingPerson === undefined ? undefined : selectorKey(excludingPerson))
         ? sum
         : sum + assignment.percentage,
     0,
@@ -157,26 +159,32 @@ export function remainingLazyPercentage(
 
 export function setLazyAssignmentPercentage(
   assignments: ItemAssignment[] | undefined,
-  personName: string,
+  personName: string | number,
   percentage: number,
 ): ItemAssignment[] {
   const others = (assignments ?? []).filter(
-    (assignment) =>
-      assignment.person_name.toLowerCase() !== personName.toLowerCase(),
+    (assignment) => identityKey(assignment) !== selectorKey(personName),
   );
   const available = remainingLazyPercentage(others);
   const share = Math.min(available, Math.max(1, Math.round(percentage)));
   if (share < 1) return others;
-  return [...others, { person_name: personName, percentage: share }];
+  return [
+    ...others,
+    {
+      ...(typeof personName === "number"
+        ? { participant_id: personName }
+        : { person_name: personName }),
+      percentage: share,
+    },
+  ];
 }
 
 export function removeLazyAssignmentLeavingRemainder(
   assignments: ItemAssignment[],
-  personName: string,
+  personName: string | number,
 ): ItemAssignment[] {
   return assignments.filter(
-    (assignment) =>
-      assignment.person_name.toLowerCase() !== personName.toLowerCase(),
+    (assignment) => identityKey(assignment) !== selectorKey(personName),
   );
 }
 

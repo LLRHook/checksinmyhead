@@ -1,7 +1,8 @@
 package database
 
 import (
-	"backend/pkg/models"
+	"backend/migrations"
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -11,7 +12,9 @@ import (
 	"gorm.io/gorm"
 )
 
-func InitDB() (*gorm.DB, error) {
+func InitDB(ctx context.Context, mode migrations.Mode) (*gorm.DB, *migrations.State, error) {
+	ctx, cancel := context.WithTimeout(ctx, migrations.MigrationTimeout)
+	defer cancel()
 	host := os.Getenv("DB_HOST")
 	port := os.Getenv("DB_PORT")
 	name := os.Getenv("DB_NAME")
@@ -20,7 +23,7 @@ func InitDB() (*gorm.DB, error) {
 	sslmode := os.Getenv("DB_SSLMODE")
 
 	if host == "" || port == "" || name == "" || user == "" || pw == "" {
-		return nil, fmt.Errorf("missing required database environment variables")
+		return nil, nil, fmt.Errorf("missing required database environment variables")
 	}
 
 	if sslmode == "" {
@@ -30,31 +33,30 @@ func InitDB() (*gorm.DB, error) {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=America/New_York", host, user, pw, name, port, sslmode)
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: NewSQLLogger(),
+		Logger:               NewSQLLogger(),
+		DisableAutomaticPing: true,
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, safeStartupError(err)
 	}
 
 	sqlDB, err := db.DB()
 	if err != nil {
-		return nil, err
+		return nil, nil, safeStartupError(err)
 	}
 	sqlDB.SetMaxOpenConns(envInt("DB_MAX_OPEN_CONNS", 10))
 	sqlDB.SetMaxIdleConns(envInt("DB_MAX_IDLE_CONNS", 5))
 	sqlDB.SetConnMaxLifetime(time.Duration(envInt("DB_CONN_MAX_LIFETIME_MINUTES", 30)) * time.Minute)
 	sqlDB.SetConnMaxIdleTime(time.Duration(envInt("DB_CONN_MAX_IDLE_MINUTES", 5)) * time.Minute)
 
-	// Migrate parent tables first (Tab before Bill, since Bill has FK to Tab)
-	err = db.AutoMigrate(&models.Tab{}, &models.TabMember{}, &models.TabSettlement{}, &models.Bill{}, &models.Person{}, &models.BillItem{}, &models.ItemAssignment{}, &models.PersonShare{})
+	// Current models never define historical DDL. This also retires the old
+	// unchecked payer backfill: historical attribution is preserved verbatim.
+	state, err := migrations.Run(ctx, sqlDB, mode)
 	if err != nil {
-		return nil, err
+		_ = sqlDB.Close()
+		return nil, nil, safeStartupError(err)
 	}
-
-	// Backfill: set paid_by_member_id = added_by_member_id for existing tab bills
-	db.Exec("UPDATE bills SET paid_by_member_id = added_by_member_id WHERE tab_id IS NOT NULL AND added_by_member_id IS NOT NULL AND paid_by_member_id IS NULL")
-
-	return db, nil
+	return db, state, nil
 }
 
 func envInt(name string, fallback int) int {

@@ -140,6 +140,12 @@ class _ItemCardState extends State<ItemCard>
   /// Warning orange for unassigned items
   static const Color warningOrange = Color(0xFFF59E0B);
 
+  /// Assignee avatar geometry: radius 12 plus a 1.5 border per side. Neighbours
+  /// overlap by 7pt, which stays clear of the centered initial.
+  static const double _assigneeDiameter = 27;
+  static const double _assigneeStep = 20;
+  static const double _assigneeRowHeight = 28;
+
   @override
   void initState() {
     super.initState();
@@ -442,7 +448,7 @@ class _ItemCardState extends State<ItemCard>
     final successToastColor =
         brightness == Brightness.dark
             ? const Color(0xFF34D399) // Lighter green for dark mode
-            : const Color(0xFF10B981); // Original green
+            : const Color(0xFF047857); // Dark enough for white text
 
     // First hide any current SnackBar
     scaffold.hideCurrentSnackBar();
@@ -624,7 +630,7 @@ class _ItemCardState extends State<ItemCard>
                   0.4,
                 ) // Much brighter text for contrast
                 : colorScheme.onSurface)
-            : (isAssigned ? dominantColor : themeSlateGray);
+            : (isAssigned ? colorScheme.onSurface : themeSlateGray);
 
     final priceColor =
         brightness == Brightness.dark
@@ -634,9 +640,7 @@ class _ItemCardState extends State<ItemCard>
                   0.2,
                 ).withValues(alpha: .9)
                 : colorScheme.onSurface.withValues(alpha: .7))
-            : (isAssigned
-                ? dominantColor.withValues(alpha: .8)
-                : themeLightSlateGray);
+            : (isAssigned ? colorScheme.onSurfaceVariant : themeSlateGray);
 
     // Divider color - more visible in dark mode
     final dividerColor =
@@ -764,6 +768,7 @@ class _ItemCardState extends State<ItemCard>
                           Text(
                             widget.item.name,
                             style: textTheme.bodyLarge?.copyWith(
+                              fontSize: 18,
                               fontWeight: FontWeight.w600,
                               color: titleColor,
                             ),
@@ -795,23 +800,32 @@ class _ItemCardState extends State<ItemCard>
                           themeSuccessGreen,
                           themeWarningOrange,
                           brightness,
+                          containerBgColor,
                         ),
 
                         const SizedBox(height: 4),
 
                         // Either show assignee avatars or expand indicator
                         if (isAssigned && !_isExpanded)
-                          _buildAssigneeAvatars()
+                          _buildAssigneeAvatars(
+                            Color.alphaBlend(
+                              containerBgColor,
+                              Theme.of(context).scaffoldBackgroundColor,
+                            ),
+                          )
                         else
-                          RotationTransition(
-                            turns: _rotateAnimation,
-                            child: Icon(
-                              Icons.keyboard_arrow_down,
-                              color:
-                                  isAssigned
-                                      ? dominantColor
-                                      : themeLightSlateGray,
-                              size: 24,
+                          SizedBox(
+                            height: _assigneeRowHeight,
+                            child: RotationTransition(
+                              turns: _rotateAnimation,
+                              child: Icon(
+                                Icons.keyboard_arrow_down,
+                                color:
+                                    isAssigned
+                                        ? dominantColor
+                                        : themeLightSlateGray,
+                                size: 24,
+                              ),
                             ),
                           ),
                       ],
@@ -844,6 +858,10 @@ class _ItemCardState extends State<ItemCard>
                     children: [
                       // Use the participant selector component
                       ParticipantSelector(
+                        surfaceColor: Color.alphaBlend(
+                          containerBgColor,
+                          Theme.of(context).scaffoldBackgroundColor,
+                        ),
                         participants: widget.participants,
                         assignedPeople: widget.assignedPeople,
                         selectedPeople: _selectedPeople,
@@ -882,6 +900,7 @@ class _ItemCardState extends State<ItemCard>
     Color themeSuccessGreen,
     Color themeWarningOrange,
     Brightness brightness,
+    Color surfaceColor,
   ) {
     final progressColor =
         !isAssigned
@@ -897,6 +916,18 @@ class _ItemCardState extends State<ItemCard>
 
     final progress = widget.assignedPercentage / 100.0;
 
+    // The bar keeps its signal color; the number needs readable ink.
+    final percentColor =
+        brightness == Brightness.dark
+            ? progressColor
+            : AppTheme.foregroundOn(
+              Color.alphaBlend(
+                surfaceColor,
+                Theme.of(context).scaffoldBackgroundColor,
+              ),
+              preferred: progressColor,
+            );
+
     return SizedBox(
       width: 64,
       child: Column(
@@ -905,9 +936,9 @@ class _ItemCardState extends State<ItemCard>
           Text(
             '${widget.assignedPercentage.toStringAsFixed(0)}%',
             style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: progressColor,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: percentColor,
             ),
           ),
           const SizedBox(height: 3),
@@ -928,23 +959,22 @@ class _ItemCardState extends State<ItemCard>
   /// Build the avatar stack showing assigned people
   ///
   /// Shows circular avatars with initials, overlapping slightly
-  /// Limits display to 3 avatars plus a +N indicator for more
-  Widget _buildAssigneeAvatars() {
+  /// Shows up to 4 people; past that, 3 avatars plus a +N indicator
+  Widget _buildAssigneeAvatars(Color surfaceColor) {
     if (widget.assignedPeople.isEmpty) return const SizedBox.shrink();
 
-    // Limit to showing max 3 avatars to avoid overcrowding
+    // Four avatars fit, so a fourth person is shown instead of a "+1"
+    final hasOverflow = widget.assignedPeople.length > 4;
     final displayPeople =
-        widget.assignedPeople.length > 3
+        hasOverflow
             ? widget.assignedPeople.sublist(0, 3)
             : widget.assignedPeople;
+    final slotCount = hasOverflow ? 4 : displayPeople.length;
 
     // Calculate a fixed width for the container based on number of avatars
     // Add extra padding to ensure borders aren't cut off in dark mode
     final containerWidth =
-        widget.assignedPeople.length > 3
-            ? 4 * 12.0 +
-                16.0 // 4 avatars at 12px spacing plus buffer for borders
-            : displayPeople.length * 12.0 + 16.0;
+        (slotCount - 1) * _assigneeStep + _assigneeDiameter + 6.0;
 
     // Theme-aware colors for avatar styling
     final brightness = Theme.of(context).brightness;
@@ -964,7 +994,7 @@ class _ItemCardState extends State<ItemCard>
             : const Color(0xFF627D98);
 
     return SizedBox(
-      height: 24,
+      height: _assigneeRowHeight,
       width: containerWidth, // Fixed width based on number of avatars
       child: Stack(
         alignment: Alignment.centerRight,
@@ -973,7 +1003,7 @@ class _ItemCardState extends State<ItemCard>
           for (int i = 0; i < displayPeople.length; i++)
             Positioned(
               // Add extra padding on right to ensure borders don't get cut off
-              right: i * 12.0 + 3.0,
+              right: i * _assigneeStep + 3.0,
               child: Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
@@ -987,27 +1017,37 @@ class _ItemCardState extends State<ItemCard>
                   ],
                 ),
                 child: CircleAvatar(
-                  radius: 10,
+                  radius: 12,
                   backgroundColor: displayPeople[i].color,
                   child: Text(
-                    displayPeople[i].name[0].toUpperCase(),
+                    displayPeople[i].name.isEmpty
+                        ? '?'
+                        : displayPeople[i].name[0].toUpperCase(),
                     style: TextStyle(
-                      color: ColorUtils.getContrastiveTextColor(
-                        displayPeople[i].color,
-                      ),
+                      color:
+                          brightness == Brightness.dark
+                              ? ColorUtils.getContrastiveTextColor(
+                                displayPeople[i].color,
+                              )
+                              : AppTheme.foregroundOn(
+                                Color.alphaBlend(
+                                  displayPeople[i].color,
+                                  surfaceColor,
+                                ),
+                              ),
                       fontWeight: FontWeight.bold,
-                      fontSize: 8,
+                      fontSize: 11,
                     ),
                   ),
                 ),
               ),
             ),
 
-          // If there are more than 3 people, show +N indicator
-          if (widget.assignedPeople.length > 3)
+          // If there are more than 4 people, show +N indicator
+          if (hasOverflow)
             Positioned(
               // Add extra padding on right to ensure borders don't get cut off
-              right: 3 * 12.0 + 3.0,
+              right: 3 * _assigneeStep + 3.0,
               child: Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
@@ -1021,14 +1061,14 @@ class _ItemCardState extends State<ItemCard>
                   ],
                 ),
                 child: CircleAvatar(
-                  radius: 10,
+                  radius: 12,
                   backgroundColor: moreAvatarBgColor,
                   child: Text(
                     '+${widget.assignedPeople.length - 3}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: 8,
+                      fontSize: 11,
                     ),
                   ),
                 ),

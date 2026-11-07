@@ -2,10 +2,10 @@ package tab
 
 import (
 	"backend/pkg/models"
+	"context"
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -24,16 +24,11 @@ func (s *assignmentValidationService) GetMembers(uint) ([]models.TabMember, erro
 	return nil, nil
 }
 
-func (s *assignmentValidationService) UpdateBillItemAssignments(uint, uint, uint, []models.ItemAssignment, *time.Time) error {
+func (s *assignmentValidationService) UpdateBillItemAssignmentsBatch(_ context.Context, c AssignmentCommand) error {
 	s.updated = true
+	s.batchUpdates = c.Updates
 	return nil
 }
-
-func (s *assignmentValidationService) UpdateBillItemAssignmentsBatch(_, _ uint, updates []BillItemAssignmentsUpdate) error {
-	s.batchUpdates = updates
-	return nil
-}
-
 func TestUpdateBillItemAssignmentsBatchPassesAllUpdatesTogether(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	service := &assignmentValidationService{}
@@ -163,45 +158,19 @@ func TestGetTabWithLookupRejectsInvalidIDAndToken(t *testing.T) {
 	}
 }
 
-func TestRequireCreatorKeepsLegacyTabsAndRestrictsCollaborativeActions(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	for _, test := range []struct {
-		name        string
-		service     creatorCheckService
-		wantAllowed bool
-		wantError   string
+func TestCurrentMemberPolicyIncludesLegacyAndInvalidSuppliedTokens(t *testing.T) {
+	rows := []models.TabMember{{ID: 1, Role: "creator", MemberToken: "creator"}, {ID: 2, Role: "member", MemberToken: "member"}}
+	for _, tc := range []struct {
+		name, token string
+		roster      []models.TabMember
+		allow       bool
 	}{
-		{name: "legacy tab without members", wantAllowed: true},
-		{
-			name: "creator",
-			service: creatorCheckService{
-				members: []models.TabMember{{TabID: 7}},
-				member:  &models.TabMember{TabID: 7, MemberToken: "member", Role: "creator"},
-			},
-			wantAllowed: true,
-		},
-		{
-			name: "regular member",
-			service: creatorCheckService{
-				members: []models.TabMember{{TabID: 7}},
-				member:  &models.TabMember{TabID: 7, MemberToken: "member", Role: "member"},
-			},
-			wantError: "only the tab creator can finalize",
-		},
+		{"legacy", "", nil, true}, {"invalid legacy", "bad", nil, false}, {"creator", "creator", rows, true}, {"member", "member", rows, false}, {"missing", "", rows, false},
 	} {
-		t.Run(test.name, func(t *testing.T) {
-			recorder := httptest.NewRecorder()
-			ctx, _ := gin.CreateTestContext(recorder)
-			ctx.Request = httptest.NewRequest("POST", "/tabs/7/finalize?m=member", nil)
-			handler := NewTabHandler(test.service)
-			allowed := handler.requireCreator(ctx, 7, "finalize")
-
-			if allowed != test.wantAllowed {
-				t.Fatalf("allowed = %t, want %t", allowed, test.wantAllowed)
-			}
-			if test.wantError != "" && !strings.Contains(recorder.Body.String(), test.wantError) {
-				t.Fatalf("error = %q, want %q", recorder.Body.String(), test.wantError)
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := currentMember(tc.roster, TabAccess{MemberToken: tc.token}, true, false)
+			if (err == nil) != tc.allow {
+				t.Fatalf("authority mismatch: %v", err)
 			}
 		})
 	}

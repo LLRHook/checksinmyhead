@@ -1,334 +1,175 @@
 package tab
 
 import (
+	billpkg "backend/internal/bill"
 	"backend/pkg/models"
+	"backend/pkg/mutation"
 	"backend/pkg/security"
+	"context"
 	"errors"
-	"fmt"
 	"math"
-	"sort"
 	"strings"
 	"time"
 )
 
+// AttachBillCommand carries independent source and destination capabilities.
+// Attribution is resolved in the transaction; callers cannot supply member IDs.
+type AttachBillCommand struct {
+	TabID            uint
+	BillID           uint
+	TabToken         string
+	MemberToken      string
+	BillToken        string
+	ExpectedRevision *int64
+	IdentityVersion  int16
+}
+
+var (
+	ErrInvalidAttachment    = errors.New("bill id and source token are required")
+	ErrDestinationForbidden = mutation.Forbidden
+	ErrTabFinalized         = mutation.Finalized
+	ErrSourceUnavailable    = errors.New("source bill unavailable")
+)
+
+func validateAttach(command AttachBillCommand) error {
+	if command.TabID == 0 || command.TabID > math.MaxUint32 || command.BillID == 0 || command.BillID > math.MaxUint32 || strings.TrimSpace(command.BillToken) == "" {
+		return ErrInvalidAttachment
+	}
+	if strings.TrimSpace(command.TabToken) == "" {
+		return ErrDestinationForbidden
+	}
+	return nil
+}
+
 type TabService interface {
-	CreateTab(tab *models.Tab) error
-	GetTab(id uint) (tab *models.Tab, err error)
-	GetTabAuth(id uint) (tab *models.Tab, err error)
-	UpdateTab(tab *models.Tab) error
-	AddBillToTab(tabID uint, billID uint, billToken string, memberID *uint) error
-	UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error
-	UpdateBillItemAssignmentsBatch(tabID uint, billID uint, updates []BillItemAssignmentsUpdate) error
-	UpdateBillPersonSharePaid(tabID uint, billID uint, shareID uint, paid bool) error
-	FinalizeTab(id uint) ([]models.TabSettlement, error)
-	GetSettlements(tabID uint) ([]models.TabSettlement, error)
-	UpdateSettlementPaid(tabID uint, id uint, paid bool) error
-	JoinTab(tabID uint, displayName string) (*models.TabMember, error)
-	JoinTabAsCreator(tabID uint, displayName string) (*models.TabMember, error)
-	GetMemberByToken(token string) (*models.TabMember, error)
-	GetMembers(tabID uint) ([]models.TabMember, error)
-	DeleteMember(tabID uint, memberID uint) error
+	CreateTab(context.Context, *models.Tab, string) (*models.TabMember, error)
+	GetTab(uint) (*models.Tab, error)
+	GetTabAuth(uint) (*models.Tab, error)
+	UpdateTab(context.Context, SettingsCommand) error
+	AddBillToTab(context.Context, AttachBillCommand) error
+	UpdateBillItemAssignmentsBatch(context.Context, AssignmentCommand) error
+	UpdateBillPersonSharePaid(context.Context, SharePaidCommand) error
+	FinalizeTab(context.Context, FinalizeCommand) ([]models.TabSettlement, error)
+	GetSettlements(uint) ([]models.TabSettlement, error)
+	UpdateSettlementPaid(context.Context, SettlementPaidCommand) error
+	JoinTab(context.Context, JoinCommand) (*models.TabMember, bool, error)
+	GetMemberByToken(string) (*models.TabMember, error)
+	GetMembers(uint) ([]models.TabMember, error)
+	DeleteMember(context.Context, LeaveCommand) error
 }
+type tabService struct{ repo TabRepository }
 
-type tabService struct {
-	repo TabRepository
+func (s *tabService) CreateTab(ctx context.Context, t *models.Tab, name string) (*models.TabMember, error) {
+	var creator *models.TabMember
+	if name != "" {
+		token, err := security.GenerateSecureToken()
+		if err != nil {
+			return nil, err
+		}
+		creator = &models.TabMember{DisplayName: name, MemberToken: token, Role: "creator", JoinedAt: time.Now()}
+	}
+	if err := s.repo.Create(ctx, t, creator); err != nil {
+		return nil, err
+	}
+	return creator, nil
 }
-
-func (s *tabService) CreateTab(tab *models.Tab) error {
-	return s.repo.Create(tab)
-}
-
 func (s *tabService) GetTab(id uint) (tab *models.Tab, err error) {
 	tab, err = s.repo.GetById(id)
 	if err != nil {
 		return nil, err
 	}
-	// Recalculate total from bills and strip bill access tokens
-	var total float64
+	// Strip every source capability even when a later bill needs review. Retain
+	// the tab capability internally so the handler can authorize that response.
 	for i := range tab.Bills {
-		if tab.Bills[i].USDTotal > 0 {
-			total += tab.Bills[i].USDTotal
-		} else if tab.Bills[i].DisplayTotal != nil {
-			total += *tab.Bills[i].DisplayTotal
-		} else {
-			total += tab.Bills[i].Total
-		}
+		tab.Bills[i] = billpkg.ReadCurrency(tab.Bills[i])
 		tab.Bills[i].AccessToken = ""
 	}
-	tab.TotalAmount = total
-	tab.NetBalances = ComputeNetBalances(tab)
-	return tab, nil
+	tab.TotalStatus = "available"
+	var total int64
+	var totalErr error
+	for _, b := range tab.Bills {
+		cents, e := billpkg.FrozenUSDTotalCents(b)
+		if e != nil {
+			totalErr = e
+			break
+		}
+		total, e = billpkg.AddObligationCents(total, cents)
+		if e != nil {
+			totalErr = e
+			break
+		}
+	}
+	if totalErr == nil {
+		tab.TotalAmount, totalErr = billpkg.ObligationDollars(total)
+	}
+	if totalErr != nil {
+		tab.TotalStatus = "accounting_review_required"
+	}
+	tab.ReferenceBalances, err = ReferenceNetBalances(tab)
+	tab.NetBalanceStatus = "available"
+	if err != nil {
+		tab.ReferenceBalances = nil
+		tab.NetBalanceStatus = "identity_review_required"
+		if errors.Is(err, mutation.Review) {
+			tab.NetBalanceStatus = "accounting_review_required"
+		}
+	}
+	if totalErr != nil {
+		tab.ReferenceBalances = nil
+		tab.NetBalanceStatus = "accounting_review_required"
+	}
+	if err == nil && totalErr == nil {
+		tab.NetBalances = legacyNetBalances(tab.ReferenceBalances)
+	}
+	return tab, totalErr
 }
 
 func (s *tabService) GetTabAuth(id uint) (tab *models.Tab, err error) {
 	return s.repo.GetAuthById(id)
 }
 
-func (s *tabService) UpdateTab(tab *models.Tab) error {
-	return s.repo.Update(tab)
+func (s *tabService) UpdateTab(ctx context.Context, c SettingsCommand) error {
+	return s.repo.Update(ctx, c)
 }
-
-func (s *tabService) AddBillToTab(tabID uint, billID uint, billToken string, memberID *uint) error {
-	return s.repo.AddBill(tabID, billID, billToken, memberID)
+func (s *tabService) AddBillToTab(ctx context.Context, c AttachBillCommand) error {
+	if err := validateAttach(c); err != nil {
+		return err
+	}
+	return s.repo.AttachBill(ctx, c)
 }
-
-func (s *tabService) UpdateBillItemAssignments(tabID uint, billID uint, itemID uint, assignments []models.ItemAssignment, expectedUpdatedAt *time.Time) error {
-	return s.repo.UpdateBillItemAssignments(tabID, billID, itemID, assignments, expectedUpdatedAt)
+func (s *tabService) UpdateBillItemAssignmentsBatch(ctx context.Context, c AssignmentCommand) error {
+	return s.repo.UpdateBillItemAssignmentsBatch(ctx, c)
 }
-
-func (s *tabService) UpdateBillItemAssignmentsBatch(tabID uint, billID uint, updates []BillItemAssignmentsUpdate) error {
-	return s.repo.UpdateBillItemAssignmentsBatch(tabID, billID, updates)
+func (s *tabService) UpdateBillPersonSharePaid(ctx context.Context, c SharePaidCommand) error {
+	return s.repo.UpdateBillPersonSharePaid(ctx, c)
 }
-
-func (s *tabService) UpdateBillPersonSharePaid(tabID uint, billID uint, shareID uint, paid bool) error {
-	return s.repo.UpdateBillPersonSharePaid(tabID, billID, shareID, paid)
+func (s *tabService) FinalizeTab(ctx context.Context, c FinalizeCommand) ([]models.TabSettlement, error) {
+	return s.repo.FinalizeOnce(ctx, c)
 }
-
-func (s *tabService) FinalizeTab(id uint) ([]models.TabSettlement, error) {
-	tab, err := s.repo.GetForFinalization(id)
-	if err != nil {
-		return nil, err
-	}
-
-	if tab.Finalized {
-		return nil, errors.New("tab is already finalized")
-	}
-
-	if len(tab.Bills) == 0 {
-		return nil, errors.New("tab has no bills")
-	}
-
-	// Compute per-person totals from bill person_shares
-	personTotals := make(map[string]int64)
-	personDisplayNames := make(map[string]string) // preserve original casing
-	for _, bill := range tab.Bills {
-		shareCents := allocateUSDShareCents(bill)
-		for i, share := range bill.PersonShares {
-			key := strings.ToLower(share.PersonName)
-			personTotals[key] += shareCents[i]
-			// Prefer a capitalized variant over all-lowercase
-			if existing, ok := personDisplayNames[key]; !ok {
-				personDisplayNames[key] = share.PersonName
-			} else if existing == key && share.PersonName != key {
-				personDisplayNames[key] = share.PersonName
-			}
-		}
-	}
-
-	// Create settlement records
-	var settlements []models.TabSettlement
-	for key, amount := range personTotals {
-		settlements = append(settlements, models.TabSettlement{
-			TabID:      id,
-			PersonName: personDisplayNames[key],
-			Amount:     float64(amount) / 100,
-			Paid:       false,
-		})
-	}
-
-	if err := s.repo.CreateSettlements(settlements); err != nil {
-		return nil, err
-	}
-
-	if err := s.repo.Finalize(id); err != nil {
-		return nil, err
-	}
-
-	// Return the created settlements (now with IDs)
+func (s *tabService) GetSettlements(id uint) ([]models.TabSettlement, error) {
 	return s.repo.GetSettlements(id)
 }
-
-func (s *tabService) GetSettlements(tabID uint) ([]models.TabSettlement, error) {
-	return s.repo.GetSettlements(tabID)
+func (s *tabService) UpdateSettlementPaid(ctx context.Context, c SettlementPaidCommand) error {
+	return s.repo.UpdateSettlementPaid(ctx, c)
 }
-
-func (s *tabService) UpdateSettlementPaid(tabID uint, id uint, paid bool) error {
-	return s.repo.UpdateSettlementPaid(tabID, id, paid)
+func (s *tabService) JoinTab(ctx context.Context, c JoinCommand) (*models.TabMember, bool, error) {
+	return s.repo.Join(ctx, c)
 }
-
-func (s *tabService) JoinTab(tabID uint, displayName string) (*models.TabMember, error) {
-	return s.createMember(tabID, displayName, "member")
-}
-
-func (s *tabService) JoinTabAsCreator(tabID uint, displayName string) (*models.TabMember, error) {
-	return s.createMember(tabID, displayName, "creator")
-}
-
-func (s *tabService) createMember(tabID uint, displayName string, role string) (*models.TabMember, error) {
-	memberToken, err := security.GenerateSecureToken()
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate member token: %w", err)
-	}
-	member := &models.TabMember{
-		TabID:       tabID,
-		DisplayName: displayName,
-		MemberToken: memberToken,
-		Role:        role,
-		JoinedAt:    time.Now(),
-	}
-	if err := s.repo.CreateMember(member); err != nil {
-		return nil, err
-	}
-	return member, nil
-}
-
 func (s *tabService) GetMemberByToken(token string) (*models.TabMember, error) {
 	return s.repo.GetMemberByToken(token)
 }
-
-func (s *tabService) GetMembers(tabID uint) ([]models.TabMember, error) {
-	return s.repo.GetMembersByTabID(tabID)
+func (s *tabService) GetMembers(id uint) ([]models.TabMember, error) {
+	return s.repo.GetMembersByTabID(id)
 }
-
-func (s *tabService) DeleteMember(tabID uint, memberID uint) error {
-	return s.repo.DeleteMember(tabID, memberID)
+func (s *tabService) DeleteMember(ctx context.Context, c LeaveCommand) error {
+	return s.repo.Leave(ctx, c)
 }
+func NewTabService(repo TabRepository) TabService { return &tabService{repo} }
 
-func NewTabService(repo TabRepository) TabService {
-	return &tabService{repo: repo}
-}
-
-// allocateUSDShareCents converts one bill's assigned shares to USD. Fully
-// assigned bills preserve the frozen USD total exactly; partial bills preserve
-// only their assigned value. Any fractional-cent remainder uses a stable
-// largest-remainder allocation so recalculation is deterministic.
-func allocateUSDShareCents(bill models.Bill) []int64 {
-	result := make([]int64, len(bill.PersonShares))
-	if len(result) == 0 {
-		return result
+func legacyNetBalances(rows []models.ReferenceNetBalance) []models.NetBalance {
+	result := make([]models.NetBalance, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, models.NetBalance{From: row.From.Label, To: row.To.Label, Amount: row.Amount})
 	}
-
-	bill.NormalizeCurrency()
-	var shareTotal float64
-	for _, share := range bill.PersonShares {
-		if share.Total > 0 {
-			shareTotal += share.Total
-		}
-	}
-	if shareTotal <= 0 {
-		return result
-	}
-
-	// Partial active assignments must remain partial. Reconcile against the
-	// full frozen bill total only when the recorded shares cover the bill;
-	// otherwise reconcile only the converted amount that has been assigned.
-	targetCents := int64(math.Round(shareTotal * bill.USDExchangeRate * 100))
-	if math.Abs(shareTotal-bill.Total) < 0.005 {
-		targetCents = int64(math.Round(bill.USDTotal * 100))
-	}
-	if targetCents <= 0 {
-		return result
-	}
-
-	type remainder struct {
-		index    int
-		fraction float64
-		name     string
-	}
-	remainders := make([]remainder, 0, len(bill.PersonShares))
-	var allocated int64
-	for i, share := range bill.PersonShares {
-		exactCents := 0.0
-		if share.Total > 0 {
-			exactCents = float64(targetCents) * share.Total / shareTotal
-		}
-		wholeCents := int64(exactCents)
-		result[i] = wholeCents
-		allocated += wholeCents
-		remainders = append(remainders, remainder{
-			index:    i,
-			fraction: exactCents - float64(wholeCents),
-			name:     share.PersonName,
-		})
-	}
-
-	sort.SliceStable(remainders, func(i, j int) bool {
-		if remainders[i].fraction != remainders[j].fraction {
-			return remainders[i].fraction > remainders[j].fraction
-		}
-		if remainders[i].name != remainders[j].name {
-			return remainders[i].name < remainders[j].name
-		}
-		return remainders[i].index < remainders[j].index
-	})
-	remaining := targetCents - allocated
-	for i := int64(0); i < remaining; i++ {
-		result[remainders[int(i%int64(len(remainders)))].index]++
-	}
-
 	return result
-}
-
-// ComputeNetBalances takes a Tab (with Members, Bills, PersonShares preloaded)
-// and returns simplified "who owes whom" transactions using greedy settlement.
-func ComputeNetBalances(tab *models.Tab) []models.NetBalance {
-	memberNames := make(map[uint]string)
-	displayNames := make(map[string]string)
-	for _, m := range tab.Members {
-		memberNames[m.ID] = m.DisplayName
-		displayNames[strings.ToLower(m.DisplayName)] = m.DisplayName
-	}
-
-	nets := make(map[string]int64)
-
-	for _, bill := range tab.Bills {
-		if bill.PaidByMemberID == nil {
-			continue
-		}
-		payerName, ok := memberNames[*bill.PaidByMemberID]
-		if !ok {
-			continue
-		}
-		payerKey := strings.ToLower(payerName)
-		displayNames[payerKey] = payerName
-		shareCents := allocateUSDShareCents(bill)
-		for i, share := range bill.PersonShares {
-			key := strings.ToLower(share.PersonName)
-			nets[payerKey] += shareCents[i]
-			nets[key] -= shareCents[i]
-			if _, exists := displayNames[key]; !exists {
-				displayNames[key] = share.PersonName
-			}
-		}
-	}
-
-	type entry struct {
-		name   string
-		amount int64
-	}
-
-	var creditors, debtors []entry
-	for key, net := range nets {
-		if net >= 1 {
-			creditors = append(creditors, entry{displayNames[key], net})
-		} else if net <= -1 {
-			debtors = append(debtors, entry{displayNames[key], -net})
-		}
-	}
-
-	sort.Slice(creditors, func(i, j int) bool { return creditors[i].amount > creditors[j].amount })
-	sort.Slice(debtors, func(i, j int) bool { return debtors[i].amount > debtors[j].amount })
-
-	var balances []models.NetBalance
-	ci, di := 0, 0
-	for ci < len(creditors) && di < len(debtors) {
-		amt := min(creditors[ci].amount, debtors[di].amount)
-		if amt > 0 {
-			balances = append(balances, models.NetBalance{
-				From:   debtors[di].name,
-				To:     creditors[ci].name,
-				Amount: float64(amt) / 100,
-			})
-		}
-		creditors[ci].amount -= amt
-		debtors[di].amount -= amt
-		if creditors[ci].amount == 0 {
-			ci++
-		}
-		if debtors[di].amount == 0 {
-			di++
-		}
-	}
-
-	return balances
 }

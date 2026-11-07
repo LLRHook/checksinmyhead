@@ -34,7 +34,7 @@ export default function TabPersonTotals({
       <div className="space-y-3">
         {personTotals.map((person) => (
           <div
-            key={person.person_name}
+            key={person.key ?? person.person_name}
             className={`bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-2xl px-5 py-4 shadow-sm dark:shadow-none flex items-center justify-between transition-opacity ${
               person.all_paid
                 ? "dark:border dark:border-emerald-800/50 opacity-75"
@@ -63,7 +63,12 @@ export default function TabPersonTotals({
                       : "text-[var(--accent)] dark:text-white"
                   }`}
                 >
-                  {person.person_name}
+                  {person.person_name || "Unnamed"}{" "}
+                  {person.party?.kind === "guest"
+                    ? `· #${person.party.participant_id}`
+                    : person.party
+                      ? `· member #${person.party.member_id}`
+                      : "· recorded row"}
                 </h3>
                 <p className="text-xs text-[var(--text-secondary)]">
                   {person.bill_count} bill{person.bill_count === 1 ? "" : "s"}
@@ -85,7 +90,7 @@ export default function TabPersonTotals({
                   href={buildVenmoPayUrl(
                     venmoId,
                     person.total.toFixed(2),
-                    `Tab settlement - ${person.person_name}`,
+                    `Tab settlement - ${person.person_name || "Unnamed"}`,
                   )}
                   target="_blank"
                   rel="noopener noreferrer"

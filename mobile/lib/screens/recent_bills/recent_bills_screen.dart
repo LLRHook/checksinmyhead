@@ -545,95 +545,98 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
             : colorScheme.primary.withValues(alpha: .3);
 
     return Semantics(
-      label: _isLoading
-          ? 'Recent bills, loading'
-          : '${_bills.length} recent ${_bills.length == 1 ? 'bill' : 'bills'}. Only your 30 latest bills are kept.',
+      label:
+          _isLoading
+              ? 'Recent bills, loading'
+              : '${_bills.length} recent ${_bills.length == 1 ? 'bill' : 'bills'}. History holds up to 30 receipts; pending and trip receipts are protected.',
       child: Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: colorScheme.primary,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: shadowColor,
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Bill count badge (or loading indicator)
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: headerIconBgColor,
-              shape: BoxShape.circle,
+        margin: const EdgeInsets.only(bottom: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: colorScheme.primary,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: shadowColor,
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
-            child:
-                _isLoading
-                    ? _buildAnimatedDots(
-                      headerTextColor,
-                    ) // Show dots when loading
-                    : Text(
-                      '${_bills.length}', // Show actual count when loaded
-                      style: TextStyle(
-                        color: headerTextColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-          ),
-
-          const SizedBox(width: 12),
-
-          // Header text content
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Recent Bills',
-                  style: TextStyle(
-                    color: headerTextColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text.rich(
-                        TextSpan(
-                          style: TextStyle(
-                            color: headerSecondaryTextColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w300,
-                            height: 1.3,
-                          ),
-                          children: const [
-                            TextSpan(
-                              text: 'Only your 30 latest bills are kept. ',
-                            ),
-                            TextSpan(text: '\n'),
-                            TextSpan(
-                              text: 'New ones bump the oldest ones out!',
-                            ),
-                          ],
+          ],
+        ),
+        child: Row(
+          children: [
+            // Bill count badge (or loading indicator)
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: headerIconBgColor,
+                shape: BoxShape.circle,
+              ),
+              child:
+                  _isLoading
+                      ? _buildAnimatedDots(
+                        headerTextColor,
+                      ) // Show dots when loading
+                      : Text(
+                        '${_bills.length}', // Show actual count when loaded
+                        style: TextStyle(
+                          color: headerTextColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
             ),
-          ),
-        ],
-      ),
+
+            const SizedBox(width: 12),
+
+            // Header text content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Recent Bills',
+                    style: TextStyle(
+                      color: headerTextColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text.rich(
+                          TextSpan(
+                            style: TextStyle(
+                              color: headerSecondaryTextColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w300,
+                              height: 1.3,
+                            ),
+                            children: const [
+                              TextSpan(
+                                text:
+                                    'History holds up to 30 receipts; pending and trip receipts are protected. ',
+                              ),
+                              TextSpan(text: '\n'),
+                              TextSpan(
+                                text:
+                                    'If history is full, remove an unneeded receipt before saving another.',
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -707,13 +710,14 @@ class _RecentBillsScreenState extends State<RecentBillsScreen>
                   onDeleted: () => _handleBillDeleted(bill.id),
                   onRefreshNeeded:
                       () => _handleBillDeleted(-1), // Special refresh signal
-                  onRetryUpload: bill.shareUrl == null
-                      ? () async {
-                          final url = await _billsManager
-                              .retrySingleBillUpload(bill.id);
-                          return url;
-                        }
-                      : null,
+                  onRetryUpload:
+                      bill.shareUrl == null
+                          ? () async {
+                            final url = await _billsManager
+                                .retrySingleBillUpload(bill.id);
+                            return url;
+                          }
+                          : null,
                 ),
               )
               .toList(),

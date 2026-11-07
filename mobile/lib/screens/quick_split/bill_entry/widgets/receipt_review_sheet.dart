@@ -50,35 +50,18 @@ class _ReceiptReviewSheetState extends State<ReceiptReviewSheet> {
   @override
   void initState() {
     super.initState();
-    // Expand quantity > 1 items into individual line items so users see
-    // exactly what will be added to the bill (no surprises after Apply).
-    _items = [];
-    for (final i in widget.receipt.items) {
-      if (i.quantity > 1) {
-        final perUnit =
-            double.parse((i.price / i.quantity).toStringAsFixed(2));
-        final lastUnit = double.parse(
-            (i.price - perUnit * (i.quantity - 1)).toStringAsFixed(2));
-        for (int q = 0; q < i.quantity - 1; q++) {
-          _items.add(_EditableItem(
-            nameController: TextEditingController(text: i.name),
-            priceController: TextEditingController(
-                text: perUnit.toStringAsFixed(2)),
-          ));
-        }
-        _items.add(_EditableItem(
-          nameController: TextEditingController(text: i.name),
-          priceController: TextEditingController(
-              text: lastUnit.toStringAsFixed(2)),
-        ));
-      } else {
-        _items.add(_EditableItem(
-          nameController: TextEditingController(text: i.name),
-          priceController: TextEditingController(
-              text: i.price.toStringAsFixed(2)),
-        ));
-      }
-    }
+    _items =
+        widget.receipt
+            .expandedItems()
+            .map(
+              (item) => _EditableItem(
+                nameController: TextEditingController(text: item.name),
+                priceController: TextEditingController(
+                  text: item.price.toStringAsFixed(2),
+                ),
+              ),
+            )
+            .toList();
     _subtotalController = TextEditingController(
       text: widget.receipt.subtotal?.toStringAsFixed(2) ?? '',
     );
@@ -119,11 +102,14 @@ class _ReceiptReviewSheetState extends State<ReceiptReviewSheet> {
     if (name.isEmpty || price == null || price <= 0) return;
 
     setState(() {
-      _items.add(_EditableItem(
-        nameController: TextEditingController(text: name),
-        priceController: TextEditingController(
-            text: price.toStringAsFixed(2)),
-      ));
+      _items.add(
+        _EditableItem(
+          nameController: TextEditingController(text: name),
+          priceController: TextEditingController(
+            text: price.toStringAsFixed(2),
+          ),
+        ),
+      );
     });
     _newNameController.clear();
     _newPriceController.clear();
@@ -135,9 +121,8 @@ class _ReceiptReviewSheetState extends State<ReceiptReviewSheet> {
     for (final item in _items) {
       final name = item.nameController.text.trim();
       final price = double.tryParse(item.priceController.text.trim());
-      if (name.isNotEmpty && price != null && price > 0) {
-        items.add(ParsedItem(
-            name: name, price: price, quantity: 1));
+      if (name.isNotEmpty && price != null && price.isFinite) {
+        items.add(ParsedItem(name: name, price: price, quantity: 1));
       }
     }
 
@@ -149,6 +134,9 @@ class _ReceiptReviewSheetState extends State<ReceiptReviewSheet> {
       context,
       ParsedReceipt(
         vendor: widget.receipt.vendor,
+        currencyCode: widget.receipt.currencyCode,
+        currencySymbol: widget.receipt.currencySymbol,
+        currencyConfidence: widget.receipt.currencyConfidence,
         items: items,
         subtotal: subtotal,
         tax: (tax != null && tax > 0) ? tax : null,
@@ -164,9 +152,8 @@ class _ReceiptReviewSheetState extends State<ReceiptReviewSheet> {
     final brightness = Theme.of(context).brightness;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
-    final bgColor = brightness == Brightness.dark
-        ? colorScheme.surface
-        : Colors.white;
+    final bgColor =
+        brightness == Brightness.dark ? colorScheme.surface : Colors.white;
 
     return Container(
       constraints: BoxConstraints(
@@ -256,11 +243,26 @@ class _ReceiptReviewSheetState extends State<ReceiptReviewSheet> {
                   // Summary fields
                   _buildSectionLabel('Totals', colorScheme),
                   const SizedBox(height: 8),
-                  _buildSummaryField('Subtotal', _subtotalController, colorScheme, brightness),
+                  _buildSummaryField(
+                    'Subtotal',
+                    _subtotalController,
+                    colorScheme,
+                    brightness,
+                  ),
                   const SizedBox(height: 10),
-                  _buildSummaryField('Tax', _taxController, colorScheme, brightness),
+                  _buildSummaryField(
+                    'Tax',
+                    _taxController,
+                    colorScheme,
+                    brightness,
+                  ),
                   const SizedBox(height: 10),
-                  _buildSummaryField('Tip', _tipController, colorScheme, brightness),
+                  _buildSummaryField(
+                    'Tip',
+                    _tipController,
+                    colorScheme,
+                    brightness,
+                  ),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -325,9 +327,10 @@ class _ReceiptReviewSheetState extends State<ReceiptReviewSheet> {
   }
 
   List<Widget> _buildItemsList(ColorScheme colorScheme, Brightness brightness) {
-    final itemBgColor = brightness == Brightness.dark
-        ? colorScheme.surfaceContainerHighest
-        : Colors.grey.shade50;
+    final itemBgColor =
+        brightness == Brightness.dark
+            ? colorScheme.surfaceContainerHighest
+            : Colors.grey.shade50;
 
     return List.generate(_items.length, (index) {
       final item = _items[index];
@@ -397,8 +400,9 @@ class _ReceiptReviewSheetState extends State<ReceiptReviewSheet> {
                       color: colorScheme.primary,
                     ),
                   ),
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   inputFormatters: [CurrencyFormatter.currencyFormatter],
                   textAlign: TextAlign.right,
                 ),
@@ -417,27 +421,28 @@ class _ReceiptReviewSheetState extends State<ReceiptReviewSheet> {
           flex: 3,
           child: TextField(
             controller: _newNameController,
-            style: TextStyle(
-              fontSize: 14,
-              color: colorScheme.onSurface,
-            ),
+            style: TextStyle(fontSize: 14, color: colorScheme.onSurface),
             decoration: InputDecoration(
               hintText: 'Add missed item...',
               hintStyle: TextStyle(
                 color: colorScheme.onSurfaceVariant.withValues(alpha: .6),
               ),
               isDense: true,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide(
-                    color: colorScheme.outline.withValues(alpha: .2)),
+                  color: colorScheme.outline.withValues(alpha: .2),
+                ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide(
-                    color: colorScheme.outline.withValues(alpha: .2)),
+                  color: colorScheme.outline.withValues(alpha: .2),
+                ),
               ),
             ),
             textCapitalization: TextCapitalization.sentences,
@@ -448,10 +453,7 @@ class _ReceiptReviewSheetState extends State<ReceiptReviewSheet> {
           width: 80,
           child: TextField(
             controller: _newPriceController,
-            style: TextStyle(
-              fontSize: 14,
-              color: colorScheme.onSurface,
-            ),
+            style: TextStyle(fontSize: 14, color: colorScheme.onSurface),
             decoration: InputDecoration(
               hintText: '0.00',
               prefixText: '\$',
@@ -459,21 +461,24 @@ class _ReceiptReviewSheetState extends State<ReceiptReviewSheet> {
                 color: colorScheme.onSurfaceVariant.withValues(alpha: .6),
               ),
               isDense: true,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide(
-                    color: colorScheme.outline.withValues(alpha: .2)),
+                  color: colorScheme.outline.withValues(alpha: .2),
+                ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide(
-                    color: colorScheme.outline.withValues(alpha: .2)),
+                  color: colorScheme.outline.withValues(alpha: .2),
+                ),
               ),
             ),
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [CurrencyFormatter.currencyFormatter],
             textAlign: TextAlign.right,
             onSubmitted: (_) => _addItem(),
@@ -488,9 +493,8 @@ class _ReceiptReviewSheetState extends State<ReceiptReviewSheet> {
             icon: const Icon(Icons.add, size: 18),
             style: IconButton.styleFrom(
               backgroundColor: colorScheme.primary,
-              foregroundColor: brightness == Brightness.dark
-                  ? Colors.black
-                  : Colors.white,
+              foregroundColor:
+                  brightness == Brightness.dark ? Colors.black : Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -508,9 +512,10 @@ class _ReceiptReviewSheetState extends State<ReceiptReviewSheet> {
     ColorScheme colorScheme,
     Brightness brightness,
   ) {
-    final fillColor = brightness == Brightness.dark
-        ? colorScheme.surfaceContainerHighest
-        : Colors.grey.shade50;
+    final fillColor =
+        brightness == Brightness.dark
+            ? colorScheme.surfaceContainerHighest
+            : Colors.grey.shade50;
 
     return Row(
       children: [
@@ -539,21 +544,24 @@ class _ReceiptReviewSheetState extends State<ReceiptReviewSheet> {
               isDense: true,
               filled: true,
               fillColor: fillColor,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide(
-                    color: colorScheme.outline.withValues(alpha: .15)),
+                  color: colorScheme.outline.withValues(alpha: .15),
+                ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide(
-                    color: colorScheme.outline.withValues(alpha: .15)),
+                  color: colorScheme.outline.withValues(alpha: .15),
+                ),
               ),
             ),
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [CurrencyFormatter.currencyFormatter],
           ),
         ),
@@ -566,8 +574,5 @@ class _EditableItem {
   final TextEditingController nameController;
   final TextEditingController priceController;
 
-  _EditableItem({
-    required this.nameController,
-    required this.priceController,
-  });
+  _EditableItem({required this.nameController, required this.priceController});
 }

@@ -21,7 +21,7 @@ func TestCreateBill_ReturnsExplicitUnavailableAndDoesNotPersist(t *testing.T) {
 	router := gin.New()
 	router.POST("/api/bills", handler.CreateBill)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/bills", bytes.NewBufferString(`{"name":"Cafe","total":100,"currency_code":"EUR"}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/bills", bytes.NewBufferString(`{"name":"Cafe","subtotal":100,"total":100,"currency_code":"EUR"}`))
 	req.Header.Set("Content-Type", "application/json")
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, req)
@@ -37,11 +37,11 @@ func TestCreateBill_ReturnsExplicitUnavailableAndDoesNotPersist(t *testing.T) {
 func TestCreateBill_ReturnsAuthoritativeUSDAudit(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	repo := newMockRepo()
-	handler := NewBillHandler(NewBillService(repo))
+	handler := NewBillHandler(NewBillService(repo, &fakeExchangeRateProvider{}))
 	router := gin.New()
 	router.POST("/api/bills", handler.CreateBill)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/bills", bytes.NewBufferString(`{"name":"Cafe","total":42.37}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/bills", bytes.NewBufferString(`{"name":"Cafe","subtotal":42.37,"total":42.37}`))
 	req.Header.Set("Content-Type", "application/json")
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, req)
@@ -79,13 +79,13 @@ func TestGetExchangeRate_RejectsUnsupportedCurrencyBeforeProvider(t *testing.T) 
 func TestUpdateLazyItemAssignmentsRequiresLazyBillAndValidToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	repo := newMockRepo()
-	handler := NewBillHandler(NewBillService(repo))
+	handler := NewBillHandler(NewBillService(repo, &fakeExchangeRateProvider{}))
 	router := gin.New()
 	router.POST("/api/bills", handler.CreateBill)
 	router.PATCH("/api/bills/:id/items/:itemId/assignments", handler.UpdateLazyItemAssignments)
 
 	create := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodPost, "/api/bills", bytes.NewBufferString(`{"name":"Cafe","total":20,"lazy_mode":true}`))
+	request := httptest.NewRequest(http.MethodPost, "/api/bills", bytes.NewBufferString(`{"name":"Cafe","subtotal":20,"total":20,"lazy_mode":true}`))
 	request.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(create, request)
 	if create.Code != http.StatusCreated {
@@ -131,13 +131,13 @@ func TestUpdateLazyItemAssignmentsRequiresLazyBillAndValidToken(t *testing.T) {
 func TestUpdateLazyItemAssignmentsRejectsNonLazyBill(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	repo := newMockRepo()
-	handler := NewBillHandler(NewBillService(repo))
+	handler := NewBillHandler(NewBillService(repo, &fakeExchangeRateProvider{}))
 	router := gin.New()
 	router.POST("/api/bills", handler.CreateBill)
 	router.PATCH("/api/bills/:id/items/:itemId/assignments", handler.UpdateLazyItemAssignments)
 
 	create := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodPost, "/api/bills", bytes.NewBufferString(`{"name":"Cafe","total":20}`))
+	request := httptest.NewRequest(http.MethodPost, "/api/bills", bytes.NewBufferString(`{"name":"Cafe","subtotal":20,"total":20}`))
 	request.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(create, request)
 	var created map[string]any
@@ -163,7 +163,7 @@ func TestUpdateLazyItemAssignmentsBatchValidatesAndReturnsBill(t *testing.T) {
 		AccessToken: "secret",
 		Name:        "Dinner",
 	}
-	handler := NewBillHandler(NewBillService(repo))
+	handler := NewBillHandler(NewBillService(repo, &fakeExchangeRateProvider{}))
 	router := gin.New()
 	router.PATCH("/api/bills/:id/assignments", handler.UpdateLazyItemAssignmentsBatch)
 	request := httptest.NewRequest(http.MethodPatch, "/api/bills/33/assignments", bytes.NewBufferString(`{"updates":[{"item_id":8,"expected_updated_at":"2026-10-12T20:00:00Z","assignments":[{"person_name":"Alex","percentage":100}]},{"item_id":9,"expected_updated_at":"2026-10-12T20:00:00Z","assignments":[{"person_name":"Alex","percentage":100}]}]}`))
@@ -208,7 +208,7 @@ func TestTripTokenCanOpenAttachedBillReadOnly(t *testing.T) {
 			PersonName: "Alex",
 		}},
 	}
-	handler := NewBillHandler(NewBillService(repo))
+	handler := NewBillHandler(NewBillService(repo, &fakeExchangeRateProvider{}))
 	router := gin.New()
 	router.GET("/api/bills/:id", handler.GetBill)
 	router.PATCH("/api/bills/:id/shares/:shareId", handler.UpdatePersonSharePaid)

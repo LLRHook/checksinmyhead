@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { FaLock, FaTriangleExclamation } from "react-icons/fa6";
 import AppHandoff from "@/components/AppHandoff";
@@ -13,31 +12,14 @@ import TabBillList from "@/components/TabBillList";
 import TabHeader from "@/components/TabHeader";
 import TabPersonTotals from "@/components/TabPersonTotals";
 import {
+  ApiError,
   computeTabPersonTotals,
-  getSettlements,
+  getSettlementHistory,
   getTab,
   getTabMembers,
   type Tab,
 } from "@/lib/api";
 import { lazyBillRemainingTotal } from "@/lib/lazy-bill";
-
-export async function generateMetadata({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ t?: string }>;
-}): Promise<Metadata> {
-  const { id } = await params;
-  const { t: token } = await searchParams;
-  if (!token) return { title: "Billington" };
-  try {
-    const tab = await getTab(id, token);
-    return { title: `${tab.name} - Billington` };
-  } catch {
-    return { title: "Billington" };
-  }
-}
 
 export default async function TabPage({
   params,
@@ -84,14 +66,28 @@ export default async function TabPage({
         </div>
       );
     }
-    notFound();
+    if (error instanceof ApiError && error.status === 404) notFound();
+    return (
+      <main className="p-8" role="alert">
+        This tab is unavailable or needs an upgraded client. Reload and retry;
+        no balance has been inferred.
+      </main>
+    );
   }
 
   const personTotals = computeTabPersonTotals(tab);
   const primaryBill = tab.bills[0] ?? null;
   const isLegacyLazyTab = tab.description.toLowerCase().includes("lazy mode");
-  const settlements = tab.finalized ? await getSettlements(id, token) : [];
-  const members = await getTabMembers(id, token);
+  let settlements: Awaited<ReturnType<typeof getSettlementHistory>> | null =
+    null;
+  let collectionError = false;
+  let members: Awaited<ReturnType<typeof getTabMembers>> = [];
+  try {
+    if (tab.finalized) settlements = await getSettlementHistory(id, token);
+    members = await getTabMembers(id, token);
+  } catch {
+    collectionError = true;
+  }
   const paymentMethods = Array.from(
     new Map(
       tab.bills
@@ -123,7 +119,7 @@ export default async function TabPage({
           total={tab.total_amount}
           billCount={tab.bills.length}
           finalized={tab.finalized}
-          currency={tab.display_currency}
+          currency={tab.accounting_currency ?? "USD"}
         />
       )}
 
@@ -141,6 +137,20 @@ export default async function TabPage({
 
   return (
     <DesktopLayout sidebar={sidebar}>
+      {collectionError && (
+        <p role="alert">
+          Recorded settlements or membership are unavailable. Reload to retry.
+        </p>
+      )}
+      {tab.net_balances === null && (
+        <p role="status">
+          Net balances unavailable: {tab.net_balance_status}. Recorded receipts
+          remain below.
+        </p>
+      )}
+      {settlements && settlements.identity_review_status !== "ready" && (
+        <p role="status">Recorded result; ownership needs review.</p>
+      )}
       {isLegacyLazyTab && primaryBill ? (
         <LazyBillBoard bill={primaryBill} token={token} tabId={id} />
       ) : (
@@ -151,30 +161,42 @@ export default async function TabPage({
               finalized={tab.finalized}
               venmoId={venmoId}
               currentMemberName={null}
-              currency={tab.display_currency}
+              currency={tab.accounting_currency ?? "USD"}
             />
           )}
 
-          {tab.finalized && settlements.length > 0 ? (
+          {tab.finalized &&
+          settlements &&
+          settlements.settlements.length > 0 ? (
             <SettlementCard
-              settlements={settlements}
+              settlements={settlements.settlements}
               venmoId={venmoId}
-              tabId={id}
-              token={token}
-              currency={tab.display_currency}
-              readOnly
+              currency={tab.accounting_currency ?? "USD"}
             />
           ) : (
+            personTotals &&
             personTotals.length > 0 && (
               <TabPersonTotals
                 personTotals={personTotals}
                 venmoId={venmoId}
-                currency={tab.display_currency}
+                currency={tab.accounting_currency ?? "USD"}
               />
             )
           )}
 
+          {personTotals === null && (
+            <p role="status">
+              Participant totals need identity or accounting review. Recorded
+              receipts remain visible.
+            </p>
+          )}
           <TabBillList bills={tab.bills} tabToken={token} />
+          {tab.bills.map((bill) => (
+            <details key={bill.id}>
+              <summary>Participants and claims · {bill.name}</summary>
+              <LazyBillBoard bill={bill} token={token} tabId={id} />
+            </details>
+          ))}
         </>
       )}
     </DesktopLayout>

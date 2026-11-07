@@ -53,16 +53,15 @@ REJECTED_STATES = %w[
 
 def repurpose_rejected_version(version, version_string)
   version_id = version.fetch("id")
-  old_version_string = version.dig("attributes", "versionString")
 
   # A rejected record is still Apple's one editable App Store version. Creating
   # a second record returns HTTP 409, so remove the rejected build and update
   # this record to the new marketing version before attaching the new build.
-  puts "Reusing rejected App Store version #{old_version_string} as #{version_string}"
-  puts "Removing the build attached to rejected version #{old_version_string}"
+  puts "Reusing rejected App Store version"
+  puts "Removing the rejected version build"
   ASC.patch("/v1/appStoreVersions/#{version_id}/relationships/build", { data: nil })
 
-  puts "Updating App Store version #{old_version_string} to #{version_string}"
+  puts "Updating rejected App Store version"
   ASC.patch("/v1/appStoreVersions/#{version_id}", {
     data: {
       type: "appStoreVersions",
@@ -76,15 +75,16 @@ def repurpose_rejected_version(version, version_string)
 end
 
 def find_editable_version(app_id, version_string)
-  response = ASC.get("/v1/apps/#{app_id}/appStoreVersions", {
+  versions = ASC.pages("/v1/apps/#{app_id}/appStoreVersions", {
     "filter[platform]" => "IOS",
-    "fields[appStoreVersions]" => "versionString,appStoreState,appVersionState,releaseType",
+    "fields[appStoreVersions]" => "platform,versionString,appStoreState,appVersionState,releaseType",
     "limit" => "50"
   })
 
-  versions = response.fetch("data", [])
 
-  exact = versions.find { |v| v.dig("attributes", "versionString") == version_string }
+  matches = versions.select { |v| v.dig("attributes", "versionString") == version_string }
+  raise ASC::Error, "Ambiguous App Store version" if matches.length > 1
+  exact = matches.first
   if exact
     state = exact.dig("attributes", "appStoreState") || exact.dig("attributes", "appVersionState")
     unless EDITABLE_STATES.include?(state)
@@ -99,10 +99,12 @@ def find_editable_version(app_id, version_string)
 
   # Guard against two live edit sessions: if a *different* version is already
   # open for editing, creating another one will be rejected by Apple anyway.
-  open = versions.find do |v|
+  editable = versions.select do |v|
     state = v.dig("attributes", "appStoreState") || v.dig("attributes", "appVersionState")
     EDITABLE_STATES.include?(state)
   end
+  raise ASC::Error, "Ambiguous editable App Store versions" if editable.length > 1
+  open = editable.first
   if open
     open_state = open.dig("attributes", "appStoreState") || open.dig("attributes", "appVersionState")
     if REJECTED_STATES.include?(open_state)
@@ -146,19 +148,17 @@ end
 # Updates whatsNew on localizations that ALREADY exist. Does not create new
 # locales and does not touch any other localized field.
 def update_release_notes(version_id, notes)
-  response = ASC.get("/v1/appStoreVersions/#{version_id}/appStoreVersionLocalizations", {
+  localizations = ASC.pages("/v1/appStoreVersions/#{version_id}/appStoreVersionLocalizations", {
     "fields[appStoreVersionLocalizations]" => "locale,whatsNew",
     "limit" => "50"
   })
 
-  localizations = response.fetch("data", [])
 
   # A freshly created version is not always seeded with localizations, in which
   # case the notes would be silently dropped. Create one for the primary locale
-  # instead. This is allow_failure on purpose: shipping the binary matters more
-  # than the notes, so a metadata hiccup must never abort the release.
+  # instead; reject an unconfirmed write or readback.
   if localizations.empty?
-    puts "Version has no localizations; creating #{DEFAULT_LOCALE} to carry the release notes"
+    puts "Creating a localization to carry release notes"
     created = ASC.post("/v1/appStoreVersionLocalizations", {
       data: {
         type: "appStoreVersionLocalizations",
@@ -169,13 +169,12 @@ def update_release_notes(version_id, notes)
       }
     }, allow_failure: true)
 
-    warn "::warning::Could not set release notes; submitting without them." if created.nil?
-    return
+    raise ASC::Error, "Could not set release notes" if created.nil?
+    localizations = [created.fetch("data")]
   end
 
   localizations.each do |loc|
-    locale = loc.dig("attributes", "locale")
-    puts "Setting What's New for #{locale}"
+    puts "Setting What's New for an existing localization"
     ASC.patch("/v1/appStoreVersionLocalizations/#{loc.fetch('id')}", {
       data: {
         type: "appStoreVersionLocalizations",
@@ -183,6 +182,8 @@ def update_release_notes(version_id, notes)
         attributes: { whatsNew: notes }
       }
     })
+    readback = ASC.get("/v1/appStoreVersionLocalizations/#{loc.fetch('id')}").fetch("data")
+    raise ASC::Error, "Release notes readback mismatch" unless readback.dig("attributes", "whatsNew") == notes
   end
 end
 
@@ -196,35 +197,38 @@ def open_submission(app_id)
   # Sparse fieldsets keep the payload small, but this is the only lookup whose
   # failure would abort a release that has already uploaded a build. Fall back
   # to an unfiltered read rather than dying on a rejected fields[] parameter.
-  response = ASC.get("/v1/reviewSubmissions", {
+  response = ASC.pages("/v1/reviewSubmissions", {
     "filter[app]" => app_id,
     "fields[reviewSubmissions]" => "state,platform,submittedDate",
     "limit" => "50"
   }, allow_failure: true)
 
-  response ||= ASC.get("/v1/reviewSubmissions", {
+  response ||= ASC.pages("/v1/reviewSubmissions", {
     "filter[app]" => app_id,
     "limit" => "50"
   })
 
-  response.fetch("data", []).find do |s|
+  matches = response.select do |s|
     s.dig("attributes", "state") == "READY_FOR_REVIEW" &&
       s.dig("attributes", "platform") == "IOS"
   end
+  raise ASC::Error, "Ambiguous open review submissions" if matches.length > 1
+  matches.first
 end
 
 # Apple exposes the items both as a sub-resource and as a filterable
 # collection. Try both so a path change on either side is not fatal.
 def submission_items(submission_id)
-  ASC.get("/v1/reviewSubmissions/#{submission_id}/items", {
+  items = ASC.pages("/v1/reviewSubmissions/#{submission_id}/items", {
     "include" => "appStoreVersion",
     "limit" => "50"
   }, allow_failure: true) ||
-    ASC.get("/v1/reviewSubmissionItems", {
+    ASC.pages("/v1/reviewSubmissionItems", {
       "filter[reviewSubmission]" => submission_id,
       "include" => "appStoreVersion",
       "limit" => "50"
     }, allow_failure: true)
+  items && { "data" => items }
 end
 
 def version_attached?(items, version_id)
@@ -311,40 +315,47 @@ def verify_review_submission(submission_id, version_id, build_id, attempts: 20, 
     submitted_date = submission.dig("attributes", "submittedDate")
 
     if %w[WAITING_FOR_REVIEW IN_REVIEW COMPLETING COMPLETE].include?(submission_state) && !submitted_date.to_s.empty?
-      puts "Verified App Store Connect status: submission=#{submission_state}, version=#{version_state}, build=#{build_id}"
+      puts "Verified App Store Connect submission and exact attached build"
       return { submission_state: submission_state, version_state: version_state }
     end
 
-    puts "Submission readback is #{submission_state || 'unknown'} (attempt #{attempt + 1}/#{attempts}); waiting for submitted state"
+    puts "Submission not yet confirmed (attempt #{attempt + 1}/#{attempts})"
     sleep interval if attempt + 1 < attempts
   end
 
   raise ASC::Error, "App Store Connect did not confirm submission #{submission_id} as submitted"
 end
 
-def release
-  app = ASC.find_app(BUNDLE_ID)
-  app_id = app.fetch("id")
-  puts "App: #{app.dig('attributes', 'name')} (#{BUNDLE_ID}) id=#{app_id}"
+def verify_attachment(version_id, build_id)
+  version = ASC.get("/v1/appStoreVersions/#{ASC.identifier(version_id)}").fetch("data")
+  attached = ASC.get("/v1/appStoreVersions/#{version_id}/relationships/build").dig("data", "id")
+  raise ASC::Error, "App Store version/build readback mismatch" unless version.dig("attributes", "versionString") == VERSION_STRING && version.dig("attributes", "platform") == "IOS" && attached == build_id
+  true
+end
 
-  build = ASC.wait_for_build(app_id, BUILD_NUMBER)
+def release(context, submit: SUBMIT, notes: RELEASE_NOTES)
+  raise ASC::Error, "Missing processed origin authority" unless context.fetch("origin").fetch("asc").fetch("build_id")
+  app_id = context.fetch("app_id")
+  proven = context.fetch("origin").fetch("asc")
+  build = ASC.read_build(proven.fetch("build_id"), app_id: app_id, number: BUILD_NUMBER, version_string: VERSION_STRING)
   build_id = build.fetch("id")
-  puts "Build #{BUILD_NUMBER} is VALID (id=#{build_id})"
 
   version = find_editable_version(app_id, VERSION_STRING) || create_version(app_id, VERSION_STRING)
   version_id = version.fetch("id")
 
   attach_build(version_id, build_id)
+  verify_attachment(version_id, build_id)
 
-  if RELEASE_NOTES.empty?
+  if notes.empty?
     puts "No RELEASE_NOTES provided; leaving existing What's New untouched."
   else
-    update_release_notes(version_id, RELEASE_NOTES)
+    update_release_notes(version_id, notes)
   end
 
-  if SUBMIT
+  if submit
     submission_id = submit_for_review(app_id, version_id)
     verified = verify_review_submission(submission_id, version_id, build_id)
+    verify_attachment(version_id, build_id)
     puts "Submitted for review. Submission #{submission_id} is #{verified[:submission_state]}, version #{VERSION_STRING}, build #{BUILD_NUMBER}."
   else
     puts "SUBMIT_FOR_REVIEW=false — version #{VERSION_STRING} prepared with build #{BUILD_NUMBER} but NOT submitted."
@@ -359,10 +370,10 @@ def release
       f.puts "| Version | `#{VERSION_STRING}` |"
       f.puts "| Build | `#{BUILD_NUMBER}` |"
       f.puts "| Release type | `#{RELEASE_TYPE}` |"
-      f.puts "| Submitted for review | `#{SUBMIT}` |"
+      f.puts "| Submitted for review | `#{submit}` |"
       f.puts "| Screenshots / marketing images | untouched (managed manually) |"
     end
   end
 end
 
-release if $PROGRAM_NAME == __FILE__
+abort "Use the verified asc_delivery.rb entry point" if $PROGRAM_NAME == __FILE__

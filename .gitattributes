@@ -1,0 +1,7 @@
+
+bugs.md      merge=tracker text eol=lf
+features.md  merge=tracker text eol=lf
+CHANGELOG.md merge=tracker text eol=lf
+
+# Delivery helpers are invoked through their interpreters.
+ops/ci/* text eol=lf

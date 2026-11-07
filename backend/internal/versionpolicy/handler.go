@@ -31,6 +31,10 @@ func Handler() gin.HandlerFunc {
 		c.JSON(200, gin.H{
 			"minimum_supported_version": minimum,
 			"store_url":                 storeURL,
+			"capabilities": gin.H{
+				"bill_creation_replay": gin.H{"version": 1, "key_format": "base64url-32"},
+				"participant_identity": gin.H{"version": 2},
+			},
 		})
 	}
 }

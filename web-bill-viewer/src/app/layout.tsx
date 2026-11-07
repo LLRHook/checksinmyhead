@@ -17,6 +17,8 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Billington",
   description: "View your shared bill breakdown with Billington",
+  robots: { index: false, follow: false },
+  referrer: "no-referrer",
 };
 
 export default function RootLayout({

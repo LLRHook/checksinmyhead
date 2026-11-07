@@ -9,7 +9,8 @@ import DesktopLayout from "@/components/DesktopLayout";
 import LazyBillBoard from "@/components/LazyBillBoard";
 import PaymentDetails from "@/components/PaymentDetails";
 import PersonShare from "@/components/PersonShare";
-import { type Bill, getBill } from "@/lib/api";
+import RecordedShares from "@/components/RecordedShares";
+import { ApiError, type Bill, getBill } from "@/lib/api";
 import { lazyBillRemainingTotal } from "@/lib/lazy-bill";
 
 interface BillPageClientProps {
@@ -24,6 +25,17 @@ type LoadingState =
   | { status: "success"; bill: Bill };
 
 const RETRY_DELAYS = [5000, 10000, 15000];
+
+// The /b mutation caller must observe read failure while retaining its last graph.
+export async function refreshSourceBill(
+  id: string,
+  token: string,
+  onCurrent: (bill: Bill) => void,
+  updatedBill?: Bill,
+) {
+  const bill = updatedBill ?? (await getBill(id, token));
+  onCurrent(bill);
+}
 
 export default function BillPageClient({ id, token }: BillPageClientProps) {
   const [state, setState] = useState<LoadingState>({ status: "loading" });
@@ -46,7 +58,11 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
           setState({ status: "error", errorType: "invalid_token" });
           return;
         }
-        if (error instanceof Error && error.message === "Bill not found") {
+        if (
+          error instanceof Error &&
+          error instanceof ApiError &&
+          error.status === 404
+        ) {
           setState({ status: "error", errorType: "not_found" });
           return;
         }
@@ -84,22 +100,16 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
 
   const refreshBill = useCallback(
     async (updatedBill?: Bill) => {
-      if (updatedBill) {
-        setState((current) =>
-          current.status === "success"
-            ? { ...current, bill: updatedBill }
-            : current,
-        );
-        return;
-      }
-      try {
-        const bill = await getBill(id, token);
-        setState((current) =>
-          current.status === "success" ? { ...current, bill } : current,
-        );
-      } catch {
-        // Keep the current viewer and its interaction state if refresh fails.
-      }
+      await refreshSourceBill(
+        id,
+        token,
+        (bill) => {
+          setState((current) =>
+            current.status === "success" ? { ...current, bill } : current,
+          );
+        },
+        updatedBill,
+      );
     },
     [id, token],
   );
@@ -302,31 +312,51 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
             Individual Shares
           </h2>
           <p className="text-xs text-[var(--text-secondary)] opacity-60 mt-0.5">
-            Tap an avatar to mark as paid
+            Recorded paid flags are manual status; select an exact receipt row
+            to update them.
           </p>
         </div>
         <div className="space-y-3">
-          {[...bill.person_shares]
-            .sort((a, b) =>
-              a.person_name.localeCompare(b.person_name, undefined, {
-                sensitivity: "base",
-              }),
-            )
-            .map((share) => (
-              <PersonShare
-                key={share.id}
-                personShare={share}
-                bill={bill}
-                hasVenmo={hasVenmo}
-                billId={bill.id}
-                token={token}
-                readOnly
-                currency={bill.display_currency ?? bill.currency_code ?? "USD"}
-              />
-            ))}
+          {bill.identity_review_status !== "ready" ? (
+            <RecordedShares
+              bill={bill}
+              sourceToken={token}
+              onChanged={() => refreshBill()}
+            />
+          ) : (
+            [...bill.person_shares]
+              .sort((a, b) =>
+                a.person_name.localeCompare(b.person_name, undefined, {
+                  sensitivity: "base",
+                }),
+              )
+              .map((share) => (
+                <PersonShare
+                  key={share.id}
+                  personShare={share}
+                  bill={bill}
+                  hasVenmo={hasVenmo}
+                  billId={bill.id}
+                  token={token}
+                  readOnly
+                  currency={
+                    bill.display_currency ?? bill.currency_code ?? "USD"
+                  }
+                />
+              ))
+          )}
         </div>
       </div>
 
+      {bill.identity_review_status !== "ready" && (
+        <p role="status">Recorded history; ownership needs review.</p>
+      )}
+      {bill.identity_review_status === "ready" && (
+        <details>
+          <summary>Receipt participants</summary>
+          <LazyBillBoard bill={bill} token={token} refreshBill={refreshBill} />
+        </details>
+      )}
       <BillBreakdown bill={bill} />
     </DesktopLayout>
   );

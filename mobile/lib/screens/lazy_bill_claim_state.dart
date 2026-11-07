@@ -1,3 +1,7 @@
+Object lazyIdentityKey(Map<String, dynamic> row) =>
+    row['participant_id'] ??
+    (row['person_name'] as String? ?? '').toLowerCase();
+
 /// Whether a person may change item selections in the lazy bill picker.
 bool canChangeLazyBillSelection({required bool saving, required bool paid}) =>
     !saving && !paid;
@@ -8,18 +12,16 @@ bool lazyAssignmentsEqual(
 ) {
   if (left.length != right.length) return false;
   final sortedLeft = [...left]..sort(
-    (a, b) => (a['person_name'] as String).toLowerCase().compareTo(
-      (b['person_name'] as String).toLowerCase(),
-    ),
+    (a, b) =>
+        lazyIdentityKey(a).toString().compareTo(lazyIdentityKey(b).toString()),
   );
   final sortedRight = [...right]..sort(
-    (a, b) => (a['person_name'] as String).toLowerCase().compareTo(
-      (b['person_name'] as String).toLowerCase(),
-    ),
+    (a, b) =>
+        lazyIdentityKey(a).toString().compareTo(lazyIdentityKey(b).toString()),
   );
   for (var index = 0; index < sortedLeft.length; index++) {
-    if ((sortedLeft[index]['person_name'] as String).toLowerCase() !=
-            (sortedRight[index]['person_name'] as String).toLowerCase() ||
+    if (lazyIdentityKey(sortedLeft[index]) !=
+            lazyIdentityKey(sortedRight[index]) ||
         (((sortedLeft[index]['percentage'] as num).toDouble()) -
                     ((sortedRight[index]['percentage'] as num).toDouble()))
                 .abs() >=
@@ -37,12 +39,10 @@ bool hasPaidLazyAssignment(
   final paidPeople =
       shares
           .where((share) => share['paid'] == true)
-          .map((share) => (share['person_name'] as String).toLowerCase())
+          .map((share) => lazyIdentityKey(share))
           .toSet();
   return assignments.any(
-    (assignment) => paidPeople.contains(
-      (assignment['person_name'] as String).toLowerCase(),
-    ),
+    (assignment) => paidPeople.contains(lazyIdentityKey(assignment)),
   );
 }
 
@@ -59,23 +59,24 @@ bool isLazyItemFullyPaid(
   final paidNames =
       shares
           .where((share) => share['paid'] == true)
-          .map((share) => (share['person_name'] as String).toLowerCase())
+          .map((share) => lazyIdentityKey(share))
           .toSet();
   return assignments.every(
-    (assignment) =>
-        paidNames.contains((assignment['person_name'] as String).toLowerCase()),
+    (assignment) => paidNames.contains(lazyIdentityKey(assignment)),
   );
 }
 
 double remainingLazyPercentage(
   List<Map<String, dynamic>> assignments, {
-  String? excludingPerson,
+  Object? excludingPerson,
 }) {
   final assigned = assignments.fold<double>(
     0,
     (sum, assignment) =>
-        (assignment['person_name'] as String).toLowerCase() ==
-                excludingPerson?.toLowerCase()
+        lazyIdentityKey(assignment) ==
+                (excludingPerson is String
+                    ? excludingPerson.toLowerCase()
+                    : excludingPerson)
             ? sum
             : sum + (assignment['percentage'] as num).toDouble(),
   );
@@ -84,15 +85,15 @@ double remainingLazyPercentage(
 
 List<Map<String, dynamic>> setLazyAssignmentPercentage(
   List<Map<String, dynamic>> assignments,
-  String personName,
+  Object personName,
   double percentage,
 ) {
   final others =
       assignments
           .where(
             (assignment) =>
-                (assignment['person_name'] as String).toLowerCase() !=
-                personName.toLowerCase(),
+                lazyIdentityKey(assignment) !=
+                (personName is String ? personName.toLowerCase() : personName),
           )
           .toList();
   final available = remainingLazyPercentage(others);
@@ -101,19 +102,22 @@ List<Map<String, dynamic>> setLazyAssignmentPercentage(
   if (share < 1) return others;
   return [
     ...others,
-    {'person_name': personName, 'percentage': share.toDouble()},
+    {
+      personName is int ? 'participant_id' : 'person_name': personName,
+      'percentage': share.toDouble(),
+    },
   ];
 }
 
 List<Map<String, dynamic>> removeLazyAssignmentLeavingRemainder(
   List<Map<String, dynamic>> assignments,
-  String personName,
+  Object personName,
 ) =>
     assignments
         .where(
           (assignment) =>
-              (assignment['person_name'] as String).toLowerCase() !=
-              personName.toLowerCase(),
+              lazyIdentityKey(assignment) !=
+              (personName is String ? personName.toLowerCase() : personName),
         )
         .toList();
 
@@ -152,14 +156,14 @@ List<Map<String, dynamic>>? createLazySplitAssignments(
 
 List<Map<String, dynamic>> removeLazyAssignment(
   List<Map<String, dynamic>> assignments,
-  String personName,
+  Object personName,
 ) {
   final remaining =
       assignments
           .where(
             (assignment) =>
-                (assignment['person_name'] as String).toLowerCase() !=
-                personName.toLowerCase(),
+                lazyIdentityKey(assignment) !=
+                (personName is String ? personName.toLowerCase() : personName),
           )
           .toList();
   if (remaining.isEmpty) return [];
@@ -176,7 +180,10 @@ List<Map<String, dynamic>> removeLazyAssignment(
             : (remaining[index]['percentage'] as num).toDouble() / total * 100;
     assigned += percentage;
     return {
-      'person_name': remaining[index]['person_name'],
+      if (remaining[index]['participant_id'] != null)
+        'participant_id': remaining[index]['participant_id'],
+      if (remaining[index]['participant_id'] == null)
+        'person_name': remaining[index]['person_name'],
       'percentage': percentage,
     };
   });

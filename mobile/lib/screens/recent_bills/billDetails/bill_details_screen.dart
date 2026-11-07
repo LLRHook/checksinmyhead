@@ -20,11 +20,13 @@ import 'package:checks_frontend/screens/quick_split/bill_summary/widgets/bill_na
 import 'package:checks_frontend/screens/quick_split/bill_summary/widgets/enhanced_share_sheet.dart';
 import 'package:checks_frontend/screens/recent_bills/components/participants_card.dart';
 import 'package:flutter/material.dart';
+import 'package:checks_frontend/screens/lazy_bill_claim_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
 import 'utils/bill_calculations.dart';
+import 'utils/recent_bills_share_utils.dart';
 
 /// BillDetailsScreen
 ///
@@ -61,9 +63,13 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
   late RecentBillModel _bill;
 
   double get _displayedTotal =>
-      widget.showBillTotalsInUSD ? _bill.usdTotal : _bill.total;
+      widget.showBillTotalsInUSD && _bill.hasUSDValuation
+          ? _bill.usdTotal
+          : _bill.total;
   String get _displayedCurrencyCode =>
-      widget.showBillTotalsInUSD ? 'USD' : _bill.currencyCode;
+      widget.showBillTotalsInUSD && _bill.hasUSDValuation
+          ? 'USD'
+          : _bill.currencyCode;
 
   // Track if the bill name was updated
   bool _wasNameUpdated = false;
@@ -113,6 +119,10 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
 
   /// Shows the enhanced share sheet with link options (if URL exists) and text receipt
   void _promptShareOptions() {
+    if (_bill.identityNeedsReview) {
+      RecentBillShareUtils.shareBill(_bill);
+      return;
+    }
     final summaryData = BillSummaryData.fromRecentBill(_bill);
     EnhancedShareSheet.show(
       context: context,
@@ -160,6 +170,35 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
                     const BouncingScrollPhysics(), // Bouncy scroll for iOS-like feel
                 padding: EdgeInsets.zero,
                 children: [
+                  if (_bill.shareUrl?.startsWith('https://') == true)
+                    TextButton(
+                      onPressed: () {
+                        final uri = Uri.tryParse(_bill.shareUrl!);
+                        final token = uri?.queryParameters['t'];
+                        if (token != null &&
+                            uri!.pathSegments.length == 2 &&
+                            uri.pathSegments.first == 'b') {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (_) => LazyBillClaimScreen(
+                                    billId: uri.pathSegments.last,
+                                    token: token,
+                                  ),
+                            ),
+                          );
+                        }
+                      },
+                      child: const Text(
+                        'Current receipt participants and claims',
+                      ),
+                    ),
+                  if (_bill.identityNeedsReview)
+                    const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text('Recorded history; ownership needs review.'),
+                    ),
                   // Animated premium header with bill date and total
                   _buildPremiumHeader(context, headerShadowColor, (
                     newName,
@@ -173,6 +212,8 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
                         // Create a new bill model with updated name
                         _bill = RecentBillModel(
                           id: _bill.id,
+                          receiptParticipants: _bill.receiptParticipants,
+                          currentGraph: _bill.currentGraph,
                           billName: newName,
                           participantNames: _bill.participantNames,
                           participantCount: _bill.participantCount,
@@ -186,6 +227,17 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
                           color: _bill.color,
                           itemAssignments: _bill.itemAssignments,
                           shareUrl: _bill.shareUrl,
+                          currencyCode: _bill.currencyCode,
+                          usdExchangeRate: _bill.usdExchangeRate,
+                          exchangeRateDate: _bill.exchangeRateDate,
+                          exchangeRateSource: _bill.exchangeRateSource,
+                          authoritativeUsdTotal: _bill.authoritativeUsdTotal,
+                          publicationState: _bill.publicationState,
+                          valuationState: _bill.valuationState,
+                          failureCode: _bill.failureCode,
+                          attachmentState: _bill.attachmentState,
+                          savedShares: _bill.savedShares,
+                          receiptMetadata: _bill.receiptMetadata,
                         );
 
                         // Mark that bill name was updated to notify previous screen
@@ -977,6 +1029,9 @@ class SortedParticipantsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (bill.identityNeedsReview) {
+      return RecordedParticipationHistory(bill: bill);
+    }
     // Get pre-calculated person totals from the BillCalculations utility
     final personTotals = calculations.calculatePersonTotals();
 
@@ -984,34 +1039,81 @@ class SortedParticipantsCard extends StatelessWidget {
     final hasRealAssignments = calculations.hasRealAssignments();
     final equalShare = calculations.calculateEqualShare();
 
-    // Create a sorted list of participants based on their total amounts
-    final sortedParticipants = List<String>.from(bill.participantNames);
-    sortedParticipants.sort((a, b) {
-      final amountA =
-          hasRealAssignments ? (personTotals[a] ?? 0.0) : equalShare;
-      final amountB =
-          hasRealAssignments ? (personTotals[b] ?? 0.0) : equalShare;
-      return amountB.compareTo(amountA); // Descending order
-    });
-
-    // Create a new bill with sorted participants
-    final sortedBill = RecentBillModel(
-      id: bill.id,
-      billName: bill.billName,
-      participantNames: sortedParticipants,
-      participantCount: bill.participantCount,
-      total: bill.total,
-      date: bill.date,
-      subtotal: bill.subtotal,
-      tax: bill.tax,
-      tipAmount: bill.tipAmount,
-      tipPercentage: bill.tipPercentage,
-      items: bill.items,
-      color: bill.color,
-      itemAssignments: bill.itemAssignments,
-      shareUrl: bill.shareUrl,
+    final order = List.generate(bill.participants.length, (i) => i)
+      ..sort((a, b) {
+        final amountA =
+            hasRealAssignments
+                ? personTotals[bill.participants[a].clientRef] ?? 0
+                : equalShare;
+        final amountB =
+            hasRealAssignments
+                ? personTotals[bill.participants[b].clientRef] ?? 0
+                : equalShare;
+        return amountB.compareTo(amountA);
+      });
+    return ParticipantsCard(
+      bill: bill,
+      calculations: calculations,
+      participantOrder: order,
     );
+  }
+}
 
-    return ParticipantsCard(bill: sortedBill, calculations: calculations);
+/// Raw historical rows preserve recorded amounts/flags without inferred ownership.
+class RecordedParticipationHistory extends StatelessWidget {
+  const RecordedParticipationHistory({super.key, required this.bill});
+  final RecentBillModel bill;
+  @override
+  Widget build(BuildContext context) {
+    final rows = bill.recordedShares;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Recorded result; ownership needs review',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            for (var i = 0; i < rows.length; i++)
+              ListTile(
+                title: Text(
+                  '${rows[i]['person_name'] ?? rows[i]['name'] ?? ''}'.isEmpty
+                      ? 'Unnamed · recorded row ${rows[i]['id'] ?? rows[i]['recorded_share_id'] ?? i + 1}'
+                      : '${rows[i]['person_name'] ?? rows[i]['name']} · recorded row ${rows[i]['id'] ?? rows[i]['recorded_share_id'] ?? i + 1}',
+                ),
+                subtitle: Text(
+                  rows[i]['paid'] == true
+                      ? 'Marked paid (manual)'
+                      : rows[i]['paid'] == false
+                      ? 'Not marked paid'
+                      : 'Paid state unavailable',
+                ),
+                trailing: Text(
+                  rows[i]['total'] is num && (rows[i]['total'] as num).isFinite
+                      ? CurrencyFormatter.formatCurrency(
+                        (rows[i]['total'] as num).toDouble(),
+                        currencyCode: bill.currencyCode,
+                      )
+                      : 'Amount unavailable',
+                ),
+              ),
+            if (rows.isEmpty) ...[
+              const Text(
+                'Per-person amounts are unavailable. Recorded item assignments are shown without assigning ownership.',
+              ),
+              for (final item in bill.items ?? <Map<String, dynamic>>[])
+                ListTile(
+                  title: Text(item['name'] as String? ?? 'Recorded item'),
+                  subtitle: Text(
+                    '${item['assignments'] ?? 'No recorded assignments'}',
+                  ),
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }

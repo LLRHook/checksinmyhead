@@ -155,6 +155,15 @@ class _BillTotalCardState extends State<BillTotalCard>
             ? colorScheme.outline.withValues(alpha: .1)
             : Colors.grey.shade100;
 
+    // Keep brand gold only when it provides readable ink on the card.
+    final totalLabelColor =
+        brightness == Brightness.dark
+            ? AppTheme.accentWarm
+            : AppTheme.foregroundOn(
+              cardBackgroundColor,
+              preferred: AppTheme.accentWarm,
+            );
+
     return Card(
       elevation: 0,
       color: cardBackgroundColor,
@@ -177,7 +186,7 @@ class _BillTotalCardState extends State<BillTotalCard>
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.accentWarm,
+                    color: totalLabelColor,
                     letterSpacing: 1,
                   ),
                 ),

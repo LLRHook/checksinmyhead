@@ -31,18 +31,20 @@ void main() {
     expect(text, isNot(contains(r'$4.50')));
   });
 
-  test('share details match reconstructed people by name', () async {
+  test('share details match reconstructed receipt refs after rename', () async {
     SharedPreferences.setMockInitialValues({});
     final person = Person(name: 'Alice', color: Colors.blue);
 
     final text = await ShareUtils.generateShareText(
       participants: [person],
-      personShares: {Person(name: 'alice', color: Colors.red): 4.5},
+      personShares: {person.copyWith(name: 'alice', color: Colors.red): 4.5},
       items: [
         BillItem(
           name: 'Coffee',
           price: 4.5,
-          assignments: {Person(name: 'ALICE', color: Colors.green): 100},
+          assignments: {
+            person.copyWith(name: 'ALICE', color: Colors.green): 100,
+          },
         ),
       ],
       subtotal: 4.5,

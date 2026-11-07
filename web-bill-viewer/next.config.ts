@@ -31,7 +31,8 @@ const nextConfig: NextConfig = {
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "X-Frame-Options", value: "DENY" },
-          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
           {
             key: "Content-Security-Policy",
             value: [
@@ -46,6 +47,19 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      ...["/", "/privacy-policy"].map((source) => ({
+        source,
+        headers: [{ key: "X-Robots-Tag", value: "index, follow" }],
+      })),
+      ...["/b/:path*", "/t/:path*"].map((source) => ({
+        source,
+        headers: [
+          {
+            key: "X-Robots-Tag",
+            value: "noindex, nofollow, nosnippet, noimageindex",
+          },
+        ],
+      })),
     ];
   },
 };

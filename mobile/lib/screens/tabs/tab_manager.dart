@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:checks_frontend/database/database.dart' hide Tab;
 import 'package:checks_frontend/database/database_provider.dart';
 import 'package:checks_frontend/models/tab.dart';
+import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
 import 'package:checks_frontend/services/api_service.dart';
 import 'package:checks_frontend/screens/settings/services/preferences_service.dart';
 import 'package:drift/drift.dart';
@@ -17,7 +18,22 @@ class TabManager extends ChangeNotifier {
 
   Stream<List<AppTab>> get tabsStream => _tabsStreamController.stream;
 
-  TabManager._internal();
+  TabManager._internal() : _database = null, _receiptOwner = null;
+
+  TabManager.withDependencies({
+    required AppDatabase database,
+    required RecentBillsManager receipts,
+    ApiService? api,
+  }) : _database = database,
+       _receiptOwner = receipts,
+       _apiDependency = api;
+
+  ApiService? _apiDependency;
+  ApiService get _api => _apiDependency ??= ApiService();
+  final AppDatabase? _database;
+  final RecentBillsManager? _receiptOwner;
+  AppDatabase get _db => _database ?? DatabaseProvider.db;
+  RecentBillsManager get _receipts => _receiptOwner ?? RecentBillsManager();
 
   @override
   void dispose() {
@@ -27,7 +43,7 @@ class TabManager extends ChangeNotifier {
 
   Future<List<AppTab>> getAllTabs() async {
     try {
-      final tabsData = await DatabaseProvider.db.getAllTabs();
+      final tabsData = await _db.getAllTabs();
       final tabs = await Future.wait(tabsData.map(_tabDataToAppTab));
       if (!_tabsStreamController.isClosed) {
         _tabsStreamController.add(tabs);
@@ -45,7 +61,7 @@ class TabManager extends ChangeNotifier {
     String? creatorDisplayName,
   }) async {
     try {
-      final id = await DatabaseProvider.db.insertTab(
+      final id = await _db.insertTab(
         TabsCompanion(
           name: Value(name),
           description: Value(description),
@@ -61,7 +77,7 @@ class TabManager extends ChangeNotifier {
         creatorDisplayName: creatorDisplayName,
       );
 
-      final tabData = await DatabaseProvider.db.getTabById(id);
+      final tabData = await _db.getTabById(id);
       if (tabData == null) return null;
 
       final tab = await _tabDataToAppTab(tabData);
@@ -73,76 +89,36 @@ class TabManager extends ChangeNotifier {
     }
   }
 
-  Future<void> deleteTab(int id) async {
+  /// Removes only the saved tab entry on this device, never the shared tab.
+  Future<bool> deleteTab(int id) async {
     try {
-      await DatabaseProvider.db.deleteTab(id);
+      await _db.deleteTab(id);
       await getAllTabs();
       notifyListeners();
+      return true;
     } catch (_) {
-      debugPrint('Error deleting tab');
+      debugPrint('Unable to remove local tab');
+      return false;
     }
   }
 
   Future<bool> addBillsToTab(int tabId, List<int> billIds) async {
-    try {
-      final tabData = await DatabaseProvider.db.getTabById(tabId);
-      if (tabData == null) return false;
-
-      final existingIds = AppTab.parseBillIds(tabData.billIds);
-      final attachedIds = <int>[];
-
-      if (tabData.accessToken != null && tabData.backendId != null) {
-        final apiService = ApiService();
-
-        var syncSucceeded = true;
-        for (final localBillId in billIds) {
-          if (existingIds.contains(localBillId)) continue;
-          final billData = await DatabaseProvider.db.getBillById(localBillId);
-          final shareUrl = billData?.shareUrl;
-          final backendBill = _parseBillShareUrl(shareUrl);
-          if (backendBill == null) {
-            debugPrint('Skipping backend tab sync for bill without share URL');
-            syncSucceeded = false;
-            continue;
-          }
-
-          try {
-            await apiService.addBillToTab(
-              tabData.backendId!,
-              backendBill.id,
-              tabData.accessToken!,
-              billToken: backendBill.token,
-              memberToken: tabData.memberToken,
-            );
-            attachedIds.add(localBillId);
-          } on ApiException {
-            syncSucceeded = false;
-          }
+    var complete = true;
+    for (final id in billIds) {
+      try {
+        final result = await _receipts.resumeReceipt(id, intendedTabId: tabId);
+        if (result.attachment != AttachmentState.attached ||
+            result.failure != null) {
+          complete = false;
         }
-        await DatabaseProvider.db.updateTab(
-          tabId,
-          TabsCompanion(
-            billIds: Value([...existingIds, ...attachedIds].join(',')),
-          ),
-        );
-        notifyListeners();
-        return syncSucceeded;
+      } catch (_) {
+        // One review/read failure cannot undo earlier commits or skip later rows.
+        complete = false;
       }
-
-      attachedIds.addAll(billIds.where((id) => !existingIds.contains(id)));
-      await DatabaseProvider.db.updateTab(
-        tabId,
-        TabsCompanion(
-          billIds: Value([...existingIds, ...attachedIds].join(',')),
-        ),
-      );
-
-      notifyListeners();
-      return true;
-    } catch (e) {
-      debugPrint('Error adding bills to tab');
-      return false;
     }
+    await getAllTabs();
+    notifyListeners();
+    return complete;
   }
 
   Future<void> _syncTabToBackend(
@@ -152,7 +128,7 @@ class TabManager extends ChangeNotifier {
     String? creatorDisplayName,
   }) async {
     try {
-      final apiService = ApiService();
+      final apiService = _api;
       final response = await apiService.createTab(
         name,
         description,
@@ -164,9 +140,10 @@ class TabManager extends ChangeNotifier {
         accessToken: Value(response.accessToken),
         shareUrl: Value(response.shareUrl),
         memberToken: Value(response.memberToken),
+        memberId: Value(response.memberId),
         role: Value(response.memberToken != null ? 'creator' : null),
       );
-      await DatabaseProvider.db.updateTab(localId, companion);
+      await _db.updateTab(localId, companion);
       notifyListeners();
     } catch (_) {
       debugPrint('Error syncing tab to backend');
@@ -179,7 +156,7 @@ class TabManager extends ChangeNotifier {
     int localId, {
     String? creatorDisplayName,
   }) async {
-    final tabData = await DatabaseProvider.db.getTabById(localId);
+    final tabData = await _db.getTabById(localId);
     if (tabData == null) return null;
     if (tabData.shareUrl != null && tabData.shareUrl!.isNotEmpty) {
       return _tabDataToAppTab(tabData);
@@ -194,28 +171,34 @@ class TabManager extends ChangeNotifier {
     return getTabById(localId);
   }
 
-  Future<void> removeBillFromTab(int tabId, int billId) async {
+  /// Local list edit only. Shared membership has no supported detach operation.
+  Future<bool> removeBillFromTab(int tabId, int billId) async {
     try {
-      final tabData = await DatabaseProvider.db.getTabById(tabId);
-      if (tabData == null) return;
+      final tabData = await _db.getTabById(tabId);
+      if (tabData == null) return true;
+      if (tabData.backendId != null || tabData.isRemote || tabData.finalized) {
+        return false;
+      }
 
       final existingIds = AppTab.parseBillIds(tabData.billIds);
-      existingIds.remove(billId);
+      if (!existingIds.remove(billId)) return true;
 
-      await DatabaseProvider.db.updateTab(
+      await _db.updateTab(
         tabId,
         TabsCompanion(billIds: Value(existingIds.join(','))),
       );
 
       notifyListeners();
-    } catch (e) {
-      debugPrint('Error removing bill from tab');
+      return true;
+    } catch (_) {
+      debugPrint('Unable to remove bill from local tab');
+      return false;
     }
   }
 
   Future<AppTab?> getTabById(int id) async {
     try {
-      final tabData = await DatabaseProvider.db.getTabById(id);
+      final tabData = await _db.getTabById(id);
       if (tabData == null) return null;
       return _tabDataToAppTab(tabData);
     } catch (e) {
@@ -226,13 +209,13 @@ class TabManager extends ChangeNotifier {
 
   Future<bool> finalizeTab(int localId) async {
     try {
-      final tabData = await DatabaseProvider.db.getTabById(localId);
+      final tabData = await _db.getTabById(localId);
       if (tabData == null) return false;
       if (tabData.backendId == null || tabData.accessToken == null) {
         return false;
       }
 
-      final apiService = ApiService();
+      final apiService = _api;
       final settlements = await apiService.finalizeTab(
         tabData.backendId!,
         tabData.accessToken!,
@@ -241,10 +224,7 @@ class TabManager extends ChangeNotifier {
 
       if (settlements.isEmpty) return false;
 
-      await DatabaseProvider.db.updateTab(
-        localId,
-        const TabsCompanion(finalized: Value(true)),
-      );
+      await _db.updateTab(localId, const TabsCompanion(finalized: Value(true)));
 
       notifyListeners();
       return true;
@@ -272,17 +252,27 @@ class TabManager extends ChangeNotifier {
       final accessToken = uri.queryParameters['t'];
       if (tabId == null || accessToken == null) return null;
 
-      final apiService = ApiService();
+      final apiService = _api;
 
       // Join the tab
-      final existing = (await DatabaseProvider.db.getAllTabs()).where(
+      final existing = (await _db.getAllTabs()).where(
         (tab) =>
             tab.backendId == tabId &&
             tab.accessToken == accessToken &&
             tab.memberToken != null,
       );
       if (existing.isNotEmpty) {
-        return _tabDataToAppTab(existing.first);
+        final saved = existing.first;
+        final me = await apiService.getCurrentMember(
+          tabId,
+          accessToken,
+          saved.memberToken!,
+        );
+        await _db.updateTab(
+          saved.id,
+          TabsCompanion(memberId: Value(me.memberId), role: Value(me.role)),
+        );
+        return _tabDataToAppTab((await _db.getTabById(saved.id))!);
       }
 
       final joinResponse = await apiService.joinTab(
@@ -295,7 +285,7 @@ class TabManager extends ChangeNotifier {
       final tabData = await apiService.getTabData(tabId, accessToken);
 
       // Insert as remote tab in local DB
-      final localId = await DatabaseProvider.db.insertTab(
+      final localId = await _db.insertTab(
         TabsCompanion(
           name: Value(tabData['name'] ?? 'Joined Tab'),
           description: Value(tabData['description'] ?? ''),
@@ -304,13 +294,14 @@ class TabManager extends ChangeNotifier {
           accessToken: Value(accessToken),
           shareUrl: Value(shareUrl),
           memberToken: Value(joinResponse.memberToken),
+          memberId: Value(joinResponse.memberId),
           role: Value(joinResponse.role),
           isRemote: const Value(true),
           createdAt: Value(DateTime.now()),
         ),
       );
 
-      final insertedTab = await DatabaseProvider.db.getTabById(localId);
+      final insertedTab = await _db.getTabById(localId);
       if (insertedTab == null) return null;
 
       final displayCurrency =
@@ -334,19 +325,19 @@ class TabManager extends ChangeNotifier {
 
   Future<bool> leaveTab(int localId) async {
     try {
-      final tabData = await DatabaseProvider.db.getTabById(localId);
+      final tabData = await _db.getTabById(localId);
       if (tabData == null ||
           tabData.backendId == null ||
           tabData.accessToken == null ||
           tabData.memberToken == null) {
         return false;
       }
-      await ApiService().leaveTab(
+      await _api.leaveTab(
         tabData.backendId!,
         tabData.accessToken!,
         tabData.memberToken!,
       );
-      await DatabaseProvider.db.deleteTab(localId);
+      await _db.deleteTab(localId);
       await getAllTabs();
       notifyListeners();
       return true;
@@ -368,6 +359,7 @@ class TabManager extends ChangeNotifier {
       shareUrl: tabData.shareUrl,
       finalized: tabData.finalized,
       memberToken: tabData.memberToken,
+      memberId: tabData.memberId,
       role: tabData.role,
       isRemote: tabData.isRemote,
       displayCurrency: 'USD',
@@ -378,25 +370,4 @@ class TabManager extends ChangeNotifier {
     );
     return appTab.copyWith(displayCurrency: currency);
   }
-
-  _BackendBillRef? _parseBillShareUrl(String? shareUrl) {
-    if (shareUrl == null || shareUrl.isEmpty) return null;
-
-    final uri = Uri.tryParse(shareUrl);
-    if (uri == null || uri.pathSegments.length < 2) return null;
-    if (uri.pathSegments[uri.pathSegments.length - 2] != 'b') return null;
-
-    final billId = int.tryParse(uri.pathSegments.last);
-    final token = uri.queryParameters['t'];
-    if (billId == null || token == null || token.isEmpty) return null;
-
-    return _BackendBillRef(billId, token);
-  }
-}
-
-class _BackendBillRef {
-  final int id;
-  final String token;
-
-  const _BackendBillRef(this.id, this.token);
 }

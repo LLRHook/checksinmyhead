@@ -21,11 +21,11 @@ class BillCalculations {
   final RecentBillModel bill;
 
   Map<String, double>?
-  _personItemTotals; // Person name -> sum of their assigned item costs
+  _personItemTotals; // Receipt ref -> sum of their assigned item costs
   Map<String, double>?
-  _personTaxAndTip; // Person name -> their portion of tax and tip
+  _personTaxAndTip; // Receipt ref -> their portion of tax and tip
   Map<String, double>?
-  _personTotals; // Person name -> their total bill share (items + tax/tip)
+  _personTotals; // Receipt ref -> their total bill share (items + tax/tip)
 
   BillCalculations(this.bill);
 
@@ -35,7 +35,7 @@ class BillCalculations {
   /// based solely on the item assignments (before tax and tip).
   ///
   /// Returns:
-  /// - A Map where keys are person names and values are their item totals
+  /// - A Map where keys are receipt refs and values are their item totals
   /// - If no items exist, returns a map with zeros for all participants
   ///
   /// Note: Results are cached for performance optimization
@@ -48,7 +48,7 @@ class BillCalculations {
     Map<String, double> personTotals = {};
 
     // Initialize with zero for all participants to ensure all participants are included
-    for (final name in bill.participantNames) {
+    for (final name in bill.participants.map((p) => p.clientRef).toList()) {
       personTotals[name] = 0.0;
     }
 
@@ -58,20 +58,13 @@ class BillCalculations {
       return personTotals;
     }
 
-    // Calculate each person's assigned items by iterating through all bill items
-    for (final item in bill.items!) {
-      final price = (item['price'] as num?)?.toDouble() ?? 0.0;
-      final assignments = item['assignments'] as Map<String, dynamic>?;
-
-      if (assignments != null) {
-        assignments.forEach((personName, percentage) {
-          if (percentage is num && personTotals.containsKey(personName)) {
-            // Add this item's portion to the person's total
-            // The percentage is stored as a value from 0-100, so we divide by 100
-            personTotals[personName] =
-                (personTotals[personName] ?? 0.0) + (price * percentage / 100);
-          }
-        });
+    for (final item in bill.getBillItems()) {
+      for (final entry in item.assignments.entries) {
+        if (personTotals.containsKey(entry.key.clientRef)) {
+          personTotals[entry.key.clientRef] =
+              (personTotals[entry.key.clientRef] ?? 0) +
+              item.price * entry.value / 100;
+        }
       }
     }
 
@@ -87,7 +80,7 @@ class BillCalculations {
   /// tax and tip are distributed equally.
   ///
   /// Returns:
-  /// - A Map where keys are person names and values are their tax and tip portions
+  /// - A Map where keys are receipt refs and values are their tax and tip portions
   ///
   /// Note: Results are cached for performance optimization
   Map<String, double> calculatePersonTaxAndTip() {
@@ -111,11 +104,12 @@ class BillCalculations {
     // If no items were assigned or sum is zero, distribute tax and tip equally
     if (assignedItemsTotal <= 0 || personItemTotals.isEmpty) {
       final equalShare =
-          bill.participantNames.isNotEmpty
-              ? totalTaxAndTip / bill.participantNames.length
+          bill.participants.map((p) => p.clientRef).toList().isNotEmpty
+              ? totalTaxAndTip /
+                  bill.participants.map((p) => p.clientRef).toList().length
               : 0.0;
 
-      for (final name in bill.participantNames) {
+      for (final name in bill.participants.map((p) => p.clientRef).toList()) {
         results[name] = equalShare;
       }
     } else {
@@ -125,7 +119,8 @@ class BillCalculations {
         final proportion =
             assignedItemsTotal > 0
                 ? entry.value / assignedItemsTotal
-                : 1.0 / bill.participantNames.length;
+                : 1.0 /
+                    bill.participants.map((p) => p.clientRef).toList().length;
 
         // Assign tax and tip proportionally based on their item amounts
         results[entry.key] = proportion * totalTaxAndTip;
@@ -143,10 +138,16 @@ class BillCalculations {
   /// to determine their final payment amount.
   ///
   /// Returns:
-  /// - A Map where keys are person names and values are their complete bill shares
+  /// - A Map where keys are receipt refs and values are their complete bill shares
   ///
   /// Note: Results are cached for performance optimization
   Map<String, double> calculatePersonTotals() {
+    if (bill.savedShares != null) {
+      return {
+        for (final entry in bill.generatePersonShares().entries)
+          entry.key.clientRef: entry.value,
+      };
+    }
     // Return cached result if available
     if (_personTotals != null) {
       return _personTotals!;
@@ -157,7 +158,7 @@ class BillCalculations {
     final taxAndTipTotals = calculatePersonTaxAndTip();
 
     // Combine all components for each person (items + their portion of tax/tip)
-    for (final name in bill.participantNames) {
+    for (final name in bill.participants.map((p) => p.clientRef).toList()) {
       final itemAmount = itemTotals[name] ?? 0.0;
       final taxTipAmount = taxAndTipTotals[name] ?? 0.0;
 
@@ -179,7 +180,8 @@ class BillCalculations {
   /// - true if at least one person has items specifically assigned to them
   /// - false if no real assignments exist (indicating equal splits)
   bool hasRealAssignments() {
-    return calculatePersonItemTotals().values.any((v) => v > 0);
+    return bill.savedShares != null ||
+        calculatePersonItemTotals().values.any((v) => v > 0);
   }
 
   /// Calculates what each person would pay in a simple equal split

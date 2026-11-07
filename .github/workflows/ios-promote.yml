@@ -1,0 +1,105 @@
+# Integrated phase F controls; external policy defaults disabled. Native/hosted/ASC qualification NOT RUN.
+name: Reuse proven processed iOS build
+'on':
+  workflow_call:
+    inputs:
+      source:
+        type: string
+        required: true
+      controller:
+        type: string
+        required: true
+      receipt:
+        type: string
+        required: true
+      verification_only:
+        type: boolean
+        default: false
+      release_notes:
+        type: string
+        default: ''
+      operation:
+        type: string
+        required: true
+      version:
+        type: string
+        required: true
+      origin_run:
+        type: string
+        required: true
+      origin_attempt:
+        type: string
+        required: true
+      asc_build_id:
+        type: string
+        required: true
+      release_type:
+        type: string
+        default: AFTER_APPROVAL
+      submit_for_review:
+        type: boolean
+        default: true
+      allow_cancel:
+        type: boolean
+        default: false
+      resubmit:
+        type: boolean
+        default: true
+    secrets:
+      DELIVERY_ASC_KEY_ID:
+        required: true
+      DELIVERY_ASC_ISSUER_ID:
+        required: true
+      DELIVERY_ASC_API_KEY_P8:
+        required: true
+permissions:
+  contents: read
+jobs:
+  promote:
+    name: Promote or edit exact proven build
+    if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+    environment: ios-production
+    concurrency:
+      group: ios-upload
+      cancel-in-progress: false
+    env:
+      CONTROL_REPO: control
+      CONTROLLER: ${{ inputs.controller }}
+      SOURCE: ${{ inputs.source }}
+      GATE_RECEIPT: ${{ inputs.receipt }}
+      RELEASE_POLICY: ${{ vars.RELEASE_POLICY }}
+      GH_TOKEN: ${{ github.token }}
+      VERIFY_ONLY: ${{ inputs.verification_only }}
+      DELIVERY_TARGET: ${{ inputs.operation == 'promote' && 'ios-production' || 'ios-notes' }}
+      VERSION_STRING: ${{ inputs.version }}
+      ORIGIN_RUN: ${{ inputs.origin_run }}
+      ORIGIN_ATTEMPT: ${{ inputs.origin_attempt }}
+      ASC_BUILD_ID: ${{ inputs.asc_build_id }}
+    steps:
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      with:
+        ref: ${{ inputs.controller }}
+        path: control
+        fetch-depth: 0
+        persist-credentials: false
+    - name: Promote existing binary
+      if: ${{ inputs.operation == 'promote' }}
+      env: &id001
+        ASC_KEY_ID: ${{ secrets.DELIVERY_ASC_KEY_ID }}
+        ASC_ISSUER_ID: ${{ secrets.DELIVERY_ASC_ISSUER_ID }}
+        DELIVERY_ASC_API_KEY_P8: ${{ secrets.DELIVERY_ASC_API_KEY_P8 }}
+        RELEASE_NOTES: ${{ inputs.release_notes }}
+        RELEASE_TYPE: ${{ inputs.release_type }}
+        SUBMIT_FOR_REVIEW: ${{ inputs.submit_for_review }}
+        ALLOW_CANCEL: ${{ inputs.allow_cancel }}
+        RESUBMIT: ${{ inputs.resubmit }}
+      run: ruby control/.github/scripts/asc_delivery.rb promote
+    - name: Edit notes on attached proven binary
+      if: ${{ inputs.operation == 'notes' }}
+      env: *id001
+      run: ruby control/.github/scripts/asc_delivery.rb notes

@@ -17,6 +17,7 @@
 
 import 'package:checks_frontend/screens/quick_split/participant_selection/providers/participants_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:checks_frontend/services/receipt_validation.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -54,7 +55,7 @@ class _AddPersonFieldState extends State<AddPersonField> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('This person is already in the list'),
+            content: Text('Review the participant label'),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -111,6 +112,7 @@ class _AddPersonFieldState extends State<AddPersonField> {
               autofocus: true,
               decoration: InputDecoration(
                 hintText: "Enter name",
+                errorMaxLines: 4,
                 filled: true,
                 fillColor: fillColor,
                 contentPadding: const EdgeInsets.symmetric(
@@ -131,15 +133,8 @@ class _AddPersonFieldState extends State<AddPersonField> {
               ),
               style: TextStyle(color: colorScheme.onSurface),
               onFieldSubmitted: (_) => _addPerson(context),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter a name';
-                }
-                if (!RegExp(r'[a-zA-Z]').hasMatch(value)) {
-                  return 'Name must contain at least one letter';
-                }
-                return null;
-              },
+              validator:
+                  (name) => receiptParticipantNameError(name, allowEmpty: true),
             ),
           ),
           const SizedBox(width: 10),

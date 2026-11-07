@@ -1,0 +1,6 @@
+package migrations
+
+// Independently reviewed PG17 nine-object additions; frozen v1 is unchanged.
+const receiptSQLChecksum = "5b3c2c00f0852c2066ff0621ac2b8cb9cd6f698652dfe85fa125dbbaad9bb527"
+const receiptManifestChecksum = "3de0b93c674d6fa4140848226c6a91a04215c651c4c4e66929b07ebee9063e25"
+const receiptRecognizerChecksum = "a15d0840d7dcfb0d2a731995d4a2f3d4b7204f9239fa35dab3cc84fb57b2547c"

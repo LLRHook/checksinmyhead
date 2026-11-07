@@ -2,7 +2,7 @@
 
 import { FaArrowRight } from "react-icons/fa6";
 import { SiVenmo } from "react-icons/si";
-import type { NetBalance } from "@/lib/api";
+import { type NetBalance, type Party, partyKey, partyLabel } from "@/lib/api";
 import { formatMoney } from "@/lib/currency";
 import { buildVenmoPayUrl } from "@/lib/venmo";
 
@@ -11,6 +11,7 @@ interface NetBalancesProps {
   finalized: boolean;
   venmoId?: string | null;
   currentMemberName?: string | null;
+  currentMemberId?: number | null;
   currency?: string;
 }
 
@@ -18,39 +19,33 @@ export default function NetBalances({
   balances,
   finalized,
   venmoId,
-  currentMemberName,
+  currentMemberId,
   currency = "USD",
 }: NetBalancesProps) {
   if (balances.length === 0) return null;
 
-  const currentKey = currentMemberName?.toLowerCase();
+  const currentKey = currentMemberId;
+  const mine = (p: Party | string) =>
+    typeof p !== "string" && p.kind === "member" && p.member_id === currentKey;
 
   // Split into "your" balances and "other" balances
   const yourBalances = currentKey
-    ? balances.filter(
-        (b) =>
-          b.from.toLowerCase() === currentKey ||
-          b.to.toLowerCase() === currentKey,
-      )
+    ? balances.filter((b) => mine(b.from) || mine(b.to))
     : [];
   const otherBalances = currentKey
-    ? balances.filter(
-        (b) =>
-          b.from.toLowerCase() !== currentKey &&
-          b.to.toLowerCase() !== currentKey,
-      )
+    ? balances.filter((b) => !mine(b.from) && !mine(b.to))
     : balances;
 
   const renderBalance = (balance: NetBalance, showVenmo: boolean) => {
-    const isYouFrom = currentKey && balance.from.toLowerCase() === currentKey;
-    const isYouTo = currentKey && balance.to.toLowerCase() === currentKey;
+    const isYouFrom = currentKey && mine(balance.from);
+    const isYouTo = currentKey && mine(balance.to);
 
-    const fromLabel = isYouFrom ? "You" : balance.from;
-    const toLabel = isYouTo ? "You" : balance.to;
+    const fromLabel = isYouFrom ? "You" : partyLabel(balance.from);
+    const toLabel = isYouTo ? "You" : partyLabel(balance.to);
 
     return (
       <div
-        key={`${balance.from}-${balance.to}`}
+        key={`${typeof balance.from === "string" ? balance.from : partyKey(balance.from)}-${typeof balance.to === "string" ? balance.to : partyKey(balance.to)}`}
         className="bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-2xl px-5 py-4 shadow-sm dark:shadow-none dark:border dark:border-[var(--border-dark)] flex items-center justify-between"
       >
         <div className="flex items-center gap-3">
@@ -79,7 +74,7 @@ export default function NetBalances({
                 window.location.href = buildVenmoPayUrl(
                   venmoId,
                   balance.amount.toFixed(2),
-                  `Tab settlement - ${balance.to}`,
+                  `Tab settlement - ${partyLabel(balance.to)}`,
                 );
               }}
               className="h-10 px-4 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-white font-semibold rounded-xl flex items-center justify-center hover:opacity-90 transition-opacity border-none cursor-pointer"

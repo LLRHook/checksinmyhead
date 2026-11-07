@@ -1,0 +1,17 @@
+{
+  "format": 2,
+  "postgres": "17.11",
+  "capture": "isolated testpostgres owned schema; baseline SQL then exact approved additive0002; no GORM capture",
+  "review": "six nullable/no-default columns; two exact validated immediate checks; bytea unique btree, immediate valid/ready/live NULL-distinct sole key, no INCLUDE/expression/predicate; compared to approved SQL and PG17 catalog field definitions",
+  "sql_sha256": "5b3c2c00f0852c2066ff0621ac2b8cb9cd6f698652dfe85fa125dbbaad9bb527",
+  "manifest_sha256": "3de0b93c674d6fa4140848226c6a91a04215c651c4c4e66929b07ebee9063e25",
+  "validation_inputs": {
+    "catalog.sql": "2fa9e34ee3048976dade7444d1e7d86887ee6b864b3614a83ec594fe6ca5daab",
+    "catalog-v1.json": "a33946343bd74b19c25e785a62d53a74a3cd8a104f75e50319e71aecd32201b3",
+    "ledger.sql": "ec6ea56e073f3b05694131049fd05865516c4e3a433b1a4a17c46c4291cafc8b",
+    "catalog-safety-v2.sql": "fa97060f905ba1bcdb4c5147dd21824f82e9ed7a7c757e3728b6bf499ce1bb00",
+    "catalog-receipt-v2.json": "3de0b93c674d6fa4140848226c6a91a04215c651c4c4e66929b07ebee9063e25"
+  },
+  "validation_sha256": "a15d0840d7dcfb0d2a731995d4a2f3d4b7204f9239fa35dab3cc84fb57b2547c",
+  "frozen_v1_unchanged": true
+}

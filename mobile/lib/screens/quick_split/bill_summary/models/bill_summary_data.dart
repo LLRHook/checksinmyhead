@@ -108,6 +108,18 @@ class BillSummaryData {
 
     return BillSummaryData(
       participants: participants,
+      birthdayPerson:
+          bill.birthdayRef == null && bill.birthdayName == null
+              ? null
+              : participants
+                  .where(
+                    (p) =>
+                        bill.birthdayRef != null
+                            ? p.clientRef == bill.birthdayRef
+                            : p.name == bill.birthdayName,
+                  )
+                  .firstOrNull,
+      isCustomTipAmount: bill.isCustomTipAmount,
       personShares: personShares,
       items: items,
       subtotal: bill.subtotal,

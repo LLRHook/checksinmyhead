@@ -21,6 +21,7 @@ import 'package:checks_frontend/screens/recent_bills/billDetails/bill_details_sc
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.dart';
 import 'package:flutter/material.dart';
+import 'package:checks_frontend/services/api_service.dart';
 import 'package:flutter/services.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 
@@ -96,6 +97,15 @@ class _RecentBillCardState extends State<RecentBillCard> {
             ),
           );
         }
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     } finally {
       if (mounted) {
@@ -329,11 +339,13 @@ class _RecentBillCardState extends State<RecentBillCard> {
                                 fit: BoxFit.scaleDown,
                                 child: Text(
                                   CurrencyFormatter.formatCurrency(
-                                    widget.showBillTotalsInUSD
+                                    widget.showBillTotalsInUSD &&
+                                            widget.bill.hasUSDValuation
                                         ? widget.bill.usdTotal
                                         : widget.bill.total,
                                     currencyCode:
-                                        widget.showBillTotalsInUSD
+                                        widget.showBillTotalsInUSD &&
+                                                widget.bill.hasUSDValuation
                                             ? 'USD'
                                             : widget.bill.currencyCode,
                                   ),
@@ -352,6 +364,18 @@ class _RecentBillCardState extends State<RecentBillCard> {
                   ),
                 ),
 
+                if (!widget.bill.hasUSDValuation)
+                  const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Text('USD conversion pending'),
+                  ),
+                if (widget.bill.failureCode != null)
+                  const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Text(
+                      'Saved on this device. Link or trip recovery pending.',
+                    ),
+                  ),
                 // Bottom action buttons with divider
                 Container(
                   decoration: BoxDecoration(
