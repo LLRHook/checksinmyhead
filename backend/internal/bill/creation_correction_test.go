@@ -196,6 +196,9 @@ func TestCentRemaindersPreserveClaimAndNameOrder(t *testing.T) {
 		{"negative_name", map[string]float64{"Alex": .005, "Blair": .005}, nil, map[string]float64{"Alex": 0, "Blair": .01}},
 		{"positive_recent", map[string]float64{"Alex": .004, "Blair": .004}, map[string]time.Time{"Blair": now}, map[string]float64{"Alex": 0, "Blair": .01}},
 		{"negative_recent", map[string]float64{"Alex": .005, "Blair": .005}, map[string]time.Time{"Blair": now}, map[string]float64{"Alex": .01, "Blair": 0}},
+		{"zero_before_negative_name", map[string]float64{"Alex": 0, "Blair": .005, "Casey": .005}, nil, map[string]float64{"Alex": 0, "Blair": 0, "Casey": .01}},
+		{"zero_recent_is_ineligible", map[string]float64{"Alex": 0, "Blair": .005, "Casey": .005}, map[string]time.Time{"Alex": now}, map[string]float64{"Alex": 0, "Blair": 0, "Casey": .01}},
+		{"eligible_recent_after_zero", map[string]float64{"Alex": 0, "Blair": .005, "Casey": .005}, map[string]time.Time{"Casey": now}, map[string]float64{"Alex": 0, "Blair": .01, "Casey": 0}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := allocateRoundedCents(tc.raw, tc.claims)
@@ -210,17 +213,27 @@ func TestRemainderDistributionIsBoundedForExtremeCounts(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
 		remaining int64
+		initial   []int64
 		want      []int64
+		invalid   bool
 	}{
-		{"positive", 100_000_000_001, []int64{33_333_333_334, 33_333_333_334, 33_333_333_333}},
-		{"negative", -100_000_000_001, []int64{-33_333_333_334, -33_333_333_334, -33_333_333_333}},
-		{"min_int64", math.MinInt64, []int64{-3_074_457_345_618_258_603, -3_074_457_345_618_258_603, -3_074_457_345_618_258_602}},
+		{"positive", 100_000_000_001, []int64{0, 0, 0}, []int64{33_333_333_334, 33_333_333_334, 33_333_333_333}, false},
+		{"negative", -100_000_000_001, []int64{0, 0, 0}, []int64{0, 0, 0}, true},
+		{"min_int64", math.MinInt64, []int64{0, 0, 0}, []int64{0, 0, 0}, true},
+		{"eligible_bulk_debit", -100_000_000_001, []int64{0, 1, 100_000_000_001}, []int64{0, 0, 1}, false},
+		{"eligible_tie_order", -3, []int64{0, 5, 5}, []int64{0, 3, 4}, false},
+		{"insufficient", -3, []int64{0, 1, 1}, []int64{0, 1, 1}, true},
+		{"negative_balance", -1, []int64{-1, 2, 2}, []int64{-1, 2, 2}, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			// Pure bounded distribution: never run these counts through the old loop.
 			shares := []roundedShare{{key: "Alex"}, {key: "Blair"}, {key: "Casey"}}
-			if err := distributeRemainder(shares, tc.remaining); err != nil {
-				t.Fatal(err)
+			for i := range shares {
+				shares[i].cents = tc.initial[i]
+			}
+			err := distributeRemainder(shares, tc.remaining)
+			if tc.invalid && !errors.Is(err, ErrInvalidCreation) || !tc.invalid && err != nil {
+				t.Fatalf("invalid=%v err=%v", tc.invalid, err)
 			}
 			for i, share := range shares {
 				if share.cents != tc.want[i] {
@@ -232,4 +245,35 @@ func TestRemainderDistributionIsBoundedForExtremeCounts(t *testing.T) {
 	if _, err := allocateRoundedCents(map[string]float64{"Alex": 6e16, "Blair": 6e16}, nil); !errors.Is(err, ErrInvalidCreation) {
 		t.Fatal("cent aggregate overflow accepted")
 	}
+	t.Run("eligible_small_reference", func(t *testing.T) {
+		// A small one-cent oracle checks skipped zero balances and ordering,
+		// independently of the production allocator's collapsed whole rounds.
+		for a := int64(0); a <= 4; a++ {
+			for b := int64(0); b <= 4; b++ {
+				for c := int64(0); c <= 4; c++ {
+					for debt := int64(0); debt <= a+b+c; debt++ {
+						want := []int64{a, b, c}
+						left := debt
+						for left > 0 {
+							for i := range want {
+								if want[i] > 0 && left > 0 {
+									want[i]--
+									left--
+								}
+							}
+						}
+						got := []roundedShare{{cents: a}, {cents: b}, {cents: c}}
+						if err := distributeRemainder(got, -debt); err != nil {
+							t.Fatal(err)
+						}
+						for i := range got {
+							if got[i].cents != want[i] {
+								t.Fatalf("initial=%v debt=%d got=%v want=%v", []int64{a, b, c}, debt, got, want)
+							}
+						}
+					}
+				}
+			}
+		}
+	})
 }

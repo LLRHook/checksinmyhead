@@ -22,6 +22,7 @@ class TabDetailScreen extends StatefulWidget {
   final TabManager? tabManager;
   final RecentBillsManager? billsManager;
   final ApiService? apiService;
+  final AppDatabase? database;
 
   const TabDetailScreen({
     super.key,
@@ -29,6 +30,7 @@ class TabDetailScreen extends StatefulWidget {
     this.tabManager,
     this.billsManager,
     this.apiService,
+    this.database,
   });
 
   @override
@@ -39,6 +41,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
   late final _billsManager = widget.billsManager ?? RecentBillsManager();
   late final _tabManager = widget.tabManager ?? TabManager();
   late final _apiService = widget.apiService ?? ApiService();
+  AppDatabase get _db => widget.database ?? DatabaseProvider.db;
   List<RecentBillModel> _allBills = [];
   List<RecentBillModel> _tabBills = [];
   List<SettlementResponse> _settlements = [];
@@ -51,6 +54,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
   bool _settlementReading = false;
   bool _settlementWriting = false;
   bool _isLoading = true;
+  bool _loadInProgress = false;
   bool _isFinalizing = false;
   bool _isRetryingInvite = false;
   double _usdToDisplayRate = 1;
@@ -87,78 +91,88 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
   }
 
   Future<void> _loadBills() async {
-    if (!mounted) return;
+    if (!mounted || (_isLoading && _loadInProgress)) return;
+    _loadInProgress = true;
     setState(() {
       _isLoading = true;
       _readError = null;
+      _remoteTab = null;
     });
 
-    // Refresh tab from DB to get latest data (e.g. shareUrl after sync)
-    if (_currentTab.id != null) {
-      final refreshed = await _tabManager.getTabById(_currentTab.id!);
-      if (refreshed != null) {
-        _currentTab = refreshed;
+    try {
+      if (_currentTab.id != null) {
+        final refreshed = await _tabManager.getTabById(_currentTab.id!);
+        if (refreshed != null) _currentTab = refreshed;
       }
-    }
-
-    if (_currentTab.id != null &&
-        _currentTab.backendId != null &&
-        _currentTab.accessToken != null) {
-      try {
-        final remoteTab = await _apiService.getTabData(
-          _currentTab.backendId!,
-          _currentTab.accessToken!,
-        );
-        if (_currentTab.memberToken != null) {
-          final me = await _apiService.getCurrentMember(
+      Map<String, dynamic>? remote;
+      if (_currentTab.id != null &&
+          _currentTab.backendId != null &&
+          _currentTab.accessToken != null) {
+        try {
+          remote = await _apiService.getTabData(
             _currentTab.backendId!,
             _currentTab.accessToken!,
-            _currentTab.memberToken!,
           );
-          await DatabaseProvider.db.updateTab(
-            _currentTab.id!,
-            TabsCompanion(memberId: Value(me.memberId), role: Value(me.role)),
-          );
-        }
-        _remoteTab = remoteTab;
-        _readError = null;
-        final remoteBills = remoteTab['bills'];
-        if (remoteBills is List) {
-          final syncedBillIds = await _billsManager.importRemoteTabBills(
+          if (_currentTab.memberToken != null) {
+            final me = await _apiService.getCurrentMember(
+              _currentTab.backendId!,
+              _currentTab.accessToken!,
+              _currentTab.memberToken!,
+            );
+            await _db.updateTab(
+              _currentTab.id!,
+              TabsCompanion(memberId: Value(me.memberId), role: Value(me.role)),
+            );
+          }
+          final remoteBills = remote['bills'];
+          if (remoteBills is! List) {
+            throw const FormatException('Incomplete remote receipt list');
+          }
+          await _billsManager.importRemoteTabBills(
             _currentTab.backendId!,
             remoteBills,
-          );
-          await DatabaseProvider.db.updateTab(
-            _currentTab.id!,
-            TabsCompanion(billIds: Value(syncedBillIds.join(','))),
+            localTabId: _currentTab.id!,
           );
           final refreshed = await _tabManager.getTabById(_currentTab.id!);
-          if (refreshed != null) _currentTab = refreshed;
+          if (refreshed == null) {
+            throw StateError('Import destination unavailable');
+          }
+          _currentTab = refreshed;
+        } on ApiException {
+          _readError =
+              'Current tab unavailable. Showing recorded history; balances need review.';
         }
-      } on ApiException {
-        _readError =
-            'Current tab unavailable. Showing recorded history; balances need review.';
-        // Preserve the last cached dashboard while the trip is offline.
       }
-    }
-
-    final allBills = await _billsManager.getRecentBills();
-    final tabBills =
-        allBills
-            .where((bill) => _currentTab.billIds.contains(bill.id))
-            .toList();
-
-    await _loadDisplayCurrencyRate();
-
-    await _loadSettlements();
-    await _loadMembers();
-
-    if (mounted) {
-      setState(() {
-        _allBills = allBills;
-        _tabBills = tabBills;
-        _isLoading = false;
-      });
+      final allBills = await _billsManager.getRecentBills(
+        requireComplete: true,
+      );
+      final byId = {for (final bill in allBills) bill.id: bill};
+      if (_currentTab.billIds.any((id) => !byId.containsKey(id))) {
+        throw StateError('Referenced receipt history is incomplete');
+      }
+      _allBills = allBills;
+      _tabBills = [for (final id in _currentTab.billIds) byId[id]!];
+      _remoteTab = _readError == null ? remote : null;
+      await _loadDisplayCurrencyRate();
+    } catch (error) {
+      _remoteTab = null;
+      _readError =
+          error is ReceiptHistoryFull
+              ? 'History is full of pending or referenced receipts. Current history could not be cached; balances need review.'
+              : 'Current history unavailable. Recorded receipts are retained; balances need review.';
+    } finally {
+      try {
+        // Recorded settlement rows remain independently readable even when the
+        // receipt cache cannot represent the complete current history.
+        await _loadSettlements();
+        await _loadMembers();
+      } catch (_) {
+        _readError ??=
+            'Current history unavailable. Recorded receipts are retained; balances need review.';
+      } finally {
+        _loadInProgress = false;
+        if (mounted) setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -233,6 +247,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
   }
 
   bool get _canFinalize {
+    if (_isLoading || _readError != null) return false;
     if (!_currentTab.isSynced) return false;
     if (_currentTab.isFinalized) return false;
     if (_tabBills.isEmpty && !_currentTab.isRemote) return false;
@@ -584,6 +599,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
   }
 
   double _calculateTotal() {
+    if (_readError != null) return double.nan;
     if (_remoteTab != null) {
       return (_remoteTab!['total_amount'] as num?)?.toDouble() ?? double.nan;
     }
@@ -592,6 +608,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
   }
 
   Map<String, double> _calculatePersonTotals() {
+    if (_readError != null) return {};
     final totals = <String, double>{};
     final labels = <String, String>{};
     for (final bill in _tabBills) {

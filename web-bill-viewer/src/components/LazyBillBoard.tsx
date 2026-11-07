@@ -55,6 +55,8 @@ interface LazyBillBoardProps {
 }
 
 type Stage = "receipt" | "picker" | "pay";
+const membershipRecoveryError =
+  "Stored membership could not be authenticated. Retry recovery; joining by its label cannot replace it.";
 export interface LazyReadRecovery {
   message: string;
   afterRead: Stage;
@@ -303,17 +305,27 @@ export default function LazyBillBoard({
   const remainingCurrency = lazyBillRemainingCurrency(bill);
 
   useEffect(() => {
-    let active = true;
     const selected = readSelection(
       localStorage.getItem(selectionKey(bill.id)),
       bill.id,
       bill.participants ?? [],
     );
     setParticipantId(selected);
+  }, [bill.id, bill.participants]);
+
+  useEffect(() => {
+    const raw = tabId
+      ? localStorage.getItem(memberKey(tabId))
+      : localStorage.getItem(`billington_lazy_bill_${bill.id}`);
+    setNameInput(legacySuggestion(raw));
+  }, [bill.id, tabId]);
+
+  useEffect(() => {
+    let active = true;
+    setMember(null);
     if (tabId) {
       const raw = localStorage.getItem(memberKey(tabId));
       const proof = recoveryToken(raw);
-      setNameInput(legacySuggestion(raw));
       if (proof !== undefined) {
         void getCurrentMember(tabId, token, proof)
           .then((me) => {
@@ -325,26 +337,22 @@ export default function LazyBillBoard({
             };
             localStorage.setItem(memberKey(tabId), JSON.stringify(stored));
             setMember(stored);
+            setError((current) =>
+              current === membershipRecoveryError ? null : current,
+            );
           })
           .catch(() => {
             if (active) {
               setMember(null);
-              setError(
-                "Stored membership could not be authenticated. Retry recovery; joining by its label cannot replace it.",
-              );
+              setError(membershipRecoveryError);
             }
           });
       }
-    } else
-      setNameInput(
-        legacySuggestion(
-          localStorage.getItem(`billington_lazy_bill_${bill.id}`),
-        ),
-      );
+    }
     return () => {
       active = false;
     };
-  }, [bill.id, bill.participants, tabId, token]);
+  }, [tabId, token]);
 
   const selectParticipant = (id: number) => {
     if (readRecovery) return;

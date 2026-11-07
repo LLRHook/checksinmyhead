@@ -366,7 +366,10 @@
       "backend/pkg/security/TestTokenUniqueness",
       "backend/internal/bill/TestCreateAssignmentDecodeDifferential",
       "backend/internal/bill/TestCreateAssignmentDecodeReceiverSequence",
-      "backend/internal/bill/TestCreateAssignmentDecodeRequestContracts"
+      "backend/internal/bill/TestCreateAssignmentDecodeRequestContracts",
+      "backend/internal/bill/TestCreationRemaindersPreserveZeroShares",
+      "backend/internal/bill/TestCreationInsertAuditsShares",
+      "backend/internal/bill/TestCreationRoundingRemainsAccountable"
     ],
     "postgres": [
       "backend/cmd/bill-service/TestA1PostgresProductionJSON",
@@ -606,7 +609,10 @@
       "backend/internal/bill/TestCreateAssignmentDecodeDifferential",
       "backend/internal/bill/TestCreateAssignmentDecodeReceiverSequence",
       "backend/internal/bill/TestCreateAssignmentDecodeRequestContracts",
-      "backend/internal/tab/TestPostgresLifecycleSnapshotCanonicalRows"
+      "backend/internal/tab/TestPostgresLifecycleSnapshotCanonicalRows",
+      "backend/internal/bill/TestCreationRemaindersPreserveZeroShares",
+      "backend/internal/bill/TestCreationInsertAuditsShares",
+      "backend/internal/bill/TestCreationRoundingRemainsAccountable"
     ],
     "mobile": [
       "mobile/test/client_v1_bridge_test.dart",
@@ -657,7 +663,9 @@
       "mobile/test/participant_transport_contract_test.dart",
       "mobile/test/participant_v1_recovery_test.dart",
       "mobile/test/side_inset_layout_test.dart",
-      "mobile/test/screenshot_quality_test.dart"
+      "mobile/test/screenshot_quality_test.dart",
+      "mobile/test/tab_import_capacity_test.dart",
+      "mobile/test/receipt_timestamp_test.dart"
     ],
     "web": [
       "web-bill-viewer/src/components/__tests__/SettlementCard.test.ts",
@@ -669,7 +677,8 @@
       "web-bill-viewer/src/lib/currency.test.ts",
       "web-bill-viewer/src/components/__tests__/LazyBillActions.test.ts",
       "web-bill-viewer/src/components/__tests__/RecordedShares.test.ts",
-      "web-bill-viewer/src/lib/__tests__/participant-identity.test.ts"
+      "web-bill-viewer/src/lib/__tests__/participant-identity.test.ts",
+      "web-bill-viewer/src/components/__tests__/LazyBillSession.test.ts"
     ]
   },
   "reports": {
@@ -1265,6 +1274,21 @@
         "^Participant\\ visual\\ controls\\ custom\\ split\\ rows\\ remain\\ usable\\ at\\ enlarged\\ text\\ size$",
         "^Participant\\ visual\\ controls\\ summary\\ amount\\ ink\\ changes\\ no\\ recorded\\ values$",
         "^Participant\\ visual\\ controls\\ auto\\-added\\ owner\\ keeps\\ saved\\ color\\ with\\ fresh\\ occurrence\\ refs$"
+      ],
+      "mobile/test/tab_import_capacity_test.dart": [
+        "^thirty\\ remote\\ receipts\\ retain\\ every\\ returned\\ local\\ ID$",
+        "^thirty\\ one\\ remote\\ receipts\\ fail\\ atomically\\ without\\ dangling\\ IDs$",
+        "^pending\\ history\\ survives\\ a\\ failed\\ multi\\-receipt\\ import$",
+        "^referenced\\ history\\ survives\\ a\\ failed\\ multi\\-receipt\\ import$",
+        "^a\\ later\\ existing\\ import\\ target\\ cannot\\ be\\ evicted\\ by\\ an\\ earlier\\ new\\ row$",
+        "^malformed\\ later\\ receipt\\ rolls\\ back\\ earlier\\ refreshed\\ content$",
+        "^tab\\ reference\\ checkpoint\\ failure\\ rolls\\ back\\ the\\ entire\\ import$",
+        "^invalid\\ remote\\ IDs\\ never\\ become\\ a\\ partial\\ receipt\\ list$",
+        "^local\\ history\\ read\\ error\\ clears\\ loading\\ and\\ retry\\ recovers$",
+        "^full\\ remote\\ history\\ offers\\ retry\\ without\\ partial\\ person\\ balances$"
+      ],
+      "mobile/test/receipt_timestamp_test.dart": [
+        "^new\\ receipt\\ uses\\ insertion\\ time\\ instead\\ of\\ historical\\ table\\ default$"
       ]
     },
     "web": {
@@ -1385,6 +1409,12 @@
         "(?:^| )participant\\ identity\\ binding\\ generation\\ actor\\ proof\\ and\\ source\\ proof\\ stay\\ separate;\\ exact\\ deliberate\\ retry\\ retains\\ original\\ body$",
         "(?:^| )participant\\ identity\\ unavailable\\ and\\ raw\\ legacy\\ settlement\\ history\\ stay\\ explicit\\ rather\\ than\\ becoming\\ an\\ empty\\ result$",
         "(?:^| )participant\\ identity\\ confirmed\\ members\\ group\\ by\\ scoped\\ ID\\ while\\ same\\-label\\ unbound\\ occurrences\\ stay\\ separate$"
+      ],
+      "web-bill-viewer/src/components/__tests__/LazyBillSession.test.ts": [
+        "^lazy\\ viewer\\ session\\ across\\ refreshed\\ receipt\\ props\\ preserves\\ typed\\ join\\ text\\ when\\ refreshed\\ participants\\ have\\ a\\ new\\ array\\ identity$",
+        "^lazy\\ viewer\\ session\\ across\\ refreshed\\ receipt\\ props\\ preserves\\ deliberately\\ emptied\\ text\\ but\\ seeds\\ the\\ suggestion\\ for\\ a\\ different\\ tab$",
+        "^lazy\\ viewer\\ session\\ across\\ refreshed\\ receipt\\ props\\ revalidates\\ the\\ selected\\ occurrence\\ without\\ repeating\\ membership\\ recovery\\ on\\ graph\\ refresh$",
+        "^lazy\\ viewer\\ session\\ across\\ refreshed\\ receipt\\ props\\ clears\\ its\\ recovery\\ warning\\ after\\ successful\\ reauthentication\\ without\\ erasing\\ another\\ error$"
       ]
     },
     "postgres": {
@@ -1468,6 +1498,48 @@
         "^go\\-postgres\\.jsonl:backend/internal/bill/TestCreateAssignmentDecodeRequestContracts/wire2_duplicate_name_to_null$",
         "^go\\-postgres\\.jsonl:backend/internal/bill/TestCreateAssignmentDecodeRequestContracts/wire2_missing_ref$",
         "^go\\-postgres\\.jsonl:backend/internal/bill/TestCreateAssignmentDecodeRequestContracts/wire2_null_ref$"
+      ],
+      "backend/internal/bill/TestCreationRemaindersPreserveZeroShares": [
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestCreationRemaindersPreserveZeroShares/zero_tax_share$",
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestCreationRemaindersPreserveZeroShares/zero_total_share$"
+      ],
+      "backend/internal/bill/TestCreationInsertAuditsShares": [
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestCreationInsertAuditsShares/legacy_full$",
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestCreationInsertAuditsShares/partial_below_half_cent$",
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestCreationInsertAuditsShares/unclaimed$",
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestCreationInsertAuditsShares/fresh_reference_input$",
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestCreationInsertAuditsShares/overallocated$",
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestCreationInsertAuditsShares/negative_component$",
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestCreationInsertAuditsShares/nonfinite_component$",
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestCreationInsertAuditsShares/malformed_foreign_audit$",
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestCreationInsertAuditsShares/persisted_identity_not_fresh$"
+      ],
+      "backend/internal/bill/TestCreationRoundingRemainsAccountable": [
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestCreationRoundingRemainsAccountable/mobile_fifteen_percent_half_cent$",
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestCreationRoundingRemainsAccountable/documented_one_cent_tolerance$",
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestCreationRoundingRemainsAccountable/healthy_exact_cent$",
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestCreationRoundingRemainsAccountable/mobile_eighteen_percent$",
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestCreationRoundingRemainsAccountable/mobile_quarter_tip_with_tax$",
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestCreationRoundingRemainsAccountable/signed_discount_remains_accountable$"
+      ],
+      "backend/internal/bill/TestCentRemaindersPreserveClaimAndNameOrder": [
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestCentRemaindersPreserveClaimAndNameOrder/positive_name$",
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestCentRemaindersPreserveClaimAndNameOrder/negative_name$",
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestCentRemaindersPreserveClaimAndNameOrder/positive_recent$",
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestCentRemaindersPreserveClaimAndNameOrder/negative_recent$",
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestCentRemaindersPreserveClaimAndNameOrder/zero_before_negative_name$",
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestCentRemaindersPreserveClaimAndNameOrder/zero_recent_is_ineligible$",
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestCentRemaindersPreserveClaimAndNameOrder/eligible_recent_after_zero$"
+      ],
+      "backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts": [
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/positive$",
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/negative$",
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/min_int64$",
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/eligible_bulk_debit$",
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/eligible_tie_order$",
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/insufficient$",
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/negative_balance$",
+        "^go\\-postgres\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/eligible_small_reference$"
       ]
     },
     "backend": {
@@ -1544,6 +1616,48 @@
         "^go\\-default\\.jsonl:backend/internal/bill/TestCreateAssignmentDecodeRequestContracts/wire2_duplicate_name_to_null$",
         "^go\\-default\\.jsonl:backend/internal/bill/TestCreateAssignmentDecodeRequestContracts/wire2_missing_ref$",
         "^go\\-default\\.jsonl:backend/internal/bill/TestCreateAssignmentDecodeRequestContracts/wire2_null_ref$"
+      ],
+      "backend/internal/bill/TestCreationRemaindersPreserveZeroShares": [
+        "^go\\-default\\.jsonl:backend/internal/bill/TestCreationRemaindersPreserveZeroShares/zero_tax_share$",
+        "^go\\-default\\.jsonl:backend/internal/bill/TestCreationRemaindersPreserveZeroShares/zero_total_share$"
+      ],
+      "backend/internal/bill/TestCreationInsertAuditsShares": [
+        "^go\\-default\\.jsonl:backend/internal/bill/TestCreationInsertAuditsShares/legacy_full$",
+        "^go\\-default\\.jsonl:backend/internal/bill/TestCreationInsertAuditsShares/partial_below_half_cent$",
+        "^go\\-default\\.jsonl:backend/internal/bill/TestCreationInsertAuditsShares/unclaimed$",
+        "^go\\-default\\.jsonl:backend/internal/bill/TestCreationInsertAuditsShares/fresh_reference_input$",
+        "^go\\-default\\.jsonl:backend/internal/bill/TestCreationInsertAuditsShares/overallocated$",
+        "^go\\-default\\.jsonl:backend/internal/bill/TestCreationInsertAuditsShares/negative_component$",
+        "^go\\-default\\.jsonl:backend/internal/bill/TestCreationInsertAuditsShares/nonfinite_component$",
+        "^go\\-default\\.jsonl:backend/internal/bill/TestCreationInsertAuditsShares/malformed_foreign_audit$",
+        "^go\\-default\\.jsonl:backend/internal/bill/TestCreationInsertAuditsShares/persisted_identity_not_fresh$"
+      ],
+      "backend/internal/bill/TestCreationRoundingRemainsAccountable": [
+        "^go\\-default\\.jsonl:backend/internal/bill/TestCreationRoundingRemainsAccountable/mobile_fifteen_percent_half_cent$",
+        "^go\\-default\\.jsonl:backend/internal/bill/TestCreationRoundingRemainsAccountable/documented_one_cent_tolerance$",
+        "^go\\-default\\.jsonl:backend/internal/bill/TestCreationRoundingRemainsAccountable/healthy_exact_cent$",
+        "^go\\-default\\.jsonl:backend/internal/bill/TestCreationRoundingRemainsAccountable/mobile_eighteen_percent$",
+        "^go\\-default\\.jsonl:backend/internal/bill/TestCreationRoundingRemainsAccountable/mobile_quarter_tip_with_tax$",
+        "^go\\-default\\.jsonl:backend/internal/bill/TestCreationRoundingRemainsAccountable/signed_discount_remains_accountable$"
+      ],
+      "backend/internal/bill/TestCentRemaindersPreserveClaimAndNameOrder": [
+        "^go\\-default\\.jsonl:backend/internal/bill/TestCentRemaindersPreserveClaimAndNameOrder/positive_name$",
+        "^go\\-default\\.jsonl:backend/internal/bill/TestCentRemaindersPreserveClaimAndNameOrder/negative_name$",
+        "^go\\-default\\.jsonl:backend/internal/bill/TestCentRemaindersPreserveClaimAndNameOrder/positive_recent$",
+        "^go\\-default\\.jsonl:backend/internal/bill/TestCentRemaindersPreserveClaimAndNameOrder/negative_recent$",
+        "^go\\-default\\.jsonl:backend/internal/bill/TestCentRemaindersPreserveClaimAndNameOrder/zero_before_negative_name$",
+        "^go\\-default\\.jsonl:backend/internal/bill/TestCentRemaindersPreserveClaimAndNameOrder/zero_recent_is_ineligible$",
+        "^go\\-default\\.jsonl:backend/internal/bill/TestCentRemaindersPreserveClaimAndNameOrder/eligible_recent_after_zero$"
+      ],
+      "backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts": [
+        "^go\\-default\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/positive$",
+        "^go\\-default\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/negative$",
+        "^go\\-default\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/min_int64$",
+        "^go\\-default\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/eligible_bulk_debit$",
+        "^go\\-default\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/eligible_tie_order$",
+        "^go\\-default\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/insufficient$",
+        "^go\\-default\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/negative_balance$",
+        "^go\\-default\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/eligible_small_reference$"
       ]
     }
   },

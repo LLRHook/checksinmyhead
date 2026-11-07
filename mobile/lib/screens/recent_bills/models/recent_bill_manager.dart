@@ -71,7 +71,9 @@ class RecentBillsManager extends ChangeNotifier {
     super.dispose();
   }
 
-  Future<List<RecentBillModel>> getRecentBills() async {
+  Future<List<RecentBillModel>> getRecentBills({
+    bool requireComplete = false,
+  }) async {
     try {
       final recentBillsData = await _db.getRecentBills();
       final bills = recentBillsData.map(RecentBillModel.fromData).toList();
@@ -83,6 +85,7 @@ class RecentBillsManager extends ChangeNotifier {
       return bills;
     } catch (_) {
       debugPrint('Error fetching bills');
+      if (requireComplete) rethrow;
       return [];
     }
   }
@@ -132,15 +135,32 @@ class RecentBillsManager extends ChangeNotifier {
   /// the same trip dashboard as the device that added the receipt.
   Future<List<int>> importRemoteTabBills(
     int tabId,
-    List<dynamic> remoteBills,
-  ) async {
+    List<dynamic> remoteBills, {
+    int? localTabId,
+  }) => _db.transaction(() async {
     final localIds = <int>[];
     var localBills = await _db.getRecentBills();
+    final protectedIds = <int>{};
+    final remoteIds = <int>{};
+    for (final raw in remoteBills) {
+      if (raw is! Map<String, dynamic> ||
+          raw['id'] is! int ||
+          (raw['id'] as int) <= 0 ||
+          !remoteIds.add(raw['id'] as int)) {
+        throw const FormatException('Incomplete remote receipt list');
+      }
+      final id = raw['id'] as int;
+      final existing = _findLocalCopy(
+        localBills,
+        id,
+        _remoteTabBillMarker(tabId, id),
+      );
+      if (existing != null) protectedIds.add(existing.id);
+    }
 
-    for (final rawBill in remoteBills) {
-      if (rawBill is! Map<String, dynamic>) continue;
-      final remoteBillId = (rawBill['id'] as num?)?.toInt();
-      if (remoteBillId == null || remoteBillId <= 0) continue;
+    for (final raw in remoteBills) {
+      final rawBill = raw as Map<String, dynamic>;
+      final remoteBillId = rawBill['id'] as int;
 
       final marker = _remoteTabBillMarker(tabId, remoteBillId);
       final existing = _findLocalCopy(localBills, remoteBillId, marker);
@@ -256,6 +276,7 @@ class RecentBillsManager extends ChangeNotifier {
         exchangeRateSource:
             rawBill['exchange_rate_source'] as String? ?? 'native-usd',
         skipDuplicateCheck: true,
+        protectedReceiptIds: protectedIds,
       );
       final remoteUSD = (rawBill['usd_total'] as num?)?.toDouble();
       await _db.checkpointReceipt(
@@ -275,11 +296,22 @@ class RecentBillsManager extends ChangeNotifier {
         ),
       );
       localIds.add(importedId);
+      protectedIds.add(importedId);
       localBills = await _db.getRecentBills();
     }
 
+    if (localTabId != null) {
+      final tab = await _db.getTabById(localTabId);
+      if (tab == null || tab.backendId != tabId) {
+        throw StateError('Import destination unavailable');
+      }
+      await _db.updateTab(
+        localTabId,
+        TabsCompanion(billIds: Value(localIds.join(','))),
+      );
+    }
     return localIds;
-  }
+  });
 
   String _remoteTabBillMarker(int tabId, int billId) =>
       'billington://tab/$tabId/bill/$billId';

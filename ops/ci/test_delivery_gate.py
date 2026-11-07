@@ -621,6 +621,37 @@ class ManifestReportTests(unittest.TestCase):
                 'wire2_null_ref',
             ),
         }
+        followup_children = {'TestCreationRemaindersPreserveZeroShares': ('zero_tax_share', 'zero_total_share'),
+         'TestCreationInsertAuditsShares': ('legacy_full',
+                                            'partial_below_half_cent',
+                                            'unclaimed',
+                                            'fresh_reference_input',
+                                            'overallocated',
+                                            'negative_component',
+                                            'nonfinite_component',
+                                            'malformed_foreign_audit',
+                                            'persisted_identity_not_fresh'),
+         'TestCreationRoundingRemainsAccountable': ('mobile_fifteen_percent_half_cent',
+                                                    'documented_one_cent_tolerance',
+                                                    'healthy_exact_cent',
+                                                    'mobile_eighteen_percent',
+                                                    'mobile_quarter_tip_with_tax',
+                                                    'signed_discount_remains_accountable'),
+         'TestCentRemaindersPreserveClaimAndNameOrder': ('positive_name',
+                                                         'negative_name',
+                                                         'positive_recent',
+                                                         'negative_recent',
+                                                         'zero_before_negative_name',
+                                                         'zero_recent_is_ineligible',
+                                                         'eligible_recent_after_zero'),
+         'TestRemainderDistributionIsBoundedForExtremeCounts': ('positive',
+                                                                'negative',
+                                                                'min_int64',
+                                                                'eligible_bulk_debit',
+                                                                'eligible_tie_order',
+                                                                'insufficient',
+                                                                'negative_balance',
+                                                                'eligible_small_reference')}
         packages = sorted({f.rsplit('/', 1)[0] for f in families})
         for package in packages:
             events.append({'Action': 'start', 'Package': package})
@@ -631,7 +662,7 @@ class ManifestReportTests(unittest.TestCase):
                     if family == 'backend/migrations/TestMigrationOutcomeObservation':
                         children = migration_children
                     elif package == 'backend/internal/bill':
-                        children = assignment_children.get(test, ())
+                        children = assignment_children.get(test, followup_children.get(test, ()))
                     else:
                         children = ()
                     for child in children:
@@ -661,6 +692,8 @@ class ManifestReportTests(unittest.TestCase):
             for parent in ('TestCreateAssignmentDecodeDifferential',
                            'TestCreateAssignmentDecodeReceiverSequence',
                            'TestCreateAssignmentDecodeRequestContracts'):
+                self.assertIn('backend/internal/bill/' + parent, families)
+            for parent in ('TestCreationRemaindersPreserveZeroShares', 'TestCreationInsertAuditsShares', 'TestCreationRoundingRemainsAccountable'):
                 self.assertIn('backend/internal/bill/' + parent, families)
             events = self.go_events(families)
             children = [event['Test'] for event in events
@@ -700,6 +733,24 @@ class ManifestReportTests(unittest.TestCase):
                                       if event.get('Test') == parent], ['run', 'pass'])
                     self.assertEqual({event['Test'] for event in selected if event['Action'] == 'run'
                                       and event.get('Test', '').startswith(assignment_prefixes)}, set(assignment_children) - {absent})
+                    path = self.write(filename, selected, True)
+                    gate.validate_cases(gate.read_report('go', path)[1], families)
+                    with self.assertRaisesRegex(gate.Rejected, 'missing mandatory test registration'):
+                        gate.summarize(row, [('go', str(path))], self.manifest, B)
+
+            followup_prefixes = ('TestCreationRemaindersPreserveZeroShares/', 'TestCreationInsertAuditsShares/',
+                                 'TestCreationRoundingRemainsAccountable/', 'TestCentRemaindersPreserveClaimAndNameOrder/',
+                                 'TestRemainderDistributionIsBoundedForExtremeCounts/')
+            followup_children = [child for child in children if child.startswith(followup_prefixes)]
+            self.assertEqual(len(followup_children), 32)
+            self.assertEqual(len(set(followup_children)), 32)
+            for absent in followup_children:
+                with self.subTest(row=row, absent_accounting_child=absent):
+                    selected = [event for event in events if event.get('Test') != absent]
+                    parent = absent.rsplit('/', 1)[0]
+                    self.assertEqual([event['Action'] for event in selected if event.get('Test') == parent], ['run', 'pass'])
+                    self.assertEqual({event['Test'] for event in selected if event['Action'] == 'run'
+                                      and event.get('Test', '').startswith(followup_prefixes)}, set(followup_children) - {absent})
                     path = self.write(filename, selected, True)
                     gate.validate_cases(gate.read_report('go', path)[1], families)
                     with self.assertRaisesRegex(gate.Rejected, 'missing mandatory test registration'):
@@ -832,6 +883,68 @@ class ManifestReportTests(unittest.TestCase):
             with self.subTest(row='mobile', omitted_quality_literal=absent), self.assertRaisesRegex(
                     gate.Rejected, 'missing mandatory test registration'):
                 gate.summarize('mobile', [('flutter', str(quality_report(absent)))], quality_manifest, B)
+        # Independent source literals; keep every inherited family present while
+        # isolating each new required-selection owner from unrelated matchers.
+        followup_titles = [('flutter',
+          'mobile',
+          'mobile/test/tab_import_capacity_test.dart',
+          ('thirty remote receipts retain every returned local ID',
+           'thirty one remote receipts fail atomically without dangling IDs',
+           'pending history survives a failed multi-receipt import',
+           'referenced history survives a failed multi-receipt import',
+           'a later existing import target cannot be evicted by an earlier new row',
+           'malformed later receipt rolls back earlier refreshed content',
+           'tab reference checkpoint failure rolls back the entire import',
+           'invalid remote IDs never become a partial receipt list',
+           'local history read error clears loading and retry recovers',
+           'full remote history offers retry without partial person balances')),
+         ('flutter',
+          'mobile',
+          'mobile/test/receipt_timestamp_test.dart',
+          ('new receipt uses insertion time instead of historical table default',)),
+         ('vitest',
+          'web',
+          'web-bill-viewer/src/components/__tests__/LazyBillSession.test.ts',
+          ('lazy viewer session across refreshed receipt props preserves typed join text when refreshed '
+           'participants have a new array identity',
+           'lazy viewer session across refreshed receipt props preserves deliberately emptied text but seeds the '
+           'suggestion for a different tab',
+           'lazy viewer session across refreshed receipt props revalidates the selected occurrence without '
+           'repeating membership recovery on graph refresh',
+           'lazy viewer session across refreshed receipt props clears its recovery warning after successful '
+           'reauthentication without erasing another error'))]
+        for kind, row, family, titles in followup_titles:
+            focused = {'rows': {row: self.manifest['rows'][row]},
+                       'reports': {row: self.manifest['reports'][row]},
+                       'required_selections': {row: {family: self.manifest['required_selections'][row][family]}}}
+            def followup_report(absent=None):
+                if kind == 'flutter':
+                    events, test_id = [], 0
+                    for suite_id, selected_family in enumerate(focused['rows'][row]):
+                        events.append({'type': 'suite', 'suite': {'id': suite_id, 'path': '/tmp/candidate/' + selected_family}})
+                        cases = ('independent family-presence witness',) + titles if selected_family == family else ('inherited family registration',)
+                        for title in cases:
+                            if selected_family == family and title == absent:
+                                continue
+                            events.extend([{'type': 'testStart', 'test': {'id': test_id, 'name': title, 'suiteID': suite_id}},
+                                           {'type': 'testDone', 'testID': test_id, 'result': 'success', 'skipped': False}])
+                            test_id += 1
+                    return self.write('flutter.jsonl', events + [{'type': 'done', 'success': True}], True)
+                suites = []
+                for selected_family in focused['rows'][row]:
+                    cases = ('independent family-presence witness',) + titles if selected_family == family else ('inherited family registration',)
+                    assertions = [{'fullName': title, 'status': 'passed'} for title in cases
+                                  if not (selected_family == family and title == absent)]
+                    suites.append({'name': '/tmp/candidate/' + selected_family, 'assertionResults': assertions})
+                count = sum(len(suite['assertionResults']) for suite in suites)
+                return self.write('vitest.json', {'success': True, 'numTotalTests': count,
+                                  'numPassedTests': count, 'testResults': suites})
+            self.assertEqual(gate.summarize(row, [(kind, str(followup_report()))], focused, B)['passed'],
+                             len(focused['rows'][row]) + len(titles))
+            for absent in titles:
+                with self.subTest(row=row, omitted_followup_literal=absent), self.assertRaisesRegex(
+                        gate.Rejected, 'missing mandatory test registration'):
+                    gate.summarize(row, [(kind, str(followup_report(absent)))], focused, B)
         for defect in ('missing-done','after-done','duplicate-id','failed-done','unknown-event'):
             events=[{'type':'suite','suite':{'id':1,'path':'/tmp/mobile/test/x.dart'}},
                     {'type':'testStart','test':{'id':1,'name':'x','suiteID':1}},

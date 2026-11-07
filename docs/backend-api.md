@@ -293,8 +293,13 @@ Share projections are optional compatibility input, validated against item assig
 and the mobile formulas; raw fractional tax/tip and cent-rounded totals are supported.
 The server derives stored shares and non-null item breakdowns using the existing cent
 allocation. Remainder distribution is bounded by participant count and retains the
-existing most-recent-claim, then alphabetical-name order. Zero-share participants and
-repeated item descriptions are preserved.
+existing most-recent-claim, then alphabetical-name order among eligible shares.
+Negative adjustments debit only positive cent balances; insufficient balances fail
+instead of creating negative obligations. Zero-share participants and repeated item
+descriptions are preserved. The frozen USD share audit accepts the same accounting
+tolerance as creation: a rounded allocation just above the raw total uses the frozen
+receipt target, while genuinely partial claims are never scaled to the full receipt.
+The persistence preflight checks both the frozen receipt and its share allocation.
 Historical saved uploads with no items or no assignments can supply zero-component
 share projections whose totals cover the receipt; the server derives their breakdowns.
 

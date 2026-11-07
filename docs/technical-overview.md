@@ -271,10 +271,19 @@ seams expose durable publication, valuation and attachment results. No time/cont
 deduplication or newest-row identity lookup remains on that path. Imported tab
 snapshots cannot acquire source/publication authority. Pending/referenced receipts
 survive capacity handling; inability to evict safely fails the new transaction.
+Remote tab imports also protect every existing and newly imported receipt in that
+pass. The complete import and local tab-ID checkpoint share one transaction; a full
+history or parse/checkpoint failure rolls it back without dangling IDs or a partial
+balance. Capacity remains30. New durable receipts supply an insertion timestamp
+instead of inheriting an old table's literal default; historical rows are not backfilled.
 Save/resume rejects mismatched snapshot/wire versions before a network mutation,
 without replacing the stored bytes or key. Finalized tab history reads retain their
 review status and exact recorded settlement rows even when no receipt list is
 available; failed reads offer an explicit retry and never imply an empty balance.
+Receipt read/cache/parse failures always clear loading and withhold person totals and
+finalization until a complete read succeeds. Browser join text is owned by the current
+bill/tab session; participant-graph refresh only revalidates selection, while member
+recovery follows tab/token changes and clears only its own authentication warning.
 Only valid ready/legacy snapshots retain the existing exact-row paid control.
 Mobile occurrence creation merges the typed response before selecting its ID; an
 uncertain explicit retry keeps the original client reference. Browser review receipts
