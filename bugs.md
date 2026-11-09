@@ -312,7 +312,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Read current policy endpoint/source and public listing. TestFlight success does not prove public distribution; private availability remains unverified.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** PARTIAL (repo side only). The API serves MINIMUM_SUPPORTED_APP_VERSION only when every release in the reviewed, compiled-in backend/internal/versionpolicy/public_availability.json (per platform/storefront; ios us/ca/gb = 1.4.0, verified 2026-11-09) is at least that version; unset, malformed or too-high values and a missing or invalid record serve the non-blocking 0.0.0 with one fixed startup log line. Source default is 0.0.0 (was 2.0.3). Regression tests failed first on the old source; go test ./internal/versionpolicy 10 families pass; client fail-open proven by 12 Dart tests (statuses, transport errors, bodies, timeout, splash). REMAINS: (1) owner deploys this build and reviews MINIMUM_SUPPORTED_APP_VERSION on the host (production still serves 2.0.3; no env change was made); (2) owner confirms the full targeted storefront list in App Store Connect and updates the record before any raise; (3) Expected bullet 2: an installed public store binary exercising live API, invite and payment compatibility with version/build/storefront recorded was not run.
+- **Docs:** docs/backend-api.md (GET /api/app/version-policy); backend/README.md; ops/ci/README.md; docs/reviews/2026-11-09-version-policy-availability.md
 
 ### [BUG-1793644512] Reconcile stale operational and product documentation
 - [ ] **Severity:** med

@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "releases": [
+    {
+      "platform": "ios",
+      "storefront": "us",
+      "app_id": "6746379502",
+      "version": "1.4.0",
+      "minimum_os": "15.5",
+      "released_on": "2026-08-26",
+      "verified_on": "2026-11-09",
+      "evidence": "https://itunes.apple.com/lookup?id=6746379502&country=us"
+    },
+    {
+      "platform": "ios",
+      "storefront": "ca",
+      "app_id": "6746379502",
+      "version": "1.4.0",
+      "minimum_os": "15.5",
+      "released_on": "2026-08-26",
+      "verified_on": "2026-11-09",
+      "evidence": "https://itunes.apple.com/lookup?id=6746379502&country=ca"
+    },
+    {
+      "platform": "ios",
+      "storefront": "gb",
+      "app_id": "6746379502",
+      "version": "1.4.0",
+      "minimum_os": "15.5",
+      "released_on": "2026-08-26",
+      "verified_on": "2026-11-09",
+      "evidence": "https://itunes.apple.com/lookup?id=6746379502&country=gb"
+    }
+  ]
+}

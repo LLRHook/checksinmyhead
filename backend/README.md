@@ -395,7 +395,7 @@ server once keyed clients are active. Database restore is a separate verified pr
 | `DB_NAME` | `billington_data` | Database name |
 | `DB_USER` | `billington_admin` | Database user |
 | `DB_PASSWORD` | `changeme` | Database password |
-| `MINIMUM_SUPPORTED_APP_VERSION` | `2.0.3` | Lowest mobile version allowed to continue after the startup policy check (numeric `major.minor.patch`) |
+| `MINIMUM_SUPPORTED_APP_VERSION` | unset (non-blocking `0.0.0`) | Lowest mobile version allowed to continue after the startup policy check (numeric `major.minor.patch`); served only when every release in `internal/versionpolicy/public_availability.json` satisfies it |
 | `APP_STORE_URL` | Billington App Store page | Store destination returned with the public version policy |
 
 Currency creation, USD preview and display conversion share one required Frankfurter
@@ -429,7 +429,7 @@ policy advertises only `{version:1,key_format:"base64url-32"}` under
 [API recovery contract](../docs/backend-api.md#post-apibills) and
 [focused replay verification](../docs/backend-replay-verification.md).
 
-The public `GET /api/app/version-policy` endpoint is consumed at app startup. Raise `MINIMUM_SUPPORTED_APP_VERSION` only after the corresponding update is available in the store, and use a three-part numeric version such as `2.1.0`. The app fails open if the endpoint times out or returns invalid data; the version check is a user-facing compatibility gate, not an authorization control. Version policy responses are sent with `Cache-Control: no-store`.
+The public `GET /api/app/version-policy` endpoint is consumed at app startup. The source default is the non-blocking minimum `0.0.0`. A configured `MINIMUM_SUPPORTED_APP_VERSION` is served only when every release in the reviewed, compiled-in record `internal/versionpolicy/public_availability.json` (one entry per targeted platform and storefront) is at least that version; an unset, malformed or too-high value, or a missing or invalid record, serves `0.0.0` and logs one fixed startup line. To raise the minimum, first update that record in a reviewed change once each storefront serves the release, deploy, then set the variable and confirm the endpoint returns it; see [the endpoint contract](../docs/backend-api.md#get-apiappversion-policy). Use a three-part numeric version such as `2.1.0`. The app fails open if the endpoint times out or returns invalid data; the version check is a user-facing compatibility gate, not an authorization control. Version policy responses are sent with `Cache-Control: no-store`.
 
 Request logs intentionally omit query strings because share and member bearer tokens may appear in them. Do not change the request logger to include `RequestURI`, `RawQuery`, or Gin's default `Path` field.
 

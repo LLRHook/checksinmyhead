@@ -319,6 +319,13 @@ explicit consent permits bounded cancellation/unlock and optional same-build
 resubmission. Verification-only performs GET eligibility checks with in-memory JWT
 signing, without credential files, signing, upload, tags or ASC writes.
 
+Promotion and its readback are not public availability. A TestFlight, staged,
+in-review or phased build never lets the app minimum rise: the API serves
+`MINIMUM_SUPPORTED_APP_VERSION` only within the reviewed store record described in
+[the version-policy contract](../../docs/backend-api.md#get-apiappversion-policy).
+Updating that record after each targeted storefront serves the release, and then
+setting the variable, are separate owner steps; no delivery target performs either.
+
 The lasting offline selections are `test_ios_artifact.py` (actual helper/ZIP/API/
 workflow/signing-lifecycle fixtures) and `asc_delivery_test.rb` (actual ASC/state/
 entry-point fixtures), registered additively in the automation manifest/reports.
