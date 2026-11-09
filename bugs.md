@@ -868,3 +868,111 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** in-progress
 - **Fix:** Source fix complete; hosted confirmation open. The three runner.temp paths moved, values unchanged, from job env to the env of the steps that read them (signed-IPA action, upload, receipt). New GraphTests.test_workflow_expressions_use_only_documented_contexts applies GitHub's context-availability table and reusable-call contract to all nine workflows: it fails on the e0a2c18 file with Unrecognized named-value 'runner' at jobs.origin.env.IPA_DIR and passes now (28 rejected mutations, 4 accepted controls). validate_ios_graph binds each path to its reading steps and the authority step third and unconditional (7 mutations); each iOS target refuses empty, absent or disabled RELEASE_POLICY before any authenticated read. 43 gate, 17 iOS and 5+18 Ruby methods pass; automation row 1,422 records, 0 failed or skipped. testflight.yml call, inputs and six secrets unchanged. REMAINS: GitHub's own parse is unobserved until the first push carrying this file; accept when that push creates no failed ios-origin.yml run, then set fixed-pending-migration. actionlint not installed; nothing dispatched.
 - **Docs:** ops/ci/README.md; docs/reviews/2026-11-09-delivery-workflows.md
+
+### [BUG-1794264953] Read receipts an old writer creates after identity migration 0003
+- [ ] **Severity:** high
+- **Area:** backend, persistence, rollout
+- **File(s):** backend/internal/bill/repository.go; backend/migrations/0003_participant_identity.sql; docs/reviews/2026-11-09-reader-ddl.md
+- **Observation:** With the deployed pre-registry revision 81a564f built from history and the real adopt+0002+0003 migration applied under it, a bill that old writer creates after 0003 gets the column defaults (label='', no ordinal). The current reader then returns 409 client_upgrade_required for that two-participant bill on the unversioned and wire1 contracts; wire2 reads it as legacy_review. Bills created before the migration read 200. Restart and connection replacement do not change this.
+- **Expected:** A receipt written by a predecessor during or after the schema step stays readable by every supported client contract, or the rollout provably excludes old writers before 0003 and that exclusion is checked. No historical row is rewritten without a reviewed backfill.
+- **Req:** FEAT-1793644505 migration/read compatibility; BUG-1793861425 follow-up
+- **Depends on:** BUG-1793861425
+- **Repro / Notes:** docs/reviews/2026-11-09-reader-ddl.md, section on overlap. Synthetic PG17.11 owned schemas only. The delivery gate now refuses a schema step while such a revision answers /health, which avoids the case when the owner stops the old service first; this ticket covers the data path itself.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794264955] Make the device and published per-person amounts agree on odd cents
+- [ ] **Severity:** med
+- **Area:** mobile, backend, accounting
+- **File(s):** mobile/lib/screens/quick_split (allocation); backend/internal/bill/{shares,accounting}.go; docs/reviews/2026-11-09-mobile-save-journey.md
+- **Observation:** The phone floors totals and gives leftover cents in entry order; the server rounds subtotal, tax and tip separately and assigns remainders in label order. For 10.00 + 0.01 tax + 0.01 tip split evenly between Alex and Sam the phone shows 5.01 and 5.01 while the server stores Alex 5.00 and Sam 5.02 (one-off prepareCreation probe, not committed). The earlier half-cent case in BUG-1793644500's log is one instance of the same difference.
+- **Expected:** For every accepted receipt the amounts shown on the phone before publishing equal the published per-person amounts, with one documented rule and a shared fixture run by Go and Dart. Published and historical receipts are not rewritten. A symmetric split of a symmetric receipt differs by at most one cent between people.
+- **Req:** BUG-1793644500 Expected (currency-correct bill across save); docs/reviews/2026-11-03-client-v1-bridge.md
+- **Depends on:** owner decision: device adopts the server rule (recommended), a versioned server rule, or show published amounts after publish
+- **Repro / Notes:** Options and costs: docs/reviews/2026-11-09-mobile-save-journey.md. The 5.00/5.02 server result needs a committed regression test before any change.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794264956] Remove or gate the second TestFlight uploader outside the delivery gate
+- [ ] **Severity:** high
+- **Area:** ci, security, delivery
+- **File(s):** branch victorwake-testflight-runner: .github/workflows/victorwake-testflight.yml; repository secrets ASC_KEY_ID, ASC_ISSUER_ID, ASC_API_KEY_P8, BUILD_CERTIFICATE_BASE64, P12_PASSWORD
+- **Observation:** Branch victorwake-testflight-runner carries victorwake-testflight.yml (bundle com.victorivanov.victorwake), triggered by a push to that branch or by dispatch. It reads repository-level App Store Connect and signing secrets and uploads to TestFlight without the six-row gate, the RELEASE_POLICY check or a protected environment. Last runs: failure on 2026-10-29, success on 2026-07-06.
+- **Expected:** No workflow on any branch can sign or upload with this repository's credentials outside the gated publishers: the branch workflow is removed or moved to its own repository, and signing/ASC secrets live only in main-restricted environments. Read-only GitHub API checks show no such workflow and no repository-level signing secret.
+- **Req:** BUG-1793644501 Expected (no publication outside the gate); SR GATE/RELEASE
+- **Depends on:** owner action in GitHub settings; nothing in this repository's main branch can remove another branch's workflow or a secret
+- **Repro / Notes:** docs/reviews/2026-11-09-delivery-workflows.md. Read-only: gh api repos/LLRHook/checksinmyhead/actions/workflows; gh api repos/LLRHook/checksinmyhead/actions/secrets. Nothing was dispatched or changed.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794264957] Reject runner cases that the gate manifest does not select
+- [ ] **Severity:** med
+- **Area:** ci, delivery
+- **File(s):** ops/ci/delivery_gate.py; ops/ci/case_manifest.json; ops/ci/test_delivery_gate.py
+- **Observation:** Nothing compares ops/ci/case_manifest.json with the source it describes. A new Go, Dart or web test that nobody registers still runs and passes, but the gate does not require it, so deleting or skipping it later is not detected. The 2026-11-09 S4 review found one such unselected loop (receipt_native_io_test.dart, four modes).
+- **Expected:** The report adapters reject a runner case or family that no manifest selection matches, per row, with a controller test that fails when a registration is removed. Existing families keep passing unchanged.
+- **Req:** BUG-1793644501 Expected (all relevant checks); ops/ci/README.md source-grounded manifest
+- **Depends on:** none
+- **Repro / Notes:** docs/reviews/2026-11-09-delivery-workflows.md, manifest drift. Requiring every loop expansion (134 mobile records) is the stricter alternative.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794264959] Decide the fate of the tab photo upload that released 1.4.0 still offers
+- [ ] **Severity:** med
+- **Area:** backend, product, compatibility
+- **File(s):** backend (tab image routes removed after 1.4.0); mobile 1.4.0 release source; docs/privacy.md
+- **Observation:** The public App Store build 1.4.0 has a tab receipt-photo upload. The deployed API answers GET /api/tabs/1/images with 404 while GET /api/tabs/1 answers 403, so the route is absent in the deployed revision. Whether photos uploaded earlier are still stored is unknown.
+- **Expected:** An owner decision is recorded: either the released client's photo flow is served again, or it is declared retired, with the user-visible failure in 1.4.0 known and the retention or deletion of earlier photos stated in docs/privacy.md from production evidence.
+- **Req:** BUG-1793644510 (disclosures match released behavior); TR release availability
+- **Depends on:** owner evidence about stored photos in production
+- **Repro / Notes:** docs/reviews/2026-11-09-privacy-disclosures.md (read-only GETs on 2026-11-09). Find the 1.4.0 source from mobile/pubspec.yaml history.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794264960] Keep a long tab name inside the Tab detail app bar
+- [ ] **Severity:** low
+- **Area:** mobile, ui, layout
+- **File(s):** mobile/lib/screens/tabs/tab_detail_screen.dart (app-bar title Row)
+- **Observation:** The Tab detail title is an unflexed Text(_currentTab.name) inside a Row. A 21-character tab name overflowed the row by 47 px on a 320-wide display in a widget test run.
+- **Expected:** Tab names up to the accepted maximum length ellipsize or wrap inside the app bar at 320, 375 and 390 widths and at large text sizes, with no RenderFlex overflow and the actions still reachable; a widget test covers it.
+- **Req:** DESIGN_SYSTEM.md responsive layout
+- **Depends on:** none
+- **Repro / Notes:** Pump TabDetailScreen at 320x568 with a 21-character name; see docs/reviews/2026-11-09-finalize-sheet-layout.md.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794264961] Make the runtime probe's DNS cancellation check deterministic
+- [ ] **Severity:** med
+- **Area:** verification, runtime
+- **File(s):** scripts/runtime-probe/main.go; scripts/verify_static_runtime.py
+- **Observation:** In four static runtime harness runs on images built from the sweep branch, three passed 75/75 and one stopped at check 28: bill-runtime-probe reported dns_cancellation false after 256 ms. Another run passed the same assertion at 256 ms, so elapsed time was not the failing term. The probe does not record which term failed; it appears to read the lookup context's error immediately after the resolver returns.
+- **Expected:** The probe records each term of the cancellation assertion and passes or fails for a stated reason; repeated runs on the same images give the same result. Timing bounds stay as they are.
+- **Req:** BUG-1793652309 runtime verification; VERIFICATION.md static image harness
+- **Depends on:** none
+- **Repro / Notes:** docs/reviews/2026-11-09-assignment-update-decode.md, static runtime runs. The cause is inferred from source, not captured. The earlier web 1.619804s > 1.5s miss did not recur (1.033-1.045s).
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794264963] Measure and bound the participant-reference assignment update at maximum size
+- [ ] **Severity:** low
+- **Area:** backend, performance
+- **File(s):** backend/internal/bill/{assignment_request,assignments}.go; backend/cmd/bill-service (a1perf harness)
+- **Observation:** Requests with X-Billington-Identity-Version: 2 still use the buffered decoder. The harness does not measure that route. A one-off benchmark of the same 500 x 100 shape with participant_id (1.86 MB body, not committed) took 26.2-27.2 ms and 21.0 MB per request, against 5.8-6.0 ms for the name-based route after BUG-1793644507.
+- **Expected:** The harness measures the participant-reference route at the maximum accepted size against an approved target, and the route meets it or the miss is recorded as RED. No public error, limit or ordering changes.
+- **Req:** BUG-1793644507 Expected (bounded request resources); FEAT-1793644502
+- **Depends on:** owner approval of a target for this route
+- **Repro / Notes:** docs/reviews/2026-11-09-assignment-update-decode.md. No target exists for this route today, so nothing is red; this ticket asks for the measurement.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794264964] Let the healthcheck mode test run when port 8080 is busy
+- [ ] **Severity:** low
+- **Area:** tests, tooling
+- **File(s):** backend/internal/healthcheck/healthcheck_test.go; backend/cmd/{bill-service,web-service}/main.go
+- **Observation:** TestServiceHealthcheckMode/bill-service listens on the fixed address 127.0.0.1:8080 because the binary's --healthcheck mode probes that address. When another process holds the port the ordinary Go row fails locally with: listen tcp 127.0.0.1:8080: bind: address already in use. On 2026-11-09 this was the only failure in go test -race ./... (1553 pass, 2 fail); the same package passes in a container with its own network namespace and in hosted CI.
+- **Expected:** The ordinary Go row gives the same result whether or not port 8080 is free on the host, without weakening what the test proves about the shipped --healthcheck contract (for example by running the probe subprocess in a way that does not need the host port, or by failing with an explicit prerequisite message).
+- **Req:** VERIFICATION.md Stage 2 (no environment-dependent failures)
+- **Depends on:** none
+- **Repro / Notes:** Hold 127.0.0.1:8080, then cd backend && go test -race -count=1 ./internal/healthcheck. Container control: docker run the pinned golang builder image with the same command.
+- **Bump:** patch
+- **Status:** open
