@@ -130,6 +130,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Log:**
   - 2026-11-04 Validation: Primary-source discrepancies and npm/Vite warnings retained in dated evidence. Prior Flutter/runtime follow-ups belong to BUG-1793652308/2309. No hosting mutation, deployment, alert closure or whole security/integrated/release pass claimed.
   - 2026-11-04 Maintenance: Condense inherited oversized tracker through official writer; historical fields remain in Git and dated reports.
+  - 2026-11-09 Verification: PASS at e0a2c18: npm ls next = next@16.4.5; npm ci, biome lint (55 files), vitest 102 pass/0 fail/0 skip (ticket's 54 is outdated), next build, npm audit --audit-level=moderate 0 vulnerabilities; read-only gh: open Dependabot alerts 0; alerts 67, 68, 69 state=fixed (fixed_at 2026-11-07); revert check not run: dependency pin, no regression test; unproven: deployed version; not run here: hosted deployment check
 
 ### [BUG-1793644503] Patch the Go build toolchain for GO-2026-6809
 - [x] **Severity:** high
@@ -213,6 +214,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** in-progress
 - **Fix:** Tab-list removal now identifies this device and acknowledges actual Drift success. The manager returns bool and refuses synced/finalized bill-list removal; their cards omit removal swipes/instructions. Local-only active removal keeps history; cancel/DB failure retains the card. Before tests reproduced synced mutation/swipe; final Flutter480/524 preserves467/510 originals, with13 focused cases including file-backed reopen and an independent local view. Real owned API/PG graph stays USD128 and genuine Leave remains separate. No shared-delete, signed/two-device or release claim; independent/root pending.
 - **Docs:** docs/privacy.md; VERIFICATION.md; docs/reviews/2026-11-05-public-web.md
+- **Log:**
+  - 2026-11-09 Verification: PASS: 13 named Dart tests in mobile/test/local_tab_removal_test.dart (local removal retains receipt, synced removal refused, no swipe on synced bill, rejected delete keeps Drift row, cancel no mutation, failed removal feedback, file-backed reopen, independent local view; Remove from this device wording in lib/screens/tabs/tabs_screen.dart) at e0a2c18; full mobile suite 593 visible pass/0 fail/0 skip; revert check not run: not in required set; unproven: two-device agreement and authorized server delete for creator actions (no test or API route exercised); not run here: signed/two-device/native
 
 ### [BUG-1793644507] Bound public API request resources
 - [ ] **Severity:** med
@@ -512,6 +515,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Log:**
   - 2026-11-02 Validation: RUNTIME_LOCK_APPROVAL.md deliverables 2-3 explicitly supersede the Debian12 hold using current official deprecation/support docs. Runtime digest and amd64/arm64 manifests reverified before build; Cosign3.1.4 keyless verification exit0 with exact official issuer/identity and transparency-log proof. No CGO, framework, provider, schema, auth, cloud or publication change. Own TLS fixture resources/certificates fully cleaned; shared PG17.11 fixture retained. Lead scope=affected clean=no. Raw .vv/local-gate/runtime-lock/ records retain initial diagnostic failures, control experiments and final passing journeys; package findings and preexisting BUG-1793644507 remain unwaived.
   - 2026-11-03 Validation: November 3 SECURITY_INVENTORY_APPROVAL.md conditional static exception exercised: current supported signed index and unchanged Go security release reverified before final build; exact final images/binaries/scanner archive identities tied together. Local owned PG17.11 TLS/DNS fixtures prove actual production CGO0 behavior, one-query readiness, negative trust/host/authorization/ledger/DB controls and Docker health failure/recovery. Preserve three setup-failed harness iterations plus passing candidate-v4/final; no app source rewrite. Shared driver PG and normal volumes retained. Raw .vv/local-gate/security-inventory/ and dated note contain current counts/sizes/packages/signatures/ELF/commands and remaining limits.
+  - 2026-11-09 Verification: PARTIAL at e0a2c18: static checks pass for both Dockerfiles (static-debian13:nonroot@sha256:25ac8f0c...8329, CGO_ENABLED=0, USER 65532:65532, exec-form HEALTHCHECK); backend/internal/healthcheck: TestProbeResponses 10/10, TestProbeRejectsRedirect, TestProbeTimeout, TestProbeTransportFailure pass, TestServiceHealthcheckMode/web-service pass but TestServiceHealthcheckMode/bill-service FAILED with 'listen tcp 127.0.0.1:8080: bind: address already in use' (environmental, port 8080 held by another project's Docker, not a code verdict); revert check not run: infra/image ticket; unproven: bill-service --healthcheck entrypoint mode on this machine, nonroot runtime, DB TLS, DNS, Docker health outage/recovery, image scans; not run here: scripts/verify_static_runtime.py (no billington-bill:validation or billington-web:validation images for this commit and no BILLINGTON_RUNTIME_TEST_POSTGRES_IMAGE set), hosting NSS
 
 ### [BUG-1793714791] Clear unused advisory matches in the required Go module inventory
 - [x] **Severity:** med
@@ -682,6 +686,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** in-progress
 - **Fix:** Horizontal SafeArea/track-relative fill: final19/analyze0 and combined3460 Flutter567visible/573canonicalPASS. Native/default-font/integrated capture pending; separate Finalize overflow not fixed.
 - **Docs:** DESIGN_SYSTEM.md; docs/reviews/2026-11-06-{layout-insets,combined-flutter-acceptance}.md; exact19 canonical cases. Separate Finalize short-height overflow remains open.
+- **Log:**
+  - 2026-11-09 Verification: PASS: 13 named Dart tests in mobile/test/side_inset_layout_test.dart (Assign Items right/left/wide inset keeps text and progress bar, same amounts with or without insets, full width on phone/tablet; Enter Bill Details and Tab detail inset and full-width groups) at e0a2c18; full mobile suite 593 visible pass/0 fail/0 skip; flutter analyze no issues; revert check failed as intended (item_assignment_screen.dart SafeArea left/right disabled: 3 of 6 Assign Items tests failed, file restored, tree clean; Entry and Tab not individually reverted); unproven: none in-repo; not run here: native Duo/default-font capture, separate Finalize overflow
 
 ### [BUG-1793935715] Keep the Finalize confirmation usable on short displays
 - [x] **Severity:** med
@@ -737,6 +743,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Fix:** Adopt the exact reviewed nine-lib/T1 source subset with saved-color provenance and existing composited-ink ownership. Automatic Linux mobile is the selected functional route;588 canonical records EXPECTED only. No native, physical accessibility,95-quality or release acceptance.
 - **Docs:** docs/reviews/2026-11-06-ui-quality-candidate.md; DESIGN_SYSTEM.md; mobile/README.md
 - **Cross-ref:** FEAT-1793644509 (acceptance and status unchanged)
+- **Log:**
+  - 2026-11-09 Verification: PASS: 8 required literals present and passing in mobile/test/screenshot_quality_test.dart (3 Bill Details identity, 4 Person color ink, Participant visual controls auto-added owner keeps saved color with fresh occurrence refs) at e0a2c18; full mobile suite 593 visible pass/0 fail/0 skip; revert check not run: multi-file source change; unproven: that changed light-theme callsites reuse AppTheme.foregroundOn (source review only, no test asserts it); not run here: native/capture, accessibility
 
 ### [BUG-1793996843] Show four actual assignees before avatar overflow
 - [ ] **Severity:** med
@@ -755,6 +763,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Cross-ref:** FEAT-1793644509 (acceptance and status unchanged)
 - **Log:**
   - 2026-11-06 CI proof correction: Automatic CI42289112203/mobile128137633416 at a962 failed the overflow test global A finder after four CircleAvatar and +2 checks passed: it matched the11px avatar and18px other item content. This is a test-proof scope defect, not a demonstrated production UI defect. Apply exact09e54ebc correction to scope all ABC/+2/noD finders to CircleAvatar descendants, retaining every assertion and literal ID; no local test/formatter or retry. Corrective source-triggered CI acceptance remains pending; status in-progress and native/capture/quality limits unchanged. See docs/reviews/2026-11-06-ui-quality-candidate.md.
+  - 2026-11-09 Verification: PASS: both required literals present and passing (Assignee stack shows four people instead of a +1; Assignee stack summarises everyone past four) in mobile/test/screenshot_quality_test.dart at e0a2c18; full mobile suite 593 visible pass/0 fail/0 skip; revert check failed as intended (item_card.dart hasOverflow >4 to >3: shows four people test failed, file restored, tree clean); unproven: enlarged-text avatar behaviour, preservation of toggles/amounts beyond the two named tests; not run here: native/capture
 
 ### [BUG-1794045425] Preserve accounting availability for accepted fractional receipts
 - [ ] **Severity:** high
@@ -770,6 +779,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** in-progress
 - **Fix:** Implemented aligned creation/frozen-share tolerance and pre-insert share audit; manager combined-scope source review accepted. Actual affected bill/tab Go race row:532 named PASS, with original red regressions retained. Status remains in-progress; real PostgreSQL persistence/finalization, current CI and integrated V&V remain pending.
 - **Docs:** docs/reviews/2026-11-07-postmerge-money-client-regressions.md
+- **Log:**
+  - 2026-11-09 Verification: PASS: 4 named Go tests incl 22 subtests (TestCreationRoundingRemainsAccountable 6/6 incl documented_one_cent_tolerance; TestCreationInsertAuditsShares 9/9 incl partial_below_half_cent, overallocated, malformed_foreign_audit, legacy_full, fresh_reference_input; TestCreationRejectsToleranceAmplificationBeforeProviders; TestCreationToleranceHTTPBeforeProviders) in backend/internal/bill at e0a2c18; PG-tagged ./internal/bill also 66 top-level pass/0 fail/0 skip; revert check failed as intended (accounting.go tolerance to .005: 3 RoundingRemainsAccountable subtests failed, file restored, tree clean); unproven: none; not run here: current CI, integrated V&V
 
 ### [BUG-1794045426] Keep negative cent remainders off zero obligations
 - [ ] **Severity:** med
@@ -785,6 +796,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** in-progress
 - **Fix:** Implemented bounded negative-cent deductions from eligible positive balances in claim/name order, preserving zero shares and signed discounts. Manager combined-scope source review accepted; affected Go race532 PASS includes bounded-count and independent small-oracle controls. No historical amount rewrite. Status remains in-progress; real PG/current CI/integrated V&V remain pending.
 - **Docs:** docs/reviews/2026-11-07-postmerge-money-client-regressions.md
+- **Log:**
+  - 2026-11-09 Verification: PASS: 3 named Go tests (TestCreationRemaindersPreserveZeroShares 2/2; TestCentRemaindersPreserveClaimAndNameOrder 7/7; TestRemainderDistributionIsBoundedForExtremeCounts 8/8) plus TestCreationRoundingRemainsAccountable/signed_discount_remains_accountable in backend/internal/bill at e0a2c18; revert check failed as intended (shares.go naive cyclic decrement: 8 subtests failed across the three tests, file restored, tree clean); unproven: none; not run here: current CI, integrated V&V
 
 ### [BUG-1794045427] Import complete Trip history atomically at capacity
 - [ ] **Severity:** high
@@ -800,6 +813,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** in-progress
 - **Fix:** Implemented atomic complete Trip import plus local-ID checkpoint, protected incoming/pending/referenced history, and finite loading/error/retry with no partial balances. Manager combined-scope review accepted. Retained affected Flutter116 PASS; later completion-witness correction separately passes10 focused cases, without repeating116. Status remains in-progress; current CI/real PG/integrated V&V remain pending.
 - **Docs:** docs/reviews/2026-11-07-postmerge-money-client-regressions.md
+- **Log:**
+  - 2026-11-09 Verification: PASS: 10 named Dart tests in mobile/test/tab_import_capacity_test.dart (30/31 cap, pending/referenced history, later existing target, malformed rollback, read-error retry, checkpoint rollback, invalid IDs, retry without partial balances) at e0a2c18; full mobile suite 593 visible pass/0 fail/0 skip; revert check failed as intended (database.dart _makeReceiptRoom ignores protectedReceiptIds: 5 of 10 failed, file restored, tree clean); unproven: none; not run here: real PG, current CI
 
 ### [BUG-1794045428] Stamp durable receipts at their actual insertion time
 - [ ] **Severity:** med
@@ -815,6 +830,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** in-progress
 - **Fix:** Implemented explicit new durable-receipt insertion timestamp, preserving existing handles and historical rows without migration/backfill. Manager combined-scope source review accepted; historical Drift9-default regression passes in retained affected Flutter116 row. No repeat row after test-only witness correction. Status remains in-progress; current CI/real PG/integrated V&V remain pending.
 - **Docs:** docs/reviews/2026-11-07-postmerge-money-client-regressions.md
+- **Log:**
+  - 2026-11-09 Verification: PASS: 1 named Dart test (new receipt uses insertion time instead of historical table default) in mobile/test/receipt_timestamp_test.dart at e0a2c18; revert check failed as intended (database.dart insertReceipt without copyWith createdAt: test failed at line 22, file restored, tree clean); unproven: explicit createdAt preserved (no named test; only the omitted-createdAt path is asserted) and existing-handle unchanged (not asserted by this test); not run here: current CI
 
 ### [BUG-1794045429] Retain browser join input across refreshed bill graphs
 - [ ] **Severity:** med
@@ -830,6 +847,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** in-progress
 - **Fix:** Integrated exact manager SP-2 selection/suggestion/recovery ownership correction; manager combined-scope source review accepted. Integrated actual component/handler4 PASS, TypeScript/Biome0; retained manager whole-web102 row remains separate evidence. Status remains in-progress; full current CI, real PG and integrated V&V remain pending.
 - **Docs:** docs/reviews/2026-11-07-postmerge-money-client-regressions.md
+- **Log:**
+  - 2026-11-09 Verification: PASS: 4 named Vitest tests in web-bill-viewer/src/components/__tests__/LazyBillSession.test.ts at e0a2c18; whole web suite 102 pass/0 fail/0 skip; revert check failed as intended (suggestion effect re-keyed on bill.participants: 2 of 4 failed, file restored, tree clean; recovery-ownership test not isolated by that revert); unproven: none; not run here: browser pixels, current CI
 
 ### [BUG-1794258285] Repair the invalid iOS origin workflow file
 - [ ] **Severity:** med
