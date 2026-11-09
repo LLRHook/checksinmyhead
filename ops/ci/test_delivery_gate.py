@@ -366,6 +366,53 @@ class MirrorTests(GitFixture):
         with self.assertRaises(gate.Rejected):gate.mirror_plan(self.repo,self.source,hosts,wrong)
 
 
+# The exact commands of each gate row after `set -euo pipefail`. A scan that can be
+# dropped, masked with `|| true` or moved behind the report is not a gate (BUG-1793644501).
+PYTHON = '"$RUNNER_TEMP/delivery-python/bin/python" control/ops/ci/unittest_report.py control/ops/ci/'
+RUBY = 'ruby -r "$GITHUB_WORKSPACE/control/ops/ci/minitest_report.rb" '
+GATE_COMMANDS = {row: ['set -euo pipefail'] + lines for row, lines in {
+    'automation': [
+        "python3 -c 'import sys; assert sys.version_info[:2] == (3,12)'",
+        'python3 -m venv "$RUNNER_TEMP/delivery-python"',
+        '"$RUNNER_TEMP/delivery-python/bin/pip" install --require-hashes --only-binary=:all: -r control/ops/ci/requirements-ci.txt',
+        'CASE_REPORT="$REPORT_DIR/gate-tests.json" ' + PYTHON + 'test_delivery_gate.py',
+        'CASE_REPORT="$REPORT_DIR/ruby.json" ' + RUBY + 'candidate/.github/scripts/asc_release_test.rb',
+        'for script in candidate/.github/scripts/*.rb control/ops/ci/*.rb; do ruby -c "$script"; done',
+        'CASE_REPORT="$REPORT_DIR/ios-python.json" ' + PYTHON + 'test_ios_artifact.py',
+        'CASE_REPORT="$REPORT_DIR/ios-ruby.json" ' + RUBY + 'control/.github/scripts/asc_delivery_test.rb'],
+    'local-workflow': [
+        '/bin/bash -n candidate/dev.sh',
+        'CASE_REPORT="$REPORT_DIR/local-workflow.json" python3 control/ops/ci/unittest_report.py candidate/scripts/test_local_workflow.py'],
+    'backend': [
+        'cd candidate/backend',
+        'test -z "$(gofmt -l .)" || { gofmt -l .; echo "::error::Run \'gofmt -w .\' in backend/"; exit 1; }',
+        'go mod download',
+        'go mod verify',
+        'go build ./...',
+        'go vet ./...',
+        'go test -race -count=1 -json ./... | tee "$REPORT_DIR/go-default.jsonl"',
+        'go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...'],
+    'postgres': [
+        'cd candidate/backend',
+        'go mod download',
+        'go mod verify',
+        'go build ./cmd/bill-service ./cmd/web-service',
+        'go test -race -count=1 -json -timeout=20m -tags=integration ./cmd/bill-service ./internal/bill ./internal/tab ./pkg/database ./migrations ./internal/startup ./internal/readiness ./internal/testpostgres | tee "$REPORT_DIR/go-postgres.jsonl"'],
+    'mobile': [
+        'cd candidate/mobile',
+        'flutter pub get --enforce-lockfile',
+        'flutter analyze',
+        'flutter test --no-pub --reporter=json | tee "$REPORT_DIR/flutter.jsonl"'],
+    'web': [
+        'cd candidate/web-bill-viewer',
+        'npm ci',
+        'npm run lint',
+        'npm test -- --reporter=json --outputFile="$REPORT_DIR/vitest.json"',
+        'npm run build',
+        'npm audit --audit-level=moderate'],
+}.items()}
+
+
 # Structural validation targets the actual proposed graph; mutation controls prove
 # a removed needs edge/changed checkout/skip bypass is rejected by the same checker.
 def validate_graph(root):
@@ -454,6 +501,7 @@ def validate_graph(root):
     required_step = ci['jobs']['required']['steps'][-1]
     require(required_step['run']==helper+' required'+args and required_step['env']=={'CONTROLLER':'${{ github.sha }}','SOURCE':'${{ needs.resolve.outputs.candidate }}','NEEDS':'${{ toJSON(needs) }}'}, 'outer required helper/dataflow replaced')
     manifest = gate.trusted_manifest()
+    require(checks['defaults']=={'run':{'shell':'bash'}}, 'gate shell changed')
     pins = {'actions/checkout':'fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09',
             'actions/setup-go':'924ae3a1cded613372ab5595356fb5720e22ba16',
             'actions/setup-node':'a0853c24544627f65ddf259abe73b1d18a591444',
@@ -468,6 +516,12 @@ def validate_graph(root):
         require(not reports[0].get('if'), 'skipped report validation')
         command=next(step['run'] for step in job['steps'] if step.get('name')=='Canonical '+row+' row')
         require(command.startswith('set -euo pipefail\n'), 'runner failure exit swallowed')
+        # Every build, test and scan line is part of the gate: a failed scan fails the
+        # row only while its exact command, order, shell and step list stay in place.
+        canonical=[step for step in job['steps'] if step.get('name')=='Canonical '+row+' row']
+        require(len(canonical)==1 and set(canonical[0])=={'name','run'} and command.split('\n')==GATE_COMMANDS[row], 'gate command removed, weakened, masked, reordered or skipped: '+row)
+        require([step['run'] for step in job['steps'] if 'run' in step]==[helper+' assert-checkout --repo control --source "$CONTROLLER"', helper+' assert-checkout --repo candidate --source "$SOURCE"', 'mkdir -p reports', command, reports[0]['run']], 'unreviewed command in gate row: '+row)
+        require(set(job)=={'name','runs-on','timeout-minutes','outputs','steps'}|({'services','env'} if row=='postgres' else set()), 'unreviewed gate row setting: '+row)
         require(job['steps'][2]['run']==helper+' assert-checkout --repo control --source "$CONTROLLER"' and
                 job['steps'][3]['run']==helper+' assert-checkout --repo candidate --source "$SOURCE"', 'checkout assertion replaced')
         require(job['steps'].index(reports[0]) > next(i for i,step in enumerate(job['steps']) if step.get('name')=='Canonical '+row+' row'), 'report precedes execution')
@@ -682,7 +736,30 @@ class GraphTests(unittest.TestCase):
         # No application checkout or application tree is copied.
         original_defects = ('needs','checkout','skip','publisher-trigger','publisher-receipt','pg-packages','nested-cache','signing','helper','report-output','manifest-override','scope','required-output','cancel-consent','ios-bypass','policy-override','unverified-pin')
         secret_defects = tuple(target + ':' + defect for target in ('backend', 'web') for defect in ('missing-map','inherit','wrong-key','wrong-value','extra-secret','missing-declaration','optional-declaration','wrong-declaration'))
-        for defect in original_defects + secret_defects + ('mobile-auto-pub', 'mobile-missing-acquisition'):
+        # BUG-1793644501: a failed scan must fail its row. Removing, weakening, masking,
+        # reordering or skipping a gate command is a reviewed controller change, never silent.
+        scan_defects = {
+            'scan-vulnerability-removed': ('backend', lambda lines: [l for l in lines if 'govulncheck' not in l]),
+            'scan-vulnerability-masked': ('backend', lambda lines: [l + ' || true' if 'govulncheck' in l else l for l in lines]),
+            'scan-vet-removed': ('backend', lambda lines: [l for l in lines if l != 'go vet ./...']),
+            'scan-format-removed': ('backend', lambda lines: [l for l in lines if 'gofmt' not in l]),
+            'scan-module-verify-removed': ('postgres', lambda lines: [l for l in lines if l != 'go mod verify']),
+            'scan-analyze-removed': ('mobile', lambda lines: [l for l in lines if l != 'flutter analyze']),
+            'scan-lint-removed': ('web', lambda lines: [l for l in lines if l != 'npm run lint']),
+            'scan-build-removed': ('web', lambda lines: [l for l in lines if l != 'npm run build']),
+            'scan-audit-removed': ('web', lambda lines: [l for l in lines if 'npm audit' not in l]),
+            'scan-audit-weakened': ('web', lambda lines: [l.replace('--audit-level=moderate', '--audit-level=critical') for l in lines]),
+            'scan-errexit-disabled': ('web', lambda lines: lines[:1] + ['set +e'] + lines[1:]),
+            'scan-reordered': ('backend', lambda lines: lines[:-2] + lines[-1:] + lines[-2:-1]),
+            'scan-ruby-syntax-removed': ('automation', lambda lines: [l for l in lines if 'ruby -c' not in l]),
+            'scan-shell-syntax-removed': ('local-workflow', lambda lines: [l for l in lines if '/bin/bash -n' not in l]),
+            'scan-step-skipped': ('backend', None),
+            'scan-step-shell': ('web', None),
+            'scan-default-shell': ('web', None),
+            'scan-report-forged': ('web', None),
+            'scan-job-env': ('backend', None),
+        }
+        for defect in original_defects + secret_defects + ('mobile-auto-pub', 'mobile-missing-acquisition') + tuple(scan_defects):
             with self.subTest(defect=defect),tempfile.TemporaryDirectory(prefix='gate-yaml-') as d:
                 r=Path(d);wf=r/'.github/workflows';wf.mkdir(parents=True)
                 for p in (ROOT/'.github/workflows').glob('*.yml'):(wf/p.name).write_text(p.read_text())
@@ -706,6 +783,20 @@ class GraphTests(unittest.TestCase):
                         elif problem == 'wrong-key': caller['secrets'] = {'UNRELATED_SECRET': '${{ secrets.' + secret + ' }}'}
                         elif problem == 'wrong-value': caller['secrets'][secret] = '${{ secrets.LEGACY_KEY }}'
                         else: caller['secrets']['EXTRA_KEY'] = '${{ secrets.EXTRA_KEY }}'
+                elif defect in scan_defects:
+                    row, change = scan_defects[defect]
+                    step = next(s for s in j['jobs'][row]['steps'] if s.get('name') == 'Canonical ' + row + ' row')
+                    if change is not None:
+                        lines = step['run'].split('\n')
+                        self.assertNotEqual(change(lines), lines)
+                        step['run'] = '\n'.join(change(lines))
+                    elif defect == 'scan-step-skipped': step['if'] = "${{ github.event_name != 'push' }}"
+                    elif defect == 'scan-step-shell': step['shell'] = 'bash {0}'
+                    elif defect == 'scan-default-shell': j['defaults']['run']['shell'] = 'sh'
+                    elif defect == 'scan-report-forged':
+                        steps = j['jobs'][row]['steps']
+                        steps.insert(steps.index(step) + 1, {'run': 'cp candidate/web-bill-viewer/vitest.json reports/vitest.json'})
+                    else: j['jobs'][row]['env'] = {'GOFLAGS': '-mod=mod'}
                 elif defect in ('mobile-auto-pub', 'mobile-missing-acquisition'):
                     step = next(s for s in j['jobs']['mobile']['steps'] if s.get('name') == 'Canonical mobile row')
                     step['run'] = step['run'].replace(' --no-pub', '') if defect == 'mobile-auto-pub' else step['run'].replace('flutter pub get --enforce-lockfile\n', '')
@@ -1138,6 +1229,22 @@ class ManifestReportTests(unittest.TestCase):
           'mobile',
           'mobile/test/receipt_timestamp_test.dart',
           ('new receipt uses insertion time instead of historical table default',)),
+         # The conditional-title loop had no selection at all: its four named modes
+         # could be removed while the row stayed green (focused S4 review, 2026-11-09).
+         ('flutter',
+          'mobile',
+          'mobile/test/receipt_native_io_test.dart',
+          ('native timeout closes actual upstream connection',
+           'native real setup deadline can expire before any complete POST',
+           'native headers stall timeout terminates upstream and joins fixture cleanup',
+           'native cancellation stops a streaming upload and cancels its input subscription',
+           'native source-error joins its input subscription cleanup',
+           'native cleanup-error joins its input subscription cleanup',
+           'native reentrant joins its input subscription cleanup',
+           'native 302 never follows Location and counts only one wire POST',
+           'native failed POST is never retried and a deliberate manual retry sends one new POST',
+           'native compressed response enforces decoded 1MiB and closes stream',
+           'native dropped response after upload never replays a POST')),
          ('vitest',
           'web',
           'web-bill-viewer/src/components/__tests__/LazyBillSession.test.ts',

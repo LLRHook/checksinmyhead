@@ -15,6 +15,12 @@ no path filters, all selected jobs are required, and `always()` collectors rejec
 missing, failed, cancelled, skipped or malformed results. No `continue-on-error`
 or test-skip input exists. A narrow scope cannot emit the full required context.
 
+Each row's commands are pinned line for line by the controller graph test, with its
+shell, run-step list and job settings. `gofmt`, `go mod verify`, `go vet`,
+`govulncheck`, `flutter analyze`, `npm run lint`, `npm run build` and
+`npm audit --audit-level=moderate` therefore fail their row; removing, weakening,
+masking, reordering or skipping one needs a reviewed change to that test.
+
 `ci.yml` resolves full source **S** once. The checks workflow executes candidate
 app code in `candidate/`; trusted helper/tests/manifest are from controller **C**
 in `control/`. Every checkout asserts its full SHA and persists no credentials.
