@@ -383,10 +383,11 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Provider/replay frozen/display/zero contracts retained. Mobile corrections independently0/0 APPROVE; root clean467/510. At276 maintained Runner33/33 exact-key/snapshot process-reopen and EUR25/USD31.25 with synthetic loopback is independently accepted Std0/Spec0; OSexit unavailable. .005, identity0003, versioned JPY and combined/signed rollout remain open.
-- **Docs:** docs/mobile-save-verification.md; docs/reviews/2026-11-04-mobile-save-{reopen,corrections,acceptance}.md; docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-05-scoped-source-acceptance.md
+- **Fix:** Provider/replay frozen/display/zero contracts retained. Mobile corrections independently0/0 APPROVE; root clean467/510. At276 maintained Runner33/33 exact-key/snapshot process-reopen and EUR25/USD31.25 with synthetic loopback is independently accepted Std0/Spec0; OSexit unavailable. 2026-11-09: one currency support matrix in docs/backend-api.md, owned by TestProductionCurrencySupportMatrix (5 subtests); TestPostgresDisplayConversionNeverRewritesFrozenQuote proves stored receipts unchanged under a moving rate, outage, trip display change and finalization; mobile trip display conversion test added. Tests and docs only; currency set and provider unchanged. Remains: owner decision on whole-yen JPY accounting (options in docs/reviews/2026-11-09-currency-matrix.md); odd-cent rule under BUG-1793644500; identity under BUG-1793644505; combined/signed rollout.
+- **Docs:** docs/mobile-save-verification.md; docs/reviews/2026-11-04-mobile-save-{reopen,corrections,acceptance}.md; docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-05-scoped-source-acceptance.md; docs/reviews/2026-11-09-currency-matrix.md
 - **Log:**
   - 2026-11-03 Scope: Approved one-adapter/no-TTL decision supersedes old dual-provider/cache proposal. Keep open: display provenance0002; mobile rate decoder/quote state/save/replay/Keychain; required versioned JPY step. Global security/integrated acceptance RED.
+  - 2026-11-09 Decision: JPY is still split in hundredths. Whole-yen accounting is a versioned change to the frozen creation contract plus a migration and three clients: not implemented. Options 1-3 in the 2026-11-09 note; recommended: keep and document now, versioned step as its own feature. PEN needs no decision (approved set, both selectors, provider).
 
 ### [BUG-1793644516] Correct App Store branding and unsupported feature copy
 - [ ] **Severity:** med

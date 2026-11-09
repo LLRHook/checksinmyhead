@@ -302,7 +302,9 @@ reads are handled without repeating the write or rejecting the UI event promise.
 Foreign values without an audit stay unavailable; frozen zero stays zero. Display
 rates are temporary values and never write frozen quote columns. Versioned JPY
 precision and the known local/server `.005` allocation difference remain open. See [API contracts](backend-api.md#currency-quotes)
-for accepted fields, ownership, freshness and legacy compatibility.
+for accepted fields, ownership, freshness and legacy compatibility; its
+[currency support matrix](backend-api.md#currency-support-matrix) is the one summary
+of original amounts, frozen USD valuation, display conversion and failures.
 `FinalizeOnce` is the sole production finalization seam: tab capability, current creator
 or memberless policy, stored-result validation, gross allocation, bounded inserts and
 one checked active-state update commit together. Authorized retries read the stored

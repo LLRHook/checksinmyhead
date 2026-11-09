@@ -335,6 +335,32 @@ Bill reads omit the source access token.
 
 ### Currency quotes
 
+#### Currency support matrix
+
+Three kinds of value, each with its own fields and owner. The paragraphs below
+give the detail; this table is the summary the tests are written against.
+
+| | Original receipt amounts | Frozen USD valuation | Display conversion |
+|---|---|---|---|
+| Fields | `currency_code`, `subtotal`, `tax`, `tip_amount`, `total`, shares | `usd_exchange_rate`, `usd_total`, `exchange_rate_date`, `exchange_rate_source` | Saved with the receipt: `display_currency`, `exchange_rate`, `display_total`, `display_rate_date`, `display_rate_source`, `display_rate_retrieved_at`. Live only: `GET /api/currency/rate`, `GET /api/exchange-rates/:currency` |
+| Accepted codes | USD EUR GBP CAD JPY MXN PEN AUD BRL CNY INR CHF; omitted means USD | The same twelve | Any three-letter pair the provider quotes, for example ZAR |
+| Written | Once, at creation | Once, at creation, from one provider quote | Saved fields once, at creation. Live answers are never stored |
+| USD or same currency | — | Rate 1, source `native-usd`, empty date, no provider call | Rate 1, source `same_currency`, no date, no provider call |
+| Later reads, attachment, trip display change, finalization | Stored values, unchanged | Stored values; never refetched, repriced or age-checked | Stored values, unchanged. A trip's `display_currency` is a preference on the trip and does not touch its receipts |
+| Code outside the set | `400 unsupported currency code` before any provider call; nothing saved | Same | Malformed code: 400 at creation, 503 on the live route, never rate 1 |
+| Provider failure | Creation returns 503; nothing saved | Same, with `Retry-After` when supplied | Creation with a foreign display: 503, nothing saved. Live: 503. No earlier quote is served, because none is kept |
+
+A scanned receipt's `currency_code`, `currency_symbol` and `currency_confidence` are
+evidence only. The client asks the user to confirm the currency, including for an
+ambiguous `$` and for PEN (`S/`); a scan never selects a receipt currency by itself.
+
+Owners: `TestProductionCurrencySupportMatrix` (each row, through the production
+composition), `TestPostgresDisplayConversionNeverRewritesFrozenQuote` (a moving
+market, an outage, a trip display change and finalization against stored rows),
+`TestReceiptPolicyMatchesBothMobileSelectors` (the twelve codes in both mobile
+selectors) and, on mobile, `tab_display_conversion_test.dart` and the scan
+confirmation cases in `save_receipt_widget_test.dart`.
+
 One required Frankfurter v2 pair client supplies new frozen USD values, temporary
 preview and daily indicative display conversion. New quotes require the requested
 base/quote, positive finite rate, adapter source `frankfurter-v2-blended` and strict
