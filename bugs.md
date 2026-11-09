@@ -25,7 +25,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-05 Source acceptance: Driver reconciles completed scoped reviews/current clean committed-source proof; source criteria met, pending integrated V&V migration only. Historical handoffs remain in Git/dated notes. Deployment, public clients and whole acceptance are separate/RED.
 
 ### [BUG-1793644498] Restrict public bill creation to authorized input
-- [ ] **Severity:** crit
+- [x] **Severity:** crit
 - **Area:** backend, security
 - **File(s):** backend/internal/bill/{handler,service}.go; backend/pkg/models/bill.go; backend/internal/bill/{handler,service}_test.go
 - **Observation:** CreateBill binds models.Bill, allowing client-supplied tab/payer/nested accounting state without tab authorization.
@@ -39,13 +39,14 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** POST synthetic negative total with victim tab_id against isolated DB, as in review reproduction. Review sibling create/update routes. UI/client compatibility must be demonstrated.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
-- **Fix:** Auth/client evidence: docs/reviews/2026-11-03-client-validation-correction.md. Driver Flutter237 pass; re-review/public bridge/integrated gates pending. 2026-11-06 assignment decoding source preserves exact old value/presence/null/duplicate/error behavior. Source0/0; candidate73 plus corrected goldens81 PASS across two scoped rows; baseline73 and four intended-negative/healthy controls retained. Original setupRED remains; no precision, PG, performance or integrated acceptance.
-- **Docs:** docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-02-authorization-batch.md; docs/reviews/2026-11-02-authorization-corrections.md; docs/reviews/2026-11-03-client-v1-bridge.md; docs/reviews/2026-11-03-client-validation-correction.md; docs/reviews/2026-11-06-assignment-snapshot.md
+- **Status:** fixed-pending-migration
+- **Fix:** Public creation binds the explicit CreateBillRequest DTO with strict decoding; identity, tab, payer, paid and quote fields are not input and are refused again by the service and insert guards; shares are re-derived server-side. 2026-11-09 closes the PostgreSQL bullet with tests only: TestPostgresPublicCreateRejectsPrivilegedInput (78 handler cases on the migrated schema incl. the negative-total victim tab_id repro on active and finalized tabs, each 400 with an identical nine-table snapshot; authorized attach still 200) and TestPostgresActualMobileCreationFixtures (ten actual old-client builder bodies incl. the signed discount line). Local real-PG: 90/90 new, bill package 372/372 under the integration tag; ordinary bill 321/321. The 2026-11-06 setupRED was a test binary run outside its package directory and passes under go test; no change. Not run here: served deployment, signed old-binary capture, full eight-package PG row. Evidence: docs/reviews/2026-11-09-bill-create-postgres.md.
+- **Docs:** docs/reviews/2026-11-09-bill-create-postgres.md; docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-02-authorization-batch.md; docs/reviews/2026-11-02-authorization-corrections.md; docs/reviews/2026-11-03-client-v1-bridge.md; docs/reviews/2026-11-03-client-validation-correction.md; docs/reviews/2026-11-06-assignment-snapshot.md
 - **Log:**
   - 2026-11-02 Validation: Driver-approved AUTH_CORRECTION_APPROVAL.md findings 1-3 implemented in 28eab76. Six safe before leaf failures; five temporary overlay variants yield 18 expected failing leaf cases. Extreme-denominator arithmetic tested only as bounded pure calculation, never HTTP. Real PostgreSQL covers safe money boundaries and calculation-error rollback. Five actual mobile-builder tests pass with --no-pub; this does not resolve locked acquisition. Keep in-progress; no CHANGELOG migration.
   - 2026-11-03 Validation: 43772a7 client slice: real widget/provider upload plus 30/31-rune entry/builder and validation checks; 228 Flutter/54 web pass, zero skips. See docs/reviews/2026-11-03-client-v1-bridge.md; broader acceptance unchanged.
   - 2026-11-06 Source: 2026-11-06 assignment decoding source preserves exact old value/presence/null/duplicate/error behavior. Source0/0; candidate73 plus corrected goldens81 PASS across two scoped rows; baseline73 and four intended-negative/healthy controls retained. Original setupRED remains; no precision, PG, performance or integrated acceptance.
+  - 2026-11-09 Validation: Real PostgreSQL handler tests added for privileged-input rejection and old-client creation: 90 run/90 pass; strict-decoding mutant fails 58 of 78 children. bill package 372/372 with the integration tag. go test ./... 1,197 of 1,199; the two failures are internal/healthcheck needing port 8080, held by another project on this machine.
 
 ### [BUG-1793644499] Inject the frozen exchange-rate provider at startup
 - [x] **Severity:** high
