@@ -443,7 +443,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-04 Verification: Approved private-viewer scope implemented; before/removal controls and local browser destination headers retained. No hosting/release action; wider gates remain RED.
 
 ### [BUG-1793644519] Harden existing GitHub workflow execution settings
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** ci, security
 - **File(s):** .github/workflows/*.yml; .github/actions/build-signed-ipa/action.yml
 - **Observation:** Validator reported 16 mutable action-pin errors plus web-sync permissions gap; sync disables strict SSH checking; timeouts/concurrency incomplete.
@@ -456,9 +456,9 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Review mechanical 17 errors/9 warnings as grouped config findings, not 17 product vulnerabilities. Mirror retirement may remove its SSH path.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
-- **Fix:** Source722fa9f pins reviewed action SHAs/SSH host identity, read-only default permissions, bounded jobs and serialized noncancelling publishers. Source mechanical validator0errors/6 retained top-level-concurrency warnings; actual42method/827record contracts pass. Protected jobs carry concurrency; unavailable iOS paths cannot mutate. Hosted enforcement/credential/queue controls and focused post-integration review remain unverified.
-- **Docs:** ops/ci/README.md; VERIFICATION.md; docs/reviews/2026-11-05-delivery-gate.md
+- **Status:** fixed-pending-migration
+- **Fix:** Verified on the nine current workflows (2026-11-09). Pins: five actions by full SHA, each an upstream release tag (checkout v5.1.0, setup-go v6.5.0, setup-node v5.0.0, flutter-action v2.23.0, upload-artifact v7.0.2; newest October 7). Tokens: contents read everywhere, actions read on five iOS jobs only. Mirror host key equals GitHub's published Ed25519 key. Every job has a 5 to 60 minute timeout; the PostgreSQL row keeps 30. Validator validate-pipeline.py re-run: 0 errors, 8 warnings before, 5 after. Three warnings were real: testflight, app-store-release and update-release-notes had no group, so repeated dispatches validated in parallel; each now has a per-ref-and-event group that never cancels a run in progress. Five retained warnings are the reusable workflows (checks, deploy-backend, sync-web-viewer, ios-origin, ios-promote): intended, because a called workflow's group is evaluated in its caller's context and can cancel the caller; their mutation jobs serialize on literal noncancelling job groups. ci.yml cancels in progress only for pull requests (hosted runs 42290401669 and 42289112203 cancelled so). New GraphTests.test_execution_settings_are_pinned_bounded_serialized_and_read_only pins groups, tokens, timeouts and action pins with 36 mutations, 14 accepted before (cancelling a running main run, removing a group, a reusable top-level group, a 360-minute timeout, a write token on the resolver). 44 gate, 17 iOS, 5+18 Ruby methods pass; automation row 1,490 records. Diff adds three concurrency blocks and tests only; no trigger, condition, secret or publisher changed and publication stays disabled. Not observed: GitHub's parse of the three edited entry files and real queueing between two dispatches (nothing dispatched); environments, ruleset and credential scope are tracked in BUG-1793644501.
+- **Docs:** ops/ci/README.md; VERIFICATION.md; docs/reviews/2026-11-05-delivery-gate.md; docs/reviews/2026-11-09-delivery-workflows.md
 
 ### [BUG-1793652308] Make the Flutter 3.41.5 committed lock reproducible
 - [x] **Severity:** med

@@ -136,3 +136,52 @@ keys. Nineteen mutations, all accepted before, are rejected.
 - Add `Required delivery checks` to the main ruleset once main is green.
 - Set `RELEASE_POLICY` only with reviewed floors and clearance; then observe one
   gated publication and its exact-SHA health readback.
+
+## Workflow execution settings (BUG-1793644519)
+
+Checked on the nine current workflow files and the composite action.
+
+| Setting | Current state | Evidence |
+|---|---|---|
+| Action pins | Five actions, each a 40-character SHA | GitHub API: the SHAs are tags `actions/checkout` v5.1.0, `actions/setup-go` v6.5.0, `actions/setup-node` v5.0.0, `subosito/flutter-action` v2.23.0, `actions/upload-artifact` v7.0.2; newest commit October 7. |
+| Token | `contents: read` in every workflow; `actions: read` added on five iOS jobs only | Controller test. |
+| Mirror host identity | Pinned Ed25519 key, `StrictHostKeyChecking=yes` | Equals the key GitHub publishes at `GET /meta`. |
+| Timeouts | Every job, 5 to 60 minutes | Controller test; PostgreSQL row keeps 30. |
+| Concurrency | See below | Controller test. |
+
+The validator is the bootstrap pipeline validator (`validate-pipeline.py --provider
+github`). Before: **0 errors, 8 warnings** in 9 files (the earlier six, plus the two
+reusable iOS workflows added since). After: **0 errors, 5 warnings**.
+
+Three warnings were real and are fixed. `testflight.yml`, `app-store-release.yml` and
+`update-release-notes.yml` are entry workflows with no group, so repeated dispatches
+each ran the full six-row validation in parallel. Each now has its own group per ref
+and event with `cancel-in-progress: false`: runs queue, and a running one, which may
+be uploading or writing to App Store Connect, is never cancelled.
+
+Five warnings stay, one per reusable workflow, and are intended:
+
+- `checks.yml`: validation only. Its caller's group governs it, and cancelling the
+  caller cancels its rows. GitHub evaluates a called workflow's group in the caller's
+  `github` context, where a matching group cancels the caller.
+- `deploy-backend.yml`, `sync-web-viewer.yml`: one mutation job each, serialized by
+  the literal noncancelling job groups `backend-production` and `web-production`.
+- `ios-origin.yml`, `ios-promote.yml`: one mutation job each, sharing the literal
+  noncancelling job group `ios-upload`.
+
+`ci.yml` keeps `controller-<ref>-<event>` and cancels in progress only for pull
+requests. Hosted runs 42290401669 and 42289112203 were cancelled that way on
+November 6. A newer main push never cancels a running main run.
+
+New `GraphTests.test_execution_settings_are_pinned_bounded_serialized_and_read_only`
+pins all of the above with 36 mutations. Fourteen were accepted before this change,
+among them cancelling a main run in progress, removing a group, a top-level group in
+a reusable workflow, a 360-minute timeout and a write token on the resolver job.
+
+The diff adds three `concurrency` blocks and tests. No trigger, condition, secret,
+permission or publisher changed; publication stays disabled without `RELEASE_POLICY`.
+Result: 44 gate methods, 17 iOS helper methods, 5 and 18 Ruby methods pass; the
+automation row validates 1,490 records.
+
+NOT OBSERVED: GitHub's parse of the three edited entry files, and queueing between two
+real dispatches. Nothing was dispatched.

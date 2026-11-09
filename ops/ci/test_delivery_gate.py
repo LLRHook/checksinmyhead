@@ -556,7 +556,51 @@ def validate_graph(root):
     require(cancel['type']=='boolean' and cancel['default'] is False,'cancellation consent changed')
     validate_ios_graph(root,workflows)
     validate_workflow_syntax(workflows)
+    validate_execution_settings(workflows)
     return workflows
+
+
+# BUG-1793644519. Entry workflows own one group per ref and event. Only pull-request
+# validation is cancelled in progress: any other cancellation could stop a publisher
+# mid-mutation. Reusable workflows declare no top-level group (it would be evaluated
+# in the caller's context and can collide with the caller's own); their mutation jobs
+# serialize on a literal noncancelling job group instead.
+ENTRY_CONCURRENCY = {
+    'ci.yml': {'group': 'controller-${{ github.ref }}-${{ github.event_name }}', 'cancel-in-progress': "${{ github.event_name == 'pull_request' }}"},
+    'testflight.yml': {'group': 'testflight-${{ github.ref }}-${{ github.event_name }}', 'cancel-in-progress': False},
+    'app-store-release.yml': {'group': 'app-store-release-${{ github.ref }}-${{ github.event_name }}', 'cancel-in-progress': False},
+    'update-release-notes.yml': {'group': 'release-notes-${{ github.ref }}-${{ github.event_name }}', 'cancel-in-progress': False},
+}
+MUTATION_GROUPS = {'backend-production': 'backend-production', 'web-production': 'web-production', 'ios-upload': 'ios-upload', 'ios-production': 'ios-upload'}
+READ_EVIDENCE_JOBS = {('testflight.yml', 'deliver'), ('app-store-release.yml', 'deliver'), ('update-release-notes.yml', 'deliver'), ('ios-origin.yml', 'origin'), ('ios-promote.yml', 'promote')}
+LONGEST_JOB_MINUTES = 60
+
+
+def validate_execution_settings(workflows):
+    require = gate.require
+    for filename, workflow in workflows.items():
+        events = workflow.get('on', workflow.get(True))
+        require(isinstance(events, dict) and bool(events), 'unenumerated workflow triggers in ' + filename)
+        reusable = set(events) == {'workflow_call'}
+        if reusable:
+            require('concurrency' not in workflow, 'top-level group in reusable workflow ' + filename)
+        else:
+            require('pull_request' not in events or filename == 'ci.yml', 'unreviewed pull-request workflow ' + filename)
+            require(workflow.get('concurrency') == ENTRY_CONCURRENCY.get(filename), 'entry workflow group missing, shared or cancelling: ' + filename)
+        require(workflow.get('permissions') == {'contents': 'read'}, 'default token is not read-only: ' + filename)
+        for name, job in workflow['jobs'].items():
+            where = filename + ':' + name
+            if 'permissions' in job:
+                require((filename, name) in READ_EVIDENCE_JOBS and job['permissions'] == {'contents': 'read', 'actions': 'read'}, 'unreviewed job token at ' + where)
+            if 'environment' in job:
+                group = MUTATION_GROUPS.get(job['environment']) if isinstance(job['environment'], str) else None
+                require(reusable and group is not None and job.get('concurrency') == {'group': group, 'cancel-in-progress': False}, 'mutation job unserialized or cancelling at ' + where)
+            else:
+                require('concurrency' not in job, 'unreviewed job group at ' + where)
+            if 'uses' not in job:
+                require(type(job.get('timeout-minutes')) is int and 0 < job['timeout-minutes'] <= LONGEST_JOB_MINUTES, 'missing or unbounded timeout at ' + where)
+                for step in job['steps']:
+                    require('uses' not in step or step['uses'].startswith('./control/') or re.fullmatch('[^@]+@[0-9a-f]{40}', step['uses']) is not None, 'action not pinned by full SHA at ' + where)
 
 
 # GitHub rejects a whole workflow file ("workflow file issue", a failed run with no
@@ -677,6 +721,57 @@ def validate_workflow_syntax(workflows):
 
 
 class GraphTests(unittest.TestCase):
+    def test_execution_settings_are_pinned_bounded_serialized_and_read_only(self):
+        actual = {p.name: yaml.safe_load(p.read_text()) for p in (ROOT/'.github/workflows').glob('*.yml')}
+        validate_execution_settings(actual)
+        self.assertEqual(set(ENTRY_CONCURRENCY) | {n for n, w in actual.items() if set(w['on']) == {'workflow_call'}}, set(actual))
+        groups = [c['group'] for c in ENTRY_CONCURRENCY.values()]
+        self.assertEqual(len(set(groups)), len(groups))
+        self.assertFalse({g.split('-${{')[0] for g in groups} & set(MUTATION_GROUPS.values()))
+        defects = {
+            'ci-cancels-main-publisher': ('ci.yml', lambda w: w['concurrency'].update({'cancel-in-progress': True})),
+            'ci-cancels-all-events': ('ci.yml', lambda w: w['concurrency'].update({'cancel-in-progress': "${{ github.event_name != 'workflow_dispatch' }}"})),
+            'ci-no-group': ('ci.yml', lambda w: w.pop('concurrency')),
+            'ci-one-group-for-every-ref': ('ci.yml', lambda w: w['concurrency'].update(group='controller')),
+            'testflight-no-group': ('testflight.yml', lambda w: w.pop('concurrency')),
+            'app-store-no-group': ('app-store-release.yml', lambda w: w.pop('concurrency')),
+            'notes-no-group': ('update-release-notes.yml', lambda w: w.pop('concurrency')),
+            'testflight-cancels-upload': ('testflight.yml', lambda w: w['concurrency'].update({'cancel-in-progress': True})),
+            'entry-shares-mutation-group': ('app-store-release.yml', lambda w: w['concurrency'].update(group='ios-upload')),
+            'entries-share-one-group': ('update-release-notes.yml', lambda w: w['concurrency'].update(group=ENTRY_CONCURRENCY['testflight.yml']['group'])),
+            'reusable-top-level-group': ('checks.yml', lambda w: w.update(concurrency={'group': 'checks-${{ github.ref }}', 'cancel-in-progress': True})),
+            'publisher-top-level-group': ('deploy-backend.yml', lambda w: w.update(concurrency={'group': 'backend-production', 'cancel-in-progress': False})),
+            'backend-publisher-cancels': ('deploy-backend.yml', lambda w: w['jobs']['publish']['concurrency'].update({'cancel-in-progress': True})),
+            'web-publisher-unserialized': ('sync-web-viewer.yml', lambda w: w['jobs']['publish'].pop('concurrency')),
+            'web-publisher-dynamic-group': ('sync-web-viewer.yml', lambda w: w['jobs']['publish']['concurrency'].update(group='web-production-${{ github.run_id }}')),
+            'origin-own-group': ('ios-origin.yml', lambda w: w['jobs']['origin']['concurrency'].update(group='ios-origin')),
+            'promotion-cancels': ('ios-promote.yml', lambda w: w['jobs']['promote']['concurrency'].update({'cancel-in-progress': True})),
+            'validation-row-group': ('checks.yml', lambda w: w['jobs']['web'].update(concurrency={'group': 'web', 'cancel-in-progress': True})),
+            'entry-job-environment': ('ci.yml', lambda w: w['jobs']['required'].update(environment='backend-production', concurrency={'group': 'backend-production', 'cancel-in-progress': False})),
+            'default-token-write': ('sync-web-viewer.yml', lambda w: w.update(permissions={'contents': 'write'})),
+            'default-token-write-all': ('ci.yml', lambda w: w.update(permissions='write-all')),
+            'default-token-missing': ('checks.yml', lambda w: w.pop('permissions')),
+            'job-token-write': ('ci.yml', lambda w: w['jobs']['required'].update(permissions={'contents': 'write'})),
+            'resolver-token-write': ('ci.yml', lambda w: w['jobs']['resolve'].update(permissions={'contents': 'write', 'actions': 'write'})),
+            'publisher-token-write': ('sync-web-viewer.yml', lambda w: w['jobs']['publish'].update(permissions={'contents': 'read', 'deployments': 'write'})),
+            'job-token-oidc': ('deploy-backend.yml', lambda w: w['jobs']['publish'].update(permissions={'contents': 'read', 'id-token': 'write'})),
+            'job-token-extra-read': ('checks.yml', lambda w: w['jobs']['aggregate'].update(permissions={'contents': 'read', 'actions': 'read'})),
+            'evidence-job-token-write': ('ios-promote.yml', lambda w: w['jobs']['promote']['permissions'].update(actions='write')),
+            'timeout-missing': ('ci.yml', lambda w: w['jobs']['resolve'].pop('timeout-minutes')),
+            'timeout-zero': ('checks.yml', lambda w: w['jobs']['aggregate'].update({'timeout-minutes': 0})),
+            'timeout-platform-default': ('ios-origin.yml', lambda w: w['jobs']['origin'].update({'timeout-minutes': 360})),
+            'timeout-text': ('sync-web-viewer.yml', lambda w: w['jobs']['publish'].update({'timeout-minutes': '10'})),
+            'action-tag': ('checks.yml', lambda w: w['jobs']['web']['steps'][0].update(uses='actions/checkout@v5')),
+            'action-short-sha': ('ios-origin.yml', lambda w: w['jobs']['origin']['steps'][0].update(uses='actions/checkout@fbc6f39')),
+            'action-branch': ('ci.yml', lambda w: w['jobs']['resolve']['steps'][0].update(uses='actions/checkout@main')),
+            'action-local-candidate': ('ios-origin.yml', lambda w: w['jobs']['origin']['steps'][5].update(uses='./candidate/.github/actions/build-signed-ipa')),
+        }
+        for defect, (filename, mutate) in defects.items():
+            changed = copy.deepcopy(actual)
+            mutate(changed[filename])
+            with self.subTest(defect=defect), self.assertRaises(gate.Rejected):
+                validate_execution_settings(changed)
+
     def test_workflow_expressions_use_only_documented_contexts(self):
         actual = {p.name: yaml.safe_load(p.read_text()) for p in (ROOT/'.github/workflows').glob('*.yml')}
         validate_workflow_syntax(actual)

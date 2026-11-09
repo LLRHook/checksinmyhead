@@ -33,6 +33,7 @@
       "FloorTests.test_pr_tag_feature_and_foreign_controller_never_privileged",
       "FloorTests.test_stale_automatic_run_rejected_but_current_control_works",
       "GraphTests.test_actual_graph_and_negative_mutations",
+      "GraphTests.test_execution_settings_are_pinned_bounded_serialized_and_read_only",
       "GraphTests.test_workflow_expressions_use_only_documented_contexts",
       "GuardRemovalTests.test_selected_result_and_health_guard_removals_are_detected",
       "IOSASCTests#test_JWT_refreshes_before_expiry_using_only_inert_signing_stubs",
