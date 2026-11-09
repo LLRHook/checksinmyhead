@@ -373,7 +373,8 @@
       "backend/internal/bill/TestCreateAssignmentDecodeRequestContracts",
       "backend/internal/bill/TestCreationRemaindersPreserveZeroShares",
       "backend/internal/bill/TestCreationInsertAuditsShares",
-      "backend/internal/bill/TestCreationRoundingRemainsAccountable"
+      "backend/internal/bill/TestCreationRoundingRemainsAccountable",
+      "backend/internal/tab/TestIdentity0003SameNameMembersKeepSeparateDebts"
     ],
     "postgres": [
       "backend/cmd/bill-service/TestA1PostgresProductionJSON",
@@ -621,7 +622,9 @@
       "backend/internal/bill/TestCreationInsertAuditsShares",
       "backend/internal/bill/TestCreationRoundingRemainsAccountable",
       "backend/cmd/bill-service/TestPostgresWarmServiceSurvivesAdditiveDDL",
-      "backend/cmd/bill-service/TestWarmUnstableShapePattern"
+      "backend/cmd/bill-service/TestWarmUnstableShapePattern",
+      "backend/internal/tab/TestIdentity0003SameNameMembersKeepSeparateDebts",
+      "backend/cmd/bill-service/TestPostgresIdentity0003FreshParticipantIsUnboundUntilApproved"
     ],
     "mobile": [
       "mobile/test/client_v1_bridge_test.dart",

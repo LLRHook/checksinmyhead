@@ -188,11 +188,12 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Backend reference/read/proof reviews pass. C/D74dd source reviews0/0; web98, affected Flutter14/analyze and owned HTTP/PG mobile+browser49 pass; integrated as ordered commits after9244ad0. Full d6 Flutter RED (two I/O errors; separate classification passes). Atomic fresh-self UNMET; supported create-unbound/request/creator-or-source approval only. Current artifact/numerical/native/public/rollout and whole gates open.
-- **Docs:** docs/backend-api.md; docs/reviews/2026-11-05-{participant-identity-behavior,identity-review-corrections,row-materialization,client-identity-integration}.md; docs/technical-overview.md; mobile/test/live/README.md
+- **Fix:** Backend reference/read/proof reviews pass. C/D74dd source reviews0/0; web98, affected Flutter14/analyze and owned HTTP/PG mobile+browser49 pass; integrated as ordered commits after9244ad0. The two d6 Flutter I/O errors were real-deadline races, corrected test-only on 2026-11-06; full row at e0a2c18 passes 593/593 visible cases in 5 of 5 local runs. Added same-name debt (unit, 3 subtests) and fresh-participant (PostgreSQL) negatives with removal controls. Remains: owner decision on atomic fresh-self (docs/reviews/2026-11-09-fresh-self-decision.md; supported flow is create-unbound/request/creator-or-source approval), and the artifact/numerical/native/public/rollout and whole gates.
+- **Docs:** docs/backend-api.md; docs/reviews/2026-11-05-{participant-identity-behavior,identity-review-corrections,row-materialization,client-identity-integration}.md; docs/reviews/2026-11-09-{identity-evidence,fresh-self-decision}.md; docs/technical-overview.md; mobile/test/live/README.md
 - **Log:**
   - 2026-11-05 Verification: Three unique P2 review gaps corrected;14 failing before cases/12 controls,26 after pass;5 independent removals discriminate. Correction review pending;broader B gate RED.
   - 2026-11-05 Integration: Manager/source check: POST participants is unbound-only; original plan60/approval33-34 fresh-self capability UNMET. Creator/source flow remains; frozen0003 unchanged.
+  - 2026-11-09 Decision: Fresh-self needs an owner decision: A accept supported flow and amend plan (recommended), B one-step self-add for creator/source only (no migration), C for every member (0004, epoch 2). Not implemented.
 
 ### [BUG-1793644506] Label local bill and tab removal accurately
 - [ ] **Severity:** med
