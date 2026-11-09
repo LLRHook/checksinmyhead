@@ -439,10 +439,181 @@ def validate_graph(root):
     cancel=workflows['update-release-notes.yml']['on']['workflow_dispatch']['inputs']['allow_cancel']
     require(cancel['type']=='boolean' and cancel['default'] is False,'cancellation consent changed')
     validate_ios_graph(root,workflows)
+    validate_workflow_syntax(workflows)
     return workflows
 
 
+# GitHub rejects a whole workflow file ("workflow file issue", a failed run with no
+# jobs on every push) when an expression names a context its key does not provide.
+# This is GitHub's documented table: Actions contexts reference, "Context
+# availability". First matching key prefix wins; '*' is one job/step/service/input ID.
+_JOB = 'github needs strategy matrix vars inputs'
+_STEP = _JOB + ' job runner env secrets steps'
+_STATUS = 'always cancelled success failure'
+CONTEXT_AVAILABILITY = [(tuple(key.split('.')), frozenset(contexts.split()), frozenset(special.lower().split())) for key, contexts, special in [
+    ('run-name', 'github inputs vars', ''),
+    ('concurrency', 'github inputs vars', ''),
+    ('env', 'github secrets inputs vars', ''),
+    ('on.workflow_call.inputs.*.default', 'github inputs vars', ''),
+    ('on.workflow_call.outputs.*.value', 'github jobs vars inputs', ''),
+    ('jobs.*.concurrency', _JOB, ''),
+    ('jobs.*.container.credentials', _JOB + ' env secrets', ''),
+    ('jobs.*.container.env', _JOB + ' job runner env secrets', ''),
+    ('jobs.*.container', _JOB, ''),
+    ('jobs.*.continue-on-error', _JOB, ''),
+    ('jobs.*.defaults.run', _JOB + ' env', ''),
+    ('jobs.*.env', _JOB + ' secrets', ''),
+    ('jobs.*.environment.url', _JOB + ' job runner env steps', ''),
+    ('jobs.*.environment', _JOB, ''),
+    ('jobs.*.if', 'github needs vars inputs', _STATUS),
+    ('jobs.*.name', _JOB, ''),
+    ('jobs.*.outputs', _STEP, ''),
+    ('jobs.*.runs-on', _JOB, ''),
+    ('jobs.*.secrets', _JOB + ' secrets', ''),
+    ('jobs.*.services.*.credentials', _JOB + ' env secrets', ''),
+    ('jobs.*.services.*.env', _JOB + ' job runner env secrets', ''),
+    ('jobs.*.services', _JOB, ''),
+    ('jobs.*.steps.*.if', _JOB + ' job runner env steps', _STATUS + ' hashFiles'),
+    ('jobs.*.steps.*.continue-on-error', _STEP, 'hashFiles'),
+    ('jobs.*.steps.*.env', _STEP, 'hashFiles'),
+    ('jobs.*.steps.*.name', _STEP, 'hashFiles'),
+    ('jobs.*.steps.*.run', _STEP, 'hashFiles'),
+    ('jobs.*.steps.*.timeout-minutes', _STEP, 'hashFiles'),
+    ('jobs.*.steps.*.with', _STEP, 'hashFiles'),
+    ('jobs.*.steps.*.working-directory', _STEP, 'hashFiles'),
+    ('jobs.*.strategy', 'github needs vars inputs', ''),
+    ('jobs.*.timeout-minutes', _JOB, ''),
+    ('jobs.*.with', _JOB, ''),
+]]
+EXPRESSION_FUNCTIONS = frozenset('contains startswith endswith format join tojson fromjson'.split())
+EXPRESSION_LITERALS = frozenset('true false null nan infinity'.split())
+REUSABLE_CALL_KEYS = frozenset('name uses with secrets needs if permissions strategy concurrency'.split())
+TOKEN_LEVELS = {'none': 0, 'read': 1, 'write': 2}
+
+
+def expression_names(text):
+    """Named values and function calls of one expression body, string literals removed."""
+    bare = re.sub(r"'(?:[^']|'')*'", ' ', text)
+    found = [(m.group(1).lower(), bool(m.group(2))) for m in re.finditer(r'(?<![\w.-])([A-Za-z_][\w-]*)(\s*\()?', bare)]
+    return [(name, call) for name, call in found if call or name not in EXPRESSION_LITERALS]
+
+
+def validate_workflow_syntax(workflows):
+    """Reject expressions and reusable calls that GitHub refuses when it loads the file."""
+    require = gate.require
+    def walk(node, path):
+        if isinstance(node, dict):
+            for key, value in node.items():
+                yield from walk(value, path + ('on' if key is True else str(key),))
+        elif isinstance(node, list):
+            for index, value in enumerate(node):
+                yield from walk(value, path + (str(index),))
+        elif isinstance(node, str):
+            yield path, node
+    for filename, workflow in workflows.items():
+        for path, text in walk(workflow, ()):
+            bodies = re.findall(r'\$\{\{(.*?)\}\}', text, re.S)
+            where = filename + ':' + '.'.join(path)
+            require(text.count('${{') == len(bodies), 'unterminated expression at ' + where)
+            if not bodies and path[-1] == 'if' and len(path) in (3, 5):
+                bodies = [text]  # `if` is always an expression, with or without ${{ }}.
+            if not bodies:
+                continue
+            rule = next((r for r in CONTEXT_AVAILABILITY if len(path) >= len(r[0]) and all(want in ('*', got) for want, got in zip(r[0], path))), None)
+            require(rule is not None, 'expression outside a documented workflow key at ' + where)
+            for body in bodies:
+                for name, call in expression_names(body):
+                    if call:
+                        require(name in EXPRESSION_FUNCTIONS or name in rule[2], 'function ' + name + ' unavailable at ' + where)
+                    else:
+                        require(name in rule[1], "Unrecognized named-value: '" + name + "' at " + where)
+        # Reusable workflows: declared typed inputs, and callers that satisfy the contract.
+        def triggers(w):
+            events = w.get('on', w.get(True))
+            require(isinstance(events, dict), 'unenumerated workflow triggers in ' + filename)
+            return events
+        def token(owner, fallback):
+            scopes = owner.get('permissions', fallback)
+            require(isinstance(scopes, dict), 'unenumerated token permissions in ' + filename)
+            return scopes
+        for name, spec in ((triggers(workflow).get('workflow_call') or {}).get('inputs') or {}).items():
+            require(spec.get('type') in ('string', 'number', 'boolean'), 'untyped reusable input ' + filename + ':' + name)
+        for jobname, job in workflow['jobs'].items():
+            if 'uses' not in job:
+                continue
+            where = filename + ':' + jobname
+            require(set(job) <= REUSABLE_CALL_KEYS, 'unsupported reusable-call key at ' + where)
+            require(job['uses'].startswith('./.github/workflows/') and job['uses'].split('/')[-1] in workflows, 'unknown reusable workflow at ' + where)
+            callee = workflows[job['uses'].split('/')[-1]]
+            require('workflow_call' in triggers(callee), 'callee is not reusable at ' + where)
+            contract = triggers(callee)['workflow_call'] or {}
+            for kind in ('inputs', 'secrets'):
+                declared = contract.get(kind) or {}
+                supplied = job.get('with' if kind == 'inputs' else kind) or {}
+                require(isinstance(supplied, dict) and set(supplied) <= set(declared), 'undeclared reusable ' + kind + ' at ' + where)
+                missing = [k for k, spec in declared.items() if (spec or {}).get('required') and 'default' not in (spec or {}) and k not in supplied]
+                require(not missing, 'missing required reusable ' + kind + ' at ' + where)
+            # A called workflow cannot raise GITHUB_TOKEN permissions above its caller job.
+            granted = token(job, token(workflow, {}))
+            for called in callee['jobs'].values():
+                for scope, level in token(called, token(callee, {})).items():
+                    require(TOKEN_LEVELS[level] <= TOKEN_LEVELS[granted.get(scope, 'none')], 'called workflow exceeds caller token at ' + where)
+
+
 class GraphTests(unittest.TestCase):
+    def test_workflow_expressions_use_only_documented_contexts(self):
+        actual = {p.name: yaml.safe_load(p.read_text()) for p in (ROOT/'.github/workflows').glob('*.yml')}
+        validate_workflow_syntax(actual)
+        self.assertEqual(expression_names("needs.a.result == 'runner.temp' && !inputs.x || fromJSON(env.Y)['secrets']"),
+                         [('needs', False), ('inputs', False), ('fromjson', True), ('env', False)])
+        # BUG-1794258285: GitHub refused ios-origin.yml on every push for exactly this.
+        defects = {
+            'job-env-runner': ('ios-origin.yml', lambda w: w['jobs']['origin']['env'].update(IPA_DIR='${{ runner.temp }}/ios-ipa')),
+            'job-env-steps': ('ios-origin.yml', lambda w: w['jobs']['origin']['env'].update(BUILD='${{ steps.prepare.outputs.build }}')),
+            'job-if-env': ('ios-origin.yml', lambda w: w['jobs']['origin'].update({'if': "${{ env.DELIVERY_TARGET == 'ios-upload' }}"})),
+            'job-if-bare-secrets': ('ios-promote.yml', lambda w: w['jobs']['promote'].update({'if': "secrets.DELIVERY_ASC_KEY_ID != ''"})),
+            'job-runs-on-runner': ('checks.yml', lambda w: w['jobs']['backend'].update({'runs-on': '${{ runner.os }}'})),
+            'job-concurrency-secrets': ('deploy-backend.yml', lambda w: w['jobs']['publish']['concurrency'].update(group='${{ secrets.DELIVERY_RENDER_DEPLOY_HOOK_URL }}')),
+            'job-timeout-env': ('checks.yml', lambda w: w['jobs']['web'].update({'timeout-minutes': '${{ env.LIMIT }}'})),
+            'job-env-hashfiles': ('checks.yml', lambda w: w['jobs']['web'].update(env={'LOCK': "${{ hashFiles('**/package-lock.json') }}"})),
+            'workflow-env-needs': ('checks.yml', lambda w: w['env'].update(RESULT='${{ needs.backend.result }}')),
+            'workflow-concurrency-needs': ('ci.yml', lambda w: w.update(concurrency={'group': '${{ needs.resolve.outputs.candidate }}'})),
+            'reusable-default-secrets': ('ios-origin.yml', lambda w: w['on']['workflow_call']['inputs']['release_notes'].update(default='${{ secrets.NOTES }}')),
+            'reusable-with-secrets': ('testflight.yml', lambda w: w['jobs']['deliver']['with'].update(release_notes='${{ secrets.NOTES }}')),
+            'reusable-with-runner': ('ci.yml', lambda w: w['jobs']['checks']['with'].update(scope='${{ runner.os }}')),
+            'step-if-secrets': ('ios-origin.yml', lambda w: w['jobs']['origin']['steps'][3].update({'if': "${{ secrets.DELIVERY_P12_PASSWORD != '' }}"})),
+            'step-uses-expression': ('ios-origin.yml', lambda w: w['jobs']['origin']['steps'][0].update(uses='actions/checkout@${{ vars.PIN }}')),
+            'job-if-hashfiles': ('checks.yml', lambda w: w['jobs']['aggregate'].update({'if': "always() && hashFiles('x') != ''"})),
+            'unknown-context': ('ci.yml', lambda w: w['jobs']['resolve']['steps'][-1]['env'].update(CONTROLLER='${{ gitlab.sha }}')),
+            'unknown-function': ('ci.yml', lambda w: w['jobs']['resolve']['steps'][-1]['env'].update(CONTROLLER='${{ toUpper(github.sha) }}')),
+            'unterminated': ('ci.yml', lambda w: w['jobs']['resolve']['steps'][-1]['env'].update(CONTROLLER='${{ github.sha')),
+            'untyped-input': ('ios-origin.yml', lambda w: w['on']['workflow_call']['inputs']['source'].pop('type')),
+            'undeclared-input': ('testflight.yml', lambda w: w['jobs']['deliver']['with'].update(operation='promote')),
+            'missing-required-input': ('testflight.yml', lambda w: w['jobs']['deliver']['with'].pop('receipt')),
+            'undeclared-secret': ('ci.yml', lambda w: w['jobs']['publish-web']['secrets'].update(DELIVERY_ASC_KEY_ID='${{ secrets.DELIVERY_ASC_KEY_ID }}')),
+            'missing-required-secret': ('testflight.yml', lambda w: w['jobs']['deliver']['secrets'].pop('DELIVERY_P12_PASSWORD')),
+            'caller-token-below-callee': ('testflight.yml', lambda w: w['jobs']['deliver'].pop('permissions')),
+            'call-step-key': ('testflight.yml', lambda w: w['jobs']['deliver'].update({'timeout-minutes': 5})),
+            'call-missing-file': ('testflight.yml', lambda w: w['jobs']['deliver'].update(uses='./.github/workflows/ios-upload.yml')),
+            'call-nonreusable': ('testflight.yml', lambda w: w['jobs']['deliver'].update(uses='./.github/workflows/ci.yml', secrets={}, **{'with': {}})),
+        }
+        for defect, (filename, mutate) in defects.items():
+            changed = copy.deepcopy(actual)
+            mutate(changed[filename])
+            with self.subTest(defect=defect), self.assertRaises(gate.Rejected):
+                validate_workflow_syntax(changed)
+        # Healthy controls stay accepted: the rule set is not a blanket refusal.
+        for control, (filename, mutate) in {
+            'step-env-runner': ('ios-origin.yml', lambda w: w['jobs']['origin']['steps'][2].update(env={'SCRATCH': '${{ runner.temp }}/scratch'})),
+            'job-env-secrets': ('ios-origin.yml', lambda w: w['jobs']['origin']['env'].update(KEY='${{ secrets.DELIVERY_ASC_KEY_ID }}')),
+            'step-if-status': ('checks.yml', lambda w: w['jobs']['web']['steps'][-1].update({'if': "always() && hashFiles('reports/vitest.json') != ''"})),
+            'job-if-bare-status': ('checks.yml', lambda w: w['jobs']['aggregate'].update({'if': "always() && needs.backend.result != 'skipped'"})),
+        }.items():
+            changed = copy.deepcopy(actual)
+            mutate(changed[filename])
+            with self.subTest(control=control):
+                validate_workflow_syntax(changed)
+
     def test_actual_graph_and_negative_mutations(self):
         validate_graph(ROOT)
         # Copy ONLY candidate workflow/control text into a synthetic YAML fixture.
