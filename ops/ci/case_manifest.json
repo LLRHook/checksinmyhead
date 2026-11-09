@@ -693,7 +693,8 @@
       "mobile/test/tab_import_capacity_test.dart",
       "mobile/test/receipt_timestamp_test.dart",
       "mobile/test/save_journey_test.dart",
-      "mobile/test/tab_display_conversion_test.dart"
+      "mobile/test/tab_display_conversion_test.dart",
+      "mobile/test/finalize_confirm_sheet_test.dart"
     ],
     "web": [
       "web-bill-viewer/src/components/__tests__/SettlementCard.test.ts",
@@ -1338,6 +1339,27 @@
       ],
       "mobile/test/tab_display_conversion_test.dart": [
         "(?:^| )trip\\ display\\ conversion\\ is\\ live,\\ reports\\ an\\ outage\\ and\\ never\\ rewrites\\ the\\ stored\\ receipt$"
+      ],
+      "mobile/test/finalize_confirm_sheet_test.dart": [
+        "(?:^| )fits\\ 320x568\\ portrait\\ at\\ text\\ scale\\ 1\\.0$",
+        "(?:^| )fits\\ 320x568\\ portrait\\ at\\ text\\ scale\\ 2\\.0$",
+        "(?:^| )fits\\ 320x568\\ portrait\\ at\\ text\\ scale\\ 3\\.0$",
+        "(?:^| )fits\\ 375x667\\ portrait\\ at\\ text\\ scale\\ 1\\.0$",
+        "(?:^| )fits\\ 375x667\\ portrait\\ at\\ text\\ scale\\ 2\\.0$",
+        "(?:^| )fits\\ 375x667\\ portrait\\ at\\ text\\ scale\\ 3\\.0$",
+        "(?:^| )fits\\ 568x320\\ landscape\\ at\\ text\\ scale\\ 1\\.0$",
+        "(?:^| )fits\\ 568x320\\ landscape\\ at\\ text\\ scale\\ 2\\.0$",
+        "(?:^| )fits\\ 568x320\\ landscape\\ at\\ text\\ scale\\ 3\\.0$",
+        "(?:^| )fits\\ 812x375\\ landscape\\ with\\ side\\ insets\\ at\\ text\\ scale\\ 1\\.0$",
+        "(?:^| )fits\\ 812x375\\ landscape\\ with\\ side\\ insets\\ at\\ text\\ scale\\ 2\\.0$",
+        "(?:^| )fits\\ 812x375\\ landscape\\ with\\ side\\ insets\\ at\\ text\\ scale\\ 3\\.0$",
+        "(?:^| )a\\ short\\ preview\\ keeps\\ its\\ compact\\ height$",
+        "(?:^| )three\\ people\\ fit\\ 320x568\\ without\\ scrolling$",
+        "(?:^| )a\\ long\\ preview\\ stays\\ within\\ 70%\\ of\\ a\\ tall\\ display$",
+        "(?:^| )Finalize\\ returns\\ true\\ after\\ scrolling\\ to\\ the\\ last\\ row$",
+        "(?:^| )Cancel\\ returns\\ false\\ and\\ dismissal\\ returns\\ null$",
+        "(?:^| )Tab\\ detail\\ finalizes\\ once\\ with\\ the\\ same\\ tab\\ and\\ token$",
+        "(?:^| )Tab\\ detail\\ never\\ finalizes\\ on\\ Cancel\\ or\\ dismissal$"
       ]
     },
     "web": {
