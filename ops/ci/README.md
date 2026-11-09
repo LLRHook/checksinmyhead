@@ -159,7 +159,8 @@ byte-identical image promotion or independent binary provenance.
 
 Before the hook request the helper reads `/health` once, because the new revision
 migrates at startup while its predecessor still serves. It continues when the answer
-is not HTTP200 (nothing serving), names S itself, or names a related revision whose
+is neither HTTP200 nor a JSON object (nothing serving; the service's own 5xx health
+object still counts as serving), names S itself, or names a related revision whose
 schema registry is at least as long as S's (no step to apply). Otherwise a schema
 step is pending and the serving revision must descend from the backend capability
 floor `additive_ddl_warm_reader`: the first main revision whose warm readers are

@@ -434,7 +434,9 @@ def predecessor_clear(repo, source, floors, base, request=None):
     sha(source); u = safe_url(base, 'billington-api.onrender.com')
     require(u.path in ('', '/') and not u.query, 'invalid health base')
     code, body = (request or http)('GET', base.rstrip('/') + '/health')  # No HTTP answer is unknown, never "drained".
-    if code != 200:
+    # The service itself answers 503 with its health object when its database is
+    # unavailable, so only a non-200 answer that is not a JSON object means nothing serves.
+    if code != 200 and not body.lstrip().startswith(b'{'):
         return {'predecessor': 'not-serving'}
     try:
         data = parse(body)

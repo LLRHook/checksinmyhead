@@ -221,8 +221,16 @@ class PredecessorTests(GitFixture):
                  'empty-commit':self.health(''),'short':self.health(self.old[:12]),'uppercase':self.health(self.old.upper()),'number':(200,b'{"commit":1}'),
                  'duplicate':(200,('{"commit":"%s","commit":"%s"}'%(self.source,self.source)).encode()),'array':(200,b'[]'),
                  'unknown-object':self.health('e'*40),'unrelated':self.health(unrelated)}
+        # An unhealthy predecessor is still a serving predecessor: its own 5xx health object never reads as stopped.
+        unhealthy=lambda code,commit:(code,gate.compact({'status':'service unavailable','commit':commit}).encode())
+        answers.update({'unhealthy-unknown':unhealthy(503,'e'*40),'unhealthy-no-commit':(503,b'{"status":"service unavailable"}'),
+                        'unhealthy-truncated':(502,b' {"status":'),'unhealthy-unrelated':unhealthy(500,unrelated)})
         for name,answer in answers.items():
             with self.subTest(defect=name),self.assertRaises(gate.Rejected):self.observe(answer,reader)
+        for code in (500,502,503):
+            with self.subTest(unhealthy=code):
+                self.assertEqual(self.observe(unhealthy(code,self.old),reader),'warm-reader-floor')
+                with self.assertRaises(gate.Rejected):self.observe(unhealthy(code,self.old),{})
         for base in ('http://billington-api.onrender.com','https://evil.test','https://billington-api.onrender.com/other','https://billington-api.onrender.com?x=1'):
             with self.subTest(base=base),self.assertRaises(gate.Rejected):gate.predecessor_clear(self.repo,self.source,reader,base,request=lambda *_:self.fail('unsafe base was requested'))
 
