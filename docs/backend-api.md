@@ -4,6 +4,54 @@ Base URL: `http://localhost:8080` (development)
 
 Bill reads accept the bill's `t` token, or the containing tab's token for a read-only bill view. Bill writes require the bill token. Tab writes may also require an `X-Member-Token` header; member attribution uses the optional `m` query parameter.
 
+This reference describes the source in this repository. A deployed service can be
+older: `GET /health` reports its commit.
+
+## Route index
+
+Every route registered in `backend/cmd/bill-service/main.go`, with the section that
+defines it. A documentation contract test keeps this table equal to the route table.
+
+| Route | Defined in |
+| --- | --- |
+| `GET /health` | [Health](#health) |
+| `GET /api/app/version-policy` | [Health](#health) |
+| `GET /api/currency/rate` | [Currency quotes](#currency-quotes) |
+| `GET /api/exchange-rates/:currency` | [Currency quotes](#currency-quotes) |
+| `POST /api/bills` | [Bills](#bills) |
+| `GET /api/bills/:id` | [Bills](#bills) |
+| `POST /api/bills/:id/participants` | [Participant-reference contract](#participant-reference-contract) |
+| `PATCH /api/bills/:id/participants/:participantId` | [Participant-reference contract](#participant-reference-contract) |
+| `PATCH /api/bills/:id/items/:itemId/assignments` | [Reference claims](#reference-claims-single-and-batch) |
+| `PATCH /api/bills/:id/assignments` | [Reference claims](#reference-claims-single-and-batch), batch |
+| `PATCH /api/bills/:id/shares/:shareId` | [Mutation policy](#receipt-and-tab-mutation-policy), source-bill paid flag |
+| `POST /api/tabs` | [Tabs](#tabs) |
+| `GET /api/tabs/:id` | [Tabs](#tabs) |
+| `PATCH /api/tabs/:id` | [Tabs](#tabs) |
+| `POST /api/tabs/:id/bills` | [Tabs](#tabs), attach a standalone bill |
+| `PATCH /api/tabs/:id/bills/:billId/items/:itemId/assignments` | [Reference claims](#reference-claims-single-and-batch) |
+| `PATCH /api/tabs/:id/bills/:billId/assignments` | [Reference claims](#reference-claims-single-and-batch), batch |
+| `PATCH /api/tabs/:id/bills/:billId/shares/:shareId/paid` | [Mutation policy](#receipt-and-tab-mutation-policy), tab-share paid flag |
+| `POST /api/tabs/:id/bills/:billId/participants` | [Participant-reference contract](#participant-reference-contract) |
+| `PATCH /api/tabs/:id/bills/:billId/participants/:participantId` | [Participant-reference contract](#participant-reference-contract) |
+| `POST /api/tabs/:id/bills/:billId/participants/:participantId/binding-request` | [Participant-reference contract](#participant-reference-contract) |
+| `PUT /api/tabs/:id/bills/:billId/participants/:participantId/binding` | [Participant-reference contract](#participant-reference-contract) |
+| `POST /api/tabs/:id/finalize` | [Finalization & Settlements](#finalization--settlements) |
+| `GET /api/tabs/:id/settlements` | [Finalization & Settlements](#finalization--settlements) |
+| `PATCH /api/tabs/:id/settlements/:settlementId` | [Finalization & Settlements](#finalization--settlements) |
+| `POST /api/tabs/:id/join` | [Members](#members) |
+| `GET /api/tabs/:id/members` | [Members](#members) |
+| `GET /api/tabs/:id/members/me` | [Participant-reference contract](#participant-reference-contract) |
+| `PATCH /api/tabs/:id/members/me` | [Participant-reference contract](#participant-reference-contract), rename |
+| `DELETE /api/tabs/:id/members/me` | [Members](#members), leave |
+| `POST /api/receipts/parse` | [Receipt Parsing](#receipt-parsing); registered only when the scan provider is configured |
+
+Lifecycle limits: no route deletes a bill or a tab, detaches a bill from a tab, or
+revokes, rotates or expires an access token. `DELETE /api/tabs/:id/members/me` removes
+one membership and nothing else. Removal of shared records is an operator action
+(`FEAT-1793644500` is open). Tab receipt-photo routes were removed in 2.0 and are not
+part of this API.
+
 ## Health
 
 ### `GET /health`

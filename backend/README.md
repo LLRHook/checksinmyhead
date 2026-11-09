@@ -465,6 +465,24 @@ and [mutation contracts](../docs/backend-api.md#receipt-and-tab-mutation-policy)
 Synthetic test-only pending versions are never embedded in
 the production registry. No whole-product V&V pass is implied.
 
+## Production and history
+
+Production is the Render service at `https://billington-api.onrender.com`; `GET /health`
+reports the deployed commit. Publication is owned by the
+[managed delivery gate](../ops/ci/README.md); this README gives no manual deploy command.
+On 2026-11-09 production reported `81a564f`, older than the schema-startup, logging and
+lifecycle sections above, which describe source that is not deployed yet.
+
+Railway is not a deployment target. It was tried and abandoned: the release API was
+pointed at Railway in
+[`26109fb`](https://github.com/LLRHook/checksinmyhead/commit/26109fba4b50c8c68273f51dff71e5f2bf5aef9f)
+(2026-03-28) and reverted in
+[`7b97d03`](https://github.com/LLRHook/checksinmyhead/commit/7b97d038bdb40453976b56f260d37721fc3d5c15)
+(2026-04-22). The phase plan in [roadmap.md](roadmap.md) still shows Railway, Fly.io,
+Cloudflare R2 and Gemini; it is a labeled historical record, not operating instructions.
+Database vendor, backups, alerting and whether any Railway resource remains are
+unverified (`FEAT-1793644501`).
+
 ## API Documentation
 
 See [docs/backend-api.md](../docs/backend-api.md) for the full endpoint reference.

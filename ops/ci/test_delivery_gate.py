@@ -1604,6 +1604,59 @@ class DocumentationContractTests(unittest.TestCase):
             with self.subTest(statement=statement):self.assertIn(statement,description)
         self.assertIn('Submitting this copy is an owner action in App Store Connect',prepared)
 
+    def test_operational_docs_label_history_and_match_routes_and_signed_capabilities(self):
+        read=lambda path:(ROOT/path).read_text()
+        readme=read('README.md')
+        # PR #149 removed the viewer's /privacy route; the maintained route is /privacy-policy.
+        # README may name the old route only where it says that it was removed.
+        for paragraph in readme.split('\n\n'):
+            if re.search(r'(?<![\w.])/privacy(?![-\w.])',paragraph):
+                with self.subTest(paragraph=paragraph[:60]):self.assertRegex(paragraph,r'removed on purpose \(PR #149\)')
+        self.assertIn('/privacy-policy',readme)
+        self.assertNotIn('- [ ] Production Deployment',readme)
+        roadmap=read('backend/roadmap.md');backend=read('backend/README.md')
+        self.assertTrue(roadmap.splitlines()[2].startswith('> **Historical record.'),roadmap.splitlines()[2])
+        section=''
+        for line in roadmap.splitlines():
+            if line.startswith('#'):section=line
+            if re.search(r'(?i)railway|fly\.io|cloudflare r2|gemini',line):
+                with self.subTest(line=line):self.assertRegex(section+' '+line,r'(?i)historical|abandoned')
+        self.assertNotIn('(Future)',roadmap);self.assertNotIn('### Service Architecture (Current)',roadmap)
+        for label,doc in (('roadmap',roadmap),('backend README',backend)):
+            with self.subTest(doc=label):
+                self.assertRegex(doc,r'(?i)railway[^\n]*(abandoned|reverted)')
+                self.assertIn('commit/7b97d038bdb40453976b56f260d37721fc3d5c15',doc)  # the Railway revert
+        self.assertIn('[roadmap.md](roadmap.md)',backend)
+        api=read('docs/backend-api.md')
+        routes=re.findall(r'r\.(GET|POST|PATCH|PUT|DELETE)\("([^"]+)"',read('backend/cmd/bill-service/main.go'))
+        self.assertGreaterEqual(len(routes),31)
+        self.assertIn('## Route index',api)
+        index=api.split('## Route index',1)[1].split('\n## ',1)[0]
+        self.assertEqual(sorted(re.findall(r'^\| `([A-Z]+) (/[^`]*)` \|',index,re.M)),sorted(routes))
+        self.assertNotIn('/images',api)
+        overview=read('docs/technical-overview.md')
+        models=overview.split('## Data Models',1)[1].split('\n## ',1)[0]
+        for field in ('LazyMode','PaidByMemberID','CurrencyCode','USDExchangeRate','USDTotal','DisplayCurrency','NetBalances'):
+            with self.subTest(field=field):self.assertIn(field,models)
+        self.assertNotIn('fire-and-forget',overview)
+        for statement in ('Access tokens do not expire and cannot be revoked or rotated',
+                          'No route deletes a bill or a tab',
+                          'Signed builds register only the custom scheme `billington://`',
+                          'Universal Links do not open the app',
+                          'An invite is not carried through a new installation'):
+            with self.subTest(statement=statement):self.assertIn(statement,overview)
+        # The invite statement above describes this file; change both together.
+        self.assertNotIn('associated-domains',read('mobile/ios/Runner/RunnerProfile.entitlements'))
+        self.assertIn('<string>billington</string>',read('mobile/ios/Runner/Info.plist'))
+        market=read('docs/market-analysis.md')
+        self.assertTrue(market.splitlines()[2].startswith('> **Historical document.'),market.splitlines()[2])
+        for heading in ('## Competitive Landscape Analysis','## Market Opportunity','## Engineering Approach'):
+            with self.subTest(heading=heading):self.assertIn(heading+' (historical',market)
+        for label,doc in (('README',readme),('roadmap',roadmap),('backend README',backend),('market',market),('overview',overview)):
+            for target in re.findall(r'\]\((?!https?:|mailto:|#)([^)#\s]+)',doc):
+                base={'README':ROOT,'roadmap':ROOT/'backend','backend README':ROOT/'backend'}.get(label,ROOT/'docs')
+                with self.subTest(doc=label,link=target):self.assertTrue((base/target).exists())
+
     def test_initial_policy_and_local_reports_cannot_emit_a_release_receipt(self):
         with tempfile.TemporaryDirectory(prefix='gate-local-report-') as d:
             output=Path(d)/'github-output'
