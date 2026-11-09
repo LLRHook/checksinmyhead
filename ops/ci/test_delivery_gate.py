@@ -182,6 +182,60 @@ class FloorTests(GitFixture):
         self.assertEqual(p.returncode,1);self.assertIn('F-phase required',p.stderr)
 
 
+class PredecessorTests(GitFixture):
+    """The fixture's old revision has registry 1 and S appends 2: publishing S is a schema step."""
+    BASE='https://billington-api.onrender.com'
+
+    def health(self,commit):return 200,gate.compact({'status':'bill service - ok','commit':commit}).encode()
+
+    def observe(self,answer,floors=None,source=None,module=gate):
+        calls=[]
+        def request(method,url):
+            calls.append((method,url))
+            if isinstance(answer,Exception):raise answer
+            return answer
+        result=module.predecessor_clear(self.repo,self.source if source is None else source,{'synthetic_replay':self.old} if floors is None else floors,self.BASE,request=request)
+        self.assertEqual(calls,[('GET',self.BASE+'/health')])
+        return result['predecessor']
+
+    def test_serving_predecessor_must_reach_the_named_reader_floor_before_a_schema_step(self):
+        reader=gate.READER_CAPABILITY
+        self.assertEqual(self.observe(self.health(self.old),{reader:self.old}),'warm-reader-floor')
+        for floors in (None,{},{reader:self.source},{reader:'e'*40},{reader:None},{'other_capability':self.old},[self.old]):
+            with self.subTest(floors=floors),self.assertRaises(gate.Rejected) as rejected:self.observe(self.health(self.old),floors)
+            self.assertIn('stop it before publishing',str(rejected.exception))
+        with self.assertRaises(gate.Rejected):self.observe(self.health(self.old),{reader:'not-a-sha'})
+
+    def test_absent_identical_or_schema_equal_predecessor_needs_no_floor(self):
+        for code in (404,502,503):
+            with self.subTest(code=code):self.assertEqual(self.observe((code,b'<html>suspended</html>')),'not-serving')
+        self.assertEqual(self.observe(self.health(self.source)),'same-revision')
+        # C carries the same registry as S; an older S applies no step over a newer serving revision.
+        self.assertEqual(self.observe(self.health(self.source),source=self.controller),'no-schema-step')
+        self.assertEqual(self.observe(self.health(self.source),source=self.old),'no-schema-step')
+
+    def test_unknown_unrelated_or_unobservable_predecessor_is_rejected(self):
+        tree=self.call('rev-parse',self.old+'^{tree}');unrelated=self.call('commit-tree',tree,'-m','synthetic unrelated history')
+        reader={gate.READER_CAPABILITY:self.old}
+        answers={'transport':gate.Rejected('transport request failed'),'not-json':(200,b'<html>starting</html>'),'no-commit':(200,b'{"status":"bill service - ok"}'),
+                 'empty-commit':self.health(''),'short':self.health(self.old[:12]),'uppercase':self.health(self.old.upper()),'number':(200,b'{"commit":1}'),
+                 'duplicate':(200,('{"commit":"%s","commit":"%s"}'%(self.source,self.source)).encode()),'array':(200,b'[]'),
+                 'unknown-object':self.health('e'*40),'unrelated':self.health(unrelated)}
+        for name,answer in answers.items():
+            with self.subTest(defect=name),self.assertRaises(gate.Rejected):self.observe(answer,reader)
+        for base in ('http://billington-api.onrender.com','https://evil.test','https://billington-api.onrender.com/other','https://billington-api.onrender.com?x=1'):
+            with self.subTest(base=base),self.assertRaises(gate.Rejected):gate.predecessor_clear(self.repo,self.source,reader,base,request=lambda *_:self.fail('unsafe base was requested'))
+
+    def test_reader_floor_guard_removal_admits_the_old_serving_reader(self):
+        import types
+        before="require(related and floor is not None and descends(repo, floor, running),"
+        source=Path(gate.__file__).read_text();self.assertEqual(source.count(before),1)
+        mutant=types.ModuleType('synthetic_predecessor_guard_removal');mutant.__file__=gate.__file__
+        exec(compile(source.replace(before,"require(True,"),gate.__file__,'exec'),mutant.__dict__)
+        with self.assertRaises(gate.Rejected):self.observe(self.health(self.old))
+        self.assertEqual(self.observe(self.health(self.old),module=mutant),'warm-reader-floor')
+
+
 class SelectionTests(unittest.TestCase):
     def test_initial_policy_disables_all_publication(self):
         for policy in ('', '{}', '{', gate.compact(gate.DISABLED_POLICY)):
@@ -1035,18 +1089,20 @@ class EntrypointTests(GitFixture):
         event=dict(self.event,GITHUB_RUN_ID=B['run'],GITHUB_RUN_ATTEMPT=B['attempt'],DELIVERY_TARGET='backend',
                    RELEASE_POLICY=gate.compact(self.policy),GATE_RECEIPT=gate.compact(self.receipt),VERIFY_ONLY='false',
                    DELIVERY_RENDER_DEPLOY_HOOK_URL='https://api.render.com/deploy/synthetic?key=not-a-secret')
-        actual_git=gate.git;actual_deploy=gate.deploy_backend;calls=[]
+        actual_git=gate.git;actual_deploy=gate.deploy_backend;calls=[];serving=[self.source]
         def local_git(repo,*args,**kwargs):
             if args[0]=='fetch':calls.append('fresh-main');return ''
             return actual_git(repo,*args,**kwargs)
         def request(method,url):
             calls.append(method)
             if method=='POST':return 202,b'{}'
-            return (200,gate.compact({'status':'bill service - ok','commit':self.source}).encode()) if url.endswith('/health') else (404,b'')
+            # The first health read is the serving predecessor; later reads are the deployed S.
+            commit=serving[0] if calls.count('GET')==1 else self.source
+            return (200,gate.compact({'status':'bill service - ok','commit':commit}).encode()) if url.endswith('/health') else (404,b'')
         def deploy(*args):return actual_deploy(*args,request=request,sleep=lambda _:None)
         argv=['delivery_gate.py','publish','--repo',str(self.repo),'--source',self.source,'--controller',self.controller]
-        for defect in ('healthy','disabled-policy','bad-receipt','wrong-C','feature','missing-secret','invalid-boolean','verification-only'):
-            env=dict(event);calls.clear()
+        for defect in ('healthy','disabled-policy','bad-receipt','wrong-C','feature','missing-secret','invalid-boolean','verification-only','serving-old-reader'):
+            env=dict(event);calls.clear();serving[0]=self.old if defect=='serving-old-reader' else self.source
             if defect=='disabled-policy':env['RELEASE_POLICY']=gate.compact(gate.DISABLED_POLICY)
             elif defect=='bad-receipt':env['GATE_RECEIPT']=gate.compact(dict(self.receipt,source=self.controller))
             elif defect=='wrong-C':env['GITHUB_SHA']=self.source
@@ -1054,10 +1110,12 @@ class EntrypointTests(GitFixture):
             elif defect=='missing-secret':env['DELIVERY_RENDER_DEPLOY_HOOK_URL']=''
             elif defect=='invalid-boolean':env['VERIFY_ONLY']='$(touch PWNED)'
             elif defect=='verification-only':env['VERIFY_ONLY']='true';env['DELIVERY_RENDER_DEPLOY_HOOK_URL']=''
-            with self.subTest(defect=defect),patch.dict(os.environ,env,clear=True),patch.object(sys,'argv',argv),patch.object(gate,'git',local_git),patch.object(gate,'deploy_backend',deploy),contextlib.redirect_stdout(io.StringIO()) as output:
+            with self.subTest(defect=defect),patch.dict(os.environ,env,clear=True),patch.object(sys,'argv',argv),patch.object(gate,'git',local_git),patch.object(gate,'http',request),patch.object(gate,'deploy_backend',deploy),contextlib.redirect_stdout(io.StringIO()) as output:
                 if defect in ('healthy','verification-only'):
                     gate.main();self.assertIn('fresh-main',calls)
                     self.assertEqual('POST' in calls,defect=='healthy')
+                    # The serving predecessor is observed before any hook request.
+                    if defect=='healthy':self.assertEqual(calls,['fresh-main','GET','POST','GET','GET'])
                     self.assertNotIn('not-a-secret',output.getvalue())
                 else:
                     with self.assertRaises(gate.Rejected):gate.main()

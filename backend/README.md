@@ -280,8 +280,19 @@ values/counts after checked commit, preserving actual timestamp precision.
 Complete explicit storage columns and bounded read-only consistent transactions serve
 API and retained HTML graph reads. This avoids additive-DDL result-shape invalidation
 without query-mode changes, reconnection or blind mutation retry. Readiness is still a
-live ledger check; separate startup verification checks catalog definitions. Existing
-old cached-reader failures and old-writer exclusion remain rollout prerequisites.
+live ledger check; separate startup verification checks catalog definitions.
+`TestPostgresWarmServiceSurvivesAdditiveDDL` holds this on real PostgreSQL: one warm
+connection returns byte-identical API/HTML bodies from its cached statements, and its
+writers still commit, after another session adds a column to every application table.
+Keep every read and row lock on `pkg/models/columns.go`; a table-shaped projection
+(`SELECT *`, `RETURNING *`) fails once per cached statement per pooled connection.
+
+A revision older than these projections cannot serve across a schema step. The deployed
+pre-registry revision returns transient 500s from its warm connections, and bills its
+writers create after 0003 are rejected for unversioned readers. Stop it before the
+first publish; the [delivery gate](../ops/ci/README.md#existing-transports) refuses to
+start a schema step while such a revision answers `/health`. See the
+[measured evidence](../docs/reviews/2026-11-09-reader-ddl.md).
 
 The November5 source checkpoint characterizes local index reuse and runs the complete
 nonnumerical ordinary/mandatory PostgreSQL selections. The four historical numerical

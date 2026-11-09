@@ -609,7 +609,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** PG17.11 owned synthetic schemas, exact immutable prefix1/2 archives; raw phase-isolation failures, restarted4/4 and scalar1/1 control in identity0003-foundation-20261105/. HTTP sanitized logs expose unknown database class; scalar0A000 strongly supports mechanism, not direct HTTP error disclosure. Follow up with separately reviewed stable projections/connection strategy and real PG/final-binary proof; no blind mutation retry. See docs/reviews/2026-11-05-identity-foundation.md.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Current readers need no code change: the complete explicit projections already keep cached statements valid. New TestPostgresWarmServiceSurvivesAdditiveDDL proves it on PG17.11: one observed warm PID returns 15 byte-identical API/HTML reads from cached statements (0 prepares, 0 errors) and its writers still commit after a separate session adds a column to all 9 tables; a SELECT * discriminator on that connection fails once with 0A000 then recovers; 7 single-site projection removals each fail the test with a real 500. Mechanism: once per cached statement per pooled connection, self-recovering, no restart. Exact deployed 81a564f binaries across the real adopt+0002+0003 migration: 10/84 sequential and 23/280 burst 500s, then 35/35 OK; terminating idle sessions or restarting gives 0 failures. The delivery gate now rejects a schema-step publish while a revision below capability floor additive_ddl_warm_reader answers /health (46 gate methods pass). REMAINS, external: stop the hosted 81a564f service before the first publish, observe what the host answers for a stopped service and whether its hook starts one, and set that floor in RELEASE_POLICY. Not repaired: bills the old writer creates after 0003 are rejected (409) by the current unversioned reader.
+- **Docs:** docs/reviews/2026-11-09-reader-ddl.md; backend/README.md; docs/technical-overview.md; ops/ci/README.md
 
 ### [BUG-1793898428] Make Settings accent choices labeled and reachable at small widths
 - [x] **Severity:** med

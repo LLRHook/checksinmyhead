@@ -379,11 +379,17 @@ returned500 immediately after additive DDL; a separate pgx control reproduced
 SQLSTATE0A000 for cached `SELECT *` result-type invalidation. Drain readers before
 DDL and replace connections before resuming; verify this operational exclusion
 independently. Restarted read compatibility proves neither uninterrupted overlap
-nor old-writer safety. Current readers use explicit complete column shapes. Local index reuse retains full reference validation and money/tie behavior; it establishes no latency recovery. Qualify the final API/HTML on
-the same observed warmed database connections through owned additive fixtures. This
+nor old-writer safety. Current readers use explicit complete column shapes. Local index reuse retains full reference validation and money/tie behavior; it establishes no latency recovery. An integration test
+keeps one warmed database connection through owned additive columns and requires identical
+API/HTML bodies from cached statements, with warm writers still committing. The failure
+of an older reader is once per cached statement per pooled connection, then it recovers;
+it is still not safe to overlap, because rows its writers add after 0003 lack labels.
+The pre-registry deployed revision must be stopped before the first publish, which the
+delivery gate checks by observing `/health` before its hook request. This
 does not repair old cached binaries or authorize blind mutation retries. Production adoption remains
 unauthorized.
-See [foundation evidence](reviews/2026-11-05-identity-foundation.md).
+See [foundation evidence](reviews/2026-11-05-identity-foundation.md) and
+[warm-reader evidence](reviews/2026-11-09-reader-ddl.md).
 
 A schema-scoped transaction advisory lock precedes ledger inspection/creation. At Read
 Committed, the next starter rereads committed history after waiting. The checked transaction
