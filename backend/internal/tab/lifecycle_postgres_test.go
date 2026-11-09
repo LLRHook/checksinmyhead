@@ -93,6 +93,24 @@ func lifecycleSnapshot(t *testing.T, db *gorm.DB) string {
 	}
 	return result
 }
+
+// lifecycleDigest is the cheap whole-state witness for repeated measured
+// samples: one count and one ordered hash of every complete row (all columns,
+// NULL distinct from empty) for the same nine tables as lifecycleSnapshot.
+// It never replaces the canonical JSON snapshot where records are inspected.
+func lifecycleDigest(t *testing.T, db *gorm.DB) string {
+	t.Helper()
+	tables := []string{"tabs", "tab_members", "bills", "people", "bill_participants", "bill_items", "item_assignments", "person_shares", "tab_settlements"}
+	parts := make([]string, 0, len(tables))
+	for _, table := range tables {
+		parts = append(parts, "(SELECT '"+table+"='||count(*)||':'||coalesce(md5(string_agg(md5(r::text),'' ORDER BY r.id)),'empty') FROM "+table+" r)")
+	}
+	var result string
+	if err := db.Raw("SELECT concat_ws(';'," + strings.Join(parts, ",") + ")").Scan(&result).Error; err != nil {
+		t.Fatal(err)
+	}
+	return result
+}
 func mustFinalize(t *testing.T, db *gorm.DB, a TabAccess) []models.TabSettlement {
 	t.Helper()
 	rows, err := NewTabRepository(db).FinalizeOnce(context.Background(), FinalizeCommand{a})

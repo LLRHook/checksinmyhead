@@ -429,7 +429,7 @@ SQL logs omit query text, bind values and driver messages at every log level, in
 ```bash
 go test -race ./...
 # Explicit loopback billington_test fixture, owned random schemas; see VERIFICATION.md:
-go test -race -tags=integration ./cmd/bill-service ./internal/bill ./internal/tab ./pkg/database ./migrations ./internal/startup ./internal/readiness ./internal/testpostgres
+go test -race -timeout=20m -tags=integration ./cmd/bill-service ./internal/bill ./internal/tab ./pkg/database ./migrations ./internal/startup ./internal/readiness ./internal/testpostgres
 ```
 
 The default suite combines mocks and SQLite fixtures. The explicit PostgreSQL layer

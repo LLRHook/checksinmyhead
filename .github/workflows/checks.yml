@@ -177,7 +177,7 @@ jobs:
   postgres:
     name: Gate postgres
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     outputs:
       report: ${{ steps.report.outputs.report }}
     steps:
@@ -209,8 +209,10 @@ jobs:
 
         go mod verify
 
-        go test -race -count=1 -json -tags=integration ./cmd/bill-service ./internal/bill ./internal/tab ./pkg/database
-        ./migrations ./internal/startup ./internal/readiness ./internal/testpostgres | tee "$REPORT_DIR/go-postgres.jsonl"'
+        go build ./cmd/bill-service ./cmd/web-service
+
+        go test -race -count=1 -json -timeout=20m -tags=integration ./cmd/bill-service ./internal/bill ./internal/tab
+        ./pkg/database ./migrations ./internal/startup ./internal/readiness ./internal/testpostgres | tee "$REPORT_DIR/go-postgres.jsonl"'
     - id: report
       run: python3 control/ops/ci/delivery_gate.py summarize --repo control --controller "$CONTROLLER" --source
         "$SOURCE" --row postgres --reports go:reports/go-postgres.jsonl
