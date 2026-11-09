@@ -1,3 +1,4 @@
+# The runner context exists only inside steps: runner-owned paths are step env, never job env.
 name: Create processed iOS origin
 'on':
   workflow_call:
@@ -57,9 +58,6 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       VERIFY_ONLY: ${{ inputs.verification_only }}
       DELIVERY_TARGET: ios-upload
-      IPA_DIR: ${{ runner.temp }}/ios-ipa
-      RECEIPT_DIR: ${{ runner.temp }}/ios-origin-receipt
-      ASC_RECEIPT: ${{ runner.temp }}/ios-processed.json
       BUNDLE_ID: com.checksinmyhead-vng.app
       TEAM_ID: D9QD5DUKNC
     defaults:
@@ -99,6 +97,8 @@ jobs:
       id: ipa
       if: ${{ !inputs.verification_only }}
       uses: ./control/.github/actions/build-signed-ipa
+      env:
+        IPA_DIR: ${{ runner.temp }}/ios-ipa
       with:
         build-number: ${{ steps.prepare.outputs.build }}
         build-name: ${{ steps.prepare.outputs.version }}
@@ -117,6 +117,7 @@ jobs:
         IPA_PATH: ${{ steps.ipa.outputs.ipa-path }}
         IPA_SHA256: ${{ steps.ipa.outputs.ipa-sha256 }}
         RELEASE_NOTES: ${{ inputs.release_notes }}
+        ASC_RECEIPT: ${{ runner.temp }}/ios-processed.json
       run: ruby control/.github/scripts/asc_delivery.rb upload
     - name: Immutable IPA evidence
       if: ${{ !inputs.verification_only }}
@@ -138,6 +139,8 @@ jobs:
         BUILD_NUMBER: ${{ steps.prepare.outputs.build }}
         IPA_ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
         IPA_ARTIFACT_DIGEST: ${{ steps.artifact.outputs.artifact-digest }}
+        ASC_RECEIPT: ${{ runner.temp }}/ios-processed.json
+        RECEIPT_DIR: ${{ runner.temp }}/ios-origin-receipt
       run: python3 control/ops/ci/ios_artifact.py receipt
     - name: Immutable originating receipt
       if: ${{ !inputs.verification_only }}
