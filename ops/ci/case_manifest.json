@@ -19,6 +19,7 @@
       "CompletionRegressions.test_http_adapter_preserves_expected_error_status_without_network",
       "DocumentationContractTests.test_VERIFICATION_uses_the_actual_report_commands_and_keeps_manual_boundaries",
       "DocumentationContractTests.test_initial_policy_and_local_reports_cannot_emit_a_release_receipt",
+      "DocumentationContractTests.test_prepared_store_copy_says_Billington_and_fits_Apple_field_limits",
       "EntrypointTests.test_ASC_transport_and_all_iOS_inputs_remain_unavailable_with_explicit_cancel_consent",
       "EntrypointTests.test_main_changes_select_publication_after_full_gate_and_no_candidate_policy_override",
       "EntrypointTests.test_source_floor_guard_removal_cannot_hide_future_source_floor",

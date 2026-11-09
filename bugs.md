@@ -407,7 +407,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** BUG-1793644511
 - **Repro / Notes:** Review public US listing; recheck actual copy and released behavior before submitting changes. Source metadata alone does not update the public store.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Prepared, not submitted: docs/app-review-notes.md now carries App Store name, subtitle, promotional text, description and keywords that say Billington only, describe the public 1.4.0 workflow read from source 5ca1dc6 (scan or manual entry, item assignment, proportional tax and tip, link and Lazy Mode claiming, tabs) and state the payment limits (no money movement, Venmo opens only from the shared web page, paid marks are manual, US dollars). Apple limits verified in App Store Connect Help on 2026-11-09 and enforced by DocumentationContractTests.test_prepared_store_copy_says_Billington_and_fits_Apple_field_limits (failed before the section existed; gate now 43 methods, OK): name 10/30, subtitle 27/30, promotional text 155/170, description under 4000, keywords 95/100 bytes. Availability checked through the public lookup API: 1.4.0 with the Spliq description in all ten storefronts sampled. REMAINS, owner or store: the public listing still says Spliq until the owner submits the copy in App Store Connect; current keyword field, subtitle and conversion data are not readable from here and stay ungraded; the copy was not checked by running the public 1.4.0 binary against the live service (BUG-1793644511); recheck every line against the binary actually submitted.
+- **Docs:** docs/app-review-notes.md; docs/reviews/2026-11-09-store-and-public-copy.md
 
 ### [BUG-1793644517] Correct marketing download and payment claims
 - [ ] **Severity:** med

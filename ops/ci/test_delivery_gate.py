@@ -1568,6 +1568,42 @@ class DocumentationContractTests(unittest.TestCase):
         self.assertIn('No hosted mutation or Render/Vercel control-plane work',text)
         self.assertNotIn('skip_tests',text)
 
+    def test_prepared_store_copy_says_Billington_and_fits_Apple_field_limits(self):
+        # Limits: App Store Connect Help, Reference > App information and Platform version
+        # information (read 2026-11-09). Name 2-30 and subtitle 30 characters, promotional
+        # text 170 and description 4000 characters, keywords 100 bytes, each keyword
+        # longer than two characters, without the app name or other apps' names.
+        text=(ROOT/'docs/app-review-notes.md').read_text()
+        self.assertIn('## Prepared App Store metadata (not submitted)',text)
+        prepared=text.split('## Prepared App Store metadata (not submitted)',1)[1]
+        def field(name):
+            found=re.search(r'^### '+re.escape(name)+r'\n\n```text\n([\s\S]*?)\n```$',prepared,re.M)
+            self.assertIsNotNone(found,name)
+            return found.group(1)
+        name,subtitle,promo,description,keywords=(field(n) for n in ('Name','Subtitle','Promotional text','Description','Keywords'))
+        self.assertTrue(2<=len(name)<=30 and 'Billington' in name,name)
+        self.assertLessEqual(len(subtitle),30,subtitle)
+        self.assertLessEqual(len(promo),170,len(promo))
+        self.assertLessEqual(len(description),4000,len(description))
+        self.assertTrue(description.startswith('Billington '))
+        self.assertLessEqual(len(keywords.encode()),100,len(keywords.encode()))
+        words=keywords.split(',')
+        self.assertEqual(len(words),len(set(words)))
+        named=('billington','venmo','zelle','cash app','cashapp','apple','paypal','splitwise','tricount','anthropic','claude')
+        for word in words:
+            with self.subTest(keyword=word):
+                self.assertEqual(word,word.strip());self.assertGreater(len(word),2)
+                self.assertFalse(any(n in word.lower() for n in named))
+        for label,value in (('name',name),('subtitle',subtitle),('promo',promo),('description',description),('keywords',keywords)):
+            with self.subTest(field=label):
+                self.assertNotRegex(value,r'(?i)spliq|privacy-first|never leaves|without compromising|zero cloud|one[- ]tap|instant(ly)? pay|send money|pay friends')
+                self.assertNotIn('\n\n\n',value);self.assertEqual(value,value.strip())
+        # Released payment limits must be stated, not implied.
+        for statement in ('Billington does not move money.','does not confirm that a payment happened','Amounts are in US dollars.',
+                          'stored online','Anthropic'):
+            with self.subTest(statement=statement):self.assertIn(statement,description)
+        self.assertIn('Submitting this copy is an owner action in App Store Connect',prepared)
+
     def test_initial_policy_and_local_reports_cannot_emit_a_release_receipt(self):
         with tempfile.TemporaryDirectory(prefix='gate-local-report-') as d:
             output=Path(d)/'github-output'
