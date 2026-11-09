@@ -193,9 +193,12 @@ export default function HomePage() {
           </article>
         </div>
         <p className={styles.paymentNote}>
-          Payments happen outside Billington. Use the Venmo handoff or shared
-          payment details to pay separately. A paid marker is recorded manually
-          by participants; it does not confirm a transfer.
+          Payments happen outside Billington. On a shared page, the Venmo button
+          opens the Venmo app, if it is installed, with the recipient, amount
+          and a note filled in; you review and send the payment there. For
+          Zelle, Cash App and Apple Pay, Billington only shows the details the
+          bill creator entered. Billington does not process a payment or confirm
+          a transfer: a paid marker is recorded manually by participants.
         </p>
       </section>
 
