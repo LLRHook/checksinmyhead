@@ -25,6 +25,12 @@ scan against the fixed endpoint to fill a coverage gap.
    close/join the sweeper. Retain all three quota-clock cases: sample exactly once
    under the mutex, no sampling/charge on canceled admission, and actual rolling
    admission ordering. Existing proxy constructors retain hop/fallback coverage.
+   On a controlled clock, drive bursts of distinct peers larger than the table
+   through admission (`TestAdmissionPeerTableStaysBounded`): never more than 4096
+   keys, expired keys gone at the next admission, none after the idle sweep. Through
+   the handler, each client request makes one provider request for a provider
+   failure and none for a peer-quota denial
+   (`TestHandlerFailuresMakeOneProviderAttempt`).
 5. Real TCP upload cases must keep bytes missing while requiring response AND
    StateClosed/handler/permit completion: known/streamed size excess, bad headers,
    unsupported MIME, duplicate image, earlier deadline and disconnect. Use shared

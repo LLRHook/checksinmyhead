@@ -396,7 +396,9 @@
       "backend/internal/bill/TestAssignmentValidationMatchesBaseline",
       "backend/pkg/safehttp/TestStreamSingleJSONDocument",
       "backend/pkg/safehttp/TestStreamArrayStopsAtLimit",
-      "backend/pkg/safehttp/TestStreamArrayStdlibCompatibility"
+      "backend/pkg/safehttp/TestStreamArrayStdlibCompatibility",
+      "backend/internal/receipt/TestAdmissionPeerTableStaysBounded",
+      "backend/internal/receipt/TestHandlerFailuresMakeOneProviderAttempt"
     ],
     "postgres": [
       "backend/cmd/bill-service/TestA1PostgresProductionJSON",
