@@ -109,8 +109,12 @@ def public_checks(raw, headers, path):
     else:
         checks["noAcquisitionSchemaOnPolicy"] = not page.json_ld
         checks["completePolicy"] = all(value in text for value in (
-            "Billington Privacy Policy", "Some recovery credentials use the device's secure storage.",
-            "Saving a bill can also prepare it for online sharing.", "Shared access links do not automatically expire.",
+            "Billington Privacy Policy",
+            "This policy describes Billington version 1.4.0, the version available on the App Store, and the Billington service as it currently runs.",
+            "In version 1.4.0, saving a finished bill sends it to Billington's service automatically, whether or not you share its link.",
+            "Not yet released: version 1.4.0 does not convert currencies.",
+            "that statement can contain bill content or access credentials",
+            "Shared access links do not automatically expire.",
             "within 30 days, with exceptions", "We do not sell bill or tab content.",
             "A change to the app or service does not by itself erase existing logs.",
             "There is no in-app control for deleting an entire shared online bill or tab.",

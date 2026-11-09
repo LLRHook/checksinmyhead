@@ -93,10 +93,16 @@ The API-log option expects owned JSONL method/path/query/headers/status observat
 Retain raw failures, no-API/JavaScript-disabled checks, error cases, browser and cleanup
 evidence separately; see [current scoped evidence](../docs/reviews/2026-11-05-public-web.md).
 
+The policy copy describes the public App Store version named by `storeVersion` in
+`privacy-policy/page.tsx` (1.4.0) and the service as deployed; statements about later
+builds start with "Not yet released". `public-web.test.ts` pins that scope and the
+required statements. Change them only with the
+[data inventory](../docs/privacy.md), which also lists what is still open.
+
 The Settings source points to the canonical `/privacy-policy`. Serve and verify
-that route before shipping a client that depends on it. Reconcile actual released
-flows, establish an operative notice date, verify mailbox control and complete store
-privacy/destination review separately. The page contains no preparation-date claim.
+that route before shipping a client that depends on it. Establish an operative notice
+date, verify mailbox control and complete the store privacy label and destination
+review separately. The page contains no preparation-date claim.
 Source implementation does not change provider settings, logs, the legacy host,
 App Store metadata, entitlements or custom-scheme behavior.
 
