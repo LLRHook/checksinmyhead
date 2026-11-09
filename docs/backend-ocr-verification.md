@@ -66,7 +66,7 @@ scan against the fixed endpoint to fill a coverage gap.
    TotalAlloc (a conservative burst allocation upper bound). After an intact 75s
    idle and two GCs compare against a PRE-burst baseline with fixture buffers kept
    alive; require <=4 MiB retained growth and fixed lifecycle goroutines.
-   The unchanged maximum assignment harness and its known RED 10ms gate are separate;
+   The unchanged maximum assignment harness and its 10ms gate are separate;
    do not change/rerun it as part of this OCR measurement or waive its target.
 9. Build both final static images, verify the pinned base signature and run the existing
    75-check [runtime harness](../backend/README.md#static-runtime-verification).

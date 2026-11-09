@@ -218,7 +218,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - [ ] **Severity:** med
 - **Area:** backend, security
 - **File(s):** backend/cmd/{bill-service,web-service}/main.go; backend/pkg/safehttp/; backend/internal/bill/{create_request,assignment_request,handler,assignments}.go; backend/internal/tab/handler.go; backend/internal/receipt/
-- **Observation:** A1/fd26598 corrections and backend c3c95cc3 F1/F2/F3 source have scoped APPROVE Standards0/Spec0 (reviewer NOT RUN); root clean1146 passed. Max50k assignment latency, runtime flake and hosted/integrated gates stay RED/open.
+- **Observation:** A1/fd26598 corrections and backend c3c95cc3 F1/F2/F3 source have scoped APPROVE Standards0/Spec0 (reviewer NOT RUN); root clean1146 passed. 2026-11-09: the name-based 50,000-assignment update meets its 10 ms p95 on the unchanged a1perf harness. Still open: the static runtime harness is flaky, the identity-version-2 update route is not measured, and hosted/integrated gates are unverified.
 - **Expected:**
   - Creation body/collection limits, finite input checks, and server deadlines are enforced with explicit errors.
   - Trusted proxy configuration is verified so client-IP quotas cannot be bypassed by caller headers.
@@ -229,11 +229,12 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** c3c95cc3 owns receipt DNS/TCP/TLS/final-Flush/idle cleanup and locked quota time; source F1/F2/F3 accepted. Root clean1146 retains predecessor IDs. Runtime RED/flaky: web1.619804s vs<1.5s, despite75/75 completion raw0. Max50k p95=27.033/27.143/27.420ms vs10ms remains RED/unrerun; no waiver.
-- **Docs:** backend/README.md; docs/{backend-api,technical-overview,backend-ocr-verification}.md; docs/reviews/2026-11-04-backend-native-acceptance.md; prior native/A1/A2 dated history retained; VERIFICATION.md unchanged.
+- **Fix:** sweep/abuse-bounds: name-based assignment updates bind in one streaming pass (safehttp.DecodeJSONStream/DecodeArrayFrom on stdlib encoding/json/v2 with v1 options; plain arrays bound directly, every other array through the previous encoding/json path), sized command slices, one name set and allocation-free ASCII identity keys in validation. Unchanged a1perf harness, two executions: max_mutation_50000 p95 5.980/6.197/6.739 and 6.048/6.176/5.998 ms vs 10 ms (base same day 34.004/32.071/32.088); all nine paths, burst and retention pass; 10.59 MB and 2,149 allocations per request (35.34 MB and 109,668). No target, input, sample count or percentile changed; no waiver. OPEN: static runtime harness 3 of 4 runs 75/75 with web-db-unavailable 1.033-1.045 s vs <1.5 s (1.619804 s not reproduced), run 3 failed bill-runtime-probe dns_cancellation; identity-version-2 route still buffered, about 26 ms per 50,000 by one-off benchmark; hosted proxy allowlist/topology and integrated run unverified.
+- **Docs:** backend/README.md; docs/{backend-api,technical-overview,backend-ocr-verification,backend-replay-verification}.md; docs/reviews/2026-11-09-assignment-update-decode.md; docs/reviews/2026-11-04-backend-native-acceptance.md; prior native/A1/A2 dated history retained; VERIFICATION.md unchanged.
 - **Log:**
   - 2026-11-04 History: A1/A2 dated api-a1, api-a1-review-corrections and ocr-a2-backend notes; docs/reviews/2026-11-04-ocr-native-ownership-integration.md.
   - 2026-11-04 Acceptance: sourcec3c95cc3/evidence554cd4ca F1/F2/F3 APPROVE0/0; reviewer NOT RUN, root clean1146. OCR3600 targets met; runtimeflaky/assignment/global RED. Raw scanner1/0confirmed;207schemas absent/336originals intact.
+  - 2026-11-09: Sweep: 50k update p95 5.98-6.74 ms vs 10 ms on unchanged harness (was 32-34); Go row 1544 pass, only TestServiceHealthcheckMode/bill-service fails (port 8080 held by another container); integration bill/bill-service/tab 1296 pass; 21 guard-removal controls fail by assertion. Runtime harness 3/4 green, run 3 bill-runtime-probe FAIL retained. See docs/reviews/2026-11-09-assignment-update-decode.md.
 
 ### [BUG-1793644508] Bound receipt inference spending and limiter memory
 - [ ] **Severity:** med

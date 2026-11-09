@@ -45,8 +45,8 @@ the exact timing intervals, EXPLAIN plan, environment and noise. `ProviderNS` me
 WroteRequest-to-first-response-byte only; it excludes connection setup, request writing,
 response-body reading and validation. `ApplicationNS` is total elapsed time minus that
 interval, not CPU time. `TransactionHeldNS` measures BEGIN-through-COMMIT/ROLLBACK,
-not row-lock time. Misses stay RED. The separate50,000-update performance gate remains
-RED/unselected. Rebuild and
+not row-lock time. Misses stay RED. The separate 50,000-update performance gate is
+not selected by this procedure. Rebuild and
 scan both exact maintained images, verify compiler/source/binary identities, run the
 unchanged runtime harness (only its reviewed read-only acquisition adapter allowed),
 and record bounded cleanup and absence receipts. Never erase a prior flaky failure.

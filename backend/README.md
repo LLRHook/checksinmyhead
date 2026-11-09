@@ -47,6 +47,11 @@ text, EOF and compatibility limits. The optional local measurement test runs wit
 `A1_MEASURE_OUTPUT=<absolute-file> go test -count=1 -tags=a1perf ./cmd/bill-service
 -run '^TestA1JSONMeasurements$'`; it uses injected services, no provider/database
 requests, three runs of 100 samples per path and a 75s retention observation.
+Its largest path, a 50,000-assignment update, has a 10 ms p95 target. The ordinary
+row guards that path without a clock: `TestMaxAssignmentUpdateAllocationBudget`
+fails above 12 MiB or 4,000 allocations per request, which a buffered whole-document
+decode or unsized command slices exceed. `go test -run '^$' -bench
+'^BenchmarkMaxAssignmentUpdate$' ./cmd/bill-service` times the same request.
 
 ## Receipt admission and provider limits
 
@@ -180,7 +185,10 @@ and timezone data without libc or OpenSSL. Test/tooling builds retain CGO for
 race detection and SQLite. Builders use
 `GOTOOLCHAIN=local` so a mismatched module requirement fails instead of downloading
 another compiler. Update the module and both builder pins together after checking
-current security releases and image identities.
+current security releases and image identities. `pkg/safehttp` and `internal/bill`
+import `encoding/json/v2` and `encoding/json/jsontext`, which Go 1.27.3 compiles by
+default behind its `jsonv2` experiment; do not build with `GOEXPERIMENT=nojsonv2`,
+and rerun the assignment decode tests when the toolchain pin changes.
 
 Build from the `backend` context, for example from the repository root:
 
