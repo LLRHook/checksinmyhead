@@ -30,7 +30,14 @@ checkpoint with a concurrent insert, committed attempt ordering, lost/invalid cr
 responses, redirect refusal and a64KiB response cap under one abortable deadline, checkpoint failure, immutable settings/payment snapshots, key/restore
 windows, foreign/zero valuation, history/import exclusion, capacity and attachment.
 `save_receipt_widget_test.dart` exercises actual Done cancellation, offline outcome,
-listener/share/navigation failure and receipt-currency review. Migration/retention
+listener/share/navigation failure and receipt-currency review.
+`save_journey_test.dart` follows one file-backed EUR receipt through Done offline,
+a repeated Done, Get Link, restart, a lost 201, a successful replay, trip attachment
+and a second restart: one row, unchanged native values, one key and byte-identical
+EUR requests. It also repeats Done through the actual handler after a failure, and
+checks for eight EUR/USD outcomes that the stored quote state, the result message and
+the history card agree. A pending native-USD receipt reports "Link pending"; only a
+stored pending quote is described as a pending USD conversion. Migration/retention
 and display-decoder files cover actual schema8→9 and integer/float/invalid `rate`.
 The original ten actual builder fixtures and raw negative/FEFF name guards remain.
 
@@ -39,8 +46,11 @@ handle, nonsecret key locator, attachment intent, saved ordered shares and
 birthday/custom-tip presentation metadata. It returns the exact row ID. Legacy
 rows retain their raw values/links/quotes and no creation snapshot. Migration
 performs no network, repricing, content merge, deletion or automatic publication.
-Existing native fractional JPY remains visible. `.005` local/server allocation
-and versioned precision/identity0003 remain separate open work.
+Existing native fractional JPY remains visible. The device and the server still
+place odd cents by different rules, so per-person amounts in history and on the
+published receipt can differ by a cent or two; the options are in the
+[2026-11-09 note](reviews/2026-11-09-mobile-save-journey.md). That and versioned
+precision/identity0003 remain separate open work.
 
 `save_tab_review_correction_test.dart` covers tab intent arriving during launch
 publication and after its published-row read. Destination intent must commit before

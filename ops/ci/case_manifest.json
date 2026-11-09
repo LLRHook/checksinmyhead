@@ -677,7 +677,8 @@
       "mobile/test/side_inset_layout_test.dart",
       "mobile/test/screenshot_quality_test.dart",
       "mobile/test/tab_import_capacity_test.dart",
-      "mobile/test/receipt_timestamp_test.dart"
+      "mobile/test/receipt_timestamp_test.dart",
+      "mobile/test/save_journey_test.dart"
     ],
     "web": [
       "web-bill-viewer/src/components/__tests__/SettlementCard.test.ts",
@@ -1301,6 +1302,11 @@
       ],
       "mobile/test/receipt_timestamp_test.dart": [
         "^new\\ receipt\\ uses\\ insertion\\ time\\ instead\\ of\\ historical\\ table\\ default$"
+      ],
+      "mobile/test/save_journey_test.dart": [
+        "(?:^| )one\\ EUR\\ receipt\\ stays\\ one\\ native\\ record\\ across\\ Done,\\ share,\\ retry,\\ restart\\ and\\ trip\\ attachment$",
+        "(?:^| )Done\\ failure\\ then\\ Done\\ retry\\ through\\ the\\ actual\\ handler\\ keeps\\ one\\ EUR\\ row\\ and\\ request$",
+        "(?:^| )quote\\ state\\ .*\\ agrees\\ across\\ the\\ durable\\ row,\\ message\\ and\\ history\\ card$"
       ]
     },
     "web": {
