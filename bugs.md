@@ -697,7 +697,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Cross-ref:** BUG-1793927492 (separate horizontal body issue, not this sheet)
 
 ### [BUG-1793958334] Retain migration producer evidence when activity observation fails
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** tests, backend, migrations
 - **File(s):** backend/migrations/failure_observation_test.go; backend/migrations/failure_postgres_test.go
 - **Observation:** At8371 TestPostgresMigrationParentDeadline calls waitActivity before receive. A missing-PgSleep Fatal can prevent inspection of an already buffered producer result, leaving the actual cause/join and rollback evidence unresolved. This is a test-proof defect; production cause and recovery are unproved.
@@ -710,13 +710,14 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Source trace at8371 failure_postgres_test.go waitActivity before receive; retained PG missing-witness failure is not a causal production diagnosis. Source-reviewed fe039511/13926a96 and R02 fd34a40e compile four variants first; five pure helper leaves pass and three removals fail intended assertions with healthy siblings. Report fc98d254; independent verification1e3271a4. No real PG rerun.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
-- **Fix:** Reviewed test-only outcome holder and bounded evidence path adopted; Go formatting changes only alignment spaces on seven evidence fields. Pure helper/control proof passes; real500ms/PgSleep/rollback/recovery and prior170s/198.64s/full gates remain unqualified.
-- **Docs:** docs/reviews/2026-11-06-migration-outcomes.md; ops/ci/README.md; VERIFICATION.md
+- **Status:** fixed-pending-migration
+- **Fix:** Test-only outcome holder (already merged) retains the single producer result and cause independently of the activity observer, treats an unreceived or closed channel as unresolved, logs finite evidence and reads rollback only after a join. 2026-11-09 real PostgreSQL qualification, no source change: unmodified TestPostgresMigrationParentDeadline (500 ms caller, 10 s observer, 15 s join, whole-batch rollback, recovery) passes 22 of 22 local -race runs and in hosted Gate postgres runs 42364117584 (0.79s) and 42365246558 (0.95s) on identical backend/migrations bytes; helper family 5/5. Five temporary real-PG controls all fail as required with finite evidence: no pg_sleep, witness absent, observer error (worker DeadlineExceeded retained, rollback empty), unjoined 15.07s (no rollback read), observer timeout 25.11s. Not run here: full eight-package row, integrated protocol. Evidence: docs/reviews/2026-11-09-migration-deadline.md.
+- **Docs:** docs/reviews/2026-11-09-migration-deadline.md; docs/reviews/2026-11-06-migration-outcomes.md; ops/ci/README.md; VERIFICATION.md
 - **Cross-ref:** FEAT-1793644505
 - **Log:**
   - 2026-11-06 Verification: R02 pure helper qualification: four complete compiles/list selections pass, five clean helper leaves pass and all three source removals fail their intended assertions with healthy siblings. Manager independent verification1e3271a4; reportfc98d254. Only seven evidence-field alignment lines changed under gofmt; no test rerun for whitespace. Real500ms/PgSleep/rollback/recovery and historical170s/198.64s/full gates remain open.
   - 2026-11-06 Verification: Local integration static checks: gofmt0 with seven spacing-only evidence fields; complete offline controller42methods/916 method+subtest records PASS including all five exact-child omissions and existing mobile/web named selections; official tracker lint0errors/0warnings. Only PG family+five anchored namespaced child IDs added; ordinary/backend obligations and all inherited fields preserved. Current real PG/full/native gates remain unqualified.
+  - 2026-11-09 Verification: Real PostgreSQL qualification executed: parent-deadline test 22/22 local under -race and passing in hosted runs 42364117584 and 42365246558; all seven failure families plus helper 21/21; five temporary controls fail with the expected finite evidence. No test or production source changed.
 
 ### [BUG-1793996842] Preserve saved participant colors and readable identity ink
 - [ ] **Severity:** med
