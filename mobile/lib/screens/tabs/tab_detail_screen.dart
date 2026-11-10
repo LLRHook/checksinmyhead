@@ -1920,7 +1920,7 @@ class _BillSelectorSheetState extends State<_BillSelectorSheet> {
                           value: _selectedBillIds.contains(bill.id),
                           title: Text(bill.billName),
                           subtitle: Text(
-                            '${bill.formattedDate} • ${CurrencyFormatter.formatCurrency(bill.total)}',
+                            '${bill.formattedDate} • ${CurrencyFormatter.formatCurrency(bill.total, currencyCode: bill.currencyCode)}',
                           ),
                           onChanged:
                               (selected) => setState(() {

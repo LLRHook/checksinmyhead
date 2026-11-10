@@ -935,7 +935,8 @@
         "(?:^| )one\\ explicit\\ tab\\ request\\ never\\ automatically\\ repeats\\ a\\ failed\\ attachment$",
         "(?:^| )overlapping\\ destination\\ conflict\\ preserves\\ the\\ first\\ durable\\ trip$",
         "(?:^| )tab\\ selection\\ preserves\\ earlier\\ additions\\ and\\ continues\\ after\\ raw\\-history\\ and\\ missing\\-row\\ failures$",
-        "(?:^| )actual\\ tab\\ selector\\ gives\\ review\\ feedback\\ and\\ retains\\ successful\\ additions$"
+        "(?:^| )actual\\ tab\\ selector\\ gives\\ review\\ feedback\\ and\\ retains\\ successful\\ additions$",
+        "(?:^| )actual\\ tab\\ selector\\ labels\\ each\\ saved\\ receipt\\ in\\ its\\ own\\ currency$"
       ],
       "mobile/test/services/invite_link_service_test.dart": [
         "(?:^| )converts\\ bill\\ app\\ links\\ into\\ the\\ bill\\ viewer\\ URL$",

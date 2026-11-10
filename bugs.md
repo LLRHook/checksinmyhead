@@ -89,6 +89,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Log:**
   - 2026-11-03 Evidence: Driver fb6b4b9 actual provider penny capture: client Alex=.01/Sam=0; v1 server Alex=0/Sam=.01 with .005 raw details. No math change in 43772a7. Preserve server/historical contracts; deliberately align local/published allocation in currency/save scope. See docs/reviews/2026-11-03-client-v1-bridge.md.
   - 2026-11-09 Decision: Odd-cent difference is wider than the .005 tie: server rounds subtotal/tax/tip separately in label order (10.00+0.01+0.01 split evenly publishes 5.00/5.02; device shows 5.01/5.01). Not aligned: every fix changes visible amounts. Options 1-4 and recommendation (device adopts server rule) in the 2026-11-09 note.
+  - 2026-11-09 Sighting: Simulator inspection on iPhone 17 (iOS 27.2) found the tab's Add existing bill picker labelled a saved EUR 25.00 receipt as $25.00 while Recent Bills and Bill Details showed EUR 25.00. The picker now formats with the receipt's currency; regression test 'actual tab selector labels each saved receipt in its own currency' failed first with '11/9/2026 • $25.00'.
 
 ### [BUG-1793644501] Require the complete revision gate before publication
 - [ ] **Severity:** high
