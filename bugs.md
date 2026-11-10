@@ -200,7 +200,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-09 Decision: Fresh-self needs an owner decision: A accept supported flow and amend plan (recommended), B one-step self-add for creator/source only (no migration), C for every member (0004, epoch 2). Not implemented.
 
 ### [BUG-1793644506] Label local bill and tab removal accurately
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** mobile, ux
 - **File(s):** mobile/lib/screens/tabs/tab_manager.dart; mobile/lib/screens/tabs/tab_detail_screen.dart; mobile/lib/screens/tabs/tabs_screen.dart
 - **Observation:** Local Drift removal/delete UI implies shared deletion although API has no detach/delete route.
@@ -212,11 +212,12 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Trace removeBillFromTab/deleteTab and confirmation strings, then inspect registered API routes. Shared lifecycle is separate; do not falsely announce online deletion.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
+- **Status:** fixed-pending-migration
 - **Fix:** Tab-list removal now identifies this device and acknowledges actual Drift success. The manager returns bool and refuses synced/finalized bill-list removal; their cards omit removal swipes/instructions. Local-only active removal keeps history; cancel/DB failure retains the card. Before tests reproduced synced mutation/swipe; final Flutter480/524 preserves467/510 originals, with13 focused cases including file-backed reopen and an independent local view. Real owned API/PG graph stays USD128 and genuine Leave remains separate. No shared-delete, signed/two-device or release claim; independent/root pending.
 - **Docs:** docs/privacy.md; VERIFICATION.md; docs/reviews/2026-11-05-public-web.md
 - **Log:**
   - 2026-11-09 Verification: PASS: 13 named Dart tests in mobile/test/local_tab_removal_test.dart (local removal retains receipt, synced removal refused, no swipe on synced bill, rejected delete keeps Drift row, cancel no mutation, failed removal feedback, file-backed reopen, independent local view; Remove from this device wording in lib/screens/tabs/tabs_screen.dart) at e0a2c18; full mobile suite 593 visible pass/0 fail/0 skip; revert check not run: not in required set; unproven: two-device agreement and authorized server delete for creator actions (no test or API route exercised); not run here: signed/two-device/native
+  - 2026-11-09 Verification: Native check (iPhone 17, iOS 27.2): swiping a tab offers 'Remove from this device?' and states that the shared tab, bills, recorded totals and other people's access remain online; Cancel keeps it; a confirmed removal of a throwaway tab is gone after relaunch while the other tab stays; a synced or finalized bill inside a tab offers no removal swipe. A two-device comparison was not run. Screenshots: .vv/ui-inspection-20261109/main/A6-*.png.
 
 ### [BUG-1793644507] Bound public API request resources
 - [ ] **Severity:** med
@@ -304,6 +305,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Docs:** docs/privacy.md; docs/app-privacy-label.md; docs/reviews/2026-11-09-privacy-disclosures.md; web-bill-viewer/README.md; web-bill-viewer/src/app/(public)/privacy-policy/page.tsx; docs/reviews/2026-11-05-public-web.md
 - **Log:**
   - 2026-11-09 Sighting: Public recheck: store label Data Not Collected; store policy link getbillington.vercel.app/privacy-policy (200); billingtonapp.vercel.app / and /privacy-policy 404; API /health commit 81a564f; 1.4.0 Settings text says data never leaves the device while Done uploads every bill.
+  - 2026-11-09 Verification: Headed browser check on the local stack: /privacy-policy loads and states the 1.4.0 upload on save, link visibility of shared details, the receipt photo path to the provider, the 'Not yet released' marking, no sale and the contact address; /privacy returns 404. Screenshots: .vv/ui-inspection-20261109/web/C2-*.png.
 
 ### [BUG-1793644511] Gate minimum app versions on public store availability
 - [ ] **Severity:** high
@@ -322,6 +324,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** in-progress
 - **Fix:** PARTIAL (repo side only). The API serves MINIMUM_SUPPORTED_APP_VERSION only when every release in the reviewed, compiled-in backend/internal/versionpolicy/public_availability.json (per platform/storefront; ios us/ca/gb = 1.4.0, verified 2026-11-09) is at least that version; unset, malformed or too-high values and a missing or invalid record serve the non-blocking 0.0.0 with one fixed startup log line. Source default is 0.0.0 (was 2.0.3). Regression tests failed first on the old source; go test ./internal/versionpolicy 10 families pass; client fail-open proven by 12 Dart tests (statuses, transport errors, bodies, timeout, splash). REMAINS: (1) owner deploys this build and reviews MINIMUM_SUPPORTED_APP_VERSION on the host (production still serves 2.0.3; no env change was made); (2) owner confirms the full targeted storefront list in App Store Connect and updates the record before any raise; (3) Expected bullet 2: an installed public store binary exercising live API, invite and payment compatibility with version/build/storefront recorded was not run.
 - **Docs:** docs/backend-api.md (GET /api/app/version-policy); backend/README.md; ops/ci/README.md; docs/reviews/2026-11-09-version-policy-availability.md
+- **Log:**
+  - 2026-11-09 Verification: Runtime check on the local stack: with MINIMUM_SUPPORTED_APP_VERSION=2.0.3 the API served 0.0.0 and logged the fixed warning; with 1.4.0 it served 1.4.0; unset served 0.0.0. Client 2.0.11 on a simulator against a policy stub: minimum 99.0.0 and 2.0.12 show 'Update Billington' with an App Store button; a 503 policy, an unreachable policy and minimum 2.0.11 let the app open. Evidence: .vv/ui-inspection-20261109/gate/.
 
 ### [BUG-1793644512] Reconcile stale operational and product documentation
 - [ ] **Severity:** med
@@ -438,6 +442,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** in-progress
 - **Fix:** Maintained source web-bill-viewer/src/app/(public)/ rechecked against each Expected bullet on 2026-11-09. Already met and now pinned: header, hero and closing actions link straight to https://apps.apple.com/app/id6746379502 (GET ends at the US listing, 200); the hero is a labeled USD example whose items, tax, tip and three shares add up to 128.00 with proportional tax and tip. Fixed: the payment note now says what each named service does (Venmo opens the Venmo app from a shared page; Zelle, Cash App and Apple Pay are details only) and that nothing is processed or confirmed, matching the viewer (only venmo.ts builds a link). Proven: 5 tests in public-claims.test.ts (payment test failed on the old copy; six deliberate breaks of the other four were all detected); web lint, 110 tests and build; gate web row accepted; public-route verifier 6 cases 0 failed; real Tab presses on a local production build gave 14 stops at 1280 px and 13 at 375 px in document order with visible focus; outbound links returned 200. REMAINS, hosted and external: the maintained pages are not served (billingtonapp.vercel.app/ returns 404), and the legacy getbillington.vercel.app home page still sends its primary download to #download, links the store through a /spliq/ slug and claims one-tap deep links to Venmo, Zelle, Apple Pay and Cash App; that host is separately owned and was not touched. Browser check was one engine, home page only, no device or screen reader.
 - **Docs:** web-bill-viewer/README.md; docs/reviews/2026-11-09-store-and-public-copy.md; docs/reviews/2026-11-05-public-web.md
+- **Log:**
+  - 2026-11-09 Verification: Headed browser check of the maintained pages on the local stack at 1440 and 375 px: Billington branding only; 'Get Billington for iOS' reaches apps.apple.com id6746379502 in one click; the hero shows a labelled USD 128.00 example split; payment copy limits itself to the Venmo handoff, shown details and manual paid status; 14 desktop and 13 mobile links are keyboard reachable with a visible focus ring. Screenshots: .vv/ui-inspection-20261109/web/C1-*.png.
 
 ### [BUG-1793644518] Exclude private bearer-link pages from indexing
 - [x] **Severity:** med
@@ -674,7 +680,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Cross-ref:** FEAT-1793644512
 
 ### [BUG-1793927492] Side status column covers content on Assign, Entry and Tab screens
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** mobile, ui, layout
 - **File(s):** mobile/lib/screens/quick_split/item_assignment/item_assignment_screen.dart; mobile/lib/screens/quick_split/bill_entry/bill_entry_screen.dart; mobile/lib/screens/tabs/tab_detail_screen.dart; mobile/test/side_inset_layout_test.dart
 - **Observation:** On a native iPhone Duo simulator (Xcode 27.2, iOS 27.1) the Closed display reports right 84pt and bottom 34pt insets. The Scaffold bodies of Assign Items, Enter Bill Details and Tab detail have no horizontal SafeArea, so content runs under the status column: the Assigned amount reads $1 and then the column. Open landscape shows the same collision. Landing, Onboarding and Bill Details already use SafeArea and stay clear.
@@ -684,11 +690,12 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Closed pose in Device Hub, Quick Split, four people, $122 with items, Continue to Assign Items. Before evidence: /tmp/appshot-quality-20261105/capture/ios27.2/raw/iphone-duo-outer-1398x2034/03-assign.png. Regression test: mobile/test/side_inset_layout_test.dart. SafeArea alone left the progress bar reading full screen width, so at 50% it overstated the share by 42pt on the Closed display; the bar now sizes from its track.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
+- **Status:** fixed-pending-migration
 - **Fix:** Horizontal SafeArea/track-relative fill: final19/analyze0 and combined3460 Flutter567visible/573canonicalPASS. Native/default-font/integrated capture pending; separate Finalize overflow not fixed.
 - **Docs:** DESIGN_SYSTEM.md; docs/reviews/2026-11-06-{layout-insets,combined-flutter-acceptance}.md; exact19 canonical cases. Separate Finalize short-height overflow remains open.
 - **Log:**
   - 2026-11-09 Verification: PASS: 13 named Dart tests in mobile/test/side_inset_layout_test.dart (Assign Items right/left/wide inset keeps text and progress bar, same amounts with or without insets, full width on phone/tablet; Enter Bill Details and Tab detail inset and full-width groups) at e0a2c18; full mobile suite 593 visible pass/0 fail/0 skip; flutter analyze no issues; revert check failed as intended (item_assignment_screen.dart SafeArea left/right disabled: 3 of 6 Assign Items tests failed, file restored, tree clean; Entry and Tab not individually reverted); unproven: none in-repo; not run here: native Duo/default-font capture, separate Finalize overflow
+  - 2026-11-09 Verification: Native check on an owned iPhone Duo simulator (iOS 27.1, Closed pose, right status column) with a debug build of 083567a: Enter Bill Details, Assign Items and Tab detail keep their content clear of the column; with half of 122.00 assigned the Assigned amount reads $61.00 in full, 50%, and the bar ends halfway. The Open/landscape pose could not be selected from the command line and was not captured. Screenshots: .vv/ui-inspection-20261109/layout/b2-*.png. The tutorial dialog on Assign Items still extends under the column (BUG filed separately).
 
 ### [BUG-1793935715] Keep the Finalize confirmation usable on short displays
 - [x] **Severity:** med
@@ -705,6 +712,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Fix:** The Finalize sheet now scrolls its heading and settlement rows together and pins Cancel/Finalize below them (scrollbar thumb while scrollable). The 70% height limit stays; displays shorter than about 630 pt may use up to 440 pt or their full height. Above 1.5x text the amount sits under its name and shrinks to fit; action labels shrink instead of wrapping. The modal call moved unchanged into showFinalizeConfirmSheet. Row order, labels, amounts, true/false/null results and the finalize request are unchanged. Proof: mobile/test/finalize_confirm_sheet_test.dart 19 pass (320x568, 375x667, 568x320, 812x375 with side insets at text scale 1.0/2.0/3.0 with 12 rows; real Tab detail Finalize sends one POST, Cancel/dismiss none); 16 of 19 failed with RenderFlex overflow on the previous layout. Full flutter test --no-pub: success, 619 visible passes, 0 failed, 0 skipped; manifest adapter accepts the mobile row. NOT DONE: native simulator/device capture on a short display (widget-test evidence only).
 - **Docs:** DESIGN_SYSTEM.md (Interaction patterns); docs/reviews/2026-11-09-finalize-sheet-layout.md
 - **Cross-ref:** BUG-1793927492 (separate horizontal body issue, not this sheet)
+- **Log:**
+  - 2026-11-09 Verification: Native check on an owned iPhone SE (3rd generation) simulator, 375x667, iOS 27.2: the Finalize confirmation shows no overflow at default text and at accessibility-extra-large; settlement rows scroll, amounts are complete, Cancel and Finalize stay visible; Cancel leaves the tab active and one Finalize finalizes it, persisting across relaunch. Screenshots: .vv/ui-inspection-20261109/layout/b1-finalize-*.png.
 
 ### [BUG-1793958334] Retain migration producer evidence when activity observation fails
 - [x] **Severity:** med
@@ -730,7 +739,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-09 Verification: Real PostgreSQL qualification executed: parent-deadline test 22/22 local under -race and passing in hosted runs 42364117584 and 42365246558; all seven failure families plus helper 21/21; five temporary controls fail with the expected finite evidence. No test or production source changed.
 
 ### [BUG-1793996842] Preserve saved participant colors and readable identity ink
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** mobile, ui, identity
 - **File(s):** mobile/lib/screens/recent_bills/components/participants_card.dart; mobile/lib/screens/quick_split/participant_selection/participant_selection_sheet.dart; mobile/lib/screens/quick_split/item_assignment/utils/color_utils.dart; mobile/lib/screens/quick_split/item_assignment/widgets/participant_avatar.dart; mobile/test/screenshot_quality_test.dart
 - **Observation:** At a021, Bill Details derives avatar colors from amount rank instead of the saved occurrence; auto-added owners omit saved custom color, and shared items take the first assignee color. Selected light-theme text/avatar callsites do not derive ink from their actual composited surface. This is a source-confirmed defect; current widget/native behavior is not yet qualified.
@@ -740,15 +749,16 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Read a021 SortedParticipantsCard rank color selection, participant sheet auto-add and ColorUtils.getDominantColor. Distinct from BUG-1793898429 Settings-only ink. Private R02 formatter/analyzer0; widget loader failed before all106 cases. Offline controller R03 verifies literal-enforcement fixtures only; raw2129dd79/manager8fde2490, not Flutter or screenshot acceptance.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
+- **Status:** fixed-pending-migration
 - **Fix:** Adopt the exact reviewed nine-lib/T1 source subset with saved-color provenance and existing composited-ink ownership. Automatic Linux mobile is the selected functional route;588 canonical records EXPECTED only. No native, physical accessibility,95-quality or release acceptance.
 - **Docs:** docs/reviews/2026-11-06-ui-quality-candidate.md; DESIGN_SYSTEM.md; mobile/README.md
 - **Cross-ref:** FEAT-1793644509 (acceptance and status unchanged)
 - **Log:**
   - 2026-11-09 Verification: PASS: 8 required literals present and passing in mobile/test/screenshot_quality_test.dart (3 Bill Details identity, 4 Person color ink, Participant visual controls auto-added owner keeps saved color with fresh occurrence refs) at e0a2c18; full mobile suite 593 visible pass/0 fail/0 skip; revert check not run: multi-file source change; unproven: that changed light-theme callsites reuse AppTheme.foregroundOn (source review only, no test asserts it); not run here: native/capture, accessibility
+  - 2026-11-09 Verification: Native check (iPhone 17, iOS 27.2): six people keep the avatar colour they were given when added, in Bill Details after save and after force-quit and relaunch. Screenshots: .vv/ui-inspection-20261109/main/A2-*.png, A3-07-relaunch-detail.png.
 
 ### [BUG-1793996843] Show four actual assignees before avatar overflow
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** mobile, ui, layout
 - **File(s):** mobile/lib/screens/quick_split/item_assignment/widgets/item_card.dart; mobile/test/screenshot_quality_test.dart
 - **Observation:** At a021, ItemCard limits its collapsed assignee stack to three avatars whenever more than three people are assigned, so a four-person item shows three initials plus +1. The source geometry also uses 12pt steps for 20pt avatars. No current widget/native result is asserted.
@@ -758,13 +768,14 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Read a021 ItemCard._buildAssigneeAvatars displayPeople and overflow conditions. No existing tracker covers this source defect; unrelated Settings targets and Finalize overflow remain separate. All106 affected widget cases are unstarted; R03 offline omission checks are delivery-gate controls only.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
+- **Status:** fixed-pending-migration
 - **Fix:** Adopt exact reviewed hasOverflow >4 and four-slot stack geometry, preserving the full assigned list. No runtime, physical-device,95-quality or screenshot recovery claim.
 - **Docs:** docs/reviews/2026-11-06-ui-quality-candidate.md; DESIGN_SYSTEM.md; mobile/README.md
 - **Cross-ref:** FEAT-1793644509 (acceptance and status unchanged)
 - **Log:**
   - 2026-11-06 CI proof correction: Automatic CI42289112203/mobile128137633416 at a962 failed the overflow test global A finder after four CircleAvatar and +2 checks passed: it matched the11px avatar and18px other item content. This is a test-proof scope defect, not a demonstrated production UI defect. Apply exact09e54ebc correction to scope all ABC/+2/noD finders to CircleAvatar descendants, retaining every assertion and literal ID; no local test/formatter or retry. Corrective source-triggered CI acceptance remains pending; status in-progress and native/capture/quality limits unchanged. See docs/reviews/2026-11-06-ui-quality-candidate.md.
   - 2026-11-09 Verification: PASS: both required literals present and passing (Assignee stack shows four people instead of a +1; Assignee stack summarises everyone past four) in mobile/test/screenshot_quality_test.dart at e0a2c18; full mobile suite 593 visible pass/0 fail/0 skip; revert check failed as intended (item_card.dart hasOverflow >4 to >3: shows four people test failed, file restored, tree clean); unproven: enlarged-text avatar behaviour, preservation of toggles/amounts beyond the two named tests; not run here: native/capture
+  - 2026-11-09 Verification: Native check (iPhone 17, iOS 27.2): an item assigned to four people shows four real avatars and no +1; an item assigned to six shows three avatars and +3. Screenshot: .vv/ui-inspection-20261109/main/A2-04-assigned.png.
 
 ### [BUG-1794045425] Preserve accounting availability for accepted fractional receipts
 - [x] **Severity:** high
@@ -803,7 +814,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-09 Status: 2026-11-09 sweep: real PostgreSQL selections and hosted CI run for PR #173 (all six rows, PostgreSQL included) pass with this fix; status moved to fixed-pending-migration for the integrated V&V run.
 
 ### [BUG-1794045427] Import complete Trip history atomically at capacity
-- [ ] **Severity:** high
+- [x] **Severity:** high
 - **Area:** mobile, persistence, tabs
 - **File(s):** mobile/lib/database/database.dart; mobile/lib/screens/recent_bills/models/recent_bill_manager.dart; mobile/lib/screens/tabs/tab_detail_screen.dart; mobile/test/tab_import_capacity_test.dart
 - **Observation:** SP-1: real Drift31-row import evicts an earlier returned ID; later existing target is evicted, and parse failure leaves prior refresh committed. Read failures can silently look empty or escape into permanent loading.
@@ -813,11 +824,12 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Before-fix real Drift and widget assertions fail; after-fix related Flutter116 visible PASS, including30/31, separate pending/referenced history, checkpoint rollback and error/retry controls. No migration or remote receipt deletion.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
+- **Status:** fixed-pending-migration
 - **Fix:** Implemented atomic complete Trip import plus local-ID checkpoint, protected incoming/pending/referenced history, and finite loading/error/retry with no partial balances. Manager combined-scope review accepted. Retained affected Flutter116 PASS; later completion-witness correction separately passes10 focused cases, without repeating116. Status remains in-progress; current CI/real PG/integrated V&V remain pending.
 - **Docs:** docs/reviews/2026-11-07-postmerge-money-client-regressions.md
 - **Log:**
   - 2026-11-09 Verification: PASS: 10 named Dart tests in mobile/test/tab_import_capacity_test.dart (30/31 cap, pending/referenced history, later existing target, malformed rollback, read-error retry, checkpoint rollback, invalid IDs, retry without partial balances) at e0a2c18; full mobile suite 593 visible pass/0 fail/0 skip; revert check failed as intended (database.dart _makeReceiptRoom ignores protectedReceiptIds: 5 of 10 failed, file restored, tree clean); unproven: none; not run here: real PG, current CI
+  - 2026-11-09 Verification: Native check (owned iPhone 17 simulators, iOS 27.2, local stack): a fresh install joined a 30-receipt trip and showed 30 bills, 765.00 and balances, unchanged after relaunch. Joining a 31-receipt trip afterwards ended loading with the cache message and 'Retry current history', showed no partial list, balances or Finalize, repeated the message on retry, and left the 30-receipt trip intact. On another device the earlier bills and the tab referencing one of them survived the refused import. Screenshots: .vv/ui-inspection-20261109/recheck/E2-*.png, E3-*.png.
 
 ### [BUG-1794045428] Stamp durable receipts at their actual insertion time
 - [x] **Severity:** med
@@ -995,5 +1007,29 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Req:** AGENTS.md iOS builds; VERIFICATION.md Stage 0 (debug flutter run in mobile)
 - **Depends on:** none
 - **Repro / Notes:** cd mobile && flutter pub get --enforce-lockfile && flutter build ios --simulator --debug on Xcode 27.2. Logs retained in .vv/sweep/ios-build{,2,3}.log of the 2026-11-09 sweep. The 2026-11-04 lock qualification used SDK 26.2, where this did not occur. Hosted TestFlight runners were not checked.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794273307] Keep the Assign Items tutorial dialog clear of the side status column
+- [ ] **Severity:** low
+- **Area:** mobile, ui, layout
+- **File(s):** mobile/lib/screens/quick_split/item_assignment (tutorial overlay)
+- **Observation:** On an iPhone Duo simulator in its Closed pose (iOS 27.1, right status column), the automatic 'Step 1 of 5 / Expand Items' tutorial dialog on Assign Items is centred on the full display, so its right edge and corner extend under the status column. The screen body behind it respects the side inset after BUG-1793927492.
+- **Expected:** The tutorial dialog and its close and Next controls stay between the system side insets on displays that have them, and keep their current position on displays without side insets; a widget test with a right view padding covers it.
+- **Req:** DESIGN_SYSTEM.md responsive layout; BUG-1793927492 follow-up
+- **Depends on:** none
+- **Repro / Notes:** Duo Closed pose, Quick Split with four people, subtotal 122 with items, Continue to Assign Items on first use. Screenshot: .vv/ui-inspection-20261109/layout/b2-tutorial.png (2026-11-09 sweep).
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794274030] Open a trip whose receipts exceed the device history limit
+- [ ] **Severity:** med
+- **Area:** mobile, persistence, tabs, product
+- **File(s):** mobile/lib/database/database.dart (maxRecentBills, _makeReceiptRoom); mobile/lib/screens/tabs/tab_detail_screen.dart
+- **Observation:** The device keeps at most 30 receipts, counted across all tabs. A member who opens a trip with 31 receipts sees 'History is full of pending or referenced receipts. Current history could not be cached; balances need review.' with a Retry that repeats the message; no receipts, balances or Finalize are available for that trip on the device. The same happens for a smaller trip when receipts referenced by other tabs already fill the limit: on a device with one other referenced receipt, a 31-receipt trip failed, and a 30-receipt trip opened only on a fresh install. This is the atomic refusal BUG-1794045427 specifies, so nothing is corrupted, but the trip cannot be used in the app.
+- **Expected:** An owner decision on the product rule: either a tab's receipts are readable on the device regardless of the recent-history limit (the limit applies only to unreferenced history), or the limit is stated to the user before joining with a way forward. Whatever is chosen keeps BUG-1794045427's atomic import and never shows partial balances.
+- **Req:** BUG-1794045427 follow-up; docs/technical-overview.md durable history contract
+- **Depends on:** owner product decision
+- **Repro / Notes:** Local synthetic stack, 2026-11-09: seed a tab with 31 receipts through the API, open billington://tab/<id>?t=<token> on a simulator and join. Screenshots: .vv/ui-inspection-20261109/recheck/E3-cache-error.png, layout/b3-capacity-loaded.png. The API returned all 31 receipts for the same tab.
 - **Bump:** patch
 - **Status:** open
