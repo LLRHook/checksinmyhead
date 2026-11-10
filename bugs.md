@@ -807,3 +807,22 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** in-progress
 - **Fix:** Integrated exact manager SP-2 selection/suggestion/recovery ownership correction; manager combined-scope source review accepted. Integrated actual component/handler4 PASS, TypeScript/Biome0; retained manager whole-web102 row remains separate evidence. Status remains in-progress; full current CI, real PG and integrated V&V remain pending.
 - **Docs:** docs/reviews/2026-11-07-postmerge-money-client-regressions.md
+
+### [BUG-1794258285] Repair the invalid iOS origin workflow file
+- [ ] **Severity:** med
+- **Area:** ci, delivery
+- **File(s):** .github/workflows/ios-origin.yml; ops/ci/test_delivery_gate.py; ops/ci/test_ios_artifact.py
+- **Observation:** GitHub rejects ios-origin.yml on every push since fc98e85 (2026-11-05): run 42365245707 on main 5e877e3 reports `Invalid workflow file: .github/workflows/ios-origin.yml#L1 (Line: 60, Col: 16): Unrecognized named-value: 'runner'. Located at position 1 within expression: runner.temp`, repeated for Line 61 and Line 62. Job-level env IPA_DIR/RECEIPT_DIR/ASC_RECEIPT use the runner context, which GitHub does not provide at jobs.<job_id>.env. The run has zero jobs; main runs 42359771109 and 42365245707 and every branch push fail the same way. The 42 controller methods pass on this file, so no offline control sees it.
+- **Expected:**
+  - ios-origin.yml parses: every expression uses only the contexts GitHub documents for its workflow key, and a controller test fails on the current file.
+  - A push to main no longer creates a failed run for ios-origin.yml (hosted, observable only after merge).
+  - testflight.yml still calls ios-origin.yml with the same inputs and six named secrets; the three paths keep their values for the steps that read them.
+  - No iOS path in this workflow graph can sign or upload while RELEASE_POLICY is unset: the origin job stays main-dispatch-only and authorizes before toolchain, signing or upload.
+- **Req:** none (found in the 2026-11-09 sweep; SR GATE/RELEASE; TR engineering 4)
+- **Depends on:** none
+- **Repro / Notes:** `gh run view 42365245707`; `gh api repos/LLRHook/checksinmyhead/actions/runs/42365245707` (event push, conclusion failure, no jobs); the run page annotation carries the message above. Context table: docs.github.com Actions contexts reference, Context availability. actionlint is not installed here. Until fixed, a TestFlight dispatch cannot start its reusable origin job either.
+- **Bump:** patch
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Source fix complete; hosted confirmation open. The three runner.temp paths moved, values unchanged, from job env to the env of the steps that read them (signed-IPA action, upload, receipt). New GraphTests.test_workflow_expressions_use_only_documented_contexts applies GitHub's context-availability table and reusable-call contract to all nine workflows: it fails on the e0a2c18 file with Unrecognized named-value 'runner' at jobs.origin.env.IPA_DIR and passes now (28 rejected mutations, 4 accepted controls). validate_ios_graph binds each path to its reading steps and the authority step third and unconditional (7 mutations); each iOS target refuses empty, absent or disabled RELEASE_POLICY before any authenticated read. 43 gate, 17 iOS and 5+18 Ruby methods pass; automation row 1,422 records, 0 failed or skipped. testflight.yml call, inputs and six secrets unchanged. REMAINS: GitHub's own parse is unobserved until the first push carrying this file; accept when that push creates no failed ios-origin.yml run, then set fixed-pending-migration. actionlint not installed; nothing dispatched.
+- **Docs:** ops/ci/README.md; docs/reviews/2026-11-09-delivery-workflows.md

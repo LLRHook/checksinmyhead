@@ -181,6 +181,13 @@ Next or ASC suites. The Python/Ruby adapters test tiny synthetic runner programs
 See [VERIFICATION](../../VERIFICATION.md) for the actual app commands and reports;
 produce reports in the same run, never rerun the app merely to count it.
 
+The same module applies GitHub's documented context-availability table and
+reusable-call contract to every workflow (`validate_workflow_syntax`). GitHub refuses
+a whole file, on every push, when an expression names a context its key lacks:
+`runner` exists only inside steps, so origin's three runner-temp paths are step env,
+never job env. This is a source check, not GitHub's parser: hosted proof is a push
+that creates no failed run for the file ([evidence](../../docs/reviews/2026-11-09-delivery-workflows.md)).
+
 NOT CI-CONFIRMED: native/signed binaries, processed ASC origin/eligibility receipts,
 whole GUI/a11y journeys, image build/scan identity, whole security, real providers,
 schema adoption/drain/restore, hosted deployment identity and field performance.
