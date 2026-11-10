@@ -62,6 +62,13 @@ missing/nonloopback DSNs, wrong identity and caller schema/options. No applicati
 harness or timing budget is changed. This row includes existing measured cases;
 CI execution would not replace independent numerical or production qualification.
 
+The row first builds both service binaries so the startup test's unchanged 60s build
+bound measures a warm link, not a cold compile competing with eight race builds. It
+sets `-timeout=20m` per package and a 30-minute job bound: the measured creation and
+lifecycle cohorts need 5.5–9 minutes on hosted runners, which left no margin under
+Go's 10-minute default. Samples, cohorts and operation targets are unchanged; see the
+[timing evidence](../../docs/reviews/2026-11-09-pg-gate.md).
+
 For local report validation, run the existing reports through the same helper once:
 
 ```bash

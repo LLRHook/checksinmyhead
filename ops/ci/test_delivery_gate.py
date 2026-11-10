@@ -361,7 +361,7 @@ def validate_graph(root):
     report = 'flutter test --no-pub --reporter=json | tee "$REPORT_DIR/flutter.jsonl"'
     require(acquire in mobile_command and report in mobile_command and mobile_command.index(acquire) < mobile_command.index(report), 'locked acquisition before clean Flutter JSON report')
     pg=checks['jobs']['postgres'];body='\n'.join(s.get('run','') for s in pg['steps'])
-    wanted='go test -race -count=1 -json -tags=integration ./cmd/bill-service ./internal/bill ./internal/tab ./pkg/database ./migrations ./internal/startup ./internal/readiness ./internal/testpostgres'
+    wanted='go test -race -count=1 -json -timeout=20m -tags=integration ./cmd/bill-service ./internal/bill ./internal/tab ./pkg/database ./migrations ./internal/startup ./internal/readiness ./internal/testpostgres'
     require(wanted in body,'eight-package PG row changed')
     service=pg['services']['postgres'];require(service['ports']==['127.0.0.1:5432:5432'] and '@sha256:' in service['image'],'PG service identity/loopback')
     require('host=127.0.0.1 ' in pg['env']['BILLINGTON_TEST_POSTGRES_DSN'] and 'dbname=billington_test' in pg['env']['BILLINGTON_TEST_POSTGRES_DSN'],'unsafe PG DSN')
@@ -683,6 +683,9 @@ class ManifestReportTests(unittest.TestCase):
         snapshot_family = 'backend/internal/tab/TestPostgresLifecycleSnapshotCanonicalRows'
         self.assertIn(snapshot_family, self.manifest['rows']['postgres'])
         self.assertNotIn(snapshot_family, self.manifest['rows']['backend'])
+        digest_family = 'backend/internal/tab/TestPostgresLifecycleDigestTracksCanonicalSnapshot'
+        self.assertIn(digest_family, self.manifest['rows']['postgres'])
+        self.assertNotIn(digest_family, self.manifest['rows']['backend'])
         overlap = set(self.manifest['rows']['backend']) & set(self.manifest['rows']['postgres'])
         self.assertTrue(overlap)
         assignment_prefixes = ('TestCreateAssignmentDecodeDifferential/',

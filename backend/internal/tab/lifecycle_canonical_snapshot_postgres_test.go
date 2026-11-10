@@ -251,3 +251,108 @@ func TestPostgresLifecycleSnapshotCanonicalRows(t *testing.T) {
 		t.Fatal("unchanged decorated database produced a different snapshot")
 	}
 }
+
+// The digest is only a cheaper equality witness for repeated measured samples.
+// Each class of change the canonical snapshot observes must also change it, and
+// restoring the exact prior rows must restore it.
+func TestPostgresLifecycleDigestTracksCanonicalSnapshot(t *testing.T) {
+	db := authorizationPostgres(t)
+	empty := lifecycleDigest(t, db)
+	for _, spec := range snapshotOrderTables {
+		if !strings.Contains(empty, spec.table+"=0:empty") {
+			t.Fatalf("%s is not reported as empty: %s", spec.table, empty)
+		}
+	}
+	dst, bill, _ := seedReferenceLifecycle(t, db)
+	saveAuthFixture(t, db, &[]models.TabMember{{TabID: dst.ID, DisplayName: "Alex", MemberToken: "digest-one"}, {TabID: dst.ID, DisplayName: "Sam", MemberToken: "digest-two"}})
+	saveAuthFixture(t, db, &[]models.TabSettlement{{TabID: dst.ID, PersonName: "Alex", Amount: 10}, {TabID: dst.ID, PersonName: "Sam", Amount: 10}})
+	if err := db.Exec("UPDATE tabs SET description = '' WHERE id = ?", dst.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	type observed struct{ digest, snapshot string }
+	capture := func() observed { return observed{lifecycleDigest(t, db), lifecycleSnapshot(t, db)} }
+	// A change is tracked only when both witnesses move; unchanged state must
+	// leave both exactly as they were.
+	changed := func(label string, before observed) observed {
+		t.Helper()
+		after := capture()
+		if after.snapshot == before.snapshot {
+			t.Fatalf("%s: control did not change the canonical snapshot", label)
+		}
+		if after.digest == before.digest {
+			t.Fatalf("%s: digest missed a change the canonical snapshot observed", label)
+		}
+		return after
+	}
+	exec := func(label, statement string, args ...any) {
+		t.Helper()
+		result := db.Exec(statement, args...)
+		if result.Error != nil || result.RowsAffected != 1 {
+			t.Fatalf("%s: %v rows=%d", label, result.Error, result.RowsAffected)
+		}
+	}
+	seeded := capture()
+	if again := capture(); again != seeded || seeded.digest == empty {
+		t.Fatal("unchanged seeded database produced a different witness")
+	}
+	_, state := snapshotOrderCapture(t, db)
+	current := seeded
+	for _, spec := range snapshotOrderTables {
+		if len(state[spec.table]) == 0 {
+			t.Fatalf("%s fixture needs a record", spec.table)
+		}
+		var id int64
+		for key := range state[spec.table] {
+			if id == 0 || key < id {
+				id = key
+			}
+		}
+		var original string
+		if err := db.Raw("SELECT "+spec.field+" FROM "+spec.table+" WHERE id = ?", id).Scan(&original).Error; err != nil {
+			t.Fatal(err)
+		}
+		exec(spec.table+" update", "UPDATE "+spec.table+" SET "+spec.field+" = ? WHERE id = ?", "digest changed", id)
+		changed(spec.table+" known column", current)
+		exec(spec.table+" restore", "UPDATE "+spec.table+" SET "+spec.field+" = ? WHERE id = ?", original, id)
+		if restored := capture(); restored != current {
+			t.Fatalf("%s: restoring the exact value did not restore both witnesses", spec.table)
+		}
+	}
+	// NULL and empty text are different stored states.
+	exec("null", "UPDATE tabs SET description = NULL WHERE id = ?", dst.ID)
+	current = changed("NULL versus empty text", current)
+	// One microsecond and digits beyond float64 precision remain observable.
+	exec("timestamp", "UPDATE bills SET created_at = created_at + interval '1 microsecond' WHERE id = ?", bill.ID)
+	current = changed("timestamp microsecond", current)
+	exec("numeric", "UPDATE bills SET subtotal = 9007199254740993.123456789123456789 WHERE id = ?", bill.ID)
+	current = changed("exact numeric", current)
+	exec("numeric digit", "UPDATE bills SET subtotal = 9007199254740993.123456789123456788 WHERE id = ?", bill.ID)
+	current = changed("last numeric digit", current)
+	// Row presence: insert and delete, including a settlement-only change.
+	exec("insert", "INSERT INTO people(id,name) VALUES (9007199254740993,'Precise')")
+	inserted := changed("inserted row", current)
+	exec("delete", "DELETE FROM people WHERE id = 9007199254740993")
+	if restored := capture(); restored != current {
+		t.Fatal("deleting the inserted row did not restore both witnesses")
+	}
+	if inserted.digest == current.digest {
+		t.Fatal("insert control was not observed")
+	}
+	exec("settlement", "DELETE FROM tab_settlements WHERE id = (SELECT min(id) FROM tab_settlements)")
+	current = changed("deleted settlement", current)
+	// Unknown additive columns are covered while NULL and once populated.
+	for _, spec := range snapshotOrderTables {
+		if err := db.Exec("ALTER TABLE " + spec.table + " ADD COLUMN digest_probe jsonb").Error; err != nil {
+			t.Fatal(err)
+		}
+		current = changed(spec.table+" additive NULL column", current)
+		result := db.Exec("UPDATE " + spec.table + " SET digest_probe = '{\"array\":[1,\"1\",null,true]}'::jsonb WHERE id = (SELECT min(id) FROM " + spec.table + ")")
+		if result.Error != nil || result.RowsAffected != 1 {
+			t.Fatalf("%s additive value: %v rows=%d", spec.table, result.Error, result.RowsAffected)
+		}
+		current = changed(spec.table+" additive column value", current)
+	}
+	if again := capture(); again != current {
+		t.Fatal("unchanged decorated database produced a different witness")
+	}
+}

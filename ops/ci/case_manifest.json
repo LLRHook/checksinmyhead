@@ -610,6 +610,7 @@
       "backend/internal/bill/TestCreateAssignmentDecodeReceiverSequence",
       "backend/internal/bill/TestCreateAssignmentDecodeRequestContracts",
       "backend/internal/tab/TestPostgresLifecycleSnapshotCanonicalRows",
+      "backend/internal/tab/TestPostgresLifecycleDigestTracksCanonicalSnapshot",
       "backend/internal/bill/TestCreationRemaindersPreserveZeroShares",
       "backend/internal/bill/TestCreationInsertAuditsShares",
       "backend/internal/bill/TestCreationRoundingRemainsAccountable"

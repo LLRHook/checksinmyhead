@@ -149,7 +149,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-05 Source acceptance: Driver reconciles completed scoped reviews/current clean committed-source proof; source criteria met, pending integrated V&V migration only. Historical handoffs remain in Git/dated notes. Deployment, public clients and whole acceptance are separate/RED.
 
 ### [BUG-1793644504] Finalize tabs within one retry-safe transaction
-- [ ] **Severity:** high
+- [x] **Severity:** high
 - **Area:** backend, persistence
 - **File(s):** backend/internal/{bill,tab}/{handler,service,repository}.go; bill/{accounting,assignments}.go; tab/{commands,settlement}.go; backend/pkg/mutation/; related tests
 - **Observation:** FinalizeTab reads tab, creates settlements and marks finalized in separate operations. Competing assignment mutations check state outside the common boundary.
@@ -163,9 +163,9 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Actual pre-fix PostgreSQL HTTP regression failed four assertions (paid 6->5.50, child/time changes, retry 400 and changed result); seven removed-control overlays fail executed assertions. Raw evidence: .vv/local-gate/atomic-lifecycle/. Historical pre-acceptance evidence.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
-- **Fix:** Stored RETURNING/count guards and typed complete-row reader retain atomic retries. Source/S1 reviews, 50 focused cases, control failures and physical scanner coverage pass; raw candidates triaged. Full gate RED: tested71937623 startup60s kill, creation/tab600s, tab1.484s>750ms. No performance/artifact/integrated/rollout acceptance. 2026-11-06 test-only snapshot ordering uses unique numeric id while preserving nine whole-record sets and unknown fields. Source0/0 and four complete variant compiles; actual snapshot PG characterization/mutation controls UNRUN. Latest04e1 tested merge524b startup60s/cmd+tab600s and maxUSD2.114s>2s remain RED; first large block715.9ms does not complete3cohorts.
-- **Docs:** docs/backend-api.md; backend/README.md; VERIFICATION.md; docs/reviews/{2026-11-03-atomic-lifecycle,2026-11-03-unicode-share-ambiguity,2026-11-05-scoped-source-acceptance,2026-11-05-row-materialization,2026-11-05-complete-row-conversion}.md; docs/reviews/2026-11-06-assignment-snapshot.md
+- **Status:** fixed-pending-migration
+- **Fix:** Stored RETURNING/count guards and typed complete-row reader retain atomic retries; source/S1 reviews, 50 focused cases and control failures pass. 2026-11-09 gate repair: main runs 42365246558/42359772172 hit Go's default 600s alarm in tab with no failed assertion. Test-only lifecycleDigest replaces two 9 MB snapshots per measured sample (canonical snapshot kept on each cohort's first sample; digest characterization test with two failing controls), the row prebuilds both service binaries, and uses -timeout=20m with a 30-minute job. Samples, cohorts and operation targets unchanged. Local full eight-package row 1554 passing terminals, 0 fail/skip. Hosted PR run 42697731004: all six rows pass; PostgreSQL 1554 terminals, tab 595.4s and creation 560.0s (about half of the 1200s bound), startup 6.4s, no latency miss (large fresh p95 689-698ms<750ms, maximum creation p95 0.80-1.11s<2s). Thin large-tab margin on slow runners and capacity budgets belong to FEAT-1793644502; artifact, integrated V&V and rollout acceptance remain separate.
+- **Docs:** docs/backend-api.md; backend/README.md; VERIFICATION.md; ops/ci/README.md; docs/reviews/{2026-11-03-atomic-lifecycle,2026-11-03-unicode-share-ambiguity,2026-11-05-scoped-source-acceptance,2026-11-05-row-materialization,2026-11-05-complete-row-conversion}.md; docs/reviews/2026-11-06-assignment-snapshot.md; docs/reviews/2026-11-09-pg-gate.md
 - **Log:**
   - 2026-11-05 Contrary execution: run42012762828 mandatory8 PG fails snapshot equality across two lifecycle parents/five currency children; first/stored CreatedAt803580958/803580000ns. Other five rows pass; Required delivery checks fails. Reopen in-progress; no flake/rerun waiver. See committed gate note and retained raw job log.
   - 2026-11-05 Integration: Loader source0/0, physical build/vet/scanner coverage pass;1734 selected leaves retained. No numerical waiver.

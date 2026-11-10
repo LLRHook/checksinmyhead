@@ -129,7 +129,13 @@ func TestPostgresLifecycleMeasuredBudgets(t *testing.T) {
 					if sample == 0 && run == 1 {
 						t.Logf("fresh SQL shape: %q", trace.shape)
 					}
-					before := lifecycleSnapshot(t, db)
+					// Every sample keeps whole-state equality through the complete-row
+					// digest; the first sample of each cohort also compares the canonical
+					// JSON snapshot. Both observers stay outside the measured operation.
+					before, canonical := lifecycleDigest(t, db), ""
+					if sample == 0 {
+						canonical = lifecycleSnapshot(t, db)
+					}
 					trace.reset()
 					start = time.Now()
 					mustFinalize(t, db, a)
@@ -144,7 +150,7 @@ func TestPostgresLifecycleMeasuredBudgets(t *testing.T) {
 							t.Fatal("replay issued a write")
 						}
 					}
-					if lifecycleSnapshot(t, db) != before {
+					if lifecycleDigest(t, db) != before || sample == 0 && lifecycleSnapshot(t, db) != canonical {
 						t.Fatal("measured retry changed snapshot")
 					}
 				}
