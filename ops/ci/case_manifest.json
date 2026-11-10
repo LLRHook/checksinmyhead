@@ -1351,7 +1351,8 @@
         "^full\\ remote\\ history\\ offers\\ retry\\ without\\ partial\\ person\\ balances$"
       ],
       "mobile/test/receipt_timestamp_test.dart": [
-        "^new\\ receipt\\ uses\\ insertion\\ time\\ instead\\ of\\ historical\\ table\\ default$"
+        "^new\\ receipt\\ uses\\ insertion\\ time\\ instead\\ of\\ historical\\ table\\ default$",
+        "^explicit\\ receipt\\ timestamp\\ is\\ stored\\ unchanged\\ and\\ an\\ existing\\ handle\\ keeps\\ its\\ row$"
       ],
       "mobile/test/save_journey_test.dart": [
         "(?:^| )one\\ EUR\\ receipt\\ stays\\ one\\ native\\ record\\ across\\ Done,\\ share,\\ retry,\\ restart\\ and\\ trip\\ attachment$",

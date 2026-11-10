@@ -832,6 +832,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Docs:** docs/reviews/2026-11-07-postmerge-money-client-regressions.md
 - **Log:**
   - 2026-11-09 Verification: PASS: 1 named Dart test (new receipt uses insertion time instead of historical table default) in mobile/test/receipt_timestamp_test.dart at e0a2c18; revert check failed as intended (database.dart insertReceipt without copyWith createdAt: test failed at line 22, file restored, tree clean); unproven: explicit createdAt preserved (no named test; only the omitted-createdAt path is asserted) and existing-handle unchanged (not asserted by this test); not run here: current CI
+  - 2026-11-09 Verification: Added the two missing proofs to mobile/test/receipt_timestamp_test.dart: an explicit createdAt is stored unchanged, and presenting an existing creation handle returns its row and rewrites nothing. Two revert checks fail as intended (always-overwrite: expected 2020-01-02 03:04:05, got now; no existing-handle return: UNIQUE constraint on creation_handle).
 
 ### [BUG-1794045429] Retain browser join input across refreshed bill graphs
 - [ ] **Severity:** med
@@ -974,5 +975,17 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Req:** VERIFICATION.md Stage 2 (no environment-dependent failures)
 - **Depends on:** none
 - **Repro / Notes:** Hold 127.0.0.1:8080, then cd backend && go test -race -count=1 ./internal/healthcheck. Container control: docker run the pinned golang builder image with the same command.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794265789] Build the iOS simulator app under Xcode 27.2
+- [ ] **Severity:** med
+- **Area:** mobile, ios, tooling
+- **File(s):** mobile/ios/Podfile; mobile/ios/Runner.xcodeproj/project.pbxproj; mobile/README.md
+- **Observation:** With Xcode 27.2 (27B52) and Flutter 3.41.5, flutter build ios --simulator --debug fails twice. First, Xcode treats pod deployment targets 12.0 and 13.0 as errors (supported range 15.0 to 27.2.x; __DIAGNOSE_INVALID_DEPLOYMENT_TARGET_AS_ERROR = YES) and the build stops after 2.9s. With FLUTTER_XCODE_IPHONEOS_DEPLOYMENT_TARGET=15.5 it then fails in Thin Binary: Flutter.framework does not contain architectures "arm64 x86_64" although lipo lists both. Adding FLUTTER_XCODE_ARCHS=arm64 and FLUTTER_XCODE_ONLY_ACTIVE_ARCH=YES builds Runner.app.
+- **Expected:** The documented simulator build command produces Runner.app on the current Xcode without environment overrides: pods carry a supported deployment target (for example through the Podfile post_install), and the architecture check passes or the documented command selects the simulator architecture. mobile/README.md states the supported Xcode range. The device release build and Podfile.lock versions are unchanged.
+- **Req:** AGENTS.md iOS builds; VERIFICATION.md Stage 0 (debug flutter run in mobile)
+- **Depends on:** none
+- **Repro / Notes:** cd mobile && flutter pub get --enforce-lockfile && flutter build ios --simulator --debug on Xcode 27.2. Logs retained in .vv/sweep/ios-build{,2,3}.log of the 2026-11-09 sweep. The 2026-11-04 lock qualification used SDK 26.2, where this did not occur. Hosted TestFlight runners were not checked.
 - **Bump:** patch
 - **Status:** open

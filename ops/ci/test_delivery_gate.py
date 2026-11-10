@@ -1326,7 +1326,8 @@ class ManifestReportTests(unittest.TestCase):
          ('flutter',
           'mobile',
           'mobile/test/receipt_timestamp_test.dart',
-          ('new receipt uses insertion time instead of historical table default',)),
+          ('new receipt uses insertion time instead of historical table default',
+           'explicit receipt timestamp is stored unchanged and an existing handle keeps its row')),
          # The conditional-title loop had no selection at all: its four named modes
          # could be removed while the row stayed green (focused S4 review, 2026-11-09).
          ('flutter',
