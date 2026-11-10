@@ -111,7 +111,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Docs:** ops/ci/README.md; VERIFICATION.md; docs/reviews/2026-11-05-delivery-gate.md; docs/reviews/2026-11-09-delivery-workflows.md
 
 ### [BUG-1793644502] Resolve the three current Next.js security alerts
-- [ ] **Severity:** high
+- [x] **Severity:** high
 - **Area:** web, dependencies
 - **File(s):** web-bill-viewer/{package.json,package-lock.json,README.md}; docs/reviews/2026-11-04-next1645-security-patch.md
 - **Observation:** Baseline Next16.4.0 had alerts67–69 (GHSA-2464-fhr4-w9xw,GHSA-p3m5-59mp-jv5r,GHSA-673q-mjm6-r5xr). Maintained source now pins16.4.5; local affected checks pass. External alert closure and deployed version remain unverified.
@@ -124,13 +124,14 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Historical alerts: https://github.com/LLRHook/checksinmyhead/security/dependabot/67 and IDs68/69. Follow current primary advisories before integration/release. No deployed exploitability result.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
+- **Status:** fixed-pending-migration
 - **Fix:** e4af0a7 pins Next16.4.5 with11 root/Next/env/SWC lock entries; React/DOM19.3.0,sharp0.35.5 and overrides retained. Lead and independent root clean Node24.22.2/npm11.19.1 acquisition,lint,54tests (0skip),build,audit pass; audit0. Root Standards0/Spec0. Keep in-progress for alert/deployed closure.
 - **Docs:** web-bill-viewer/README.md; docs/reviews/2026-11-04-next1645-security-patch.md. Historical November2 dependency evidence is preserved.
 - **Log:**
   - 2026-11-04 Validation: Primary-source discrepancies and npm/Vite warnings retained in dated evidence. Prior Flutter/runtime follow-ups belong to BUG-1793652308/2309. No hosting mutation, deployment, alert closure or whole security/integrated/release pass claimed.
   - 2026-11-04 Maintenance: Condense inherited oversized tracker through official writer; historical fields remain in Git and dated reports.
   - 2026-11-09 Verification: PASS at e0a2c18: npm ls next = next@16.4.5; npm ci, biome lint (55 files), vitest 102 pass/0 fail/0 skip (ticket's 54 is outdated), next build, npm audit --audit-level=moderate 0 vulnerabilities; read-only gh: open Dependabot alerts 0; alerts 67, 68, 69 state=fixed (fixed_at 2026-11-07); revert check not run: dependency pin, no regression test; unproven: deployed version; not run here: hosted deployment check
+  - 2026-11-09 Verification: 2026-11-09: next@16.4.5 resolved; npm audit 0; Dependabot alerts 67, 68 and 69 are fixed and 0 alerts are open (read-only GitHub API). The deployed viewer version stays unverified because the maintained pages are not served yet.
 
 ### [BUG-1793644503] Patch the Go build toolchain for GO-2026-6809
 - [x] **Severity:** high
@@ -766,7 +767,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-09 Verification: PASS: both required literals present and passing (Assignee stack shows four people instead of a +1; Assignee stack summarises everyone past four) in mobile/test/screenshot_quality_test.dart at e0a2c18; full mobile suite 593 visible pass/0 fail/0 skip; revert check failed as intended (item_card.dart hasOverflow >4 to >3: shows four people test failed, file restored, tree clean); unproven: enlarged-text avatar behaviour, preservation of toggles/amounts beyond the two named tests; not run here: native/capture
 
 ### [BUG-1794045425] Preserve accounting availability for accepted fractional receipts
-- [ ] **Severity:** high
+- [x] **Severity:** high
 - **Area:** backend, accounting
 - **File(s):** backend/internal/bill/accounting.go; backend/internal/bill/creation_repository.go; backend/internal/bill/accounting_creation_regression_test.go
 - **Observation:** SPEC-001: actual CreateBill accepts 18.50 subtotal + 2.775 tip /21.275 total but saved21.28 fails the stricter frozen-share audit; documented one-cent tolerance also reproduces.
@@ -776,14 +777,15 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Real creation + persistence-preflight regressions failed before the fix; affected bill/tab -race row now532 named PASS. Actual PG/finalization/whole V&V remain pending.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
+- **Status:** fixed-pending-migration
 - **Fix:** Implemented aligned creation/frozen-share tolerance and pre-insert share audit; manager combined-scope source review accepted. Actual affected bill/tab Go race row:532 named PASS, with original red regressions retained. Status remains in-progress; real PostgreSQL persistence/finalization, current CI and integrated V&V remain pending.
 - **Docs:** docs/reviews/2026-11-07-postmerge-money-client-regressions.md
 - **Log:**
   - 2026-11-09 Verification: PASS: 4 named Go tests incl 22 subtests (TestCreationRoundingRemainsAccountable 6/6 incl documented_one_cent_tolerance; TestCreationInsertAuditsShares 9/9 incl partial_below_half_cent, overallocated, malformed_foreign_audit, legacy_full, fresh_reference_input; TestCreationRejectsToleranceAmplificationBeforeProviders; TestCreationToleranceHTTPBeforeProviders) in backend/internal/bill at e0a2c18; PG-tagged ./internal/bill also 66 top-level pass/0 fail/0 skip; revert check failed as intended (accounting.go tolerance to .005: 3 RoundingRemainsAccountable subtests failed, file restored, tree clean); unproven: none; not run here: current CI, integrated V&V
+  - 2026-11-09 Status: 2026-11-09 sweep: real PostgreSQL selections and hosted CI run for PR #173 (all six rows, PostgreSQL included) pass with this fix; status moved to fixed-pending-migration for the integrated V&V run.
 
 ### [BUG-1794045426] Keep negative cent remainders off zero obligations
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** backend, accounting
 - **File(s):** backend/internal/bill/shares.go; backend/internal/bill/creation_correction_test.go; backend/internal/bill/accounting_creation_regression_test.go
 - **Observation:** SPEC-002: real creation derives Alice tax=-0.01 for the .10/30 +1.01 tax split, or rejects a valid zero-total participant split.
@@ -793,11 +795,12 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Both real creation triggers failed before correction. Positive/negative priority controls, huge bounded counts, signed-discount creation and independent small one-cent oracle pass in the affected Go row. Existing historical negative rows are not rewritten.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
+- **Status:** fixed-pending-migration
 - **Fix:** Implemented bounded negative-cent deductions from eligible positive balances in claim/name order, preserving zero shares and signed discounts. Manager combined-scope source review accepted; affected Go race532 PASS includes bounded-count and independent small-oracle controls. No historical amount rewrite. Status remains in-progress; real PG/current CI/integrated V&V remain pending.
 - **Docs:** docs/reviews/2026-11-07-postmerge-money-client-regressions.md
 - **Log:**
   - 2026-11-09 Verification: PASS: 3 named Go tests (TestCreationRemaindersPreserveZeroShares 2/2; TestCentRemaindersPreserveClaimAndNameOrder 7/7; TestRemainderDistributionIsBoundedForExtremeCounts 8/8) plus TestCreationRoundingRemainsAccountable/signed_discount_remains_accountable in backend/internal/bill at e0a2c18; revert check failed as intended (shares.go naive cyclic decrement: 8 subtests failed across the three tests, file restored, tree clean); unproven: none; not run here: current CI, integrated V&V
+  - 2026-11-09 Status: 2026-11-09 sweep: real PostgreSQL selections and hosted CI run for PR #173 (all six rows, PostgreSQL included) pass with this fix; status moved to fixed-pending-migration for the integrated V&V run.
 
 ### [BUG-1794045427] Import complete Trip history atomically at capacity
 - [ ] **Severity:** high
@@ -817,7 +820,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-09 Verification: PASS: 10 named Dart tests in mobile/test/tab_import_capacity_test.dart (30/31 cap, pending/referenced history, later existing target, malformed rollback, read-error retry, checkpoint rollback, invalid IDs, retry without partial balances) at e0a2c18; full mobile suite 593 visible pass/0 fail/0 skip; revert check failed as intended (database.dart _makeReceiptRoom ignores protectedReceiptIds: 5 of 10 failed, file restored, tree clean); unproven: none; not run here: real PG, current CI
 
 ### [BUG-1794045428] Stamp durable receipts at their actual insertion time
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** mobile, persistence
 - **File(s):** mobile/lib/database/database.dart; mobile/test/receipt_timestamp_test.dart
 - **Observation:** SP-4: omitted createdAt uses the historical Drift9 table literal1793912155 rather than receipt insertion time.
@@ -827,15 +830,16 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** The maintained historical-schema SQLite fixture fails before the fix and passes afterward within the affected Flutter row. Schema version10 and migration files remain unchanged.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
+- **Status:** fixed-pending-migration
 - **Fix:** Implemented explicit new durable-receipt insertion timestamp, preserving existing handles and historical rows without migration/backfill. Manager combined-scope source review accepted; historical Drift9-default regression passes in retained affected Flutter116 row. No repeat row after test-only witness correction. Status remains in-progress; current CI/real PG/integrated V&V remain pending.
 - **Docs:** docs/reviews/2026-11-07-postmerge-money-client-regressions.md
 - **Log:**
   - 2026-11-09 Verification: PASS: 1 named Dart test (new receipt uses insertion time instead of historical table default) in mobile/test/receipt_timestamp_test.dart at e0a2c18; revert check failed as intended (database.dart insertReceipt without copyWith createdAt: test failed at line 22, file restored, tree clean); unproven: explicit createdAt preserved (no named test; only the omitted-createdAt path is asserted) and existing-handle unchanged (not asserted by this test); not run here: current CI
   - 2026-11-09 Verification: Added the two missing proofs to mobile/test/receipt_timestamp_test.dart: an explicit createdAt is stored unchanged, and presenting an existing creation handle returns its row and rewrites nothing. Two revert checks fail as intended (always-overwrite: expected 2020-01-02 03:04:05, got now; no existing-handle return: UNIQUE constraint on creation_handle).
+  - 2026-11-09 Status: 2026-11-09 sweep: real PostgreSQL selections and hosted CI run for PR #173 (all six rows, PostgreSQL included) pass with this fix; status moved to fixed-pending-migration for the integrated V&V run.
 
 ### [BUG-1794045429] Retain browser join input across refreshed bill graphs
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** web, identity
 - **File(s):** web-bill-viewer/src/components/LazyBillBoard.tsx; web-bill-viewer/src/components/__tests__/LazyBillSession.test.ts
 - **Observation:** SP-2: participant-array refresh re-runs a combined selection/suggestion/recovery effect, erasing typed or deliberately empty join input and repeating membership recovery.
@@ -845,11 +849,13 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Exact manager patch b6c3240d: baseline4/4 intended failures, fixed4/4 PASS, maintained web102/102. Integrated actual component hook/handler4/4 PASS plus TypeScript/Biome0; no browser-pixel or service claim.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
+- **Status:** fixed-pending-migration
 - **Fix:** Integrated exact manager SP-2 selection/suggestion/recovery ownership correction; manager combined-scope source review accepted. Integrated actual component/handler4 PASS, TypeScript/Biome0; retained manager whole-web102 row remains separate evidence. Status remains in-progress; full current CI, real PG and integrated V&V remain pending.
 - **Docs:** docs/reviews/2026-11-07-postmerge-money-client-regressions.md
 - **Log:**
   - 2026-11-09 Verification: PASS: 4 named Vitest tests in web-bill-viewer/src/components/__tests__/LazyBillSession.test.ts at e0a2c18; whole web suite 102 pass/0 fail/0 skip; revert check failed as intended (suggestion effect re-keyed on bill.participants: 2 of 4 failed, file restored, tree clean; recovery-ownership test not isolated by that revert); unproven: none; not run here: browser pixels, current CI
+  - 2026-11-09 Status: 2026-11-09 sweep: real PostgreSQL selections and hosted CI run for PR #173 (all six rows, PostgreSQL included) pass with this fix; status moved to fixed-pending-migration for the integrated V&V run.
+  - 2026-11-09 Verification: Headed browser check on the local stack: on a tab page with a lazy receipt, 'Samantha Q' typed into 'What should we call you?' survived a participant added through the API and the page's own 10-second refresh; a cleared field stayed empty; no recovery warning. A full browser reload discards unsubmitted text, which the ticket does not cover. Screenshots: .vv/ui-inspection-20261109/web/C4b-*.png.
 
 ### [BUG-1794258285] Repair the invalid iOS origin workflow file
 - [ ] **Severity:** med
@@ -893,6 +899,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Options and costs: docs/reviews/2026-11-09-mobile-save-journey.md. The 5.00/5.02 server result needs a committed regression test before any change.
 - **Bump:** patch
 - **Status:** open
+- **Log:**
+  - 2026-11-09 Sighting: Simulator inspection (iPhone 17, iOS 27.2, local stack at 083567a): a USD 128.00 receipt for six people showed Alex 44.81 and Pat 6.39 on the phone (saved and after relaunch); after attaching it to a tab and finalizing, the settlement rows read Alex 44.80 and Pat 6.40. Totals stayed 128.00. Screenshots: .vv/ui-inspection-20261109/main/A2-06-shares.png and A5-12-relaunch-finalized.png.
 
 ### [BUG-1794264956] Remove or gate the second TestFlight uploader outside the delivery gate
 - [ ] **Severity:** high
