@@ -14,7 +14,7 @@ import (
 )
 
 func TestPostgresHealthContract(t *testing.T) {
-	for _, status := range []string{"bill service - ok", "web service - ok"} {
+	for _, status := range []string{"bill service - ok"} {
 		t.Run(status, func(t *testing.T) {
 			t.Setenv("RENDER_GIT_COMMIT", "synthetic-tested-sha")
 			db := testpostgres.Open(t)

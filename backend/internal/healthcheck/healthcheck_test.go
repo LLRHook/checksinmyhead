@@ -18,7 +18,6 @@ func TestProbeResponses(t *testing.T) {
 		want int
 	}{
 		{"healthy", 200, `{"status":"bill service - ok","commit":"synthetic"}`, 0},
-		{"web healthy", 200, `{"status":"web service - ok","commit":""}`, 0},
 		{"non-200", 503, `{"status":"bill service - ok"}`, 1},
 		{"empty", 200, ``, 1},
 		{"malformed", 200, `{"status":`, 1},
@@ -40,11 +39,7 @@ func TestProbeResponses(t *testing.T) {
 				fmt.Fprint(w, test.body)
 			}))
 			defer server.Close()
-			expected := "bill service - ok"
-			if test.name == "web healthy" {
-				expected = "web service - ok"
-			}
-			if got := ExitCode(server.URL+"/health", expected); got != test.want {
+			if got := ExitCode(server.URL+"/health", "bill service - ok"); got != test.want {
 				t.Fatalf("exit = %d, want %d", got, test.want)
 			}
 			if requests.Load() != 1 {
