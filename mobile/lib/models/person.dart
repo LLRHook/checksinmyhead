@@ -54,8 +54,6 @@ class Person {
   );
   Person freshOccurrence() => Person(name: name, color: color);
   String get displayName => name.isEmpty ? 'Unnamed' : name;
-  String labelIn(List<Person> roster) =>
-      '$displayName · ${roster.indexOf(this) + 1}';
   Map<String, dynamic> toReceiptJson() => {
     'client_ref': clientRef,
     'name': name,
