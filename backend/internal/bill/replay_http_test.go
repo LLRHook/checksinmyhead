@@ -10,9 +10,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func creationHTTP(t *testing.T, repo BillRepository, headers http.Header, body string) *httptest.ResponseRecorder {
+func creationHTTP(t *testing.T, service BillService, headers http.Header, body string) *httptest.ResponseRecorder {
 	t.Helper()
-	h := NewBillHandler(NewBillService(repo, &fakeExchangeRateProvider{}))
+	h := NewBillHandler(service)
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest("POST", "/api/bills", strings.NewReader(body))
@@ -32,7 +32,7 @@ func TestReplayHTTPRejectsEveryMalformedParsedKey(t *testing.T) {
 	for i, header := range cases {
 		t.Run(string(rune('a'+i)), func(t *testing.T) {
 			repo := newMockRepo()
-			w := creationHTTP(t, repo, header, `{"name":"Receipt","subtotal":10,"total":10}`)
+			w := creationHTTP(t, NewBillService(repo, &fakeExchangeRateProvider{}), header, `{"name":"Receipt","subtotal":10,"total":10}`)
 			if w.Code != 400 || len(repo.bills) != 0 {
 				t.Fatalf("malformed supplied key accepted: status=%d rows=%d", w.Code, len(repo.bills))
 			}
@@ -41,7 +41,7 @@ func TestReplayHTTPRejectsEveryMalformedParsedKey(t *testing.T) {
 }
 
 func TestCreationResponseCapabilityIsNoStore(t *testing.T) {
-	w := creationHTTP(t, newMockRepo(), http.Header{}, `{"name":"Receipt","subtotal":10,"total":10}`)
+	w := creationHTTP(t, NewBillService(newMockRepo(), &fakeExchangeRateProvider{}), http.Header{}, `{"name":"Receipt","subtotal":10,"total":10}`)
 	if w.Code != 201 || !privateNoStore(w.Header().Get("Cache-Control")) {
 		t.Fatalf("creation capability caching: status=%d cache=%q", w.Code, w.Header().Get("Cache-Control"))
 	}

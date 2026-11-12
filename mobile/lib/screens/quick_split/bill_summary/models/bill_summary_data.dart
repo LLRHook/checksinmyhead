@@ -64,9 +64,6 @@ class BillSummaryData {
 
   double get usdTotal => (total * usdExchangeRate * 100).roundToDouble() / 100;
 
-  double toUSD(double amount) =>
-      (amount * usdExchangeRate * 100).roundToDouble() / 100;
-
   /// Creates a copy with updated fields
   BillSummaryData copyWith({
     List<Person>? participants,

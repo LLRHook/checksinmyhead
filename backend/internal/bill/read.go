@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// GraphQuery is shared by standalone, tab and retained HTML read owners. The
+// GraphQuery is shared by standalone and tab read owners. The
 // caller supplies one bounded read-only consistent transaction.
 func GraphQuery(db *gorm.DB) *gorm.DB {
 	return db.Session(&gorm.Session{SkipHooks: true}).Select(models.BillColumns).
