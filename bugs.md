@@ -1180,6 +1180,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-09 Sighting: Simulator inspection (iPhone 17, iOS 27.2, local stack at 083567a): a USD 128.00 receipt for six people showed Alex 44.81 and Pat 6.39 on the phone (saved and after relaunch); after attaching it to a tab and finalizing, the settlement rows read Alex 44.80 and Pat 6.40. Totals stayed 128.00. Screenshots: .vv/ui-inspection-20261109/main/A2-06-shares.png and A5-12-relaunch-finalized.png.
   - 2026-11-12 Sighting: L20 narrowing, 2026-11-12: baseline f13409d177d237291785d333c6b2d565b65b8108 accepts HTTP creation with USD subtotal 0.75, tax 0.12, 18% tip 0.135, total 1.005 (binary scaled cents 100.49999999999999). Flutter AssignmentUtils.applyLargestRemainder produces 1.00; server calculatePersonShares.rounded rounds subtotal/tax/tip separately and persists a 1.01 native share; creation USDTotal and FrozenUSDTotalCents remain 1.00 / 100 cents, used by tab totals. Confirmed using real creation validation plus guardCreationInsert and existing in-memory repository fixture, HTTP 201; no production data or services used. Evidence: .git/agent-handoffs/driver-testflight-1112/evidence/L20/allocation-boundary-create.log, allocation-boundary-flutter.jsonl, L20_allocation_boundary_probe_test.go, L20_allocation_boundary_probe_test.dart. BUG-1794331912 display fix must preserve this mismatch; no allocation, stored/transmitted amount, or frozen audit may be changed by L20.
   - 2026-11-12 Sighting: L20 round 2 Sighting accepted by the driver: USD subtotal 0.35, tax 0.02, 10% tip produces raw 0.40499999999999997. Phone AssignmentUtils target is 0.41; server per-component rounding stores 0.40 (HTTP 201 in L24 go-server-shares-probe.log). With the display fix, phone summary, assignment footer, copied text and own-bill Recent Bills show 0.41 alongside phone shares of 0.41. Recent Bills with imported/refreshed server shares and the web header retain 0.40 alongside server shares of 0.40; feeding server shares into RecentBillModel simulates the refresh, not an end-to-end refresh. This is the existing accounting-rule difference becoming visible, not new arithmetic. M2 boundary is per-surface consistency with its own shares, not unchanged totals on every surface. Rule and guard remain unchanged; no stored or transmitted amounts changed. Evidence: .git/agent-handoffs/driver-testflight-1112/leads/L24.md, evidence/L24/flutter-probe-head.log, evidence/L24/go-server-shares-probe.log, and evidence/L20/round2/.
+  - 2026-11-12 Sighting: Web viewer, receipt of $0.35 + $0.02 tax + 10% tip claimed and paid in full through the lazy flow: the page still shows 'Remaining $0.01', because the remaining balance starts from $0.41 while the server shares add up to $0.40. Present before and after BUG-1794331912 (review lead L24, 2026-11-12). Related display note once BUG-1794331912 lands: the phone summary total reads $24.89 for the walkthrough receipt while its subtotal, tax and tip rows ($19.75, $1.58, $3.55) add up to $24.88.
 
 ### [BUG-1794264956] Remove or gate the second TestFlight uploader outside the delivery gate
 - [ ] **Severity:** high
@@ -1312,6 +1313,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Run the VERIFICATION.md Stage 2 rows for Go, Flutter and local-workflow concurrently on one machine. Isolated re-run, for example: python3 ops/ci/unittest_report.py scripts/test_local_workflow.py ProbeTests.test_blocked_simulator_boot_has_a_real_deadline.
 - **Bump:** patch
 - **Status:** open
+- **Log:**
+  - 2026-11-12 Sighting: A fifth test of the same kind: ProbeTests.test_blocked_simulator_listing_has_a_real_deadline (scripts/test_local_workflow.py) failed once in a full direct run of the local-workflow row at 915058a on 2026-11-12 (54 of 55) and passed when run alone. Include it in the fix. Seen by review lead L26, driver run testflight-1112.
 
 ### [BUG-1794510138] Release builds never publish a bill
 - [ ] **Severity:** high
@@ -1420,5 +1423,90 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Req:** none; BUG-1793644507 (10 ms maximum assignment-update target)
 - **Depends on:** none
 - **Repro / Notes:** Add "expected_updated_at" to each update in maxAssignmentUpdateBody and run go test -run '^TestMaxAssignmentUpdateAllocationBudget$' -v ./cmd/bill-service. Changing the guard's input or limit changes what a CI guard checks, so it is a deliberate decision, not a side effect.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794520545] Keep long amount text inside tab detail rows at normal text size
+- [ ] **Severity:** med
+- **Area:** mobile, ui
+- **File(s):** mobile/lib/screens/tabs/tab_detail_screen.dart (Per Person row, receipt row)
+- **Observation:** At or below 150% text size the Per Person row and the receipt row keep the amount beside the name, and long amount text runs off the right edge: 'PEN conversion unavailable' (rate outage), 'EUR 25.00 · USD pending', and six-figure amounts. With the system font this happens from normal size on a 375 pt wide phone and from 120% on 390 pt. Same geometry on main before and after BUG-1794331920.
+- **Expected:** No amount text is cut off or overflows in the Per Person and receipt rows at any text size from normal upward on 320 to 440 pt wide phones; the amount wraps or stacks under the name when it does not fit.
+- **Req:** BUG-1794331920 review (lead L23, 2026-11-12), pre-existing problems list
+- **Depends on:** none
+- **Repro / Notes:** Widget test at 375x667 with a tab whose receipt has an unavailable rate, or an amount of 123456.78 PEN. Flutter's test font is about 1.8 times wider than the system font, so judge with the real font as well.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794520546] Stop tab detail settlements, section headers and Add Receipt overflowing at the largest text sizes
+- [ ] **Severity:** low
+- **Area:** mobile, ui, accessibility
+- **File(s):** mobile/lib/screens/tabs/tab_detail_screen.dart (settlement row, Settlements header, Members header, Add Receipt button)
+- **Observation:** At the largest accessibility text size (53/17) on a 320 pt wide phone: settlement rows and the Settlements header overflow sideways, the Members header overflows, and the Add Receipt button is wider than the screen (x from -16 to 304) with its label cut at the edge. A settlement row has the same avatar, name and amount layout that BUG-1794331920 stacks for Per Person rows. Same on main.
+- **Expected:** At every supported text size on a 320 pt wide phone nothing in the tab detail screen overflows or is cut: settlement rows stack like Per Person rows, the two headers wrap, and the Add Receipt button stays inside the screen with its whole label readable.
+- **Req:** BUG-1794331920 review (lead L23, 2026-11-12), pre-existing problems list
+- **Depends on:** none
+- **Repro / Notes:** Widget test at 320x568 with text scale 53/17 on a finalized tab with settlements and members. Screenshots from the review: driver run testflight-1112 evidence/L23/shots/se-*-53-*.png (local, not committed).
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794520547] Fit the tab detail title bar with the Finalized badge, and the empty state in landscape
+- [ ] **Severity:** low
+- **Area:** mobile, ui
+- **File(s):** mobile/lib/screens/tabs/tab_detail_screen.dart (app bar title row, empty state)
+- **Observation:** On a finalized tab the Finalized badge makes the app bar title row overflow from about 135% text size on a 320 pt wide phone. The empty-state column overflows at the bottom in landscape (568x320 and 844x390). Same on main. A long tab name overflowing the same row is BUG-1794264960, not this ticket.
+- **Expected:** On a finalized tab the title row keeps the badge visible and the name readable without overflow at every supported text size on a 320 pt wide phone; the empty state scrolls or fits in landscape.
+- **Req:** BUG-1794331920 review (lead L23, 2026-11-12), pre-existing problems list
+- **Depends on:** none
+- **Repro / Notes:** Widget tests: a finalized tab at 320x568 and text scale 1.5, and an empty tab at 568x320. Fix the title row together with BUG-1794264960 (long name in the same row).
+- **Bump:** patch
+- **Status:** open
+- **Cross-ref:** BUG-1794264960
+
+### [BUG-1794520548] Have VoiceOver read each Per Person row on a tab once
+- [ ] **Severity:** low
+- **Area:** mobile, accessibility
+- **File(s):** mobile/lib/screens/tabs/tab_detail_screen.dart (Per Person row semantics)
+- **Observation:** Each Per Person row is announced twice: the explicit label is merged with the child texts, giving 'Birthday · receipt 4 #2: $12.50, B, Birthday · receipt 4 #2, $12.50'. Same code on main. The order (name, then amount) is right.
+- **Expected:** Each Per Person row is one announcement with the name and the amount once each; the avatar initial is not read.
+- **Req:** BUG-1794331920 review (lead L23, 2026-11-12), pre-existing problems list
+- **Depends on:** none
+- **Repro / Notes:** Semantics dump of the tab detail screen in a widget test, or VoiceOver on a simulator.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794520549] Group thousands in money amounts and wrap them only at separators
+- [ ] **Severity:** low
+- **Area:** mobile, ui
+- **File(s):** mobile/lib/screens/quick_split/bill_entry/utils/currency_formatter.dart; mobile/lib/screens/tabs/tab_detail_screen.dart
+- **Observation:** Amounts of 1,000 or more are printed without thousands separators ('$123456.78'). Where a long amount wraps at large text sizes it breaks in the middle of the number ('$125 / 907. / 28' on the Total card, and the stacked rows from BUG-1794331920), which is hard to read.
+- **Expected:** Amounts of 1,000 or more show grouping separators in the form the owner chooses, on the phone and in shared text, and a wrapped amount breaks only at a separator. The web viewer shows the same form.
+- **Req:** BUG-1794331920 review (lead L23, 2026-11-12), finding on wrapped amounts
+- **Depends on:** owner decision: grouping style (locale-based or fixed) and whether the web viewer changes with it
+- **Repro / Notes:** A receipt of 125907.28 PEN on a tab at text scale 2.0, 320x568.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794520550] Let the isolated stack recipe be re-entered from a second shell
+- [ ] **Severity:** low
+- **Area:** docs, tooling
+- **File(s):** VERIFICATION.md (Appendix A)
+- **Observation:** Appendix A generates a new owner id each time it is sourced, and with BUG-1794331913 a new database password as well. Sourcing it in a second shell against a stack that is already up and running 'vv_compose up -d postgres bill-service' hung for more than five minutes with no output and changed nothing; the likely cause is Compose waiting on a prompt about changed volume labels. Agent harnesses whose shell state does not persist between commands hit this on every step after the first.
+- **Expected:** Sourcing Appendix A again for the same project reuses the owner id and the database password (for example from the running stack or a file under .vv that is never committed), and no vv_compose command waits on a prompt. The password still never appears in a trace or a committed file.
+- **Req:** BUG-1794331913 review (lead L26, 2026-11-12), finding F5; VERIFICATION.md Appendix A
+- **Depends on:** BUG-1794331913
+- **Repro / Notes:** Bring the stack up as Appendix A says, open a new shell, export the same VV_PROJECT and ports, source Appendix A, run vv_compose up -d postgres bill-service. VERIFICATION.md is 7 bytes under its tested 20 KiB limit, so the change must fit or move text to a linked, tested annex.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794520551] Make the terminal interrupt test fail when dev.sh stops reaping Flutter
+- [ ] **Severity:** low
+- **Area:** tests, tooling
+- **File(s):** scripts/test_local_workflow_probes.py (ProbeTests.test_tty_driver_int_interrupts_foreground_flutter, run through scripts/test_local_workflow.py); dev.sh
+- **Observation:** Two deliberate breaks of dev.sh leave test_tty_driver_int_interrupts_foreground_flutter passing: removing MOBILE_PID from both cleanup reap loops, and changing the supervisor loop's 'sleep .1' to 'sleep 30'. A third break (the INT trap waiting for Flutter) is caught. The assertions predate BUG-1794331917 and were not changed by it.
+- **Expected:** The test fails for each of the two breaks above: it asserts that the Flutter process and its children are gone after the interrupt, and that the interrupt is handled within a stated bound.
+- **Req:** BUG-1794331917 review (lead L26, 2026-11-12), finding F6
+- **Depends on:** none
+- **Repro / Notes:** Apply each break to dev.sh (repository root) and run python3 scripts/test_local_workflow.py ProbeTests.test_tty_driver_int_interrupts_foreground_flutter; restore dev.sh afterwards. Review log: driver run testflight-1112 evidence/L26/sigint-mutation-tty.log (local, not committed).
 - **Bump:** patch
 - **Status:** open
