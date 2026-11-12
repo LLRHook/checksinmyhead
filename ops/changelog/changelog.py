@@ -718,7 +718,8 @@ def main():
     event = json.loads(open(env['GITHUB_EVENT_PATH']).read())
     if env['GITHUB_EVENT_NAME'] == 'pull_request_target':
         require(event['repository']['full_name'] == REPO, 'Wrong event repository')
-        if not eligible(event['pull_request']):
+        origin = event['pull_request']['head']['repo']
+        if not origin or origin['full_name'] != REPO:
             print('Exempt event; no API calls made')
             return
     gh_api = API('https://api.github.com', env['GITHUB_TOKEN'], dry_run=args.dry_run)

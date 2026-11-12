@@ -745,16 +745,19 @@ class ChangelogRevisionTests(unittest.TestCase):
         return gh, dc
 
     def test_event_reconciles_every_followed_PR_not_just_its_payload(self):
-        gh, dc = ServiceGitHub(opened=2), ServiceDiscord()
         env = {'GITHUB_REPOSITORY': bot.REPO, 'GITHUB_EVENT_NAME': 'pull_request_target', 'CHANGELOG_MODE': 'post',
                'GITHUB_TOKEN': 'synthetic-github', 'CHANGELOG_DISCORD_BOT_TOKEN': 'synthetic-discord',
                'CHANGELOG_DISCORD_CHANNEL_ID': '123456', 'GITHUB_EVENT_PATH': 'L25-synthetic-event.json'}
-        event = {'repository': {'full_name': bot.REPO}, 'number': 1, 'pull_request': pull()}
-        def request(api, method, path, body=None):
-            return (dc if api.base.startswith('https://discord.com') else gh)(method, path, body)
-        with patch.dict(os.environ, env, clear=True), patch.object(sys, 'argv', ['changelog.py']), patch('builtins.open', mock_open(read_data=json.dumps(event))), patch.object(bot.API, 'request', request), patch('sys.stdout', io.StringIO()):
-            bot.main()
-        self.assertEqual(len(dc.messages), 2)
+        for kind in ('ordinary', 'dependabot', 'retargeted'):
+            gh, dc = ServiceGitHub(opened=2), ServiceDiscord()
+            event = {'repository': {'full_name': bot.REPO}, 'number': 1, 'pull_request': pull()}
+            if kind == 'dependabot': event['pull_request']['user']['login'] = 'dependabot[bot]'
+            if kind == 'retargeted': event['pull_request']['base']['ref'] = 'release'
+            def request(api, method, path, body=None):
+                return (dc if api.base.startswith('https://discord.com') else gh)(method, path, body)
+            with self.subTest(kind=kind), patch.dict(os.environ, env, clear=True), patch.object(sys, 'argv', ['changelog.py']), patch('builtins.open', mock_open(read_data=json.dumps(event))), patch.object(bot.API, 'request', request), patch('sys.stdout', io.StringIO()):
+                bot.main()
+                self.assertEqual(len(dc.messages), 2)
 
     def test_local_rehearsal_selects_one_PR_and_is_refused_in_Actions(self):
         env = {'GITHUB_REPOSITORY': bot.REPO, 'GITHUB_EVENT_NAME': 'schedule', 'CHANGELOG_MODE': 'merge',
