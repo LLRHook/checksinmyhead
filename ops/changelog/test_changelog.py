@@ -694,6 +694,12 @@ class ServiceDiscord:
         if self.failure:
             raise bot.HTTPFailure(self.failure)
         if path == '/users/@me': return {'id': '1'}
+        if urlsplit(path).path == '/channels/123456': return {'guild_id': '444444'}
+        if '/messages/search?' in path:
+            query = parse_qs(urlsplit(path).query)
+            link = query['content'][0]
+            matches = [m for m in self.messages if m['author']['id'] == query['author_id'][0] and link in m.get('content', '')]
+            return {'total_results': len(matches), 'messages': [[copy.deepcopy(m)] for m in matches]}
         parts = urlsplit(path).path.split('/')
         if method == 'GET' and '/reactions/' in path:
             return copy.deepcopy(self.users.get(parts[4], []))
@@ -922,10 +928,58 @@ class ChangelogRevisionTests(unittest.TestCase):
         dc.noise(500)
         gh.timeline += [{'event': 'converted_to_draft', 'id': 10}, {'event': 'ready_for_review', 'id': 11}]
         gh.calls.clear(); dc.calls.clear()
-        with self.assertRaises(bot.Refused): self.services(gh, dc, NOW + timedelta(days=1))
+        original_handler = dc.__class__.__call__
+        def unavailable_search(method, path, body):
+            if '/messages/search?' in path:
+                raise bot.HTTPFailure(502)
+            return original_handler(dc, method, path, body)
+        adapter = bot.Discord(FakeAPI(unavailable_search), '123456')
+        with patch('sys.stdout', io.StringIO()), self.assertRaises(bot.Refused):
+            bot.reconcile_all(bot.GitHub(FakeAPI(gh)), adapter, 'post', NOW + timedelta(days=1))
         self.assertEqual(dc.messages[0], original)
         self.assertFalse(any(c[0] == 'POST' for c in dc.calls))
-        self.assertIn('restore it in the Changelog comment', gh.comments[1][0]['body'])
+        self.assertIn('Discord message: pending', gh.comments[1][0]['body'])
+
+    def test_wrong_missing_hint_recovers_old_live_notice_and_keeps_its_hold(self):
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW)
+        message_id = dc.messages[0]['id']
+        dc.users[message_id] = [{'id': '42', 'username': 'Maya'}]
+        dc.noise(500)
+        # A writer forges a missing message ID plus an older ready generation.
+        gh.comments[1][0]['body'] = bot.COMMENT + '\nDiscord message: 999999999\n```json\n' + bot.compact({'ready': '8'}) + '\n```'
+        gh.timeline += [{'event': 'converted_to_draft', 'id': 10}, {'event': 'ready_for_review', 'id': 11}]
+        self.services(gh, dc, NOW + timedelta(days=8), 'merge')
+        self.assertEqual(len([m for m in dc.messages if m['author']['id'] == '1']), 1)
+        self.assertIn('HELD by 1', dc.messages[0]['content'])
+        self.assertFalse(gh.prs[1]['merged'])
+        self.assertIn('Discord message: ' + message_id, gh.comments[1][0]['body'])
+        self.assertTrue(any('/messages/search?' in c[1] for c in dc.calls))
+
+    def test_deleted_real_notice_recovery_and_unindexed_search_fails_closed(self):
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW)
+        dc.messages.clear()
+        with self.assertRaises(bot.Refused): self.services(gh, dc, NOW + timedelta(days=1))
+        gh.prs[1]['draft'] = True
+        gh.timeline.append({'event': 'converted_to_draft', 'id': 10})
+        with self.assertRaises(bot.Refused): self.services(gh, dc, NOW + timedelta(days=2))
+        gh.prs[1]['draft'] = False
+        gh.timeline.append({'event': 'ready_for_review', 'id': 11})
+        self.services(gh, dc, NOW + timedelta(days=3))
+        self.assertEqual(len(dc.messages), 1)
+        self.assertFalse(gh.prs[1]['merged'])
+        before = copy.deepcopy((gh.comments, dc.messages))
+        original_handler = dc.__class__.__call__
+        def unindexed(method, path, body):
+            if '/messages/search?' in path: return {'code': 110000, 'retry_after': 2}
+            return original_handler(dc, method, path, body)
+        gh.comments[1][0]['body'] = gh.comments[1][0]['body'].replace(dc.messages[0]['id'], '999999999')
+        dc.noise(500)
+        with patch('sys.stdout', io.StringIO()), self.assertRaises(bot.Refused):
+            bot.reconcile_all(bot.GitHub(FakeAPI(gh)), bot.Discord(FakeAPI(unindexed), '123456'), 'post', NOW + timedelta(days=4))
+        self.assertFalse(gh.prs[1]['merged'])
+        self.assertIn('Waiting for the full seven days', dc.messages[0]['content'])
 
     def test_deleted_notice_draft_ready_recovery_starts_full_week(self):
         self.run_bot(); self.dc.message = self.dc.state = None

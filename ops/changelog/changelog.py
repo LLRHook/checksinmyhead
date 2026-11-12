@@ -357,6 +357,22 @@ class Discord:
             self.recent = self.api.request('GET', self.root + '?limit=100')
         return self.recent
 
+    def recover(self, number):
+        # A missing/untrusted hint is not proof of deletion. Search only this
+        # app's messages, independently of channel history, before any reset.
+        channel = self.api.request('GET', '/channels/' + self.channel)
+        require(re.fullmatch('[0-9]+', channel.get('guild_id', '')), 'Channel has no server identity')
+        query = urllib.parse.urlencode({'channel_id': self.channel, 'author_id': self.bot,
+                                       'content': 'https://github.com/' + REPO + '/pull/' + str(number), 'limit': 25})
+        result = self.api.request('GET', '/guilds/' + channel['guild_id'] + '/messages/search?' + query)
+        require(type(result.get('total_results')) is int and isinstance(result.get('messages'), list),
+                'Discord notice search is not indexed or unavailable; retry on the next run')
+        require(result['total_results'] < 25, 'Too many matching notices to recover safely; ask the owner to restore the original message link')
+        messages = []
+        for group in result['messages']:
+            messages.extend(group if isinstance(group, list) else [group])
+        return messages
+
     def find(self, number, hint=None):
         try:
             if self.bot is None:
@@ -375,6 +391,10 @@ class Discord:
                     if fetched['author']['id'] != self.bot or fetched.get('embeds', [{}])[0].get('title') != marker:
                         raise NoticeProblem('The saved notice link is wrong. Ask the owner to restore the Changelog comment.')
                     matches.append(fetched)
+            if not matches and hint:
+                recovered = self.recover(number)
+                matches = [m for m in recovered if m.get('author', {}).get('id') == self.bot and
+                           m.get('embeds') and m['embeds'][0].get('title') == marker]
             self.affected[number] = matches
             if len(matches) > 1:
                 raise NoticeProblem('More than one notice exists. Ask the owner to keep the original notice and remove the duplicate, preserving all stop reactions.')

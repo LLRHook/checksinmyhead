@@ -169,7 +169,12 @@ this bounded horizon is explicit rather than an unbounded historical sweep.
 The PR comment supplies an **untrusted message-ID hint**, never a clock. The fetched
 message must be Changelog's own and exactly name this repository/PR. A bounded
 latest-100-message read is shared once per run for duplicate/create recovery; older
-known notices are fetched directly by ID, regardless of channel chatter. Unchanged
+known notices are fetched directly by ID, regardless of channel chatter. A missing
+hint also triggers one bounded search filtered to this bot, channel and change; a
+forged/deleted hint cannot hide an existing held notice. An unavailable/unindexed
+search preserves state and retries later; it never proves deletion. Search uses
+only the app’s own messages, which are exempt from Message Content restrictions;
+no privileged intent is added. Unchanged
 messages compare only the fields the bot sends, ignoring Discord-added `type` and
 other metadata. Seeds are added only during creation/recovery of incomplete creation.
 A request-count regression with 300 old closed PRs, seven open and 500 unrelated
@@ -187,7 +192,8 @@ privileged trust boundaries. Never edit the hidden record to move a deadline ear
 Before creating a notice the bot records a pending mirror. The deterministic nonce
 includes the ready generation; a lost create response is recovered from recent
 history, or through restoring its direct message link if channel traffic hides it. An
-uncertain create is never assumed deleted: a later draft/ready cycle cannot discard
+uncertain create is never assumed deleted: a bounded bot-message search first recovers
+any live notice and its holds; a later draft/ready cycle cannot discard
 an existing but hidden notice or its holds. The owner restores its message link,
 or closes it and opens a new PR with the unresolved objection explained and a full week.
 Discord's nonce uniqueness lasts only minutes. It is not the durable authority.
@@ -263,3 +269,5 @@ Let seven real days elapse without changing stored times. Then perform the singl
 identity/workflow-touching rehearsal above before enabling merges. Hosted parser,
 environment restrictions, live Discord permissions, actual check association,
 PAT attribution/CI triggering and queue behavior remain live proof, not fake claims.
+
+The exceptional recovery lookup uses Discord’s documented [message search](https://docs.discord.com/developers/resources/message.md#search-guild-messages) and the [app-message content exception](https://docs.discord.com/developers/events/gateway#message-content-intent). Live smoke must confirm that filtered search is available without a privileged intent; failure stays closed and offers manual link restoration.
