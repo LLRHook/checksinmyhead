@@ -212,9 +212,7 @@ The earlier phase-by-phase plan is kept as history in
 
 The maintained public pages and private viewer share `web-bill-viewer` at the
 canonical origin `https://billingtonapp.vercel.app`. Source preparation does not
-establish that a branch revision is served: on 2026-11-09 that host returned 404 for
-`/` and `/privacy-policy`, the production API reported a revision older than these
-pages, and the public App Store version was 1.4.0. The viewer's former `/privacy`
+establish that a branch revision is served. The viewer's former `/privacy`
 route was removed on purpose (PR #149) and stays absent; the policy route is
 `/privacy-policy`, and the App Store listing still links the separate legacy
 marketing site, which this repository does not change. The complete policy route must

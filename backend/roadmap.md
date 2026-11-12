@@ -470,5 +470,4 @@ vercel --prod
 - [x] Keep historical lazy-mode trip links interactive and preserve normal trip summaries.
 - [x] Route bill and trip deep links to their respective viewers.
 - [ ] Deploy backend and web changes, then verify the hosted legacy sample and a new standalone lazy bill.
-  (Historical checklist. On 2026-11-09 the production API reported commit `81a564f`, which contains this work; the hosted sample check is not recorded.)
 - [x] Add the mobile bill-history currency preference and minimum supported app-version policy; see `tasks/todo.md` for verification and launch steps.

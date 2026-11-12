@@ -456,8 +456,6 @@ the production registry. No whole-product V&V pass is implied.
 Production is the Render service at `https://billington-api.onrender.com`; `GET /health`
 reports the deployed commit. Publication is owned by the
 [managed delivery gate](../ops/ci/README.md); this README gives no manual deploy command.
-On 2026-11-09 production reported `81a564f`, older than the schema-startup, logging and
-lifecycle sections above, which describe source that is not deployed yet.
 
 Railway is not a deployment target. It was tried and abandoned: the release API was
 pointed at Railway in
