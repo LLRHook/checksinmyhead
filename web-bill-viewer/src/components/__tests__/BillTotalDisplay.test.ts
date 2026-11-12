@@ -1,11 +1,30 @@
 import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Bill } from "@/lib/api";
 import { formatMoney } from "@/lib/currency";
 import { lazyBillRemainingTotal } from "@/lib/lazy-bill";
+import BillPageClient from "../BillPageClient";
 import TabBillList from "../TabBillList";
+
+let currentBill: Bill;
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("react", async (actual) => {
+  const react = await actual<typeof import("react")>();
+  return {
+    ...react,
+    useState: (initial: unknown) =>
+      react.useState(
+        initial &&
+          typeof initial === "object" &&
+          "status" in initial &&
+          initial.status === "loading"
+          ? { status: "success", bill: currentBill }
+          : initial,
+      ),
+  };
+});
 
 const cases = JSON.parse(
   readFileSync(
@@ -55,6 +74,15 @@ describe("cent-exact bill display", () => {
       )?.[1];
       expect(displayedTotal).toBe(formatMoney(row.expected, row.currency));
       expect(JSON.stringify(bill)).toBe(before);
+      currentBill = bill;
+      const page = renderToStaticMarkup(
+        createElement(BillPageClient, { id: "66", token: "synthetic" }),
+      );
+      const headerTotal = page.match(
+        /<span class="text-xl font-bold font-mono[^"]*">([^<]*)<\/span>/,
+      )?.[1];
+      expect(headerTotal).toBe(formatMoney(row.expected, row.currency));
+      expect(JSON.stringify(bill)).toBe(before);
     });
   }
   it("lazy remaining uses canonical cents without hiding accounting disagreements", () => {
@@ -84,5 +112,34 @@ describe("cent-exact bill display", () => {
         person_shares: [{ total: 1.01, paid: false }],
       }),
     ).toBe(1.01);
+  });
+  it("partly paid lazy balance agrees with the remaining shares", () => {
+    expect(
+      lazyBillRemainingTotal({
+        total: 0.38499999999999995,
+        person_shares: [
+          { total: 0.11, paid: true },
+          { total: 0.27, paid: false },
+        ],
+      }),
+    ).toBe(0.27);
+  });
+  it("unclaimed lazy balance keeps its value before and after a claim", () => {
+    // Receipt 0.34 + 0.58 tax + 25% tip; server full-claim share is 1.01.
+    expect(lazyBillRemainingTotal({ total: 1.005, person_shares: [] })).toBe(
+      1.01,
+    );
+    expect(
+      lazyBillRemainingTotal({
+        total: 1.005,
+        person_shares: [{ total: 1.01, paid: false }],
+      }),
+    ).toBe(1.01);
+    expect(
+      lazyBillRemainingTotal({
+        total: 1.005,
+        person_shares: [{ total: 1.01, paid: true }],
+      }),
+    ).toBe(0);
   });
 });

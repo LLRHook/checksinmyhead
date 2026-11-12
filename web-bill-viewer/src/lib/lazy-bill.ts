@@ -60,7 +60,7 @@ export function lazyBillRemainingTotal(bill: LazyBillBalance): number {
   // A native half cent must not be magnified by an FX rate. Preserve converted
   // remaining balances and their existing single rounding step.
   const total =
-    rate === 1
+    rate === 1 && paidTotal > 0
       ? billTotalForDisplay(
           bill.total,
           bill.person_shares.map((share) => share.total),
