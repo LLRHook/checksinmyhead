@@ -184,7 +184,7 @@ race detection and SQLite. Builders use
 `GOTOOLCHAIN=local` so a mismatched module requirement fails instead of downloading
 another compiler. Update the module and builder pin together after checking
 current security releases and image identities. `pkg/safehttp` and `internal/bill`
-import `encoding/json/v2` and `encoding/json/jsontext`, which Go 1.27.3 compiles by
+import `encoding/json/v2` and `encoding/json/jsontext`, which the pinned toolchain compiles by
 default behind its `jsonv2` experiment; do not build with `GOEXPERIMENT=nojsonv2`,
 and rerun the assignment decode tests when the toolchain pin changes.
 
