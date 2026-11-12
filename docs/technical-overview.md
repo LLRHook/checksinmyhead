@@ -52,7 +52,8 @@ inspection. See the [correction evidence](reviews/2026-11-03-local-workflow-corr
 ### Request Flow
 
 1. Client sends HTTP request with access token (`?t=token`)
-2. Handler parses request, validates token against stored tab/bill token
+2. Handler parses request, rejects NUL in selected access/member tokens before
+   database access, and validates the token against the stored tab/bill token
    Buffered and streaming JSON mutations decode into content DTOs and check their
    strings once before service
    calls, rejecting PostgreSQL-unrepresentable NUL while retaining other controls and

@@ -916,7 +916,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** fixed-pending-migration
-- **Fix:** Validate decoded request text at buffered and streaming JSON boundaries before service/database access, rejecting NUL while preserving other controls, ignored unknown fields and Unicode replacement. Both decoders replace malformed UTF-8 and unpaired surrogates; no redundant UTF-8 scan is performed. Regression covers 26 PostgreSQL paths/fields with otherwise valid share history, all four streaming assignment routes, map/interface NUL cases and both decoder replacement boundaries. The 50000-entry allocation/performance cohorts are retained.
+- **Fix:** Reject NUL at buffered and streaming decoded JSON boundaries with the existing route 400, and in selected access/member token readers during identity admission with 403 access_denied before any query. Preserve other controls, ignored fields, header precedence, old-client bodies and Unicode replacement; both JSON decoders replace malformed UTF-8 and surrogates without an extra UTF-8 scan. Regression covers 26 PostgreSQL body paths/fields with valid share history, map/interface cases and eight token routes/proofs with zero-query/state witnesses. Retain the 50000-entry allocation/performance cohorts.
 - **Docs:** docs/backend-api.md; docs/technical-overview.md
 
 ### [BUG-1794331911] Fix web viewer accessibility gaps on private bill pages
@@ -995,7 +995,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** fixed-pending-migration
-- **Fix:** Correct the receipt API reference: type is detected from the first 512 bytes with http.DetectContentType, not the declared part MIME type or filename. Document supported-content mismatches proceeding to parsing and unsupported-content mismatches returning 400 with the detected MIME value. Handler behavior is unchanged; existing multipart/safeguard tests demonstrate content typing.
+- **Fix:** Correct only the receipt API reference: http.DetectContentType inspects up to the first 512 content bytes; declared part MIME type and filename do not determine acceptance. Supported-content mismatches proceed to provider parsing; unsupported content returns 400 naming its detected MIME type. Existing multipart/safeguard tests cover content typing; receipt runtime behavior is unchanged.
 - **Docs:** docs/backend-api.md
 
 ### [BUG-1794331917] Fail the local workflow SIGINT tests with a clear prerequisite when SIGINT is ignored

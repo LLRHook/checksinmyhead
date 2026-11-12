@@ -4,6 +4,11 @@ Base URL: `http://localhost:8080` (development)
 
 Bill reads accept the bill's `t` token, or the containing tab's token for a read-only bill view. Bill writes require the bill token. Tab writes may also require an `X-Member-Token` header; member attribution uses the optional `m` query parameter.
 
+Selected access (`Authorization: Bearer` or `?t=`) and member (`X-Member-Token`
+or `?m=`) tokens containing U+0000 are rejected during identity admission, before
+any database query, with `403 {"error":"access denied","code":"access_denied"}`.
+Header precedence is unchanged; an ignored query token does not override a header.
+
 This reference describes the source in this repository. A deployed service can be
 older: `GET /health` reports its commit.
 

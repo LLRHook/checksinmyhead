@@ -387,7 +387,8 @@
       "backend/pkg/safehttp/TestStreamArrayStopsAtLimit",
       "backend/pkg/safehttp/TestStreamArrayStdlibCompatibility",
       "backend/internal/receipt/TestHandlerFailuresMakeOneProviderAttempt",
-      "backend/pkg/safehttp/TestDecodeJSONPostgresText"
+      "backend/pkg/safehttp/TestDecodeJSONPostgresText",
+      "backend/pkg/safehttp/TestNULTokensBoundary"
     ],
     "postgres": [
       "backend/cmd/bill-service/TestA1PostgresProductionJSON",
@@ -646,7 +647,8 @@
       "backend/internal/bill/TestAssignmentValidationMatchesBaseline",
       "backend/internal/tab/TestPostgresJSONTextValidation",
       "backend/internal/tab/TestPostgresTextStorageBoundaries",
-      "backend/internal/tab/TestPostgresPaidParticipantAdditionConflict"
+      "backend/internal/tab/TestPostgresPaidParticipantAdditionConflict",
+      "backend/internal/tab/TestPostgresNULTokens"
     ],
     "mobile": [
       "mobile/test/client_v1_bridge_test.dart",
@@ -1630,6 +1632,16 @@
       ],
       "backend/internal/tab/TestPostgresJSONTextValidation": [
         "^TestPostgresJSONTextValidation/share_item_name$"
+      ],
+      "backend/internal/tab/TestPostgresNULTokens": [
+        "^TestPostgresNULTokens/participant_query$",
+        "^TestPostgresNULTokens/paid_query$",
+        "^TestPostgresNULTokens/both_query$",
+        "^TestPostgresNULTokens/member_query$",
+        "^TestPostgresNULTokens/member_header$",
+        "^TestPostgresNULTokens/access_header$",
+        "^TestPostgresNULTokens/bill_read_member$",
+        "^TestPostgresNULTokens/tab_read_access$"
       ]
     },
     "backend": {

@@ -67,3 +67,44 @@ func TestIdentity0003HeaderAndMemberProofs(t *testing.T) {
 		t.Fatal("private response cache policy absent")
 	}
 }
+
+func TestNULTokensBoundary(t *testing.T) {
+	for _, tc := range []struct {
+		name, query, authorization, member string
+		wantAccess, wantMember             string
+		reject                             bool
+	}{
+		{"access_query", "?t=a%00b", "", "", "", "", true},
+		{"access_header", "?t=valid", "Bearer a\x00b", "", "", "", true},
+		{"member_query", "?m=a%00b", "", "", "", "", true},
+		{"member_header", "?m=valid", "", "a\x00b", "", "", true},
+		{"both", "?t=a%00b&m=a%00b", "", "", "", "", true},
+		{"access_header_precedence", "?t=a%00b", "Bearer current", "", "current", "", false},
+		{"member_header_precedence", "?m=a%00b", "", "current", "", "current", false},
+		{"other_controls", "?t=a%01b&m=a%01b", "", "", "a\x01b", "a\x01b", false},
+		{"opaque_unicode", "?t=%EF%BF%BD&m=%EF%BF%BD", "", "", "\ufffd", "\ufffd", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = httptest.NewRequest("GET", "/"+tc.query, nil)
+			if tc.authorization != "" {
+				c.Request.Header.Set("Authorization", tc.authorization)
+			}
+			if tc.member != "" {
+				c.Request.Header.Set("X-Member-Token", tc.member)
+			}
+			_, ok := IdentityVersion(c)
+			if ok == tc.reject || c.IsAborted() != tc.reject {
+				t.Fatalf("admitted=%v aborted=%v", ok, c.IsAborted())
+			}
+			if tc.reject {
+				if w.Code != 403 || w.Body.String() != `{"code":"access_denied","error":"access denied"}` {
+					t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+				}
+			} else if AccessToken(c) != tc.wantAccess || MemberToken(c) != tc.wantMember {
+				t.Fatal("accepted proof changed")
+			}
+		})
+	}
+}

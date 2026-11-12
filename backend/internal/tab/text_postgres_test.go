@@ -10,7 +10,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jackc/pgx/v5/pgconn"
+	"gorm.io/gorm"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -141,5 +143,69 @@ func TestPostgresTextStorageBoundaries(t *testing.T) {
 	}
 	if len(names) != 2 || names[0] != value || names[1] != "a\ufffdb" {
 		t.Fatal("accepted text did not persist unchanged after decoding")
+	}
+}
+
+func TestPostgresNULTokens(t *testing.T) {
+	db := authorizationPostgres(t)
+	dst, b, _ := seedLifecycle(t, db)
+	testidentity.Ready(t, db, &b, "Alex")
+	member := models.TabMember{TabID: dst.ID, DisplayName: "Alex", MemberToken: "member", Role: "creator"}
+	saveAuthFixture(t, db, &member)
+	r := lifecycleRouter(db)
+	bh := billpkg.NewBillHandler(billpkg.NewBillService(billpkg.NewBillRepository(db), authorizationQuote{}))
+	th := NewTabHandler(NewTabService(NewTabRepository(db)))
+	r.POST("/api/bills/:id/participants", bh.CreateParticipant)
+	r.PATCH("/api/tabs/:id/members/me", th.RenameMemberSelf)
+	var queries atomic.Int64
+	count := func(*gorm.DB) { queries.Add(1) }
+	if err := db.Callback().Query().Before("gorm:query").Register("l15-count-queries", count); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Callback().Raw().Before("gorm:raw").Register("l15-count-raw", count); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Callback().Row().Before("gorm:row").Register("l15-count-row", count); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ name, method, path, body, token, member string }{
+		{"participant_query", "POST", fmt.Sprintf("/api/bills/%d/participants?t=a%%00b", b.ID), fmt.Sprintf(`{"name":"Pat","client_ref":"new","expected_revision":%d}`, *testidentity.Revision(t, db, b.ID)), "", ""},
+		{"paid_query", "PATCH", fmt.Sprintf("/api/bills/%d/shares/%d?t=a%%00b", b.ID, b.PersonShares[0].ID), `{"paid":true}`, "", ""},
+		{"both_query", "PATCH", fmt.Sprintf("/api/tabs/%d/members/me?t=a%%00b&m=a%%00b", dst.ID), `{"display_name":"Pat"}`, "", ""},
+		{"member_query", "PATCH", fmt.Sprintf("/api/tabs/%d/members/me?m=a%%00b", dst.ID), `{"display_name":"Pat"}`, "tab", ""},
+		{"member_header", "PATCH", fmt.Sprintf("/api/tabs/%d/members/me", dst.ID), `{"display_name":"Pat"}`, "tab", "a\x00b"},
+		{"access_header", "PATCH", fmt.Sprintf("/api/bills/%d/shares/%d", b.ID, b.PersonShares[0].ID), `{"paid":true}`, "a\x00b", ""},
+		{"bill_read_member", "GET", fmt.Sprintf("/api/bills/%d?m=a%%00b", b.ID), "", "source", ""},
+		{"tab_read_access", "GET", fmt.Sprintf("/api/tabs/%d?t=a%%00b", dst.ID), "", "", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			before := lifecycleSnapshot(t, db)
+			queries.Store(0)
+			w := versionAuthRequest(r, tc.method, tc.path, tc.body, tc.token, tc.member, 2)
+			if w.Code != 403 {
+				t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+			}
+			var envelope map[string]string
+			if err := json.Unmarshal(w.Body.Bytes(), &envelope); err != nil || envelope["error"] != "access denied" || envelope["code"] != "access_denied" {
+				t.Fatalf("unexpected denial envelope: %s", w.Body.String())
+			}
+			if n := queries.Load(); n != 0 {
+				t.Fatalf("NUL proof reached %d database queries", n)
+			}
+			if lifecycleSnapshot(t, db) != before {
+				t.Fatal("invalid token changed state")
+			}
+			// A normal wrong token still follows the existing denial path.
+			path := strings.ReplaceAll(tc.path, "a%00b", "wrong")
+			token := strings.ReplaceAll(tc.token, "a\x00b", "wrong")
+			member := strings.ReplaceAll(tc.member, "a\x00b", "wrong")
+			w = versionAuthRequest(r, tc.method, path, tc.body, token, member, 2)
+			if w.Code != 403 {
+				t.Fatalf("wrong proof status=%d body=%s", w.Code, w.Body.String())
+			}
+			if lifecycleSnapshot(t, db) != before {
+				t.Fatal("wrong token changed state")
+			}
+		})
 	}
 }
