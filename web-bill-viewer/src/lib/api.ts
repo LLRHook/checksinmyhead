@@ -232,12 +232,6 @@ export async function getSettlementHistory(
 ): Promise<SettlementHistory> {
   return request(`/api/tabs/${id}/settlements`, token);
 }
-export async function getSettlements(
-  id: string,
-  token: string,
-): Promise<TabSettlement[]> {
-  return (await getSettlementHistory(id, token)).settlements;
-}
 export async function getTabMembers(
   id: string,
   token: string,
@@ -351,28 +345,6 @@ function revision(value?: number) {
     throw new Error("Refresh the current identity revision before editing.");
   return value;
 }
-export async function updateTabBillItemAssignments(
-  tabId: string,
-  billId: number,
-  itemId: number,
-  assignments: ItemAssignment[],
-  token: string,
-  expectedUpdatedAt?: string,
-  memberToken?: string,
-  expectedRevision?: number,
-): Promise<void> {
-  await request(
-    `/api/tabs/${tabId}/bills/${billId}/items/${itemId}/assignments`,
-    token,
-    "PATCH",
-    {
-      expected_revision: revision(expectedRevision),
-      expected_updated_at: expectedUpdatedAt,
-      assignments: claims(assignments),
-    },
-    memberToken,
-  );
-}
 export type ItemUpdate = {
   item_id: number;
   expected_updated_at?: string;
@@ -398,25 +370,6 @@ export async function updateTabBillItemAssignmentsBatch(
       })),
     },
     memberToken,
-  );
-}
-export async function updateLazyBillItemAssignments(
-  billId: number,
-  itemId: number,
-  assignments: ItemAssignment[],
-  token: string,
-  expectedUpdatedAt?: string,
-  expectedRevision?: number,
-): Promise<void> {
-  await request(
-    `/api/bills/${billId}/items/${itemId}/assignments`,
-    token,
-    "PATCH",
-    {
-      expected_revision: revision(expectedRevision),
-      expected_updated_at: expectedUpdatedAt,
-      assignments: claims(assignments),
-    },
   );
 }
 export async function updateLazyBillItemAssignmentsBatch(
