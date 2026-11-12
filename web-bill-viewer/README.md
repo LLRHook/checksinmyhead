@@ -70,7 +70,7 @@ Payments are external and paid status is manual. Payment copy must match the vie
 only Venmo has a handoff link (`venmo://`, `src/lib/venmo.ts`); Zelle, Cash App and
 Apple Pay are shown as details (`PaymentDetails.tsx`); nothing processes or confirms a
 transfer. `public-claims.test.ts` pins the download actions, the example split's
-arithmetic, that payment copy, the link inventory and the keyboard order contract.
+arithmetic and that payment copy.
 Contact links are exactly `mailto:checkmateapp@duck.com`, without link/token prefill.
 
 Each public document owns its canonical/title/description/social cards. A static

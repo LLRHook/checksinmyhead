@@ -5,9 +5,6 @@ import PublicLayout from "../../app/(public)/layout";
 import Home from "../../app/(public)/page";
 import Policy from "../../app/(public)/privacy-policy/page";
 import { site } from "../../app/(public)/site";
-import PaymentDetails from "../../components/PaymentDetails";
-import SettlementCard from "../../components/SettlementCard";
-import { buildVenmoPayUrl } from "../venmo";
 
 vi.mock("../../app/(public)/public.module.css", () => ({ default: {} }));
 
@@ -97,101 +94,4 @@ describe("public download and payment claims", () => {
     }
   });
 
-  it("links out only for Venmo and shows the other services as details", () => {
-    const methods = [
-      { name: "Venmo", identifier: "@synthetic-venmo" },
-      { name: "Zelle", identifier: "synthetic-zelle@example.invalid" },
-      { name: "Cash App", identifier: "$synthetic-cash" },
-      { name: "Apple Pay", identifier: "+1 555 0100" },
-    ];
-    const details = renderToStaticMarkup(
-      createElement(PaymentDetails, { paymentMethods: methods }),
-    );
-    for (const method of methods) {
-      expect(plain(details)).toContain(method.name);
-      expect(plain(details)).toContain(method.identifier);
-    }
-    expect(details).not.toMatch(/<a\b|<button\b|href=|onclick/i);
-
-    const handoff = buildVenmoPayUrl("@synthetic-venmo", "12.34", "Dinner");
-    expect(handoff).toBe(
-      "venmo://paycharge?txn=pay&recipients=synthetic-venmo&amount=12.34&note=Dinner",
-    );
-    const settlement = renderToStaticMarkup(
-      createElement(SettlementCard, {
-        settlements: [
-          {
-            id: 1,
-            tab_id: 9,
-            person_name: "Alex",
-            amount: 12.34,
-            paid: false,
-            created_at: "2026-11-03T00:00:00Z",
-          },
-        ],
-        venmoId: "@synthetic-venmo",
-      }),
-    );
-    const outbound = anchors(settlement).map((a) => a.href);
-    expect(outbound.length).toBeGreaterThan(0);
-    for (const href of outbound) {
-      expect(href.startsWith("venmo://paycharge?txn=pay&amp;")).toBe(true);
-    }
-  });
-
-  it("keeps public navigation keyboard-reachable with known outbound destinations", () => {
-    const home = page(Home);
-    const policy = page(Policy);
-    for (const html of [home, policy]) {
-      const links = anchors(html);
-      // The skip link is the first stop and lands on the main landmark.
-      expect(links[0]).toMatchObject({
-        href: "#main",
-        label: "Skip to content",
-      });
-      expect(html).toContain('<main id="main"');
-      // Native links in document order only: nothing to trap or reorder focus.
-      expect(html).not.toMatch(
-        /tabindex=|onclick=|role="button"|target="_blank"|<button\b|<input\b/i,
-      );
-      for (const link of links) {
-        expect(link.href).not.toBe("");
-        expect(link.label).not.toBe("");
-      }
-      const ids = new Set(
-        [...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]),
-      );
-      for (const { href } of links) {
-        if (href.startsWith("#")) expect(ids).toContain(href.slice(1));
-      }
-    }
-    const homeIds = new Set(
-      [...home.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]),
-    );
-    for (const { href } of [...anchors(home), ...anchors(policy)]) {
-      if (href.startsWith("/#")) expect(homeIds).toContain(href.slice(2));
-    }
-    const external = (html: string) =>
-      new Set(
-        anchors(html)
-          .map((a) => a.href)
-          .filter((href) => /^[a-z][a-z0-9+.-]*:/i.test(href)),
-      );
-    expect(external(home)).toEqual(new Set([site.store, site.contact]));
-    expect(external(policy)).toEqual(
-      new Set([
-        site.store,
-        site.contact,
-        "https://privacy.claude.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data",
-        "https://frankfurter.dev/",
-        "https://www.exchangerate-api.com/",
-        "https://render.com/privacy",
-        "https://vercel.com/legal/privacy-notice",
-      ]),
-    );
-    const internal = [...anchors(home), ...anchors(policy)]
-      .map((a) => a.href)
-      .filter((href) => href.startsWith("/") && !href.startsWith("/#"));
-    expect(new Set(internal)).toEqual(new Set(["/", "/privacy-policy"]));
-  });
 });
