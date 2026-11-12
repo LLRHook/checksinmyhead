@@ -1537,7 +1537,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
           ),
           child: Semantics(
             label:
-                '${bill.billName}, ${bill.hasUSDValuation ? _formatCurrency(bill.usdTotal) : '${bill.currencyCode} ${bill.total.toStringAsFixed(2)}, USD pending'}, ${bill.formattedDate}${canRemove ? '. Swipe left to remove from this local tab' : ''}',
+                '${bill.billName}, ${bill.hasUSDValuation ? _formatCurrency(bill.displayUSDTotal) : '${bill.currencyCode} ${bill.displayTotal.toStringAsFixed(2)}, USD pending'}, ${bill.formattedDate}${canRemove ? '. Swipe left to remove from this local tab' : ''}',
             button: true,
             child: Material(
               color: Colors.transparent,
@@ -1621,8 +1621,8 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
                         ),
                         child: Text(
                           bill.hasUSDValuation
-                              ? _formatCurrency(bill.usdTotal)
-                              : '${bill.currencyCode} ${bill.total.toStringAsFixed(2)} · USD pending',
+                              ? _formatCurrency(bill.displayUSDTotal)
+                              : '${bill.currencyCode} ${bill.displayTotal.toStringAsFixed(2)} · USD pending',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
@@ -2045,7 +2045,7 @@ class _BillSelectorSheetState extends State<_BillSelectorSheet> {
                           value: _selectedBillIds.contains(bill.id),
                           title: Text(bill.billName),
                           subtitle: Text(
-                            '${bill.formattedDate} • ${CurrencyFormatter.formatCurrency(bill.total, currencyCode: bill.currencyCode)}',
+                            '${bill.formattedDate} • ${CurrencyFormatter.formatCurrency(bill.displayTotal, currencyCode: bill.currencyCode)}',
                           ),
                           onChanged:
                               (selected) => setState(() {

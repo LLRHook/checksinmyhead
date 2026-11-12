@@ -1,0 +1,175 @@
+[
+  {
+    "case": "walkthrough-half-cent",
+    "total": 24.885,
+    "shares": [
+      16.49,
+      4.2,
+      4.2
+    ],
+    "expected": 24.89,
+    "currency": "USD"
+  },
+  {
+    "case": "computed-half-cent",
+    "total": 24.884999999999998,
+    "shares": [
+      16.49,
+      4.2,
+      4.2
+    ],
+    "expected": 24.89,
+    "currency": "USD"
+  },
+  {
+    "case": "below-half-cent",
+    "total": 24.8849,
+    "shares": [
+      16.48,
+      4.2,
+      4.2
+    ],
+    "expected": 24.88,
+    "currency": "USD"
+  },
+  {
+    "case": "above-half-cent",
+    "total": 24.8851,
+    "shares": [
+      16.49,
+      4.2,
+      4.2
+    ],
+    "expected": 24.89,
+    "currency": "USD"
+  },
+  {
+    "case": "binary-half-cent",
+    "total": 1.005,
+    "shares": [
+      0.5,
+      0.5
+    ],
+    "expected": 1.0,
+    "currency": "USD"
+  },
+  {
+    "case": "exact-binary-total",
+    "total": 24.875,
+    "shares": [
+      12.44,
+      12.44
+    ],
+    "expected": 24.88,
+    "currency": "USD"
+  },
+  {
+    "case": "large-total",
+    "total": 999999999.885,
+    "shares": [
+      500000000,
+      499999999.89
+    ],
+    "expected": 999999999.89,
+    "currency": "USD"
+  },
+  {
+    "case": "zero-total",
+    "total": 0,
+    "shares": [
+      0,
+      0
+    ],
+    "expected": 0,
+    "currency": "USD"
+  },
+  {
+    "case": "discount",
+    "total": 8.885,
+    "shares": [
+      4.44,
+      4.45
+    ],
+    "expected": 8.89,
+    "currency": "USD"
+  },
+  {
+    "case": "eur-half-cent",
+    "total": 24.885,
+    "shares": [
+      16.49,
+      4.2,
+      4.2
+    ],
+    "expected": 24.89,
+    "currency": "EUR"
+  },
+  {
+    "case": "jpy-whole-unit",
+    "total": 1000,
+    "shares": [
+      333.34,
+      333.33,
+      333.33
+    ],
+    "expected": 1000,
+    "currency": "JPY"
+  },
+  {
+    "case": "unassigned-draft",
+    "total": 24.885,
+    "shares": [],
+    "expected": 24.89,
+    "currency": "USD"
+  },
+  {
+    "case": "partial-lazy",
+    "total": 24.885,
+    "shares": [
+      4.2
+    ],
+    "expected": 24.89,
+    "currency": "USD"
+  },
+  {
+    "case": "legacy-discrepancy",
+    "total": 24.885,
+    "shares": [
+      10,
+      10
+    ],
+    "expected": 24.89,
+    "currency": "USD"
+  },
+  {
+    "case": "scaled-half-cent",
+    "total": 2.675,
+    "shares": [
+      1.34,
+      1.34
+    ],
+    "expected": 2.68,
+    "currency": "USD"
+  },
+  {
+    "case": "accounting-rule-mismatch",
+    "total": 1.005,
+    "shares": [
+      1.01
+    ],
+    "expected": 1.005,
+    "currency": "USD",
+    "preserve_accounting_mismatch": true
+  },
+  {
+    "case": "ten-dollar-three-way-item",
+    "total": 10,
+    "shares": [
+      3.34,
+      3.33,
+      3.33
+    ],
+    "expected": 10,
+    "currency": "USD"
+  }
+]

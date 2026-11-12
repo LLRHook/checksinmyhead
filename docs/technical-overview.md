@@ -277,8 +277,20 @@ rate map or redundant ExchangeRate-API adapter remains; ordinary HTTP pooling an
 immutable stored quotes remain. Frozen USD source/date are never display metadata;
 migration 0002 stores separate nullable display day/source/retrieval receipts. Native
 display uses `same_currency` without a market/retrieval timestamp. Historical quotes and
-explicit zero totals are preserved on reads. Tab summaries and share allocation use
-one checked frozen USD audit; sums use checked cents and never display/native foreign
+explicit zero totals are preserved on reads.
+
+Bill-total presentation in Flutter and the web viewer first rounds nonnegative
+receipt totals to integer cents with `round(total * 100) / 100`, matching the Go
+frozen-USD rounding operation. This is presentation only: raw totals, creation
+snapshots, HTTP amounts, stored shares and tab/settlement arithmetic stay unchanged.
+If cent-exact recorded shares near the full receipt disagree with that cent target,
+clients retain their previous formatting rather than choosing an accounting rule
+(BUG-1794264955). Partial claims never replace the receipt total. Existing currency
+formatting stays in place, including JPY; the receipt policy supports no three-decimal
+currency. Provider-defined display pairs retain their existing formatter precision.
+The shared regression cases live in `testdata/bill_display_totals.json`.
+
+Tab summaries and share allocation use one checked frozen USD audit; sums use checked cents and never display/native foreign
 fallbacks. Missing/inconsistent valuation requires an authorized accounting review,
 without fetching or rewriting history. Mobile `RecentBillsManager` now owns the
 Drift10 save/resume transaction, immutable request and exact-ID checkpoints; Done,

@@ -21,6 +21,48 @@ class CurrencyFormatter {
   static final TextInputFormatter currencyFormatter =
       FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}'));
 
+  /// Presentation only: accounting already allocates shares in integer cents.
+  /// Round the stored total by the same scaled-integer rule used by Dart/Go
+  /// accounting. Conflicting complete allocations retain the original display:
+  /// choosing their sum would hide the separate client/server accounting defect.
+  static double billTotalForDisplay(
+    double total, {
+    Iterable<double> shares = const [],
+  }) {
+    if (!total.isFinite || total < 0 || total * 100 > 9007199254740991) {
+      return total;
+    }
+    final rounded = (total * 100).round() / 100;
+    var cents = 0;
+    var count = 0;
+    for (final share in shares) {
+      if (!share.isFinite || share < 0) return total;
+      final shareCents = (share * 100).round();
+      final shareNoise = 4 * 2.220446049250313e-16 * (share > 1 ? share : 1);
+      if ((share - shareCents / 100).abs() > shareNoise) return total;
+      cents += shareCents;
+      count++;
+    }
+    // Four binary64 ULPs cover summation/serialization noise, including at the
+    // API's 1e9 money limit; this is not an extra monetary tolerance.
+    final noise = 4 * 2.220446049250313e-16 * (total > 1 ? total : 1);
+    if (count > 0 &&
+        cents != (total * 100).round() &&
+        (cents / 100 - total).abs() <= 0.01 + noise) {
+      return total;
+    }
+    return rounded;
+  }
+
+  static String formatBillTotal(
+    double total, {
+    String currencyCode = 'USD',
+    Iterable<double> shares = const [],
+  }) => formatCurrency(
+    billTotalForDisplay(total, shares: shares),
+    currencyCode: currencyCode,
+  );
+
   static String formatCurrency(double value, {String currencyCode = 'USD'}) {
     final code = currencyCode.trim().toUpperCase();
     final prefix = code == 'USD' ? '\$' : '$code ';

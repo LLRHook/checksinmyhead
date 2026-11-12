@@ -700,7 +700,8 @@
       "mobile/test/tab_display_conversion_test.dart",
       "mobile/test/finalize_confirm_sheet_test.dart",
       "mobile/test/member_tab_finalization_test.dart",
-      "mobile/test/landing_join_accessibility_test.dart"
+      "mobile/test/landing_join_accessibility_test.dart",
+      "mobile/test/bill_total_display_test.dart"
     ],
     "web": [
       "web-bill-viewer/src/components/__tests__/SettlementCard.test.ts",
@@ -714,7 +715,8 @@
       "web-bill-viewer/src/components/__tests__/RecordedShares.test.ts",
       "web-bill-viewer/src/lib/__tests__/participant-identity.test.ts",
       "web-bill-viewer/src/components/__tests__/LazyBillSession.test.ts",
-      "web-bill-viewer/src/lib/__tests__/public-claims.test.ts"
+      "web-bill-viewer/src/lib/__tests__/public-claims.test.ts",
+      "web-bill-viewer/src/components/__tests__/BillTotalDisplay.test.ts"
     ]
   },
   "reports": {
@@ -941,7 +943,8 @@
         "(?:^| )published\\ receipt\\ with\\ unavailable\\ destination\\ remains\\ standalone\\ and\\ attach\\-pending$",
         "(?:^| )null\\ frozen\\ response\\ fields\\ cannot\\ silently\\ become\\ zero\\ or\\ identity$",
         "(?:^| )creation\\ redirects\\ never\\ forward\\ the\\ recovery\\ capability\\ or\\ retry\\ POST$",
-        "(?:^| )oversized\\ creation\\ response\\ preserves\\ the\\ single\\ attempted\\ receipt$"
+        "(?:^| )oversized\\ creation\\ response\\ preserves\\ the\\ single\\ attempted\\ receipt$",
+        "(?:^| )half\\-cent\\ draft\\ pending\\ published\\ and\\ reopened\\ totals\\ preserve\\ money$"
       ],
       "mobile/test/save_receipt_widget_test.dart": [
         "(?:^| )Done\\ .*\\ reports\\ durable\\ outcome\\ through\\ actual\\ handler$",
@@ -1434,6 +1437,27 @@
         "(?:^| )Join\\ toolbar\\ controls\\ remain\\ reachable\\ iPhone\\ 17e\\ iOS\\ body\\ 53$",
         "(?:^| )Join\\ invite\\ controls\\ remain\\ reachable\\ iPhone\\ 17e\\ iOS\\ body\\ 53$",
         "(?:^| )Landing\\ stays\\ still\\ when\\ content\\ fits\\ on\\ iOS\\ and\\ Android$"
+      ],
+      "mobile/test/bill_total_display_test.dart": [
+        "(?:^| )cent\\-exact\\ summary\\ walkthrough\\-half\\-cent$",
+        "(?:^| )cent\\-exact\\ summary\\ computed\\-half\\-cent$",
+        "(?:^| )cent\\-exact\\ summary\\ below\\-half\\-cent$",
+        "(?:^| )cent\\-exact\\ summary\\ above\\-half\\-cent$",
+        "(?:^| )cent\\-exact\\ summary\\ binary\\-half\\-cent$",
+        "(?:^| )cent\\-exact\\ summary\\ exact\\-binary\\-total$",
+        "(?:^| )cent\\-exact\\ summary\\ large\\-total$",
+        "(?:^| )cent\\-exact\\ summary\\ zero\\-total$",
+        "(?:^| )cent\\-exact\\ summary\\ discount$",
+        "(?:^| )cent\\-exact\\ summary\\ eur\\-half\\-cent$",
+        "(?:^| )cent\\-exact\\ summary\\ jpy\\-whole\\-unit$",
+        "(?:^| )cent\\-exact\\ summary\\ unassigned\\-draft$",
+        "(?:^| )cent\\-exact\\ summary\\ partial\\-lazy$",
+        "(?:^| )cent\\-exact\\ summary\\ legacy\\-discrepancy$",
+        "(?:^| )cent\\-exact\\ summary\\ scaled\\-half\\-cent$",
+        "(?:^| )cent\\-exact\\ summary\\ accounting\\-rule\\-mismatch$",
+        "(?:^| )half\\-cent\\ recent\\ card\\ uses\\ recorded\\ shares\\ without\\ changing\\ the\\ receipt$",
+        "(?:^| )half\\-cent\\ copied\\ summary\\ total\\ matches\\ its\\ unchanged\\ shares$",
+        "(?:^| )cent\\-exact\\ summary\\ ten\\-dollar\\-three\\-way\\-item$"
       ]
     },
     "web": {
@@ -1560,6 +1584,26 @@
         "(?:^| )sends\\ every\\ download\\ action\\ straight\\ to\\ the\\ App\\ Store\\ listing$",
         "(?:^| )shows\\ a\\ completed\\ example\\ split\\ that\\ adds\\ up\\ to\\ the\\ receipt$",
         "(?:^| )says\\ what\\ each\\ payment\\ service\\ does\\ and\\ claims\\ no\\ processing\\ or\\ confirmation$"
+      ],
+      "web-bill-viewer/src/components/__tests__/BillTotalDisplay.test.ts": [
+        "(?:^| )tab\\ bill\\ total\\ walkthrough\\-half\\-cent$",
+        "(?:^| )tab\\ bill\\ total\\ computed\\-half\\-cent$",
+        "(?:^| )tab\\ bill\\ total\\ below\\-half\\-cent$",
+        "(?:^| )tab\\ bill\\ total\\ above\\-half\\-cent$",
+        "(?:^| )tab\\ bill\\ total\\ binary\\-half\\-cent$",
+        "(?:^| )tab\\ bill\\ total\\ exact\\-binary\\-total$",
+        "(?:^| )tab\\ bill\\ total\\ large\\-total$",
+        "(?:^| )tab\\ bill\\ total\\ zero\\-total$",
+        "(?:^| )tab\\ bill\\ total\\ discount$",
+        "(?:^| )tab\\ bill\\ total\\ eur\\-half\\-cent$",
+        "(?:^| )tab\\ bill\\ total\\ jpy\\-whole\\-unit$",
+        "(?:^| )tab\\ bill\\ total\\ unassigned\\-draft$",
+        "(?:^| )tab\\ bill\\ total\\ partial\\-lazy$",
+        "(?:^| )tab\\ bill\\ total\\ legacy\\-discrepancy$",
+        "(?:^| )tab\\ bill\\ total\\ scaled\\-half\\-cent$",
+        "(?:^| )tab\\ bill\\ total\\ accounting\\-rule\\-mismatch$",
+        "(?:^| )lazy\\ remaining\\ uses\\ canonical\\ cents\\ without\\ hiding\\ accounting\\ disagreements$",
+        "(?:^| )tab\\ bill\\ total\\ ten\\-dollar\\-three\\-way\\-item$"
       ]
     },
     "postgres": {

@@ -1,4 +1,5 @@
 import type { ItemAssignment, PersonShare } from "./api";
+import { billTotalForDisplay } from "./currency";
 
 // Legacy string keys are for raw historical presentation/tests only. The API
 // mutation seam requires positive participant IDs and never sends a label.
@@ -47,7 +48,6 @@ export function lazyBillRemainingTotal(bill: LazyBillBalance): number {
   const paidTotal = bill.person_shares
     .filter((share) => share.paid)
     .reduce((sum, share) => sum + share.total, 0);
-  const remaining = Math.max(0, bill.total - paidTotal);
   const exchangeRate = bill.exchange_rate;
   const rate =
     typeof exchangeRate === "number" &&
@@ -57,6 +57,16 @@ export function lazyBillRemainingTotal(bill: LazyBillBalance): number {
       : bill.total > 0 && bill.display_total != null
         ? bill.display_total / bill.total
         : 1;
+  // A native half cent must not be magnified by an FX rate. Preserve converted
+  // remaining balances and their existing single rounding step.
+  const total =
+    rate === 1
+      ? billTotalForDisplay(
+          bill.total,
+          bill.person_shares.map((share) => share.total),
+        )
+      : bill.total;
+  const remaining = Math.max(0, total - paidTotal);
   return Math.round((remaining * rate + Number.EPSILON) * 100) / 100;
 }
 

@@ -198,10 +198,10 @@ class _BillTotalCardState extends State<BillTotalCard>
             // Total amount
             Semantics(
               label:
-                  'Bill total: ${CurrencyFormatter.formatCurrency(widget.data.total, currencyCode: widget.data.currencyCode)}',
+                  'Bill total: ${CurrencyFormatter.formatCurrency(widget.data.displayTotal, currencyCode: widget.data.currencyCode)}',
               child: Text(
                 CurrencyFormatter.formatCurrency(
-                  widget.data.total,
+                  widget.data.displayTotal,
                   currencyCode: widget.data.currencyCode,
                 ),
                 style: TextStyle(

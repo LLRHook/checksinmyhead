@@ -86,7 +86,9 @@ class ShareUtils {
     }
 
     text.writeln('BILL SUMMARY');
-    text.writeln('Total: ${money(total)}');
+    text.writeln(
+      'Total: ${money(CurrencyFormatter.billTotalForDisplay(total, shares: personShares.values))}',
+    );
     text.writeln('───────────────');
 
     if (showAllItems && items.isNotEmpty) {

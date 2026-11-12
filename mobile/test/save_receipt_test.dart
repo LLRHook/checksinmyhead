@@ -5,6 +5,8 @@ import 'dart:typed_data';
 
 import 'package:checks_frontend/database/database.dart';
 import 'package:checks_frontend/models/bill_item.dart';
+import 'package:checks_frontend/screens/quick_split/bill_entry/models/bill_data.dart';
+import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/screens/quick_split/bill_summary/models/bill_summary_data.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_manager.dart';
@@ -198,6 +200,61 @@ class Harness {
 }
 
 void main() {
+  test(
+    'half-cent draft pending published and reopened totals preserve money',
+    () async {
+      final h = Harness();
+      addTearDown(h.db.close);
+      final entry = BillData();
+      addTearDown(entry.dispose);
+      entry.subtotalController.text = '2.25';
+      entry.taxController.text = '0.02';
+      final receipt = BillSummaryData(
+        participants: [alex],
+        personShares: {alex: 2.68},
+        items: [
+          BillItem(name: 'L20 item', price: 2.25, assignments: {alex: 100}),
+        ],
+        subtotal: entry.subtotal,
+        tax: entry.tax,
+        tipAmount: entry.tipAmount,
+        total: entry.total,
+        tipPercentage: 18,
+        billName: 'L20 half cent',
+      );
+      final rawTotal = entry.total;
+      expect(rawTotal, 2.675);
+      expect(CurrencyFormatter.billTotalForDisplay(entry.total), 2.68);
+      expect(receipt.displayTotal, 2.68);
+      h.onCreate = (_) async => http.Response('{}', 503);
+      final result = await h.owner.saveReceipt(
+        operationHandle: 'L20-half-cent',
+        receipt: receipt,
+      );
+      final pending = (await h.db.getBillById(result.localId))!;
+      expect(pending.total, rawTotal);
+      expect(RecentBillModel.fromData(pending).displayTotal, 2.68);
+      final requestBefore = pending.creationSnapshot!;
+      final body = jsonDecode(requestBefore) as Map<String, dynamic>;
+      expect(body['total'], rawTotal);
+      expect((body['person_shares'] as List).single['total'], 2.68);
+      h.onCreate = null;
+      await h.owner.resumeReceipt(result.localId);
+      final published = (await h.db.getBillById(result.localId))!;
+      final reopened = RecentBillModel.fromData(published);
+      expect(published.total, rawTotal);
+      expect(published.creationSnapshot, requestBefore);
+      expect(reopened.displayTotal, 2.68);
+      expect(reopened.displayUSDTotal, 2.68);
+      expect(BillSummaryData.fromRecentBill(reopened).displayTotal, 2.68);
+      expect(
+        h.requests
+            .where((r) => r.method == 'POST' && r.url.path == '/api/bills')
+            .every((r) => r.body == requestBefore),
+        isTrue,
+      );
+    },
+  );
   test(
     'EUR owner commits one native row and exact frozen checkpoint',
     () async {

@@ -11,6 +11,7 @@ import PaymentDetails from "@/components/PaymentDetails";
 import PersonShare from "@/components/PersonShare";
 import RecordedShares from "@/components/RecordedShares";
 import { ApiError, type Bill, getBill } from "@/lib/api";
+import { billDisplayTotal } from "@/lib/currency";
 import { lazyBillRemainingTotal } from "@/lib/lazy-bill";
 
 interface BillPageClientProps {
@@ -297,7 +298,7 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
     <>
       <BillHeader
         name={bill.name}
-        total={bill.display_total ?? bill.total}
+        total={billDisplayTotal(bill)}
         currency={bill.display_currency ?? bill.currency_code ?? "USD"}
       />
       <PaymentDetails paymentMethods={bill.payment_methods} />

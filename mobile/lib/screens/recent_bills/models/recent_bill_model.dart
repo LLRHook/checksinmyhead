@@ -16,6 +16,7 @@
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import 'dart:convert';
+import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 import 'package:checks_frontend/database/database.dart';
 import 'package:checks_frontend/models/bill_item.dart';
 import 'package:checks_frontend/models/person.dart';
@@ -243,6 +244,27 @@ class RecentBillModel {
   }
 
   double get usdTotal => verifiedUsdTotal ?? double.nan;
+
+  double get displayTotal => CurrencyFormatter.billTotalForDisplay(
+    total,
+    shares: recordedShares.map(
+      (row) =>
+          row['total'] is num ? (row['total'] as num).toDouble() : double.nan,
+    ),
+  );
+
+  double get displayUSDTotal => CurrencyFormatter.billTotalForDisplay(
+    usdTotal,
+    shares:
+        currencyCode == 'USD'
+            ? recordedShares.map(
+              (row) =>
+                  row['total'] is num
+                      ? (row['total'] as num).toDouble()
+                      : double.nan,
+            )
+            : const [],
+  );
 
   Map<Person, double> generateUSDPersonShares() {
     if (!hasUSDValuation) return {};

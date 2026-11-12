@@ -939,7 +939,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Cross-ref:** FEAT-1793644512
 
 ### [BUG-1794331912] Show half-cent bill totals the same way their shares add up
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** mobile, web, accounting
 - **File(s):** mobile/lib; web-bill-viewer/src/components; backend/pkg/models/bill.go
 - **Observation:** A bill whose stored total is 24.885 renders as $24.88 on the phone summary, in Recent Bills and on the web page. Its shares sum to $24.89, and the containing tab total shows $24.89. Money is carried as float64/double end to end, so a half-cent total rounds down in display.
@@ -948,7 +948,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/NOTES.md (bill 66); $10 item split 3.33x3. Related symptom on an unmerged branch: BUG-1794264955 (device vs published odd cents).
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** fixed-pending-migration
+- **Fix:** Display-only Flutter and web bill-total normalization uses round(total * 100) / 100, matching Go scaled-cent rounding. Applies to draft, summary, history/detail, tab bill rows/selectors, share/copy text, conversion previews and native lazy remaining balances. Never substitutes a share sum; near-complete cent allocations that disagree with the canonical target retain prior formatting, including the 1.005 / 1.00 frozen-USD versus 1.01 native-share case in BUG-1794264955. Shared cases and draft/save/request-preservation regression tests added; no stored or transmitted amounts or allocation rules changed.
+- **Docs:** docs/technical-overview.md documents display-only normalization, accounting mismatch exclusion and unchanged currency formatting; shared fixtures in testdata/bill_display_totals.json. Backend API contract unchanged.
 
 ### [BUG-1794331913] Align the VERIFICATION.md recipe with CI and the local viewer
 - [ ] **Severity:** med
@@ -1156,6 +1159,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** open
 - **Log:**
   - 2026-11-09 Sighting: Simulator inspection (iPhone 17, iOS 27.2, local stack at 083567a): a USD 128.00 receipt for six people showed Alex 44.81 and Pat 6.39 on the phone (saved and after relaunch); after attaching it to a tab and finalizing, the settlement rows read Alex 44.80 and Pat 6.40. Totals stayed 128.00. Screenshots: .vv/ui-inspection-20261109/main/A2-06-shares.png and A5-12-relaunch-finalized.png.
+  - 2026-11-12 Sighting: L20 narrowing, 2026-11-12: baseline f13409d177d237291785d333c6b2d565b65b8108 accepts HTTP creation with USD subtotal 0.75, tax 0.12, 18% tip 0.135, total 1.005 (binary scaled cents 100.49999999999999). Flutter AssignmentUtils.applyLargestRemainder produces 1.00; server calculatePersonShares.rounded rounds subtotal/tax/tip separately and persists a 1.01 native share; creation USDTotal and FrozenUSDTotalCents remain 1.00 / 100 cents, used by tab totals. Confirmed using real creation validation plus guardCreationInsert and existing in-memory repository fixture, HTTP 201; no production data or services used. Evidence: .git/agent-handoffs/driver-testflight-1112/evidence/L20/allocation-boundary-create.log, allocation-boundary-flutter.jsonl, L20_allocation_boundary_probe_test.go, L20_allocation_boundary_probe_test.dart. BUG-1794331912 display fix must preserve this mismatch; no allocation, stored/transmitted amount, or frozen audit may be changed by L20.
 
 ### [BUG-1794264956] Remove or gate the second TestFlight uploader outside the delivery gate
 - [ ] **Severity:** high
