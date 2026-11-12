@@ -10,6 +10,12 @@ import (
 	"testing"
 )
 
+func proofSetDNS(s *Service, dnsDial, tcpDial func(context.Context, string, string) (net.Conn, error)) {
+	s.transport.dialContext = func(ctx context.Context, n, a string) (net.Conn, error) {
+		return providerDialWithDNS(ctx, n, a, dnsDial, tcpDial)
+	}
+}
+
 func TestOwnershipDNSJoin(t *testing.T) {
 	s := proofService(t)
 	started := make(chan struct{})
@@ -34,10 +40,9 @@ func TestOwnershipDNSJoin(t *testing.T) {
 		go func() { defer wg.Done(); defer p.Close(); start.Do(func() { close(started) }); io.Copy(io.Discard, p) }()
 		return &proofDNSClose{Conn: c, release: release, closes: &closes, closedWG: &closedWG}, nil
 	}
-	joinDial := proofSetDNS(s, dnsDial, func(context.Context, string, string) (net.Conn, error) {
+	proofSetDNS(s, dnsDial, func(context.Context, string, string) (net.Conn, error) {
 		return nil, errors.New("synthetic no provider TCP expected")
 	})
-	defer joinDial()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	h, done := proofHandler(t, s, ctx)

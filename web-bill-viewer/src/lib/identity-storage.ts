@@ -1,10 +1,5 @@
 import type { CurrentMember, Participant } from "./api";
 export type StoredMember = CurrentMember & { version: 2; member_token: string };
-export type StoredSelection = {
-  version: 2;
-  bill_id: number;
-  participant_id: number;
-};
 export const memberKey = (tabId: string) => `billington_member_${tabId}`;
 export const selectionKey = (billId: number) =>
   `billington_participant_${billId}`;

@@ -120,8 +120,8 @@ For manual startup after setup, run `npm run dev` here and open
 Keep `NEXT_PUBLIC_API_URL=http://localhost:8080` in `.env.local` for the local API;
 existing files are preserved. The root script refuses occupied ports, waits for HTTP
 readiness, retains private per-run logs, and stops its exact npm/Next process group on
-exit. See the [root workflow](../README.md#quickstart). The legacy Go renderer on
-8081 is retained under the explicit `legacy-web` Compose profile.
+exit. See the [root workflow](../README.md#quickstart). Next.js is the maintained
+bill and tab viewer; the legacy Go renderer has been removed.
 
 Edit the public homepage in `src/app/(public)/page.tsx`; keep bill/tab body and
 capability transport in their existing owners.

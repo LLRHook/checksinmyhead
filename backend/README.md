@@ -25,7 +25,7 @@ Each module follows the **Handler → Service → Repository** pattern. Services
 
 ## HTTP lifecycle and JSON limits
 
-Both service binaries use the shared `pkg/safehttp` lifecycle: 5s read-header, 20s
+The API binary uses the shared `pkg/safehttp` lifecycle: 5s read-header, 20s
 read, 50s write and 60s idle timeouts, with 32 KiB MaxHeaderBytes. SIGINT/SIGTERM
 cancel request contexts; shutdown waits up to 25s and then closes connections.
 Ordinary graceful shutdown exits successfully. Startup/migration modes and the
@@ -115,18 +115,16 @@ curl --fail http://localhost:8080/health
 ```bash
 # From backend/ (Docker Compose subcommand required):
 make up       # docker compose up --build: PostgreSQL + API
-make down     # docker compose --profile legacy-web down: preserve data volumes
+make down     # docker compose down: preserve data volumes
 make logs     # Tail service logs
 make test     # Default Go suite (go test -v -race ./...)
 make dev      # Root dev.sh: full stack after explicit setup
-# Retained Go HTML renderer, original 8081 URLs/templates:
-docker compose --profile legacy-web up --build
 ```
 
 Default Compose starts only PostgreSQL and the API. The existing default project
 identity and `postgres_data` volume are unchanged. The Next.js viewer is the ordinary
-local web client on 3100; legacy HTML source/build/test coverage remains in place.
-This profile change establishes no cloud retirement or external-link usage evidence.
+local web client on 3100. The Go HTML service has been removed from the repository;
+this source change does not alter hosting accounts or DNS.
 
 The root [startup instructions](../README.md#quickstart) cover locked setup, toolchain
 checks, simulator selection and exact ownership cleanup. Existing running services are
@@ -177,14 +175,14 @@ and [review corrections](../docs/reviews/2026-11-03-local-workflow-correction.md
 
 ### Build toolchain
 
-`go.mod` requires Go 1.27.3. Local commands may use `GOTOOLCHAIN=auto` to
-select it. Both service Dockerfiles pin the same official Go builder and supported
+`go.mod` requires Go 1.27.4. Local commands may use `GOTOOLCHAIN=auto` to
+select it. The service Dockerfile pins the official Go builder and supported
 `gcr.io/distroless/static-debian13:nonroot` runtime by multi-platform digest.
-Both production builds set `CGO_ENABLED=0`; the runtime retains CA certificates
+The production build sets `CGO_ENABLED=0`; the runtime retains CA certificates
 and timezone data without libc or OpenSSL. Test/tooling builds retain CGO for
 race detection and SQLite. Builders use
 `GOTOOLCHAIN=local` so a mismatched module requirement fails instead of downloading
-another compiler. Update the module and both builder pins together after checking
+another compiler. Update the module and builder pin together after checking
 current security releases and image identities. `pkg/safehttp` and `internal/bill`
 import `encoding/json/v2` and `encoding/json/jsontext`, which Go 1.27.3 compiles by
 default behind its `jsonv2` experiment; do not build with `GOEXPERIMENT=nojsonv2`,
@@ -194,7 +192,6 @@ Build from the `backend` context, for example from the repository root:
 
 ```bash
 docker build --pull --no-cache --platform linux/amd64 -f backend/services/bill-service/Dockerfile -t billington-bill:validation backend
-docker build --pull --no-cache --platform linux/amd64 -f backend/services/web-service/Dockerfile -t billington-web:validation backend
 ```
 
 `.dockerignore` excludes local environment files, private-key files, generated
@@ -205,13 +202,12 @@ architecture or deployment identity; see [verification](../VERIFICATION.md).
 
 ### Container liveness
 
-Both images execute as UID/GID **65532:65532**. Application binaries/directories
-remain root-owned and readable/executable; the legacy viewer retains its relative
-`internal/web/templates` path under `/app`. Containers can use a read-only root
+The image executes as UID/GID **65532:65532**. The application binary and directories
+remain root-owned and readable/executable. Containers can use a read-only root
 filesystem with a writable `/tmp` tmpfs (mode 1777, UID/GID 65532).
 
-The default commands remain `./bill-service` (8080) and `./web-service` (8081).
-Each binary also supports `--healthcheck`, dispatched before database setup.
+The default command remains `./bill-service` (8080).
+The binary also supports `--healthcheck`, dispatched before database setup.
 It makes one GET to its fixed `127.0.0.1` `/health` address, requires HTTP 200
 and the service's expected JSON status, limits the whole request to two seconds
 and the body to 4096 bytes, rejects redirects, bypasses proxies, and exits 0/1
@@ -232,18 +228,17 @@ remains historical evidence.
 CGO-disabled builds select Go's resolver and file-based user lookup instead of
 libc/NSS. Production imports use PostgreSQL/pgx and Go TLS; SQLite is test-only.
 The local harness below checks the actual service ELF/build information and
-package inventory, then runs both images with read-only roots, owned `/tmp`, fresh
+package inventory, then runs the image with read-only roots, owned `/tmp`, fresh
 owned schemas and generated TLS/DNS fixtures. Its diagnostic executable is mounted
-for verification and is absent from the production images.
+for verification and is absent from the production image.
 
-After building both validation images above, set
+After building the validation image above, set
 `BILLINGTON_RUNTIME_TEST_POSTGRES_IMAGE` to an approved **local immutable PostgreSQL
 fixture image ID**, then run from the repository root:
 
 ```bash
 python3 scripts/verify_static_runtime.py \
   --bill-image billington-bill:validation \
-  --web-image billington-web:validation \
   --postgres-image "$BILLINGTON_RUNTIME_TEST_POSTGRES_IMAGE" \
   --output ".vv/static-runtime-$(date +%s)"
 ```
@@ -254,7 +249,7 @@ synthetic certificates, uses unique schemas (never public), removes its fixture
 resources, and retains local evidence. It never connects to an existing database.
 It verifies hosts/service/search/failed DNS lookup and bounded cancellation,
 strict database trust/hostname rejection, public CA trust, timezone, actual startup
-modes, one-query live readiness, API/authorized HTML, Docker health failure and
+modes, one-query live readiness, authorized API reads, Docker health failure and
 recovery during a paused database. Public HTTPS uses a host-resolved `example.com`
 address injected into the fixture hosts file; the dedicated DNS fixture handles
 synthetic names only. Failed controls stay failures; no selected test skips.
@@ -289,18 +284,9 @@ Complete explicit storage columns and bounded read-only consistent transactions 
 API and retained HTML graph reads. This avoids additive-DDL result-shape invalidation
 without query-mode changes, reconnection or blind mutation retry. Readiness is still a
 live ledger check; separate startup verification checks catalog definitions.
-`TestPostgresWarmServiceSurvivesAdditiveDDL` holds this on real PostgreSQL: one warm
-connection returns byte-identical API/HTML bodies from its cached statements, and its
-writers still commit, after another session adds a column to every application table.
-Keep every read and row lock on `pkg/models/columns.go`; a table-shaped projection
-(`SELECT *`, `RETURNING *`) fails once per cached statement per pooled connection.
+`TestPostgresWarmServiceSurvivesAdditiveDDL` proves cached API reads and warm writers survive owned additive columns on real PostgreSQL; see [warm-reader evidence](../docs/reviews/2026-11-09-reader-ddl.md).
 
-A revision older than these projections cannot serve across a schema step. The deployed
-pre-registry revision returns transient 500s from its warm connections, and bills its
-writers create after 0003 are rejected for unversioned readers. Stop it before the
-first publish; the [delivery gate](../ops/ci/README.md#existing-transports) refuses to
-start a schema step while such a revision answers `/health`. See the
-[measured evidence](../docs/reviews/2026-11-09-reader-ddl.md).
+The delivery gate refuses a schema step under a serving revision below the warm-reader floor; see [first-publish evidence](../docs/reviews/2026-11-09-reader-ddl.md).
 
 The November5 source checkpoint characterizes local index reuse and runs the complete
 nonnumerical ordinary/mandatory PostgreSQL selections. The four historical numerical
@@ -353,7 +339,7 @@ readiness keeps its single ledger query.
 ./bill-service --schema-mode=verify
 ```
 
-`web-service` supports the same options. `--schema-mode` accepts only `apply` (default)
+`--schema-mode` accepts only `apply` (default)
 or `verify`; invalid flags/values/combinations fail with a generic error. Verify mode
 requires an initialized ledger. `--migrate-only` requires apply mode. There is no
 migration environment alias or separate binary. `--healthcheck` remains a separate,
@@ -403,7 +389,7 @@ server once keyed clients are active. Database restore is a separate verified pr
 | `DB_NAME` | `billington_data` | Database name |
 | `DB_USER` | `billington_admin` | Database user |
 | `DB_PASSWORD` | `changeme` | Database password |
-| `MINIMUM_SUPPORTED_APP_VERSION` | unset (non-blocking `0.0.0`) | Lowest mobile version allowed to continue after the startup policy check (numeric `major.minor.patch`); served only when every release in `internal/versionpolicy/public_availability.json` satisfies it |
+| `MINIMUM_SUPPORTED_APP_VERSION` | `2.0.3` | Lowest mobile version allowed to continue after the startup policy check (numeric `major.minor.patch`) |
 | `APP_STORE_URL` | Billington App Store page | Store destination returned with the public version policy |
 
 Currency creation, USD preview and display conversion share one required Frankfurter
@@ -437,11 +423,11 @@ policy advertises only `{version:1,key_format:"base64url-32"}` under
 [API recovery contract](../docs/backend-api.md#post-apibills) and
 [focused replay verification](../docs/backend-replay-verification.md).
 
-The public `GET /api/app/version-policy` endpoint is consumed at app startup. The source default is the non-blocking minimum `0.0.0`. A configured `MINIMUM_SUPPORTED_APP_VERSION` is served only when every release in the reviewed, compiled-in record `internal/versionpolicy/public_availability.json` (one entry per targeted platform and storefront) is at least that version; an unset, malformed or too-high value, or a missing or invalid record, serves `0.0.0` and logs one fixed startup line. To raise the minimum, first update that record in a reviewed change once each storefront serves the release, deploy, then set the variable and confirm the endpoint returns it; see [the endpoint contract](../docs/backend-api.md#get-apiappversion-policy). Use a three-part numeric version such as `2.1.0`. The app fails open if the endpoint times out or returns invalid data; the version check is a user-facing compatibility gate, not an authorization control. Version policy responses are sent with `Cache-Control: no-store`.
+The public `GET /api/app/version-policy` endpoint is consumed at app startup. Raise `MINIMUM_SUPPORTED_APP_VERSION` only after the corresponding update is available in the store, and use a three-part numeric version such as `2.1.0`. The app fails open if the endpoint times out or returns invalid data; the version check is a user-facing compatibility gate, not an authorization control. Version policy responses are sent with `Cache-Control: no-store`.
 
 Request logs intentionally omit query strings because share and member bearer tokens may appear in them. Do not change the request logger to include `RequestURI`, `RawQuery`, or Gin's default `Path` field.
 
-SQL logs omit query text, bind values and driver messages at every log level, including startup failures. They retain only elapsed time, row counts, allowlisted operation/table/error categories and known SQLSTATE codes; unknown values become `unknown`. `DB_SLOW_QUERY_MS` sets the slow threshold (default 500 ms); invalid or overflowing values use that default with a fixed warning that omits the supplied value. The missing-database-env guard remains static. API and legacy-web request-error logs use the same finite error categories without printing the original error; typed errors remain available for status decisions. Unrelated provider logging remains outside this database-error policy.
+SQL logs omit query text, bind values and driver messages at every log level, including startup failures. They retain only elapsed time, row counts, allowlisted operation/table/error categories and known SQLSTATE codes; unknown values become `unknown`. `DB_SLOW_QUERY_MS` sets the slow threshold (default 500 ms); invalid or overflowing values use that default with a fixed warning that omits the supplied value. The missing-database-env guard remains static. API request-error logs use the same finite error categories without printing the original error; typed errors remain available for status decisions. Unrelated provider logging remains outside this database-error policy.
 
 ## Testing
 

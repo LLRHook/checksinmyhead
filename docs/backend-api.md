@@ -24,8 +24,7 @@ unvalidated startup; database/driver details never enter the response:
 { "status": "service unavailable", "commit": "<RENDER_GIT_COMMIT or empty>" }
 ```
 
-The retained legacy web service uses the same readiness check and fields, with healthy
-status `web service - ok`. The `--healthcheck` loopback command treats HTTP 503 as failure.
+The API `--healthcheck` loopback command treats HTTP 503 as failure.
 See [schema startup modes](../backend/README.md#postgresql-schema-startup) for migration-only
 and verify startup behavior. Registry remains exactly1,2,3. Historical defaults remain
 graph1/`legacy_review`; fresh application creation explicitly constructs ready graph2.
@@ -38,49 +37,13 @@ Returns the public mobile compatibility policy. Response headers include `Cache-
 
 ```json
 {
-  "minimum_supported_version": "0.0.0",
+  "minimum_supported_version": "2.0.3",
   "store_url": "https://apps.apple.com/app/id6746379502",
   "capabilities": {"bill_creation_replay": {"version": 1, "key_format": "base64url-32"}, "participant_identity": {"version": 2}}
 }
 ```
 
-`minimum_supported_version` is always numeric `major.minor.patch`. `0.0.0` is the
-non-blocking policy and the source default: with no environment the service never asks
-any client to update.
-
-**Public availability gate.** The service serves `MINIMUM_SUPPORTED_APP_VERSION` only
-when every release in the reviewed record
-[`backend/internal/versionpolicy/public_availability.json`](../backend/internal/versionpolicy/public_availability.json)
-is at least that version. The record has one entry per targeted platform and storefront
-(`platform`, `storefront`, `app_id`, `version`, `minimum_os`, `released_on`,
-`verified_on`, HTTPS `evidence`) and is compiled into the binary. One policy answers every
-platform and storefront, so the lowest recorded version is the ceiling. The service
-serves `0.0.0` instead when the variable is unset or not numeric `major.minor.patch`,
-when it exceeds any recorded release, when the record lists no release, or when the
-record fails strict validation (unknown field, schema, platform, date or duplicate
-platform/storefront). It never clamps to a lower blocking value and never stops the
-service; startup logs one fixed line naming the cause without the supplied value.
-
-Raising enforcement is therefore two reviewed steps, in order:
-
-1. After the release is live, confirm each targeted storefront serves it (for iOS,
-   `GET https://itunes.apple.com/lookup?id=6746379502&country=<storefront>` reports
-   `version` and `minimumOsVersion`), update the record in a reviewed change, and deploy.
-2. Set `MINIMUM_SUPPORTED_APP_VERSION` (an owner action on the hosting provider), then
-   confirm this endpoint returns that value. `0.0.0` means the gate refused it.
-
-Limits the record cannot remove: it is a reviewed statement, not a live store query, so
-a wrong or stale entry (a storefront omitted, a release later removed from sale, a
-phased release not yet at 100%) is still an owner responsibility. TestFlight
-availability is not public availability. `minimum_os` is recorded for review only: the
-client does not report its OS, so do not raise the minimum past the last version that
-installs on a still-supported OS. Add a platform's entry before its first public binary.
-
-The policy only decides whether the app shows its update screen. It does not
-authenticate or authorize anything: API routes never read it, old or modified clients
-can ignore it, and raising it does not fix a server-side authorization or compatibility
-defect. Client fail-open covers a non-200 status, transport failure, a two-second
-timeout and any body without a numeric `minimum_supported_version`.
+Set `MINIMUM_SUPPORTED_APP_VERSION` on the bill service to a numeric `major.minor.patch` value only after the new release is available in the store. Invalid values fall back to `2.0.3`.
 
 ---
 
@@ -390,7 +353,8 @@ A scanned receipt's `currency_code`, `currency_symbol` and `currency_confidence`
 evidence only. The client asks the user to confirm the currency, including for an
 ambiguous `$` and for PEN (`S/`); a scan never selects a receipt currency by itself.
 
-Owners: `TestProductionCurrencySupportMatrix` (each row, through the production
+Owners: `TestProductionCurrencyComposition` (accepted-codes and native-USD rows),
+`TestProductionCurrencySupportMatrix` (the remaining rows, through the production
 composition), `TestPostgresDisplayConversionNeverRewritesFrozenQuote` (a moving
 market, an outage, a trip display change and finalization against stored rows),
 `TestReceiptPolicyMatchesBothMobileSelectors` (the twelve codes in both mobile
@@ -541,7 +505,7 @@ all deployed writers to cooperate. It does not establish rollout or signed-clien
 
 ## HTTP resource policy
 
-Both service binaries use read-header/read/write/idle timeouts of 5/20/50/60 seconds
+The API binary uses read-header/read/write/idle timeouts of 5/20/50/60 seconds
 and a 32 KiB `MaxHeaderBytes` setting. Signal cancellation reaches request contexts;
 shutdown waits at most 25 seconds, then closes connections. A write deadline alone
 does not cancel handler work. Recovery returns a generic JSON 500 before response

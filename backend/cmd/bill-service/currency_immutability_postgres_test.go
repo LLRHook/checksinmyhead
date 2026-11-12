@@ -107,7 +107,7 @@ func TestPostgresDisplayConversionNeverRewritesFrozenQuote(t *testing.T) {
 	}
 
 	// The market moves. Live display and preview follow it.
-	market.set(0, "", map[string]float64{"EUR/USD": 1.31, "EUR/ZAR": 23, "USD/JPY": 150})
+	market.set(0, "", map[string]float64{"EUR/USD": 1.31, "EUR/ZAR": 23})
 	for path, want := range map[string]float64{"/api/currency/rate?from=EUR&to=ZAR": 23, "/api/currency/rate?from=EUR&to=USD": 1.31, "/api/exchange-rates/EUR": 1.31} {
 		w := identityRequest(t, r, "GET", path, "", "", "", "", 0, 200)
 		var live struct {

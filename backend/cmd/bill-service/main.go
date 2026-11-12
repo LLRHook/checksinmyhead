@@ -36,9 +36,6 @@ func main() {
 	if err := receipt.ValidatePolicy(); err != nil {
 		log.Fatal(err)
 	}
-	// Fixed text only: a minimum above recorded public availability is served
-	// as the non-blocking policy rather than stopping the service.
-	log.Print(versionpolicy.Current().StartupNotice())
 
 	db, state, err := database.InitDB(context.Background(), options.SchemaMode)
 	if err != nil {
