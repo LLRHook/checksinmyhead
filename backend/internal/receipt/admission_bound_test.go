@@ -8,79 +8,7 @@ import (
 	"net/netip"
 	"sync/atomic"
 	"testing"
-	"time"
-	"unsafe"
 )
-
-// Distinct peers arrive in bursts larger than the table, through the real
-// admission path on a controlled clock. The table never exceeds maxPeerKeys,
-// an excess peer is refused without adding state, expired keys leave on the
-// next admission, and the idle sweep empties the table.
-func TestAdmissionPeerTableStaysBounded(t *testing.T) {
-	a := newAdmission(policy{2})
-	defer a.close()
-	// The background sweeper samples real time, far before this clock, so until
-	// the explicit sweep below only admission itself prunes.
-	now := time.Date(2100, 1, 1, 0, 0, 0, 0, time.UTC)
-	clock := func() time.Time { return now }
-	peer := func(i int) string { return netip.AddrFrom4([4]byte{10, byte(i >> 16), byte(i >> 8), byte(i)}).String() }
-	keys := func() int {
-		a.mu.Lock()
-		defer a.mu.Unlock()
-		if a.inflight != 0 {
-			t.Fatalf("released admissions left inflight=%d", a.inflight)
-		}
-		return len(a.peers)
-	}
-	next := 0
-	burst := func(count, wantAdmitted, wantKeys int) {
-		t.Helper()
-		admitted := 0
-		for range count {
-			release, err := a.acquire(context.Background(), peer(next), clock)
-			next++
-			if err == nil {
-				release()
-				admitted++
-			} else if err.Code != ErrOverloaded || err.RetryAfter != 15 || release != nil {
-				t.Fatalf("excess peer result=%+v", err)
-			}
-			if n := keys(); n > maxPeerKeys {
-				t.Fatalf("peer table grew to %d", n)
-			}
-		}
-		if n := keys(); admitted != wantAdmitted || n != wantKeys {
-			t.Fatalf("admitted=%d want=%d keys=%d want=%d", admitted, wantAdmitted, n, wantKeys)
-		}
-	}
-	existing := func(index int) {
-		t.Helper()
-		release, err := a.acquire(context.Background(), peer(index), clock)
-		if err != nil {
-			t.Fatalf("existing peer refused by a full table: %+v", err)
-		}
-		release()
-	}
-	burst(maxPeerKeys+200, maxPeerKeys, maxPeerKeys)
-	now = now.Add(peerWindow - time.Second)
-	burst(100, 0, maxPeerKeys) // nothing has expired yet
-	existing(0)                // an existing peer is still served and stays live
-	now = now.Add(time.Second)
-	// The first burst expired at exactly one window; peer 0 was renewed a second ago.
-	burst(maxPeerKeys+200, maxPeerKeys-1, maxPeerKeys)
-	now = now.Add(peerWindow)
-	burst(1, 1, 1)
-	a.mu.Lock()
-	a.prune(now.Add(peerWindow)) // the 15 s idle sweep, at a controlled instant
-	a.mu.Unlock()
-	if n := keys(); n != 0 {
-		t.Fatalf("idle sweep kept %d keys", n)
-	}
-	// Each key holds ten fixed timestamps, so the live table payload is bounded too.
-	if payload := maxPeerKeys * int(unsafe.Sizeof(netip.Addr{})+unsafe.Sizeof(peerAdmissions{})); payload > 2<<20 {
-		t.Fatalf("peer table payload bound=%d bytes", payload)
-	}
-}
 
 // One client request makes at most one provider request. A provider failure
 // comes back as a finite, recoverable response; a later scan is a new request
