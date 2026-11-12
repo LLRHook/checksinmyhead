@@ -311,7 +311,7 @@ export default function BillPageClient({ id, token }: BillPageClientProps) {
           <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
             Individual Shares
           </h2>
-          <p className="text-xs text-[var(--text-secondary)] opacity-60 mt-0.5">
+          <p className="text-xs text-[var(--text-secondary)] mt-0.5">
             Recorded paid flags are manual status; select an exact receipt row
             to update them.
           </p>

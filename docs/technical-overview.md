@@ -210,7 +210,8 @@ use explicit create-unbound/request/approval and never fabricate confirmation.
   `(public)` group owns `/` and `/privacy-policy` at `https://billingtonapp.vercel.app`.
   Its literal site configuration, semantic policy JSX, scoped CSS and brand-only
   social image need no API, private component or browser storage. Root metadata
-  remains generic/noindex; only public pages override indexing and add canonical/
+  remains generic/noindex; private route titles describe only the shared bill/tab
+  page type without resource names or bearer data. Only public pages override indexing and add canonical/
   social metadata. Homepage-only SoftwareApplication data uses visible claims.
   Robots permits private crawling so noindex can be read; sitemap lists only the
   two public documents, without dates or resource enumeration.

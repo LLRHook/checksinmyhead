@@ -127,6 +127,7 @@ export default function PersonShare({
         <button
           type="button"
           onClick={toggle}
+          aria-label={`Share details for ${(personShare.label ?? personShare.person_name) || "Unnamed"}`}
           aria-expanded={isOpen}
           className="p-2 cursor-pointer bg-transparent border-none"
         >

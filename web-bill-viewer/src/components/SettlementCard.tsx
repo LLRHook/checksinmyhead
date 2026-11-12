@@ -28,7 +28,7 @@ export default function SettlementCard({
             {paidCount}/{settlements.length} paid
           </span>
         </div>
-        <p className="text-xs text-[var(--text-secondary)] opacity-60 mt-0.5">
+        <p className="text-xs text-[var(--text-secondary)] mt-0.5">
           Open Billington to update payment status
         </p>
       </div>

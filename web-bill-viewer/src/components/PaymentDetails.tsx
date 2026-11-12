@@ -34,9 +34,9 @@ export default function PaymentDetails({
 
   return (
     <div className="mb-6">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)] mb-3 px-1">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)] mb-3 px-1">
         Payment Methods
-      </h3>
+      </h2>
       <div className="space-y-3">
         {paymentMethods.map((method) => {
           const { Icon, bg } = getIcon(method.name);

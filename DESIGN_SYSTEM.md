@@ -14,7 +14,7 @@ Web CSS variables in `web-bill-viewer/src/app/globals.css` are the source for we
 | `--secondary` | `#f5f5f7` | Soft backgrounds |
 | `--accent` / `--text-dark` | `#1d1d1f` | Primary text |
 | `--accent-warm` | `#d4a843` | Warm brand accent |
-| `--text-secondary` | `#86868b` | Supporting text |
+| `--text-secondary` | `#48484d` light / `#a3a3a8` dark | Supporting text, including 75% opaque paid cards |
 | `--border-light` | `#e5e5e7` | Light theme dividers and outlines |
 | `--border-dark` | `#2d2d2f` | Dark theme dividers and outlines |
 | `--dark-bg` | `#0a0a0a` | Dark page background |

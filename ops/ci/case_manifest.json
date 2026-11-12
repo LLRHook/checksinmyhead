@@ -691,7 +691,8 @@
       "web-bill-viewer/src/components/__tests__/LazyBillActions.test.ts",
       "web-bill-viewer/src/components/__tests__/RecordedShares.test.ts",
       "web-bill-viewer/src/lib/__tests__/participant-identity.test.ts",
-      "web-bill-viewer/src/components/__tests__/LazyBillSession.test.ts"
+      "web-bill-viewer/src/components/__tests__/LazyBillSession.test.ts",
+      "web-bill-viewer/src/components/__tests__/ViewerAccessibility.test.ts"
     ]
   },
   "reports": {
@@ -1437,6 +1438,15 @@
         "^lazy\\ viewer\\ session\\ across\\ refreshed\\ receipt\\ props\\ preserves\\ deliberately\\ emptied\\ text\\ but\\ seeds\\ the\\ suggestion\\ for\\ a\\ different\\ tab$",
         "^lazy\\ viewer\\ session\\ across\\ refreshed\\ receipt\\ props\\ revalidates\\ the\\ selected\\ occurrence\\ without\\ repeating\\ membership\\ recovery\\ on\\ graph\\ refresh$",
         "^lazy\\ viewer\\ session\\ across\\ refreshed\\ receipt\\ props\\ clears\\ its\\ recovery\\ warning\\ after\\ successful\\ reauthentication\\ without\\ erasing\\ another\\ error$"
+      ],
+      "web-bill-viewer/src/components/__tests__/ViewerAccessibility.test.ts": [
+        "^private\\ viewer\\ accessibility\\ names\\ each\\ share\\ expansion\\ for\\ its\\ visible\\ owner\\ and\\ reflects\\ both\\ expanded\\ states$",
+        "^private\\ viewer\\ accessibility\\ keeps\\ the\\ other\\ expansion\\ controls\\ named\\ by\\ their\\ section\\ or\\ bill$",
+        "^private\\ viewer\\ accessibility\\ keeps\\ private\\ bill\\ and\\ tab\\ payment\\ headings\\ sequential\\ without\\ changing\\ typography$",
+        "^private\\ viewer\\ accessibility\\ gives\\ recorded\\ share\\ rows\\ a\\ section\\ heading\\ even\\ before\\ receipt\\ controls\\ render$",
+        "^secondary\\ text\\ contrast\\ from\\ theme\\ tokens\\ light\\ secondary\\ text\\ meets\\ AA\\ on\\ page\\ cards\\ badges\\ hover\\ and\\ paid\\ surfaces$",
+        "^secondary\\ text\\ contrast\\ from\\ theme\\ tokens\\ dark\\ secondary\\ text\\ meets\\ AA\\ on\\ page\\ cards\\ badges\\ hover\\ and\\ paid\\ surfaces$",
+        "^secondary\\ text\\ contrast\\ from\\ theme\\ tokens\\ renders\\ the\\ bill\\ and\\ settlement\\ instructions\\ at\\ the\\ secondary\\ token\\ opacity$"
       ]
     },
     "postgres": {

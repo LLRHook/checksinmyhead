@@ -877,7 +877,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** open
 
 ### [BUG-1794331911] Fix web viewer accessibility gaps on private bill pages
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** web, a11y
 - **File(s):** web-bill-viewer/src/app/globals.css; web-bill-viewer/src/components/PersonShare.tsx; web-bill-viewer/src/components/RecordedShares.tsx
 - **Observation:** On /b Quick Split pages: the per-row expand buttons have no accessible name (WCAG 4.1.2). Secondary text (--text-secondary #86868b) measures 3.33, 3.62 and 4.35:1 on the page surfaces (1.4.3). Headings skip from h1 to h3 (1.3.1). Private pages share the generic 'Billington' title (2.4.2). Keyboard order and focus rings were fine.
@@ -886,7 +886,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/web/01, web/12 and NOTES.md (headed Chrome via agent-browser). axe and 320 px reflow were not run.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** fixed-pending-migration
+- **Fix:** Named share expansion controls with current visible owner and expanded state; kept named section/bill controls; theme secondary tokens meet 4.5:1 including paid-card opacity, removed the two approved instruction fades; sequential payment/recorded-share headings; static Shared bill/tab titles contain no private resource data. Component, token-formula and metadata regressions fail on baseline and pass with the fix.
+- **Docs:** DESIGN_SYSTEM.md; web-bill-viewer/README.md; docs/technical-overview.md
 - **Cross-ref:** FEAT-1793644512
 
 ### [BUG-1794331912] Show half-cent bill totals the same way their shares add up
@@ -983,7 +986,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/web/16.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
 - **Cross-ref:** BUG-1793644505
 
 ### [BUG-1794331920] Keep the Add Receipt button off the last per-person rows

@@ -57,7 +57,7 @@ describe("private viewer acquisition metadata", () => {
           } as never);
         }
         const result = await routeMetadata(route, token);
-        expect(result.title).toBe("Billington");
+        expect(result.title).toBe(`Shared ${name} | Billington`);
         expect(result.robots).toMatchObject({ index: false, follow: false });
         expect(JSON.stringify(result)).not.toMatch(/Private dinner|synthetic/);
         expect(result.alternates?.canonical).toBeUndefined();

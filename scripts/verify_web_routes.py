@@ -146,7 +146,7 @@ def rsc_metadata(raw):
     return tags, titles
 
 
-def private_checks(raw, headers, sensitive, rsc=False):
+def private_checks(raw, headers, sensitive, rsc=False, kind="bill"):
     page = Page(raw) if not rsc else None
     tags, titles = rsc_metadata(raw) if rsc else (page.tags, page.titles)
     metadata = [(t, a) for t, a in tags if t in ("meta", "link")
@@ -154,7 +154,7 @@ def private_checks(raw, headers, sensitive, rsc=False):
     serialized = json.dumps([metadata, titles])
     robots = [a.get("content", "") for t, a in tags if t == "meta" and a.get("name") == "robots"]
     return {
-        "genericTitle": "Billington" in titles,
+        "descriptivePrivateTitle": titles == [f"Shared {kind} | Billington"],
         "noPrivateAcquisitionData": all(value not in serialized for value in sensitive),
         "noPublicCanonicalOrSocial": not any(
             a.get("rel") == "canonical" or a.get("property", "").startswith("og:")
@@ -228,7 +228,7 @@ def main():
                     before = len(args.api_log.read_text().splitlines()) if args.api_log else 0
                     status, headers, body = request(label, path, headers)
                     text = body.decode()
-                    checks = private_checks(text, headers, sensitive, rsc)
+                    checks = private_checks(text, headers, sensitive, rsc, record["kind"])
                     checks["status"] = status == 200
                     if record["kind"] == "tab" and state.startswith("valid"):
                         checks["authorizedNameVisible"] = record.get("visibleName", record["name"]) in text
