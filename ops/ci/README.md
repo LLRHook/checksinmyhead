@@ -119,6 +119,7 @@ its external policy contains all of:
 - `source_floor`, `schema_floor` and `control_floor`: full existing commit SHAs;
   control_floor <= C <= fresh main, source_floor/schema_floor <= S <= main by ancestry.
 - Nonempty `capability_floors`: named full-SHA ancestors of S, with no caller waiver.
+  Backend `additive_ddl_warm_reader` also bounds the serving predecessor (see transports).
 - Exact `schema_registry_sha256`, matching `schema_epoch`, and positive integer
   `minimum_migration`; the source registry must remain a contiguous known prefix.
 - Nonempty reviewed `external_clearance` evidence reference. This references the
@@ -155,6 +156,21 @@ allowance. Readback requires HTTP200, healthy JSON status and exact full commit 
 The unknown-bill probe requires 400/404; 200 fails, and 401/403 are not DB proof.
 Verification-only never posts. This is the existing source rebuild route, not
 byte-identical image promotion or independent binary provenance.
+
+Before the hook request the helper reads `/health` once, because the new revision
+migrates at startup while its predecessor still serves. It continues when the answer
+is neither HTTP200 nor a JSON object (nothing serving; the service's own 5xx health
+object still counts as serving), names S itself, or names a related revision whose
+schema registry is at least as long as S's (no step to apply). Otherwise a schema
+step is pending and the serving revision must descend from the backend capability
+floor `additive_ddl_warm_reader`: the first main revision whose warm readers are
+proven to survive additive DDL (`TestPostgresWarmServiceSurvivesAdditiveDDL`), set
+by the owner like every other floor. A missing floor, an older, unknown or unrelated
+serving revision, an unreadable `commit`, or no HTTP answer is rejected with no
+waiver: stop that revision first. The deployed pre-registry revision cannot pass
+while it serves ([evidence](../../docs/reviews/2026-11-09-reader-ddl.md)). This is one
+observation before the request, not proof that a stopped service stays stopped, and
+it says nothing about writers of the predecessor.
 
 Web publication keeps `git@github.com:dhaliwalg/checksinmyhead.git`. It splits
 explicit S with prefix `web-bill-viewer`, checks its tree against S's subtree,

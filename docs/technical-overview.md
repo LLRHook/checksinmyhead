@@ -379,8 +379,7 @@ returned500 immediately after additive DDL; a separate pgx control reproduced
 SQLSTATE0A000 for cached `SELECT *` result-type invalidation. Drain readers before
 DDL and replace connections before resuming; verify this operational exclusion
 independently. Restarted read compatibility proves neither uninterrupted overlap
-nor old-writer safety. Current readers use explicit complete column shapes. Local index reuse retains full reference validation and money/tie behavior; it establishes no latency recovery. Qualify the final API on
-the same observed warmed database connections through owned additive fixtures. This
+nor old-writer safety. Current readers use explicit complete column shapes. Local index reuse retains full reference validation and money/tie behavior; it establishes no latency recovery. The warm-reader test proves cached API reads and warm writers survive owned additive columns; see [warm-reader evidence](reviews/2026-11-09-reader-ddl.md). This
 does not repair old cached binaries or authorize blind mutation retries. Production adoption remains
 unauthorized.
 See [foundation evidence](reviews/2026-11-05-identity-foundation.md).

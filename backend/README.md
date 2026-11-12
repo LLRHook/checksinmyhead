@@ -275,8 +275,10 @@ values/counts after checked commit, preserving actual timestamp precision.
 Complete explicit storage columns and bounded read-only consistent transactions serve
 API and retained HTML graph reads. This avoids additive-DDL result-shape invalidation
 without query-mode changes, reconnection or blind mutation retry. Readiness is still a
-live ledger check; separate startup verification checks catalog definitions. Existing
-old cached-reader failures and old-writer exclusion remain rollout prerequisites.
+live ledger check; separate startup verification checks catalog definitions.
+`TestPostgresWarmServiceSurvivesAdditiveDDL` proves cached API reads and warm writers survive owned additive columns on real PostgreSQL; see [warm-reader evidence](../docs/reviews/2026-11-09-reader-ddl.md).
+
+The delivery gate refuses a schema step under a serving revision below the warm-reader floor; see [first-publish evidence](../docs/reviews/2026-11-09-reader-ddl.md).
 
 The November5 source checkpoint characterizes local index reuse and runs the complete
 nonnumerical ordinary/mandatory PostgreSQL selections. The four historical numerical
