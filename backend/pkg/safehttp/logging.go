@@ -2,6 +2,7 @@ package safehttp
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -10,9 +11,20 @@ import (
 func AccessToken(c *gin.Context) string {
 	authorization := c.GetHeader("Authorization")
 	if strings.HasPrefix(authorization, "Bearer ") {
-		return strings.TrimPrefix(authorization, "Bearer ")
+		return tokenText(c, strings.TrimPrefix(authorization, "Bearer "))
 	}
-	return c.Query("t")
+	return tokenText(c, c.Query("t"))
+}
+
+// NUL cannot occur in a stored PostgreSQL token. Refuse it at the reader rather
+// than sending it to a query or treating supplied member proof as absent.
+func tokenText(c *gin.Context, value string) string {
+	if strings.ContainsRune(value, 0) {
+		StopRejectedBody(c.Writer, c.Request)
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "access denied", "code": "access_denied"})
+		return ""
+	}
+	return value
 }
 
 // RequestLogger logs request paths without query strings. Bill and trip

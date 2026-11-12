@@ -36,6 +36,45 @@ Map<String, dynamic> bill(
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
   testWidgets(
+    'paid participant addition shows the server reason without a retry action',
+    (tester) async {
+      final api = ApiService(
+        baseUrl: 'https://synthetic.invalid',
+        client: MockClient(
+          (request) async => http.Response(
+            jsonEncode({
+              'code': 'participants_locked_paid',
+              'error': 'participants cannot be added after a share is paid',
+            }),
+            409,
+          ),
+        ),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: ParticipantIdentityPanel(
+                bill: bill([participant(11)]),
+                token: 'source',
+                api: api,
+                onChanged: () async {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Add occurrence'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('participants cannot be added after a share is paid'),
+        findsOneWidget,
+      );
+      expect(find.text('Retry original action after review'), findsNothing);
+    },
+  );
+  testWidgets(
     'duplicate occurrence selection survives label rename with exact source participant revision',
     (tester) async {
       var current = bill([participant(11), participant(12)]);

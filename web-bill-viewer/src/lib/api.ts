@@ -153,16 +153,21 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     public code?: string,
+    message?: string,
   ) {
     super(
-      status === 403
-        ? "Invalid access token"
-        : status === 404
-          ? "Resource not found"
-          : status === 409
-            ? "State changed or requires review. Refresh and deliberately retry."
-            : "Service unavailable. Try again.",
+      (status === 409 && message) ||
+        (status === 403
+          ? "Invalid access token"
+          : status === 404
+            ? "Resource not found"
+            : status === 409
+              ? "State changed or requires review. Refresh and deliberately retry."
+              : "Service unavailable. Try again."),
     );
+  }
+  get retryable(): boolean {
+    return this.code !== "participants_locked_paid";
   }
 }
 export function identityHeaders(
@@ -193,10 +198,13 @@ async function request<T>(
   });
   if (!response.ok) {
     let code: string | undefined;
+    let message: string | undefined;
     try {
-      code = (await response.json()).code;
+      const body = await response.json();
+      if (typeof body.code === "string") code = body.code;
+      if (typeof body.error === "string") message = body.error;
     } catch {}
-    throw new ApiError(response.status, code);
+    throw new ApiError(response.status, code, message);
   }
   // Status-only commands intentionally have no dependency on response JSON.
   if (

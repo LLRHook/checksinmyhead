@@ -13,9 +13,10 @@ import (
 )
 
 var (
-	ErrIdentityReview = &mutation.Failure{Status: 409, Code: "identity_review_required", Message: "participant identity needs review"}
-	ErrClientUpgrade  = &mutation.Failure{Status: 409, Code: "client_upgrade_required", Message: "use a participant-reference client and refresh current references"}
-	ErrRevision       = &mutation.Failure{Status: 409, Code: "identity_revision_conflict", Message: "participant state changed; refresh and try again"}
+	ErrIdentityReview   = &mutation.Failure{Status: 409, Code: "identity_review_required", Message: "participant identity needs review"}
+	ErrClientUpgrade    = &mutation.Failure{Status: 409, Code: "client_upgrade_required", Message: "use a participant-reference client and refresh current references"}
+	ErrParticipantsPaid = &mutation.Failure{Status: 409, Code: "participants_locked_paid", Message: "participants cannot be added after a share is paid"}
+	ErrRevision         = &mutation.Failure{Status: 409, Code: "identity_revision_conflict", Message: "participant state changed; refresh and try again"}
 )
 
 func validClientRef(s string) bool {

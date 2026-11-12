@@ -914,7 +914,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-12 Fix: Driver-approved review fixes F1/F2: fitting landing content stays stationary during a real drag; reach hidden controls with user drags rather than ensureVisible. Mutation checks reject disabled landing scrolling (11 failures), disabled join scrolling (22), removed Quick Split Flexible (14), and removed fitting-content physics (1). Default geometry matches main 48a13f7 on five landing displays and three join displays with/without keyboard.
 
 ### [BUG-1794331910] Reject NUL characters in names with 400 instead of 500
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** backend, api, validation
 - **File(s):** backend/internal/bill/create_request.go; backend/internal/tab/handler.go; backend/internal/tab/participants.go
 - **Observation:** A name containing U+0000 returns 500 {"error":"an internal error occurred"}. Affected fields: bill, item and participant names on POST /api/bills, the tab name on POST /api/tabs, and display_name on POST /api/tabs/:id/join. Other control characters are accepted. No database text leaks into the response.
@@ -923,7 +923,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/stage4-adv/evidence-nul-500.jsonl. curl -X POST localhost:8080/api/tabs -H 'Content-Type: application/json' -H 'X-Billington-Identity-Version: 2' -d '{"name":"a\u0000b","creator_display_name":"VV"}' returns 500.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** fixed-pending-migration
+- **Fix:** Reject NUL in decoded buffered DTO text, streaming string binding and the assignment binder fallback with the existing route 400; selected access/member token readers reject it during identity admission with 403 access_denied before any query. Preserve other controls, ignored fields, header precedence, old-client bodies, named strings/numbers and Unicode replacement without a redundant UTF-8 scan. Regression covers 26 PostgreSQL body paths, valid share history, map/interface cases and eight token proofs with zero-query/state witnesses. The canonical streaming assignment binder keeps its existing byte checks; no second reflection walk over 50000 entries is required, retaining the allocation/time budgets.
+- **Docs:** docs/backend-api.md; docs/technical-overview.md
 
 ### [BUG-1794331911] Fix web viewer accessibility gaps on private bill pages
 - [x] **Severity:** med
@@ -968,7 +971,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** open
 
 ### [BUG-1794331914] Stop telling clients to retry participant additions on bills with paid shares
-- [ ] **Severity:** low
+- [x] **Severity:** low
 - **Area:** backend, api
 - **File(s):** backend/internal/bill/identity.go
 - **Observation:** POST /api/bills/:id/participants on a bill with any paid share returns 409 identity_revision_conflict ('refresh and try again') even at the current expected_revision. The block itself is documented (unpaid eligibility), but no retry can succeed.
@@ -977,7 +980,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/stage4-adv/evidence-paid-add-participant.jsonl. Create a wire2 bill, PATCH a share paid, then POST participants with the current expected_revision.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** fixed-pending-migration
+- **Fix:** Return 409 participants_locked_paid only for a new participant addition blocked by paid shares; preserve stale revision, capacity and exact replay behavior. Flutter and web show nonempty server messages only for 409 and keep fixed 403/5xx wording; suppress the retry-original-action control for the paid conflict. PostgreSQL state/replay and client body/status regressions are registered in the case manifest.
+- **Docs:** docs/backend-api.md
 
 ### [BUG-1794331915] Apportion tax and tip the same way for partial claims on every route
 - [ ] **Severity:** low
@@ -992,7 +998,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** open
 
 ### [BUG-1794331916] Document that receipt uploads are typed by content, not the declared MIME type
-- [ ] **Severity:** low
+- [x] **Severity:** low
 - **Area:** docs, api
 - **File(s):** docs/backend-api.md; backend/internal/receipt/handler.go
 - **Observation:** docs/backend-api.md:782 lists accepted MIME types, but the service detects the type from the bytes and ignores the declared part type. PNG bytes declared text/plain are parsed, and an image/svg+xml part is reported as 'unsupported image type: text/plain'.
@@ -1001,7 +1007,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/stage4-adv/summary.md (class L).
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** fixed-pending-migration
+- **Fix:** Correct only the receipt API reference: http.DetectContentType inspects up to the first 512 content bytes; declared part MIME type and filename do not determine acceptance. Supported-content mismatches proceed to provider parsing; unsupported content returns 400 naming its detected MIME type. Existing multipart/safeguard tests cover content typing; receipt runtime behavior is unchanged.
+- **Docs:** docs/backend-api.md
 
 ### [BUG-1794331917] Fail the local workflow SIGINT tests with a clear prerequisite when SIGINT is ignored
 - [ ] **Severity:** low
@@ -1394,5 +1403,17 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Req:** none
 - **Depends on:** none
 - **Repro / Notes:** Render a tab with a member whose name begins with an emoji.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794514349] Allocation guard for the largest assignment update does not measure the body clients send
+- [ ] **Severity:** low
+- **Area:** backend, performance, tests
+- **File(s):** backend/cmd/bill-service/assignment_budget_test.go; backend/pkg/safehttp/json.go (decodeJSONText)
+- **Observation:** TestMaxAssignmentUpdateAllocationBudget (12 MiB, 4,000 allocations) and the a1perf max_mutation_50000 input build 500 updates without expected_updated_at, but the Flutter app and the web viewer send that field on every update. With it, the same request costs 3,153 allocations before the NUL validation fix for BUG-1794331910 and 5,656 after it (10.65 MB, 6.0 to 6.1 ms per request, both inside their limits). The increase comes from the string-validation hook in the streaming decoder, which is registered for every type and is called for each struct, number, pointer and slice: about 5 allocations per update, bounded by the 500-update cap. Time is unchanged; the 10 ms p95 target holds with about 37% margin. Measured on 2026-11-12 by the independent re-check of pull request #184.
+- **Expected:** The guard measures the request shape clients send, and its allocation limit is a deliberate number for that shape; or the hook's cost is reduced (for example by registering it for string types only) without losing coverage of named string types.
+- **Req:** none; BUG-1793644507 (10 ms maximum assignment-update target)
+- **Depends on:** none
+- **Repro / Notes:** Add "expected_updated_at" to each update in maxAssignmentUpdateBody and run go test -run '^TestMaxAssignmentUpdateAllocationBudget$' -v ./cmd/bill-service. Changing the guard's input or limit changes what a CI guard checks, so it is a deliberate decision, not a side effect.
 - **Bump:** patch
 - **Status:** open
