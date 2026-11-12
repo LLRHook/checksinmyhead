@@ -1432,7 +1432,8 @@
         "(?:^| )Join\\ invite\\ controls\\ remain\\ reachable\\ iPhone\\ 17e\\ iOS\\ body\\ 47$",
         "(?:^| )Landing\\ controls\\ remain\\ reachable\\ iPhone\\ 17e\\ iOS\\ body\\ 53$",
         "(?:^| )Join\\ toolbar\\ controls\\ remain\\ reachable\\ iPhone\\ 17e\\ iOS\\ body\\ 53$",
-        "(?:^| )Join\\ invite\\ controls\\ remain\\ reachable\\ iPhone\\ 17e\\ iOS\\ body\\ 53$"
+        "(?:^| )Join\\ invite\\ controls\\ remain\\ reachable\\ iPhone\\ 17e\\ iOS\\ body\\ 53$",
+        "(?:^| )Landing\\ stays\\ still\\ when\\ content\\ fits\\ on\\ iOS\\ and\\ Android$"
       ]
     },
     "web": {

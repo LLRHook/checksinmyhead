@@ -906,9 +906,11 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** fixed-pending-migration
-- **Fix:** Preserve the landing column spacing with a scrollable SliverFillRemaining and wrap its action labels; constrain the shared Join a Tab title and scroll its form above the keyboard within safe insets. Cover both toolbar and invite entry with 54 widget regressions on 320x568 and 390x844 displays at every iOS scale from 1 to 53/17, including keyboard and invalid/valid submit boundaries.
+- **Fix:** Preserve the landing column spacing with a scrollable SliverFillRemaining and wrapping action labels; use ScrollPhysics so fitting content does not move on drag while overflowing content scrolls, retaining the primary controller. Constrain the shared Join a Tab title and scroll its form above the keyboard within safe insets. Cover both entry paths with real user drags and taps in 54 widget cases on 320x568 and 390x844 at all nine iOS scales from 1 to 53/17, plus one iOS/Android fitting-versus-overflow regression (55 cases total), including keyboard and invalid/valid submit boundaries.
 - **Docs:** none; existing design, architecture and API documentation remains accurate; no contract or copy changes.
 - **Cross-ref:** FEAT-1793644512
+- **Log:**
+  - 2026-11-12 Fix: Driver-approved review fixes F1/F2: fitting landing content stays stationary during a real drag; reach hidden controls with user drags rather than ensureVisible. Mutation checks reject disabled landing scrolling (11 failures), disabled join scrolling (22), removed Quick Split Flexible (14), and removed fitting-content physics (1). Default geometry matches main 48a13f7 on five landing displays and three join displays with/without keyboard.
 
 ### [BUG-1794331910] Reject NUL characters in names with 400 instead of 500
 - [ ] **Severity:** med

@@ -164,6 +164,7 @@ class _LandingScreenState extends State<LandingScreen>
           child: FadeTransition(
             opacity: _fadeInAnimation,
             child: CustomScrollView(
+              physics: const ScrollPhysics(),
               slivers: [
                 // Keep the original spacing when it fits, and scroll otherwise.
                 SliverFillRemaining(

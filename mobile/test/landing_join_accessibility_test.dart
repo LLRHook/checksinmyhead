@@ -60,7 +60,25 @@ Future<void> _show(WidgetTester tester, Finder target) async {
   expect(target, findsOneWidget);
   // Let the focused field finish its caret/keyboard scroll before the user scroll.
   await tester.pumpAndSettle();
-  await tester.ensureVisible(target);
+  if (target.hitTestable().evaluate().isEmpty) {
+    final ancestors = find.ancestor(
+      of: target,
+      matching: find.byType(Scrollable),
+    );
+    final vertical = tester
+        .widgetList<Scrollable>(ancestors)
+        .firstWhere(
+          (scrollable) => scrollable.axisDirection == AxisDirection.down,
+        );
+    final scrollable = find.byWidget(vertical);
+    final below =
+        tester.getRect(target).center.dy > tester.getRect(scrollable).center.dy;
+    await tester.dragUntilVisible(
+      target.hitTestable(),
+      scrollable,
+      Offset(0, below ? -60 : 60),
+    );
+  }
   await tester.pumpAndSettle();
   expect(target.hitTestable(), findsOneWidget);
   expect(tester.takeException(), isNull);
@@ -90,7 +108,12 @@ void main() {
       final scale = bodySize / 17;
       final suffix = '${display.name} iOS body $bodySize';
 
-      Future<_Routes> pump(WidgetTester tester, Widget home) async {
+      Future<_Routes> pump(
+        WidgetTester tester,
+        Widget home, {
+        TargetPlatform platform = TargetPlatform.iOS,
+        double? textScale,
+      }) async {
         SharedPreferences.setMockInitialValues({});
         tester.view.devicePixelRatio = 1;
         tester.view.physicalSize = display.size;
@@ -108,13 +131,13 @@ void main() {
         final routes = _Routes();
         await tester.pumpWidget(
           MaterialApp(
-            theme: AppTheme.lightTheme.copyWith(platform: TargetPlatform.iOS),
+            theme: AppTheme.lightTheme.copyWith(platform: platform),
             navigatorObservers: [routes],
             builder:
                 (context, child) => MediaQuery(
                   data: MediaQuery.of(
                     context,
-                  ).copyWith(textScaler: TextScaler.linear(scale)),
+                  ).copyWith(textScaler: TextScaler.linear(textScale ?? scale)),
                   child: child!,
                 ),
             home: home,
@@ -164,6 +187,69 @@ void main() {
           expect(tester.takeException(), isNull);
         }
       });
+
+      if (display.name == 'iPhone 17e' && bodySize == 17) {
+        testWidgets(
+          'Landing stays still when content fits on iOS and Android',
+          (tester) async {
+            for (final platform in [
+              TargetPlatform.iOS,
+              TargetPlatform.android,
+            ]) {
+              await pump(
+                tester,
+                LandingScreen(key: ValueKey(platform)),
+                platform: platform,
+              );
+              final quickSplit = find.text('Quick Split');
+              final before = tester.getRect(quickSplit);
+              final position =
+                  Scrollable.of(tester.element(quickSplit)).position;
+              expect(position.maxScrollExtent, 0);
+              expect(
+                PrimaryScrollController.of(
+                  tester.element(find.byType(CustomScrollView)),
+                ).positions,
+                contains(position),
+              );
+              final gesture = await tester.startGesture(
+                tester.getCenter(find.text('Split a bill with friends')),
+              );
+              try {
+                await gesture.moveBy(const Offset(0, 40));
+                await gesture.moveBy(const Offset(0, 160));
+                await tester.pump();
+                expect(
+                  tester.getRect(quickSplit),
+                  before,
+                  reason: platform.name,
+                );
+              } finally {
+                await gesture.up();
+                await tester.pumpAndSettle();
+              }
+              expect(tester.getRect(quickSplit), before, reason: platform.name);
+              expect(tester.takeException(), isNull);
+
+              // The adjacent boundary must still accept real user scrolling.
+              await pump(
+                tester,
+                LandingScreen(key: ValueKey('$platform-large')),
+                platform: platform,
+                textScale: 53 / 17,
+              );
+              final beforeScroll = tester.getRect(quickSplit);
+              expect(find.text('Recent Bills').hitTestable(), findsNothing);
+              await _show(tester, find.text('Recent Bills'));
+              expect(
+                tester.getRect(quickSplit).top,
+                lessThan(beforeScroll.top),
+              );
+              expect(tester.takeException(), isNull);
+            }
+          },
+        );
+      }
 
       for (final fromInvite in [false, true]) {
         testWidgets(
