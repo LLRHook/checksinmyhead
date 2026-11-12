@@ -162,8 +162,6 @@
       "backend/cmd/bill-service/TestProductionHistoricalAndZeroQuotesAreNeverRefetched",
       "backend/cmd/bill-service/TestProductionQuoteFailuresNeverPersistOrLeak",
       "backend/cmd/bill-service/TestProductionSharedProviderBudget",
-      "backend/cmd/web-service/TestA1WebProductionRouter",
-      "backend/cmd/web-service/TestA1WebProxyCanonicalization",
       "backend/internal/bill/TestBuildLazyPersonSharesDistributesTaxAndTipRemainders",
       "backend/internal/bill/TestBuildLazyPersonSharesDoesNotCreateOrLoseSplitItemPennies",
       "backend/internal/bill/TestBuildLazyPersonSharesKeepsEarlierClaimTaxStable",
