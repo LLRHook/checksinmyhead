@@ -1408,9 +1408,7 @@
         "(?:^| )loads settlements with the access token$",
         "(?:^| )loads members with the access token$",
         "(?:^| )tab\\ collections\\ propagates\\ unavailable\\ collections\\ without\\ fabricating\\ an\\ empty\\ list$",
-        "(?:^| )tab\\ collections\\ propagates\\ unavailable\\ collections\\ without\\ fabricating\\ an\\ empty\\ list$",
-        "^getBill throws on 403$",
-        "^getTab throws on 500$"
+        "(?:^| )tab\\ collections\\ propagates\\ unavailable\\ collections\\ without\\ fabricating\\ an\\ empty\\ list$"
       ],
       "web-bill-viewer/src/lib/__tests__/lazy-bill.test.ts": [
         "(?:^| )keeps\\ the\\ item\\ version\\ from\\ the\\ first\\ edit\\ through\\ later\\ refreshes$",
