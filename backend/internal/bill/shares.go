@@ -31,9 +31,6 @@ func addCents(a, b int64) (int64, error) {
 	return a + b, nil
 }
 
-func allocateRoundedCents(raw map[string]float64, lastClaimByPerson map[string]time.Time) (map[string]float64, error) {
-	return allocateRoundedCentsOrdered(raw, lastClaimByPerson, nil)
-}
 func allocateRoundedCentsOrdered(raw map[string]float64, lastClaimByPerson map[string]time.Time, order map[string]allocationTie) (map[string]float64, error) {
 	shares := make([]roundedShare, 0, len(raw))
 	var rawTotal float64

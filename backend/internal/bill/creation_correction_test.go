@@ -179,7 +179,7 @@ func TestRoundedCentsRejectsNonfiniteAndUnrepresentableValues(t *testing.T) {
 			t.Errorf("unsafe cent conversion accepted: %v", err)
 		}
 	}
-	if _, err := allocateRoundedCents(map[string]float64{"Alex": math.MaxFloat64}, nil); !errors.Is(err, ErrInvalidCreation) {
+	if _, err := allocateRoundedCentsOrdered(map[string]float64{"Alex": math.MaxFloat64}, nil, nil); !errors.Is(err, ErrInvalidCreation) {
 		t.Fatal("allocator did not reject unsafe cents")
 	}
 }
@@ -201,7 +201,7 @@ func TestCentRemaindersPreserveClaimAndNameOrder(t *testing.T) {
 		{"eligible_recent_after_zero", map[string]float64{"Alex": 0, "Blair": .005, "Casey": .005}, map[string]time.Time{"Casey": now}, map[string]float64{"Alex": 0, "Blair": .01, "Casey": 0}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := allocateRoundedCents(tc.raw, tc.claims)
+			got, err := allocateRoundedCentsOrdered(tc.raw, tc.claims, nil)
 			if err != nil || !reflect.DeepEqual(got, tc.want) {
 				t.Fatalf("got=%v err=%v want=%v", got, err, tc.want)
 			}
@@ -242,7 +242,7 @@ func TestRemainderDistributionIsBoundedForExtremeCounts(t *testing.T) {
 			}
 		})
 	}
-	if _, err := allocateRoundedCents(map[string]float64{"Alex": 6e16, "Blair": 6e16}, nil); !errors.Is(err, ErrInvalidCreation) {
+	if _, err := allocateRoundedCentsOrdered(map[string]float64{"Alex": 6e16, "Blair": 6e16}, nil, nil); !errors.Is(err, ErrInvalidCreation) {
 		t.Fatal("cent aggregate overflow accepted")
 	}
 	t.Run("eligible_small_reference", func(t *testing.T) {
