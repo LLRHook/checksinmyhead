@@ -305,7 +305,6 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Docs:** docs/privacy.md; docs/app-privacy-label.md; web-bill-viewer/README.md; web-bill-viewer/src/app/(public)/privacy-policy/page.tsx; docs/reviews/2026-11-05-public-web.md
 - **Log:**
   - 2026-11-09 Sighting: Public recheck: store label Data Not Collected; store policy link getbillington.vercel.app/privacy-policy (200); billingtonapp.vercel.app / and /privacy-policy 404; API /health commit 81a564f; 1.4.0 Settings text says data never leaves the device while Done uploads every bill.
-  - 2026-11-09 Verification: Headed browser check on the local stack: /privacy-policy loads and states the 1.4.0 upload on save, link visibility of shared details, the receipt photo path to the provider, the 'Not yet released' marking, no sale and the contact address; /privacy returns 404. Screenshots: .vv/ui-inspection-20261109/web/C2-*.png.
 
 ### [BUG-1793644511] Gate minimum app versions on public store availability
 - [ ] **Severity:** high
@@ -321,8 +320,6 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Read current policy endpoint/source and public listing. TestFlight success does not prove public distribution; private availability remains unverified.
 - **Bump:** patch
 - **Status:** open
-- **Log:**
-  - 2026-11-09 Verification: Runtime check on the local stack: with MINIMUM_SUPPORTED_APP_VERSION=2.0.3 the API served 0.0.0 and logged the fixed warning; with 1.4.0 it served 1.4.0; unset served 0.0.0. Client 2.0.11 on a simulator against a policy stub: minimum 99.0.0 and 2.0.12 show 'Update Billington' with an App Store button; a 503 policy, an unreachable policy and minimum 2.0.11 let the app open. Evidence: .vv/ui-inspection-20261109/gate/.
 
 ### [BUG-1793644512] Reconcile stale operational and product documentation
 - [ ] **Severity:** med
@@ -707,8 +704,6 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** open
 - **Docs:** docs/reviews/2026-11-06-combined-flutter-acceptance.md; frozen layout handoff
 - **Cross-ref:** BUG-1793927492 (separate horizontal body issue, not this sheet)
-- **Log:**
-  - 2026-11-09 Verification: Native check on an owned iPhone SE (3rd generation) simulator, 375x667, iOS 27.2: the Finalize confirmation shows no overflow at default text and at accessibility-extra-large; settlement rows scroll, amounts are complete, Cancel and Finalize stay visible; Cancel leaves the tab active and one Finalize finalizes it, persisting across relaunch. Screenshots: .vv/ui-inspection-20261109/layout/b1-finalize-*.png.
 
 ### [BUG-1793958334] Retain migration producer evidence when activity observation fails
 - [x] **Severity:** med

@@ -1462,9 +1462,7 @@
       "web-bill-viewer/src/lib/__tests__/public-claims.test.ts": [
         "(?:^| )sends\\ every\\ download\\ action\\ straight\\ to\\ the\\ App\\ Store\\ listing$",
         "(?:^| )shows\\ a\\ completed\\ example\\ split\\ that\\ adds\\ up\\ to\\ the\\ receipt$",
-        "(?:^| )says\\ what\\ each\\ payment\\ service\\ does\\ and\\ claims\\ no\\ processing\\ or\\ confirmation$",
-        "(?:^| )links\\ out\\ only\\ for\\ Venmo\\ and\\ shows\\ the\\ other\\ services\\ as\\ details$",
-        "(?:^| )keeps\\ public\\ navigation\\ keyboard\\-reachable\\ with\\ known\\ outbound\\ destinations$"
+        "(?:^| )says\\ what\\ each\\ payment\\ service\\ does\\ and\\ claims\\ no\\ processing\\ or\\ confirmation$"
       ]
     },
     "postgres": {
