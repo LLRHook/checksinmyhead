@@ -852,7 +852,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** open
 
 ### [BUG-1794331909] Keep the landing and Join a Tab screens usable at accessibility text sizes
-- [ ] **Severity:** high
+- [x] **Severity:** high
 - **Area:** mobile, a11y
 - **File(s):** mobile/lib/screens/landing_screen.dart; mobile/lib/screens/tabs/tabs_screen.dart
 - **Observation:** At the accessibility-extra-extra-extra-large content size (iPhone 17e, iOS 27.2) the landing screen overflows: RenderFlex overflow stripes, the bottom ~202 px is cut off and Tabs/Recent Bills are unreachable. The Join a Tab title also overflows (WCAG 1.4.4).
@@ -861,7 +861,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/ios/17e-01-landing-ax-xxxl.png, 17e-03-invite-landed.png. Steps: xcrun simctl ui <udid> content_size accessibility-extra-extra-extra-large, then launch the debug app.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** fixed-pending-migration
+- **Fix:** Preserve the landing column spacing with a scrollable SliverFillRemaining and wrap its action labels; constrain the shared Join a Tab title and scroll its form above the keyboard within safe insets. Cover both toolbar and invite entry with 54 widget regressions on 320x568 and 390x844 displays at every iOS scale from 1 to 53/17, including keyboard and invalid/valid submit boundaries.
+- **Docs:** none; existing design, architecture and API documentation remains accurate; no contract or copy changes.
 - **Cross-ref:** FEAT-1793644512
 
 ### [BUG-1794331910] Reject NUL characters in names with 400 instead of 500

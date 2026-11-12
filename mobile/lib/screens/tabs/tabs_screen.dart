@@ -102,6 +102,7 @@ class _TabsScreenState extends State<TabsScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      useSafeArea: true,
       builder: (context) => _JoinTabSheet(prefillUrl: prefillUrl),
     );
 
@@ -807,118 +808,122 @@ class _JoinTabSheetState extends State<_JoinTabSheet> {
             brightness == Brightness.dark ? colorScheme.surface : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: ExcludeSemantics(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: colorScheme.onSurface.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(2),
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: ExcludeSemantics(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: colorScheme.onSurface.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: colorScheme.primary.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.group_add,
+                        color: colorScheme.primary,
+                        size: 24,
+                      ),
                     ),
-                    child: Icon(
-                      Icons.group_add,
-                      color: colorScheme.primary,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Text(
-                    'Join a Tab',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.onSurface,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: _urlController,
-                autofocus: true,
-                style: TextStyle(fontSize: 16, color: colorScheme.onSurface),
-                decoration: InputDecoration(
-                  hintText: 'https://billingtonapp.vercel.app/t/...',
-                  labelText: 'Tab Link',
-                  prefixIcon: Icon(Icons.link, color: colorScheme.primary),
-                  filled: true,
-                  fillColor: fillColor,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(
-                      color: colorScheme.primary,
-                      width: 2,
-                    ),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 18,
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null ||
-                      !value.contains('billingtonapp.vercel.app/t/')) {
-                    return 'Please enter a valid Billington link';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
-              FilledButton(
-                onPressed: _isLoading ? null : _submit,
-                style: FilledButton.styleFrom(
-                  backgroundColor: colorScheme.primary,
-                  foregroundColor:
-                      brightness == Brightness.dark
-                          ? Colors.black.withValues(alpha: 0.9)
-                          : Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                child:
-                    _isLoading
-                        ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                        : const Text(
-                          'Join Tab',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
+                    const SizedBox(width: 16),
+                    Flexible(
+                      child: Text(
+                        'Join a Tab',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
+                          letterSpacing: -0.5,
                         ),
-              ),
-            ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                TextFormField(
+                  controller: _urlController,
+                  autofocus: true,
+                  style: TextStyle(fontSize: 16, color: colorScheme.onSurface),
+                  decoration: InputDecoration(
+                    hintText: 'https://billingtonapp.vercel.app/t/...',
+                    labelText: 'Tab Link',
+                    prefixIcon: Icon(Icons.link, color: colorScheme.primary),
+                    filled: true,
+                    fillColor: fillColor,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: colorScheme.primary,
+                        width: 2,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 18,
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null ||
+                        !value.contains('billingtonapp.vercel.app/t/')) {
+                      return 'Please enter a valid Billington link';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: _isLoading ? null : _submit,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colorScheme.primary,
+                    foregroundColor:
+                        brightness == Brightness.dark
+                            ? Colors.black.withValues(alpha: 0.9)
+                            : Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child:
+                      _isLoading
+                          ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                          : const Text(
+                            'Join Tab',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

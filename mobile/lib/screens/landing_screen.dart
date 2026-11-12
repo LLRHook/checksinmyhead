@@ -163,145 +163,121 @@ class _LandingScreenState extends State<LandingScreen>
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: FadeTransition(
             opacity: _fadeInAnimation,
-            child: Column(
-              children: [
-                // Logo — prominent brand moment at top
-                SizedBox(height: size.height * 0.04),
-                Semantics(
-                  label: 'Billington app logo',
-                  image: true,
-                  child: Image.asset(
-                    'assets/images/billington.png',
-                    width: 120,
-                    height: 120,
-                  ),
-                ),
-
-                const Spacer(),
-
-                // Hero: Quick Split button — dramatic primary action
-                ElevatedButton(
-                  onPressed: _showQuickSplitSheet,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white.withValues(alpha: 0.2),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: const Column(
-                    mainAxisSize: MainAxisSize.min,
+            child: CustomScrollView(
+              slivers: [
+                // Keep the original spacing when it fits, and scroll otherwise.
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Column(
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.calculate, size: 28),
-                          SizedBox(width: 10),
-                          Text(
-                            'Quick Split',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 6),
-                      Text(
-                        'Split a bill with friends',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.white70,
+                      // Logo — prominent brand moment at top
+                      SizedBox(height: size.height * 0.04),
+                      Semantics(
+                        label: 'Billington app logo',
+                        image: true,
+                        child: Image.asset(
+                          'assets/images/billington.png',
+                          width: 120,
+                          height: 120,
                         ),
                       ),
-                    ],
-                  ),
-                ),
 
-                const SizedBox(height: 20),
+                      const Spacer(),
 
-                // Lazy mode shortcut
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: _showLazySplitFlow,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.22),
-                      ),
-                      backgroundColor: Colors.white.withValues(alpha: 0.08),
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                    ),
-                    child: const Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                      // Hero: Quick Split button — dramatic primary action
+                      ElevatedButton(
+                        onPressed: _showQuickSplitSheet,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white.withValues(alpha: 0.2),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 24),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.north_east, size: 24),
-                            SizedBox(width: 10),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.calculate, size: 28),
+                                SizedBox(width: 10),
+                                Flexible(
+                                  child: Text(
+                                    'Quick Split',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 6),
                             Text(
-                              "I'm Lazy",
+                              'Split a bill with friends',
+                              textAlign: TextAlign.center,
                               style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w400,
+                                color: Colors.white70,
                               ),
                             ),
                           ],
                         ),
-                        SizedBox(height: 6),
-                        Text(
-                          'Parse once. Let friends claim later.',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.white70,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                      ),
 
-                const SizedBox(height: 16),
+                      const SizedBox(height: 20),
 
-                // Secondary row: Tabs and Recent Bills in glass container
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
-                    children: [
-                      // Tabs button
-                      Expanded(
-                        child: TextButton(
-                          onPressed: _navigateToTabs,
-                          style: TextButton.styleFrom(
+                      // Lazy mode shortcut
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          onPressed: _showLazySplitFlow,
+                          style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            side: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.22),
+                            ),
+                            backgroundColor: Colors.white.withValues(
+                              alpha: 0.08,
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 18),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(18),
                             ),
                           ),
                           child: const Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.folder_special_outlined, size: 28),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.north_east, size: 24),
+                                  SizedBox(width: 10),
+                                  Flexible(
+                                    child: Text(
+                                      "I'm Lazy",
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                               SizedBox(height: 6),
                               Text(
-                                'Tabs',
+                                'Parse once. Let friends claim later.',
+                                textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w400,
+                                  color: Colors.white70,
                                 ),
                               ),
                             ],
@@ -309,38 +285,87 @@ class _LandingScreenState extends State<LandingScreen>
                         ),
                       ),
 
-                      // Recent Bills button
-                      Expanded(
-                        child: TextButton(
-                          onPressed: _navigateToRecentBills,
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.history, size: 28),
-                              SizedBox(height: 6),
-                              Text(
-                                'Recent Bills',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
+                      const SizedBox(height: 16),
+
+                      // Secondary row: Tabs and Recent Bills in glass container
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
+                          children: [
+                            // Tabs button
+                            Expanded(
+                              child: TextButton(
+                                onPressed: _navigateToTabs,
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: const Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.folder_special_outlined,
+                                      size: 28,
+                                    ),
+                                    SizedBox(height: 6),
+                                    Text(
+                                      'Tabs',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+
+                            // Recent Bills button
+                            Expanded(
+                              child: TextButton(
+                                onPressed: _navigateToRecentBills,
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: const Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.history, size: 28),
+                                    SizedBox(height: 6),
+                                    Text(
+                                      'Recent Bills',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+
+                      SizedBox(height: size.height * 0.08),
                     ],
                   ),
                 ),
-
-                SizedBox(height: size.height * 0.08),
               ],
             ),
           ),
