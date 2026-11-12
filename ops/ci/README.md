@@ -346,7 +346,8 @@ runtime, resource and whole-release RED gates remain open. Integration evidence:
 ## Changelog workflow owner
 
 The separate [Changelog bot](../changelog/README.md) has exactly two pinned entry
-workflows, a shared noncancelling group, trusted-main-only checkout and API-only PR
+workflows, a fork-isolated noncancelling queue, a main-only `changelog` environment without
+deployment records, trusted-main-only checkout and API-only PR
 reads. Its note-check/comment job tokens have exactly contents read, pull-requests
 write and checks write. They cannot publish or use the delivery gate as a merge
 waiver. The automation row also requires `changelog.json`; all existing validation

@@ -24,7 +24,7 @@ def pull():
             'user': {'login': 'LLRHook'}, 'head': {'sha': HEAD, 'repo': {'full_name': bot.REPO}},
             'base': {'sha': BASE, 'repo': {'full_name': bot.REPO}, 'ref': 'main'},
             'draft': False, 'state': 'open', 'merged': False, 'mergeable': True, 'mergeable_state': 'clean',
-            'changed_files': 1, 'commits': 1, 'merge_commit_sha': 'd' * 40}
+            'created_at': bot.stamp(NOW), 'updated_at': bot.stamp(NOW), 'closed_at': None, 'changed_files': 1, 'commits': 1, 'merge_commit_sha': 'd' * 40}
 
 
 class FakeGitHub:
@@ -33,6 +33,7 @@ class FakeGitHub:
         self.paths = ['app.py']
         self.fingerprint = 'f' * 64
         self.transitions = [{'event': 'ready_for_review', 'id': 1}]
+        self.waiting_check = bot.REQUIRED_CHECK
         self.checks, self.mirrors, self.merges = [], [], []
         self.is_green, self.identity_ok = True, True
         self.before_fresh = None
@@ -56,8 +57,14 @@ class FakeGitHub:
     def check(self, pr, error):
         self.checks.append(error)
 
-    def previous_notice(self, number):
-        return bool(self.mirrors)
+    def prepare_check(self, pr):
+        pass
+
+    def hint(self, number):
+        if not self.mirrors:
+            return {}
+        previous = self.mirrors[-1]
+        return dict(previous[1], message=previous[2] if len(previous) > 2 else None, exists=True)
 
     def mirror(self, *args):
         self.mirrors.append(copy.deepcopy(args))
@@ -67,6 +74,9 @@ class FakeGitHub:
 
     def identity(self, pr):
         return self.identity_ok
+
+    def audit(self, pr):
+        pass
 
     def merge(self, pr):
         self.merges.append(copy.deepcopy(pr))
@@ -83,8 +93,11 @@ class FakeDiscord:
         self.rate_limit = False
         self.now = NOW
 
-    def find(self, number):
+    def find(self, number, hint=None):
         return copy.deepcopy(self.message), copy.deepcopy(self.state)
+
+    def pending_clear(self):
+        return True
 
     def holders(self, message):
         self.holder_reads += 1
@@ -102,6 +115,10 @@ class FakeDiscord:
         self.message = {'id': '500', 'timestamp': (self.message or {}).get('timestamp', bot.stamp(self.now)), 'content': text}
         self.state = copy.deepcopy(state)
         return copy.deepcopy(self.message)
+
+    def problem(self, number, text):
+        if self.message:
+            self.message['content'] = text
 
     def seed(self, message):
         self.seeds.append(message)
@@ -129,7 +146,7 @@ class ChangelogLifecycleTests(unittest.TestCase):
         self.gh.fingerprint = 'e' * 64
         self.dc.users = {str(i): '🛑' * 60 for i in range(10, 30)}
         status = self.run_bot()
-        self.assertIn('Restarted:', status)
+        self.assertIn('seven days start again', status)
         self.assertIn('HELD by 20', status)
         self.assertLessEqual(len(self.dc.message['content'].encode('utf-16-le')) // 2, 2000)
         self.assertFalse(self.gh.merges)
@@ -148,12 +165,13 @@ class ChangelogLifecycleTests(unittest.TestCase):
         self.assertIn('Our friends', self.dc.message['content'])
         self.gh.fingerprint = 'e' * 64
         self.gh.data['head']['sha'] = 'c' * 40
-        self.assertIn('Restarted', self.run_bot())
+        self.assertIn('seven days start again', self.run_bot())
         restart = self.dc.state['start']
         self.dc.users = {'42': 'Alex', '43': 'Sam'}
         self.now += bot.WEEK
         self.assertIn('HELD by 2', self.run_bot())
-        self.assertIn('42', self.dc.message['content'])
+        self.assertIn('Alex', self.dc.message['content'])
+        self.assertNotIn('[42]', self.dc.message['content'])
         self.assertEqual(self.gh.merges, [])
         self.dc.users.clear()
         self.assertIn('Merged', self.run_bot())
@@ -183,11 +201,11 @@ class ChangelogLifecycleTests(unittest.TestCase):
     def test_back_to_draft_cancels_and_ready_starts_full_week(self):
         self.posted()
         self.gh.data['draft'] = True
-        self.assertIn('Clock cancelled', self.run_bot())
+        self.assertIn('wait is cancelled', self.run_bot())
         self.assertFalse(self.gh.merges)
         self.gh.data['draft'] = False
         self.gh.transitions.append({'event': 'ready_for_review', 'id': 2})
-        self.assertIn('Restarted', self.run_bot())
+        self.assertIn('seven days start again', self.run_bot())
         self.assertFalse(self.gh.merges)
         self.now += bot.WEEK
         self.run_bot()
@@ -196,7 +214,7 @@ class ChangelogLifecycleTests(unittest.TestCase):
     def test_missed_draft_and_ready_events_reset_from_timeline(self):
         self.posted()
         self.gh.transitions += [{'event': 'converted_to_draft', 'id': 2}, {'event': 'ready_for_review', 'id': 3}]
-        self.assertIn('Restarted', self.run_bot())
+        self.assertIn('seven days start again', self.run_bot())
         self.assertFalse(self.gh.merges)
 
     def test_closed_without_merging_updates_same_post(self):
@@ -241,26 +259,27 @@ class ChangelogLifecycleTests(unittest.TestCase):
     def test_red_checks_and_merge_conflict_retry_after_deadline(self):
         self.posted()
         self.gh.is_green = False
-        self.assertIn('green checks', self.run_bot())
+        self.assertIn('Waiting for this check', self.run_bot())
         self.gh.is_green = True
         self.gh.data['mergeable_state'] = 'dirty'
-        self.assertIn('clean merge', self.run_bot())
+        self.assertIn('combined safely', self.run_bot())
         self.gh.data['mergeable_state'] = 'clean'
         self.gh.data['mergeable'] = None
-        self.assertIn('clean merge', self.run_bot())
+        self.assertIn('combined safely', self.run_bot())
         self.gh.data['mergeable'] = True
         self.run_bot()
         self.assertEqual(len(self.gh.merges), 1)
 
-    def test_unavailable_or_truncated_comparison_restarts_every_run(self):
-        self.posted()
-        self.gh.fingerprint = None
-        self.assertIn('could not prove', self.run_bot())
-        first = self.dc.state['start']
-        self.now += timedelta(days=8)
+    def test_unavailable_compare_leaves_clock_and_all_outputs_untouched(self):
         self.run_bot()
-        self.assertNotEqual(self.dc.state['start'], first)
-        self.assertFalse(self.gh.merges)
+        before = copy.deepcopy((self.dc.state, self.dc.message, self.gh.checks, self.gh.mirrors))
+        self.now += timedelta(days=6)
+        with patch.object(self.gh, 'change', side_effect=bot.Refused('API HTTP 502')):
+            with self.assertRaises(bot.Refused): self.run_bot()
+        self.assertEqual((self.dc.state, self.dc.message, self.gh.checks, self.gh.mirrors), before)
+        self.now += timedelta(days=1)
+        self.run_bot()
+        self.assertEqual(len(self.gh.merges), 1)
 
     def test_duplicate_event_and_recovery_after_comment_failure_do_not_repost(self):
         with patch.object(self.gh, 'mirror', side_effect=bot.Refused('synthetic crash')):
@@ -284,7 +303,7 @@ class ChangelogLifecycleTests(unittest.TestCase):
     def test_deleted_discord_post_cannot_discard_holds_or_repost(self):
         self.posted()
         self.dc.message = self.dc.state = None
-        with self.assertRaisesRegex(bot.Refused, 'notice missing'): self.run_bot()
+        with self.assertRaisesRegex(bot.Refused, 'notice was deleted'): self.run_bot()
         self.assertEqual(self.dc.created, 1)
         self.assertFalse(self.gh.merges)
 
@@ -300,10 +319,10 @@ class ChangelogLifecycleTests(unittest.TestCase):
         self.posted()
         self.assertIn('paused', self.run_bot(mode='post'))
         self.gh.identity_ok = False
-        self.assertIn('identity is not proven', self.run_bot())
+        self.assertIn('configure the merge account', self.run_bot())
         self.assertFalse(self.gh.merges)
         with patch.object(self.gh, 'identity', side_effect=bot.Refused('expired credential')):
-            self.assertIn('identity is not proven', self.run_bot())
+            with self.assertRaises(bot.Refused): self.run_bot()
         self.assertFalse(self.gh.merges)
 
     def test_off_switch_rejects_before_any_api(self):
@@ -324,14 +343,14 @@ class ChangelogLifecycleTests(unittest.TestCase):
             with self.subTest(field=field):
                 self.gh.data, self.gh.transitions = pull(), [{'event': 'ready_for_review', 'id': 1}]
                 self.gh.before_fresh = change
-                self.assertIn('changed during', self.run_bot())
+                self.assertIn('updated during', self.run_bot())
                 self.assertFalse(self.gh.merges)
 
     def test_stop_reaction_arriving_at_final_read_holds(self):
         self.posted()
         self.dc.holder_reads = 0
         self.dc.before_final = lambda dc: dc.users.update({'42': 'Alex'})
-        self.assertIn('stop reaction arrived', self.run_bot())
+        self.assertIn('stop reaction just arrived', self.run_bot())
         self.assertFalse(self.gh.merges)
 
     def test_dry_run_lifecycle_does_not_write_or_merge(self):
@@ -388,18 +407,21 @@ class ChangelogAdapterTests(unittest.TestCase):
         result['commits'][0]['sha'] = 'e' * 40
         self.assertNotEqual(gh.change(pull())[0], original)
 
-    def test_comparison_truncation_binary_count_and_unavailable_are_unknown(self):
-        for kind in ('files', 'commits', 'patch', 'binary', 'http'):
+    def test_comparison_truncation_falls_back_and_failed_read_propagates(self):
+        for kind in ('commits', 'patch', 'binary', 'http'):
             result = self.compare()
-            if kind == 'files': result['files'] *= 300
-            elif kind == 'commits': result['total_commits'] = 101
+            if kind == 'commits': result['total_commits'] = 1001
             elif kind == 'patch': result['files'][0]['additions'] = 2
             elif kind == 'binary': result['files'][0].pop('patch')
             def handle(*args):
                 if kind == 'http': raise bot.Refused('API unavailable')
                 return result
             with self.subTest(kind=kind):
-                self.assertIsNone(bot.GitHub(FakeAPI(handle)).change(pull())[0])
+                gh = bot.GitHub(FakeAPI(handle))
+                if kind == 'http':
+                    with self.assertRaises(bot.Refused): gh.change(pull())
+                else:
+                    self.assertEqual(gh.change(pull())[0], 'head:' + HEAD)
 
     def test_checks_exact_head_mandatory_context_and_each_terminal(self):
         head = pull()
@@ -429,18 +451,18 @@ class ChangelogAdapterTests(unittest.TestCase):
         gh.check(pull(), 'Fill in Why')
         self.assertEqual(api.calls[-1][2]['conclusion'], 'failure')
         existing.append({'name': bot.CHECK, 'app': {'slug': 'github-actions'}, 'id': 12})
+        gh._runs.clear()
         gh.check(pull(), None)
         self.assertEqual(api.calls[-1][0], 'PATCH')
         self.assertEqual(api.calls[-1][2]['conclusion'], 'success')
 
-    def test_identity_proof_and_graphql_squash_exact_head_author_subject(self):
-        proof = dict(pull(), merged=True, merged_by={'login': 'LLRHook'})
-        commit = {'parents': [{'sha': BASE}], 'author': {'name': bot.AUTHOR[0], 'email': bot.AUTHOR[1]}}
-        api = FakeAPI(lambda method, path, body: commit if '/git/commits/' in path else
-                      [{'commit': {'author': dict(commit['author'])}}] if path.endswith('/commits?per_page=100&page=1') else proof)
-        merge = FakeAPI(lambda method, path, body: {'login': 'LLRHook', 'name': bot.AUTHOR[0]} if path == '/user' else
-                        {'data': {'mergePullRequest': {'pullRequest': {'merged': True, 'mergeCommit': {'oid': 'd' * 40, 'author': commit['author']}}}}})
-        gh = bot.GitHub(api, merge, '12')
+    def test_account_identity_and_graphql_squash_exact_head_author_subject(self):
+        author = {'name': bot.AUTHOR[0], 'email': bot.AUTHOR[1]}
+        api = FakeAPI(lambda *args: {'author': dict(author)})
+        viewer = {'login': 'LLRHook', 'name': bot.AUTHOR[0]}
+        merge = FakeAPI(lambda method, path, body: dict(viewer) if path == '/user' else
+                        {'data': {'mergePullRequest': {'pullRequest': {'merged': True, 'mergeCommit': {'oid': 'd' * 40, 'author': dict(author)}}}}})
+        gh = bot.GitHub(api, merge)
         self.assertTrue(gh.identity(pull()))
         self.assertEqual(gh.merge(pull()), 'd' * 40)
         inputs = merge.calls[-1][2]['variables']['input']
@@ -448,15 +470,16 @@ class ChangelogAdapterTests(unittest.TestCase):
         self.assertEqual(inputs['authorEmail'], bot.AUTHOR[1])
         self.assertEqual(inputs['mergeMethod'], 'SQUASH')
         self.assertEqual(inputs['commitHeadline'], 'Show proposed changes (#25)')
-        commit['author']['name'] = 'Wrong Person'
-        self.assertFalse(gh.identity(pull()))
-        with self.assertRaisesRegex(bot.Refused, 'IDENTITY INCIDENT'): gh.merge(pull())
+        self.assertEqual(inputs['commitBody'], '')
+        viewer['name'] = 'Unexpected profile'; self.assertFalse(gh.identity(pull()))
+        viewer.update(name=bot.AUTHOR[0], login='another-account'); self.assertFalse(gh.identity(pull()))
+        viewer['login'] = 'LLRHook'
         self.assertFalse(bot.GitHub(api).identity(pull()))
         other = pull(); other['user']['login'] = 'collaborator'
         self.assertFalse(gh.identity(other))
-        commit['author']['name'] = bot.AUTHOR[0]
-        commit['author']['email'] = 'wrong@example.invalid'
-        self.assertFalse(gh.identity(pull()))
+        author['name'] = 'Wrong Person'
+        with self.assertRaisesRegex(bot.IdentityIncident, 'IDENTITY INCIDENT'): gh.merge(pull())
+        self.assertTrue(all('/commits?' not in call[1] and '/pulls/' not in call[1] for call in api.calls))
 
     def test_merge_api_errors_are_safe_and_not_retried(self):
         api = FakeAPI(lambda *args: {'errors': [{'message': 'tainted-secret-response'}]})
@@ -471,7 +494,8 @@ class ChangelogAdapterTests(unittest.TestCase):
             if 'type=1' in path: return [{'id': '999', 'username': '@everyone'}]
             return [{'id': str(i), 'username': 'Alex'} for i in range(1, 101)]
         api = FakeAPI(handler)
-        users = bot.Discord(api, '123456').holders('500')
+        dc = bot.Discord(api, '123456'); dc.bot = '1'
+        users = dc.holders('500')
         self.assertEqual(len(users), 100)
         self.assertNotIn('1', users)
         self.assertEqual(users['999'], '＠everyone')
@@ -498,15 +522,15 @@ class ChangelogAdapterTests(unittest.TestCase):
     def test_discord_history_recovers_post_and_rejects_duplicate_or_foreign(self):
         state = {'version': 1, 'number': 25, 'start': bot.stamp(NOW - timedelta(seconds=1))}
         message = {'id': '500', 'timestamp': bot.stamp(NOW), 'author': {'id': '1'},
-                   'embeds': [{'title': 'Changelog ' + bot.REPO + '#25', 'footer': {'text': bot.compact(state)}}]}
+                   'embeds': [bot.state_embed(25, state)]}
         history = [message]
         api = FakeAPI(lambda method, path, body: {'id': '1'} if path == '/users/@me' else history)
         dc = bot.Discord(api, '123456')
         recovered, saved = dc.find(25)
         self.assertEqual(recovered['id'], '500')
         self.assertEqual(saved['start'], bot.stamp(NOW))
-        history.append(copy.deepcopy(message))
-        with self.assertRaisesRegex(bot.Refused, 'Duplicate'): dc.find(25)
+        history.append(dict(copy.deepcopy(message), id='501'))
+        with self.assertRaisesRegex(bot.Refused, 'More than one'): dc.find(25)
         history[-1]['author']['id'] = '2'
         self.assertEqual(dc.find(25)[0]['id'], '500')
 
@@ -547,9 +571,12 @@ class ChangelogAdapterTests(unittest.TestCase):
             methods.append(method)
             if path == '/users/@me': return {'id': '1'}
             if '/channels/' in path: return []
+            if '/pulls?state=open' in path: return [pull()]
+            if '/pulls?state=closed' in path: return []
             if path.endswith('/pulls/25'): return pull()
             if '/files?' in path: return [{'filename': 'app.py'}]
             if '/compare/' in path: return self.compare()
+            if '/check-runs?' in path: return {'check_runs': []}
             return []
         with patch.dict(os.environ, env, clear=True), patch.object(sys, 'argv', ['changelog.py', '--dry-run']), patch('builtins.open', mock_open(read_data=json.dumps(event))), patch.object(bot.API, 'request', request), patch('sys.stdout', io.StringIO()) as output:
             bot.main()
@@ -575,6 +602,405 @@ class ChangelogAdapterTests(unittest.TestCase):
             os.environ['GITHUB_REPOSITORY'] = 'stranger/repo'
             with self.assertRaisesRegex(bot.Refused, 'Wrong repository'): bot.main()
 
+
+class ServiceGitHub:
+    """Stateful REST/GraphQL fake: paths, pagination and server-added fields."""
+    def __init__(self, closed=0, opened=1):
+        self.now = NOW
+        self.prs, self.comments, self.checks, self.calls = {}, {}, {}, []
+        self.compare_failures = 0
+        self.author = dict(name=bot.AUTHOR[0], email=bot.AUTHOR[1])
+        self.compare_files = [{'filename': 'app.py', 'sha': 'c' * 40, 'status': 'modified',
+                               'additions': 1, 'deletions': 0, 'patch': '@@ -1 +1,2 @@\n x\n+y'}]
+        self.compare_commits = [{'sha': HEAD, 'parents': [{}]}]
+        for n in range(1, closed + opened + 1):
+            pr = pull()
+            pr.update(number=n, state='closed' if n <= closed else 'open', merged=n <= closed,
+                      closed_at=bot.stamp(NOW - timedelta(days=30)) if n <= closed else None,
+                      updated_at=bot.stamp(NOW - timedelta(days=30)) if n <= closed else bot.stamp(NOW))
+            pr['head']['sha'] = f'{n:040x}'
+            self.prs[n] = pr
+            self.comments[n] = []
+            self.checks[pr['head']['sha']] = [{'id': n * 10, 'name': bot.REQUIRED_CHECK, 'app': {'slug': 'github-actions'},
+                                            'head_sha': pr['head']['sha'], 'status': 'completed', 'conclusion': 'success'}]
+        self.timeline = [{'event': 'ready_for_review', 'id': 9}]
+
+    def __call__(self, method, path, body):
+        from urllib.parse import urlsplit, parse_qs
+        self.calls.append((method, path, copy.deepcopy(body)))
+        result = self.handle(method, path, body, urlsplit(path), parse_qs(urlsplit(path).query))
+        return copy.deepcopy(result)
+
+    def handle(self, method, path, body, url, query):
+        if path == '/user': return {'login': 'LLRHook', 'name': bot.AUTHOR[0]}
+        if path == '/graphql':
+            number = int(body['variables']['input']['pullRequestId'].split('-')[-1])
+            self.prs[number].update(state='closed', merged=True, closed_at=bot.stamp(self.now), updated_at=bot.stamp(self.now))
+            return {'data': {'mergePullRequest': {'pullRequest': {'merged': True,
+                    'mergeCommit': {'oid': 'd' * 40, 'author': dict(self.author)}}}}}
+        rest = url.path[len('/repos/' + bot.REPO):]
+        parts = rest.strip('/').split('/')
+        page = int(query.get('page', ['1'])[0])
+        if rest == '/pulls':
+            values = [dict(p, node_id='synthetic-' + str(p['number'])) for p in self.prs.values() if p['state'] == query['state'][0]]
+            values.sort(key=lambda p: p['updated_at'], reverse=True)
+            return values[(page - 1) * 100:page * 100]
+        if parts[0] == 'pulls':
+            pr = dict(self.prs[int(parts[1])], node_id='synthetic-' + parts[1])
+            if len(parts) == 2: return pr
+            if parts[2] == 'files': return self.compare_files[(page - 1) * 100:page * 100]
+        if parts[0] == 'issues' and parts[1] != 'comments':
+            number = int(parts[1])
+            if parts[2] == 'timeline': return self.timeline
+            if parts[2] == 'comments':
+                if method == 'GET': return self.comments[number]
+                comment = {'id': number, 'body': body['body'], 'user': {'login': 'github-actions[bot]'}}
+                self.comments[number] = [comment]
+                return comment
+        if parts[:2] == ['issues', 'comments']:
+            self.comments[int(parts[2])][0]['body'] = body['body']; return {}
+        if parts[0] == 'compare':
+            if self.compare_failures:
+                self.compare_failures -= 1
+                raise bot.HTTPFailure(502)
+            result = {'total_commits': len(self.compare_commits), 'commits': self.compare_commits[(page - 1) * 100:page * 100]}
+            if page == 1: result['files'] = self.compare_files[:300]
+            return result
+        if parts[0] == 'commits':
+            if parts[2] == 'check-runs': return {'check_runs': self.checks[parts[1]]}
+            if parts[2] == 'statuses': return []
+        if parts[0] == 'check-runs':
+            if method == 'POST':
+                runs = self.checks[body['head_sha']]
+                run = dict(body, id=10000 + len(runs), app={'slug': 'github-actions'})
+                run['output'] = dict(run['output'], annotations_count=0)
+                runs.append(run); return run
+            for runs in self.checks.values():
+                for run in runs:
+                    if run['id'] == int(parts[1]): run.update(body); return run
+        if parts[:2] == ['git', 'commits']: return {'author': dict(self.author)}
+        raise AssertionError('Unexpected fake GitHub path: ' + method + ' ' + path)
+
+
+class ServiceDiscord:
+    def __init__(self):
+        self.messages, self.calls, self.users = [], [], {}
+        self.next, self.now = 100000, NOW
+        self.failure = None
+
+    def __call__(self, method, path, body):
+        from urllib.parse import urlsplit, parse_qs
+        self.calls.append((method, path, copy.deepcopy(body)))
+        if self.failure:
+            raise bot.HTTPFailure(self.failure)
+        if path == '/users/@me': return {'id': '1'}
+        parts = urlsplit(path).path.split('/')
+        if method == 'GET' and '/reactions/' in path:
+            return copy.deepcopy(self.users.get(parts[4], []))
+        if method == 'GET':
+            if len(parts) == 4:
+                return copy.deepcopy(sorted(self.messages, key=lambda m: -int(m['id']))[:100])
+            message = next((m for m in self.messages if m['id'] == parts[4]), None)
+            if message is None: raise bot.HTTPFailure(404)
+            return copy.deepcopy(message)
+        if method == 'POST':
+            self.next += 1
+            message = dict(id=str(self.next), author={'id': '1'}, timestamp=bot.stamp(self.now))
+            self.messages.append(message)
+        elif method == 'PATCH':
+            message = next(m for m in self.messages if m['id'] == parts[4])
+        else:
+            return {}
+        message.update(content=body['content'])
+        if 'embeds' in body:
+            message['embeds'] = [dict(copy.deepcopy(embed), type='rich') for embed in body['embeds']]
+        return copy.deepcopy(message)
+
+    def noise(self, count):
+        for _ in range(count):
+            self.next += 1
+            self.messages.append(dict(id=str(self.next), author={'id': '777'}, timestamp=bot.stamp(self.now), embeds=[]))
+
+
+class ChangelogRevisionTests(unittest.TestCase):
+    def setUp(self):
+        self.gh, self.dc = FakeGitHub(), FakeDiscord()
+        self.now = NOW
+
+    run_bot = ChangelogLifecycleTests.run_bot
+    posted = ChangelogLifecycleTests.posted
+
+    def services(self, gh_server, dc_server, now, mode='post'):
+        gh_server.now = dc_server.now = now
+        gh = bot.GitHub(FakeAPI(gh_server), FakeAPI(gh_server))
+        dc = bot.Discord(FakeAPI(dc_server), '123456')
+        with patch('sys.stdout', io.StringIO()):
+            bot.reconcile_all(gh, dc, mode, now)
+        return gh, dc
+
+    def test_event_reconciles_every_followed_PR_not_just_its_payload(self):
+        gh, dc = ServiceGitHub(opened=2), ServiceDiscord()
+        env = {'GITHUB_REPOSITORY': bot.REPO, 'GITHUB_EVENT_NAME': 'pull_request_target', 'CHANGELOG_MODE': 'post',
+               'GITHUB_TOKEN': 'synthetic-github', 'CHANGELOG_DISCORD_BOT_TOKEN': 'synthetic-discord',
+               'CHANGELOG_DISCORD_CHANNEL_ID': '123456', 'GITHUB_EVENT_PATH': 'L25-synthetic-event.json'}
+        event = {'repository': {'full_name': bot.REPO}, 'number': 1, 'pull_request': pull()}
+        def request(api, method, path, body=None):
+            return (dc if api.base.startswith('https://discord.com') else gh)(method, path, body)
+        with patch.dict(os.environ, env, clear=True), patch.object(sys, 'argv', ['changelog.py']), patch('builtins.open', mock_open(read_data=json.dumps(event))), patch.object(bot.API, 'request', request), patch('sys.stdout', io.StringIO()):
+            bot.main()
+        self.assertEqual(len(dc.messages), 2)
+
+    def test_local_rehearsal_selects_one_PR_and_is_refused_in_Actions(self):
+        env = {'GITHUB_REPOSITORY': bot.REPO, 'GITHUB_EVENT_NAME': 'schedule', 'CHANGELOG_MODE': 'merge',
+               'GITHUB_TOKEN': 'synthetic-github', 'CHANGELOG_DISCORD_BOT_TOKEN': 'synthetic-discord',
+               'CHANGELOG_DISCORD_CHANNEL_ID': '123456', 'GITHUB_EVENT_PATH': 'L25-synthetic-event.json'}
+        with patch.dict(os.environ, env, clear=True), patch.object(sys, 'argv', ['changelog.py', '--dry-run', '--rehearse', '25']), patch('builtins.open', mock_open(read_data='{}')), patch.object(bot, 'reconcile', return_value='Would merge') as reconcile, patch.object(bot, 'reconcile_all', side_effect=AssertionError('rehearsal must select one')), patch('sys.stdout', io.StringIO()):
+            bot.main()
+            self.assertEqual(reconcile.call_args.args[2:4], (25, 'merge'))
+            self.assertTrue(reconcile.call_args.args[-1])
+            os.environ['GITHUB_ACTIONS'] = 'true'
+            with self.assertRaisesRegex(bot.Refused, 'local only'): bot.main()
+            os.environ.pop('GITHUB_ACTIONS')
+            with patch.object(sys, 'argv', ['changelog.py', '--rehearse', '0']), self.assertRaises(bot.Refused): bot.main()
+
+    def test_failed_Discord_read_preserves_outputs_and_write_denial_is_visible(self):
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW)
+        before = copy.deepcopy((gh.comments, gh.checks, dc.messages))
+        dc.failure = 502
+        gh.calls.clear(); dc.calls.clear()
+        with self.assertRaises(bot.Refused): self.services(gh, dc, NOW + timedelta(days=6))
+        self.assertEqual((gh.comments, gh.checks, dc.messages), before)
+        self.assertFalse(any(c[0] != 'GET' for c in gh.calls + dc.calls))
+        self.run_bot()
+        with patch.object(self.dc, 'post', side_effect=bot.NoticeProblem('Changelog cannot write to this channel. Ask the owner to restore Send Messages and Embed Links.')):
+            with self.assertRaises(bot.NoticeProblem): self.run_bot()
+        self.assertIn('restore Send Messages', self.gh.mirrors[-1][-1])
+
+
+    def test_active_sweep_request_ceiling_300_closed_7_open_500_noise(self):
+        gh, dc = ServiceGitHub(closed=300, opened=7), ServiceDiscord()
+        # Old notices exist, but never cause an old PR to be fetched individually.
+        for n in range(1, 301):
+            state = {'version': 1, 'number': n, 'start': bot.stamp(NOW - timedelta(days=30)), 'ready': '9'}
+            dc.next += 1
+            dc.messages.append(dict(id=str(dc.next), author={'id': '1'}, timestamp=state['start'], content='Old notice', embeds=[dict(bot.state_embed(n, state), type='rich')]))
+            gh.comments[n] = [{'id': n, 'user': {'login': 'github-actions[bot]'}, 'body': bot.COMMENT + '\nDiscord message: ' + str(dc.next)}]
+        self.services(gh, dc, NOW)
+        dc.noise(500)
+        gh.calls.clear(); dc.calls.clear()
+        self.services(gh, dc, NOW + timedelta(hours=1))
+        self.assertLessEqual(len(gh.calls), 50)
+        self.assertLessEqual(len(dc.calls), 25)
+        self.assertEqual([c for c in dc.calls if c[0] != 'GET'], [])
+        self.assertEqual([c for c in gh.calls if c[0] != 'GET'], [])
+        self.assertFalse(any('/pulls/' + str(n) + '?' in c[1] or c[1].endswith('/pulls/' + str(n)) for c in gh.calls for n in range(1, 301)))
+        print('F1 steady requests: GitHub=' + str(len(gh.calls)) + ', Discord=' + str(len(dc.calls)) + ', edits=0, reactions=0')
+
+    def test_transient_compare_day6_real_adapters_merge_day7_without_writes(self):
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW)
+        before = copy.deepcopy((gh.comments, gh.checks, dc.messages))
+        gh.calls.clear(); dc.calls.clear(); gh.compare_failures = 1
+        with self.assertRaises(bot.Refused): self.services(gh, dc, NOW + timedelta(days=6))
+        self.assertEqual((gh.comments, gh.checks, dc.messages), before)
+        self.assertFalse(any(c[0] != 'GET' for c in gh.calls + dc.calls))
+        self.services(gh, dc, NOW + bot.WEEK, 'merge')
+        self.assertTrue(gh.prs[1]['merged'])
+        self.assertIn('Merged.', dc.messages[0]['content'])
+
+    def test_one_failed_PR_does_not_stop_other_PRs_and_run_fails(self):
+        gh, dc = ServiceGitHub(opened=2), ServiceDiscord()
+        gh.compare_failures = 1
+        with self.assertRaises(bot.Refused): self.services(gh, dc, NOW)
+        self.assertEqual(len(dc.messages), 1)
+        self.assertIn('change 2', dc.messages[0]['embeds'][0]['title'])
+        self.assertFalse(gh.comments[1])
+
+    def test_binary_and_rename_finish_day7_image_change_restarts_once(self):
+        for status in ('modified', 'renamed'):
+            gh, dc = ServiceGitHub(), ServiceDiscord()
+            gh.compare_files = [{'filename': 'image.png', 'previous_filename': 'old.png', 'status': status,
+                                 'sha': 'c' * 40, 'additions': 0, 'deletions': 0}]
+            self.services(gh, dc, NOW)
+            self.services(gh, dc, NOW + bot.WEEK, 'merge')
+            self.assertTrue(gh.prs[1]['merged'])
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        gh.compare_files = [{'filename': 'image.png', 'status': 'modified', 'sha': 'c' * 40}]
+        self.services(gh, dc, NOW)
+        gh.compare_files[0]['sha'] = 'e' * 40
+        self.services(gh, dc, NOW + timedelta(days=2))
+        self.services(gh, dc, NOW + timedelta(days=8), 'merge')
+        self.assertFalse(gh.prs[1]['merged'])
+        self.services(gh, dc, NOW + timedelta(days=9), 'merge')
+        self.assertTrue(gh.prs[1]['merged'])
+
+    def test_paged_files_and_commits_then_stable_exact_head_fallback(self):
+        gh = ServiceGitHub()
+        gh.compare_files *= 301
+        for i, f in enumerate(gh.compare_files): gh.compare_files[i] = dict(f, filename=str(i) + '.py')
+        gh.prs[1]['changed_files'] = 301
+        gh.compare_commits = [{'sha': f'{n:040x}', 'parents': [{}]} for n in range(101)]
+        adapter = bot.GitHub(FakeAPI(gh))
+        fingerprint = adapter.change(gh.prs[1])[0]
+        self.assertFalse(fingerprint.startswith('head:'))
+        self.assertTrue(any('page=2' in c[1] for c in gh.calls))
+        self.assertEqual(len(adapter._files[(1, gh.prs[1]['head']['sha'])]), 301)
+        gh.prs[1]['changed_files'] = 3001
+        self.assertEqual(adapter.change(gh.prs[1])[0], 'head:' + gh.prs[1]['head']['sha'])
+        # The API's 3000-file limit uses a deterministic head-based clock.
+        self.gh.fingerprint = 'head:' + HEAD
+        self.gh.data['changed_files'] = 3001
+        self.run_bot()
+        original = self.dc.state['start']
+        self.now += timedelta(days=3); self.run_bot()
+        self.assertEqual(self.dc.state['start'], original)
+        self.assertIn('large change', self.dc.message['content'])
+        self.gh.fingerprint = 'head:' + BASE
+        self.gh.data['head']['sha'] = BASE
+        self.run_bot(); restarted = self.dc.state['start']
+        self.now += timedelta(days=7); self.run_bot()
+        self.assertEqual(self.dc.state['start'], restarted)
+        self.assertEqual(len(self.gh.merges), 1)
+
+    def test_discord_429_retries_once_with_bounded_retry_after(self):
+        api = bot.API('https://discord.com/api/v10', 'synthetic-token', 'Bot')
+        error = urllib.error.HTTPError('https://discord.com/api/v10/test', 429, '', {}, io.BytesIO(b'{"retry_after":0.25}'))
+        response = unittest.mock.MagicMock()
+        response.__enter__.return_value.read.return_value = b'{}'
+        with patch.object(api.opener, 'open', side_effect=[error, response]) as request, patch.object(bot.time, 'sleep') as sleep:
+            self.assertEqual(api.request('GET', '/test'), {})
+            self.assertEqual(request.call_count, 2); sleep.assert_called_once_with(0.25)
+        errors = [urllib.error.HTTPError('https://discord.com/api/v10/test', 429, '', {}, io.BytesIO(b'{"retry_after":0}')) for _ in range(2)]
+        with patch.object(api.opener, 'open', side_effect=errors) as request, patch.object(bot.time, 'sleep'):
+            with self.assertRaises(bot.HTTPFailure): api.request('GET', '/test')
+            self.assertEqual(request.call_count, 2)
+        for delay in (6, -1, 'slow'):
+            error = urllib.error.HTTPError('https://discord.com/api/v10/test', 429, '', {}, io.BytesIO(json.dumps({'retry_after': delay}).encode()))
+            with patch.object(api.opener, 'open', side_effect=error) as request, patch.object(bot.time, 'sleep') as sleep:
+                with self.assertRaises(bot.HTTPFailure): api.request('GET', '/test')
+                request.assert_called_once(); sleep.assert_not_called()
+
+    def test_exempt_notice_is_finished_and_later_manual_merge_is_true(self):
+        for kind in ('tracker', 'retarget', 'dependabot'):
+            self.setUp(); self.run_bot()
+            if kind == 'tracker': self.gh.paths = ['features.md']
+            elif kind == 'retarget': self.gh.data['base']['ref'] = 'release'
+            else: self.gh.data['user']['login'] = 'dependabot[bot]'
+            self.assertEqual(self.run_bot(), 'exempt')
+            self.assertNotIn('Earliest merge', self.dc.message['content'])
+            self.assertNotIn('Hold this change', self.dc.message['content'])
+            self.gh.data.update(state='closed', merged=True)
+            self.run_bot()
+            self.assertIn('Merged. It will be in the next app build.', self.dc.message['content'])
+
+    def test_phone_states_local_times_no_ids_hashes_or_note_copy(self):
+        self.run_bot()
+        self.assertIn('<t:', self.dc.message['content'])
+        self.assertIn(':R>', self.dc.message['content'])
+        self.dc.users = {'301234567890123456': 'Maya'}
+        self.run_bot()
+        self.assertIn('Maya', self.dc.message['content'])
+        self.assertNotIn('301234567890123456', self.dc.message['content'])
+        self.assertNotIn('note', self.dc.state)
+        embed = bot.state_embed(25, self.dc.state)
+        self.assertNotIn(self.gh.fingerprint, embed['footer']['text'])
+        self.assertNotIn('{', embed['footer']['text'])
+        self.assertLess(len(embed['footer']['text']), 40)
+        for state in ('draft', 'merged', 'closed'):
+            self.gh.data.update(draft=state == 'draft', state='open' if state == 'draft' else 'closed', merged=state == 'merged')
+            self.run_bot()
+            self.assertNotIn('Earliest merge', self.dc.message['content'])
+            self.assertNotIn('Hold this change', self.dc.message['content'])
+
+    def test_uncertain_create_hidden_by_noise_never_discards_a_live_hold(self):
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW)
+        original = copy.deepcopy(dc.messages[0])
+        gh.comments[1][0]['body'] = bot.COMMENT + '\nDiscord message: pending\n```json\n' + bot.compact({'ready': '9'}) + '\n```'
+        dc.users[original['id']] = [{'id': '42', 'username': 'Maya'}]
+        dc.noise(500)
+        gh.timeline += [{'event': 'converted_to_draft', 'id': 10}, {'event': 'ready_for_review', 'id': 11}]
+        gh.calls.clear(); dc.calls.clear()
+        with self.assertRaises(bot.Refused): self.services(gh, dc, NOW + timedelta(days=1))
+        self.assertEqual(dc.messages[0], original)
+        self.assertFalse(any(c[0] == 'POST' for c in dc.calls))
+        self.assertIn('restore it in the Changelog comment', gh.comments[1][0]['body'])
+
+    def test_deleted_notice_draft_ready_recovery_starts_full_week(self):
+        self.run_bot(); self.dc.message = self.dc.state = None
+        with self.assertRaises(bot.NoticeProblem): self.run_bot()
+        self.assertIn('draft, then ready again', self.gh.mirrors[-1][-1])
+        self.gh.data['draft'] = True
+        self.gh.transitions.append({'event': 'converted_to_draft', 'id': 2})
+        with self.assertRaises(bot.NoticeProblem): self.run_bot()
+        self.gh.data['draft'] = False
+        self.gh.transitions.append({'event': 'ready_for_review', 'id': 3})
+        self.now += timedelta(days=8)
+        self.run_bot()
+        self.assertEqual(self.dc.created, 2)
+        self.assertFalse(self.gh.merges)
+        self.assertEqual(self.dc.state['start'], bot.stamp(self.now))
+
+    def test_channel_access_and_duplicates_have_comment_and_notice_recovery(self):
+        for status in (403, 404):
+            gh, dc = ServiceGitHub(), ServiceDiscord()
+            self.services(gh, dc, NOW)
+            dc.failure = status
+            with self.assertRaises(bot.Refused): self.services(gh, dc, NOW + timedelta(hours=1))
+            self.assertIn('restore View Channel', gh.comments[1][0]['body'])
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW)
+        dc.next += 1; dc.messages.append(dict(copy.deepcopy(dc.messages[0]), id=str(dc.next)))
+        with self.assertRaises(bot.Refused): self.services(gh, dc, NOW + timedelta(hours=1))
+        self.assertIn('More than one notice', gh.comments[1][0]['body'])
+        self.assertTrue(all('remove the duplicate' in m['content'] for m in dc.messages))
+
+    def test_draft_note_check_and_named_missing_required_check(self):
+        self.gh.data.update(draft=True, body='')
+        self.run_bot()
+        self.assertTrue(self.gh.checks[-1])
+        self.assertEqual(self.dc.created, 0)
+        self.gh.data.update(draft=False, body=BODY)
+        self.run_bot(); self.now += bot.WEEK
+        self.gh.is_green = False
+        self.assertIn(bot.REQUIRED_CHECK, self.run_bot())
+        self.assertIn(bot.REQUIRED_CHECK, self.run_bot(mode='post'))
+
+    def test_real_merge_adapter_wrong_raw_author_fails_Actions_PR_and_notice(self):
+        gh, dc = ServiceGitHub(opened=2), ServiceDiscord()
+        self.services(gh, dc, NOW)
+        gh.author['name'] = 'Unexpected Author'
+        with self.assertRaises(bot.Refused): self.services(gh, dc, NOW + bot.WEEK, 'merge')
+        self.assertTrue(gh.prs[1]['merged'])
+        self.assertFalse(gh.prs[2]['merged'])
+        self.assertIn('IDENTITY INCIDENT', dc.messages[0]['content'])
+        self.assertIn('IDENTITY INCIDENT', gh.comments[1][0]['body'])
+        note = next(run for run in gh.checks[gh.prs[1]['head']['sha']] if run['name'] == bot.CHECK)
+        self.assertEqual(note['conclusion'], 'failure')
+        with self.assertRaises(bot.Refused): self.services(gh, dc, NOW + bot.WEEK + timedelta(hours=1), 'post')
+        self.assertIn('IDENTITY INCIDENT', dc.messages[0]['content'])
+
+    def test_semantic_merge_refusal_updates_notice_without_restarting_week(self):
+        self.posted()
+        start = self.dc.state['start']
+        with patch.object(self.gh, 'merge', side_effect=bot.MergeBlocked('Merge refused by GitHub; waiting for the owner or a later run')):
+            self.assertIn('Merge refused', self.run_bot())
+        self.assertIn('Merge refused', self.dc.message['content'])
+        self.assertEqual(self.dc.state['start'], start)
+        self.assertFalse(self.gh.merges)
+
+    def test_other_PR_author_waits_manual_and_identity_incident_is_loud(self):
+        self.run_bot(); self.now += bot.WEEK
+        self.gh.data['user']['login'] = 'friend'
+        self.assertIn('opened by someone else', self.run_bot())
+        self.assertFalse(self.gh.merges)
+        self.gh.data['user']['login'] = 'LLRHook'
+        with patch.object(self.gh, 'merge', side_effect=bot.IdentityIncident('MERGE IDENTITY INCIDENT: stop the bot')):
+            with self.assertRaises(bot.IdentityIncident): self.run_bot()
+        self.assertIn('IDENTITY INCIDENT', self.dc.message['content'])
+        self.assertIn('IDENTITY INCIDENT', self.gh.mirrors[-1][-1])
+        self.assertIn('IDENTITY INCIDENT', self.gh.checks[-1])
 
 if __name__ == '__main__':
     with patch('socket.socket.connect', side_effect=AssertionError('network forbidden in offline tests')):

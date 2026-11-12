@@ -332,8 +332,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Test plan:** Offline lifecycle/API fakes, workflow permission/inventory negatives, guard mutation, automation manifest and delivery gate, tracker lint; driver separately runs documented live smoke and identity qualification.
 - **Out of scope:** Real Discord calls, real merges, deployment, repository settings/secrets/variables changes, workflow dispatch and integrated application V&V.
 - **Bump:** minor
-- **Status:** open
-- **Implementation:** Implemented trusted-main Changelog event/schedule controller, one-message Discord review week and holds, qualified Victor-only conditional squash path, fake API/lifecycle proof, exact workflow contracts and mandatory automation report. Live setup and identity qualification remain external; no services were called.
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Implementation:** Round-one review remediation: bounded active/recent-closure sweeps and hinted notices; no writes or restart after failed reads; binary/rename and paged comparisons with stable exact-head fallback; fork-isolated queue and full event sweeps; terminal/plain-language notices; reduced account/PR-author merge gate with loud raw-author audit; main-only changelog environment; visible recovery and draft checks. Offline fakes only; live rehearsal and environment setup remain external.
 - **Docs:** ops/changelog/README.md; .github/pull_request_template.md; AGENTS.md; docs/technical-overview.md; ops/ci/README.md; VERIFICATION.md
 - **Log:**
   - 2026-11-12 Decision: Driver approved state/concurrency/GraphQL identity design and narrow delivery-contract extension. Comparison uncertainty restarts each run. Source baseline 83c1bbc138bb0bea35201dbcf75f45c08aec17f5. Offline proof only; preserve pending live configuration/identity boundaries.
+  - 2026-11-12 Review: Driver round-two decisions implemented after L27 BLOCK: fixed token/variable names retained; removed prior-merge proof and individual-commit author ceremony; added Workflows RW to private PAT setup; changelog environment deployment=false; queue=max documented in current GitHub syntax. Decisions are the driver agent’s, not an owner decision.

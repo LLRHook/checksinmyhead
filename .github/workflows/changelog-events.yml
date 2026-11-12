@@ -6,13 +6,17 @@ name: Changelog events
 permissions:
   contents: read
 concurrency:
-  group: changelog-reconcile
+  group: ${{ github.repository == 'LLRHook/checksinmyhead' && github.event.pull_request.head.repo.full_name == github.repository && 'changelog-reconcile' || format('changelog-skip-{0}', github.run_id) }}
   cancel-in-progress: false
+  queue: max
 jobs:
   changelog:
     if: github.repository == 'LLRHook/checksinmyhead' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    environment:
+      name: changelog
+      deployment: false
     permissions:
       contents: read
       pull-requests: write
@@ -31,6 +35,5 @@ jobs:
         GITHUB_TOKEN: ${{ github.token }}
         CHANGELOG_MODE: ${{ vars.CHANGELOG_MODE }}
         CHANGELOG_DISCORD_CHANNEL_ID: ${{ vars.CHANGELOG_DISCORD_CHANNEL_ID }}
-        CHANGELOG_IDENTITY_PROOF_PR: ${{ vars.CHANGELOG_IDENTITY_PROOF_PR }}
         CHANGELOG_DISCORD_BOT_TOKEN: ${{ secrets.CHANGELOG_DISCORD_BOT_TOKEN }}
         CHANGELOG_MERGE_TOKEN: ${{ secrets.CHANGELOG_MERGE_TOKEN }}

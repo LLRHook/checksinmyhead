@@ -608,8 +608,11 @@ The repository's Changelog bot runs from trusted main in two GitHub Actions
 workflows: pull-request lifecycle events and hourly reconciliation. Python standard
 library REST clients read PR metadata and a Discord notice; PR code is never
 executed by the privileged event job. One bot-owned Discord message holds the clock
-and fingerprint; a PR comment mirrors its readable state. After a seven-day window,
+and full change identity in its embed link; a PR comment mirrors readable status
+and supplies an untrusted direct-message lookup hint. Each run reconciles open
+changes and the last day of closures, with bounded channel reads. After a seven-day window,
 a squash merge still requires no stop reactions, fresh green head checks, a clean
-merge and a separately qualified Victor-owned credential. The built-in Actions
-token cannot merge. Setup defaults to observation with merging unavailable; see
+merge and a separate Victor-owned credential and a matching pull-request author. The built-in Actions
+token cannot merge. Its secrets belong to the main-only `changelog` environment; setup starts in
+`post` mode and the driver rehearses the merge identity before enabling merges; see
 [Changelog operation and trust boundaries](../ops/changelog/README.md).
