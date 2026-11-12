@@ -296,6 +296,11 @@ Save/resume rejects mismatched snapshot/wire versions before a network mutation,
 without replacing the stored bytes or key. Finalized tab history reads retain their
 review status and exact recorded settlement rows even when no receipt list is
 available; failed reads offer an explicit retry and never imply an empty balance.
+Mobile tab refresh and join persist the server's `finalized: true` in the existing
+Drift flag before receipt imports; stale open responses and failed reads cannot
+reopen it. Members use the same server settlement history as creators. Receipt
+entry and existing-bill selection recheck saved finalization, including an already
+open picker; pending attachments retain the receipt without adding it to a closed tab.
 Receipt read/cache/parse failures always clear loading and withhold person totals and
 finalization until a complete read succeeds. Browser join text is owned by the current
 bill/tab session; participant-graph refresh only revalidates selection, while member
