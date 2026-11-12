@@ -3,19 +3,18 @@ package safehttp
 import (
 	"reflect"
 	"strings"
-	"unicode/utf8"
 )
 
 // validJSONText visits a decoded request shape once, including nested DTOs and
 // their pointer/slice fields. PostgreSQL UTF-8 text (including JSONB strings)
-// cannot store NUL or invalid UTF-8. encoding/json already replaces malformed
-// Unicode, so the wire check adds only NUL rejection; other controls stay legal.
+// cannot store NUL. Both JSON decoders replace malformed Unicode, so the
+// wire check adds only NUL rejection; other controls stay legal.
 // Inspecting the DTO, rather than the raw body, preserves ignored-field behavior.
 func validJSONText(v reflect.Value) bool {
 	switch v.Kind() {
 	case reflect.String:
 		s := v.String()
-		return !strings.ContainsRune(s, 0) && utf8.ValidString(s)
+		return !strings.ContainsRune(s, 0)
 	case reflect.Pointer, reflect.Interface:
 		return v.IsNil() || validJSONText(v.Elem())
 	case reflect.Struct:

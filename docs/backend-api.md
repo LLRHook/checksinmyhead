@@ -579,7 +579,7 @@ HTTP/2 uses a stream read deadline without a `Connection` header. Complete valid
 requests retain ordinary keep-alive behavior.
 Decoded JSON request strings on both buffered and streaming assignment paths
 (including nested names, labels, descriptions and JSONB content) reject U+0000 with the route's existing 400 validation error before database
-access. Other control characters remain accepted. The JSON decoder replaces malformed
+access. Other control characters remain accepted. Both JSON decoders replace malformed
 UTF-8 and unpaired Unicode surrogates with U+FFFD, preserving existing behavior.
 JSON bodies must contain exactly one document, including trailing whitespace within
 the byte cap. Creation and attachment retain strict unknown-field rejection; other

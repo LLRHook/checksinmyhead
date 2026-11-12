@@ -1751,6 +1751,12 @@
       ],
       "backend/pkg/safehttp/TestStreamArrayStdlibCompatibility": [
         "^TestStreamArrayStdlibCompatibility/nul$"
+      ],
+      "backend/pkg/safehttp/TestDecodeJSONPostgresText": [
+        "^TestDecodeJSONPostgresText/map_nul$",
+        "^TestDecodeJSONPostgresText/any_nul$",
+        "^TestDecodeJSONPostgresText/invalid_utf8_replaced$",
+        "^TestDecodeJSONPostgresText/unpaired_surrogate_replaced$"
       ]
     }
   },
