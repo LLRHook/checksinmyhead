@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import {
+  ApiError,
   type Bill,
   type CurrentMember,
   createParticipant,
@@ -53,7 +54,9 @@ export default function IdentityControls({
       setError(
         error instanceof Error ? error.message : "Identity action failed.",
       );
-      setRetry(() => work);
+      setRetry(
+        error instanceof ApiError && !error.retryable ? null : () => work,
+      );
       await onChanged();
     } finally {
       setBusy(false);
@@ -245,11 +248,7 @@ export default function IdentityControls({
         Labels do not prove ownership. Pending requests cannot mark a receipt
         share paid.
       </p>
-      {error && (
-        <p role="alert">
-          {error} Current state was refreshed; review it before retrying.
-        </p>
-      )}
+      {error && <p role="alert">{error} Current state was refreshed.</p>}
       {retry && (
         <button
           type="button"

@@ -171,7 +171,7 @@ func TestStreamArrayStdlibCompatibility(t *testing.T) {
 		{"case_escape_duplicate", `[{"NAME":"old","na\u006de":"new","percentage":1,"PERCENTAGE":2}]`},
 		{"null_after_value", `[{"name":"kept","name":null,"percentage":1,"percentage":null}]`},
 		{"unknown", `[{"ignored":{"deep":[{},{},{}]},"name":"Alex"}]`},
-		{"strings", `[{"name":"a,b[\"\\]{}\u0000\ufeff界"},{"name":"<b> x </b>"}]`},
+		{"strings", `[{"name":"a,b[\"\\]{}\u0001\ufeff界"},{"name":"<b> x </b>"}]`},
 		{"invalid_surrogate", `[{"name":"\ud800"}]`},
 		{"invalid_utf8", string([]byte{'[', '{', '"', 'n', 'a', 'm', 'e', '"', ':', '"', 0xff, '"', '}', ']'})},
 		{"max_float", `[{"percentage":1.7976931348623157e308}]`},
@@ -179,6 +179,17 @@ func TestStreamArrayStdlibCompatibility(t *testing.T) {
 		{"wrong_element", `[1]`}, {"nested_wrong_type", `[{"nested":{}}]`}, {"nested_null", `[{"nested":null}]`},
 		{"not_array", `{}`}, {"truncated", `[{"name":"x"}`}, {"trailing_comma", `[{"name":"x"},]`}, {"second_document", `[] []`},
 	}
+	// NUL is the deliberate PostgreSQL-text exception to stdlib acceptance.
+	t.Run("nul", func(t *testing.T) {
+		for _, decode := range []func(http.ResponseWriter, *http.Request, any, int64, bool) error{DecodeJSON, DecodeJSONStream} {
+			var values []compatibilityElement
+			r := httptest.NewRequest("POST", "/", strings.NewReader(`[{"name":"a\u0000b"}]`))
+			if err := decode(httptest.NewRecorder(), r, &values, 4<<20, false); err != ErrInvalidJSON {
+				t.Fatalf("NUL error=%v want=%v", err, ErrInvalidJSON)
+			}
+		}
+	})
+
 	for _, strict := range []bool{false, true} {
 		label := "ignored"
 		if strict {

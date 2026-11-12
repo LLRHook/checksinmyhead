@@ -52,7 +52,13 @@ inspection. See the [correction evidence](reviews/2026-11-03-local-workflow-corr
 ### Request Flow
 
 1. Client sends HTTP request with access token (`?t=token`)
-2. Handler parses request, validates token against stored tab/bill token
+2. Handler parses request, rejects NUL in selected access/member tokens before
+   database access, and validates the token against the stored tab/bill token
+   JSON mutations decode into content DTOs and validate text before service calls:
+   buffered requests walk the decoded DTO; streaming requests check strings while
+   binding, including the assignment binder fallback. Both reject PostgreSQL-
+   unrepresentable NUL while retaining other controls and the JSON decoder's
+   Unicode replacement behavior.
 3. Service executes business logic
 4. Repository performs database operations via GORM
 5. Response returned as JSON
@@ -226,7 +232,8 @@ use explicit create-unbound/request/approval and never fabricate confirmation.
   `(public)` group owns `/` and `/privacy-policy` at `https://billingtonapp.vercel.app`.
   Its literal site configuration, semantic policy JSX, scoped CSS and brand-only
   social image need no API, private component or browser storage. Root metadata
-  remains generic/noindex; only public pages override indexing and add canonical/
+  remains generic/noindex; private route titles describe only the shared bill/tab
+  page type without resource names or bearer data. Only public pages override indexing and add canonical/
   social metadata. Homepage-only SoftwareApplication data uses visible claims.
   Robots permits private crawling so noindex can be read; sitemap lists only the
   two public documents, without dates or resource enumeration.
@@ -352,7 +359,11 @@ turn an invalid supplied capability into replacement membership.
 
 The server now uses scoped participant references for creation, claims, paid authority,
 renames, binding generations/receipts, gross/net and snapshots. Confirmed members group
-by tab/member ID; unbound/pending guests remain distinct per bill/participant. Checked
+by tab/member ID; unbound/pending guests remain distinct per bill/participant. Web
+net balance rows keep unique labels unchanged; colliding labels use the existing
+`· member #ID` or `· receipt BILL #PARTICIPANT` display convention on a smaller
+secondary line. Only rows with references wrap at narrow widths to keep amounts
+and payment controls inside the card; other rows retain their existing layout. Checked
 USD reads preserve explicit frozen zero and expose unavailable payer/valuation states.
 The earlier positive-only USD fallback source defect is corrected; native Keychain
 qualification, old-writer drain and full combined journeys remain open. Supported mobile/browser reference clients are implemented; their [synthetic journey](../mobile/test/live/README.md) is scoped functional evidence.

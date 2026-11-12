@@ -914,7 +914,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-12 Fix: Driver-approved review fixes F1/F2: fitting landing content stays stationary during a real drag; reach hidden controls with user drags rather than ensureVisible. Mutation checks reject disabled landing scrolling (11 failures), disabled join scrolling (22), removed Quick Split Flexible (14), and removed fitting-content physics (1). Default geometry matches main 48a13f7 on five landing displays and three join displays with/without keyboard.
 
 ### [BUG-1794331910] Reject NUL characters in names with 400 instead of 500
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** backend, api, validation
 - **File(s):** backend/internal/bill/create_request.go; backend/internal/tab/handler.go; backend/internal/tab/participants.go
 - **Observation:** A name containing U+0000 returns 500 {"error":"an internal error occurred"}. Affected fields: bill, item and participant names on POST /api/bills, the tab name on POST /api/tabs, and display_name on POST /api/tabs/:id/join. Other control characters are accepted. No database text leaks into the response.
@@ -923,10 +923,13 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/stage4-adv/evidence-nul-500.jsonl. curl -X POST localhost:8080/api/tabs -H 'Content-Type: application/json' -H 'X-Billington-Identity-Version: 2' -d '{"name":"a\u0000b","creator_display_name":"VV"}' returns 500.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** fixed-pending-migration
+- **Fix:** Reject NUL in decoded buffered DTO text, streaming string binding and the assignment binder fallback with the existing route 400; selected access/member token readers reject it during identity admission with 403 access_denied before any query. Preserve other controls, ignored fields, header precedence, old-client bodies, named strings/numbers and Unicode replacement without a redundant UTF-8 scan. Regression covers 26 PostgreSQL body paths, valid share history, map/interface cases and eight token proofs with zero-query/state witnesses. The canonical streaming assignment binder keeps its existing byte checks; no second reflection walk over 50000 entries is required, retaining the allocation/time budgets.
+- **Docs:** docs/backend-api.md; docs/technical-overview.md
 
 ### [BUG-1794331911] Fix web viewer accessibility gaps on private bill pages
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** web, a11y
 - **File(s):** web-bill-viewer/src/app/globals.css; web-bill-viewer/src/components/PersonShare.tsx; web-bill-viewer/src/components/RecordedShares.tsx
 - **Observation:** On /b Quick Split pages: the per-row expand buttons have no accessible name (WCAG 4.1.2). Secondary text (--text-secondary #86868b) measures 3.33, 3.62 and 4.35:1 on the page surfaces (1.4.3). Headings skip from h1 to h3 (1.3.1). Private pages share the generic 'Billington' title (2.4.2). Keyboard order and focus rings were fine.
@@ -935,8 +938,13 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/web/01, web/12 and NOTES.md (headed Chrome via agent-browser). axe and 320 px reflow were not run.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** fixed-pending-migration
+- **Fix:** Named share controls and sequential private headings; static Shared bill/tab titles preserve metadata isolation. Accepted review option B uses #6e6e73 light and #98989d dark, removes whole-card paid opacity in shares/settlements/totals and retains the two instruction fade removals approved by the driver. Locked item status retains full secondary contrast while controls/names dim; split icons use the existing dark hover surface. Rendered instruction/paid-state tests and computed contrast cover these surfaces.
+- **Docs:** DESIGN_SYSTEM.md; web-bill-viewer/README.md; docs/technical-overview.md
 - **Cross-ref:** FEAT-1793644512
+- **Log:**
+  - 2026-11-12 Review: Driver accepted L16 review option B and F2/F3; corrected earlier attribution: the driver, not Victor, approved the instruction-opacity change.
 
 ### [BUG-1794331912] Show half-cent bill totals the same way their shares add up
 - [ ] **Severity:** med
@@ -963,7 +971,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** open
 
 ### [BUG-1794331914] Stop telling clients to retry participant additions on bills with paid shares
-- [ ] **Severity:** low
+- [x] **Severity:** low
 - **Area:** backend, api
 - **File(s):** backend/internal/bill/identity.go
 - **Observation:** POST /api/bills/:id/participants on a bill with any paid share returns 409 identity_revision_conflict ('refresh and try again') even at the current expected_revision. The block itself is documented (unpaid eligibility), but no retry can succeed.
@@ -972,7 +980,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/stage4-adv/evidence-paid-add-participant.jsonl. Create a wire2 bill, PATCH a share paid, then POST participants with the current expected_revision.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** fixed-pending-migration
+- **Fix:** Return 409 participants_locked_paid only for a new participant addition blocked by paid shares; preserve stale revision, capacity and exact replay behavior. Flutter and web show nonempty server messages only for 409 and keep fixed 403/5xx wording; suppress the retry-original-action control for the paid conflict. PostgreSQL state/replay and client body/status regressions are registered in the case manifest.
+- **Docs:** docs/backend-api.md
 
 ### [BUG-1794331915] Apportion tax and tip the same way for partial claims on every route
 - [ ] **Severity:** low
@@ -987,7 +998,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** open
 
 ### [BUG-1794331916] Document that receipt uploads are typed by content, not the declared MIME type
-- [ ] **Severity:** low
+- [x] **Severity:** low
 - **Area:** docs, api
 - **File(s):** docs/backend-api.md; backend/internal/receipt/handler.go
 - **Observation:** docs/backend-api.md:782 lists accepted MIME types, but the service detects the type from the bytes and ignores the declared part type. PNG bytes declared text/plain are parsed, and an image/svg+xml part is reported as 'unsupported image type: text/plain'.
@@ -996,7 +1007,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/stage4-adv/summary.md (class L).
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** fixed-pending-migration
+- **Fix:** Correct only the receipt API reference: http.DetectContentType inspects up to the first 512 content bytes; declared part MIME type and filename do not determine acceptance. Supported-content mismatches proceed to provider parsing; unsupported content returns 400 naming its detected MIME type. Existing multipart/safeguard tests cover content typing; receipt runtime behavior is unchanged.
+- **Docs:** docs/backend-api.md
 
 ### [BUG-1794331917] Fail the local workflow SIGINT tests with a clear prerequisite when SIGINT is ignored
 - [ ] **Severity:** low
@@ -1025,7 +1039,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-12 Decision: L21 owner decision: deliver BUG-1794331920 separately; leave this ticket open/blocked. Local removal deletes the only persisted member credential with the Drift tab row; no prior-membership marker survives. Current privacy inventory does not contain the permission quoted in Observation. Retention or a new marker needs a separate approved scope.
 
 ### [BUG-1794331919] Disambiguate same-named people in web tab balances
-- [ ] **Severity:** low
+- [x] **Severity:** low
 - **Area:** web, ux
 - **File(s):** web-bill-viewer/src/components/NetBalances.tsx
 - **Observation:** The web tab BALANCES list shows rows such as 'Alex -> Alex' and 'Vic Sim17 -> Vic Sim17' for distinct people with the same display name, with no reference or suffix to tell them apart.
@@ -1034,8 +1048,13 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/web/16.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** fixed-pending-migration
+- **Fix:** Scoped collision detection covers the entire balance list, including Your/All grouping, name-only history and surrounding whitespace. Existing member/receipt references render on a smaller secondary line; only suffixed rows wrap and protect amount/payment groups at narrow widths. Unique rows, rows/amounts/order and payment conditions remain unchanged. Added mutation regressions and built-CSS browser geometry proof at 320/360/375 px with Alex and long names.
+- **Docs:** docs/technical-overview.md
 - **Cross-ref:** BUG-1793644505
+- **Log:**
+  - 2026-11-12 Review: Driver accepted L16 F1/F3: fix suffixed-row reflow and add grouping/history/whitespace mutation coverage.
 
 ### [BUG-1794331920] Keep the Add Receipt button off the last per-person rows
 - [x] **Severity:** low
@@ -1329,6 +1348,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Open a tab with several people at a 320 px viewport and compare document scrollWidth with innerWidth.
 - **Bump:** patch
 - **Status:** open
+- **Log:**
+  - 2026-11-12 Sighting: 2026-11-12 re-check of the Balances fix: a Balances row with no reference and a five-digit amount ('Jo -> Kim $9,876.54') also overflows at 320 px (amount ends at x=321, card at 304), on main as well. Cover it with this ticket's narrow-width work.
 
 ### [BUG-1794510141] Same-named people look identical on the web bill page and in tab settlements
 - [ ] **Severity:** med
@@ -1363,5 +1384,41 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Req:** none; WCAG 1.4.4 Resize Text
 - **Depends on:** none
 - **Repro / Notes:** Widget test at 320x568, text scale 53/17, empty display name: open Join a Tab, enter a valid link, submit. Found by the author and confirmed by the reviewer of pull request #187 on 2026-11-12.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794512495] Venmo pay buttons in the web viewer have no accessible name
+- [ ] **Severity:** med
+- **Area:** web, accessibility
+- **File(s):** web-bill-viewer/src/components/TabPersonTotals.tsx; web-bill-viewer/src/components/NetBalances.tsx
+- **Observation:** The Venmo pay buttons in the tab per-person totals and in the Balances list show only the Venmo wordmark and expose no accessible name, so a screen reader announces an unnamed button (WCAG 4.1.2). Found on 2026-11-12 during the re-check of the fix for BUG-1794331911; present on main before that fix. The Balances button is not reachable today because the tab page does not pass the viewer's member id.
+- **Expected:** Each pay button has an accessible name that says what it does and for whom, for example 'Pay Alex with Venmo'.
+- **Req:** none; WCAG 4.1.2 Name, Role, Value
+- **Depends on:** none
+- **Repro / Notes:** Open a tab page with a payable person total and inspect the button's accessible name.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794512496] Avatar shows a broken character for names that start with an emoji
+- [ ] **Severity:** low
+- **Area:** web, ui
+- **File(s):** web-bill-viewer/src/components (avatar initial)
+- **Observation:** For a display name that starts with an emoji, the web viewer's avatar shows a broken character: the initial is taken as the first UTF-16 code unit, which is half of the emoji. Seen on 2026-11-12 on the tab Balances list; present on main.
+- **Expected:** The avatar shows the first whole character of the name (the emoji), or a neutral fallback.
+- **Req:** none
+- **Depends on:** none
+- **Repro / Notes:** Render a tab with a member whose name begins with an emoji.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794514349] Allocation guard for the largest assignment update does not measure the body clients send
+- [ ] **Severity:** low
+- **Area:** backend, performance, tests
+- **File(s):** backend/cmd/bill-service/assignment_budget_test.go; backend/pkg/safehttp/json.go (decodeJSONText)
+- **Observation:** TestMaxAssignmentUpdateAllocationBudget (12 MiB, 4,000 allocations) and the a1perf max_mutation_50000 input build 500 updates without expected_updated_at, but the Flutter app and the web viewer send that field on every update. With it, the same request costs 3,153 allocations before the NUL validation fix for BUG-1794331910 and 5,656 after it (10.65 MB, 6.0 to 6.1 ms per request, both inside their limits). The increase comes from the string-validation hook in the streaming decoder, which is registered for every type and is called for each struct, number, pointer and slice: about 5 allocations per update, bounded by the 500-update cap. Time is unchanged; the 10 ms p95 target holds with about 37% margin. Measured on 2026-11-12 by the independent re-check of pull request #184.
+- **Expected:** The guard measures the request shape clients send, and its allocation limit is a deliberate number for that shape; or the hook's cost is reduced (for example by registering it for string types only) without losing coverage of named string types.
+- **Req:** none; BUG-1793644507 (10 ms maximum assignment-update target)
+- **Depends on:** none
+- **Repro / Notes:** Add "expected_updated_at" to each update in maxAssignmentUpdateBody and run go test -run '^TestMaxAssignmentUpdateAllocationBudget$' -v ./cmd/bill-service. Changing the guard's input or limit changes what a CI guard checks, so it is a deliberate decision, not a side effect.
 - **Bump:** patch
 - **Status:** open

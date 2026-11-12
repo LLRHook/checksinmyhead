@@ -28,7 +28,7 @@ export default function SettlementCard({
             {paidCount}/{settlements.length} paid
           </span>
         </div>
-        <p className="text-xs text-[var(--text-secondary)] opacity-60 mt-0.5">
+        <p className="text-xs text-[var(--text-secondary)] mt-0.5">
           Open Billington to update payment status
         </p>
       </div>
@@ -38,7 +38,7 @@ export default function SettlementCard({
             key={settlement.id}
             className={`bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-2xl px-5 py-4 shadow-sm dark:shadow-none flex items-center justify-between transition-opacity ${
               settlement.paid
-                ? "dark:border dark:border-emerald-800/50 opacity-75"
+                ? "dark:border dark:border-emerald-800/50"
                 : "dark:border dark:border-[var(--border-dark)]"
             }`}
           >

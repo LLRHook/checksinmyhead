@@ -18,7 +18,9 @@ origin is `https://billingtonapp.vercel.app`. The separate legacy public host/re
 is unchanged. PR #149's removed `/privacy` route stays absent.
 
 The root layout supplies a generic Billington title and description with
-`noindex, nofollow`. Bill and tab metadata needs no authorized API lookup and contains
+`noindex, nofollow`. Private routes override only the title with `Shared bill | Billington`
+or `Shared tab | Billington`, describing the page type without private content.
+Bill and tab metadata needs no authorized API lookup and contains
 no resource names, bearer URLs, canonical/social URLs or resource preview assets.
 The default `X-Robots-Tag: noindex, nofollow` covers unknown/error routes. Private
 `/b` and `/t` rules also specify `nosnippet, noimageindex`, including access errors.
@@ -33,6 +35,12 @@ paths. Dynamic private page responses remain private/no-store. Authorized names 
 credentials required by client components can still appear in body/RSC data; do not
 treat an absence check over the entire HTML as a metadata privacy test.
 
+Supporting text uses the neutral light/dark tokens documented in `DESIGN_SYSTEM.md`.
+Paid cards stay opaque and retain their check, strike-through, green amount and border
+markers. Locked item status remains readable while its disabled controls dim. Colliding
+balance labels put the existing identity reference on a smaller second line and wrap
+the amount/payment group on narrow screens; unique-label rows retain their layout.
+
 ### Local privacy verification
 
 Use Node 24/npm 11 and the committed lock, with a task-owned synthetic API on loopback.
@@ -43,7 +51,7 @@ at live hosting. Run `npm ci`, `npm run lint`, `npm test`, `npm run build` and
 
 For `/b/[id]` and `/t/[id]`, request valid, invalid and missing-token links from the
 actual production server. Inspect response headers and parsed title/robots/canonical/
-Open Graph/Twitter tags separately from the body. Require generic metadata,
+Open Graph/Twitter tags separately from the body. Require page-type-only titles and generic metadata,
 noindex/nofollow, no-referrer and private/no-store, including tab not-found/API-error
 responses. Missing-token pages must make no resource request; an invalid tab token
 must not load its member/settlement collections. Valid tab names remain server
