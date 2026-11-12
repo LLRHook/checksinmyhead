@@ -4,7 +4,6 @@ All network transports are injected local functions. Git repos contain only tiny
 synthetic text fixtures, never application/source copies. No publication occurs.
 """
 import copy
-import importlib.util
 import json
 import os
 import re
