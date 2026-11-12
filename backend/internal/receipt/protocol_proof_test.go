@@ -196,8 +196,8 @@ func TestOwnershipPoolCap(t *testing.T) {
 				t.Fatal(e)
 			}
 			t.Cleanup(s.Close)
-			proofSetTLS(s, cfg)
-			proofSetDial(s, func(ctx context.Context, _, _ string) (net.Conn, error) {
+			s.transport.tlsConfig = cfg
+			s.transport.dialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
 				dials.Add(1)
 				c, e := (&net.Dialer{}).DialContext(ctx, "tcp", server.Listener.Addr().String())
 				if e != nil {
@@ -207,7 +207,7 @@ func TestOwnershipPoolCap(t *testing.T) {
 				for p := peak.Load(); v > p && !peak.CompareAndSwap(p, v); p = peak.Load() {
 				}
 				return &proofCountClose{Conn: c, live: &live}, nil
-			})
+			}
 			done := make(chan error, cap)
 			for i := 0; i < cap; i++ {
 				go func() { _, e := s.Parse(context.Background(), []byte("fixture"), "image/jpeg"); done <- e }()
@@ -285,13 +285,13 @@ func TestOwnershipIdleAndClose(t *testing.T) {
 		s.transport.idleTimeout = 40 * time.Millisecond
 		closed := make(chan struct{})
 		var once sync.Once
-		proofSetDial(s, func(ctx context.Context, _, _ string) (net.Conn, error) {
+		s.transport.dialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
 			c, e := (&net.Dialer{}).DialContext(ctx, "tcp", server.Listener.Addr().String())
 			if e != nil {
 				return nil, e
 			}
 			return &proofObserveClose{Conn: c, closed: closed, once: &once}, nil
-		})
+		}
 		if _, e := s.Parse(context.Background(), []byte("fixture"), "image/jpeg"); e != nil {
 			t.Fatal(e)
 		}
@@ -356,14 +356,14 @@ func TestOwnershipIdleAndClose(t *testing.T) {
 				io.Copy(io.Discard, next.Body)
 			}
 		})
-		proofSetConnect(s, func(ctx context.Context, _, _ string) (net.Conn, error) {
+		s.transport.connectTLS = func(ctx context.Context, _, _ string) (net.Conn, error) {
 			dials.Add(1)
 			c, e := (&tls.Dialer{Config: cfg}).DialContext(ctx, "tcp", server.Listener.Addr().String())
 			if e != nil {
 				return nil, e
 			}
 			return &proofSecondReadConn{Conn: c, second: &second, posted: posted}, nil
-		})
+		}
 		if _, e := s.Parse(context.Background(), []byte("fixture"), "image/jpeg"); e != nil {
 			t.Fatal(e)
 		}
@@ -474,14 +474,14 @@ func TestOwnershipClosingReservation(t *testing.T) {
 	closing := make(chan struct{})
 	release, free := proofGate(t)
 	var dials atomic.Int32
-	proofSetDial(s, func(ctx context.Context, _, _ string) (net.Conn, error) {
+	s.transport.dialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
 		dials.Add(1)
 		c, e := (&net.Dialer{}).DialContext(ctx, "tcp", server.Listener.Addr().String())
 		if e != nil {
 			return nil, e
 		}
 		return &proofCloseConn{Conn: c, entered: closing, release: release}, nil
-	})
+	}
 	defer func() { free(); s.Close() }()
 	if _, e := s.Parse(context.Background(), []byte("fixture"), "image/jpeg"); e != nil {
 		t.Fatal(e)
@@ -645,14 +645,14 @@ func TestOwnershipIdleTLSWriteJoin(t *testing.T) {
 		raw.Write([]byte{0x17, 0x03, 0x03, 0x00, 0x01, 0x00})
 		io.Copy(io.Discard, raw)
 	})
-	proofSetDial(s, func(ctx context.Context, _, _ string) (net.Conn, error) {
+	s.transport.dialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
 		dials.Add(1)
 		c, e := (&net.Dialer{}).DialContext(ctx, "tcp", server.Listener.Addr().String())
 		if e != nil {
 			return nil, e
 		}
 		return &proofIdleAlertConn{Conn: c, hold: &hold, entered: entered, exited: exited, release: release, free: free}, nil
-	})
+	}
 	defer func() { free(); sendBad(); s.Close(); proofWait(t, finished, "idle alert fixture cleanup") }()
 	if _, e := s.Parse(context.Background(), []byte("fixture"), "image/jpeg"); e != nil {
 		t.Fatal(e)

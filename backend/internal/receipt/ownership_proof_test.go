@@ -89,7 +89,7 @@ func TestOwnershipDialJoin(t *testing.T) {
 	release, free := proofGate(t)
 	exited := make(chan struct{})
 	var canceled atomic.Bool
-	proofSetDial(s, func(ctx context.Context, _, _ string) (net.Conn, error) {
+	s.transport.dialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
 		defer close(exited)
 		close(entered)
 		select {
@@ -99,7 +99,7 @@ func TestOwnershipDialJoin(t *testing.T) {
 		}
 		<-release
 		return nil, errors.New("synthetic dial cleanup")
-	})
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	h, done := proofHandler(t, s, ctx)
@@ -145,7 +145,7 @@ func TestOwnershipTLSJoin(t *testing.T) {
 	closing := make(chan struct{})
 	release, free := proofGate(t)
 	var raw net.Conn
-	proofSetDial(s, func(ctx context.Context, _, _ string) (net.Conn, error) {
+	s.transport.dialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
 		c, e := (&net.Dialer{}).DialContext(ctx, "tcp", l.Addr().String())
 		if e != nil {
 			return nil, e
@@ -153,7 +153,7 @@ func TestOwnershipTLSJoin(t *testing.T) {
 		raw = c
 		close(rawStart)
 		return &proofCloseConn{Conn: c, entered: closing, release: release}, nil
-	})
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	h, done := proofHandler(t, s, ctx)
@@ -201,10 +201,10 @@ func proofTLS(t *testing.T, handler http.HandlerFunc) (*Service, *httptest.Serve
 	roots := x509.NewCertPool()
 	roots.AddCert(server.Certificate())
 	config := &tls.Config{RootCAs: roots, ServerName: "example.com", MinVersion: tls.VersionTLS12, NextProtos: []string{"http/1.1"}}
-	proofSetTLS(s, config)
-	proofSetDial(s, func(ctx context.Context, _, _ string) (net.Conn, error) {
+	s.transport.tlsConfig = config
+	s.transport.dialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
 		return (&net.Dialer{}).DialContext(ctx, "tcp", server.Listener.Addr().String())
-	})
+	}
 	return s, server, config
 }
 
@@ -247,14 +247,13 @@ func TestOwnershipFinalFlush(t *testing.T) {
 			var writes atomic.Int32
 			entered := make(chan struct{})
 			release, free := proofGate(t)
-			proofSetConnect(s, func(ctx context.Context, _, _ string) (net.Conn, error) {
+			s.transport.connectTLS = func(ctx context.Context, _, _ string) (net.Conn, error) {
 				c, e := (&tls.Dialer{Config: config}).DialContext(ctx, "tcp", server.Listener.Addr().String())
 				if e != nil {
 					return nil, e
 				}
 				return &proofFinalConn{Conn: c, wrote: &wrote, entered: entered, release: release, writes: &writes}, nil
-			})
-			proofPrepareFinal(s)
+			}
 			ctx := httptraceContext(context.Background(), &wrote)
 			done := make(chan struct{})
 			var err error
@@ -314,7 +313,7 @@ func TestOwnershipNon200NoNativeDrain(t *testing.T) {
 	})
 	var wrapped *proofDrainConn
 	ready := make(chan struct{})
-	proofSetConnect(s, func(ctx context.Context, _, _ string) (net.Conn, error) {
+	s.transport.connectTLS = func(ctx context.Context, _, _ string) (net.Conn, error) {
 		c, e := (&tls.Dialer{Config: config}).DialContext(ctx, "tcp", server.Listener.Addr().String())
 		if e != nil {
 			return nil, e
@@ -322,7 +321,7 @@ func TestOwnershipNon200NoNativeDrain(t *testing.T) {
 		wrapped = &proofDrainConn{Conn: c, entered: held, release: release, exited: make(chan struct{})}
 		close(ready)
 		return wrapped, nil
-	})
+	}
 	done := make(chan struct{})
 	var err error
 	go func() {
@@ -432,10 +431,10 @@ func TestOwnershipHealthyReuse(t *testing.T) {
 		io.Copy(io.Discard, r.Body)
 		io.WriteString(w, envelope(validReceipt))
 	})
-	proofSetDial(s, func(ctx context.Context, _, _ string) (net.Conn, error) {
+	s.transport.dialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
 		dials.Add(1)
 		return (&net.Dialer{}).DialContext(ctx, "tcp", server.Listener.Addr().String())
-	})
+	}
 	for i := 0; i < 2; i++ {
 		got, e := s.Parse(context.Background(), []byte("fixture"), "image/jpeg")
 		if e != nil || got == nil || len(got.Items) != 2 {

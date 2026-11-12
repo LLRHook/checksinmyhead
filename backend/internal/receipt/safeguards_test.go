@@ -39,7 +39,11 @@ func multipartImage(t *testing.T, duplicate bool) ([]byte, string) {
 	t.Helper()
 	var body bytes.Buffer
 	w := multipart.NewWriter(&body)
-	for i := 0; i < 1+boolInt(duplicate); i++ {
+	count := 1
+	if duplicate {
+		count = 2
+	}
+	for i := 0; i < count; i++ {
 		p, err := w.CreateFormFile("image", "fixture.jpg")
 		if err != nil {
 			t.Fatal(err)
@@ -48,13 +52,6 @@ func multipartImage(t *testing.T, duplicate bool) ([]byte, string) {
 	}
 	_ = w.Close()
 	return body.Bytes(), w.FormDataContentType()
-}
-
-func boolInt(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
 }
 
 func TestReceiptSafeguards(t *testing.T) {
