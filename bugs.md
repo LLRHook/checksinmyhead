@@ -1445,17 +1445,18 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Status:** open
 
-### [BUG-1794520547] Fit the tab detail title bar with a long name or the Finalized badge, and the empty state in landscape
+### [BUG-1794520547] Fit the tab detail title bar with the Finalized badge, and the empty state in landscape
 - [ ] **Severity:** low
 - **Area:** mobile, ui
 - **File(s):** mobile/lib/screens/tabs/tab_detail_screen.dart (app bar title row, empty state)
-- **Observation:** The app bar title row overflows with a long tab name, or with the Finalized badge, from about 135% text size on a 320 pt wide phone. The empty-state column overflows at the bottom in landscape (568x320 and 844x390). Same on main.
-- **Expected:** The title row truncates or wraps the name and keeps the badge visible without overflow at every supported text size; the empty state scrolls or fits in landscape.
+- **Observation:** On a finalized tab the Finalized badge makes the app bar title row overflow from about 135% text size on a 320 pt wide phone. The empty-state column overflows at the bottom in landscape (568x320 and 844x390). Same on main. A long tab name overflowing the same row is BUG-1794264960, not this ticket.
+- **Expected:** On a finalized tab the title row keeps the badge visible and the name readable without overflow at every supported text size on a 320 pt wide phone; the empty state scrolls or fits in landscape.
 - **Req:** BUG-1794331920 review (lead L23, 2026-11-12), pre-existing problems list
 - **Depends on:** none
-- **Repro / Notes:** Widget tests: a 40-character tab name at 320x568 and text scale 1.5, a finalized tab at the same size, and an empty tab at 568x320.
+- **Repro / Notes:** Widget tests: a finalized tab at 320x568 and text scale 1.5, and an empty tab at 568x320. Fix the title row together with BUG-1794264960 (long name in the same row).
 - **Bump:** patch
 - **Status:** open
+- **Cross-ref:** BUG-1794264960
 
 ### [BUG-1794520548] Have VoiceOver read each Per Person row on a tab once
 - [ ] **Severity:** low
@@ -1472,7 +1473,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 ### [BUG-1794520549] Group thousands in money amounts and wrap them only at separators
 - [ ] **Severity:** low
 - **Area:** mobile, ui
-- **File(s):** mobile/lib/utils/currency_formatter.dart; mobile/lib/screens/tabs/tab_detail_screen.dart
+- **File(s):** mobile/lib/screens/quick_split/bill_entry/utils/currency_formatter.dart; mobile/lib/screens/tabs/tab_detail_screen.dart
 - **Observation:** Amounts of 1,000 or more are printed without thousands separators ('$123456.78'). Where a long amount wraps at large text sizes it breaks in the middle of the number ('$125 / 907. / 28' on the Total card, and the stacked rows from BUG-1794331920), which is hard to read.
 - **Expected:** Amounts of 1,000 or more show grouping separators in the form the owner chooses, on the phone and in shared text, and a wrapped amount breaks only at a separator. The web viewer shows the same form.
 - **Req:** BUG-1794331920 review (lead L23, 2026-11-12), finding on wrapped amounts
@@ -1496,11 +1497,11 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 ### [BUG-1794520551] Make the terminal interrupt test fail when dev.sh stops reaping Flutter
 - [ ] **Severity:** low
 - **Area:** tests, tooling
-- **File(s):** scripts/test_local_workflow.py (test_tty_driver_int_interrupts_foreground_flutter); scripts/dev.sh
+- **File(s):** scripts/test_local_workflow_probes.py (ProbeTests.test_tty_driver_int_interrupts_foreground_flutter, run through scripts/test_local_workflow.py); dev.sh
 - **Observation:** Two deliberate breaks of dev.sh leave test_tty_driver_int_interrupts_foreground_flutter passing: removing MOBILE_PID from both cleanup reap loops, and changing the supervisor loop's 'sleep .1' to 'sleep 30'. A third break (the INT trap waiting for Flutter) is caught. The assertions predate BUG-1794331917 and were not changed by it.
 - **Expected:** The test fails for each of the two breaks above: it asserts that the Flutter process and its children are gone after the interrupt, and that the interrupt is handled within a stated bound.
 - **Req:** BUG-1794331917 review (lead L26, 2026-11-12), finding F6
 - **Depends on:** none
-- **Repro / Notes:** Apply each break to scripts/dev.sh and run python3 scripts/test_local_workflow.py with the test name; restore dev.sh afterwards. Review log: driver run testflight-1112 evidence/L26/sigint-mutation-tty.log (local, not committed).
+- **Repro / Notes:** Apply each break to dev.sh (repository root) and run python3 scripts/test_local_workflow.py ProbeTests.test_tty_driver_int_interrupts_foreground_flutter; restore dev.sh afterwards. Review log: driver run testflight-1112 evidence/L26/sigint-mutation-tty.log (local, not committed).
 - **Bump:** patch
 - **Status:** open
