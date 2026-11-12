@@ -1183,7 +1183,10 @@ class ManifestReportTests(unittest.TestCase):
                     'policy renders complete public content without API or browser storage']
         titles = ['confines public indexing, canonical and social metadata to public routes',
                   *rendered, 'publishes only visible, bounded software claims on the homepage',
-                  'enumerates only public documents and lets crawlers read private noindex']
+                  'enumerates only public documents and lets crawlers read private noindex',
+                  'scopes the policy to the App Store version and marks unreleased behavior',
+                  'states the released collection, provider, log, link and removal facts',
+                  'makes no publication, effective-date, compliance or no-collection claim']
         def report(selected):
             cases = [{'fullName': 'public and private acquisition isolation ' + title,
                       'status': 'passed'} for title in selected]

@@ -988,7 +988,8 @@
         "(?:^| )Every\\ existing\\ preset\\ persists\\ and\\ default\\ resets\\ its\\ key$",
         "(?:^| )Custom\\ picker\\ reachable\\ by\\ tap$",
         "(?:^| )Custom\\ picker\\ reachable\\ by\\ semantics$",
-        "(?:^| )Payment\\ options\\ and\\ row\\ invoke\\ each\\ existing\\ callback\\ once$"
+        "(?:^| )Payment\\ options\\ and\\ row\\ invoke\\ each\\ existing\\ callback\\ once$",
+        "(?:^| )Privacy\\ notice\\ discloses\\ online\\ storage\\ without\\ an\\ uninstall\\ promise$"
       ],
       "mobile/test/tls_ownership_test.dart": [
         "(?:^| )TLS\\ actual\\ ClientHello\\ .*\\ settles,\\ disconnects\\ and\\ joins$",
@@ -1393,7 +1394,10 @@
         "(?:^| )publishes\\ only\\ visible,\\ bounded\\ software\\ claims\\ on\\ the\\ homepage$",
         "(?:^| )enumerates\\ only\\ public\\ documents\\ and\\ lets\\ crawlers\\ read\\ private\\ noindex$",
         "(?:^| )home\\ renders\\ complete\\ public\\ content\\ without\\ API\\ or\\ browser\\ storage$",
-        "(?:^| )policy\\ renders\\ complete\\ public\\ content\\ without\\ API\\ or\\ browser\\ storage$"
+        "(?:^| )policy\\ renders\\ complete\\ public\\ content\\ without\\ API\\ or\\ browser\\ storage$",
+        "(?:^| )scopes\\ the\\ policy\\ to\\ the\\ App\\ Store\\ version\\ and\\ marks\\ unreleased\\ behavior$",
+        "(?:^| )states\\ the\\ released\\ collection,\\ provider,\\ log,\\ link\\ and\\ removal\\ facts$",
+        "(?:^| )makes\\ no\\ publication,\\ effective\\-date,\\ compliance\\ or\\ no\\-collection\\ claim$"
       ],
       "web-bill-viewer/src/lib/currency.test.ts": [
         "(?:^| )formats\\ generic\\ bill\\ and\\ trip\\ amounts\\ through\\ one\\ formatter$",

@@ -913,7 +913,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
                                     children: [
                                       Text(
-                                        'Billington has no accounts, but shared bills and tabs are stored online. Receipt scans are sent to Anthropic for extraction. Local data is removed when you clear app data or uninstall; shared data is not.',
+                                        'Billington has no accounts. Saving a bill or creating a tab can send it to Billington\'s service, which stores it online so it can be shared. Receipt scans are sent to Anthropic for extraction. Removing history, clearing app data or uninstalling does not delete online bills or tabs.',
                                         style: TextStyle(
                                           color: panelInk,
                                           fontSize: 14,
