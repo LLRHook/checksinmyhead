@@ -4,6 +4,11 @@ Base URL: `http://localhost:8080` (development)
 
 Bill reads accept the bill's `t` token, or the containing tab's token for a read-only bill view. Bill writes require the bill token. Tab writes may also require an `X-Member-Token` header; member attribution uses the optional `m` query parameter.
 
+Selected access (`Authorization: Bearer` or `?t=`) and member (`X-Member-Token`
+or `?m=`) tokens containing U+0000 are rejected during identity admission, before
+any database query, with `403 {"error":"access denied","code":"access_denied"}`.
+Header precedence is unchanged; an ignored query token does not override a header.
+
 This reference describes the source in this repository. A deployed service can be
 older: `GET /health` reports its commit.
 
@@ -173,7 +178,16 @@ independent headers and never fall back to that source field.
 
 Successful participant commands return200 `{participant:{…},identity_revision:N}`.
 Actual additions/requests/decisions require active ready/unpaid eligibility; maximum100
-participants. A member cannot request another participation while already bound/pending
+participants. An actual participant addition to a bill with any paid share returns
+`409 {"error":"participants cannot be added after a share is paid","code":"participants_locked_paid"}`.
+This is a non-retryable state conflict, like `member_referenced`; refreshing the
+revision cannot make the addition succeed while a share remains paid. Stale revisions
+still return `identity_revision_conflict`, and a matching existing `client_ref` replay
+still succeeds after payment. Both standalone and attached participant creation use
+this error. Clients display a nonempty server error message only for 409 responses, including
+unfamiliar codes. Other statuses retain the clients' fixed wording;
+`participants_locked_paid` has no retry-original-action control.
+A member cannot request another participation while already bound/pending
 on this bill. Pending grants no paid authority. Approve/reject must address the exact
 persisted request generation/target; no rebind or pending overwrite. Actual label rename
 is allowed while paid-active, preserving all economics, immutable allocation labels,
@@ -568,6 +582,10 @@ deadline. HTTP/1 responses also close the connection so transport cleanup cannot
 wait for the unread remainder.
 HTTP/2 uses a stream read deadline without a `Connection` header. Complete valid
 requests retain ordinary keep-alive behavior.
+Decoded JSON request strings on both buffered and streaming assignment paths
+(including nested names, labels, descriptions and JSONB content) reject U+0000 with the route's existing 400 validation error before database
+access. Other control characters remain accepted. Both JSON decoders replace malformed
+UTF-8 and unpaired Unicode surrogates with U+FFFD, preserving existing behavior.
 JSON bodies must contain exactly one document, including trailing whitespace within
 the byte cap. Creation and attachment retain strict unknown-field rejection; other
 existing DTOs continue ignoring unknown fields. Standalone paid updates and attachment
@@ -856,7 +874,18 @@ Parse a receipt image using Anthropic's Claude Messages API. No user authenticat
 - Max TOTAL multipart size: 10 MiB (boundaries included), streamed without disk/pixel decode
 - At most 32 parts, 16 KiB/64 parsed headers per part; duplicate image fields return 400
 - Receipt operation 40s from before upload; provider 30s; earlier caller/socket deadlines win
-- Accepted MIME types: `image/jpeg`, `image/png`, `image/webp`, `image/heic`, `image/heif`
+- The server detects the image type from the first 512 content bytes using Go's
+  `http.DetectContentType`; the part's declared `Content-Type` and filename extension
+  do not determine acceptance. Accepted detected types: `image/jpeg`, `image/png`,
+  `image/webp`, `image/heic`, `image/heif`.
+- A supported detected image proceeds to provider parsing even if declared as another
+  type (for example, PNG bytes declared `text/plain` or `image/svg+xml` proceed as
+  `image/png`). A declaration mismatch alone causes no error; normal parsing/provider
+  responses still apply. Unsupported detected content returns
+  `400 {"error":"unsupported image type: <detected type>"}` even when declared as a
+  supported image. For example, plain SVG bytes starting `<svg` without an XML
+  declaration are detected as `text/plain; charset=utf-8` and rejected with that type
+  in the error, regardless of an `image/svg+xml` or `image/png` declaration.
 
 **Response** `200`
 ```json
@@ -896,7 +925,7 @@ Parse a receipt image using Anthropic's Claude Messages API. No user authenticat
 | Status | Body | Meaning |
 |--------|------|---------|
 | 400 | `{"error": "image file required"}` | Missing, duplicate or malformed image field |
-| 400 | `{"error": "unsupported image type: ..."}` | Invalid MIME type |
+| 400 | `{"error": "unsupported image type: ..."}` | Unsupported content-detected type; the error names the detected type, not the declared part type |
 | 400 | `{"error":"invalid client address","code":"invalid_peer"}` | Invalid normalized peer |
 | 413 | Friendly error with `code: image_too_large` | Multipart/header/part excess or upstream 413 |
 | 429 | `{"error": "Too many scans. Please wait a moment and try again.", "code": "rate_limited"}` | Too many requests from this IP |

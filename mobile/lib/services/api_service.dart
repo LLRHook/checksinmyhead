@@ -927,11 +927,16 @@ class ApiService {
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       String? code;
+      String? message;
       try {
-        code = (jsonDecode(response.body) as Map)['code'] as String?;
+        final body = jsonDecode(response.body) as Map;
+        if (body['code'] is String) code = body['code'] as String;
+        if (body['error'] is String) message = body['error'] as String;
       } catch (_) {}
       throw ApiException(
-        response.statusCode == 409
+        response.statusCode == 409 && message != null && message.isNotEmpty
+            ? message
+            : response.statusCode == 409
             ? 'State changed or needs review. Refresh and deliberately retry.'
             : response.statusCode == 403
             ? 'Current membership or source proof was denied.'

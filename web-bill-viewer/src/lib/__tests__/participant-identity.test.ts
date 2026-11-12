@@ -6,6 +6,7 @@ import {
   ApiError,
   type Bill,
   computeTabPersonTotals,
+  createParticipant,
   decideBinding,
   getCurrentMember,
   getSettlementHistory,
@@ -40,6 +41,58 @@ const person = (
 });
 afterEach(() => vi.unstubAllGlobals());
 describe("participant identity", () => {
+  it("unknown conflict codes show the server message without automatic retry", async () => {
+    const message = "participants cannot be added after a share is paid";
+    const fetch = vi.fn().mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            code: "participants_locked_paid",
+            error: message,
+          }),
+          { status: 409 },
+        ),
+    );
+    vi.stubGlobal("fetch", fetch);
+    await expect(
+      createParticipant({ billId: 7, token: "source" }, "new", "Pat", 1),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: "participants_locked_paid",
+      message,
+      retryable: false,
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    fetch.mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            code: "future_conflict",
+            error: "A specific future conflict.",
+          }),
+          { status: 409 },
+        ),
+    );
+    await expect(
+      createParticipant({ billId: 7, token: "source" }, "new", "Pat", 1),
+    ).rejects.toThrow("A specific future conflict.");
+    fetch.mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            code: "future_conflict",
+            error: { unsafe: "not text" },
+          }),
+          { status: 409 },
+        ),
+    );
+    await expect(
+      createParticipant({ billId: 7, token: "source" }, "new", "Pat", 1),
+    ).rejects.toThrow(
+      "State changed or requires review. Refresh and deliberately retry.",
+    );
+  });
+
   it("duplicate allocation-label ties follow receipt occurrence order after share-row reorder", () => {
     const bill = {
       id: 7,
