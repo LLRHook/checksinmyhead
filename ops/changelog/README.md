@@ -1,249 +1,178 @@
 # Changelog
 
-Changelog tells Billington's friends and testers what a proposed app change does
-and why, then gives everyone **seven full days** to stop it. Going live here means
-squash-merging to main. Main's existing CI owns later delivery.
+Changelog tells Billington's friends and testers what an app change does and why,
+then gives everyone **seven full days** to stop it. Going live means squash-merging
+to main; main's existing CI owns delivery to an app build.
 
-Authors open drafts and keep the opening note current. The driver or owner marks a
-change ready after green checks and independent review. The unchanged note format
-is in [the PR template](../../.github/pull_request_template.md). Only the text between
-its markers is forwarded. Missing/template/overlong text fails the **Changelog note**
-check, including while draft. Drafts post nothing. The escaped note must fit 1100
-UTF-16 units; shorten it rather than letting the bot truncate what people read.
+Authors open drafts and keep the opening note current. The driver or owner marks
+a change ready after green checks and independent review. Only text between the
+markers in [the PR template](../../.github/pull_request_template.md) is forwarded.
+Missing, template or overlong text fails **Changelog note**, including while draft.
+The escaped note must fit 1100 UTF-16 units; shorten it rather than truncate it.
+Drafts have no initial Discord post.
 
-## What friends see and how to hold
+## What friends see
 
-One Discord notice carries the explanation and current outcome. While ready and
-waiting, it shows a deadline in **your local time**, a relative time, and the
-invitation to hold. A merged notice says **“Merged. It will be in the next app
-build.”** Closed, exempt and back-to-draft notices have no deadline or hold invitation.
-A back-to-draft notice says the wait is cancelled.
+One embed contains the clickable PR title, explanation and status; there is no
+separate message text, footer or bare URL. Waiting notices say “Goes live” with a
+local and relative date and invite people to stop it. A merged notice says “It's
+in. You'll see it in the next app build.” Final, draft and overdue notices have no
+deadline. GitHub's comment uses written UTC dates instead of Discord time markup.
 
-Tap **🛑** to hold indefinitely. Any person's or other bot's normal/super stop
-reaction counts; Changelog ignores only its own seed. Remove your stop to release
-your hold. Every holder must release. **👍 never shortens the week.** Holds are polled
-hourly and read again immediately before merging. The displayed count is exact;
-up to eight names and first-observed hold times are shown, without IDs or mentions.
-Discord supplies no actual reaction timestamp. Open the reaction list for everyone.
+Tap **🛑** to hold indefinitely. Every person's or other bot's normal or super stop
+reaction counts; only Changelog's own seed is ignored. Every holder must release.
+Removing a stop leaves the original deadline intact. **👍 never shortens the week.**
+Holds are polled hourly and immediately before merging. Up to eight names and their
+first-observed hold times appear, without mentions or IDs. Discord provides no
+reaction timestamp; open its reaction list for all holders.
 
-If someone leaves the server with a stop still present, a server administrator or
-moderator with **Manage Messages** can remove that reaction after resolving the
-objection. Changelog itself never gets that permission. Otherwise close the change
-and open a **new** PR, explain the unresolved objection, and wait a full new week.
-The accepted cross-service window remains: a stop arriving after the final reaction
-read but before GitHub accepts the merge cannot be made atomic with it.
+If a holder leaves the server, a moderator with **Manage Messages** can resolve the
+objection and remove the reaction. Changelog does not get that permission.
+Otherwise close this PR and open a new one, explain the unresolved objection, and
+wait a full new week. A reaction arriving after the final read but before GitHub
+accepts a merge remains an accepted cross-service window.
 
-The week starts at the later of the initial controller time and Discord's actual
-posting time. Note-only edits update the same post without restarting. Own commits
-or the net change restarting are announced as “The change was updated, so the seven
-days start again.” A clean merge-main update preserving the own commits and patch
-keeps the deadline; conflict resolutions and rebases conservatively restart it.
-Returning to draft cancels the wait; ready/reopen starts a full week again. The
-GitHub timeline recovers transitions even when an event run was replaced.
+The week starts at the later of controller time and Discord's actual posting time.
+Note-only edits update the same post. Own commits or net changes restart the week
+and say “The change was updated, so the week starts again.” A clean merge-main
+update preserving the own commits and net patch keeps the deadline; resolutions
+and rebases conservatively restart it. Draft cancels the wait; ready or reopen
+starts a full week. The GitHub timeline recovers transitions from missed events.
 
-Binary files and pure renames use file name, previous name, status and blob SHA.
-Commits and files are paged: GitHub exposes compare files only on the first compare
-page, capped at 300, so the controller uses the paginated PR files list when needed
-(up to GitHub's 3000-file limit). A truncated text patch, data beyond that limit, or
-more than the bounded 1000-commit comparison allowance uses the **exact current
-commit** instead. Its notice says “This is a large change, so any new commit restarts
-the seven days.” That clock remains stable between runs and can finish; merging
-main then also restarts it. A timeout, 5xx or rate limit is **not a change**: that
-PR's saved notice, checks, mirror and clock stay untouched, others still reconcile,
-and the overall run fails visibly for a later retry.
+Binary files and pure renames use filename, previous filename, status and blob SHA.
+Commits and files are paged. Compare's 300-file cap falls back to PR files (up to
+GitHub's 3000-file cap). Truncated text patches, larger lists or more than 1000
+comparison commits use the **exact current commit** instead. The notice says
+“This is a big change, so any update to it restarts the week.” That clock stays
+stable between runs and can finish; a new head then always restarts it. Transient
+read failures, rate limits and timeouts leave that PR's notice, checks, mirror and
+clock untouched; other PRs proceed and Actions fails for a later retry.
 
-At the deadline, the change must still be open, ready, unheld, cleanly mergeable,
-and green on its exact current commit, including the Actions check named
-**Required delivery checks**. Missing/pending/skipped/neutral/failed checks do not
-count. A missing check is named in the notice. The final reread checks the change,
-base, note, ready transition, checks and reactions; GraphQL also conditions its
-squash merge on the expected commit. GitHub rules continue to apply. Tracker-only
-(`bugs.md`, `features.md`, `CHANGELOG.md`), Dependabot and fork changes are exempt.
-Existing notices still finish if a change becomes exempt, stops targeting main,
-or is merged/closed by a person. There is no agent bypass of the week.
+A merge requires an open, ready, unheld PR, GitHub's clean mergeability, exact-head
+Actions successes for **Required delivery checks** and **Changelog note**, and no
+other incomplete or failing checks. Optional **skipped** and **neutral** checks are
+allowed; only the current Actions job named `changelog` is excluded. Failure,
+cancelled, timed_out, action_required, stale, startup_failure and unknown results
+block. The latest legacy status per context must also succeed. Missing or failing
+checks are named after the week. Final reads verify head, base, note, ready
+transition, checks and holds; GraphQL also conditions the merge on the exact head.
+GitHub rules still apply. Tracker-only (`bugs.md`, `features.md`, `CHANGELOG.md`),
+Dependabot and fork changes are exempt. Existing notices finish when a PR becomes
+exempt, leaves main, or a person merges or closes it. Agents cannot bypass the week.
 
 ## Driver setup: main-only environment
 
-The implementation did not perform any setup, inspect tokens or call Discord.
-These are **driver decisions**; account setup and the live rehearsal belong to the
-driver/owner. Do not give credentials to an agent.
+These are driver decisions. No setup, token inspection or real Discord/merge call
+was performed by the implementation agent. Do not give credentials to an agent.
 
-1. Open Discord application **Changelog**, ID **1570549785583419514**. Invite its
-   bot using OAuth scope `bot`. In channel **1366910615188406494**, allow **View
-   Channel, Send Messages, Embed Links, Read Message History, Add Reactions**.
-   No Administrator, Manage Messages, privileged intent or gateway is needed.
-2. In GitHub repository Settings → Environments, create **`changelog`**. Configure
-   deployment branch rules to allow **only `main`** (selected branches/tags; no
-   wildcard/tag allowance). Both jobs declare this environment. Verify the branch
-   restriction before storing either secret; do not put them in repository secrets.
-3. In that environment, set **`CHANGELOG_DISCORD_BOT_TOKEN`**, the opaque Discord bot
-   token. If it was provisioned as a repository secret, move it privately and remove
-   the repository copy. The driver performs that transition; this PR does not.
-4. Repository variables remain non-secret: **`CHANGELOG_DISCORD_CHANNEL_ID`** =
-   `1366910615188406494`; **`CHANGELOG_MODE`** = `post` initially.
-5. Optional environment secret **`CHANGELOG_MERGE_TOKEN`**: a fine-grained PAT owned
-   by **LLRHook**, restricted to **LLRHook/checksinmyhead only**, with **Contents read
-   and write, Pull requests read and write, Workflows read and write**, and automatic
-   **Metadata read**. Workflows write covers changes that update workflow files.
-   Choose a short expiry; renew/revoke privately. No secret means post/hold only.
-6. Leave repository mode `post` through the rehearsal below. There is no prior-merge
-   proof variable and no requirement on the authors of the individual commits.
+Invite Discord application **Changelog**, ID **1570549785583419514**, using scope
+`bot`. In channel **1366910615188406494**, grant exactly **View Channel, Send
+Messages, Embed Links, Read Message History, Add Reactions**. No privileged intents,
+Administrator, Manage Messages or gateway connection are needed. Recovery uses
+ordinary channel history and works with these grants.
 
-The environment uses **`deployment: false`**, documented by GitHub: secrets and
-branch restrictions apply without creating a deployment object each hourly run.
-Do not add custom deployment protection rules, which GitHub documents as incompatible
-with this option. See [workflow syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idenvironment).
-The gate pins this setting, the main-only checkout and the exact permission grants.
+1. In repository Settings → Environments, create **`changelog`** with selected
+   deployment branches limited to **`main`** only; no wildcard or tag allowance.
+   Verify this restriction before storing secrets. Do not add custom deployment
+   protection rules. Both jobs use `environment: {name: changelog, deployment: false}`:
+   secrets and branch restrictions apply without hourly deployment objects.
+2. Add environment secret **`CHANGELOG_DISCORD_BOT_TOKEN`** privately. Optionally
+   create **`CHANGELOG_MERGE_TOKEN`**, a fine-grained PAT owned by **LLRHook**, scoped
+   only to **LLRHook/checksinmyhead** with **Contents read and write, Pull requests
+   read and write, Workflows read and write**, and automatic **Metadata read**.
+   Workflows write permits workflow-touching changes. Choose a short expiry and
+   renew or revoke privately. Without it the bot posts and holds but never merges.
+3. Delete any repository-level copies of **both secrets** after placing them in
+   the restricted environment. The driver handles that private transition.
+4. Set repository variables **`CHANGELOG_DISCORD_CHANNEL_ID=1366910615188406494`**
+   and **`CHANGELOG_MODE=post`**. Verify posting, holds, updates and scheduled runs.
+5. To enable automatic merges, create/store the merge token above if still absent,
+   then set **`CHANGELOG_MODE=merge`**. For the **first automatic merge**, a person
+   inspects the raw commit on main for **Victor Ivanov <victor.n.ivanov@gmail.com>**,
+   the expected title and one parent, and confirms main's push CI started and passes.
+   Prefer a reviewed workflow-touching change to exercise that permission. Observe
+   the full real week; do not change recorded dates or make an agent perform a merge.
 
-One variable is the switch: `off` stops all controller API activity; `post` posts and
-tracks holds/deadlines but never merges; `merge` enables the conditional merge path.
-Missing/unknown mode behaves as off and logs a loud failure. Missing Discord setup
-also stops. To stop an already-running job immediately, also cancel that Changelog
-run: a variable cannot revoke a value the running job already read.
+One variable is the switch: **off** makes no controller API calls; **post** tracks
+notices, holds and deadlines without merging; **merge** enables merging. Missing
+or unknown mode behaves as off and fails loudly in the run log. Missing Discord
+setup also stops. To stop an already-running job, also cancel that run; a changed
+variable cannot revoke a value it already read. There is no dispatch trigger.
 
-## Merge identity and one rehearsal
+Only the separate PAT merges; the built-in token cannot. The bot requires its
+`/user` to report login **LLRHook** and profile name **Victor Ivanov**. Automatic
+merging is limited to PRs opened by that account. For other authors the notice says
+“The week is up. Someone else wrote this one, so the owner will put it live by
+hand.” The owner/driver manual path still requires the full week, no holds and
+green checks; agents do not perform it. A person's merge gets an ordinary final
+notice; its author is not audited by this bot.
 
-Only a separate merge token may merge. The built-in token cannot: its app identity
-is unsuitable and its events normally do not start downstream workflows. The bot
-reads `/user` to require login **LLRHook** and profile name **Victor Ivanov**. It
-merges automatically only changes **opened by that account**; another author's
-notice says “The week has passed. This one was opened by someone else, so the owner
-merges it by hand.” That manual path still respects the recorded week, all holds
-and green checks; agents do not take it themselves.
+The GraphQL mutation uses **SQUASH**, `expectedHeadOid`, Victor's `authorEmail`,
+headline **`<title> (#<number>)`**, and an empty body without co-author trailers.
+Every bot merge reads the raw Git author. A wrong author fails Actions, the note
+check and the PR comment; Discord still shows the ordinary merged notice. Set mode
+off and investigate main. Detection cannot undo a merge. Relevant references:
+[GraphQL input](https://docs.github.com/en/graphql/reference/input-objects#mergepullrequestinput),
+[PAT permissions](https://docs.github.com/en/rest/authentication/permissions-required-for-fine-grained-personal-access-tokens),
+[workflow triggering](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow),
+[environment syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idenvironment).
 
-GitHub's [merge documentation](https://docs.github.com/en/enterprise-server%403.21/pull-requests/how-tos/merge-and-close-pull-requests/merging-a-pull-request)
-explicitly credits the PR creator as squash author; current GitHub.com instructions
-also limit the squash email selector to the PR author. This supports retaining the
-PR-author guard, rather than attaching Victor's email to someone else's change.
-The API still offers no author-name input, so the rehearsal remains essential.
+## Runs, state and recovery
 
-The mutation sets **SQUASH**, `expectedHeadOid`, `authorEmail` equal to
-`victor.n.ivanov@gmail.com`, headline **`<title> (#<number>)`**, and an explicitly empty
-body (no co-author trailers). It then reads the raw Git commit and requires author
-**Victor Ivanov <victor.n.ivanov@gmail.com>**. A wrong author fails Actions, the PR's
-note check, its Changelog comment and the Discord notice with an identity incident.
-Set mode off and investigate. This detects a bad result; it cannot undo a merge.
-A later reconciliation audits a manually merged notice too.
+Each event handles **only its event PR**. The hourly run at minute 17 sweeps open
+PRs and closures from the last **24 hours**, stopping before old closures. A closure
+missed for longer than a day needs manual notice cleanup. Both workflows retain
+`queue: max` and never cancel a running job. Fork events use an isolated run-ID
+group and are skipped. GitHub permits up to 100 pending runs; ordering and schedule
+timing are best effort. The next hourly sweep catches dropped/failed events.
+Schedules may be disabled after 60 days without activity; monitor successful runs
+and recover in post mode before enabling merges again.
 
-Before enabling repository `CHANGELOG_MODE=merge`, rehearse one finished,
-owner-opened change through this exact controller:
+The PR comment is a readable mirror and an **untrusted message-ID hint**, never a
+clock. First, fetch its last anchored `Discord message:` line. Accept the message
+only in the configured channel, from this bot, with the exact PR's valid record.
+Otherwise page backward through channel history, stopping at the first message
+older than the PR's creation. Exactly one notice recovers; none permits creation;
+multiple notices stop. At the **20-page cap**, fail closed and tell the driver to
+close this PR and open the change as a new PR with a full week and any unresolved
+objection explained. That lookup precedes every creation, so deleting, retitling
+or forging the comment cannot abandon a held notice. A lost first POST reply is
+recovered the same way. A deterministic ready-generation nonce adds short-lived
+retry protection; it is not durable authority. There is no pending marker.
 
-1. Choose its positive PR number. It must have completed its real seven-day window,
-   have no stops, be ready, cleanly mergeable and green. Prefer a reviewed change
-   touching a workflow to exercise the Workflows grant. Do not shorten its clock.
-2. From the reviewed **main** checkout on the driver's machine, privately inject
-   the Discord token, channel ID, built-in-compatible GitHub read/check/comment
-   credential and separate PAT through the driver's secret helper, with no tracing.
-   For this local process only set `GITHUB_REPOSITORY=LLRHook/checksinmyhead`,
-   `GITHUB_EVENT_NAME=schedule`, `GITHUB_EVENT_PATH` to a local `{}` JSON file,
-   and `CHANGELOG_MODE=merge`. The repository variable stays `post`.
-3. Run `python3 ops/changelog/changelog.py --dry-run --rehearse NUMBER` first.
-   It reads services and prints its proposed outcome, with every write suppressed.
-4. With separate owner/driver authorization, run
-   `python3 ops/changelog/changelog.py --rehearse NUMBER`. This local-only selector
-   uses the full week/hold/check/identity gate and changes no other PR. It is refused
-   inside Actions. Do not run a hand-written GraphQL shortcut.
-5. Inspect the raw commit with
-   `gh api repos/LLRHook/checksinmyhead/git/commits/SHA --jq '{author, message, parents}'`.
-   Confirm the exact author name/email, expected title and single parent. Confirm
-   main's push-triggered `ci.yml` run started for this SHA (and required checks pass).
-   Verify a workflow-touching rehearsal accepted the listed permissions.
-6. Only after those observations may the driver set the repository variable to
-   `merge`. On failure, keep `post` and investigate. No proof PR is reread on future
-   merges, and no broader credential is used as a fallback.
+At 50 messages/day, exceptional history recovery for day/week/month-old PRs takes
+**1/4/16 history requests**, plus one bot identity request, using a 30-day month and
+an older sentinel. The direct hint makes this exceptional. A steady event costs
+**6 GitHub / 4 Discord requests**; a sweep of ten open PRs costs **62 / 31**. An
+hour with 15 such events plus that sweep costs **152 / 91**, with no unchanged
+notice edits or reaction writes. The older regression with 300 old closed PRs,
+seven open and 500 unrelated messages costs **44 / 22**, also without writes.
+Initial creation needs one message POST and two seed reactions. Returned Discord
+metadata is ignored when comparing the single embed the bot set.
 
-[GraphQL inputs](https://docs.github.com/en/graphql/reference/pulls#mergepullrequestinput),
-[workflow-trigger behavior](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow),
-[permissions](https://docs.github.com/en/rest/authentication/permissions-required-for-fine-grained-personal-access-tokens)
-are the primary references. No rehearsal or real merge was performed here.
+The authoritative record is compressed into the title link fragment, with its
+clock, ready transition, change identity and observed holds. A writer editing the
+PR comment can corrupt the hint or delay recovery, but cannot move merging sooner:
+clock data comes from the bot's Discord record, clamped to the actual message time;
+GitHub supplies the current PR, timeline, change and checks; Discord supplies holds.
+Injected holder-name text cannot replace the last anchored pointer. Bot-token
+holders and writers to main remain privileged trust boundaries. Do not edit the
+hidden record to shorten a deadline.
 
-## Bounded runs, state and recovery
+Persistent lookup/access instructions appear on the PR, not as operational alarms
+in Discord. Actual channel-history 403/404 reports that the channel cannot be read;
+a hint failure or bot-identity failure does not make that claim. A truly deleted
+notice requires a fresh draft → ready transition and a full new week. Duplicate
+notices require preserving the original and resolving any objection on a duplicate
+before removing it. Failed reads do not write or change clocks. Write failures
+report missing Send Messages/Embed Links. Discord 429 honors one numeric retry
+from zero to five seconds; otherwise the operation fails for a later run. An
+unexpected per-PR error logs only the PR number and error type, continues the
+sweep and fails Actions without leaking unknown response text.
 
-Every valid event/scheduled run reconciles the entire active set, not just its event
-PR. Discovery lists open PRs (including followed notices retargeted away from main)
-and closures from the last **24 hours**. It stops paging old closures and never
-fetches their individual records again. A recent closed PR without a bot comment
-is ignored. A closure after an outage longer than a day needs manual notice cleanup;
-this bounded horizon is explicit rather than an unbounded historical sweep.
+## Offline proof and live smoke
 
-The PR comment supplies an **untrusted message-ID hint**, never a clock. The fetched
-message must be Changelog's own and exactly name this repository/PR. A bounded
-latest-100-message read is shared once per run for duplicate/create recovery; older
-known notices are fetched directly by ID, regardless of channel chatter. A missing
-hint also triggers one bounded search filtered to this bot, channel and change; a
-forged/deleted hint cannot hide an existing held notice. An unavailable/unindexed
-search preserves state and retries later; it never proves deletion. Search uses
-only the app’s own messages, which are exempt from Message Content restrictions;
-no privileged intent is added. Unchanged
-messages compare only the fields the bot sends, ignoring Discord-added `type` and
-other metadata. Seeds are added only during creation/recovery of incomplete creation.
-A request-count regression with 300 old closed PRs, seven open and 500 unrelated
-messages measures **44 GitHub / 23 Discord requests**, zero edits and reaction writes.
-
-The authoritative record is compressed in the bot-owned embed's link fragment,
-behind its clickable title. The full clock, PR number, change identity, last ready
-transition and observed holds are recoverable from that message alone. Its visible
-footer is just “Changelog · review record”; it contains no note copy or JSON. The
-readable PR mirror cannot advance the clock. A write-capable account can corrupt a
-hint and cause extra waiting; restoring a valid message always re-derives timing from
-Discord and current facts from GitHub. Bot-token holders and main writers remain
-privileged trust boundaries. Never edit the hidden record to move a deadline earlier.
-
-Before creating a notice the bot records a pending mirror. The deterministic nonce
-includes the ready generation; a lost create response is recovered from recent
-history, or through restoring its direct message link if channel traffic hides it. An
-uncertain create is never assumed deleted: a bounded bot-message search first recovers
-any live notice and its holds; a later draft/ready cycle cannot discard
-an existing but hidden notice or its holds. The owner restores its message link,
-or closes it and opens a new PR with the unresolved objection explained and a full week.
-Discord's nonce uniqueness lasts only minutes. It is not the durable authority.
-Discord HTTP429 honours one numeric `retry_after` between zero and five seconds;
-a second 429, longer/invalid delay, other HTTP error or timeout stops that operation
-without a loop. Failed **reads** perform no writes or clock changes for that PR.
-Channel 403/404 errors are persistent setup failures and are surfaced on the PR.
-
-The event queue places same-repo work in `changelog-reconcile`; fork events use a
-run-ID group of their own before their job is skipped. Both use `queue: max` and
-never cancel a running job. GitHub documents up to **100 pending runs**; overflow
-runs can be cancelled and ordering is not guaranteed. Correctness does not depend
-on each event running: any later valid run re-derives every active change. See
-[concurrency syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#concurrency).
-
-The schedule is hourly at minute 17, best effort, and may be disabled after 60 days
-without repository activity. Late schedules delay merging rather than shorten the
-week. Monitor the last successful Changelog schedule run. Re-enable a stopped
-schedule in Actions with mode `post`; reconcile current notices before enabling
-merges. There is intentionally no dispatch trigger.
-
-## Visible stuck states and safe ways out
-
-- **Deleted/unrecoverable notice:** the PR comment asks the driver to mark the change
-  draft, then ready again. Those fresh transitions create a new notice and a full
-  week; an old mirror does not permanently block recreation. No early merge follows.
-- **Channel 403/404:** the PR comment asks the owner to restore View Channel/Read
-  Message History or Send Messages/Embed Links and check the channel setting. The
-  notice gets the instruction when it can still be edited. Restore access and let
-  the next run recover; do not erase the clock.
-- **Duplicate notices:** the comment and editable notices ask the owner to preserve
-  the original and its stops, remove the duplicate and resolve any objection on it.
-  Until resolved nothing merges. Do not discard a stop without talking to its holder.
-- **A departed holder:** a server admin/moderator removes the reaction after resolving
-  it; otherwise close and open a new PR with a new full week, as explained above.
-- **Required check never appears:** after the week the notice names the check it is
-  waiting for, such as Required delivery checks. The driver repairs that CI problem;
-  the bot keeps the original deadline and retries. No check waiver exists.
-- **Wrong merge author:** identity incident appears in Actions, the note check,
-  Changelog comment and editable notice. Set mode off, investigate main, repeat the
-  qualified rehearsal before restoring automatic merging.
-- **Transient outage/rate limit:** Actions fails for visibility. That change's notice
-  and clock stay as before while others proceed; the next run re-reads it.
-- **Off/missing setup/bad note/conflict:** Actions/note check/notice names the missing
-  input or check. Fix it; missing credentials never select a fallback merge identity.
-
-## Offline proof and driver smoke
-
-Use **CPython 3.12**. Tests use stateful fake GitHub/Discord APIs and forbid socket
-connections; no production token or Discord call is needed:
+Use **CPython 3.12**. Stateful service fakes forbid sockets; no token is needed:
 
 ```sh
 python3 ops/changelog/test_changelog.py
@@ -252,22 +181,11 @@ python3 ops/ci/test_delivery_gate.py
 python3 .cycle/trackers.py lint
 ```
 
-The automation manifest requires every new method and its report. The delivery gate
-pins the two new workflows without weakening the existing workflows' assertions.
-The fake lifecycle/response-shape cases include a 300-closed/7-open/500-noise run,
-transient failures, binary/rename/large comparisons, stale/exempt notices, local-time
-messages, deleted/duplicate/access recovery, draft note validation and identity
-incidents. The independent review's 13 code and nine workflow mutations are rerun.
-
-Live smoke still belongs to the driver: with mode `post`, exercise draft → ready,
-exactly one notice and both seeds, note edit (same deadline), own code edit (new
-week), unchanged merge-main (same week), stop/release (deadline unchanged), 👍 (no
-acceleration), back-to-draft (no deadline), closure/exemption (final notice), deleted
-notice recovery, channel access failure, and a required check missing at the actual
-deadline. Read the hourly API usage and confirm unchanged messages are not edited.
-Let seven real days elapse without changing stored times. Then perform the single
-identity/workflow-touching rehearsal above before enabling merges. Hosted parser,
-environment restrictions, live Discord permissions, actual check association,
-PAT attribution/CI triggering and queue behavior remain live proof, not fake claims.
-
-The exceptional recovery lookup uses Discord’s documented [message search](https://docs.discord.com/developers/resources/message.md#search-guild-messages) and the [app-message content exception](https://docs.discord.com/developers/events/gateway#message-content-intent). Live smoke must confirm that filtered search is available without a privileged intent; failure stays closed and offers manual link restoration.
+The manifest requires every bot test and report. The delivery gate pins both new
+workflows without weakening existing assertions. Evidence includes service
+lifecycles, real saved check shapes, ten controller mutations and both reviewers'
+workflow mutations. Live smoke must still prove environment isolation, actual
+Discord permissions and layout, reaction access, check association, queue behavior,
+API usage and a real seven-day post/hold/release/update lifecycle. The first
+permitted automatic merge must prove PAT attribution and main CI triggering as
+specified above. No fake result is claimed as a live service observation.

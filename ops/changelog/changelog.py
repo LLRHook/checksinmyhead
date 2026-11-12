@@ -229,7 +229,7 @@ class GitHub:
             self._files[key] = self.api.pages(self.root + '/pulls/' + str(pr['number']) + '/files') if pr['changed_files'] <= 3000 else []
         files = self._files[key]
         paths = [f['filename'] for f in files]
-        return paths if len(files) == pr['changed_files'] else paths + ['incomplete-file-list']
+        return paths, len(files) == pr['changed_files']
 
     def prepare_check(self, pr):
         self._runs[pr['head']['sha']] = self.api.pages(self.root + '/commits/' + pr['head']['sha'] + '/check-runs?filter=latest', 'check_runs')
@@ -257,13 +257,21 @@ class GitHub:
     def green(self, pr):
         head = pr['head']['sha']
         runs = self.api.pages(self.root + '/commits/' + head + '/check-runs?filter=latest', 'check_runs')
-        # The mandatory delivery context must be a completed Actions check on this
-        # exact head. Unknown/pending/skipped/neutral checks never count as green.
-        required = [r for r in runs if r['name'] == REQUIRED_CHECK and r['app']['slug'] == 'github-actions']
+        # Required and note checks must succeed on this exact commit. Optional
+        # delivery jobs may skip on PRs; the running Changelog job cannot gate itself.
+        mandatory = [REQUIRED_CHECK, CHECK]
         self._runs[head] = runs
-        bad = [r for r in runs if r.get('head_sha') != head or r.get('status') != 'completed' or r.get('conclusion') != 'success']
-        self.waiting_check = REQUIRED_CHECK if not required else (bad[0]['name'] if bad else '')
-        if not required or bad:
+        for name in mandatory:
+            if not any(r['name'] == name and r['app']['slug'] == 'github-actions' and
+                       r.get('head_sha') == head and r.get('status') == 'completed' and
+                       r.get('conclusion') == 'success' for r in runs):
+                self.waiting_check = name
+                return False
+        bad = [r for r in runs if not (r['name'] == 'changelog' and r['app']['slug'] == 'github-actions') and
+               (r.get('head_sha') != head or r.get('status') != 'completed' or
+                r.get('conclusion') not in ('success', 'skipped', 'neutral'))]
+        if bad:
+            self.waiting_check = bad[0]['name']
             return False
         statuses = self.api.pages(self.root + '/commits/' + head + '/statuses')
         latest = {}
@@ -288,15 +296,16 @@ class GitHub:
             data = json.loads(match[1]) if match else {}
         except ValueError:
             data = {}
-        pointer = re.search(r'Discord message: ([0-9]+)', comments[0]['body'])
-        return {'message': pointer[1] if pointer else None, 'ready': data.get('ready'), 'exists': True}
+        pointers = re.findall(r'(?m)^Discord message: ([0-9]+)$', comments[0]['body'])
+        return {'message': pointers[-1] if pointers else None, 'ready': data.get('ready'), 'exists': True}
 
     def mirror(self, number, state, message, text):
         if self.dry_run:
             print('DRY RUN: mirror PR #' + str(number))
             return
         candidates = self.comments(number)
-        body = COMMENT + '\nChangelog: ' + text + '\n\nDiscord message: ' + (message or 'pending') + '\n\n```json\n' + compact(state) + '\n```'
+        pointer = '\n\nDiscord message: ' + message if message else ''
+        body = COMMENT + '\nChangelog: ' + plain_dates(text) + pointer + '\n\n```json\n' + compact(state) + '\n```'
         if candidates:
             if candidates[0]['body'] != body:
                 self.api.request('PATCH', self.root + '/issues/comments/' + str(candidates[0]['id']), {'body': body})
@@ -339,87 +348,77 @@ def state_embed(number, state):
     # Store full-strength state in the embed link fragment, outside the phone
     # reader's text. The bot-owned message alone still recovers all clock data.
     packed = base64.urlsafe_b64encode(zlib.compress(compact(state).encode())).decode().rstrip('=')
-    return {'title': 'Changelog · change ' + str(number),
-            'url': 'https://github.com/' + REPO + '/pull/' + str(number) + '#changelog-' + packed,
-            'footer': {'text': 'Changelog · review record'}}
+    return {'url': 'https://github.com/' + REPO + '/pull/' + str(number) + '#changelog-' + packed}
+
+
+def plain_dates(text):
+    return re.sub(r'<t:([0-9]+):[FR]>', lambda m: datetime.fromtimestamp(int(m[1]), timezone.utc).strftime('%d %B %Y at %H:%M:%S UTC'), text)
 
 
 class Discord:
+    PAGE_LIMIT = 20
+
     def __init__(self, api, channel):
         self.api, self.channel = api, channel
         self.root = '/channels/' + channel + '/messages'
         self.bot = None
-        self.recent = None
-        self.affected = {}
 
-    def history(self):
-        if self.recent is None:
-            self.recent = self.api.request('GET', self.root + '?limit=100')
-        return self.recent
+    def record(self, message, number):
+        for embed in message.get('embeds', []):
+            prefix = 'https://github.com/' + REPO + '/pull/' + str(number) + '#changelog-'
+            if not embed.get('url', '').startswith(prefix):
+                continue
+            try:
+                packed = embed['url'][len(prefix):]
+                require(len(packed) <= 1800, 'Review record too large')
+                raw = zlib.decompressobj().decompress(base64.urlsafe_b64decode(packed + '=' * (-len(packed) % 4)), 8192)
+                state = json.loads(raw)
+                require(state['version'] == 1 and state['number'] == number, 'Invalid review record')
+                state['start'] = stamp(max(date(state['start']), date(message['timestamp'])))
+                return state
+            except (KeyError, ValueError, TypeError, zlib.error):
+                raise NoticeProblem('The saved review record is damaged. Ask the owner to restore the original notice or close this change and open a new one.') from None
+        return None
 
-    def recover(self, number):
-        # A missing/untrusted hint is not proof of deletion. Search only this
-        # app's messages, independently of channel history, before any reset.
-        channel = self.api.request('GET', '/channels/' + self.channel)
-        require(re.fullmatch('[0-9]+', channel.get('guild_id', '')), 'Channel has no server identity')
-        query = urllib.parse.urlencode({'channel_id': self.channel, 'author_id': self.bot,
-                                       'content': 'https://github.com/' + REPO + '/pull/' + str(number), 'limit': 25})
-        result = self.api.request('GET', '/guilds/' + channel['guild_id'] + '/messages/search?' + query)
-        require(type(result.get('total_results')) is int and isinstance(result.get('messages'), list),
-                'Discord notice search is not indexed or unavailable; retry on the next run')
-        require(result['total_results'] < 25, 'Too many matching notices to recover safely; ask the owner to restore the original message link')
-        messages = []
-        for group in result['messages']:
-            messages.extend(group if isinstance(group, list) else [group])
-        return messages
-
-    def find(self, number, hint=None):
-        try:
-            if self.bot is None:
-                self.bot = self.api.request('GET', '/users/@me')['id']
-            marker = 'Changelog · change ' + str(number)
-            matches = [m for m in self.history() if m['author']['id'] == self.bot and
-                       m.get('embeds') and m['embeds'][0].get('title') == marker]
-            pointer = (hint or {}).get('message')
-            if pointer and not any(m['id'] == pointer for m in matches):
-                try:
-                    fetched = self.api.request('GET', self.root + '/' + pointer)
-                except HTTPFailure as exc:
-                    if exc.status != 404:
-                        raise
-                else:
-                    if fetched['author']['id'] != self.bot or fetched.get('embeds', [{}])[0].get('title') != marker:
-                        raise NoticeProblem('The saved notice link is wrong. Ask the owner to restore the Changelog comment.')
-                    matches.append(fetched)
-            if not matches and hint:
-                recovered = self.recover(number)
-                matches = [m for m in recovered if m.get('author', {}).get('id') == self.bot and
-                           m.get('embeds') and m['embeds'][0].get('title') == marker]
-            self.affected[number] = matches
+    def find(self, pr, hint=None):
+        if self.bot is None:
+            self.bot = self.api.request('GET', '/users/@me')['id']
+        number, created = pr['number'], date(pr['created_at'])
+        pointer = (hint or {}).get('message')
+        if pointer:
+            try:
+                fetched = self.api.request('GET', self.root + '/' + pointer)
+            except HTTPFailure as exc:
+                if exc.status not in (403, 404):
+                    raise
+            else:
+                if fetched['author']['id'] == self.bot and fetched.get('channel_id') == self.channel:
+                    state = self.record(fetched, number)
+                    if state is not None and date(fetched['timestamp']) >= created:
+                        return fetched, state
+        matches, before = [], ''
+        for _ in range(self.PAGE_LIMIT):
+            try:
+                batch = self.api.request('GET', self.root + '?limit=100' + ('&before=' + before if before else ''))
+            except HTTPFailure as exc:
+                if exc.status in (403, 404):
+                    raise NoticeProblem('Changelog cannot read this channel. Ask the owner to restore View Channel and Read Message History and check the channel setting.') from None
+                raise
+            complete = len(batch) < 100
+            for message in batch:
+                if date(message['timestamp']) < created:
+                    complete = True
+                    break
+                if message['author']['id'] == self.bot and message.get('channel_id') == self.channel:
+                    state = self.record(message, number)
+                    if state is not None:
+                        matches.append((message, state))
             if len(matches) > 1:
                 raise NoticeProblem('More than one notice exists. Ask the owner to keep the original notice and remove the duplicate, preserving all stop reactions.')
-            if not matches:
-                return None, None
-            message = matches[0]
-            embed = message['embeds'][0]
-            prefix = 'https://github.com/' + REPO + '/pull/' + str(number) + '#changelog-'
-            require(embed.get('url', '').startswith(prefix), 'Invalid Discord review record')
-            packed = embed['url'][len(prefix):]
-            require(len(packed) <= 1800, 'Review record too large')
-            raw = zlib.decompressobj().decompress(base64.urlsafe_b64decode(packed + '=' * (-len(packed) % 4)), 8192)
-            state = json.loads(raw)
-            require(state['version'] == 1 and state['number'] == number, 'Invalid Discord state')
-            state['start'] = stamp(max(date(state['start']), date(message['timestamp'])))
-            return message, state
-        except HTTPFailure as exc:
-            if exc.status in (403, 404):
-                raise NoticeProblem('Changelog cannot read this channel. Ask the owner to restore View Channel and Read Message History and check the channel setting.') from None
-            raise
-        except (KeyError, TypeError, json.JSONDecodeError, zlib.error):
-            raise NoticeProblem('The saved review record is damaged. Ask the owner to restore the original notice.') from None
-
-    def pending_clear(self):
-        return len(self.history()) < 100
+            if complete:
+                return matches[0] if matches else (None, None)
+            before = batch[-1]['id']
+        raise NoticeProblem('There are too many messages to find the original notice safely. Close this pull request and open the change as a new one; it will get a full new week. Keep any unresolved objection in its description.')
 
     def holders(self, message):
         users = {}
@@ -443,19 +442,19 @@ class Discord:
                 raise NoticeProblem('Too many stop reactions to read safely. Ask the owner to check this notice.')
         return users
 
-    def post(self, number, state, text, message=None):
-        embed = state_embed(number, state)
-        payload = {'content': text, 'allowed_mentions': {'parse': [], 'users': [], 'roles': [], 'replied_user': False},
-                   'embeds': [embed]}
-        require(len(text.encode('utf-16-le')) // 2 <= 2000 and len(embed['url']) <= 2048, 'Notice too long; holding')
+    def post(self, pr, state, text, message=None):
+        embed = dict(state_embed(pr['number'], state), title=clip(safe(pr['title']), 256), description=text)
+        payload = {'content': '', 'allowed_mentions': {'parse': [], 'users': [], 'roles': [], 'replied_user': False}, 'embeds': [embed]}
+        require(len(text.encode('utf-16-le')) // 2 <= 4096 and len(embed['url']) <= 2048, 'Notice too long; holding')
         try:
             if message:
                 returned = message.get('embeds', [{}])[0]
-                if (message.get('content') == text and returned.get('title') == embed['title'] and
-                        returned.get('url') == embed['url'] and returned.get('footer', {}).get('text') == embed['footer']['text']):
+                same_record = self.record(message, pr['number']) == state
+                if (not message.get('content') and len(message.get('embeds', [])) == 1 and returned.get('title') == embed['title'] and
+                        returned.get('description') == text and same_record and not returned.get('footer')):
                     return message
                 return self.api.request('PATCH', self.root + '/' + message['id'], payload)
-            payload.update(nonce=hashlib.sha256((REPO + '#' + str(number) + ':' + state.get('ready', 'initial')).encode()).hexdigest()[:24], enforce_nonce=True)
+            payload.update(nonce=hashlib.sha256((REPO + '#' + str(pr['number']) + ':' + state.get('ready', 'initial')).encode()).hexdigest()[:24], enforce_nonce=True)
             return self.api.request('POST', self.root, payload)
         except HTTPFailure as exc:
             if exc.status in (403, 404):
@@ -463,21 +462,15 @@ class Discord:
             raise
 
     def seed(self, message):
+        own = {r['emoji']['name'] for r in message.get('reactions', []) if r.get('me')}
         for emoji in (STOP, '👍'):
-            try:
-                self.api.request('PUT', self.root + '/' + message + '/reactions/' + urllib.parse.quote(emoji) + '/@me')
-            except HTTPFailure as exc:
-                if exc.status in (403, 404):
-                    raise NoticeProblem('Changelog cannot add the stop buttons. Ask the owner to restore Add Reactions and channel access.') from None
-                raise
-
-    def problem(self, number, text):
-        for message in self.affected.get(number, []):
-            try:
-                self.api.request('PATCH', self.root + '/' + message['id'],
-                                 {'content': text, 'allowed_mentions': {'parse': [], 'users': [], 'roles': [], 'replied_user': False}})
-            except Refused:
-                pass
+            if emoji not in own:
+                try:
+                    self.api.request('PUT', self.root + '/' + message['id'] + '/reactions/' + urllib.parse.quote(emoji) + '/@me')
+                except HTTPFailure as exc:
+                    if exc.status in (403, 404):
+                        raise NoticeProblem('Changelog cannot add the stop buttons. Ask the owner to restore Add Reactions and channel access.') from None
+                    raise
 
 
 def eligible(pr):
@@ -490,15 +483,7 @@ def local_time(value, style='F'):
     return '<t:' + str(int(date(value).timestamp())) + ':' + style + '>'
 
 
-def render(pr, state, text, status):
-    waiting = pr['state'] == 'open' and not pr['draft'] and not state.get('exempt') and not state.get('finished')
-    lines = ['Changelog · ' + clip(safe(pr['title']), 140), text, status]
-    if waiting:
-        deadline = stamp(date(state['start']) + WEEK)
-        lines.append('Earliest merge: ' + local_time(deadline) + ' · ' + local_time(deadline, 'R') +
-                     '\n🛑 Hold this change · 👍 Thanks (the week stays)')
-    lines.append('https://github.com/' + REPO + '/pull/' + str(pr['number']))
-    return '\n\n'.join(lines)
+MERGED = "It's in. You'll see it in the next app build."
 
 
 def ready_event(timeline):
@@ -507,7 +492,7 @@ def ready_event(timeline):
 
 
 def notice_text(message, state):
-    return message.get('content', '').split('\n\n', 1)[-1][:state.get('note_length', 0)] if message else ''
+    return message.get('embeds', [{}])[0].get('description', '')[:state.get('note_length', 0)] if message else ''
 
 
 def prepare_state(pr, old, fingerprint, ready, text, current, now):
@@ -521,26 +506,29 @@ def prepare_state(pr, old, fingerprint, ready, text, current, now):
     return state, restarted
 
 
-def waiting_status(pr, state, error, current, restarted, mode, now):
-    # One precedence order for reader-facing state. Terminal states are handled
-    # before this function; holds never hide a restart or shorten a deadline.
+def waiting_status(pr, state, error, current, restarted, now):
     if pr['draft']:
-        return 'The change is being worked on again. The wait is cancelled; a full week starts when it is shared again.'
+        return "Back to work in progress: the wait is off. It gets a fresh week when it's shared again."
     if error:
         return 'Waiting for the author: ' + error + '.'
-    prefix = 'The change was updated, so the seven days start again.\n' if restarted else ''
-    if current:
-        names = ', '.join(current[uid] + ' (since ' + local_time(state['holds'][uid], 'R') + ')' for uid in state['holds'])
-        return prefix + 'HELD by ' + str(len(current)) + ' people: ' + clip(names, 220) + '. Remove 🛑 to release; the original deadline stays.'
+    ahead = now < date(state['start']) + WEEK
+    lines = ['The change was updated, so the week starts again.'] if restarted else []
     if state['fingerprint'].startswith('head:'):
-        prefix += 'This is a large change, so any new commit restarts the seven days.\n'
-    if now < date(state['start']) + WEEK:
-        return prefix + 'Waiting for the full seven days.'
-    if mode == 'post':
-        return 'The week has passed. Automatic merging is paused; waiting for the owner.'
-    if pr['user']['login'] != 'LLRHook':
-        return 'The week has passed. This one was opened by someone else, so the owner merges it by hand.'
-    return 'The week has passed. Waiting for the owner to configure the merge account.'
+        lines.append('This is a big change, so any update to it restarts the week.')
+    if current:
+        names = ', '.join(current[uid] + ' tapped 🛑 (' + local_time(state['holds'][uid], 'R') + ')' for uid in state['holds'])
+        ending = "It won't go live until every 🛑 is removed; removing one doesn't change the date." if ahead else 'It goes live once every 🛑 is removed.'
+        lines.append('On hold: ' + clip(names, 450) + '. ' + ending)
+        if not ahead:
+            return '\n'.join(lines)
+    elif not ahead:
+        if pr['user']['login'] != 'LLRHook':
+            return 'The week is up. Someone else wrote this one, so the owner will put it live by hand.'
+        return 'The week is up. It goes live once the owner switches it on. Tapping 🛑 still stops it.'
+    deadline = stamp(date(state['start']) + WEEK)
+    lines += ['Goes live ' + local_time(deadline) + ' (' + local_time(deadline, 'R') + ') unless someone stops it.',
+              "Tap 🛑 to stop it. 👍 says thanks but doesn't speed it up."]
+    return '\n'.join(lines)
 
 
 def attempt_merge(gh, dc, pr, state, fingerprint, ready, message, status, now, dry_run, mode):
@@ -550,11 +538,11 @@ def attempt_merge(gh, dc, pr, state, fingerprint, ready, message, status, now, d
             fresh.get('body') != pr.get('body') or ready_event(gh.timeline(pr['number'])) != ready or gh.change(fresh)[0] != fingerprint):
         return 'The change was updated during this check. Changelog will check it again shortly.'
     elif not gh.green(fresh):
-        return 'The week has passed. Waiting for this check: ' + safe(gh.waiting_check) + '.'
+        return "The week is up, but an automatic test (" + safe(gh.waiting_check) + ") hasn't passed yet. It goes live once it does, unless someone taps 🛑."
     elif fresh.get('mergeable') is not True or fresh.get('mergeable_state') != 'clean':
-        return 'The week has passed. The change cannot be combined safely yet; its author needs to resolve that.'
+        return 'The week is up, but it clashes with another change; the author is fixing that.'
     elif dc.holders(message['id']):
-        return 'HELD: a stop reaction just arrived. The change will wait.'
+        return "On hold: someone just tapped 🛑. It goes live once every 🛑 is removed."
     if mode != 'merge' or pr['user']['login'] != 'LLRHook' or not gh.identity(pr):
         return status
     try:
@@ -563,23 +551,23 @@ def attempt_merge(gh, dc, pr, state, fingerprint, ready, message, status, now, d
         return str(exc)
     if dry_run:
         return 'Would squash merge now.'
-    state.update(finished=True, audited=True)
-    return 'Merged. It will be in the next app build.'
+    state.update(finished=True, audited=True, bot_merged=True)
+    return MERGED
 
 
 def finish_notice(gh, dc, pr, message, old, text, exempt, dry_run):
     state = dict(old or {}, exempt=exempt, finished=pr['state'] != 'open')
     if pr.get('merged'):
-        status = 'Merged. It will be in the next app build.'
+        status = MERGED
     elif pr['state'] != 'open':
-        status = 'Closed without merging.'
+        status = "Dropped: this change won't go live."
     elif pr['base']['ref'] != 'main':
-        status = 'This no longer waits here: it is no longer planned for the main app.'
+        status = 'No longer headed for the app, so no week needed.'
     elif pr['user']['login'] in ('dependabot', 'dependabot[bot]'):
         status = 'This no longer needs the review week: it is an automatic dependency update.'
     else:
-        status = 'This no longer needs the review week: it only changes the tracking lists.'
-    if pr.get('merged') and not state.get('audited') and not state.get('incident'):
+        status = 'No week needed: this now only updates the to-do lists.'
+    if pr.get('merged') and state.get('bot_merged') and not state.get('audited') and not state.get('incident'):
         try:
             gh.audit(pr)
             state['audited'] = True
@@ -587,14 +575,13 @@ def finish_notice(gh, dc, pr, message, old, text, exempt, dry_run):
             state['incident'] = str(exc)
     if state.get('incident'):
         gh.prepare_check(pr)
-        status = state['incident']
     if not dry_run:
         if message:
-            dc.post(pr['number'], state, render(pr, state, text, status), message)
-        gh.mirror(pr['number'], state, message['id'] if message else None, status)
+            dc.post(pr, state, text + '\n\n' + status, message)
+        gh.mirror(pr['number'], state, message['id'] if message else None, state.get('incident') or status)
         if state.get('incident'):
-            gh.check(pr, status)
-            raise IdentityIncident(status)
+            gh.check(pr, state['incident'])
+            raise IdentityIncident(state['incident'])
     return 'closed' if pr['state'] != 'open' else 'exempt'
 
 
@@ -618,31 +605,25 @@ def reconcile(gh, dc, number, mode, now, dry_run=False):
         if not dry_run:
             gh.check(pr, error)
         return 'draft'
-    paths = gh.files(pr) if pr['state'] == 'open' and eligible(pr) else []
-    exempt = not eligible(pr) or bool(paths and set(paths) <= {'bugs.md', 'features.md', 'CHANGELOG.md'})
-    if exempt and not hint:
-        return 'exempt'
+    paths, complete = gh.files(pr) if pr['state'] == 'open' and eligible(pr) else ([], True)
+    exempt = not eligible(pr) or bool(complete and paths and set(paths) <= {'bugs.md', 'features.md', 'CHANGELOG.md'})
     timeline = gh.timeline(number) if pr['state'] == 'open' else []
     ready = ready_event(timeline)
     notice_id = hint.get('message')
     try:
-        message, old = dc.find(number, hint)
+        message, old = dc.find(pr, hint)
         if message:
             notice_id = message['id']
-        if not message and (pr['state'] != 'open' or exempt):
-            return finish_notice(gh, dc, pr, message, old, text, exempt, dry_run)
-        if not message and hint and not hint.get('message') and not dc.pending_clear():
-            raise NoticeProblem('An earlier notice may be outside recent messages. Owner: find its Discord message link and restore it in the Changelog comment, keeping its stop reactions. If it cannot be recovered, close this change and open a new one with a full week.')
-        if not message and hint and hint.get('message'):
-            reset = (not pr['draft'] and ready != hint.get('ready') and
-                     any(e.get('event') == 'converted_to_draft' for e in timeline) and
-                     any(str(e.get('id')) == ready and e.get('event') == 'ready_for_review' for e in timeline))
-            if not reset:
-                raise NoticeProblem('The Discord notice was deleted or could not be recovered. Mark the change as draft, then ready again, to post a new notice and start a full week.')
         if not text:
             text = notice_text(message, old or {})
         if pr['state'] != 'open' or exempt:
             return finish_notice(gh, dc, pr, message, old, text, exempt, dry_run)
+        if not message and hint.get('message'):
+            reset = (not pr['draft'] and ready != hint.get('ready') and
+                     any(e.get('event') == 'converted_to_draft' for e in timeline) and
+                     any(str(e.get('id')) == ready and e.get('event') == 'ready_for_review' for e in timeline))
+            if not reset:
+                raise NoticeProblem('The Discord notice was deleted. Mark the change as draft, then ready again, to post a new notice and start a full week.')
         if not message and (error or pr['draft']):
             if not dry_run:
                 gh.check(pr, error)
@@ -650,7 +631,7 @@ def reconcile(gh, dc, number, mode, now, dry_run=False):
         fingerprint, _ = gh.change(pr)
         current = dc.holders(message['id']) if message else {}
         state, restarted = prepare_state(pr, old, fingerprint, ready, text, current, now)
-        status = waiting_status(pr, state, error, current, restarted, mode, now)
+        status = waiting_status(pr, state, error, current, restarted, now)
         due = now >= date(state['start']) + WEEK
         can_merge = due and not current and not error and not pr['draft']
         incident = None
@@ -659,34 +640,24 @@ def reconcile(gh, dc, number, mode, now, dry_run=False):
                 status = attempt_merge(gh, dc, pr, state, fingerprint, ready, message, status, now, dry_run, mode)
             except IdentityIncident as exc:
                 incident = str(exc)
-                state.update(incident=incident, finished=True)
-                status = incident
+                state.update(incident=incident, finished=True, bot_merged=True)
+                status = MERGED
         if dry_run:
             print('DRY RUN: PR #' + str(number) + ': ' + status)
             return status
         # All reads, including final checks/reactions, have completed. A failed
         # read above therefore performs no check/comment/notice mutation.
         gh.check(pr, incident or error)
-        if not message:
-            gh.mirror(number, {'ready': ready}, None, 'Preparing the Discord notice. If interrupted, the next run recovers it.')
-        posted = dc.post(number, state, render(pr, state, text, status), message)
-        notice_id = posted['id']
-        if not message:
-            gh.mirror(number, state, notice_id, status)
-            state['start'] = stamp(max(date(state['start']), date(posted['timestamp'])))
-            posted = dc.post(number, state, render(pr, state, text, status), posted)
-        if not state.get('seeded'):
-            dc.seed(posted['id'])
-            state['seeded'] = True
-            posted = dc.post(number, state, render(pr, state, text, status), posted)
-        gh.mirror(number, state, posted['id'], status)
+        posted = dc.post(pr, state, text + '\n\n' + status, message)
+        dc.seed(posted)
+        state['start'] = stamp(max(date(state['start']), date(posted['timestamp'])))
+        gh.mirror(number, state, posted['id'], incident or status)
         if incident:
             raise IdentityIncident(incident)
         return status
     except NoticeProblem as exc:
         if not dry_run:
             gh.mirror(number, {'ready': ready, 'cancelled': pr['draft']}, notice_id, str(exc))
-            dc.problem(number, str(exc))
         raise
 
 
@@ -695,21 +666,19 @@ def reconcile_all(gh, dc, mode, now, dry_run=False):
     for pr in gh.pulls(now):
         try:
             print('PR #' + str(pr['number']) + ': ' + reconcile(gh, dc, pr['number'], mode, now, dry_run))
-        except Refused as exc:
+        except Exception as exc:
             failed = True
             if isinstance(exc, IdentityIncident):
                 mode = 'post'  # Do not cascade an observed author failure to other merges.
-            print('::error::PR #' + str(pr['number']) + ': ' + str(exc))
+            print('::error::PR #' + str(pr['number']) + ': ' + type(exc).__name__ + (': ' + str(exc) if isinstance(exc, Refused) else ''))
     require(not failed, 'Some changes could not be checked; their previous review windows were preserved')
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--dry-run', action='store_true')
-    parser.add_argument('--rehearse', type=int, metavar='NUMBER', help='Locally rehearse one PR through the full gate; never available in Actions')
     args = parser.parse_args()
     env = os.environ
-    require(args.rehearse is None or (args.rehearse > 0 and env.get('GITHUB_ACTIONS') != 'true'), 'Rehearsal is local only and needs a positive pull request number')
     require(env.get('GITHUB_REPOSITORY') == REPO, 'Wrong repository')
     require(env.get('GITHUB_EVENT_NAME') in ('pull_request_target', 'schedule'), 'Wrong event')
     require(env.get('CHANGELOG_MODE') in ('post', 'merge'), 'Changelog OFF or unconfigured: no API calls made')
@@ -727,8 +696,8 @@ def main():
     gh = GitHub(gh_api, merge_api, args.dry_run)
     dc = Discord(API('https://discord.com/api/v10', env['CHANGELOG_DISCORD_BOT_TOKEN'], 'Bot', args.dry_run), env['CHANGELOG_DISCORD_CHANNEL_ID'])
     now = datetime.now(timezone.utc)
-    if args.rehearse:
-        print(reconcile(gh, dc, args.rehearse, env['CHANGELOG_MODE'], now, args.dry_run))
+    if env['GITHUB_EVENT_NAME'] == 'pull_request_target':
+        print(reconcile(gh, dc, event['number'], env['CHANGELOG_MODE'], now, args.dry_run))
     else:
         reconcile_all(gh, dc, env['CHANGELOG_MODE'], now, args.dry_run)
 

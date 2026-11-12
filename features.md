@@ -323,20 +323,21 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Area:** automation, delivery
 - **File(s):** ops/changelog/; .github/workflows/changelog-*.yml; .github/pull_request_template.md; AGENTS.md; ops/ci/
 - **Req:** L25 driver testflight-1112 approved brief and driver design decision, 2026-11-12
-- **Depends on:** none (source implementation; live setup and identity qualification remain external)
+- **Depends on:** none (source implementation; live setup and first automatic merge observation remain external)
 - **UI:** One Discord notice per ready same-repository PR, edited in place with deadline, holds and outcome.
 - **Why:** Friends and testers need a full week to see and hold proposed app changes before main changes.
-- **Approach:** Trusted-main GitHub Actions API-only Python standard library controller; authoritative bot-owned Discord state and readable PR mirror; fresh checks and optional qualified Victor credential for conditional squash merge.
+- **Approach:** Trusted-main Actions Python standard library controller; one authoritative bot-owned Discord embed, untrusted PR mirror and bounded channel-history recovery; exact-head checks and separate Victor PAT with owner-opener guard for conditional squash merge.
 - **Library / dependency notes:** No new dependencies or upgrades; Python 3.12 standard library. Existing CI-only PyYAML remains unchanged.
 - **Acceptance criteria:** Drafts do not post; real ready notes post once; code changes restart seven days; stops hold indefinitely; releases preserve deadline; forks/tracker-only/Dependabot exempt; missing identity, note, checks or clean merge fail closed; switch disables activity; tests use only fakes.
-- **Test plan:** Offline lifecycle/API fakes, workflow permission/inventory negatives, guard mutation, automation manifest and delivery gate, tracker lint; driver separately runs documented live smoke and identity qualification.
+- **Test plan:** CPython 3.12 offline service fakes, saved real checks, ten controller mutations, both reviewers workflow negatives, automation manifest and tracker lint; driver separately proves live permissions, seven-day lifecycle and first automatic merge author/main CI.
 - **Out of scope:** Real Discord calls, real merges, deployment, repository settings/secrets/variables changes, workflow dispatch and integrated application V&V.
 - **Bump:** minor
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Implementation:** Round-one review remediation: bounded active/recent-closure sweeps and hinted notices; no writes or restart after failed reads; binary/rename and paged comparisons with stable exact-head fallback; fork-isolated queue and full event sweeps; terminal/plain-language notices; reduced account/PR-author merge gate with loud raw-author audit; main-only changelog environment; visible recovery and draft checks. Offline fakes only; live rehearsal and environment setup remain external.
-- **Docs:** ops/changelog/README.md; .github/pull_request_template.md; AGENTS.md; docs/technical-overview.md; ops/ci/README.md; VERIFICATION.md
+- **Implementation:** Driver round-three remediation: mandatory delivery/note checks permit optional skipped/neutral jobs and exclude the running bot job; bounded backward history replaces recovery machinery; one embed and three creation writes; only bot merges audited with alarms on GitHub; events handle one PR, hourly sweeps isolate unexpected per-PR errors; no local merge selector. 65 offline bot tests; live setup and first automatic author/main-CI observation remain external.
+- **Docs:** ops/changelog/README.md; AGENTS.md; docs/technical-overview.md; PR description and note. Existing note template, ci.yml, checks.yml and VERIFICATION.md unchanged in this round.
 - **Log:**
   - 2026-11-12 Decision: Driver approved state/concurrency/GraphQL identity design and narrow delivery-contract extension. Comparison uncertainty restarts each run. Source baseline 83c1bbc138bb0bea35201dbcf75f45c08aec17f5. Offline proof only; preserve pending live configuration/identity boundaries.
   - 2026-11-12 Review: Driver round-two decisions implemented after L27 BLOCK: fixed token/variable names retained; removed prior-merge proof and individual-commit author ceremony; added Workflows RW to private PAT setup; changelog environment deployment=false; queue=max documented in current GitHub syntax. Decisions are the driver agent’s, not an owner decision.
   - 2026-11-12 Verification: Additional recovery boundary: a missing or forged PR-comment message hint now causes a bounded search of this bot’s own notices before deletion recovery, preserving a live notice and its stop reactions even beyond recent channel history. Unindexed/unavailable search leaves state untouched; no additional intent or secret is configured. Live search availability remains smoke proof.
+  - 2026-11-12 Review: Driver round-three decisions supersede earlier recovery and full-event sweep instructions: channel history without privileged intents, event-only processing plus hourly sweep, optional skip/neutral CI allowed, own merges audited only, no local merge selector. PR remains draft; implementation and evidence are offline, not live qualification.

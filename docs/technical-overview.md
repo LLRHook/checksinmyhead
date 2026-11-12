@@ -604,15 +604,22 @@ cd mobile && flutter test
 
 ## Changelog review automation
 
-The repository's Changelog bot runs from trusted main in two GitHub Actions
-workflows: pull-request lifecycle events and hourly reconciliation. Python standard
-library REST clients read PR metadata and a Discord notice; PR code is never
-executed by the privileged event job. One bot-owned Discord message holds the clock
-and full change identity in its embed link; a PR comment mirrors readable status
-and supplies an untrusted direct-message lookup hint. Each run reconciles open
-changes and the last day of closures, with bounded channel reads. After a seven-day window,
-a squash merge still requires no stop reactions, fresh green head checks, a clean
-merge and a separate Victor-owned credential and a matching pull-request author. The built-in Actions
-token cannot merge. Its secrets belong to the main-only `changelog` environment; setup starts in
-`post` mode and the driver rehearses the merge identity before enabling merges; see
+Changelog runs trusted-main Python standard library clients in two Actions
+workflows. An event handles its PR; the hourly sweep handles open changes and the
+last day of closures. PR code is never executed. One Discord embed shows the PR
+title, note and status, storing its full clock/change record in the title link.
+The readable GitHub mirror supplies only an untrusted anchored message-ID hint.
+The configured channel and bot author are checked; missing/invalid hints trigger
+bounded backward history to the PR creation time, without privileged intents.
+A safety cap fails closed and asks for a new PR with a full new week.
+
+After seven days, squash merging still requires no normal or super stop reactions,
+exact-head successes for Required delivery checks and Changelog note, no other
+incomplete/failing checks (optional skipped/neutral results are allowed), clean
+mergeability and a separate Victor-owned token with a matching PR opener. The
+running changelog Actions job is excluded. Human merges get ordinary final notices;
+only bot merges receive the raw-author audit. Operational alarms stay on GitHub.
+The built-in Actions token cannot merge. Secrets belong to the main-only changelog
+environment. Setup begins in post mode; enabling merge mode requires the separate
+token, with a person checking the first automatic merge's author and main CI. See
 [Changelog operation and trust boundaries](../ops/changelog/README.md).
