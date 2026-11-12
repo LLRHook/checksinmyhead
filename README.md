@@ -218,8 +218,7 @@ route was removed on purpose (PR #149) and stays absent; the policy route is
 marketing site, which this repository does not change. The complete policy route must
 be served and verified before shipping a client using the new Settings destination.
 Effective notice date, mailbox control and App Store disclosures remain release
-gates. See the [privacy inventory](docs/privacy.md) and
-[2026-11-09 evidence](docs/reviews/2026-11-09-privacy-disclosures.md).
+gates. See the [privacy inventory](docs/privacy.md).
 
 - [Technical Overview](docs/technical-overview.md) — Architecture, data models, design decisions
 - [Backend API Reference](docs/backend-api.md) — Full endpoint documentation
