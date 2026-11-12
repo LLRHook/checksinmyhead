@@ -1631,17 +1631,17 @@
         "^go\\-postgres\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/eligible_small_reference$"
       ],
       "backend/internal/tab/TestPostgresJSONTextValidation": [
-        "^TestPostgresJSONTextValidation/share_item_name$"
+        "^go\\-postgres\\.jsonl:backend/internal/tab/TestPostgresJSONTextValidation/share_item_name$"
       ],
       "backend/internal/tab/TestPostgresNULTokens": [
-        "^TestPostgresNULTokens/participant_query$",
-        "^TestPostgresNULTokens/paid_query$",
-        "^TestPostgresNULTokens/both_query$",
-        "^TestPostgresNULTokens/member_query$",
-        "^TestPostgresNULTokens/member_header$",
-        "^TestPostgresNULTokens/access_header$",
-        "^TestPostgresNULTokens/bill_read_member$",
-        "^TestPostgresNULTokens/tab_read_access$"
+        "^go\\-postgres\\.jsonl:backend/internal/tab/TestPostgresNULTokens/participant_query$",
+        "^go\\-postgres\\.jsonl:backend/internal/tab/TestPostgresNULTokens/paid_query$",
+        "^go\\-postgres\\.jsonl:backend/internal/tab/TestPostgresNULTokens/both_query$",
+        "^go\\-postgres\\.jsonl:backend/internal/tab/TestPostgresNULTokens/member_query$",
+        "^go\\-postgres\\.jsonl:backend/internal/tab/TestPostgresNULTokens/member_header$",
+        "^go\\-postgres\\.jsonl:backend/internal/tab/TestPostgresNULTokens/access_header$",
+        "^go\\-postgres\\.jsonl:backend/internal/tab/TestPostgresNULTokens/bill_read_member$",
+        "^go\\-postgres\\.jsonl:backend/internal/tab/TestPostgresNULTokens/tab_read_access$"
       ]
     },
     "backend": {
@@ -1762,13 +1762,13 @@
         "^go\\-default\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/eligible_small_reference$"
       ],
       "backend/pkg/safehttp/TestStreamArrayStdlibCompatibility": [
-        "^TestStreamArrayStdlibCompatibility/nul$"
+        "^go\\-default\\.jsonl:backend/pkg/safehttp/TestStreamArrayStdlibCompatibility/nul$"
       ],
       "backend/pkg/safehttp/TestDecodeJSONPostgresText": [
-        "^TestDecodeJSONPostgresText/map_nul$",
-        "^TestDecodeJSONPostgresText/any_nul$",
-        "^TestDecodeJSONPostgresText/invalid_utf8_replaced$",
-        "^TestDecodeJSONPostgresText/unpaired_surrogate_replaced$"
+        "^go\\-default\\.jsonl:backend/pkg/safehttp/TestDecodeJSONPostgresText/map_nul$",
+        "^go\\-default\\.jsonl:backend/pkg/safehttp/TestDecodeJSONPostgresText/any_nul$",
+        "^go\\-default\\.jsonl:backend/pkg/safehttp/TestDecodeJSONPostgresText/invalid_utf8_replaced$",
+        "^go\\-default\\.jsonl:backend/pkg/safehttp/TestDecodeJSONPostgresText/unpaired_surrogate_replaced$"
       ]
     }
   },
