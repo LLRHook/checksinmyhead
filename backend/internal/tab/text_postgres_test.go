@@ -67,7 +67,7 @@ func TestPostgresJSONTextValidation(t *testing.T) {
 		{"attached_participant_create", "POST", fmt.Sprintf("/api/tabs/%d/bills/%d/participants", tab.ID, attached.ID), fmt.Sprintf(`{"name":"a\u0000b","client_ref":"new","expected_revision":%d}`, ar), "l9-tab", "l9-member", 2},
 		{"attached_participant_rename", "PATCH", fmt.Sprintf("/api/tabs/%d/bills/%d/participants/%d", tab.ID, attached.ID, ap.ID), fmt.Sprintf(`{"name":"a\u0000b","expected_revision":%d}`, ar), "l9-tab", "l9-member", 2},
 		{"single_assignment", "PATCH", fmt.Sprintf("/api/bills/%d/items/%d/assignments", b.ID, b.Items[0].ID), `{"assignments":[{"person_name":"a\u0000b","percentage":100}]}`, "l9-bill", "", 1},
-		{"batch_assignment", "PATCH", fmt.Sprintf("/api/bills/%d/assignments", b.ID), fmt.Sprintf(`{"updates":[{"item_id":%d,"assignments":[{"person_name":"a\u0000b","percentage":100}]}]}`, b.Items[0].ID), "l9-bill", "", 1},
+		{"batch_assignment", "PATCH", fmt.Sprintf("/api/bills/%d/assignments", b.ID), fmt.Sprintf(`{"updates":[{"item_id":%d,"assignments":[{"person_name":"Alex","percentage":50},{"person_name":"a\u0000b","percentage":50}]}]}`, b.Items[0].ID), "l9-bill", "", 1},
 		{"attached_single_assignment", "PATCH", fmt.Sprintf("/api/tabs/%d/bills/%d/items/%d", tab.ID, attached.ID, attached.Items[0].ID), `{"assignments":[{"person_name":"a\u0000b","percentage":100}]}`, "l9-tab", "l9-member", 1},
 		{"attached_batch_assignment", "PATCH", fmt.Sprintf("/api/tabs/%d/bills/%d/assignments", tab.ID, attached.ID), fmt.Sprintf(`{"updates":[{"item_id":%d,"assignments":[{"person_name":"a\u0000b","percentage":100}]}]}`, attached.Items[0].ID), "l9-tab", "l9-member", 1},
 	}

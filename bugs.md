@@ -1405,3 +1405,15 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Render a tab with a member whose name begins with an emoji.
 - **Bump:** patch
 - **Status:** open
+
+### [BUG-1794514349] Allocation guard for the largest assignment update does not measure the body clients send
+- [ ] **Severity:** low
+- **Area:** backend, performance, tests
+- **File(s):** backend/cmd/bill-service/assignment_budget_test.go; backend/pkg/safehttp/json.go (decodeJSONText)
+- **Observation:** TestMaxAssignmentUpdateAllocationBudget (12 MiB, 4,000 allocations) and the a1perf max_mutation_50000 input build 500 updates without expected_updated_at, but the Flutter app and the web viewer send that field on every update. With it, the same request costs 3,153 allocations before the NUL validation fix for BUG-1794331910 and 5,656 after it (10.65 MB, 6.0 to 6.1 ms per request, both inside their limits). The increase comes from the string-validation hook in the streaming decoder, which is registered for every type and is called for each struct, number, pointer and slice: about 5 allocations per update, bounded by the 500-update cap. Time is unchanged; the 10 ms p95 target holds with about 37% margin. Measured on 2026-11-12 by the independent re-check of pull request #184.
+- **Expected:** The guard measures the request shape clients send, and its allocation limit is a deliberate number for that shape; or the hook's cost is reduced (for example by registering it for string types only) without losing coverage of named string types.
+- **Req:** none; BUG-1793644507 (10 ms maximum assignment-update target)
+- **Depends on:** none
+- **Repro / Notes:** Add "expected_updated_at" to each update in maxAssignmentUpdateBody and run go test -run '^TestMaxAssignmentUpdateAllocationBudget$' -v ./cmd/bill-service. Changing the guard's input or limit changes what a CI guard checks, so it is a deliberate decision, not a side effect.
+- **Bump:** patch
+- **Status:** open
