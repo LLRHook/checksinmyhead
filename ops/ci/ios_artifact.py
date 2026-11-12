@@ -5,9 +5,8 @@ artifact from an explicit successful run AND attempt can cross that seam.
 """
 import argparse
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime
 import io
-import json
 import os
 from pathlib import Path
 import plistlib

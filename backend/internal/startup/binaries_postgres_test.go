@@ -17,11 +17,11 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Execute the actual API AND retained legacy binaries. PostgreSQL schema selection
+// Execute the actual API binary. PostgreSQL schema selection
 // comes only from our owned random fixture, never a caller supplied schema/options.
 // No serving process or application port is started by this test.
 func TestPostgresServiceBinaryModes(t *testing.T) {
-	for _, service := range []string{"bill-service", "web-service"} {
+	for _, service := range []string{"bill-service"} {
 		t.Run(service, func(t *testing.T) {
 			bin := filepath.Join(t.TempDir(), service)
 			ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)

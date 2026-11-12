@@ -6,13 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"math"
-	"net/http/httptest"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/gin-gonic/gin"
 )
 
 // These finite, bounded inputs exercise tolerance amplification without the extreme
@@ -41,11 +38,7 @@ func TestCreationRejectsToleranceAmplificationBeforeProviders(t *testing.T) {
 
 func TestCreationDisplayProviderFailureRetainsPENContract(t *testing.T) {
 	repo := newMockRepo()
-	h := NewBillHandler(NewBillService(repo, &fakeExchangeRateProvider{}))
-	w := httptest.NewRecorder()
-	ctx, _ := gin.CreateTestContext(w)
-	ctx.Request = httptest.NewRequest("POST", "/api/bills", strings.NewReader(`{"name":"Synthetic","subtotal":10,"total":10,"currency_code":"USD","display_currency":"PEN"}`))
-	h.CreateBill(ctx)
+	w := creationHTTP(t, NewBillService(repo, &fakeExchangeRateProvider{}), nil, `{"name":"Synthetic","subtotal":10,"total":10,"currency_code":"USD","display_currency":"PEN"}`)
 	if w.Code != 503 || len(repo.bills) != 0 {
 		t.Fatalf("status=%d persisted=%d", w.Code, len(repo.bills))
 	}
@@ -62,11 +55,7 @@ func TestCreationToleranceHTTPBeforeProviders(t *testing.T) {
 			}
 			repo := newMockRepo()
 			provider := &fakeExchangeRateProvider{}
-			h := NewBillHandler(NewBillService(repo, provider))
-			w := httptest.NewRecorder()
-			ctx, _ := gin.CreateTestContext(w)
-			ctx.Request = httptest.NewRequest("POST", "/api/bills", strings.NewReader(string(data)))
-			h.CreateBill(ctx)
+			w := creationHTTP(t, NewBillService(repo, provider), nil, string(data))
 			if w.Code != 400 || provider.calls != 0 || len(repo.bills) != 0 {
 				t.Fatalf("status=%d calls=%d persisted=%d", w.Code, provider.calls, len(repo.bills))
 			}
@@ -95,11 +84,7 @@ func TestCreationAllMobileDisplayChoicesAndProviderDefinedPair(t *testing.T) {
 		t.Run(code, func(t *testing.T) {
 			repo := newMockRepo()
 			rates := &fakeDisplayRates{value: 2.5}
-			h := NewBillHandler(NewBillService(repo, rates))
-			w := httptest.NewRecorder()
-			ctx, _ := gin.CreateTestContext(w)
-			ctx.Request = httptest.NewRequest("POST", "/api/bills", strings.NewReader(`{"name":"Synthetic","subtotal":10,"total":10,"currency_code":"USD","display_currency":" `+strings.ToLower(code)+` "}`))
-			h.CreateBill(ctx)
+			w := creationHTTP(t, NewBillService(repo, rates), nil, `{"name":"Synthetic","subtotal":10,"total":10,"currency_code":"USD","display_currency":" `+strings.ToLower(code)+` "}`)
 			if w.Code != 201 || len(repo.bills) != 1 {
 				t.Fatalf("status=%d persisted=%d", w.Code, len(repo.bills))
 			}
@@ -132,11 +117,7 @@ func TestCreationDisplayFailureAndInvalidMoneyNeverPersist(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := newMockRepo()
 			rates := &fakeDisplayRates{value: tc.rate, err: tc.err}
-			h := NewBillHandler(NewBillService(repo, rates))
-			w := httptest.NewRecorder()
-			ctx, _ := gin.CreateTestContext(w)
-			ctx.Request = httptest.NewRequest("POST", "/api/bills", strings.NewReader(`{"name":"Synthetic","subtotal":10,"total":10,"display_currency":"PEN"}`))
-			h.CreateBill(ctx)
+			w := creationHTTP(t, NewBillService(repo, rates), nil, `{"name":"Synthetic","subtotal":10,"total":10,"display_currency":"PEN"}`)
 			if w.Code != 503 || rates.calls != 1 || len(repo.bills) != 0 {
 				t.Fatalf("status=%d calls=%d persisted=%d", w.Code, rates.calls, len(repo.bills))
 			}
@@ -179,7 +160,7 @@ func TestRoundedCentsRejectsNonfiniteAndUnrepresentableValues(t *testing.T) {
 			t.Errorf("unsafe cent conversion accepted: %v", err)
 		}
 	}
-	if _, err := allocateRoundedCents(map[string]float64{"Alex": math.MaxFloat64}, nil); !errors.Is(err, ErrInvalidCreation) {
+	if _, err := allocateRoundedCentsOrdered(map[string]float64{"Alex": math.MaxFloat64}, nil, nil); !errors.Is(err, ErrInvalidCreation) {
 		t.Fatal("allocator did not reject unsafe cents")
 	}
 }
@@ -201,7 +182,7 @@ func TestCentRemaindersPreserveClaimAndNameOrder(t *testing.T) {
 		{"eligible_recent_after_zero", map[string]float64{"Alex": 0, "Blair": .005, "Casey": .005}, map[string]time.Time{"Casey": now}, map[string]float64{"Alex": 0, "Blair": .01, "Casey": 0}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := allocateRoundedCents(tc.raw, tc.claims)
+			got, err := allocateRoundedCentsOrdered(tc.raw, tc.claims, nil)
 			if err != nil || !reflect.DeepEqual(got, tc.want) {
 				t.Fatalf("got=%v err=%v want=%v", got, err, tc.want)
 			}
@@ -242,7 +223,7 @@ func TestRemainderDistributionIsBoundedForExtremeCounts(t *testing.T) {
 			}
 		})
 	}
-	if _, err := allocateRoundedCents(map[string]float64{"Alex": 6e16, "Blair": 6e16}, nil); !errors.Is(err, ErrInvalidCreation) {
+	if _, err := allocateRoundedCentsOrdered(map[string]float64{"Alex": 6e16, "Blair": 6e16}, nil, nil); !errors.Is(err, ErrInvalidCreation) {
 		t.Fatal("cent aggregate overflow accepted")
 	}
 	t.Run("eligible_small_reference", func(t *testing.T) {

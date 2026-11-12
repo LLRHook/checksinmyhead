@@ -99,7 +99,7 @@ def main():
     adapter.mkdir()
     wrapper=adapter/'docker'
     wrapper.write_text('#!'+sys.executable+'\nimport os,sys\n'
-        'assert sys.argv[1:]==["compose","--profile","legacy-web","down"]\n'
+        'assert sys.argv[1:]==["compose","down"]\n'
         f'os.execv({docker!r}, {prefix!r}+sys.argv[2:])\n')
     wrapper.chmod(0o700)
     env=dict(os.environ,PATH=str(adapter)+os.pathsep+os.environ['PATH'])
@@ -113,9 +113,8 @@ def main():
         actual=[docker,'compose','--env-file',str(synthetic),'-f',str(ROOT/'backend/docker-compose.yml')]
         run(actual+['config','--quiet'],env=env_config)
         assert set(run(actual+['config','--services'],env=env_config).stdout.split())=={'postgres','bill-service'}
-        assert set(run(actual+['--profile','legacy-web','config','--services'],env=env_config).stdout.split())=={'postgres','bill-service','web-service'}
         assert run(actual+['config','--volumes'],env=env_config).stdout.split()==['postgres_data']
-        result['assertions']['default_and_legacy_profile_names']=True
+        result['assertions']['default_service_names']=True
         created=True
         identifier=ready()
         sql(identifier,'CREATE TABLE workflow_sentinel (id integer PRIMARY KEY); INSERT INTO workflow_sentinel VALUES (1);')

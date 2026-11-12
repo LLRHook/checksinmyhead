@@ -20,7 +20,6 @@ func TestServiceHealthcheckMode(t *testing.T) {
 		port string
 	}{
 		{"bill-service", "8080"},
-		{"web-service", "8081"},
 	} {
 		t.Run(service.name, func(t *testing.T) {
 			binary := filepath.Join(t.TempDir(), service.name)
