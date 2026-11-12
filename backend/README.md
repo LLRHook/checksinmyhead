@@ -470,3 +470,33 @@ unverified (`FEAT-1793644501`).
 ## API Documentation
 
 See [docs/backend-api.md](../docs/backend-api.md) for the full endpoint reference.
+
+## PostgreSQL verification retention
+
+Required by VERIFICATION.md Stage 2; these proof obligations are unchanged.
+
+Retain migration/catalog/history/locks/startup/health, all lifecycle/authorization/money
+cases: both writer orders, concurrent/lost-response/paid retries, insert/update/deferred
+COMMIT rollback, current authority, stable share IDs/paid economics/claim priority and
+legacy containment. Preserve HTTP/mobile full/partial/zero/discount/custom-tip/history
+([bridge](../docs/reviews/2026-11-03-client-v1-bridge.md)). Keep three runs of 100 samples at
+10 bills/8 people, 100 bills/10,000 shares, paid/attachment and 500 items/5,000 assignments.
+Separate misses/transaction control; compare raw IDs/children/money/quotes/flags/times
+via PG lock waits/channels ([lifecycle](../docs/reviews/2026-11-03-atomic-lifecycle.md)).
+
+Registry1,2,3: retain rows/columns/PK/FK actions and ledger1/2 bytes. Test structural
+backfill/legacy defaults, NULL-safe scoped groups, sequence/default/ownership, strict
+prefixes/future drift, rollback/cancel/apply locks and old prefix1/2 startup/verify/reads.
+Retain old warm-reader failures/old-writer gates. Prove current
+API on the same observed warm PID/pool1 through owned additive columns/suffix4;
+health reads only ledger; verify checks catalogs. Restore1,2,3/data. Test
+ready2 reference authority/revision/receipts, persisted response2, same-label denial/
+confirmed-owner success, rename-stable cents, explicit unavailable net and raw legacy
+snapshots. Interim nonnumerical: exclude exactly four measured parents; numerical/runtime RED.
+[Journey](../mobile/test/live/README.md) is scoped.
+Default apply serves; `--migrate-only` applies/exits; `--schema-mode=verify` verifies/serves.
+Health: one ledger query; rerun verify after external DDL. No payer backfill. Use owned
+schemas/overlays; retain additive schema/ledger on rollback. Production footprint/
+backup/restore/predeploy/drain/rollout need [proof](#postgresql-schema-startup).
+[PgSleep](../docs/reviews/2026-11-09-migration-deadline.md) ran; no integrated proof.
+[Scoped](../docs/reviews/2026-11-06-assignment-snapshot.md)

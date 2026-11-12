@@ -956,7 +956,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** open
 
 ### [BUG-1794331913] Align the VERIFICATION.md recipe with CI and the local viewer
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** docs, ci, tests
 - **File(s):** VERIFICATION.md
 - **Observation:** Appendix A never sets CORS_ORIGINS, so the 3100 viewer's browser calls to the 8080 API fail CORS preflight (403) and the Stage 3 browser journeys cannot run on a fresh stack. The Gate and iOS Python rows use plain python3, while CI uses a hash-locked CPython 3.12 venv; the PyYAML hash is for Ubuntu x86_64 only. The iOS row gives the report commands only as a link. The PG DSN example omits the password CI uses. Row D5 says 'follow FEAT-1793644505', which will not resolve once that entry migrates.
@@ -965,7 +965,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/stage1-review/command-fidelity.md, doc-sync.md; .vv/gui-walkthrough/cors.override.yml was needed to run the viewer journeys.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** fixed-pending-migration
+- **Fix:** Corrected isolated CORS and replace-only loopback ports, CPython 3.12/PyYAML parity with macOS hashes, inline iOS reports, password-bearing test DSN and durable D5 procedure. Fresh synthetic stack: preflight 204, request 200, bad origin and CORS-removal control 403; built/served viewer 200 on 22310 against API 22808. Added isolated Go row for its existing hard-coded healthcheck-test port 8080; kept product/test defaults unchanged. Added two documentation contracts and manifest registrations; unchanged PostgreSQL obligations moved to backend README to preserve the 20 KiB budget.
+- **Docs:** VERIFICATION.md; ops/ci/README.md; backend/README.md
 
 ### [BUG-1794331914] Stop telling clients to retry participant additions on bills with paid shares
 - [ ] **Severity:** low
@@ -1013,7 +1016,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/local-gate/s2-local-workflow.run1-sigint-ignored.log versus s2-local-workflow-rerun.log. ( python3 ops/ci/unittest_report.py scripts/test_local_workflow.py ) & wait
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
 
 ### [BUG-1794331918] Resume or explain membership when rejoining a tab removed from this device
 - [ ] **Severity:** low

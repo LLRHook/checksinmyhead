@@ -34,7 +34,7 @@ and update the checkpoint. Require every probe to succeed.
 | D2 | USD manual dinner: subtotal 100, tax 10, tip 18, total 128; repeated item descriptions; one unpaid/unclaimed remainder | Create through Quick Split and Lazy Mode after D1; reuse fixture checkpoint if it exists | One correct local receipt per save; sum of complete shares is 128.00; duplicate descriptions remain independently selectable |
 | D3 | EUR receipt: subtotal 20, tax 2, tip 3, total 25; original and frozen USD metadata | Create after provider wiring is working; verify date/source/rate, then attach to D1 | Original EUR values persist; immutable USD snapshot reconciles; display preference changes never rewrite either |
 | D4 | Synthetic receipt image with known printed values and ambiguous-currency/discount variants | Prepare local synthetic images under `.vv/fixtures/`; parse using the configured real provider; never use customer photos | Review shows evidence-based items/currency and flags ambiguity; record extraction result and provider/model |
-| D5 | Prior released schema/data snapshot with synthetic legacy bills and valid old links | Restore an isolated snapshot and apply the approved migration procedure; follow FEAT-1793644505 | API boots; old links/data survive; failed backfill blocks readiness; rerun is safe |
+| D5 | Prior released schema/data snapshot with synthetic legacy bills and valid old links | Restore an isolated snapshot and apply the approved migration procedure; follow [PostgreSQL schema startup](backend/README.md#postgresql-schema-startup) | API boots; old links/data survive; failed backfill blocks readiness; rerun is safe |
 
 ## Stage 0 — inventory and fresh isolated stack
 
@@ -42,8 +42,9 @@ and update the checkpoint. Require every probe to succeed.
       versions: `python3 --version`, `go version`, `flutter --version`, `node --version`,
       `npm --version`, `ruby --version`, `docker compose version`. Match repository pins:
       Go from `backend/go.mod`, Flutter from CI, Node from `web-bill-viewer/.node-version`.
-- [ ] Inventory `docker compose ls`, relevant containers/volumes and listeners on 8080
-      and 3100. Block on conflicting ports; preserve unrelated running services.
+- [ ] Inventory `docker compose ls`, relevant containers/volumes and listeners on the
+      selected `VV_API_PORT`/`VV_WEB_PORT` (Appendix A defaults: 8080/3100). Choose free
+      ports on conflict; preserve unrelated running services.
       Inspect existing verification data against D1–D5 and back up needed verification
       state to `.vv/backups/`. Record incidental/unknown data before any reset.
 - [ ] Prepare Appendix A with local-only DB settings and confirm its project identity.
@@ -52,12 +53,12 @@ and update the checkpoint. Require every probe to succeed.
       Ordinary `make -C backend down` preserves volumes; never use `down -v`.
 - [ ] Run `vv_compose up --build -d postgres bill-service`. Confirm PostgreSQL readiness
       with `vv_compose exec -T postgres pg_isready -U billington_vv -d billington_vv`.
-      Run `curl --fail --silent http://localhost:8080/health`; require status OK and the
+      Run `curl --fail --silent http://localhost:$VV_API_PORT/health`; require status OK and the
       intended commit. Record `vv_compose images` and image IDs alongside the clean
       source SHA. The health commit is operator-injected locally; it is not independent
       binary provenance. Stop if image/source identity cannot be tied to this build.
-- [ ] Build viewer with `NEXT_PUBLIC_API_URL=http://localhost:8080`; run
-      `npm run start -- -p 3100` in `web-bill-viewer`; browse. iOS:
+- [ ] Build viewer with `NEXT_PUBLIC_API_URL="http://localhost:$VV_API_PORT" npm run build`; run
+      `npm run start -- --hostname 127.0.0.1 -p "$VV_WEB_PORT"` in `web-bill-viewer`; browse. iOS:
       debug `flutter run` in `mobile`. Release `ApiConfig` targets production: never
       send isolated writes there. Verify signed clients only with approved fixtures.
 - [ ] Restore/probe D1–D5; block on missing fixtures/provider/migration support. Record
@@ -92,6 +93,15 @@ Root: `export REPORT_DIR="$PWD/.vv/delivery-reports"; mkdir -p "$REPORT_DIR"`.
 CI uses absolute `REPORT_DIR` for `reports/`. Keep acquisition locked: `go mod download`/`go mod verify`, `npm ci`, `flutter pub get --enforce-lockfile`;
 `pod install --deployment` remains a prerequisite only for separately authorized iOS work.
 
+Gate/iOS use CPython **3.12** with PyYAML **6.0.3**, matching the hash-locked venv
+in `checks.yml`. Install CPython 3.12 from python.org; run
+`python3.12 -m venv .vv/delivery-python` and
+`export VV_PYTHON="$PWD/.vv/delivery-python/bin/python"`. On Ubuntu 24.04 x86_64 run
+`"$VV_PYTHON" -m pip install --require-hashes --only-binary=:all: -r ops/ci/requirements-ci.txt`.
+On macOS use the same versions with the platform wheel hashes in
+[local setup](ops/ci/README.md#local-python-parity); the Ubuntu hash will fail.
+Local workflow CI uses stdlib `python3`; locally use the venv.
+
 | Layer / directory | Command (same report flags/files in CI) |
 |---|---|
 | Go unit + SQLite / `backend` | `go test -race -count=1 -json ./... \| tee "$REPORT_DIR/go-default.jsonl"` |
@@ -99,49 +109,28 @@ CI uses absolute `REPORT_DIR` for `reports/`. Keep acquisition locked: `go mod d
 | Flutter unit/widget + Drift / `mobile` | `flutter test --no-pub --reporter=json \| tee "$REPORT_DIR/flutter.jsonl"` |
 | Web unit / `web-bill-viewer` | `npm test -- --reporter=json --outputFile="$REPORT_DIR/vitest.json"` |
 | Web build / `web-bill-viewer` | `npm run build` |
-| Local workflow / root | `CASE_REPORT="$REPORT_DIR/local-workflow.json" python3 ops/ci/unittest_report.py scripts/test_local_workflow.py` |
+| Local workflow / root | `CASE_REPORT="$REPORT_DIR/local-workflow.json" "$VV_PYTHON" ops/ci/unittest_report.py scripts/test_local_workflow.py` |
 | Ruby / root | `CASE_REPORT="$REPORT_DIR/ruby.json" ruby -r "$PWD/ops/ci/minitest_report.rb" .github/scripts/asc_release_test.rb` |
-| Gate / root | `CASE_REPORT="$REPORT_DIR/gate-tests.json" python3 ops/ci/unittest_report.py ops/ci/test_delivery_gate.py` |
-| iOS / root | [Report commands](ops/ci/README.md#processed-ios-artifact-authority) |
+| Gate / root | `CASE_REPORT="$REPORT_DIR/gate-tests.json" "$VV_PYTHON" ops/ci/unittest_report.py ops/ci/test_delivery_gate.py` |
+| iOS / root | `CASE_REPORT="$REPORT_DIR/ios-python.json" "$VV_PYTHON" ops/ci/unittest_report.py ops/ci/test_ios_artifact.py`; `CASE_REPORT="$REPORT_DIR/ios-ruby.json" ruby -r "$PWD/ops/ci/minitest_report.rb" .github/scripts/asc_delivery_test.rb` ([authority](ops/ci/README.md#processed-ios-artifact-authority)) |
 | Live PG authorization/migrations/readiness / `backend` | `go test -race -count=1 -json -timeout=20m -tags=integration ./cmd/bill-service ./internal/bill ./internal/tab ./pkg/database ./migrations ./internal/startup ./internal/readiness ./internal/testpostgres \| tee "$REPORT_DIR/go-postgres.jsonl"` |
 | E2E/a11y/load | No wired runner: FEAT-1793644507, FEAT-1793644512, FEAT-1793644502; manual stages remain |
 
+If host 8080 is occupied, use the [isolated Go row](ops/ci/README.md#isolated-go-unit-row).
 Baselines stay unaccepted; builds/stubs are not integration. Validate these files
 via [delivery controls](ops/ci/README.md); retain IDs/multiplicity and overlap.
 Never rerun solely for counts; missing/zero/skip/failure/malformed selections fail.
 
 Set `BILLINGTON_TEST_POSTGRES_DSN` for PG, e.g.
-`host=127.0.0.1 port=<fixture-port> user=billington_test dbname=billington_test sslmode=disable`.
-The shared harness fails on missing DSN, nonloopback primary/fallback, wrong user/DB
+`host=127.0.0.1 port=<fixture-port> user=billington_test password=<fixture-password> dbname=billington_test sslmode=disable`.
+Replace `<fixture-password>` with the non-empty password used to start your isolated
+PostgreSQL fixture; CI sets both to its synthetic fixture password in `checks.yml`.
+Keep credentials out of logs. The shared harness fails on missing DSN, nonloopback primary/fallback, wrong user/DB
 or schema/options (even empty). Bounded cleanup drops only owned random schemas,
 never public. Use the runner for current schemas, independent frozen SQL for legacy,
 never models. No skips.
 
-Retain migration/catalog/history/locks/startup/health, all lifecycle/authorization/money
-cases: both writer orders, concurrent/lost-response/paid retries, insert/update/deferred
-COMMIT rollback, current authority, stable share IDs/paid economics/claim priority and
-legacy containment. Preserve HTTP/mobile full/partial/zero/discount/custom-tip/history
-([bridge](docs/reviews/2026-11-03-client-v1-bridge.md)). Keep three runs of 100 samples at
-10 bills/8 people, 100 bills/10,000 shares, paid/attachment and 500 items/5,000 assignments.
-Separate misses/transaction control; compare raw IDs/children/money/quotes/flags/times
-via PG lock waits/channels ([lifecycle](docs/reviews/2026-11-03-atomic-lifecycle.md)).
-
-Registry1,2,3: retain rows/columns/PK/FK actions and ledger1/2 bytes. Test structural
-backfill/legacy defaults, NULL-safe scoped groups, sequence/default/ownership, strict
-prefixes/future drift, rollback/cancel/apply locks and old prefix1/2 startup/verify/reads.
-Retain old warm-reader failures/old-writer gates. Prove current
-API on the same observed warm PID/pool1 through owned additive columns/suffix4;
-health reads only ledger; verify checks catalogs. Restore1,2,3/data. Test
-ready2 reference authority/revision/receipts, persisted response2, same-label denial/
-confirmed-owner success, rename-stable cents, explicit unavailable net and raw legacy
-snapshots. Interim nonnumerical: exclude exactly four measured parents; numerical/runtime RED.
-[Journey](mobile/test/live/README.md) is scoped.
-Default apply serves; `--migrate-only` applies/exits; `--schema-mode=verify` verifies/serves.
-Health: one ledger query; rerun verify after external DDL. No payer backfill. Use owned
-schemas/overlays; retain additive schema/ledger on rollback. Production footprint/
-backup/restore/predeploy/drain/rollout need [proof](backend/README.md#postgresql-schema-startup).
-[PgSleep](docs/reviews/2026-11-09-migration-deadline.md) ran; no integrated proof.
-[Scoped](docs/reviews/2026-11-06-assignment-snapshot.md)
+Retain every [PostgreSQL lifecycle, migration, identity and load proof obligation](backend/README.md#postgresql-verification-retention); that section preserves the previous requirements verbatim.
 
 For local workflow changes, also run `python3 scripts/verify_local_lifecycle.py
 --postgres-image sha256:<local-image-id> --output .vv/local-lifecycle-<unique-run>`.
@@ -237,22 +226,20 @@ Retain every [mobile save/reopen, UI and native proof obligation](docs/reviews/2
 
 ## Appendix A — isolated local stack recipe
 
-Run in Bash from root; block on port conflicts/unknown data. Use the production API
-Dockerfile and built Next.js viewer. Back up before reset.
+Bash from root; block on unknown data. Requires Compose 2.24.4+ for
+`!override` ([port replacement](https://docs.docker.com/reference/compose-file/merge/#replace-value)).
+Use the production Dockerfile/built viewer. Back up before reset. Select free ports
+before running (e.g. `export VV_API_PORT=22808 VV_WEB_PORT=22310`); use a unique `billington-vv-<lead>-<run>` project. Use `vv_compose`, not `dev.sh`, here.
 
 ```bash
 mkdir -p .vv
 export VV_SHA="$(git rev-parse HEAD)"
-export VV_PROJECT="billington-vv-${VV_SHA:0:12}"
+export VV_PROJECT="${VV_PROJECT:-billington-vv-${VV_SHA:0:12}}"
+export VV_API_PORT="${VV_API_PORT:-8080}" VV_WEB_PORT="${VV_WEB_PORT:-3100}"
+export VV_VIEWER_ORIGIN="http://localhost:$VV_WEB_PORT"
 export VV_OWNER="$(python3 -c 'import uuid; print(uuid.uuid4())')"
-cat > .vv/stack.env <<'ENV'
-DB_HOST=postgres
-DB_PORT=5432
-DB_NAME=billington_vv
-DB_USER=billington_vv
-DB_PASSWORD=vv_synthetic_fixture
-DB_SSLMODE=disable
-ENV
+# Keep the generated fixture password in memory; never enable shell tracing.
+export VV_DB_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_hex(24))')"
 cat > .vv/compose.override.yml <<'YAML'
 x-test-labels: &test-labels
   io.billington.test-owner: ${VV_OWNER:?set VV_OWNER}
@@ -262,7 +249,10 @@ services:
     labels: *test-labels
   bill-service:
     labels: *test-labels
+    ports: !override
+      - "127.0.0.1:${VV_API_PORT:?set VV_API_PORT}:8080"
     environment:
+      CORS_ORIGINS: ${VV_VIEWER_ORIGIN:?set VV_VIEWER_ORIGIN}
       RENDER_GIT_COMMIT: ${VV_SHA:?set VV_SHA}
 volumes:
   postgres_data:
@@ -277,23 +267,26 @@ vv_compose() {
     *) printf '%s\n' 'Refuse a non-verification project' >&2; return 1 ;;
   esac
   DB_HOST=postgres DB_PORT=5432 DB_NAME=billington_vv DB_USER=billington_vv \
-    DB_PASSWORD=vv_synthetic_fixture DB_SSLMODE=disable \
+    DB_PASSWORD="${VV_DB_PASSWORD:?set VV_DB_PASSWORD}" DB_SSLMODE=disable ANTHROPIC_API_KEY= \
     docker compose --project-name "$VV_PROJECT" \
-    --env-file .vv/stack.env -f backend/docker-compose.yml \
+    --env-file /dev/null -f backend/docker-compose.yml \
     -f .vv/compose.override.yml "$@"
 }
 vv_compose config --quiet
 vv_compose ps
 ```
 
+Check CORS with the [preflight/request commands](ops/ci/README.md#local-viewer-cors-proof):
+204/200 must allow `$VV_VIEWER_ORIGIN`; a wrong origin must return 403.
+
 Keep explicit DB assignments: host exports must not redirect this to an external DB.
-Provider checks use approved secure env only. Never print resolved config/secrets.
+Provider checks require separately approved secure env; this recipe starts without a provider key. Never print resolved config/secrets.
 Read synthetic logs with `vv_compose logs --no-color bill-service`; query via
 `vv_compose exec -T postgres psql -U billington_vv -d billington_vv`. Back up the
 isolated DB with `vv_compose exec -T postgres pg_dump -U billington_vv billington_vv`
 into ignored `.vv/backups/`.
 
-Use `vv_compose down` normally. After inventory/backup and explicit reset authorization,
+Use `vv_compose down` normally; then `unset VV_DB_PASSWORD`. After inventory/backup and explicit reset authorization,
 use `make -C backend reset-test TEST_PROJECT="$VV_PROJECT" TEST_OWNER="$VV_OWNER"`.
 All project resources/mounts must pass [ownership checks](backend/README.md#local-test-data-reset)
 before deletion; unlabelled pre-existing data is rejected. Preserve normal projects.

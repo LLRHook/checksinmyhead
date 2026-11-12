@@ -1549,6 +1549,33 @@ class DocumentationContractTests(unittest.TestCase):
         self.assertIn('No hosted mutation or Render/Vercel control-plane work',text)
         self.assertNotIn('skip_tests',text)
 
+    def test_VERIFICATION_names_CI_python_and_inline_iOS_reports(self):
+        text=(ROOT/'VERIFICATION.md').read_text()
+        self.assertIn('python3.12 -m venv',text)
+        self.assertIn('--require-hashes --only-binary=:all: -r ops/ci/requirements-ci.txt',text)
+        self.assertIn('macOS',text)
+        for name,script in (('gate-tests','test_delivery_gate'),('ios-python','test_ios_artifact')):
+            self.assertIn('CASE_REPORT="$REPORT_DIR/'+name+'.json" "$VV_PYTHON" ops/ci/unittest_report.py ops/ci/'+script+'.py',text)
+        self.assertIn('CASE_REPORT="$REPORT_DIR/ios-ruby.json" ruby -r "$PWD/ops/ci/minitest_report.rb" .github/scripts/asc_delivery_test.rb',text)
+        self.assertIn('password=<fixture-password>',text)
+        self.assertIn('ops/ci/README.md#isolated-go-unit-row',text)
+        self.assertIn('backend/README.md#postgresql-schema-startup',text)
+        self.assertIn('## PostgreSQL schema startup',(ROOT/'backend/README.md').read_text())
+
+    def test_VERIFICATION_isolates_ports_and_allows_only_the_selected_viewer_origin(self):
+        text=(ROOT/'VERIFICATION.md').read_text()
+        recipe=text.split('## Appendix A',1)[1]
+        override=recipe.split("<<'YAML'\n",1)[1].split('\nYAML',1)[0]
+        config=yaml.load(override,Loader=yaml.BaseLoader)
+        api=config['services']['bill-service']
+        self.assertIn('ports: !override',override)
+        self.assertEqual(api['ports'],['127.0.0.1:${VV_API_PORT:?set VV_API_PORT}:8080'])
+        self.assertEqual(api['environment']['CORS_ORIGINS'],'${VV_VIEWER_ORIGIN:?set VV_VIEWER_ORIGIN}')
+        self.assertIn('export VV_VIEWER_ORIGIN="http://localhost:$VV_WEB_PORT"',recipe)
+        self.assertIn('DB_PASSWORD="${VV_DB_PASSWORD:?set VV_DB_PASSWORD}"',recipe)
+        self.assertIn('--env-file /dev/null',recipe)
+        self.assertNotIn('DB_PASSWORD=vv_synthetic_fixture',recipe)
+
     def test_operational_docs_match_routes_and_signed_capabilities(self):
         read=lambda path:(ROOT/path).read_text()
         readme=read('README.md')
