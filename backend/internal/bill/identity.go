@@ -297,6 +297,27 @@ func assignmentIdentityKey(a models.ItemAssignment) string {
 	}
 	return strings.ToLower(a.PersonName)
 }
+
+// appendAssignmentIdentityKey appends exactly assignmentIdentityKey(a) without
+// allocating for references and ASCII names. strings.ToLower changes only A-Z
+// in an ASCII string; every other name still goes through strings.ToLower.
+func appendAssignmentIdentityKey(dst []byte, a *models.ItemAssignment) []byte {
+	if a.ParticipantID != nil {
+		return strconv.AppendUint(dst, uint64(*a.ParticipantID), 10)
+	}
+	start := len(dst)
+	dst = append(dst, a.PersonName...)
+	for i := start; i < len(dst); i++ {
+		c := dst[i]
+		if c >= utf8.RuneSelf {
+			return append(dst[:start], strings.ToLower(a.PersonName)...)
+		}
+		if 'A' <= c && c <= 'Z' {
+			dst[i] = c + ('a' - 'A')
+		}
+	}
+	return dst
+}
 func assignmentSetsEqual(a, b []models.ItemAssignment) bool {
 	if len(a) != len(b) {
 		return false
