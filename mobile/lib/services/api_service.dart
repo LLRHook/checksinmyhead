@@ -738,11 +738,6 @@ class ApiService {
     );
   }
 
-  Future<List<SettlementResponse>> getSettlements(
-    int tabId,
-    String accessToken,
-  ) async => (await getSettlementHistory(tabId, accessToken)).rows;
-
   /// Toggles the paid status of a settlement
   Future<void> updateSettlement(
     int tabId,
