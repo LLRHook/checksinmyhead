@@ -15,6 +15,12 @@ no path filters, all selected jobs are required, and `always()` collectors rejec
 missing, failed, cancelled, skipped or malformed results. No `continue-on-error`
 or test-skip input exists. A narrow scope cannot emit the full required context.
 
+Each row's commands are pinned line for line by the controller graph test, with its
+shell, run-step list and job settings. `gofmt`, `go mod verify`, `go vet`,
+`govulncheck`, `flutter analyze`, `npm run lint`, `npm run build` and
+`npm audit --audit-level=moderate` therefore fail their row; removing, weakening,
+masking, reordering or skipping one needs a reviewed change to that test.
+
 `ci.yml` resolves full source **S** once. The checks workflow executes candidate
 app code in `candidate/`; trusted helper/tests/manifest are from controller **C**
 in `control/`. Every checkout asserts its full SHA and persists no credentials.
@@ -99,7 +105,13 @@ Direct feature/tag refs cannot acquire managed publication privileges.
 
 Mutation jobs serialize without cancellation by `backend-production` and
 `web-production`. Validation cancellation is limited to PRs; no workflow-level
-cancellation can interrupt a publisher. Inside each mutation job, the helper
+cancellation can interrupt a publisher. Each entry workflow (`ci.yml` and the three
+iOS entries) owns one group per ref and event; the iOS groups never cancel a running
+run. GitHub keeps one pending run per group, so a newer request replaces a waiting
+one before it starts, never a running one. Reusable workflows declare no top-level
+group: it would be evaluated in the caller's `github` context and could cancel that
+caller. The controller test pins these groups, read-only tokens, job timeouts of at
+most 60 minutes and full-SHA action pins. Inside each mutation job, the helper
 fetches fresh main and reauthorizes the exact gate/policy/source before transport.
 A stale automatic run fails even if its gate was green. Manual older S requires
 all source/control/schema/capability checks; there is no arbitrary historical-tag,
@@ -207,8 +219,9 @@ that creates no failed run for the file ([evidence](../../docs/reviews/2026-11-0
 NOT CI-CONFIRMED: native/signed binaries, processed ASC origin/eligibility receipts,
 whole GUI/a11y journeys, image build/scan identity, whole security, real providers,
 schema adoption/drain/restore, hosted deployment identity and field performance.
-The general offline validator checks syntax/wiring only. Its top-level concurrency
-warnings on reusables do not account for noncancelling per-environment mutation
+The general offline validator checks syntax/wiring only. It reports 0 errors and
+five top-level concurrency warnings, one per reusable workflow; those are intended
+(see above) and do not account for noncancelling per-environment mutation
 jobs. No hosted integration, secret transition, settings/ruleset change, workflow
 activation, queue action, signing/upload, ASC write, hook invocation, mirror push
 or Render/Vercel control-plane action is authorized by this document.

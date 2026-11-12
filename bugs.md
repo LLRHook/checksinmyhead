@@ -106,8 +106,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** PhaseG source722fa9f adds one six-row exact-S/C report gate, named protected publisher contracts, source/schema/capability floors and default-disabled external policy; alternate iOS writes fail closed. Root actual42methods/827records and S4 omission controls pass. Prior23-path review resolves S1/S2/S3/command; focused S4 review pending. PhaseF processed-build promotion, hosted check/settings/credential/old-writer/recovery clearance remain open. No deployment/global pass.
-- **Docs:** ops/ci/README.md; VERIFICATION.md; docs/reviews/2026-11-05-delivery-gate.md
+- **Fix:** Source: phase G (722fa9f) and phase F (fc98e85) are in: one six-row exact-S/C gate, named protected publishers, floors and default-disabled external policy; iOS origin and promotion reuse the gate with no rebuild. Focused S4 review done 2026-11-09 on current source with real reports: web 102 cases = 102 selections; mobile 599 records, one registration (four native IO modes) matched no selection and is now required (4 intended reds first); 134 loop expansions and 6 hooks stay the documented limit. Second finding fixed: the graph test accepted checks.yml without govulncheck, npm audit, vet, gofmt, mod verify, analyze, lint or build, or with masked, skipped, re-shelled or reordered commands; validate_graph now pins each row's command lines, shell, run steps and job keys (19 mutations, all accepted before). 43 gate, 17 iOS, 5+18 Ruby methods pass; automation row 1,452 records. Hosted run 42365246558: failed Gate postgres, both collectors failed, both publishers skipped (policy also unset). REMAINS, hence in-progress: (1) BLOCKED: Render Auto-Deploy mode, branch and hook, and Vercel connected repositories, production branch and mirror writers need owner inspection; observed only /health=81a564f after two failed-CI main pushes, mirror 404. (2) 0 environments: backend-production, web-production, ios-upload, ios-production must exist main-only with DELIVERY_* secrets. (3) Main ruleset requires no status check. (4) RELEASE_POLICY unset (0 variables): no gated publication or exact-SHA readback observed. (5) Legacy uploader victorwake-testflight.yml on branch victorwake-testflight-runner uses repository-level ASC and signing secrets. (6) Native signing, ASC and hosted iOS qualification NOT RUN. (7) Owner decision: enforce a manifest-versus-source inventory. No deployment, dispatch, re-run or setting change.
+- **Docs:** ops/ci/README.md; VERIFICATION.md; docs/reviews/2026-11-05-delivery-gate.md; docs/reviews/2026-11-09-delivery-workflows.md
 
 ### [BUG-1793644502] Resolve the three current Next.js security alerts
 - [ ] **Severity:** high
@@ -443,7 +443,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-04 Verification: Approved private-viewer scope implemented; before/removal controls and local browser destination headers retained. No hosting/release action; wider gates remain RED.
 
 ### [BUG-1793644519] Harden existing GitHub workflow execution settings
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** ci, security
 - **File(s):** .github/workflows/*.yml; .github/actions/build-signed-ipa/action.yml
 - **Observation:** Validator reported 16 mutable action-pin errors plus web-sync permissions gap; sync disables strict SSH checking; timeouts/concurrency incomplete.
@@ -456,9 +456,9 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Review mechanical 17 errors/9 warnings as grouped config findings, not 17 product vulnerabilities. Mirror retirement may remove its SSH path.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
-- **Fix:** Source722fa9f pins reviewed action SHAs/SSH host identity, read-only default permissions, bounded jobs and serialized noncancelling publishers. Source mechanical validator0errors/6 retained top-level-concurrency warnings; actual42method/827record contracts pass. Protected jobs carry concurrency; unavailable iOS paths cannot mutate. Hosted enforcement/credential/queue controls and focused post-integration review remain unverified.
-- **Docs:** ops/ci/README.md; VERIFICATION.md; docs/reviews/2026-11-05-delivery-gate.md
+- **Status:** fixed-pending-migration
+- **Fix:** Verified on the nine current workflows (2026-11-09). Pins: five actions by full SHA, each an upstream release tag (checkout v5.1.0, setup-go v6.5.0, setup-node v5.0.0, flutter-action v2.23.0, upload-artifact v7.0.2; newest October 7). Tokens: contents read everywhere, actions read on five iOS jobs only. Mirror host key equals GitHub's published Ed25519 key. Every job has a 5 to 60 minute timeout; the PostgreSQL row keeps 30. Validator validate-pipeline.py re-run: 0 errors, 8 warnings before, 5 after. Three warnings were real: testflight, app-store-release and update-release-notes had no group, so repeated dispatches validated in parallel; each now has a per-ref-and-event group that never cancels a run in progress. Five retained warnings are the reusable workflows (checks, deploy-backend, sync-web-viewer, ios-origin, ios-promote): intended, because a called workflow's group is evaluated in its caller's context and can cancel the caller; their mutation jobs serialize on literal noncancelling job groups. ci.yml cancels in progress only for pull requests (hosted runs 42290401669 and 42289112203 cancelled so). New GraphTests.test_execution_settings_are_pinned_bounded_serialized_and_read_only pins groups, tokens, timeouts and action pins with 36 mutations, 14 accepted before (cancelling a running main run, removing a group, a reusable top-level group, a 360-minute timeout, a write token on the resolver). 44 gate, 17 iOS, 5+18 Ruby methods pass; automation row 1,490 records. Diff adds three concurrency blocks and tests only; no trigger, condition, secret or publisher changed and publication stays disabled. Not observed: GitHub's parse of the three edited entry files and real queueing between two dispatches (nothing dispatched); environments, ruleset and credential scope are tracked in BUG-1793644501.
+- **Docs:** ops/ci/README.md; VERIFICATION.md; docs/reviews/2026-11-05-delivery-gate.md; docs/reviews/2026-11-09-delivery-workflows.md
 
 ### [BUG-1793652308] Make the Flutter 3.41.5 committed lock reproducible
 - [x] **Severity:** med
