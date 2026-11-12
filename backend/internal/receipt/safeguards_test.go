@@ -20,15 +20,21 @@ func envelope(text string) string {
 
 const validReceipt = `{"vendor":null,"items":[{"name":"Coffee","price":4.5,"quantity":1},{"name":"Discount","price":-1,"quantity":1}],"tax":null,"total":3.5}`
 
-func fixtureService(t *testing.T, response string) *Service {
+func configuredService(t *testing.T, slots string) *Service {
 	t.Helper()
 	t.Setenv("ANTHROPIC_API_KEY", "synthetic-local-fixture")
-	t.Setenv("OCR_MAX_INFLIGHT", "")
+	t.Setenv("OCR_MAX_INFLIGHT", slots)
 	s, err := NewService()
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(s.Close)
+	return s
+}
+
+func fixtureService(t *testing.T, response string) *Service {
+	t.Helper()
+	s := configuredService(t, "")
 	s.httpClient.Transport = roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(response)), Request: r}, nil
 	})

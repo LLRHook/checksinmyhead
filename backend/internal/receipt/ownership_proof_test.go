@@ -1,11 +1,9 @@
 package receipt
 
 import (
-	"backend/pkg/safehttp"
 	"bytes"
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
@@ -39,24 +37,11 @@ func proofWait(t *testing.T, ch <-chan struct{}, name string) {
 }
 func proofService(t *testing.T) *Service {
 	t.Helper()
-	t.Setenv("ANTHROPIC_API_KEY", "synthetic-local-fixture")
-	t.Setenv("OCR_MAX_INFLIGHT", "1")
-	s, e := NewService()
-	if e != nil {
-		t.Fatal(e)
-	}
-	t.Cleanup(s.Close)
-	return s
+	return configuredService(t, "1")
 }
 func proofHandler(t *testing.T, s *Service, ctx context.Context) (*Handler, <-chan struct{}) {
 	t.Helper()
-	h := NewHandler(s)
-	t.Cleanup(h.Close)
-	r, e := safehttp.NewRouter("")
-	if e != nil {
-		t.Fatal(e)
-	}
-	r.POST("/parse", h.ParseReceipt)
+	h, r := receiptRouter(t, s)
 	b, ct := multipartImage(t, false)
 	req := httptest.NewRequest("POST", "/parse", bytes.NewReader(b)).WithContext(ctx)
 	req.Header.Set("Content-Type", ct)
@@ -195,17 +180,7 @@ func TestOwnershipTLSJoin(t *testing.T) {
 // A real verified TLS fixture; header/framing are stdlib or literal wire bytes.
 func proofTLS(t *testing.T, handler http.HandlerFunc) (*Service, *httptest.Server, *tls.Config) {
 	t.Helper()
-	server := httptest.NewTLSServer(handler)
-	t.Cleanup(server.Close)
-	s := proofService(t)
-	roots := x509.NewCertPool()
-	roots.AddCert(server.Certificate())
-	config := &tls.Config{RootCAs: roots, ServerName: "example.com", MinVersion: tls.VersionTLS12, NextProtos: []string{"http/1.1"}}
-	s.transport.tlsConfig = config
-	s.transport.dialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
-		return (&net.Dialer{}).DialContext(ctx, "tcp", server.Listener.Addr().String())
-	}
-	return s, server, config
+	return tlsServiceWithSlots(t, handler, "1")
 }
 
 type proofFinalConn struct {
