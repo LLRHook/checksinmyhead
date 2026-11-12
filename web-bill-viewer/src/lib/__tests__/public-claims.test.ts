@@ -93,5 +93,4 @@ describe("public download and payment claims", () => {
       );
     }
   });
-
 });
