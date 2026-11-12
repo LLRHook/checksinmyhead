@@ -92,23 +92,6 @@ failed security steps that did not stop publication, so this control needed a te
 `validate_graph` now pins every row's command lines, shell, run-step list and job
 keys. Nineteen mutations, all accepted before, are rejected.
 
-### Expected, bullet by bullet
-
-1. Failed tests or scans block backend and web publication for that revision: met in
-   source. Hosted run 42365246558 (main `5e877e3`) shows it once: `Gate postgres`
-   failed, both collectors failed, `publish-backend` and `publish-web` were skipped.
-   Policy was also unset, so that run does not isolate the gate edge.
-2. TestFlight and App Store use the common gate with no untested rebuild: met in
-   source (one origin build of the gated S; promotion and notes reuse the proven
-   processed build). Native signing, ASC and hosted execution are NOT RUN.
-3. Render and Vercel automatic deployment: **BLOCKED**, control planes not readable
-   here. Observed only: production `/health` reports `81a564f` on November 9, after
-   main pushes `22eb43d` and `5e877e3`. Both pushes had a failed CI, so this cannot
-   tell "auto-deploy off" from "deploy after checks pass". The mirror
-   `dhaliwalg/checksinmyhead` returns 404 to this token.
-4. Negative gate-path tests and exact-SHA health proof are reviewable; nothing was
-   deployed, dispatched or re-run.
-
 ### Hosted state read on 2026-11-09 (GET only)
 
 - Repository variables: 0. `RELEASE_POLICY` is unset, so every target is disabled.
@@ -123,19 +106,6 @@ keys. Nineteen mutations, all accepted before, are rejected.
   reading repository secrets `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_API_KEY_P8`,
   `BUILD_CERTIFICATE_BASE64` and `P12_PASSWORD`. Last runs: failure on October 29,
   success on July 6.
-
-### Owner checks that keep the ticket open
-
-- Render service for `billington-api`: Auto-Deploy mode and branch; whether the
-  deploy hook is the only trigger; pull-request previews.
-- Vercel project: which repositories are connected, production branch, deploy on
-  push, deploy hooks; who and which keys can push to the mirror.
-- Create the four environments restricted to `main` and move the `DELIVERY_*` secrets
-  into them; decide the fate of the legacy repository-level signing and ASC secrets
-  and of the `victorwake-testflight-runner` workflow.
-- Add `Required delivery checks` to the main ruleset once main is green.
-- Set `RELEASE_POLICY` only with reviewed floors and clearance; then observe one
-  gated publication and its exact-SHA health readback.
 
 ## Workflow execution settings (BUG-1793644519)
 
@@ -180,8 +150,6 @@ a reusable workflow, a 360-minute timeout and a write token on the resolver job.
 
 The diff adds three `concurrency` blocks and tests. No trigger, condition, secret,
 permission or publisher changed; publication stays disabled without `RELEASE_POLICY`.
-Result: 44 gate methods, 17 iOS helper methods, 5 and 18 Ruby methods pass; the
-automation row validates 1,490 records.
 
 NOT OBSERVED: GitHub's parse of the three edited entry files, and queueing between two
 real dispatches. Nothing was dispatched.

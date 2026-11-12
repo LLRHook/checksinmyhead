@@ -24,8 +24,7 @@ unvalidated startup; database/driver details never enter the response:
 { "status": "service unavailable", "commit": "<RENDER_GIT_COMMIT or empty>" }
 ```
 
-The retained legacy web service uses the same readiness check and fields, with healthy
-status `web service - ok`. The `--healthcheck` loopback command treats HTTP 503 as failure.
+The API `--healthcheck` loopback command treats HTTP 503 as failure.
 See [schema startup modes](../backend/README.md#postgresql-schema-startup) for migration-only
 and verify startup behavior. Registry remains exactly1,2,3. Historical defaults remain
 graph1/`legacy_review`; fresh application creation explicitly constructs ready graph2.
@@ -354,7 +353,8 @@ A scanned receipt's `currency_code`, `currency_symbol` and `currency_confidence`
 evidence only. The client asks the user to confirm the currency, including for an
 ambiguous `$` and for PEN (`S/`); a scan never selects a receipt currency by itself.
 
-Owners: `TestProductionCurrencySupportMatrix` (each row, through the production
+Owners: `TestProductionCurrencyComposition` (accepted-codes and native-USD rows),
+`TestProductionCurrencySupportMatrix` (the remaining rows, through the production
 composition), `TestPostgresDisplayConversionNeverRewritesFrozenQuote` (a moving
 market, an outage, a trip display change and finalization against stored rows),
 `TestReceiptPolicyMatchesBothMobileSelectors` (the twelve codes in both mobile
@@ -505,7 +505,7 @@ all deployed writers to cooperate. It does not establish rollout or signed-clien
 
 ## HTTP resource policy
 
-Both service binaries use read-header/read/write/idle timeouts of 5/20/50/60 seconds
+The API binary uses read-header/read/write/idle timeouts of 5/20/50/60 seconds
 and a 32 KiB `MaxHeaderBytes` setting. Signal cancellation reaches request contexts;
 shutdown waits at most 25 seconds, then closes connections. A write deadline alone
 does not cancel handler work. Recovery returns a generic JSON 500 before response

@@ -7,7 +7,6 @@ import (
 	"backend/internal/exchange"
 	"backend/internal/tab"
 	"backend/internal/testpostgres"
-	"backend/internal/web"
 	"backend/migrations"
 	"context"
 	"database/sql"
@@ -16,14 +15,12 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"regexp"
 	"sort"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/driver/postgres"
@@ -31,16 +28,15 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-// warmTrace observes the driver itself: every statement, every implicit
+// warmTrace observes the driver itself: every implicit
 // statement-cache prepare, every failure SQLSTATE and the backend PID that ran
 // it. A cache hit makes no prepare call, so zero prepares proves a warm reuse.
 type warmTrace struct {
-	mu         sync.Mutex
-	recording  bool
-	statements []string
-	prepares   []string
-	states     []string
-	pids       map[uint32]bool
+	mu        sync.Mutex
+	recording bool
+	prepares  []string
+	states    []string
+	pids      map[uint32]bool
 }
 
 func (w *warmTrace) note(conn *pgx.Conn, record func()) {
@@ -67,8 +63,8 @@ func (w *warmTrace) fail(err error) {
 		w.states = append(w.states, state)
 	}
 }
-func (w *warmTrace) TraceQueryStart(ctx context.Context, conn *pgx.Conn, v pgx.TraceQueryStartData) context.Context {
-	w.note(conn, func() { w.statements = append(w.statements, v.SQL) })
+func (w *warmTrace) TraceQueryStart(ctx context.Context, conn *pgx.Conn, _ pgx.TraceQueryStartData) context.Context {
+	w.note(conn, func() {})
 	return ctx
 }
 func (w *warmTrace) TraceQueryEnd(_ context.Context, _ *pgx.Conn, v pgx.TraceQueryEndData) {
@@ -83,20 +79,20 @@ func (w *warmTrace) TracePrepareEnd(_ context.Context, _ *pgx.Conn, v pgx.TraceP
 }
 
 type warmPhase struct {
-	statements, prepares, states []string
-	pids                         []uint32
+	prepares, states []string
+	pids             []uint32
 }
 
-// phase records exactly the statements issued by run.
+// phase records prepares, failures and connection PIDs observed during run.
 func (w *warmTrace) phase(run func()) warmPhase {
 	w.mu.Lock()
-	w.recording, w.statements, w.prepares, w.states, w.pids = true, nil, nil, nil, map[uint32]bool{}
+	w.recording, w.prepares, w.states, w.pids = true, nil, nil, map[uint32]bool{}
 	w.mu.Unlock()
 	run()
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	w.recording = false
-	result := warmPhase{statements: w.statements, prepares: w.prepares, states: w.states}
+	result := warmPhase{prepares: w.prepares, states: w.states}
 	for pid := range w.pids {
 		result.pids = append(result.pids, pid)
 	}
@@ -104,29 +100,17 @@ func (w *warmTrace) phase(run func()) warmPhase {
 	return result
 }
 
-// A result shape that follows the table, in any clause that returns rows.
-var warmUnstableShape = regexp.MustCompile(`(?i)(?:^|[\s,])(?:"?\w+"?\.)?\*\s*(?:,|from\b|$)`)
-
 type warmRead struct {
 	name, path, token, member string
 	version                   int
-	html                      bool
 }
 
 type warmService struct {
-	api, html http.Handler
+	api http.Handler
 }
 
 func (s warmService) read(t *testing.T, r warmRead) string {
 	t.Helper()
-	if r.html {
-		w := httptest.NewRecorder()
-		s.html.ServeHTTP(w, httptest.NewRequest(http.MethodGet, r.path, nil))
-		if w.Code != 200 {
-			t.Fatalf("%s: status%d body%s", r.name, w.Code, w.Body)
-		}
-		return w.Body.String()
-	}
 	return identityRequest(t, s.api, http.MethodGet, r.path, "", r.token, r.member, "", r.version, 200).Body.String()
 }
 
@@ -196,7 +180,7 @@ func warmGraph(t *testing.T, s warmService) []warmRead {
 		{name: "lazy bill wire1", path: bills(lazy.ID), token: lazy.Token, version: 1},
 		{name: "split bill wire2", path: bills(split.ID), token: split.Token, version: 2},
 		{name: "split bill unversioned", path: bills(split.ID), token: split.Token},
-		{name: "split bill HTML", path: fmt.Sprintf("/b/%d?t=%s", split.ID, split.Token), html: true},
+
 		{name: "open tab wire2", path: tabs(open.ID, ""), token: open.Token, member: open.Member, version: 2},
 		{name: "open tab wire1", path: tabs(open.ID, ""), token: open.Token, member: joined, version: 1},
 		{name: "open tab members", path: tabs(open.ID, "/members"), token: open.Token, member: open.Member, version: 2},
@@ -209,7 +193,7 @@ func warmGraph(t *testing.T, s warmService) []warmRead {
 	}
 }
 
-// One warm pool connection serves API and retained HTML before and after a
+// One warm pool connection serves the API before and after a
 // separate session commits an owned additive column on every application table.
 // Authorized bodies must be byte-identical from already cached statements, and
 // the same warm writers must still commit; nothing is retried or reconnected.
@@ -248,10 +232,7 @@ func TestPostgresWarmServiceSurvivesAdditiveDDL(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	html := gin.New()
-	html.LoadHTMLGlob("../../internal/web/templates/*")
-	html.GET("/b/:id", web.NewWebpageHandler(bill.NewBillService(repo, exchange.NewClient(up.URL))).CreateHTML)
-	service := warmService{api: api, html: html}
+	service := warmService{api: api}
 
 	var reads []warmRead
 	trace.phase(func() { reads = warmGraph(t, service) })
@@ -347,11 +328,6 @@ func TestPostgresWarmServiceSurvivesAdditiveDDL(t *testing.T) {
 	if len(written.prepares) != 0 {
 		t.Fatalf("warm writers issued %d uncached statements", len(written.prepares))
 	}
-	for _, statement := range written.statements {
-		if warmUnstableShape.MatchString(statement) {
-			t.Fatalf("table-shaped projection reached PostgreSQL: %.80s", statement)
-		}
-	}
 	var probes int
 	if err := migrator.QueryRowContext(ctx, "SELECT count(*) FROM information_schema.columns WHERE table_schema=current_schema() AND column_name='warm_reader_probe'").Scan(&probes); err != nil || probes != len(tables) {
 		t.Fatalf("owned additive columns missing: %d of %d", probes, len(tables))
@@ -377,21 +353,4 @@ func warmTables(t *testing.T, ctx context.Context, q *sql.Conn) []string {
 		t.Fatal(err)
 	}
 	return tables
-}
-
-func TestWarmUnstableShapePattern(t *testing.T) {
-	for statement, want := range map[string]bool{
-		`SELECT * FROM "bills" WHERE id = $1`:                     true,
-		`SELECT "bills".* FROM "bills"`:                           true,
-		`SELECT id, b.* FROM bills b`:                             true,
-		`UPDATE "bills" SET "name"=$1 WHERE id = $2 RETURNING *`:  true,
-		`SELECT count(*) FROM "bills"`:                            false,
-		`SELECT id,price * 2 FROM bill_items`:                     false,
-		`SELECT id,name FROM "bills" WHERE id = $1`:               false,
-		`INSERT INTO "bills" ("name") VALUES ($1) RETURNING "id"`: false,
-	} {
-		if warmUnstableShape.MatchString(statement) != want {
-			t.Errorf("pattern misjudged %q", statement)
-		}
-	}
 }

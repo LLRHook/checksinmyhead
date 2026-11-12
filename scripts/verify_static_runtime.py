@@ -68,7 +68,6 @@ def main():
     bases = [line.split()[1] for line in (ROOT / "backend/services/bill-service/Dockerfile").read_text().splitlines() if line.startswith("FROM ")]
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bill-image", required=True)
-    parser.add_argument("--web-image", required=True)
     parser.add_argument("--postgres-image", required=True, help="Existing immutable local PostgreSQL fixture image ID")
     parser.add_argument("--output", required=True, type=pathlib.Path, help="New local evidence directory")
     parser.add_argument("--static-base", default=bases[-1], help="Signed static base; defaults to the production Dockerfile pin")
@@ -109,9 +108,9 @@ def main():
 
     try:
         images = {key: inspect(value)["Id"] for key, value in
-                  [("bill", args.bill_image), ("web", args.web_image), ("postgres", args.postgres_image)]}
+                  [("bill", args.bill_image), ("postgres", args.postgres_image)]}
         record["images"] = images
-        for key in ("bill", "web"):
+        for key in ("bill",):
             image = inspect(images[key])
             check(key + "-platform", image["Os"] == "linux" and image["Architecture"] == "amd64")
             check(key + "-config", image["Config"]["User"] == "65532:65532" and
@@ -195,7 +194,7 @@ def main():
                 env = ["DB_HOST=" + ("wrong-postgres" if bad == "hostname" else "runtime-postgres"), "DB_PORT=5432", "DB_NAME=runtime_fixture", "DB_USER=runtime_fixture",
                        "DB_PASSWORD=synthetic-runtime-fixture", "DB_SSLMODE=verify-full", "PGSSLROOTCERT=/qa/" + ("bad-ca.crt" if bad == "ca" else "ca.crt"),
                        "PGOPTIONS=-csearch_path=" + selected_schema, "GIN_MODE=release", "RENDER_GIT_COMMIT=local-runtime-fixture",
-                       "QA_NONCE=" + nonce + key, "QA_SCHEMA=" + selected_schema, "QA_WEB=" + ("1" if key == "web" else "0")]
+                       "QA_NONCE=" + nonce + key, "QA_SCHEMA=" + selected_schema]
                 argv = ["--platform", "linux/amd64", "--network", network, "--read-only", "--cap-drop=ALL", "--security-opt", "no-new-privileges",
                         "--tmpfs", "/tmp:rw,nosuid,nodev,mode=1777,uid=65532,gid=65532", "--dns", dns_ip, "--dns-search", "runtime-check.test",
                         "--dns-search", ".".join(["x" * 60] * 3) + ".test", "--dns-option", "timeout:1", "--dns-option", "attempts:1",
@@ -206,7 +205,7 @@ def main():
                     argv += ["-e", value]
                 return argv
 
-            for key, port in (("bill", 8080), ("web", 8081)):
+            for key, port in (("bill", 8080),):
                 # Every startup-negative control uses the exact final service binary.
                 for bad in ("ca", "hostname"):
                     name = create(network + "-" + key + "-bad-" + bad, *app_args(key, bad=bad), images[key])
@@ -277,10 +276,7 @@ def main():
             status, body, _ = request(ports["bill"], "/api/bills/" + bill_id, token=token)
             check("api-authorized-read", status == 200 and b"Static runtime synthetic receipt" in body)
             check("api-no-token-denied", request(ports["bill"], "/api/bills/" + bill_id)[0] == 403)
-            status, body, headers = request(ports["web"], "/b/" + bill_id, token=token)
-            check("legacy-authorized-html", status == 200 and b"Static runtime synthetic receipt" in body and "text/html" in headers.get("Content-Type", ""))
-            check("legacy-no-token-denied", request(ports["web"], "/b/" + bill_id)[0] == 403)
-            check("application-connections-tls", sql("SELECT count(*)>=2 AND bool_and(s.ssl) FROM pg_stat_ssl s JOIN pg_stat_activity a USING(pid) WHERE a.usename='runtime_fixture' AND a.pid<>pg_backend_pid()") == "t")
+            check("application-connections-tls", sql("SELECT count(*)>=1 AND bool_and(s.ssl) FROM pg_stat_ssl s JOIN pg_stat_activity a USING(pid) WHERE a.usename='runtime_fixture' AND a.pid<>pg_backend_pid()") == "t")
             for key, name in services.items():
                 wait_until(lambda: inspect(name)["State"]["Health"]["Status"] == "healthy", 45, key + " Docker healthy")
                 check(key + "-docker-healthy", True)
@@ -317,7 +313,7 @@ def main():
             record["dns_queries"] = [json.loads(line) for line in docker("logs", dns).splitlines() if line.startswith("{")]
             names = [q["name"] for q in record["dns_queries"]]
             check("dns-fixture-observed-search", "search-probe.runtime-check.test." in names)
-            check("dns-fixture-observed-cancellation", sum(name.startswith("cancel-") for name in names) >= 2)
+            check("dns-fixture-observed-cancellation", sum(name.startswith("cancel-") for name in names) >= 1)
             check("dns-fixture-observed-long-search", any(len(name) > 180 for name in names))
     except Exception as error:
         record["failures"].append(str(error))

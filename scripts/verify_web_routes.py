@@ -112,7 +112,7 @@ def public_checks(raw, headers, path):
             "Billington Privacy Policy",
             "This policy describes Billington version 1.4.0, the version available on the App Store, and the Billington service as it currently runs.",
             "In version 1.4.0, saving a finished bill sends it to Billington's service automatically, whether or not you share its link.",
-            "Not yet released: version 1.4.0 does not convert currencies.",
+            "Version 1.4.0 does not convert currencies.",
             "that statement can contain bill content or access credentials",
             "Shared access links do not automatically expire.",
             "within 30 days, with exceptions", "We do not sell bill or tab content.",

@@ -169,18 +169,27 @@ export default function PrivacyPolicyPage() {
           for every scan.
         </p>
         <h2 id="currency-rates">Currency rates</h2>
+        <p>Version {storeVersion} does not convert currencies.</p>
         <p>
-          <strong>Not yet released:</strong> version {storeVersion} does not
-          convert currencies. Later builds ask Billington's service for a rate,
-          and the service requests it from{" "}
-          <a href="https://frankfurter.dev/">Frankfurter</a>. The service as it
-          currently runs also contains an older rate lookup that uses{" "}
+          <strong>Not yet released:</strong> Later builds ask Billington's
+          service for a rate, and the service requests it from{" "}
+          <a href="https://frankfurter.dev/">Frankfurter</a>.
+        </p>
+        <p>
+          The service as it currently runs also contains an older rate lookup
+          that uses{" "}
           <a href="https://www.exchangerate-api.com/">ExchangeRate-API</a>.
           Those requests contain the currency pair, rather than your receipt
-          photo, participant names or bill amounts. Bills can retain the
-          accepted rate and its date and source, along with separate information
-          used to display a converted amount. A displayed conversion is not a
-          payment or a currency exchange transaction.
+          photo, participant names or bill amounts.
+        </p>
+        <p>
+          <strong>Not yet released:</strong> Bills can retain the accepted rate
+          and its date and source, along with separate information used to
+          display a converted amount.
+        </p>
+        <p>
+          A displayed conversion is not a payment or a currency exchange
+          transaction.
         </p>
         <h2 id="service-operation-and-providers">
           Service operation and providers

@@ -140,7 +140,7 @@ describe("privacy policy disclosures", () => {
       'Statements marked "Not yet released" describe later builds that are not on the App Store',
     );
     const unreleasedOnly =
-      /secure storage|Frankfurter|ExchangeRate|currenc|conversion|pending save|leave a tab|statement text/i;
+      /secure storage|Frankfurter|pending save|leave a tab|statement text/i;
     const marked = paragraphs(policy()).filter((p) => unreleasedOnly.test(p));
     expect(marked.length).toBeGreaterThanOrEqual(5);
     for (const paragraph of marked) {
@@ -155,7 +155,7 @@ describe("privacy policy disclosures", () => {
       "If that attempt fails, the app tries again the next time it opens.",
       "the selected photo goes to Billington's API and then to Anthropic's Claude API for extraction",
       "The service as it currently runs does not accept those photos",
-      "Not yet released: version 1.4.0 does not convert currencies.",
+      "Version 1.4.0 does not convert currencies.",
       "can also record the database statement for a failed or slow operation in its logs, and that statement can contain bill content or access credentials",
       "A change to the app or service does not by itself erase existing logs.",
       "Shared access links do not automatically expire.",

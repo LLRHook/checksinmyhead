@@ -6,7 +6,6 @@ existing startup/reset controls. No Docker daemon or simulator is contacted.
 """
 import json
 import os
-from pathlib import Path
 import pty
 import select
 import signal

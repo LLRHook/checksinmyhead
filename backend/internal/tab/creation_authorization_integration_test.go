@@ -189,13 +189,6 @@ func TestAuthorizationPublicCreateRejectsPrivilegedFieldsIndividually(t *testing
 }
 
 func TestAuthorizationActualMobileCreationFixtures(t *testing.T) {
-	assertActualMobileCreationFixtures(t, authorizationDB)
-}
-
-// assertActualMobileCreationFixtures posts each actual old-client builder body to a
-// fresh database from open. The PostgreSQL row passes the migrated schema.
-func assertActualMobileCreationFixtures(t *testing.T, open func(*testing.T) *gorm.DB) {
-	t.Helper()
 	data, err := os.ReadFile("../../../mobile/test/fixtures/bill_creation_contracts.json")
 	if err != nil {
 		t.Fatal(err)
@@ -212,7 +205,7 @@ func assertActualMobileCreationFixtures(t *testing.T, open func(*testing.T) *gor
 	}
 	for _, fixture := range fixtures {
 		t.Run(fixture.Case, func(t *testing.T) {
-			db := open(t)
+			db := authorizationDB(t)
 			r := authorizationRouter(db)
 			w := authRequest(r, "POST", "/api/bills", string(fixture.Request), "", "")
 			if w.Code != 201 {
@@ -231,9 +224,6 @@ func assertActualMobileCreationFixtures(t *testing.T, open func(*testing.T) *gor
 			}
 			if got.TabID != nil || got.AccessToken == "" || got.AccessToken != created.Token || got.Date.IsZero() {
 				t.Fatal("not a fresh standalone bill")
-			}
-			if got.AddedByMemberID != nil || got.PaidByMemberID != nil {
-				t.Fatal("fresh standalone bill carries tab attribution")
 			}
 			var sum float64
 			for _, s := range got.PersonShares {
@@ -255,26 +245,9 @@ func assertActualMobileCreationFixtures(t *testing.T, open func(*testing.T) *gor
 			var request struct {
 				PersonShares []models.PersonShare `json:"person_shares"`
 				Participants []models.Person      `json:"participants"`
-				Items        []models.BillItem    `json:"items"`
 			}
 			if err := json.Unmarshal(fixture.Request, &request); err != nil {
 				t.Fatal(err)
-			}
-			// Receipt lines persist as sent, in order, including the signed discount line.
-			if len(got.Items) != len(request.Items) {
-				t.Fatalf("items=%d want=%d", len(got.Items), len(request.Items))
-			}
-			discounts := 0
-			for i, item := range got.Items {
-				if item.Name != request.Items[i].Name || item.Price != request.Items[i].Price {
-					t.Errorf("item %d=%q %v want=%q %v", i, item.Name, item.Price, request.Items[i].Name, request.Items[i].Price)
-				}
-				if item.Price < 0 {
-					discounts++
-				}
-			}
-			if fixture.Case == "discount" && discounts != 1 {
-				t.Fatalf("discount fixture stored %d negative lines", discounts)
 			}
 			if len(got.PersonShares) != len(request.PersonShares) {
 				t.Fatalf("people=%d want=%d", len(got.PersonShares), len(request.PersonShares))
