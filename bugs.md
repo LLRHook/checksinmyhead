@@ -1037,6 +1037,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** open
 - **Log:**
   - 2026-11-12 Decision: L21 owner decision: deliver BUG-1794331920 separately; leave this ticket open/blocked. Local removal deletes the only persisted member credential with the Drift tab row; no prior-membership marker survives. Current privacy inventory does not contain the permission quoted in Observation. Retention or a new marker needs a separate approved scope.
+  - 2026-11-12 Correction: the earlier L21 owner decision Log line recorded the driver's routing decision to deliver BUG-1794331920 separately and leave this ticket open/blocked. It was not an owner decision. The owner's decision on what local removal keeps is pending.
 
 ### [BUG-1794331919] Disambiguate same-named people in web tab balances
 - [x] **Severity:** low
@@ -1068,7 +1069,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** fixed-pending-migration
-- **Fix:** Normal-size Per Person overlap was already absent on main (100 px bottom padding). Fix large-text reachability: wrap the Per Person heading, put Per Person and receipt-card amounts below their other content above 150% text scale, and retain full wrapping money text. Preserve the button and default-size rectangles on small, standard and large iPhones. Empty-state copy now preserves the entered tab name. Real-drag, receipt tap, baseline-rectangle and casing regressions added to the mobile case manifest.
+- **Fix:** Normal-size Per Person overlap was already absent on main (100 px bottom padding). The Per Person heading wraps at any text size where it would otherwise overflow. Above 150% text scale, one shared threshold places Per Person and receipt-card amounts below their other content, retaining full wrapping money text. Preserve the button and default-size rectangles on small, standard and large iPhones. Empty-state copy preserves the entered tab name. Real-drag, receipt tap, baseline-rectangle and casing regressions are registered in the mobile manifest; the golden rectangle fixture has an explicit opt-in recapture command.
 - **Docs:** DESIGN_SYSTEM.md: tab detail large-text layout and exact name casing; API and architecture contracts unchanged.
 
 ### [BUG-1794501894] Configure delivery so main can publish and the iOS upload workflow can run

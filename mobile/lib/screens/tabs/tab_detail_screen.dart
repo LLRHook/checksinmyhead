@@ -75,6 +75,9 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
     super.dispose();
   }
 
+  bool get _useStackedAmounts =>
+      MediaQuery.textScalerOf(context).scale(16) > 24;
+
   String _formatCurrency(double value) {
     if (!value.isFinite) return 'Unavailable · needs review';
     if (_rateCurrency != _currentTab.displayCurrency) {
@@ -1351,6 +1354,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
     final personTotals = _calculatePersonTotals();
+    final stacked = _useStackedAmounts;
     final sortedEntries =
         personTotals.entries.toList()
           ..sort((a, b) => b.value.compareTo(a.value));
@@ -1416,7 +1420,6 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
             separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final entry = sortedEntries[index];
-              final stacked = MediaQuery.textScalerOf(context).scale(16) > 24;
               final amount = Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
@@ -1488,8 +1491,8 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
         !_currentTab.isRemote &&
         !_currentTab.isFinalized;
 
+    final stacked = _useStackedAmounts;
     return _tabBills.map((bill) {
-      final stacked = MediaQuery.textScalerOf(context).scale(16) > 24;
       final amount = Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(

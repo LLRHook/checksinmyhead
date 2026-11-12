@@ -1455,9 +1455,9 @@
         "^Tab\\ detail\\ last\\ rows\\ clear\\ Add\\ Receipt\\ iPhone\\ SE\\ iOS\\ body\\ 53$",
         "^Tab\\ detail\\ last\\ rows\\ clear\\ Add\\ Receipt\\ iPhone\\ 17e\\ iOS\\ body\\ 17$",
         "^Tab\\ detail\\ last\\ rows\\ clear\\ Add\\ Receipt\\ iPhone\\ 17e\\ iOS\\ body\\ 53$",
-        "^Tab\\ detail\\ default\\ rectangles\\ match\\ main\\ iPhone\\ SE$",
-        "^Tab\\ detail\\ default\\ rectangles\\ match\\ main\\ iPhone\\ 17e$",
-        "^Tab\\ detail\\ default\\ rectangles\\ match\\ main\\ large\\ iPhone$",
+        "^Tab\\ detail\\ default\\ rectangles\\ match\\ baseline\\ iPhone\\ SE$",
+        "^Tab\\ detail\\ default\\ rectangles\\ match\\ baseline\\ iPhone\\ 17e$",
+        "^Tab\\ detail\\ default\\ rectangles\\ match\\ baseline\\ large\\ iPhone$",
         "^Tab\\ detail\\ empty\\ state\\ preserves\\ the\\ entered\\ tab\\ name$"
       ]
     },

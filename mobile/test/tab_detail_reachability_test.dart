@@ -13,6 +13,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'save_receipt_test.dart' show Harness;
 
+const _updateDefaultRectangles = bool.fromEnvironment(
+  'UPDATE_TAB_DETAIL_RECTANGLES',
+);
+
 const _displays = [
   (name: 'iPhone SE', size: Size(320, 568), top: 20.0, bottom: 0.0),
   (name: 'iPhone 17e', size: Size(390, 844), top: 47.0, bottom: 34.0),
@@ -205,7 +209,7 @@ void main() {
       }
     }
 
-    testWidgets('Tab detail default rectangles match main ${display.name}', (
+    testWidgets('Tab detail default rectangles match baseline ${display.name}', (
       tester,
     ) async {
       final f = _Fixture();
@@ -258,14 +262,20 @@ void main() {
       for (var i = 0; i < texts.evaluate().length; i++) {
         record('receipt text $i', texts.at(i));
       }
-      // Captured on f13409d (main), with the same fixture and real drags.
-      final baseline =
-          jsonDecode(
-                File(
-                  'test/fixtures/tab_detail_default_rectangles.json',
-                ).readAsStringSync(),
-              )
-              as List;
+      // Golden rectangles: one local tab, one receipt, two people; light theme,
+      // portrait, default text and FlutterTest font. Originally captured from
+      // f13409d177d237291785d333c6b2d565b65b8108. To recapture an intentional
+      // layout change, from mobile/ run (then review the fixture diff):
+      // flutter test --no-pub --dart-define=UPDATE_TAB_DETAIL_RECTANGLES=true test/tab_detail_reachability_test.dart --plain-name 'Tab detail default rectangles match baseline'
+      // Normal runs only read and compare the fixture.
+      final file = File('test/fixtures/tab_detail_default_rectangles.json');
+      final baseline = jsonDecode(file.readAsStringSync()) as List;
+      if (_updateDefaultRectangles) {
+        baseline[displayIndex] = rectangles;
+        file.writeAsStringSync(
+          '${const JsonEncoder.withIndent('  ').convert(baseline)}\n',
+        );
+      }
       expect(rectangles, baseline[displayIndex]);
       expect(tester.takeException(), isNull);
     });
