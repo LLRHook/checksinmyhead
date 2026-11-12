@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jackc/pgx/v5/pgconn"
+	"strings"
 	"testing"
 )
 
@@ -46,7 +47,7 @@ func TestPostgresJSONTextValidation(t *testing.T) {
 		{"item_name", "POST", "/api/bills", `{"name":"Meal","subtotal":10,"total":10,"items":[{"name":"a\u0000b","price":10}]}`, "", "", 1},
 		{"assignment_name", "POST", "/api/bills", `{"name":"Meal","subtotal":10,"total":10,"items":[{"name":"Meal","price":10,"assignments":[{"person_name":"a\u0000b","percentage":100}]}]}`, "", "", 1},
 		{"share_name", "POST", "/api/bills", `{"name":"Meal","subtotal":10,"total":10,"person_shares":[{"person_name":"a\u0000b","total":10}]}`, "", "", 1},
-		{"share_item_name", "POST", "/api/bills", `{"name":"Meal","subtotal":10,"total":10,"person_shares":[{"person_name":"Alex","total":10,"items":[{"name":"a\u0000b","amount":10}]}]}`, "", "", 1},
+		{"share_item_name", "POST", "/api/bills", `{"name":"Meal","subtotal":10,"total":10,"items":[{"name":"a\u0000b","price":10,"assignments":[{"person_name":"Alex","percentage":100}]}],"person_shares":[{"person_name":"Alex","subtotal":10,"total":10,"items":[{"name":"a\u0000b","amount":10}]}]}`, "", "", 1},
 		{"payment_name", "POST", "/api/bills", `{"name":"Meal","subtotal":10,"total":10,"payment_methods":[{"name":"a\u0000b","identifier":"handle"}]}`, "", "", 1},
 		{"payment_identifier", "POST", "/api/bills", `{"name":"Meal","subtotal":10,"total":10,"payment_methods":[{"name":"Venmo","identifier":"a\u0000b"}]}`, "", "", 1},
 		{"reference_label", "POST", "/api/bills", `{"name":"Meal","subtotal":10,"total":10,"participants":[{"name":"a\u0000b","client_ref":"a"}]}`, "", "", 2},
@@ -70,6 +71,14 @@ func TestPostgresJSONTextValidation(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.name == "share_item_name" {
+				// Matching receipt and projection history is otherwise valid.
+				valid := strings.ReplaceAll(tc.body, `\u0000`, "x")
+				w := versionAuthRequest(r, tc.method, tc.path, valid, tc.token, tc.member, tc.version)
+				if w.Code != 201 {
+					t.Fatalf("valid share history: status=%d body=%s", w.Code, w.Body.String())
+				}
+			}
 			before := lifecycleSnapshot(t, db)
 			w := versionAuthRequest(r, tc.method, tc.path, tc.body, tc.token, tc.member, tc.version)
 			var body map[string]any

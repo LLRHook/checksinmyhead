@@ -1627,6 +1627,9 @@
         "^go\\-postgres\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/insufficient$",
         "^go\\-postgres\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/negative_balance$",
         "^go\\-postgres\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/eligible_small_reference$"
+      ],
+      "backend/internal/tab/TestPostgresJSONTextValidation": [
+        "^TestPostgresJSONTextValidation/share_item_name$"
       ]
     },
     "backend": {
