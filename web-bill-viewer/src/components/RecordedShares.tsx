@@ -31,6 +31,7 @@ export function RecordedShareRows({
 }: RecordedShareRowsProps) {
   return (
     <section aria-label="Recorded receipt shares" className="space-y-3">
+      <h2 className="sr-only">Recorded receipt shares</h2>
       <p role="status" className="text-sm text-[var(--text-secondary)]">
         Recorded history; ownership needs review. Original amounts and manual
         paid flags are retained.

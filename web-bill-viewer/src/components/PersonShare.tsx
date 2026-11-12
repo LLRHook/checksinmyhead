@@ -62,7 +62,7 @@ export default function PersonShare({
     <div
       className={`bg-[var(--card-bg-light)] dark:bg-[var(--card-bg-dark)] rounded-2xl overflow-hidden shadow-sm dark:shadow-none transition-all duration-200 ${
         paid
-          ? "dark:border dark:border-emerald-800/50 opacity-75"
+          ? "dark:border dark:border-emerald-800/50"
           : "dark:border dark:border-[var(--border-dark)]"
       }`}
     >
@@ -127,6 +127,7 @@ export default function PersonShare({
         <button
           type="button"
           onClick={toggle}
+          aria-label={`Share details for ${(personShare.label ?? personShare.person_name) || "Unnamed"}`}
           aria-expanded={isOpen}
           className="p-2 cursor-pointer bg-transparent border-none"
         >

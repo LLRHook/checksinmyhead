@@ -792,7 +792,7 @@ export default function LazyBillBoard({
                 return (
                   <div
                     key={item.id}
-                    className={`flex items-center gap-3 border-b border-[var(--border-light)] px-4 py-4 last:border-0 dark:border-[var(--border-dark)] ${locked ? "opacity-50" : ""}`}
+                    className="flex items-center gap-3 border-b border-[var(--border-light)] px-4 py-4 last:border-0 dark:border-[var(--border-dark)]"
                   >
                     <button
                       type="button"
@@ -805,14 +805,16 @@ export default function LazyBillBoard({
                         isSavingSelection
                       }
                       onClick={() => toggleItem(item)}
-                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 ${mine ? "border-[var(--primary)] bg-[var(--primary)] text-white" : "border-[var(--border-light)] dark:border-[var(--border-dark)]"}`}
+                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 ${mine ? "border-[var(--primary)] bg-[var(--primary)] text-white" : "border-[var(--border-light)] dark:border-[var(--border-dark)]"} ${locked ? "opacity-50" : ""}`}
                     >
                       {mine && <FaCheck size={12} />}
                     </button>
                     <div
                       className={`min-w-0 flex-1 ${locked ? "line-through" : ""}`}
                     >
-                      <p className="font-medium text-[var(--accent)] dark:text-white">
+                      <p
+                        className={`font-medium text-[var(--accent)] dark:text-white ${locked ? "opacity-50" : ""}`}
+                      >
                         {item.name}
                       </p>
                       <p className="text-xs text-[var(--text-secondary)]">
@@ -844,7 +846,7 @@ export default function LazyBillBoard({
                       }
                       onClick={() => openSplit(item)}
                       aria-label={`Edit split for ${item.name}`}
-                      className="rounded-xl p-3 text-[var(--text-secondary)] hover:bg-[var(--secondary)] disabled:opacity-30"
+                      className="rounded-xl p-3 text-[var(--text-secondary)] hover:bg-[var(--secondary)] dark:hover:bg-white/10 disabled:opacity-30"
                     >
                       <FaPeopleGroup size={15} />
                     </button>

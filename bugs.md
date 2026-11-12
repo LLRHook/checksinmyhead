@@ -926,7 +926,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** open
 
 ### [BUG-1794331911] Fix web viewer accessibility gaps on private bill pages
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** web, a11y
 - **File(s):** web-bill-viewer/src/app/globals.css; web-bill-viewer/src/components/PersonShare.tsx; web-bill-viewer/src/components/RecordedShares.tsx
 - **Observation:** On /b Quick Split pages: the per-row expand buttons have no accessible name (WCAG 4.1.2). Secondary text (--text-secondary #86868b) measures 3.33, 3.62 and 4.35:1 on the page surfaces (1.4.3). Headings skip from h1 to h3 (1.3.1). Private pages share the generic 'Billington' title (2.4.2). Keyboard order and focus rings were fine.
@@ -935,8 +935,13 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/web/01, web/12 and NOTES.md (headed Chrome via agent-browser). axe and 320 px reflow were not run.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** fixed-pending-migration
+- **Fix:** Named share controls and sequential private headings; static Shared bill/tab titles preserve metadata isolation. Accepted review option B uses #6e6e73 light and #98989d dark, removes whole-card paid opacity in shares/settlements/totals and retains the two instruction fade removals approved by the driver. Locked item status retains full secondary contrast while controls/names dim; split icons use the existing dark hover surface. Rendered instruction/paid-state tests and computed contrast cover these surfaces.
+- **Docs:** DESIGN_SYSTEM.md; web-bill-viewer/README.md; docs/technical-overview.md
 - **Cross-ref:** FEAT-1793644512
+- **Log:**
+  - 2026-11-12 Review: Driver accepted L16 review option B and F2/F3; corrected earlier attribution: the driver, not Victor, approved the instruction-opacity change.
 
 ### [BUG-1794331912] Show half-cent bill totals the same way their shares add up
 - [ ] **Severity:** med
@@ -1023,7 +1028,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** open
 
 ### [BUG-1794331919] Disambiguate same-named people in web tab balances
-- [ ] **Severity:** low
+- [x] **Severity:** low
 - **Area:** web, ux
 - **File(s):** web-bill-viewer/src/components/NetBalances.tsx
 - **Observation:** The web tab BALANCES list shows rows such as 'Alex -> Alex' and 'Vic Sim17 -> Vic Sim17' for distinct people with the same display name, with no reference or suffix to tell them apart.
@@ -1032,8 +1037,13 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/web/16.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** fixed-pending-migration
+- **Fix:** Scoped collision detection covers the entire balance list, including Your/All grouping, name-only history and surrounding whitespace. Existing member/receipt references render on a smaller secondary line; only suffixed rows wrap and protect amount/payment groups at narrow widths. Unique rows, rows/amounts/order and payment conditions remain unchanged. Added mutation regressions and built-CSS browser geometry proof at 320/360/375 px with Alex and long names.
+- **Docs:** docs/technical-overview.md
 - **Cross-ref:** BUG-1793644505
+- **Log:**
+  - 2026-11-12 Review: Driver accepted L16 F1/F3: fix suffixed-row reflow and add grouping/history/whitespace mutation coverage.
 
 ### [BUG-1794331920] Keep the Add Receipt button off the last per-person rows
 - [ ] **Severity:** low
@@ -1324,6 +1334,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Open a tab with several people at a 320 px viewport and compare document scrollWidth with innerWidth.
 - **Bump:** patch
 - **Status:** open
+- **Log:**
+  - 2026-11-12 Sighting: 2026-11-12 re-check of the Balances fix: a Balances row with no reference and a five-digit amount ('Jo -> Kim $9,876.54') also overflows at 320 px (amount ends at x=321, card at 304), on main as well. Cover it with this ticket's narrow-width work.
 
 ### [BUG-1794510141] Same-named people look identical on the web bill page and in tab settlements
 - [ ] **Severity:** med
@@ -1358,5 +1370,29 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Req:** none; WCAG 1.4.4 Resize Text
 - **Depends on:** none
 - **Repro / Notes:** Widget test at 320x568, text scale 53/17, empty display name: open Join a Tab, enter a valid link, submit. Found by the author and confirmed by the reviewer of pull request #187 on 2026-11-12.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794512495] Venmo pay buttons in the web viewer have no accessible name
+- [ ] **Severity:** med
+- **Area:** web, accessibility
+- **File(s):** web-bill-viewer/src/components/TabPersonTotals.tsx; web-bill-viewer/src/components/NetBalances.tsx
+- **Observation:** The Venmo pay buttons in the tab per-person totals and in the Balances list show only the Venmo wordmark and expose no accessible name, so a screen reader announces an unnamed button (WCAG 4.1.2). Found on 2026-11-12 during the re-check of the fix for BUG-1794331911; present on main before that fix. The Balances button is not reachable today because the tab page does not pass the viewer's member id.
+- **Expected:** Each pay button has an accessible name that says what it does and for whom, for example 'Pay Alex with Venmo'.
+- **Req:** none; WCAG 4.1.2 Name, Role, Value
+- **Depends on:** none
+- **Repro / Notes:** Open a tab page with a payable person total and inspect the button's accessible name.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794512496] Avatar shows a broken character for names that start with an emoji
+- [ ] **Severity:** low
+- **Area:** web, ui
+- **File(s):** web-bill-viewer/src/components (avatar initial)
+- **Observation:** For a display name that starts with an emoji, the web viewer's avatar shows a broken character: the initial is taken as the first UTF-16 code unit, which is half of the emoji. Seen on 2026-11-12 on the tab Balances list; present on main.
+- **Expected:** The avatar shows the first whole character of the name (the emoji), or a neutral fallback.
+- **Req:** none
+- **Depends on:** none
+- **Repro / Notes:** Render a tab with a member whose name begins with an emoji.
 - **Bump:** patch
 - **Status:** open

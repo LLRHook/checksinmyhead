@@ -1332,7 +1332,9 @@ class ManifestReportTests(unittest.TestCase):
            'lazy viewer session across refreshed receipt props revalidates the selected occurrence without '
            'repeating membership recovery on graph refresh',
            'lazy viewer session across refreshed receipt props clears its recovery warning after successful '
-           'reauthentication without erasing another error'))]
+           'reauthentication without erasing another error',
+           'lazy viewer session across refreshed receipt props keeps locked item status readable in both '
+           'themes and uses a contrasting dark split hover'))]
         for kind, row, family, titles in followup_titles:
             focused = {'rows': {row: self.manifest['rows'][row]},
                        'reports': {row: self.manifest['reports'][row]},

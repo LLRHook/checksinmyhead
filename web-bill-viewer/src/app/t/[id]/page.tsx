@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { FaLock, FaTriangleExclamation } from "react-icons/fa6";
 import AppHandoff from "@/components/AppHandoff";
@@ -20,6 +21,10 @@ import {
   type Tab,
 } from "@/lib/api";
 import { lazyBillRemainingTotal } from "@/lib/lazy-bill";
+
+export const metadata: Metadata = {
+  title: "Shared tab | Billington",
+};
 
 export default async function TabPage({
   params,
