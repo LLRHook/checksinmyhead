@@ -170,7 +170,7 @@ and [review corrections](../docs/reviews/2026-11-03-local-workflow-correction.md
 
 ### Build toolchain
 
-`go.mod` requires Go 1.27.3. Local commands may use `GOTOOLCHAIN=auto` to
+`go.mod` requires Go 1.27.4. Local commands may use `GOTOOLCHAIN=auto` to
 select it. The service Dockerfile pins the official Go builder and supported
 `gcr.io/distroless/static-debian13:nonroot` runtime by multi-platform digest.
 The production build sets `CGO_ENABLED=0`; the runtime retains CA certificates
