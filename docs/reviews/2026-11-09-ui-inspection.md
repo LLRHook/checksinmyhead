@@ -66,7 +66,5 @@ Deviations from `VERIFICATION.md` Appendix A, all local:
 ## Evidence
 
 Screenshots and driver transcripts are in ignored `.vv/ui-inspection-20261109/`
-(`main/`, `layout/`, `recheck/`, `web/`, `gate/`) on the inspecting machine. The cited
-files and their SHA-256 values are listed in
-[evidence/2026-11-09-ui-inspection.json](evidence/2026-11-09-ui-inspection.json).
+(`main/`, `layout/`, `recheck/`, `web/`, `gate/`) on the inspecting machine.
 The rechecks in rows 2 and 4 used a rebuild that includes the picker fix.
