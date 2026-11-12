@@ -691,7 +691,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-09 Verification: Native check on an owned iPhone Duo simulator (iOS 27.1, Closed pose, right status column) with a debug build of 083567a: Enter Bill Details, Assign Items and Tab detail keep their content clear of the column; with half of 122.00 assigned the Assigned amount reads $61.00 in full, 50%, and the bar ends halfway. The Open/landscape pose could not be selected from the command line and was not captured. Screenshots: .vv/ui-inspection-20261109/layout/b2-*.png. The tutorial dialog on Assign Items still extends under the column (BUG filed separately).
 
 ### [BUG-1793935715] Keep the Finalize confirmation usable on short displays
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** mobile, ui, layout
 - **File(s):** mobile/lib/screens/tabs/tab_detail_screen.dart (_FinalizeConfirmSheet)
 - **Observation:** The retained native capture handoff reports 14px and 21px Finalize sheet overflows on short displays. Current source still caps a non-scroll Column at 70% screen height. The horizontal-body fix does not change this sheet; current native reproduction remains pending.
@@ -701,8 +701,9 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Frozen /tmp/appshot-quality-20261105/capture/frozen-layout-milestone/HANDOFF.md, Separate findings; BEFORE frames are f4abc78, not current native proof. Open Tab detail > Finalize on a short display. Source caps maxHeight at 0.7 and uses an unscrollable Column. Body inset tests use textscale0.5 and do not qualify this modal. No fix or new native execution claimed.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** open
-- **Docs:** docs/reviews/2026-11-06-combined-flutter-acceptance.md; frozen layout handoff
+- **Status:** fixed-pending-migration
+- **Fix:** The Finalize sheet now scrolls its heading and settlement rows together and pins Cancel/Finalize below them (scrollbar thumb while scrollable). The 70% height limit stays; displays shorter than about 630 pt may use up to 440 pt or their full height. Above 1.5x text the amount sits under its name and shrinks to fit; action labels shrink instead of wrapping. The modal call moved unchanged into showFinalizeConfirmSheet. Row order, labels, amounts, true/false/null results and the finalize request are unchanged. Proof: mobile/test/finalize_confirm_sheet_test.dart 19 pass (320x568, 375x667, 568x320, 812x375 with side insets at text scale 1.0/2.0/3.0 with 12 rows; real Tab detail Finalize sends one POST, Cancel/dismiss none); 16 of 19 failed with RenderFlex overflow on the previous layout. NOT DONE: native simulator/device capture on a short display (widget-test evidence only).
+- **Docs:** DESIGN_SYSTEM.md (Interaction patterns); mobile/test/finalize_confirm_sheet_test.dart
 - **Cross-ref:** BUG-1793927492 (separate horizontal body issue, not this sheet)
 
 ### [BUG-1793958334] Retain migration producer evidence when activity observation fails
