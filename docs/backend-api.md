@@ -790,7 +790,18 @@ Parse a receipt image using Anthropic's Claude Messages API. No user authenticat
 - Max TOTAL multipart size: 10 MiB (boundaries included), streamed without disk/pixel decode
 - At most 32 parts, 16 KiB/64 parsed headers per part; duplicate image fields return 400
 - Receipt operation 40s from before upload; provider 30s; earlier caller/socket deadlines win
-- Accepted MIME types: `image/jpeg`, `image/png`, `image/webp`, `image/heic`, `image/heif`
+- The server detects the image type from the first 512 content bytes using Go's
+  `http.DetectContentType`; the part's declared `Content-Type` and filename extension
+  do not determine acceptance. Accepted detected types: `image/jpeg`, `image/png`,
+  `image/webp`, `image/heic`, `image/heif`.
+- A supported detected image proceeds to provider parsing even if declared as another
+  type (for example, PNG bytes declared `text/plain` or `image/svg+xml` proceed as
+  `image/png`). A declaration mismatch alone causes no error; normal parsing/provider
+  responses still apply. Unsupported detected content returns
+  `400 {"error":"unsupported image type: <detected type>"}` even when declared as a
+  supported image. For example, plain SVG bytes starting `<svg` without an XML
+  declaration are detected as `text/plain; charset=utf-8` and rejected with that type
+  in the error, regardless of an `image/svg+xml` or `image/png` declaration.
 
 **Response** `200`
 ```json
@@ -830,7 +841,7 @@ Parse a receipt image using Anthropic's Claude Messages API. No user authenticat
 | Status | Body | Meaning |
 |--------|------|---------|
 | 400 | `{"error": "image file required"}` | Missing, duplicate or malformed image field |
-| 400 | `{"error": "unsupported image type: ..."}` | Invalid MIME type |
+| 400 | `{"error": "unsupported image type: ..."}` | Unsupported content-detected type; the error names the detected type, not the declared part type |
 | 400 | `{"error":"invalid client address","code":"invalid_peer"}` | Invalid normalized peer |
 | 413 | Friendly error with `code: image_too_large` | Multipart/header/part excess or upstream 413 |
 | 429 | `{"error": "Too many scans. Please wait a moment and try again.", "code": "rate_limited"}` | Too many requests from this IP |

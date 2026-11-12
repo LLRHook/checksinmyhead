@@ -935,7 +935,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** open
 
 ### [BUG-1794331916] Document that receipt uploads are typed by content, not the declared MIME type
-- [ ] **Severity:** low
+- [x] **Severity:** low
 - **Area:** docs, api
 - **File(s):** docs/backend-api.md; backend/internal/receipt/handler.go
 - **Observation:** docs/backend-api.md:782 lists accepted MIME types, but the service detects the type from the bytes and ignores the declared part type. PNG bytes declared text/plain are parsed, and an image/svg+xml part is reported as 'unsupported image type: text/plain'.
@@ -944,7 +944,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/stage4-adv/summary.md (class L).
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** fixed-pending-migration
+- **Fix:** Correct the receipt API reference: type is detected from the first 512 bytes with http.DetectContentType, not the declared part MIME type or filename. Document supported-content mismatches proceeding to parsing and unsupported-content mismatches returning 400 with the detected MIME value. Handler behavior is unchanged; existing multipart/safeguard tests demonstrate content typing.
+- **Docs:** docs/backend-api.md
 
 ### [BUG-1794331917] Fail the local workflow SIGINT tests with a clear prerequisite when SIGINT is ignored
 - [ ] **Severity:** low
