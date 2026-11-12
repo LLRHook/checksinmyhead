@@ -25,7 +25,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-05 Source acceptance: Driver reconciles completed scoped reviews/current clean committed-source proof; source criteria met, pending integrated V&V migration only. Historical handoffs remain in Git/dated notes. Deployment, public clients and whole acceptance are separate/RED.
 
 ### [BUG-1793644498] Restrict public bill creation to authorized input
-- [ ] **Severity:** crit
+- [x] **Severity:** crit
 - **Area:** backend, security
 - **File(s):** backend/internal/bill/{handler,service}.go; backend/pkg/models/bill.go; backend/internal/bill/{handler,service}_test.go
 - **Observation:** CreateBill binds models.Bill, allowing client-supplied tab/payer/nested accounting state without tab authorization.
@@ -39,13 +39,14 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** POST synthetic negative total with victim tab_id against isolated DB, as in review reproduction. Review sibling create/update routes. UI/client compatibility must be demonstrated.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
-- **Fix:** Auth/client evidence: docs/reviews/2026-11-03-client-validation-correction.md. Driver Flutter237 pass; re-review/public bridge/integrated gates pending. 2026-11-06 assignment decoding source preserves exact old value/presence/null/duplicate/error behavior. Source0/0; candidate73 plus corrected goldens81 PASS across two scoped rows; baseline73 and four intended-negative/healthy controls retained. Original setupRED remains; no precision, PG, performance or integrated acceptance.
+- **Status:** fixed-pending-migration
+- **Fix:** Bill creation decodes an explicit request type that rejects server-owned tab, payer, id, paid and derived share fields, so a public create cannot choose or change another tab. Proof on main: TestAuthorizationPublicCreateCannotChooseVictimTab and TestAuthorizationPublicCreateRejectsPrivilegedFieldsIndividually (handler and repository), TestPostgresLifecycleActualMobileCreationThenFinalize (the ten real mobile creation bodies on PostgreSQL), and the negative-total cases in backend/internal/bill/create_request_test.go. All are required cases in ops/ci/case_manifest.json. Earlier history is in the Log and in docs/reviews/2026-11-03-client-validation-correction.md.
 - **Docs:** docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-02-authorization-batch.md; docs/reviews/2026-11-02-authorization-corrections.md; docs/reviews/2026-11-03-client-v1-bridge.md; docs/reviews/2026-11-03-client-validation-correction.md; docs/reviews/2026-11-06-assignment-snapshot.md
 - **Log:**
   - 2026-11-02 Validation: Driver-approved AUTH_CORRECTION_APPROVAL.md findings 1-3 implemented in 28eab76. Six safe before leaf failures; five temporary overlay variants yield 18 expected failing leaf cases. Extreme-denominator arithmetic tested only as bounded pure calculation, never HTTP. Real PostgreSQL covers safe money boundaries and calculation-error rollback. Five actual mobile-builder tests pass with --no-pub; this does not resolve locked acquisition. Keep in-progress; no CHANGELOG migration.
   - 2026-11-03 Validation: 43772a7 client slice: real widget/provider upload plus 30/31-rune entry/builder and validation checks; 228 Flutter/54 web pass, zero skips. See docs/reviews/2026-11-03-client-v1-bridge.md; broader acceptance unchanged.
   - 2026-11-06 Source: 2026-11-06 assignment decoding source preserves exact old value/presence/null/duplicate/error behavior. Source0/0; candidate73 plus corrected goldens81 PASS across two scoped rows; baseline73 and four intended-negative/healthy controls retained. Original setupRED remains; no precision, PG, performance or integrated acceptance.
+  - 2026-11-12: Independent review on 2026-11-12 (driver run testflight-1112) found Expected items 1 to 3 already met by the code on main and item 4 already proved by the existing tests named in Fix; under a non-strict-decoding mutant the existing handler suite fails 51 of 60 cases. Pull request #166, which only repeated those tests on PostgreSQL, was closed as a duplicate. Moved to fixed-pending-migration on that evidence.
 
 ### [BUG-1793644499] Inject the frozen exchange-rate provider at startup
 - [x] **Severity:** high
@@ -1268,5 +1269,77 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Req:** BUG-1794045427 follow-up; docs/technical-overview.md durable history contract
 - **Depends on:** owner product decision
 - **Repro / Notes:** Local synthetic stack, 2026-11-09: seed a tab with 31 receipts through the API, open billington://tab/<id>?t=<token> on a simulator and join. Screenshots: .vv/ui-inspection-20261109/recheck/E3-cache-error.png, layout/b3-capacity-loaded.png. The API returned all 31 receipts for the same tab.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794510137] Make four timing-dependent tests reliable under load
+- [ ] **Severity:** med
+- **Area:** tests, mobile, backend, tooling
+- **File(s):** mobile/test/receipt_native_io_test.dart; scripts/test_local_workflow.py (ProbeTests); backend safehttp cancel test (TestA1CancelInterruptsJSONRead)
+- **Observation:** Four tests fail now and then when the machine is busy and pass when run alone: Flutter 'native headers stall timeout terminates upstream and joins fixture cleanup' (its 2-second fixture wait expires); local-workflow ProbeTests.test_blocked_container_inspection_has_a_real_deadline and ProbeTests.test_blocked_simulator_boot_has_a_real_deadline (setup times out before the probe boundary); Go TestA1CancelInterruptsJSONRead. Seen on 2026-11-12 in five separate full local runs during driver run testflight-1112, each time with other suites running at once; every isolated re-run passed.
+- **Expected:** Each test passes in a full local gate run with other suites running at the same time, or its deadline is derived from something the test controls rather than wall-clock margin. No deadline is simply lengthened without showing the test still detects the hang it guards against.
+- **Req:** VERIFICATION.md rule 1 (any stage failure is RED), so one flaky failure turns a verification run red
+- **Depends on:** none
+- **Repro / Notes:** Run the VERIFICATION.md Stage 2 rows for Go, Flutter and local-workflow concurrently on one machine. Isolated re-run, for example: python3 ops/ci/unittest_report.py scripts/test_local_workflow.py ProbeTests.test_blocked_simulator_boot_has_a_real_deadline.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794510138] Release builds never publish a bill
+- [ ] **Severity:** high
+- **Area:** mobile, release, publication
+- **File(s):** mobile/lib/services/api_service.dart (supportsCreationReplay); docs/mobile-save-verification.md; docs/backend-api.md; mobile/README.md; docs/technical-overview.md
+- **Observation:** ApiService.supportsCreationReplay() returns false whenever kReleaseMode is true, so a release build saves every bill as pending and never sends it: no share link, nothing for other people to open. The gate was put in on purpose until production can replay a creation safely; its stated preconditions (a replay-capable production backend, source and capability floors in RELEASE_POLICY, the old writer drained, signed-device qualification, external clearance) are all unmet on 2026-11-12. Production still runs commit 81a564f, which cannot replay.
+- **Expected:** A release build publishes bills once the production backend can replay creations, by a mechanism the owner chooses (remove the release-mode line and rely on never rolling production back below the replay revision, or have the server advertise the capability). The documents that describe the gate say what is true after the change. Bills saved as pending by a gated build are published by the next build.
+- **Req:** none; owner decision pending (driver run testflight-1112, decision D1)
+- **Depends on:** BUG-1794501894 (delivery configured and backend published)
+- **Repro / Notes:** Read mobile/lib/services/api_service.dart supportsCreationReplay. The release-mode branch cannot run under flutter test; mobile/test/save_receipt_test.dart --plain-name capability shows a missing capability leads to no POST.
+- **Bump:** minor
+- **Status:** open
+
+### [BUG-1794510139] Saving fails after about 30 bills that cannot be published
+- [ ] **Severity:** med
+- **Area:** mobile, storage
+- **File(s):** mobile/lib/database/database.dart (_makeReceiptRoom, maxRecentBills); mobile/lib/screens/quick_split/bill_entry/components/bottom_bar.dart
+- **Observation:** Recent bills are capped at 30 rows and only published or linked rows are evicted to make room. When about 30 rows are pending or referenced, the next Done fails with 'Could not save on this device. Review the receipt and retry.' On a build whose publication gate is closed every saved bill stays pending, so a tester reaches this after about 30 bills; offline use can reach it too.
+- **Expected:** A person can keep saving bills while earlier ones are waiting to be published, or is told clearly that unpublished bills must be published or removed first. No saved bill is dropped silently.
+- **Req:** none
+- **Depends on:** none
+- **Repro / Notes:** With publication unavailable, save 31 bills. See database.dart maxRecentBills = 30 and the eviction rule in _makeReceiptRoom.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794510140] Web tab page overflows sideways at 320 px in the per-person totals
+- [ ] **Severity:** low
+- **Area:** web, ui, layout
+- **File(s):** web-bill-viewer/src/components/TabPersonTotals.tsx
+- **Observation:** At a 320 px viewport the tab page is 350 px wide: a per-person totals amount ends at about x=350, so the page scrolls sideways (WCAG 1.4.10). The bill page stays at 320. Measured on 2026-11-12 on the built viewer; the component was not changed by the accessibility fix for BUG-1794331911.
+- **Expected:** The tab page has no horizontal scrolling at 320 px; per-person totals wrap or shrink within the card with every amount visible.
+- **Req:** none; WCAG 1.4.10 Reflow
+- **Depends on:** none
+- **Repro / Notes:** Open a tab with several people at a 320 px viewport and compare document scrollWidth with innerWidth.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794510141] Same-named people look identical on the web bill page and in tab settlements
+- [ ] **Severity:** med
+- **Area:** web, identity, ui
+- **File(s):** web-bill-viewer/src/components/PersonShare.tsx; web-bill-viewer/src/components/SettlementCard.tsx; web-bill-viewer/src/components/BillPageClient.tsx
+- **Observation:** Two different people with the same display name are shown as identical rows on the private bill page (two 'Alex' shares, and two expand buttons both named 'Share details for Alex') and in the tab Settlements list. BUG-1794331919 fixed this only for the tab Balances list. These are also screens where people decide what to pay.
+- **Expected:** Wherever the viewer lists people, two people whose names collide are told apart with the reference the product already uses (member or receipt participant), and people with unique names look as they do now. Amounts, order and payment actions do not change.
+- **Req:** none; participant identity contract in docs/backend-api.md
+- **Depends on:** BUG-1794331919
+- **Repro / Notes:** Create a bill with two participants named Alex and open its share link; open a finalized tab with two members named Alex and read Settlements.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794510142] Privacy policy describes the old production service
+- [ ] **Severity:** med
+- **Area:** web, privacy, docs
+- **File(s):** web-bill-viewer/src/app/(public)/privacy-policy/page.tsx; docs/privacy.md
+- **Observation:** The published privacy policy says in four places what 'the service as it currently runs' does (it does not accept receipt photos, it contains an older rate lookup, it can record database statements) and ends a paragraph with 'been deployed'. Those sentences describe production at commit 81a564f. They become false the moment the backend is published from main.
+- **Expected:** When the backend from main is published, the policy and docs/privacy.md describe that service, in the same change or immediately after, checked against what the published revision does with photos, rate providers and logs.
+- **Req:** none
+- **Depends on:** BUG-1794501894 (backend published)
+- **Repro / Notes:** Search the policy page for 'currently runs'.
 - **Bump:** patch
 - **Status:** open
