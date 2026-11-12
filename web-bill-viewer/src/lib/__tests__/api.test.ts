@@ -434,7 +434,13 @@ describe("getBill", () => {
   it("throws on 403", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({ ok: false, status: 403 }),
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify({ error: "token mismatch" }), {
+            status: 403,
+          }),
+        ),
     );
 
     await expect(getBill("1", "bad-token")).rejects.toThrow(
@@ -484,7 +490,14 @@ describe("getTab", () => {
   it("throws on 500", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({ ok: false, status: 500 }),
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({ error: "an internal error occurred" }),
+            { status: 500 },
+          ),
+        ),
     );
 
     await expect(getTab("1", "token")).rejects.toThrow("Service unavailable");

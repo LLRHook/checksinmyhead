@@ -968,7 +968,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** fixed-pending-migration
-- **Fix:** Return 409 participants_locked_paid only for a new participant addition blocked by paid shares, with a non-retry message; preserve stale revision, capacity and exact replay behavior. Flutter and web now display server error messages safely with existing fallback, and suppress the retry-original-action control for this code. PostgreSQL state/replay regression and both client regressions added to the case manifest.
+- **Fix:** Return 409 participants_locked_paid only for a new participant addition blocked by paid shares; preserve stale revision, capacity and exact replay behavior. Flutter and web show nonempty server messages only for 409 and keep fixed 403/5xx wording; suppress the retry-original-action control for the paid conflict. PostgreSQL state/replay and client body/status regressions are registered in the case manifest.
 - **Docs:** docs/backend-api.md
 
 ### [BUG-1794331915] Apportion tax and tip the same way for partial claims on every route

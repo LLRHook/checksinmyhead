@@ -934,7 +934,7 @@ class ApiService {
         if (body['error'] is String) message = body['error'] as String;
       } catch (_) {}
       throw ApiException(
-        message != null && message.isNotEmpty
+        response.statusCode == 409 && message != null && message.isNotEmpty
             ? message
             : response.statusCode == 409
             ? 'State changed or needs review. Refresh and deliberately retry.'

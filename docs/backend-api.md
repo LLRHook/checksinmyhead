@@ -179,7 +179,8 @@ This is a non-retryable state conflict, like `member_referenced`; refreshing the
 revision cannot make the addition succeed while a share remains paid. Stale revisions
 still return `identity_revision_conflict`, and a matching existing `client_ref` replay
 still succeeds after payment. Both standalone and attached participant creation use
-this error. Clients display the server's error message for an unfamiliar code;
+this error. Clients display a nonempty server error message only for 409 responses, including
+unfamiliar codes. Other statuses retain the clients' fixed wording;
 `participants_locked_paid` has no retry-original-action control.
 A member cannot request another participation while already bound/pending
 on this bill. Pending grants no paid authority. Approve/reject must address the exact

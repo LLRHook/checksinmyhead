@@ -13,6 +13,32 @@ import 'package:http/testing.dart';
 import 'save_receipt_test.dart' show Harness;
 
 void main() {
+  for (final status in [403, 500, 503]) {
+    test(
+      'identity status $status keeps fixed wording with a server body',
+      () async {
+        final api = ApiService(
+          baseUrl: 'https://synthetic.invalid',
+          client: MockClient(
+            (_) async => http.Response('{"error":"server diagnostic"}', status),
+          ),
+        );
+        await expectLater(
+          api.identityRequest('POST', '/api/bills/7/participants', 'source'),
+          throwsA(
+            isA<ApiException>().having(
+              (e) => e.message,
+              'message',
+              status == 403
+                  ? 'Current membership or source proof was denied.'
+                  : 'Could not complete this identity action.',
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   test(
     'unknown identity conflict codes show the server message and preserve fallback',
     () async {

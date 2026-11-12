@@ -156,7 +156,7 @@ export class ApiError extends Error {
     message?: string,
   ) {
     super(
-      message ||
+      (status === 409 && message) ||
         (status === 403
           ? "Invalid access token"
           : status === 404
