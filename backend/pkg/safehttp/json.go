@@ -85,6 +85,9 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, dst any, limit int64, st
 			}
 			return ErrInvalidJSON
 		}
+		if !validJSONText(reflect.ValueOf(dst)) {
+			return ErrInvalidJSON
+		}
 		return nil
 	}
 	d := json.NewDecoder(http.MaxBytesReader(w, r.Body, limit))

@@ -1745,6 +1745,9 @@
         "^go\\-default\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/insufficient$",
         "^go\\-default\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/negative_balance$",
         "^go\\-default\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/eligible_small_reference$"
+      ],
+      "backend/pkg/safehttp/TestStreamArrayStdlibCompatibility": [
+        "^TestStreamArrayStdlibCompatibility/nul$"
       ]
     }
   },

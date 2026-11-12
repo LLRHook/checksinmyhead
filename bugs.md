@@ -916,7 +916,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** fixed-pending-migration
-- **Fix:** Validate all decoded request text once at the shared JSON boundary before service/database access, rejecting NUL while preserving other controls, ignored unknown fields and stdlib Unicode replacement; regression covers 26 PostgreSQL request paths/fields, text/UTF-8 storage boundaries and fast decoder cases.
+- **Fix:** Validate decoded request text at both buffered and streaming JSON boundaries before service/database access, rejecting NUL while preserving other controls, ignored unknown fields and Unicode replacement. PostgreSQL regression covers 26 request paths/fields, including all four streaming assignment routes; streaming stdlib compatibility retains non-NUL control coverage and explicitly rejects NUL in both decoders. The 50000-entry allocation and performance cohorts are retained.
 - **Docs:** docs/backend-api.md; docs/technical-overview.md
 
 ### [BUG-1794331911] Fix web viewer accessibility gaps on private bill pages

@@ -53,7 +53,8 @@ inspection. See the [correction evidence](reviews/2026-11-03-local-workflow-corr
 
 1. Client sends HTTP request with access token (`?t=token`)
 2. Handler parses request, validates token against stored tab/bill token
-   JSON mutations decode into content DTOs and check their strings once before service
+   Buffered and streaming JSON mutations decode into content DTOs and check their
+   strings once before service
    calls, rejecting PostgreSQL-unrepresentable NUL while retaining other controls and
    the JSON decoder's Unicode replacement behavior.
 3. Service executes business logic
