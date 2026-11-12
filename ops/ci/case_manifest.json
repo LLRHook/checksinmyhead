@@ -372,7 +372,8 @@
       "backend/internal/bill/TestCreationRemaindersPreserveZeroShares",
       "backend/internal/bill/TestCreationInsertAuditsShares",
       "backend/internal/bill/TestCreationRoundingRemainsAccountable",
-      "backend/internal/tab/TestIdentity0003SameNameMembersKeepSeparateDebts"
+      "backend/internal/tab/TestIdentity0003SameNameMembersKeepSeparateDebts",
+      "backend/cmd/bill-service/TestProductionCurrencySupportMatrix"
     ],
     "postgres": [
       "backend/cmd/bill-service/TestA1PostgresProductionJSON",
@@ -619,7 +620,9 @@
       "backend/internal/bill/TestCreationRoundingRemainsAccountable",
       "backend/cmd/bill-service/TestPostgresWarmServiceSurvivesAdditiveDDL",
       "backend/internal/tab/TestIdentity0003SameNameMembersKeepSeparateDebts",
-      "backend/cmd/bill-service/TestPostgresIdentity0003FreshParticipantIsUnboundUntilApproved"
+      "backend/cmd/bill-service/TestPostgresIdentity0003FreshParticipantIsUnboundUntilApproved",
+      "backend/cmd/bill-service/TestProductionCurrencySupportMatrix",
+      "backend/cmd/bill-service/TestPostgresDisplayConversionNeverRewritesFrozenQuote"
     ],
     "mobile": [
       "mobile/test/client_v1_bridge_test.dart",
@@ -672,7 +675,9 @@
       "mobile/test/side_inset_layout_test.dart",
       "mobile/test/screenshot_quality_test.dart",
       "mobile/test/tab_import_capacity_test.dart",
-      "mobile/test/receipt_timestamp_test.dart"
+      "mobile/test/receipt_timestamp_test.dart",
+      "mobile/test/save_journey_test.dart",
+      "mobile/test/tab_display_conversion_test.dart"
     ],
     "web": [
       "web-bill-viewer/src/components/__tests__/SettlementCard.test.ts",
@@ -925,7 +930,8 @@
         "(?:^| )one\\ explicit\\ tab\\ request\\ never\\ automatically\\ repeats\\ a\\ failed\\ attachment$",
         "(?:^| )overlapping\\ destination\\ conflict\\ preserves\\ the\\ first\\ durable\\ trip$",
         "(?:^| )tab\\ selection\\ preserves\\ earlier\\ additions\\ and\\ continues\\ after\\ raw\\-history\\ and\\ missing\\-row\\ failures$",
-        "(?:^| )actual\\ tab\\ selector\\ gives\\ review\\ feedback\\ and\\ retains\\ successful\\ additions$"
+        "(?:^| )actual\\ tab\\ selector\\ gives\\ review\\ feedback\\ and\\ retains\\ successful\\ additions$",
+        "(?:^| )actual\\ tab\\ selector\\ labels\\ each\\ saved\\ receipt\\ in\\ its\\ own\\ currency$"
       ],
       "mobile/test/services/invite_link_service_test.dart": [
         "(?:^| )converts\\ bill\\ app\\ links\\ into\\ the\\ bill\\ viewer\\ URL$",
@@ -1296,6 +1302,14 @@
       ],
       "mobile/test/receipt_timestamp_test.dart": [
         "^new\\ receipt\\ uses\\ insertion\\ time\\ instead\\ of\\ historical\\ table\\ default$"
+      ],
+      "mobile/test/save_journey_test.dart": [
+        "(?:^| )one\\ EUR\\ receipt\\ stays\\ one\\ native\\ record\\ across\\ Done,\\ share,\\ retry,\\ restart\\ and\\ trip\\ attachment$",
+        "(?:^| )Done\\ failure\\ then\\ Done\\ retry\\ through\\ the\\ actual\\ handler\\ keeps\\ one\\ EUR\\ row\\ and\\ request$",
+        "(?:^| )quote\\ state\\ .*\\ agrees\\ across\\ the\\ durable\\ row,\\ message\\ and\\ history\\ card$"
+      ],
+      "mobile/test/tab_display_conversion_test.dart": [
+        "(?:^| )trip\\ display\\ conversion\\ is\\ live,\\ reports\\ an\\ outage\\ and\\ never\\ rewrites\\ the\\ stored\\ receipt$"
       ]
     },
     "web": {

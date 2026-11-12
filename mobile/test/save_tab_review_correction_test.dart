@@ -387,4 +387,71 @@ void main() {
       expect(h.attachments, 2);
     },
   );
+  testWidgets(
+    'actual tab selector labels each saved receipt in its own currency',
+    (tester) async {
+      final h = Harness();
+      addTearDown(h.db.close);
+      Future<int> seed(String name, double total, String currency) =>
+          h.db.saveBill(
+            participants: [alex],
+            personShares: {alex: total},
+            items: [
+              BillItem(name: name, price: total, assignments: {alex: 100}),
+            ],
+            subtotal: total,
+            tax: 0,
+            tipAmount: 0,
+            total: total,
+            billName: name,
+            currencyCode: currency,
+            usdExchangeRate: currency == 'USD' ? 1 : 1.1184,
+            exchangeRateDate: currency == 'USD' ? null : '2026-11-10',
+            exchangeRateSource:
+                currency == 'USD' ? 'native-usd' : 'frankfurter-v2-blended',
+            skipDuplicateCheck: true,
+          );
+      await tester.runAsync(() async {
+        await seed('Euro dinner', 25, 'EUR');
+        await seed('Dollar dinner', 128, 'USD');
+      });
+      final tabs = TabManager.withDependencies(
+        database: h.db,
+        receipts: h.owner,
+      );
+      addTearDown(tabs.dispose);
+      final tabId = await tester.runAsync(h.tab);
+      final tab = await tester.runAsync(() => tabs.getTabById(tabId!));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TabDetailScreen(
+            tab: tab!,
+            tabManager: tabs,
+            billsManager: h.owner,
+            apiService: ApiService(
+              baseUrl: 'https://synthetic.invalid',
+              client: MockClient((_) async => http.Response('{}', 503)),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('More tab actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Add existing bill'));
+      await tester.pumpAndSettle();
+      String subtitle(String name) {
+        final tile = tester.widget<CheckboxListTile>(
+          find.widgetWithText(CheckboxListTile, name),
+        );
+        return (tile.subtitle! as Text).data!;
+      }
+
+      // A EUR 25.00 receipt must never read as 25 dollars.
+      expect(subtitle('Euro dinner'), endsWith('EUR 25.00'));
+      expect(subtitle('Euro dinner'), isNot(contains(r'$')));
+      expect(subtitle('Dollar dinner'), endsWith(r'$128.00'));
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
