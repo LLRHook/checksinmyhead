@@ -1564,9 +1564,12 @@ class DocumentationContractTests(unittest.TestCase):
             self.assertIn('CASE_REPORT="$REPORT_DIR/'+name+'.json" "$VV_PYTHON" ops/ci/unittest_report.py ops/ci/'+script+'.py',text)
         self.assertIn('CASE_REPORT="$REPORT_DIR/ios-ruby.json" ruby -r "$PWD/ops/ci/minitest_report.rb" .github/scripts/asc_delivery_test.rb',text)
         self.assertIn('password=<fixture-password>',text)
-        self.assertIn('ops/ci/README.md#isolated-go-unit-row',text)
-        self.assertIn('backend/README.md#postgresql-schema-startup',text)
-        self.assertIn('## PostgreSQL schema startup',(ROOT/'backend/README.md').read_text())
+        # Text moved out of this size-limited file stays required: each link and its target heading.
+        for path,heading in (('backend/README.md','PostgreSQL schema startup'),('backend/README.md','PostgreSQL verification retention'),
+                             ('ops/ci/README.md','Isolated Go unit row'),('ops/ci/README.md','Local viewer CORS proof')):
+            with self.subTest(heading=heading):
+                self.assertIn(path+'#'+heading.lower().replace(' ','-'),text)
+                self.assertIn('\n## '+heading+'\n',(ROOT/path).read_text())
 
     def test_VERIFICATION_isolates_ports_and_allows_only_the_selected_viewer_origin(self):
         text=(ROOT/'VERIFICATION.md').read_text()
@@ -1577,7 +1580,9 @@ class DocumentationContractTests(unittest.TestCase):
         self.assertIn('ports: !override',override)
         self.assertEqual(api['ports'],['127.0.0.1:${VV_API_PORT:?set VV_API_PORT}:8080'])
         self.assertEqual(api['environment']['CORS_ORIGINS'],'${VV_VIEWER_ORIGIN:?set VV_VIEWER_ORIGIN}')
-        self.assertIn('export VV_VIEWER_ORIGIN="http://localhost:$VV_WEB_PORT"',recipe)
+        # The allowed origin is the URL the viewer prints: the address and port it is started on.
+        host=re.search(r'npm run start -- --hostname (\S+) -p "\$VV_WEB_PORT"',text).group(1)
+        self.assertIn('export VV_VIEWER_ORIGIN="http://'+host+':$VV_WEB_PORT"',recipe)
         self.assertIn('DB_PASSWORD="${VV_DB_PASSWORD:?set VV_DB_PASSWORD}"',recipe)
         self.assertIn('--env-file /dev/null',recipe)
         self.assertNotIn('DB_PASSWORD=vv_synthetic_fixture',recipe)

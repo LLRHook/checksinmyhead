@@ -972,6 +972,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** fixed-pending-migration
 - **Fix:** Corrected isolated CORS and replace-only loopback ports, CPython 3.12/PyYAML parity with macOS hashes, inline iOS reports, password-bearing test DSN and durable D5 procedure. Fresh synthetic stack: preflight 204, request 200, bad origin and CORS-removal control 403; built/served viewer 200 on 22310 against API 22808. Added isolated Go row for its existing hard-coded healthcheck-test port 8080; kept product/test defaults unchanged. Added two documentation contracts and manifest registrations; unchanged PostgreSQL obligations moved to backend README to preserve the 20 KiB budget.
 - **Docs:** VERIFICATION.md; ops/ci/README.md; backend/README.md
+- **Log:**
+  - 2026-11-12: Review round 2 (driver agent, 2026-11-12): the allowed viewer origin is now http://127.0.0.1:$VV_WEB_PORT, the URL the viewer start command prints; before, only localhost was allowed and the printed URL failed CORS. Live check on a fresh labelled stack: printed origin 204/200, localhost and unapproved origins 403. One prerequisite changed on purpose: Stage 0 and Appendix A now say to choose free ports on a port conflict instead of blocking, so the recipe never touches a service already on 8080; unknown data still blocks. Links to text moved out of VERIFICATION.md and their target headings are now tested.
 
 ### [BUG-1794331914] Stop telling clients to retry participant additions on bills with paid shares
 - [x] **Severity:** low

@@ -236,7 +236,7 @@ mkdir -p .vv
 export VV_SHA="$(git rev-parse HEAD)"
 export VV_PROJECT="${VV_PROJECT:-billington-vv-${VV_SHA:0:12}}"
 export VV_API_PORT="${VV_API_PORT:-8080}" VV_WEB_PORT="${VV_WEB_PORT:-3100}"
-export VV_VIEWER_ORIGIN="http://localhost:$VV_WEB_PORT"
+export VV_VIEWER_ORIGIN="http://127.0.0.1:$VV_WEB_PORT"
 export VV_OWNER="$(python3 -c 'import uuid; print(uuid.uuid4())')"
 # Keep the generated fixture password in memory; never enable shell tracing.
 export VV_DB_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_hex(24))')"
