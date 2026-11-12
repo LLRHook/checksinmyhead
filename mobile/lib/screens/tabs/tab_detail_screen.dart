@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:checks_frontend/screens/participant_identity_panel.dart';
 import 'package:checks_frontend/screens/lazy_bill_claim_screen.dart';
@@ -113,6 +115,12 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
             _currentTab.backendId!,
             _currentTab.accessToken!,
           );
+          _currentTab =
+              await _tabManager.recordRemoteFinalization(
+                _currentTab.id!,
+                remote,
+              ) ??
+              (throw StateError('Tab unavailable'));
           if (_currentTab.memberToken != null) {
             final me = await _apiService.getCurrentMember(
               _currentTab.backendId!,
@@ -261,12 +269,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
 
     // Show settlement preview / confirmation
     final personTotals = _calculatePersonTotals();
-    final confirmed = await showModalBottomSheet<bool>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => _FinalizeConfirmSheet(personTotals: personTotals),
-    );
+    final confirmed = await showFinalizeConfirmSheet(context, personTotals);
 
     if (confirmed != true || !mounted) return;
 
@@ -323,6 +326,8 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
   }
 
   Future<void> _addBillsToTab() async {
+    if (await _refuseFinalizedReceiptEntry()) return;
+    if (!mounted) return;
     HapticFeedback.mediumImpact();
 
     final availableBills =
@@ -350,6 +355,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
         selectedBills.isNotEmpty &&
         _currentTab.id != null &&
         mounted) {
+      if (await _refuseFinalizedReceiptEntry()) return;
       final synced = await _tabManager.addBillsToTab(
         _currentTab.id!,
         selectedBills,
@@ -402,7 +408,24 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
     }
   }
 
+  Future<bool> _refuseFinalizedReceiptEntry() async {
+    final saved =
+        _currentTab.id == null
+            ? null
+            : await _tabManager.getTabById(_currentTab.id!);
+    if (!mounted) return true;
+    if (saved != null) setState(() => _currentTab = saved);
+    if (!_currentTab.isFinalized) return false;
+    _showSnackBar(
+      'This tab is finalized. New receipts cannot be added.',
+      isError: true,
+    );
+    return true;
+  }
+
   Future<void> _addReceiptToTab() async {
+    if (await _refuseFinalizedReceiptEntry()) return;
+    if (!mounted) return;
     HapticFeedback.mediumImpact();
     final participants =
         _members
@@ -1706,24 +1729,63 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
   }
 }
 
+/// Opens the Finalize confirmation with the settlement preview. Completes with
+/// true only when Finalize is tapped; Cancel gives false and dismissal null.
+@visibleForTesting
+Future<bool?> showFinalizeConfirmSheet(
+  BuildContext context,
+  Map<String, double> personTotals,
+) => showModalBottomSheet<bool>(
+  context: context,
+  backgroundColor: Colors.transparent,
+  isScrollControlled: true,
+  builder: (context) => _FinalizeConfirmSheet(personTotals: personTotals),
+);
+
 // Finalize confirmation sheet
-class _FinalizeConfirmSheet extends StatelessWidget {
+class _FinalizeConfirmSheet extends StatefulWidget {
   final Map<String, double> personTotals;
 
   const _FinalizeConfirmSheet({required this.personTotals});
+
+  @override
+  State<_FinalizeConfirmSheet> createState() => _FinalizeConfirmSheetState();
+}
+
+class _FinalizeConfirmSheetState extends State<_FinalizeConfirmSheet> {
+  /// Room for the heading, three settlement rows and the actions at the default
+  /// text size. A display too short to offer this within 70% of its height may
+  /// use up to this much, or all of its height if it is shorter still.
+  static const double _comfortableHeight = 440;
+
+  /// Above this text scale a name and its amount no longer fit side by side.
+  static const double _stackedRowTextScale = 1.5;
+
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
     final sortedEntries =
-        personTotals.entries.toList()
+        widget.personTotals.entries.toList()
           ..sort((a, b) => b.value.compareTo(a.value));
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final maxHeight = math.max(
+      screenHeight * 0.7,
+      math.min(screenHeight, _comfortableHeight),
+    );
+    final stackRows =
+        MediaQuery.textScalerOf(context).scale(15) > 15 * _stackedRowTextScale;
 
     return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.7,
-      ),
+      constraints: BoxConstraints(maxHeight: maxHeight),
       decoration: BoxDecoration(
         color:
             brightness == Brightness.dark ? colorScheme.surface : Colors.white,
@@ -1734,99 +1796,91 @@ class _FinalizeConfirmSheet extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.green.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.check_circle_outline,
-                color: Colors.green,
-                size: 28,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Finalize Tab',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'This will lock the tab from further edits.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 15,
-                color: colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color:
-                    brightness == Brightness.dark
-                        ? colorScheme.surfaceContainerHighest
-                        : Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    'Settlement Preview',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.onSurface.withValues(alpha: 0.6),
-                      letterSpacing: 0.5,
+            // The heading and every settlement row scroll together, so the
+            // actions below stay pinned and visible at any height.
+            Flexible(
+              child: Scrollbar(
+                controller: _scrollController,
+                thumbVisibility: true,
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.check_circle_outline,
+                            color: Colors.green,
+                            size: 28,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          'Finalize Tab',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'This will lock the tab from further edits.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color:
+                                brightness == Brightness.dark
+                                    ? colorScheme.surfaceContainerHighest
+                                    : Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                'Settlement Preview',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: colorScheme.onSurface.withValues(
+                                    alpha: 0.6,
+                                  ),
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              for (final entry in sortedEntries)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: _settlementRow(
+                                    colorScheme,
+                                    entry,
+                                    stacked: stackRows,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  ...sortedEntries.map(
-                    (entry) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 14,
-                            backgroundColor: colorScheme.primaryContainer,
-                            child: Text(
-                              entry.key[0].toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: colorScheme.primary,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              entry.key,
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500,
-                                color: colorScheme.onSurface,
-                              ),
-                            ),
-                          ),
-                          Text(
-                            CurrencyFormatter.formatCurrency(entry.value),
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: colorScheme.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
             const SizedBox(height: 24),
@@ -1847,7 +1901,11 @@ class _FinalizeConfirmSheet extends StatelessWidget {
                         color: colorScheme.outline.withValues(alpha: 0.5),
                       ),
                     ),
-                    child: const Text('Cancel'),
+                    // Large text shrinks to the button instead of wrapping.
+                    child: const FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text('Cancel'),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1864,11 +1922,14 @@ class _FinalizeConfirmSheet extends StatelessWidget {
                         borderRadius: BorderRadius.circular(14),
                       ),
                     ),
-                    child: const Text(
-                      'Finalize',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                    child: const FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        'Finalize',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
@@ -1878,6 +1939,70 @@ class _FinalizeConfirmSheet extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  /// One person's settlement. At accessibility text sizes the amount moves
+  /// below the name so neither is squeezed; it is never truncated.
+  Widget _settlementRow(
+    ColorScheme colorScheme,
+    MapEntry<String, double> entry, {
+    required bool stacked,
+  }) {
+    final name = Text(
+      entry.key,
+      style: TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w500,
+        color: colorScheme.onSurface,
+      ),
+    );
+    final amount = Text(
+      CurrencyFormatter.formatCurrency(entry.value),
+      maxLines: 1,
+      softWrap: false,
+      style: TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.bold,
+        color: colorScheme.primary,
+      ),
+    );
+    return Row(
+      crossAxisAlignment:
+          stacked ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+      children: [
+        CircleAvatar(
+          radius: 14,
+          backgroundColor: colorScheme.primaryContainer,
+          child: Text(
+            entry.key[0].toUpperCase(),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: colorScheme.primary,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        if (stacked)
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                name,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: amount,
+                ),
+              ],
+            ),
+          )
+        else ...[
+          Expanded(child: name),
+          amount,
+        ],
+      ],
     );
   }
 }

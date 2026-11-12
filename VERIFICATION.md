@@ -140,7 +140,7 @@ Default apply serves; `--migrate-only` applies/exits; `--schema-mode=verify` ver
 Health: one ledger query; rerun verify after external DDL. No payer backfill. Use owned
 schemas/overlays; retain additive schema/ledger on rollback. Production footprint/
 backup/restore/predeploy/drain/rollout need [proof](backend/README.md#postgresql-schema-startup).
-[Outcome](docs/reviews/2026-11-06-migration-outcomes.md) is not PgSleep/integrated proof.
+[PgSleep](docs/reviews/2026-11-09-migration-deadline.md) ran; no integrated proof.
 [Scoped](docs/reviews/2026-11-06-assignment-snapshot.md)
 
 For local workflow changes, also run `python3 scripts/verify_local_lifecycle.py

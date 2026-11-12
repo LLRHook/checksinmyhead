@@ -9,6 +9,7 @@ import (
 	"math"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 func ValidateAssignmentUpdates(updates []ItemAssignmentsUpdate) error {
@@ -16,7 +17,13 @@ func ValidateAssignmentUpdates(updates []ItemAssignmentsUpdate) error {
 		return mutation.Invalid
 	}
 	count := 0
-	ids := map[uint]bool{}
+	// Both sets are bounded by the caps checked here (500 items, 100 names).
+	// One reused name set avoids a map and its growth for every item, and the
+	// identity keys of one item share one allocation instead of one per name.
+	ids := make(map[uint]bool, len(updates))
+	seen := make(map[string]bool, 100)
+	var keys []byte
+	var ends [100]int
 	for _, u := range updates {
 		if u.ItemID == 0 || uint64(u.ItemID) > math.MaxInt64 || ids[u.ItemID] || len(u.Assignments) > 100 {
 			return mutation.Invalid
@@ -26,14 +33,25 @@ func ValidateAssignmentUpdates(updates []ItemAssignmentsUpdate) error {
 			return mutation.Invalid
 		}
 		ids[u.ItemID] = true
-		seen := map[string]bool{}
+		clear(seen)
+		keys = keys[:0]
+		for i := range u.Assignments {
+			keys = appendAssignmentIdentityKey(keys, &u.Assignments[i])
+			ends[i] = len(keys)
+		}
+		text, start := string(keys), 0
 		total := 0.0
-		for _, a := range u.Assignments {
-			key := assignmentIdentityKey(a)
-			if (a.ParticipantID == nil && (strings.TrimSpace(key) == "" || len([]rune(key)) > 30)) || (a.ParticipantID != nil && (*a.ParticipantID == 0 || uint64(*a.ParticipantID) > math.MaxInt64 || a.PersonName != "")) || seen[key] || !finite(a.Percentage) || a.Percentage <= 0 || a.Percentage > 100 {
+		for i := range u.Assignments {
+			a := &u.Assignments[i]
+			key := text[start:ends[i]]
+			start = ends[i]
+			// One map operation: a repeated key leaves the set size unchanged.
+			distinct := len(seen)
+			seen[key] = true
+			// More than 30 runes needs more than 30 bytes.
+			if (a.ParticipantID == nil && (strings.TrimSpace(key) == "" || (len(key) > 30 && utf8.RuneCountInString(key) > 30))) || (a.ParticipantID != nil && (*a.ParticipantID == 0 || uint64(*a.ParticipantID) > math.MaxInt64 || a.PersonName != "")) || len(seen) == distinct || !finite(a.Percentage) || a.Percentage <= 0 || a.Percentage > 100 {
 				return mutation.Invalid
 			}
-			seen[key] = true
 			total += a.Percentage
 		}
 		if !models.ItemAssignmentTotalIsValid(total) {

@@ -68,8 +68,12 @@ The public layout and pages render complete semantic HTML without JavaScript or 
 API. Keep Inter/JetBrains Mono and existing teal/light/dark tokens; public CSS stays
 scoped. The labeled receipt is a static example, not customer data or a simulated
 payment. Every download action opens `https://apps.apple.com/app/id6746379502` directly.
-Payments are external and paid status is manual. Contact links are exactly
-`mailto:checkmateapp@duck.com`, without link/token prefill.
+Payments are external and paid status is manual. Payment copy must match the viewer:
+only Venmo has a handoff link (`venmo://`, `src/lib/venmo.ts`); Zelle, Cash App and
+Apple Pay are shown as details (`PaymentDetails.tsx`); nothing processes or confirms a
+transfer. `public-claims.test.ts` pins the download actions, the example split's
+arithmetic and that payment copy.
+Contact links are exactly `mailto:checkmateapp@duck.com`, without link/token prefill.
 
 Each public document owns its canonical/title/description/social cards. A static
 1200×630 brand image is served at `/social-image.png`; only the homepage emits
