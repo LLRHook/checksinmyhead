@@ -434,13 +434,11 @@ describe("getBill", () => {
   it("throws on 403", async () => {
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(JSON.stringify({ error: "token mismatch" }), {
-            status: 403,
-          }),
-        ),
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: "token mismatch" }), {
+          status: 403,
+        }),
+      ),
     );
 
     await expect(getBill("1", "bad-token")).rejects.toThrow(
