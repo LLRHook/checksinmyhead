@@ -1363,6 +1363,7 @@
       ],
       "mobile/test/member_tab_finalization_test.dart": [
         "^member\\ refresh\\ persists\\ finalization\\ and\\ shows\\ server\\ settlements$",
+        "^stale\\ open\\ screen\\ re\\-reads\\ saved\\ finalization\\ before\\ receipt\\ entry$",
         "^finalized\\ member\\ survives\\ stale\\ open\\ reads\\ and\\ failed\\ refresh$",
         "^file\\ reopen\\ offline\\ retains\\ server\\ finalization\\ and\\ refuses\\ entry$",
         "^only\\ literal\\ server\\ true\\ closes\\ an\\ open\\ member\\ tab$",
@@ -1370,6 +1371,8 @@
         "^server\\ finalization\\ survives\\ invalid\\ receipts\\ refresh\\ failure$",
         "^joining\\ finalized\\ tab\\ records\\ server\\ state\\ for\\ new\\ member$",
         "^joining\\ finalized\\ tab\\ records\\ server\\ state\\ for\\ existing\\ member$",
+        "^joining\\ records\\ only\\ literal\\ server\\ true\\ for\\ new\\ member$",
+        "^re\\-joining\\ a\\ saved\\ tab\\ survives\\ a\\ failed\\ tab\\ read$",
         "^open\\ bill\\ picker\\ cannot\\ attach\\ after\\ member\\ refresh\\ finalizes\\ tab$",
         "^pending\\ local\\ save\\ cannot\\ attach\\ after\\ server\\ finalization\\ is\\ persisted$",
         "^creator\\ finalization\\ still\\ uses\\ existing\\ server\\ finalize\\ and\\ settlement\\ paths$"

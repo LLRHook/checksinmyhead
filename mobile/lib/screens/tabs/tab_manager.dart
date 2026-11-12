@@ -271,7 +271,13 @@ class TabManager extends ChangeNotifier {
           saved.id,
           TabsCompanion(memberId: Value(me.memberId), role: Value(me.role)),
         );
-        final remote = await apiService.getTabData(tabId, accessToken);
+        final Map<String, dynamic> remote;
+        try {
+          remote = await apiService.getTabData(tabId, accessToken);
+        } catch (_) {
+          // Already on this device: a failed read leaves the tab as saved.
+          return getTabById(saved.id);
+        }
         return recordRemoteFinalization(saved.id, remote);
       }
 

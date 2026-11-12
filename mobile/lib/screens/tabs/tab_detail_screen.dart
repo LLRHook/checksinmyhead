@@ -355,6 +355,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
         selectedBills.isNotEmpty &&
         _currentTab.id != null &&
         mounted) {
+      if (await _refuseFinalizedReceiptEntry()) return;
       final synced = await _tabManager.addBillsToTab(
         _currentTab.id!,
         selectedBills,

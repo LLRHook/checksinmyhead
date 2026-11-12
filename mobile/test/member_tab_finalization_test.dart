@@ -66,6 +66,7 @@ class FinalizationFixture {
           );
         }
         expect(path, '/api/tabs/7');
+        if (tabStatus != 200) return http.Response('{}', tabStatus);
         return http.Response(
           jsonEncode({
             'name': 'Shared trip',
@@ -94,6 +95,7 @@ class FinalizationFixture {
   bool malformedBills = false;
   int memberStatus = 200;
   int settlementStatus = 200;
+  int tabStatus = 200;
   String role = 'member';
 
   Future<int> seed() => h.db.insertTab(
@@ -217,6 +219,26 @@ void main() {
     },
   );
 
+  testWidgets(
+    'stale open screen re-reads saved finalization before receipt entry',
+    (tester) async {
+      final f = FinalizationFixture();
+      addTearDown(f.close);
+      final id = (await tester.runAsync(f.seed))!;
+      await f.show(tester, id);
+      expect(find.text('Add Receipt'), findsOneWidget);
+      // An invite link re-joined on another route and saved the server's state.
+      await tester.runAsync(
+        () => f.h.db.updateTab(id, const TabsCompanion(finalized: Value(true))),
+      );
+      await tester.tap(find.text('Add Receipt'));
+      await tester.runAsync(() => f.tabs.getTabById(id));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('This tab is finalized'), findsOneWidget);
+      await f.expectClosed(tester, id);
+    },
+  );
+
   testWidgets('finalized member survives stale open reads and failed refresh', (
     tester,
   ) async {
@@ -248,10 +270,10 @@ void main() {
     (tester) async {
       final directory =
           (await tester.runAsync(
-            () => Directory.systemTemp.createTemp('l8-finalized-tab-'),
+            () => Directory.systemTemp.createTemp('member-finalized-tab-'),
           ))!;
       addTearDown(() => directory.delete(recursive: true));
-      final file = File('${directory.path}/l8-tab.sqlite');
+      final file = File('${directory.path}/tab.sqlite');
       final first = FinalizationFixture(
         database: AppDatabase.forTesting(NativeDatabase(file)),
       )..finalized = true;
@@ -348,6 +370,29 @@ void main() {
     );
   }
 
+  test('joining records only literal server true for new member', () async {
+    final f = FinalizationFixture()..finalized = 'true';
+    addTearDown(f.close);
+    final joined = await f.tabs.joinTab(
+      'https://billington.app/t/7?t=synthetic-destination',
+      'Member',
+    );
+    expect(joined!.isFinalized, isFalse);
+    expect((await f.h.db.getTabById(joined.id!))!.finalized, isFalse);
+  });
+
+  test('re-joining a saved tab survives a failed tab read', () async {
+    final f = FinalizationFixture()..tabStatus = 503;
+    addTearDown(f.close);
+    final savedId = await f.seed();
+    final joined = await f.tabs.joinTab(
+      'https://billington.app/t/7?t=synthetic-destination',
+      'Member',
+    );
+    expect(joined!.id, savedId);
+    expect(joined.isFinalized, isFalse);
+  });
+
   testWidgets(
     'open bill picker cannot attach after member refresh finalizes tab',
     (tester) async {
@@ -365,8 +410,11 @@ void main() {
       f.finalized = true;
       await f.refresh(tester);
       await tester.tap(find.widgetWithText(FilledButton, 'Add 1'));
+      await tester.runAsync(() => f.tabs.getTabById(id));
       await f.finishLoad(tester);
       await f.expectClosed(tester, id);
+      expect(find.textContaining('This tab is finalized'), findsOneWidget);
+      expect(find.textContaining('Not every selected bill'), findsNothing);
       expect(
         (await tester.runAsync(
           () => f.h.db.getTabById(id),
