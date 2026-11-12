@@ -1007,7 +1007,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** open
 
 ### [BUG-1794331917] Fail the local workflow SIGINT tests with a clear prerequisite when SIGINT is ignored
-- [ ] **Severity:** low
+- [x] **Severity:** low
 - **Area:** tests, tooling
 - **File(s):** scripts/test_local_workflow.py; scripts/test_local_workflow_probes.py
 - **Observation:** When the parent process ignores SIGINT (e.g. rows started under '( ... ) &' in a non-interactive shell, where Python reports SIG_IGN), test_int_keeps_status130, test_int_during_blocked_simulator_probe_reaps_descendants and test_tty_driver_int_interrupts_foreground_flutter fail with timeouts or rc 0. With SIGINT at its default, the same row passes 55/55.
@@ -1017,7 +1017,9 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/local-gate/s2-local-workflow.run1-sigint-ignored.log versus s2-local-workflow-rerun.log. ( python3 ops/ci/unittest_report.py scripts/test_local_workflow.py ) & wait
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
+- **Status:** fixed-pending-migration
+- **Fix:** Restore SIGINT to SIG_DFL in each workflow subprocess immediately before Bash exec, including PTY children, so ignored parent dispositions cannot disable INT traps. Existing assertions/deadlines unchanged. The 55-test row passes in foreground and background; three separate dev.sh mutations fail their original status, blocked-probe descendant and foreground-Flutter assertions.
+- **Docs:** none; test fixture-only signal restoration
 
 ### [BUG-1794331918] Resume or explain membership when rejoining a tab removed from this device
 - [ ] **Severity:** low
