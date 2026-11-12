@@ -26,11 +26,6 @@ class InviteLinkService {
     });
   }
 
-  Future<String?> getPendingInvite() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_pendingInviteKey);
-  }
-
   Future<void> clearPendingInvite({String? expectedLink}) async {
     final prefs = await SharedPreferences.getInstance();
     if (expectedLink != null && pendingShareLink.value != expectedLink) return;

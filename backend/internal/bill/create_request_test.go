@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"math"
 	"net/http/httptest"
 	"strings"
@@ -88,14 +87,10 @@ func TestCreateBillRejectsInvalidAccountingBeforeProvidersOrWrites(t *testing.T)
 		t.Run(name, func(t *testing.T) {
 			repo := newMockRepo()
 			provider := &fakeExchangeRateProvider{}
-			h := NewBillHandler(NewBillService(repo, provider))
 			b := valid()
 			mutate(b)
 			data, _ := json.Marshal(b)
-			w := httptest.NewRecorder()
-			ctx, _ := gin.CreateTestContext(w)
-			ctx.Request = httptest.NewRequest("POST", "/api/bills", strings.NewReader(string(data)))
-			h.CreateBill(ctx)
+			w := creationHTTP(t, NewBillService(repo, provider), nil, string(data))
 			if w.Code != 400 || provider.calls != 0 || len(repo.bills) != 0 {
 				t.Fatalf("status=%d provider=%d writes=%d", w.Code, provider.calls, len(repo.bills))
 			}

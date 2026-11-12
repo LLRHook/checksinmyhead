@@ -183,6 +183,20 @@ class IOSArtifactTests(unittest.TestCase):
         for key,value in [('GITHUB_REF','refs/heads/feature'),('GITHUB_EVENT_NAME','pull_request'),('GITHUB_SHA',self.source),('GITHUB_WORKFLOW_REF',gate.WORKFLOW),('GATE_RECEIPT','{}'),('RELEASE_POLICY',gate.compact(gate.DISABLED_POLICY)),('VERSION_STRING','1.3.0'),('ORIGIN_ATTEMPT',''),('VERIFY_ONLY','yes')]:
             self.calls.clear()
             with self.subTest(key=key),self.assertRaises(gate.Rejected):ios.context(self.repo,dict(original,**{key:value}),github=self.client,refresh=False)
+        # A repository with no RELEASE_POLICY variable gives every iOS job env ''.
+        # Each of the three paths must refuse before any authenticated read, while the
+        # same event with the synthetic enabled policy is accepted (BUG-1794258285).
+        for target,filename in gate.IOS_WORKFLOWS.items():
+            event=dict(original,DELIVERY_TARGET=target,GITHUB_WORKFLOW_REF=gate.REPOSITORY+'/.github/workflows/'+filename+'@refs/heads/main')
+            self.current_run=self.run_obj(self.current,False,workflow='.github/workflows/'+filename)
+            self.assertEqual(ios.context(self.repo,event,github=self.client,refresh=False)['authorization']['target'],target)
+            for label,value in [('unset',''),('absent',None),('disabled',gate.compact(gate.DISABLED_POLICY))]:
+                env=dict(event,RELEASE_POLICY=value)
+                if value is None:del env['RELEASE_POLICY']
+                self.calls.clear()
+                with self.subTest(target=target,policy=label),self.assertRaises(gate.Rejected):ios.context(self.repo,env,github=self.client,refresh=False)
+                self.assertEqual(self.calls,[],'policy refusal precedes authenticated reads')
+        self.current_run=self.run_obj(self.current,False,workflow='.github/workflows/app-store-release.yml')
         policy=copy.deepcopy(self.policy);policy['control_floor']=self.control;policy['targets']['ios-production']['source_floor']=self.control
         with self.assertRaises(gate.Rejected):ios.context(self.repo,dict(original,RELEASE_POLICY=gate.compact(policy)),github=self.client,refresh=False)
         self.current_jobs[0]['conclusion']='skipped'
@@ -375,6 +389,7 @@ def validate_ios_graph(root, workflows=None):
     require(origin['name']=='Upload iOS origin' and origin['env']['DELIVERY_TARGET']=='ios-upload','origin job identity')
     require(steps[1]['with']=={'ref':'${{ inputs.source }}','path':'candidate','fetch-depth':0,'persist-credentials':False},'origin independent S')
     require(by_name['Fresh authority before toolchain or signing']['run']=='python3 control/ops/ci/ios_artifact.py context > /dev/null','origin pre-sign authority')
+    require(steps[2] is by_name['Fresh authority before toolchain or signing'] and 'if' not in steps[2] and all(s['uses'].startswith('actions/checkout@') for s in steps[:2]),'authority after toolchain, signing or upload')
     require(by_name['Allocate exact next binary build']['run']=='ruby control/.github/scripts/asc_delivery.rb prepare','number owner')
     require(by_name['Build once and inspect exact IPA']['uses']=='./control/.github/actions/build-signed-ipa','C signed action')
     require(by_name['Upload once and require current processed exact build']['run']=='ruby control/.github/scripts/asc_delivery.rb upload','origin upload owner')
@@ -383,7 +398,15 @@ def validate_ios_graph(root, workflows=None):
         require(by_name[name]['env']['IPA_SHA256']=='${{ steps.ipa.outputs.ipa-sha256 }}','signed-action IPA hash continuity')
     for name in ['Build once and inspect exact IPA','Upload once and require current processed exact build','Immutable IPA evidence','Bind processed ASC identity to immutable IPA metadata','Immutable originating receipt']:
         require(by_name[name]['if']=='${{ !inputs.verification_only }}','verification-only origin writes')
-    for kind,name,path in [('ipa','Immutable IPA evidence','${{ runner.temp }}/ios-ipa/candidate.ipa'),('origin','Immutable originating receipt','${{ runner.temp }}/ios-origin-receipt/receipt.json')]:
+    # GitHub provides no runner context at jobs.<job_id>.env: the three runner-owned
+    # paths belong only to the steps that read them (BUG-1794258285).
+    paths={'IPA_DIR':'${{ runner.temp }}/ios-ipa','RECEIPT_DIR':'${{ runner.temp }}/ios-origin-receipt','ASC_RECEIPT':'${{ runner.temp }}/ios-processed.json'}
+    require(not set(paths)&set(origin['env']),'runner context in origin job env')
+    readers={'Build once and inspect exact IPA':{'IPA_DIR'},'Upload once and require current processed exact build':{'ASC_RECEIPT'},'Bind processed ASC identity to immutable IPA metadata':{'ASC_RECEIPT','RECEIPT_DIR'}}
+    for step in steps:
+        bound={k:v for k,v in step.get('env',{}).items() if k in paths}
+        require(bound=={k:paths[k] for k in readers.get(step.get('name'),())},'origin evidence path binding')
+    for kind,name,path in [('ipa','Immutable IPA evidence',paths['IPA_DIR']+'/candidate.ipa'),('origin','Immutable originating receipt',paths['RECEIPT_DIR']+'/receipt.json')]:
         upload=by_name[name]
         require(upload['with']['name']=='ios-'+kind+'-${{ inputs.source }}-${{ github.run_id }}-${{ github.run_attempt }}' and upload['with']['path']==path and upload['with']['overwrite'] is False and upload['with']['if-no-files-found']=='error','immutable exact artifact selection')
     promo=w['ios-promote.yml']['jobs']['promote']
@@ -404,7 +427,7 @@ class IOSGraphTests(unittest.TestCase):
     def test_actual_workflow_boundary_mutations(self):
         validate_ios_graph(ROOT)
         original={p.name:yaml.safe_load(p.read_text()) for p in (ROOT/'.github/workflows').glob('*.yml')}
-        for defect in ('main','gate','source','controller','receipt','attempt','origin-run','target','missing-secret','inherit','optional-secret','signing-to-promotion','environment','cancel','cancel-forward','policy','fresh-main','candidate-action','upload','receipt-owner','upload-hash','receipt-hash','artifact-name','artifact-path','artifact-overwrite','verification-build','verification-upload','verification-receipt'):
+        for defect in ('main','gate','source','controller','receipt','attempt','origin-run','target','missing-secret','inherit','optional-secret','signing-to-promotion','environment','cancel','cancel-forward','policy','fresh-main','candidate-action','upload','receipt-owner','upload-hash','receipt-hash','artifact-name','artifact-path','artifact-overwrite','verification-build','verification-upload','verification-receipt','job-env-path','build-path','upload-path','receipt-path','stray-path','authority-order','authority-skip'):
             w=copy.deepcopy(original);origin=w['ios-origin.yml']['jobs']['origin'];promo=w['ios-promote.yml']['jobs']['promote'];call=w['app-store-release.yml']['jobs']['deliver'];steps=origin['steps'];names={s.get('name'):s for s in steps}
             if defect=='main':promo['if']='true'
             elif defect=='gate':call['needs'].remove('required')
@@ -428,6 +451,13 @@ class IOSGraphTests(unittest.TestCase):
             elif defect=='receipt-hash':names['Bind processed ASC identity to immutable IPA metadata']['env']['IPA_SHA256']='untrusted'
             elif defect.startswith('artifact-'):
                 key=defect.split('-')[1];names['Immutable IPA evidence']['with'][key]='latest' if key!='overwrite' else True
+            elif defect=='job-env-path':origin['env']['IPA_DIR']='${{ runner.temp }}/ios-ipa'
+            elif defect=='build-path':del names['Build once and inspect exact IPA']['env']
+            elif defect=='upload-path':names['Upload once and require current processed exact build']['env']['ASC_RECEIPT']='${{ github.workspace }}/ios-processed.json'
+            elif defect=='receipt-path':del names['Bind processed ASC identity to immutable IPA metadata']['env']['RECEIPT_DIR']
+            elif defect=='authority-order':steps[2],steps[3]=steps[3],steps[2]
+            elif defect=='authority-skip':names['Fresh authority before toolchain or signing']['if']='${{ !inputs.verification_only }}'
+            elif defect=='stray-path':names['Allocate exact next binary build']['env']['ASC_RECEIPT']='${{ runner.temp }}/ios-processed.json'
             else:
                 name={'verification-build':'Build once and inspect exact IPA','verification-upload':'Upload once and require current processed exact build','verification-receipt':'Immutable originating receipt'}[defect]
                 del names[name]['if']

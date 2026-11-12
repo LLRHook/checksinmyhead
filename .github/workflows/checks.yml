@@ -209,7 +209,7 @@ jobs:
 
         go mod verify
 
-        go build ./cmd/bill-service ./cmd/web-service
+        go build ./cmd/bill-service
 
         go test -race -count=1 -json -timeout=20m -tags=integration ./cmd/bill-service ./internal/bill ./internal/tab
         ./pkg/database ./migrations ./internal/startup ./internal/readiness ./internal/testpostgres | tee "$REPORT_DIR/go-postgres.jsonl"'

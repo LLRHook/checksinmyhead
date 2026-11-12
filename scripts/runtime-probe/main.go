@@ -182,8 +182,4 @@ func main() {
 		var hostname x509.HostnameError
 		require("tls_reject_"+key, err != nil && (key == "bad_ca" && errors.As(err, &authority) || key == "wrong_host" && errors.As(err, &hostname)))
 	}
-	if os.Getenv("QA_WEB") == "1" {
-		_, err = os.ReadFile("/app/internal/web/templates/bill.html")
-		must("template_readable", err)
-	}
 }

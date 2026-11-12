@@ -170,23 +170,6 @@ class AssignmentProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Toggles selection state for a person.
-  ///
-  /// If the person is already selected, they will be deselected.
-  /// Otherwise, they will be selected and any previously selected
-  /// person will be deselected.
-  ///
-  /// @param person The person to toggle selection for
-  void togglePersonSelection(Person person) {
-    if (_data.selectedPerson == person) {
-      _data = _data.copyWith(clearSelectedPerson: true);
-    } else {
-      _data = _data.copyWith(selectedPerson: person);
-      HapticFeedback.selectionClick();
-    }
-    notifyListeners();
-  }
-
   /// Toggles birthday status for a person.
   ///
   /// Birthday persons receive special handling, such as having their
