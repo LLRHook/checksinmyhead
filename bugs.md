@@ -1343,3 +1343,15 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Search the policy page for 'currently runs'.
 - **Bump:** patch
 - **Status:** open
+
+### [BUG-1794510235] Join a Tab error message is shown off screen at the largest text size
+- [ ] **Severity:** low
+- **Area:** mobile, ui, accessibility
+- **File(s):** mobile/lib/screens/tabs/tabs_screen.dart
+- **Observation:** On a 320x568 display at the largest iOS accessibility text size (scale 53/17), with no display name set, submitting a valid link in Join a Tab shows the floating 'Please set your name in Settings first.' message laid out from y=-53 to y=532: Flutter reports 'Floating SnackBar presented off screen', and in a release build the person sees a screen-height dark box with the message clipped at the top for about four seconds while joining appears to do nothing. Present on main before and after the fix for BUG-1794331909.
+- **Expected:** The message is fully readable at every supported text size on the smallest supported display, and the person can tell why joining did not proceed.
+- **Req:** none; WCAG 1.4.4 Resize Text
+- **Depends on:** none
+- **Repro / Notes:** Widget test at 320x568, text scale 53/17, empty display name: open Join a Tab, enter a valid link, submit. Found by the author and confirmed by the reviewer of pull request #187 on 2026-11-12.
+- **Bump:** patch
+- **Status:** open
