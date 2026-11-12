@@ -1021,6 +1021,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/ios/43 and NOTES.md (member 58).
 - **Bump:** patch
 - **Status:** open
+- **Log:**
+  - 2026-11-12 Decision: L21 owner decision: deliver BUG-1794331920 separately; leave this ticket open/blocked. Local removal deletes the only persisted member credential with the Drift tab row; no prior-membership marker survives. Current privacy inventory does not contain the permission quoted in Observation. Retention or a new marker needs a separate approved scope.
 
 ### [BUG-1794331919] Disambiguate same-named people in web tab balances
 - [ ] **Severity:** low
@@ -1036,16 +1038,19 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Cross-ref:** BUG-1793644505
 
 ### [BUG-1794331920] Keep the Add Receipt button off the last per-person rows
-- [ ] **Severity:** low
+- [x] **Severity:** low
 - **Area:** mobile, ui
-- **File(s):** mobile/lib/screens/tabs/tab_detail_screen.dart
+- **File(s):** mobile/lib/screens/tabs/tab_detail_screen.dart, mobile/test/tab_detail_reachability_test.dart, mobile/test/fixtures/tab_detail_default_rectangles.json, ops/ci/case_manifest.json
 - **Observation:** On the tab detail screen the floating Add Receipt button covers the last Per Person rows, and the empty state lowercases the tab name.
 - **Expected:** Scrollable content clears the floating button, and the empty state shows the tab name as entered.
 - **Req:** VERIFICATION.md Stage 3 (GUI walkthrough)
 - **Depends on:** none
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/ios/17e-10, ios/22.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** fixed-pending-migration
+- **Fix:** Normal-size Per Person overlap was already absent on main (100 px bottom padding). Fix large-text reachability: wrap the Per Person heading, put Per Person and receipt-card amounts below their other content above 150% text scale, and retain full wrapping money text. Preserve the button and default-size rectangles on small, standard and large iPhones. Empty-state copy now preserves the entered tab name. Real-drag, receipt tap, baseline-rectangle and casing regressions added to the mobile case manifest.
+- **Docs:** DESIGN_SYSTEM.md: tab detail large-text layout and exact name casing; API and architecture contracts unchanged.
 
 ### [BUG-1794501894] Configure delivery so main can publish and the iOS upload workflow can run
 - [ ] **Severity:** high

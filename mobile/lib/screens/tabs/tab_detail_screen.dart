@@ -916,7 +916,7 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Add bills from your recent history\nto track this ${_currentTab.name.toLowerCase()}',
+              'Add bills from your recent history\nto track this ${_currentTab.name}',
               textAlign: TextAlign.center,
               style: textTheme.bodyLarge?.copyWith(
                 height: 1.5,
@@ -1393,13 +1393,15 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Text(
-                  'Per Person',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.onSurface,
-                    letterSpacing: -0.3,
+                Flexible(
+                  child: Text(
+                    'Per Person',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onSurface,
+                      letterSpacing: -0.3,
+                    ),
                   ),
                 ),
               ],
@@ -1414,55 +1416,62 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
             separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final entry = sortedEntries[index];
+              final stacked = MediaQuery.textScalerOf(context).scale(16) > 24;
+              final amount = Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  _formatCurrency(entry.value),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.primary,
+                  ),
+                ),
+              );
+              final row = Row(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: colorScheme.primaryContainer,
+                    child: Text(
+                      entry.key[0].toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      entry.key,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  if (!stacked) amount,
+                ],
+              );
               return Semantics(
                 label: '${entry.key}: ${_formatCurrency(entry.value)}',
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 18,
-                      backgroundColor: colorScheme.primaryContainer,
-                      child: Text(
-                        entry.key[0].toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.primary,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Text(
-                        entry.key,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.onSurface,
-                        ),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer.withValues(
-                          alpha: 0.6,
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        _formatCurrency(entry.value),
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.primary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                child:
+                    stacked
+                        ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [row, const SizedBox(height: 8), amount],
+                        )
+                        : row,
               );
             },
           ),
@@ -1480,6 +1489,24 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
         !_currentTab.isFinalized;
 
     return _tabBills.map((bill) {
+      final stacked = MediaQuery.textScalerOf(context).scale(16) > 24;
+      final amount = Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: colorScheme.primaryContainer.withValues(alpha: 0.7),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          bill.hasUSDValuation
+              ? _formatCurrency(bill.usdTotal)
+              : '${bill.currencyCode} ${bill.total.toStringAsFixed(2)} · USD pending',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 15,
+            color: colorScheme.primary,
+          ),
+        ),
+      );
       return Dismissible(
         key: Key('bill_${bill.id}'),
         direction:
@@ -1554,82 +1581,68 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
                 borderRadius: BorderRadius.circular(20),
                 child: Padding(
                   padding: const EdgeInsets.all(20),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: colorScheme.primaryContainer.withValues(
-                            alpha: 0.6,
-                          ),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Icon(
-                          Icons.receipt_long,
-                          color: colorScheme.primary,
-                          size: 22,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              bill.billName,
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: colorScheme.onSurface,
-                                letterSpacing: -0.2,
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: colorScheme.primaryContainer.withValues(
+                                alpha: 0.6,
                               ),
+                              borderRadius: BorderRadius.circular(14),
                             ),
-                            const SizedBox(height: 6),
-                            Text(
-                              bill.formattedDate,
-                              style: TextStyle(
-                                color: colorScheme.onSurface.withValues(
-                                  alpha: 0.6,
+                            child: Icon(
+                              Icons.receipt_long,
+                              color: colorScheme.primary,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  bill.billName,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: colorScheme.onSurface,
+                                    letterSpacing: -0.2,
+                                  ),
                                 ),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              bill.participantSummary,
-                              style: TextStyle(
-                                color: colorScheme.onSurface.withValues(
-                                  alpha: 0.5,
+                                const SizedBox(height: 6),
+                                Text(
+                                  bill.formattedDate,
+                                  style: TextStyle(
+                                    color: colorScheme.onSurface.withValues(
+                                      alpha: 0.6,
+                                    ),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
-                                fontSize: 13,
-                              ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  bill.participantSummary,
+                                  style: TextStyle(
+                                    color: colorScheme.onSurface.withValues(
+                                      alpha: 0.5,
+                                    ),
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: colorScheme.primaryContainer.withValues(
-                            alpha: 0.7,
                           ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          bill.hasUSDValuation
-                              ? _formatCurrency(bill.usdTotal)
-                              : '${bill.currencyCode} ${bill.total.toStringAsFixed(2)} · USD pending',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                            color: colorScheme.primary,
-                          ),
-                        ),
+                          if (!stacked) amount,
+                        ],
                       ),
+                      if (stacked) ...[const SizedBox(height: 12), amount],
                     ],
                   ),
                 ),

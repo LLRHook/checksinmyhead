@@ -700,7 +700,8 @@
       "mobile/test/tab_display_conversion_test.dart",
       "mobile/test/finalize_confirm_sheet_test.dart",
       "mobile/test/member_tab_finalization_test.dart",
-      "mobile/test/landing_join_accessibility_test.dart"
+      "mobile/test/landing_join_accessibility_test.dart",
+      "mobile/test/tab_detail_reachability_test.dart"
     ],
     "web": [
       "web-bill-viewer/src/components/__tests__/SettlementCard.test.ts",
@@ -1434,6 +1435,16 @@
         "(?:^| )Join\\ toolbar\\ controls\\ remain\\ reachable\\ iPhone\\ 17e\\ iOS\\ body\\ 53$",
         "(?:^| )Join\\ invite\\ controls\\ remain\\ reachable\\ iPhone\\ 17e\\ iOS\\ body\\ 53$",
         "(?:^| )Landing\\ stays\\ still\\ when\\ content\\ fits\\ on\\ iOS\\ and\\ Android$"
+      ],
+      "mobile/test/tab_detail_reachability_test.dart": [
+        "^Tab\\ detail\\ last\\ rows\\ clear\\ Add\\ Receipt\\ iPhone\\ SE\\ iOS\\ body\\ 17$",
+        "^Tab\\ detail\\ last\\ rows\\ clear\\ Add\\ Receipt\\ iPhone\\ SE\\ iOS\\ body\\ 53$",
+        "^Tab\\ detail\\ last\\ rows\\ clear\\ Add\\ Receipt\\ iPhone\\ 17e\\ iOS\\ body\\ 17$",
+        "^Tab\\ detail\\ last\\ rows\\ clear\\ Add\\ Receipt\\ iPhone\\ 17e\\ iOS\\ body\\ 53$",
+        "^Tab\\ detail\\ default\\ rectangles\\ match\\ main\\ iPhone\\ SE$",
+        "^Tab\\ detail\\ default\\ rectangles\\ match\\ main\\ iPhone\\ 17e$",
+        "^Tab\\ detail\\ default\\ rectangles\\ match\\ main\\ large\\ iPhone$",
+        "^Tab\\ detail\\ empty\\ state\\ preserves\\ the\\ entered\\ tab\\ name$"
       ]
     },
     "web": {
