@@ -82,16 +82,15 @@ make -C backend up        # PostgreSQL/API, foreground
 make -C backend down
 ```
 
-The retained Go HTML viewer runs only with `docker compose --profile legacy-web up
---build` from `backend`, on its original port 8081. Its source, templates, image and
-tests remain supported for compatibility; external consumers have not been ruled out.
+The Next.js app is the maintained bill and tab viewer. The legacy Go HTML viewer
+has been removed from the source, images and local Compose stack.
 See [local reset and verification](backend/README.md#local-test-data-reset) for the
 separate guarded destructive operation. Never use a volume reset for ordinary shutdown.
 
 Backend startup applies/verifies the immutable PostgreSQL migration registry before
 serving. The existing binary also supports `--migrate-only` (apply and exit) and
-`--schema-mode=verify` (verify without applying, then serve). Both maintained service
-binaries share the policy; `/health` checks the live database/ledger within one second.
+`--schema-mode=verify` (verify without applying, then serve). The API follows this
+policy; `/health` checks the live database/ledger within one second.
 See [backend startup and rollback](backend/README.md#postgresql-schema-startup) for strict
 legacy adoption, preserved historical payer data and unresolved production rollout gates.
 

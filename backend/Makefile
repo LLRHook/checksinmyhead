@@ -1,10 +1,10 @@
 .PHONY: up down logs test dev reset-test
 
-up: ## Start PostgreSQL and API (legacy viewer requires its explicit profile)
+up: ## Start PostgreSQL and API
 	docker compose up --build
 
-down: ## Stop services; preserve all data volumes, including legacy profile data
-	docker compose --profile legacy-web down
+down: ## Stop services; preserve all data volumes
+	docker compose down
 
 logs: ## View logs
 	docker compose logs -f

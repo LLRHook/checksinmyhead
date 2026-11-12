@@ -62,7 +62,7 @@ missing/nonloopback DSNs, wrong identity and caller schema/options. No applicati
 harness or timing budget is changed. This row includes existing measured cases;
 CI execution would not replace independent numerical or production qualification.
 
-The row first builds both service binaries so the startup test's unchanged 60s build
+The row first builds the API binary so the startup test's unchanged 60s build
 bound measures a warm link, not a cold compile competing with eight race builds. It
 sets `-timeout=20m` per package and a 30-minute job bound: the measured creation and
 lifecycle cohorts need 5.5–9 minutes on hosted runners, which left no margin under
@@ -196,6 +196,13 @@ allows only file Git transport; it does not run the application, PG, Flutter,
 Next or ASC suites. The Python/Ruby adapters test tiny synthetic runner programs.
 See [VERIFICATION](../../VERIFICATION.md) for the actual app commands and reports;
 produce reports in the same run, never rerun the app merely to count it.
+
+The same module applies GitHub's documented context-availability table and
+reusable-call contract to every workflow (`validate_workflow_syntax`). GitHub refuses
+a whole file, on every push, when an expression names a context its key lacks:
+`runner` exists only inside steps, so origin's three runner-temp paths are step env,
+never job env. This is a source check, not GitHub's parser: hosted proof is a push
+that creates no failed run for the file ([evidence](../../docs/reviews/2026-11-09-delivery-workflows.md)).
 
 NOT CI-CONFIRMED: native/signed binaries, processed ASC origin/eligibility receipts,
 whole GUI/a11y journeys, image build/scan identity, whole security, real providers,

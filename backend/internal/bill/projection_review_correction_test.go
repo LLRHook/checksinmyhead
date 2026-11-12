@@ -2,11 +2,8 @@ package bill
 
 import (
 	"backend/pkg/models"
-	"bytes"
-	"html/template"
 	"math"
 	"reflect"
-	"strings"
 	"testing"
 )
 
@@ -47,17 +44,6 @@ func TestIdentityBReviewAllocationProjection(t *testing.T) {
 			}
 			if !reflect.DeepEqual(b, before) || v.Total != b.Total || v.USDTotal != b.USDTotal || len(v.PersonShares) != 1 || v.PersonShares[0].Total != b.PersonShares[0].Total {
 				t.Fatal("projection rewrote raw history/frozen receipt")
-			}
-			tpl, err := template.ParseFiles("../web/templates/bill.html")
-			if err != nil {
-				t.Fatal(err)
-			}
-			var html bytes.Buffer
-			if err = tpl.Execute(&html, v); err != nil {
-				t.Fatal(err)
-			}
-			if strings.Contains(html.String(), "Recorded amounts; frozen USD accounting needs review.") != (tc.accounting != "available") {
-				t.Fatal("HTML accounting warning differs from checked projection")
 			}
 		})
 	}

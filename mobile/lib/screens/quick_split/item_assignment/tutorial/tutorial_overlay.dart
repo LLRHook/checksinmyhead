@@ -457,62 +457,6 @@ class TutorialStep {
   });
 }
 
-// A button widget that shows a help icon with an optional notification badge
-// Used to trigger the tutorial overlay from various parts of the app
-class TutorialButton extends StatelessWidget {
-  // Callback when the button is pressed
-  final VoidCallback onPressed;
-
-  // Optional badge to indicate new or unread tutorials
-  final Widget? badge;
-
-  const TutorialButton({super.key, required this.onPressed, this.badge});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final brightness = Theme.of(context).brightness;
-
-    // Theme-aware badge color
-    final badgeColor =
-        brightness == Brightness.dark
-            ? Colors
-                .red
-                .shade300 // Lighter red for dark mode
-            : Colors.red;
-
-    return Stack(
-      children: [
-        Material(
-          color: Colors.transparent,
-          shape: const CircleBorder(),
-          clipBehavior: Clip.hardEdge,
-          child: IconButton(
-            icon: const Icon(Icons.help_outline),
-            onPressed: onPressed,
-            tooltip: 'How to use',
-            color: colorScheme.primary,
-            splashRadius: 24,
-          ),
-        ),
-        if (badge != null)
-          Positioned(
-            right: 0,
-            top: 0,
-            child: Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: badgeColor,
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
 // Helper function to show the tutorial overlay with a fade-in animation
 // Makes it easy to display tutorials from anywhere in the app
 void showTutorialOverlay(

@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:checks_frontend/database/database.dart' hide Tab;
 import 'package:checks_frontend/database/database_provider.dart';
 import 'package:checks_frontend/models/tab.dart';
@@ -13,10 +11,6 @@ class TabManager extends ChangeNotifier {
   static final TabManager _instance = TabManager._internal();
 
   factory TabManager() => _instance;
-
-  final _tabsStreamController = StreamController<List<AppTab>>.broadcast();
-
-  Stream<List<AppTab>> get tabsStream => _tabsStreamController.stream;
 
   TabManager._internal() : _database = null, _receiptOwner = null;
 
@@ -35,19 +29,10 @@ class TabManager extends ChangeNotifier {
   AppDatabase get _db => _database ?? DatabaseProvider.db;
   RecentBillsManager get _receipts => _receiptOwner ?? RecentBillsManager();
 
-  @override
-  void dispose() {
-    _tabsStreamController.close();
-    super.dispose();
-  }
-
   Future<List<AppTab>> getAllTabs() async {
     try {
       final tabsData = await _db.getAllTabs();
       final tabs = await Future.wait(tabsData.map(_tabDataToAppTab));
-      if (!_tabsStreamController.isClosed) {
-        _tabsStreamController.add(tabs);
-      }
       return tabs;
     } catch (_) {
       debugPrint('Error fetching tabs');
