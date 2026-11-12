@@ -1334,6 +1334,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Open a tab with several people at a 320 px viewport and compare document scrollWidth with innerWidth.
 - **Bump:** patch
 - **Status:** open
+- **Log:**
+  - 2026-11-12 Sighting: 2026-11-12 re-check of the Balances fix: a Balances row with no reference and a five-digit amount ('Jo -> Kim $9,876.54') also overflows at 320 px (amount ends at x=321, card at 304), on main as well. Cover it with this ticket's narrow-width work.
 
 ### [BUG-1794510141] Same-named people look identical on the web bill page and in tab settlements
 - [ ] **Severity:** med
@@ -1368,5 +1370,29 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Req:** none; WCAG 1.4.4 Resize Text
 - **Depends on:** none
 - **Repro / Notes:** Widget test at 320x568, text scale 53/17, empty display name: open Join a Tab, enter a valid link, submit. Found by the author and confirmed by the reviewer of pull request #187 on 2026-11-12.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794512495] Venmo pay buttons in the web viewer have no accessible name
+- [ ] **Severity:** med
+- **Area:** web, accessibility
+- **File(s):** web-bill-viewer/src/components/TabPersonTotals.tsx; web-bill-viewer/src/components/NetBalances.tsx
+- **Observation:** The Venmo pay buttons in the tab per-person totals and in the Balances list show only the Venmo wordmark and expose no accessible name, so a screen reader announces an unnamed button (WCAG 4.1.2). Found on 2026-11-12 during the re-check of the fix for BUG-1794331911; present on main before that fix. The Balances button is not reachable today because the tab page does not pass the viewer's member id.
+- **Expected:** Each pay button has an accessible name that says what it does and for whom, for example 'Pay Alex with Venmo'.
+- **Req:** none; WCAG 4.1.2 Name, Role, Value
+- **Depends on:** none
+- **Repro / Notes:** Open a tab page with a payable person total and inspect the button's accessible name.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794512496] Avatar shows a broken character for names that start with an emoji
+- [ ] **Severity:** low
+- **Area:** web, ui
+- **File(s):** web-bill-viewer/src/components (avatar initial)
+- **Observation:** For a display name that starts with an emoji, the web viewer's avatar shows a broken character: the initial is taken as the first UTF-16 code unit, which is half of the emoji. Seen on 2026-11-12 on the tab Balances list; present on main.
+- **Expected:** The avatar shows the first whole character of the name (the emoji), or a neutral fallback.
+- **Req:** none
+- **Depends on:** none
+- **Repro / Notes:** Render a tab with a member whose name begins with an emoji.
 - **Bump:** patch
 - **Status:** open

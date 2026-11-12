@@ -163,6 +163,9 @@ describe("private viewer accessibility", () => {
   });
 });
 
+// An unprefixed opacity class or an inline opacity or filter dims its subtree.
+const dimmed = /(?:^|[\s"])opacity-\d+|style="[^"]*(?:opacity|filter)/;
+
 describe("secondary text contrast from theme tokens", () => {
   it.each(["light", "dark"])(
     "%s secondary text meets AA on page cards badges hover and paid surfaces",
@@ -179,8 +182,6 @@ describe("secondary text contrast from theme tokens", () => {
       ];
       for (const surface of surfaces)
         expect(contrast(ink, surface)).toBeGreaterThanOrEqual(4.5);
-      // Paid cards retain the same opaque surface as unpaid cards.
-      expect(contrast(ink, card)).toBeGreaterThanOrEqual(4.5);
     },
   );
 
@@ -204,6 +205,15 @@ describe("secondary text contrast from theme tokens", () => {
       expect(paragraph?.[1].trim()).toBe(
         'class="text-xs text-[var(--text-secondary)] mt-0.5"',
       );
+      // Nor may an element around it: opacity applies to everything inside.
+      const open: string[] = [];
+      for (const [, closing, attributes] of html
+        .slice(0, paragraph?.index)
+        .matchAll(/<(\/?)[a-z][a-z0-9]*([^>]*)>/g)) {
+        if (closing) open.pop();
+        else if (!attributes.endsWith("/")) open.push(attributes);
+      }
+      for (const attributes of open) expect(attributes).not.toMatch(dimmed);
     }
   });
   it("keeps paid share settlement and total cards opaque while retaining paid markers", () => {
@@ -241,7 +251,7 @@ describe("secondary text contrast from theme tokens", () => {
       ),
     ];
     for (const card of html) {
-      expect(card).not.toMatch(/opacity-75|style="[^"]*opacity/);
+      expect(card).not.toMatch(dimmed);
       expect(card).toContain("line-through");
       expect(card).toContain("text-emerald-600");
       expect(card).toContain("dark:border-emerald-800/50");

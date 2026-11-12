@@ -422,6 +422,9 @@ describe("lazy viewer session across refreshed receipt props", () => {
         controls.find((node) => node.props["aria-label"] === "Select Paid item")
           ?.props.className,
       ).toContain("opacity-50");
+      expect(pathTo(view, "Paid item")?.at(-1)?.props.className).toContain(
+        "opacity-50",
+      );
       const split = controls.find(
         (node) => node.props["aria-label"] === "Edit split for Other item",
       );
