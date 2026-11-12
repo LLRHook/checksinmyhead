@@ -101,7 +101,10 @@ class _ParticipantIdentityPanelState extends State<ParticipantIdentityPanel> {
         await widget.onChanged();
       }
     } catch (e) {
-      _retry = action;
+      _retry =
+          e is ApiException && e.code == 'participants_locked_paid'
+              ? null
+              : action;
       if (mounted) {
         await widget.onChanged();
       }

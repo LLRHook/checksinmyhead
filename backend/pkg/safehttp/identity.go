@@ -58,6 +58,15 @@ func IdentityVersion(c *gin.Context) (int16, bool) {
 		}
 	}
 	c.Header("Cache-Control", "private, no-store")
+	// Every token-gated route admits identity before calling its service. Read
+	// both selected capabilities here so malformed text cannot reach any query.
+	AccessToken(c)
+	if !c.IsAborted() {
+		MemberToken(c)
+	}
+	if c.IsAborted() {
+		return 0, false
+	}
 	return v, true
 }
 
@@ -85,7 +94,7 @@ func MemberToken(c *gin.Context) string {
 		if count != 1 {
 			return "\x00"
 		}
-		return value
+		return tokenText(c, value)
 	}
 	query, err := url.ParseQuery(c.Request.URL.RawQuery)
 	if err != nil {
@@ -95,7 +104,7 @@ func MemberToken(c *gin.Context) string {
 		if len(values) != 1 || values[0] == "" {
 			return "\x00"
 		}
-		return values[0]
+		return tokenText(c, values[0])
 	}
 	return ""
 }

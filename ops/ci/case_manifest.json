@@ -388,7 +388,9 @@
       "backend/pkg/safehttp/TestStreamSingleJSONDocument",
       "backend/pkg/safehttp/TestStreamArrayStopsAtLimit",
       "backend/pkg/safehttp/TestStreamArrayStdlibCompatibility",
-      "backend/internal/receipt/TestHandlerFailuresMakeOneProviderAttempt"
+      "backend/internal/receipt/TestHandlerFailuresMakeOneProviderAttempt",
+      "backend/pkg/safehttp/TestDecodeJSONPostgresText",
+      "backend/pkg/safehttp/TestNULTokensBoundary"
     ],
     "postgres": [
       "backend/cmd/bill-service/TestA1PostgresProductionJSON",
@@ -644,7 +646,11 @@
       "backend/internal/bill/TestAssignmentStreamDecodeGenerated",
       "backend/internal/bill/TestAssignmentCanonicalBindingArbitraryBytes",
       "backend/internal/bill/TestAssignmentIdentityKeyAppendMatches",
-      "backend/internal/bill/TestAssignmentValidationMatchesBaseline"
+      "backend/internal/bill/TestAssignmentValidationMatchesBaseline",
+      "backend/internal/tab/TestPostgresJSONTextValidation",
+      "backend/internal/tab/TestPostgresTextStorageBoundaries",
+      "backend/internal/tab/TestPostgresPaidParticipantAdditionConflict",
+      "backend/internal/tab/TestPostgresNULTokens"
     ],
     "mobile": [
       "mobile/test/client_v1_bridge_test.dart",
@@ -718,7 +724,8 @@
       "web-bill-viewer/src/components/__tests__/LazyBillSession.test.ts",
       "web-bill-viewer/src/lib/__tests__/public-claims.test.ts",
       "web-bill-viewer/src/components/__tests__/ViewerAccessibility.test.ts",
-      "web-bill-viewer/src/components/__tests__/NetBalances.test.ts"
+      "web-bill-viewer/src/components/__tests__/NetBalances.test.ts",
+      "web-bill-viewer/src/components/__tests__/IdentityControls.test.ts"
     ]
   },
   "reports": {
@@ -1260,7 +1267,8 @@
       ],
       "mobile/test/participant_identity_widget_test.dart": [
         "(?:^| )duplicate\\ occurrence\\ selection\\ survives\\ label\\ rename\\ with\\ exact\\ source\\ participant\\ revision$",
-        "(?:^| )pending\\ request\\ shows\\ generation\\ and\\ deliberate\\ uncertain\\ decision\\ retry\\ keeps\\ original\\ body$"
+        "(?:^| )pending\\ request\\ shows\\ generation\\ and\\ deliberate\\ uncertain\\ decision\\ retry\\ keeps\\ original\\ body$",
+        "(?:^| )paid\\ participant\\ addition\\ shows\\ the\\ server\\ reason\\ without\\ a\\ retry\\ action$"
       ],
       "mobile/test/participant_legacy_history_test.dart": [
         "(?:^| )legacy\\ duplicate\\ blank\\ raw\\ share\\ rows\\ retain\\ exact\\ amounts\\ flags\\ and\\ IDs\\ after\\ import\\ without\\ guessed\\ zeros$",
@@ -1278,7 +1286,11 @@
         "(?:^| )unavailable\\ finalized\\ snapshot\\ never\\ substitutes\\ cached\\ current\\ person\\ totals$",
         "(?:^| )empty\\ bill\\ list\\ retains\\ blank\\ legacy\\ settlement\\ rows\\ and\\ exact\\ row\\ paid\\ control$",
         "(?:^| )invalid\\ settlement\\ history\\ retains\\ raw\\ rows\\ without\\ enabling\\ a\\ paid\\ mutation$",
-        "(?:^| )unavailable\\ history\\ with\\ no\\ bills\\ has\\ finite\\ deliberate\\ retry\\ and\\ legitimate\\ empty\\ recovery$"
+        "(?:^| )unavailable\\ history\\ with\\ no\\ bills\\ has\\ finite\\ deliberate\\ retry\\ and\\ legitimate\\ empty\\ recovery$",
+        "(?:^| )unknown\\ identity\\ conflict\\ codes\\ show\\ the\\ server\\ message\\ and\\ preserve\\ fallback$",
+        "(?:^| )identity\\ status\\ 403\\ keeps\\ fixed\\ wording\\ with\\ a\\ server\\ body$",
+        "(?:^| )identity\\ status\\ 500\\ keeps\\ fixed\\ wording\\ with\\ a\\ server\\ body$",
+        "(?:^| )identity\\ status\\ 503\\ keeps\\ fixed\\ wording\\ with\\ a\\ server\\ body$"
       ],
       "mobile/test/participant_v1_recovery_test.dart": [
         "(?:^| )actual\\ frozen\\ Drift9\\ attempted\\-v1\\ reopens\\ replays\\ original\\ HTTP\\ bytes\\ key\\ absent\\-header\\ and\\ lost201\\ again$"
@@ -1552,7 +1564,8 @@
         "(?:^| )participant\\ identity\\ label\\-only\\ and\\ missing\\ revision\\ writes\\ fail\\ before\\ HTTP;\\ stale\\ current\\ writes\\ do\\ not\\ automatically\\ retry$",
         "(?:^| )participant\\ identity\\ binding\\ generation\\ actor\\ proof\\ and\\ source\\ proof\\ stay\\ separate;\\ exact\\ deliberate\\ retry\\ retains\\ original\\ body$",
         "(?:^| )participant\\ identity\\ unavailable\\ and\\ raw\\ legacy\\ settlement\\ history\\ stay\\ explicit\\ rather\\ than\\ becoming\\ an\\ empty\\ result$",
-        "(?:^| )participant\\ identity\\ confirmed\\ members\\ group\\ by\\ scoped\\ ID\\ while\\ same\\-label\\ unbound\\ occurrences\\ stay\\ separate$"
+        "(?:^| )participant\\ identity\\ confirmed\\ members\\ group\\ by\\ scoped\\ ID\\ while\\ same\\-label\\ unbound\\ occurrences\\ stay\\ separate$",
+        "(?:^| )participant\\ identity\\ unknown\\ conflict\\ codes\\ show\\ the\\ server\\ message\\ without\\ automatic\\ retry$"
       ],
       "web-bill-viewer/src/components/__tests__/LazyBillSession.test.ts": [
         "^lazy\\ viewer\\ session\\ across\\ refreshed\\ receipt\\ props\\ preserves\\ typed\\ join\\ text\\ when\\ refreshed\\ participants\\ have\\ a\\ new\\ array\\ identity$",
@@ -1585,6 +1598,10 @@
         "^tab\\ balance\\ identity\\ labels\\ suffixes\\ a\\ member\\ beside\\ same\\-named\\ history\\ while\\ preserving\\ the\\ name\\-only\\ row$",
         "^tab\\ balance\\ identity\\ labels\\ detects\\ names\\ differing\\ only\\ by\\ surrounding\\ whitespace\\ without\\ rewriting\\ their\\ labels$",
         "^tab\\ balance\\ identity\\ labels\\ puts\\ colliding\\ references\\ on\\ a\\ secondary\\ line\\ and\\ wraps\\ their\\ row\\ without\\ changing\\ unique\\ rows$"
+      ],
+      "web-bill-viewer/src/components/__tests__/IdentityControls.test.ts": [
+        "(?:^| )participant\\ conflict\\ participants_locked_paid\\ displays\\ its\\ reason\\ and\\ offers\\ retry\\ only\\ when\\ meaningful$",
+        "(?:^| )participant\\ conflict\\ identity_revision_conflict\\ displays\\ its\\ reason\\ and\\ offers\\ retry\\ only\\ when\\ meaningful$"
       ]
     },
     "postgres": {
@@ -1710,6 +1727,19 @@
         "^go\\-postgres\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/insufficient$",
         "^go\\-postgres\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/negative_balance$",
         "^go\\-postgres\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/eligible_small_reference$"
+      ],
+      "backend/internal/tab/TestPostgresJSONTextValidation": [
+        "^go\\-postgres\\.jsonl:backend/internal/tab/TestPostgresJSONTextValidation/share_item_name$"
+      ],
+      "backend/internal/tab/TestPostgresNULTokens": [
+        "^go\\-postgres\\.jsonl:backend/internal/tab/TestPostgresNULTokens/participant_query$",
+        "^go\\-postgres\\.jsonl:backend/internal/tab/TestPostgresNULTokens/paid_query$",
+        "^go\\-postgres\\.jsonl:backend/internal/tab/TestPostgresNULTokens/both_query$",
+        "^go\\-postgres\\.jsonl:backend/internal/tab/TestPostgresNULTokens/member_query$",
+        "^go\\-postgres\\.jsonl:backend/internal/tab/TestPostgresNULTokens/member_header$",
+        "^go\\-postgres\\.jsonl:backend/internal/tab/TestPostgresNULTokens/access_header$",
+        "^go\\-postgres\\.jsonl:backend/internal/tab/TestPostgresNULTokens/bill_read_member$",
+        "^go\\-postgres\\.jsonl:backend/internal/tab/TestPostgresNULTokens/tab_read_access$"
       ]
     },
     "backend": {
@@ -1828,6 +1858,18 @@
         "^go\\-default\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/insufficient$",
         "^go\\-default\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/negative_balance$",
         "^go\\-default\\.jsonl:backend/internal/bill/TestRemainderDistributionIsBoundedForExtremeCounts/eligible_small_reference$"
+      ],
+      "backend/pkg/safehttp/TestStreamArrayStdlibCompatibility": [
+        "^go\\-default\\.jsonl:backend/pkg/safehttp/TestStreamArrayStdlibCompatibility/nul$"
+      ],
+      "backend/pkg/safehttp/TestDecodeJSONPostgresText": [
+        "^go\\-default\\.jsonl:backend/pkg/safehttp/TestDecodeJSONPostgresText/map_nul$",
+        "^go\\-default\\.jsonl:backend/pkg/safehttp/TestDecodeJSONPostgresText/any_nul$",
+        "^go\\-default\\.jsonl:backend/pkg/safehttp/TestDecodeJSONPostgresText/invalid_utf8_replaced$",
+        "^go\\-default\\.jsonl:backend/pkg/safehttp/TestDecodeJSONPostgresText/unpaired_surrogate_replaced$",
+        "^go\\-default\\.jsonl:backend/pkg/safehttp/TestDecodeJSONPostgresText/map_key_nul$",
+        "^go\\-default\\.jsonl:backend/pkg/safehttp/TestDecodeJSONPostgresText/alias_nul$",
+        "^go\\-default\\.jsonl:backend/pkg/safehttp/TestDecodeJSONPostgresText/named_and_number$"
       ]
     }
   },
