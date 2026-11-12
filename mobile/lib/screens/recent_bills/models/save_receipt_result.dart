@@ -66,7 +66,11 @@ class SaveReceiptResult {
       return 'Saved on this device. Publication needs review; no replacement receipt was created.';
     }
     if (publication != PublicationState.published) {
-      return 'Saved on this device. Link and USD conversion pending.';
+      // Only a stored pending quote is described as a pending conversion: a
+      // native USD receipt has nothing to convert.
+      return valuation == ValuationState.pending
+          ? 'Saved on this device. Link and USD conversion pending.'
+          : 'Saved on this device. Link pending.';
     }
     if (attachment == AttachmentState.pending ||
         attachment == AttachmentState.attempted) {

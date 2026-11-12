@@ -201,23 +201,30 @@ cd mobile && flutter test
 - [x] Finalization — Settlements, paid tracking
 - [x] Account-less Collaboration — Anonymous member tokens
 - [x] Documentation & Testing — Tests, docs, dev script
-- [x] Receipt OCR — Anthropic Claude API for receipt scanning
-- [ ] Production Deployment — Cloud hosting, CDN, monitoring
+- [x] Production deployment — API on Render, viewer on Vercel, published through the
+  [managed delivery gate](ops/ci/README.md). Backup, alerting and provider-account
+  evidence are still open (`FEAT-1793644501`)
+
+The earlier phase-by-phase plan is kept as history in
+[backend/roadmap.md](backend/roadmap.md); it is not an operating guide.
 
 ## Documentation
 
 The maintained public pages and private viewer share `web-bill-viewer` at the
 canonical origin `https://billingtonapp.vercel.app`. Source preparation does not
-establish that a branch revision is served. The complete policy route must be
-served and verified before shipping a client using the new Settings destination.
-Effective notice date, released workflow, mailbox control and App Store disclosures
-remain release gates; the separate legacy marketing site is unchanged. See the
-[privacy inventory](docs/privacy.md) and [scoped evidence](docs/reviews/2026-11-05-public-web.md).
+establish that a branch revision is served. The viewer's former `/privacy`
+route was removed on purpose (PR #149) and stays absent; the policy route is
+`/privacy-policy`, and the App Store listing still links the separate legacy
+marketing site, which this repository does not change. The complete policy route must
+be served and verified before shipping a client using the new Settings destination.
+Effective notice date, mailbox control and App Store disclosures remain release
+gates. See the [privacy inventory](docs/privacy.md).
 
 - [Technical Overview](docs/technical-overview.md) — Architecture, data models, design decisions
 - [Backend API Reference](docs/backend-api.md) — Full endpoint documentation
 - [Privacy](docs/privacy.md) — What Billington stores and sends to service providers
-- [Market Analysis](docs/market-analysis.md) — Competitive landscape
+- [App Store privacy label answers](docs/app-privacy-label.md) — Prepared, not submitted
+- [Market Analysis](docs/market-analysis.md) — Historical origin story and 2025 assumptions
 - [Contributing](docs/contribution.md) — Development guidelines
 
 ## License

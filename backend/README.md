@@ -47,6 +47,11 @@ text, EOF and compatibility limits. The optional local measurement test runs wit
 `A1_MEASURE_OUTPUT=<absolute-file> go test -count=1 -tags=a1perf ./cmd/bill-service
 -run '^TestA1JSONMeasurements$'`; it uses injected services, no provider/database
 requests, three runs of 100 samples per path and a 75s retention observation.
+Its largest path, a 50,000-assignment update, has a 10 ms p95 target. The ordinary
+row guards that path without a clock: `TestMaxAssignmentUpdateAllocationBudget`
+fails above 12 MiB or 4,000 allocations per request, which a buffered whole-document
+decode or unsized command slices exceed. `go test -run '^$' -bench
+'^BenchmarkMaxAssignmentUpdate$' ./cmd/bill-service` times the same request.
 
 ## Receipt admission and provider limits
 
@@ -178,7 +183,10 @@ and timezone data without libc or OpenSSL. Test/tooling builds retain CGO for
 race detection and SQLite. Builders use
 `GOTOOLCHAIN=local` so a mismatched module requirement fails instead of downloading
 another compiler. Update the module and builder pin together after checking
-current security releases and image identities.
+current security releases and image identities. `pkg/safehttp` and `internal/bill`
+import `encoding/json/v2` and `encoding/json/jsontext`, which the pinned toolchain compiles by
+default behind its `jsonv2` experiment; do not build with `GOEXPERIMENT=nojsonv2`,
+and rerun the assignment decode tests when the toolchain pin changes.
 
 Build from the `backend` context, for example from the repository root:
 
@@ -275,8 +283,10 @@ values/counts after checked commit, preserving actual timestamp precision.
 Complete explicit storage columns and bounded read-only consistent transactions serve
 API and retained HTML graph reads. This avoids additive-DDL result-shape invalidation
 without query-mode changes, reconnection or blind mutation retry. Readiness is still a
-live ledger check; separate startup verification checks catalog definitions. Existing
-old cached-reader failures and old-writer exclusion remain rollout prerequisites.
+live ledger check; separate startup verification checks catalog definitions.
+`TestPostgresWarmServiceSurvivesAdditiveDDL` proves cached API reads and warm writers survive owned additive columns on real PostgreSQL; see [warm-reader evidence](../docs/reviews/2026-11-09-reader-ddl.md).
+
+The delivery gate refuses a schema step under a serving revision below the warm-reader floor; see [first-publish evidence](../docs/reviews/2026-11-09-reader-ddl.md).
 
 The November5 source checkpoint characterizes local index reuse and runs the complete
 nonnumerical ordinary/mandatory PostgreSQL selections. The four historical numerical
@@ -440,6 +450,22 @@ misses separately. See [lifecycle evidence](../docs/reviews/2026-11-03-atomic-li
 and [mutation contracts](../docs/backend-api.md#receipt-and-tab-mutation-policy).
 Synthetic test-only pending versions are never embedded in
 the production registry. No whole-product V&V pass is implied.
+
+## Production and history
+
+Production is the Render service at `https://billington-api.onrender.com`; `GET /health`
+reports the deployed commit. Publication is owned by the
+[managed delivery gate](../ops/ci/README.md); this README gives no manual deploy command.
+
+Railway is not a deployment target. It was tried and abandoned: the release API was
+pointed at Railway in
+[`26109fb`](https://github.com/LLRHook/checksinmyhead/commit/26109fba4b50c8c68273f51dff71e5f2bf5aef9f)
+(2026-03-28) and reverted in
+[`7b97d03`](https://github.com/LLRHook/checksinmyhead/commit/7b97d038bdb40453976b56f260d37721fc3d5c15)
+(2026-04-22). The phase plan in [roadmap.md](roadmap.md) still shows Railway, Fly.io,
+Cloudflare R2 and Gemini; it is a labeled historical record, not operating instructions.
+Database vendor, backups, alerting and whether any Railway resource remains are
+unverified (`FEAT-1793644501`).
 
 ## API Documentation
 

@@ -63,41 +63,55 @@ inspection. See the [correction evidence](reviews/2026-11-03-local-workflow-corr
 
 The central grouping entity. Represents a trip or event where multiple bills are tracked.
 
+The sketches below are abridged; `backend/pkg/models` is the source.
+
 ```go
 type Tab struct {
-    ID          uint        // Primary key
-    Name        string      // e.g. "Beach Trip 2025"
-    Description string
-    Bills       []Bill      // FK: Bill.TabID
-    Members     []TabMember // FK: TabMember.TabID
-    TotalAmount float64     // Computed (not stored)
-    Finalized   bool        // Locked when true
-    FinalizedAt *time.Time
-    AccessToken string      // 64-char secure token
+    ID              uint         // Primary key
+    Name            string       // e.g. "Beach Trip 2025"
+    Description     string
+    DisplayCurrency string       // Display preference; accounting stays in USD
+    Bills           []Bill       // FK: Bill.TabID
+    Members         []TabMember  // FK: TabMember.TabID
+    TotalAmount     float64      // Computed in USD (not stored)
+    NetBalances     []NetBalance // Computed (not stored)
+    Finalized       bool         // Locked when true
+    FinalizedAt     *time.Time
+    AccessToken     string       // 64-char secure token; no expiry
 }
 ```
 
 ### Bill
 
-An individual expense with line items and per-person share calculations.
+An individual expense with line items and per-person share calculations. A bill is
+created standalone (`TabID` nil) and may be attached to one tab later; it cannot be
+moved or detached afterwards. `LazyMode` marks a standalone item-claim bill opened at
+`/b/:id`. Trips created by the older lazy flow hold their receipt as a tab bill and
+stay interactive at `/t/:id`.
 
 ```go
 type Bill struct {
     ID              uint
-    TabID           *uint            // Optional: belongs to a tab
+    LazyMode        bool             // Standalone item-claim bill
+    TabID           *uint            // Optional: attached to a tab
     AddedByMemberID *uint            // Who added this bill
+    PaidByMemberID  *uint            // Who paid it, for tab balances
     Name            string
-    Subtotal        float64
+    Subtotal        float64          // Receipt (native) currency
     Tax             float64
     TipAmount       float64
     TipPercentage   float64
     Total           float64
+    CurrencyCode    string           // Receipt currency, default USD
+    USDExchangeRate float64          // Frozen at creation
+    USDTotal        float64          // Frozen USD value used for tab accounting
+    DisplayCurrency string           // Display only; with separate display quote fields
     Date            time.Time
     PaymentMethods  []PaymentMethod  // JSONB — Venmo, Zelle, etc.
     Participants    []Person         // legacy wire view; scoped ParticipantRows persist
     Items           []BillItem       // Line items with assignments
     PersonShares    []PersonShare    // Calculated per-person totals
-    AccessToken     string
+    AccessToken     string           // 64-char secure token; no expiry
 }
 ```
 
@@ -161,7 +175,9 @@ internal/
 
 - **State Management**: Provider pattern for unidirectional data flow
 - **Local Database**: Drift ORM (SQLite) for offline bill storage and tab metadata
-- **API Client**: HTTP service for backend communication with fire-and-forget sync
+- **API Client**: HTTP service for backend communication. Publication is owned by
+  `RecentBillsManager.saveReceipt`/`resumeReceipt`: the request is committed locally
+  first, then sent once, and an unfinished save stays pending for launch or manual retry
 - **Schema Migrations**: Drift schema v10
 
 `Person` is a receipt occurrence whose equality/hash use only immutable `clientRef`.
@@ -307,7 +323,9 @@ reads are handled without repeating the write or rejecting the UI event promise.
 Foreign values without an audit stay unavailable; frozen zero stays zero. Display
 rates are temporary values and never write frozen quote columns. Versioned JPY
 precision and the known local/server `.005` allocation difference remain open. See [API contracts](backend-api.md#currency-quotes)
-for accepted fields, ownership, freshness and legacy compatibility.
+for accepted fields, ownership, freshness and legacy compatibility; its
+[currency support matrix](backend-api.md#currency-support-matrix) is the one summary
+of original amounts, frozen USD valuation, display conversion and failures.
 `FinalizeOnce` is the sole production finalization seam: tab capability, current creator
 or memberless policy, stored-result validation, gross allocation, bounded inserts and
 one checked active-state update commit together. Authorized retries read the stored
@@ -384,8 +402,7 @@ returned500 immediately after additive DDL; a separate pgx control reproduced
 SQLSTATE0A000 for cached `SELECT *` result-type invalidation. Drain readers before
 DDL and replace connections before resuming; verify this operational exclusion
 independently. Restarted read compatibility proves neither uninterrupted overlap
-nor old-writer safety. Current readers use explicit complete column shapes. Local index reuse retains full reference validation and money/tie behavior; it establishes no latency recovery. Qualify the final API on
-the same observed warmed database connections through owned additive fixtures. This
+nor old-writer safety. Current readers use explicit complete column shapes. Local index reuse retains full reference validation and money/tie behavior; it establishes no latency recovery. The warm-reader test proves cached API reads and warm writers survive owned additive columns; see [warm-reader evidence](reviews/2026-11-09-reader-ddl.md). This
 does not repair old cached binaries or authorize blind mutation retries. Production adoption remains
 unauthorized.
 See [foundation evidence](reviews/2026-11-05-identity-foundation.md).
@@ -493,7 +510,7 @@ Appearance, navigation, quote/JPY policy and manual confirmation remain. See the
 real provider, simulator/signed public binary and whole-product gates are separate.
 
 ### Local-First Mobile
-The Flutter app maintains its own Drift database for offline access and fast reads. Backend sync is fire-and-forget — the app works without network access for local bills.
+The Flutter app maintains its own Drift database for offline access and fast reads, and works without network access for local bills. A save is committed locally before any request; online publication is a separate, recorded step that can remain pending and be resumed. Release-mode keyed publication is still gated off in this source (`supportsCreationReplay`), so a release build would hold saves as pending. The public 1.4.0 binary predates this design: it uploads on Done and retries silently at launch (see the [privacy inventory](privacy.md)).
 
 ### Shared HTTP lifecycle and admission
 
@@ -509,7 +526,13 @@ One process-wide eight-slot gate covers JSON mutation routes before decoding, wi
 not select admission. The shared decoder enforces one document/EOF under each caller's
 byte cap and retains strict versus ignored unknown-field contracts. Content DTO arrays
 count elements before typed slice allocation, then enforce aggregate bounds before
-model copies. Decoder/admission rejection expires body-read deadlines and closes
+model copies. Name-based assignment updates use `DecodeJSONStream` instead: the
+standard library's `encoding/json/v2` decoder binds the document in one pass with
+the `encoding/json` compatibility options, `DecodeArrayFrom` stops at update 501,
+and each assignment array is read once as a validated value. Arrays in the plain
+two-member shape are bound directly; every other array goes through the same
+`encoding/json` decode as before, so results do not depend on which path ran.
+Decoder/admission rejection expires body-read deadlines and closes
 HTTP/1 connections, bounding transport cleanup beyond the handler. Domain
 authorization, accounting and PostgreSQL atomicity stay in their
 existing owners. CreateTab has a 16 KiB body cap and sanitized code-point limits;
@@ -530,6 +553,20 @@ durable allowance remain separate work.
 - **Member attribution**: A scoped member bearer capability (`X-Member-Token` or `?m=`) authenticates current membership; it is independently rechecked under the tab lock. Labels grant no authority.
 - **CORS**: Restricted to configured browser origins; CORS is not an authorization control.
 - **Receipt scan limits**: Bounded process slots, 10 admissions/60s per peer, 4096 peer keys and 10 MiB TOTAL multipart; no durable/global allowance yet.
+- **Lifecycle limits**: Access tokens do not expire and cannot be revoked or rotated. No route deletes a bill or a tab, and an attached bill cannot be detached; a member can only leave. Removing shared records is an operator action until `FEAT-1793644500` is built. Finalizing locks a tab's accounting; joining and paid flags stay available afterwards.
+
+### Invite links and app handoff
+
+Signed builds register only the custom scheme `billington://` (`Info.plist`).
+`RunnerProfile.entitlements` has carried no Associated Domains entitlement since
+[`5c684e8`](https://github.com/LLRHook/checksinmyhead/commit/5c684e8) (2026-09-10), so
+Universal Links do not open the app, even though the viewer still serves
+`/.well-known/apple-app-site-association` for `/t/*`. An `https` invite therefore opens
+the web viewer. Its handoff (`AppHandoff`, `BillAppHandoff`) offers the custom scheme
+and the App Store listing. An invite is not carried through a new installation: there
+is no deferred link, so a person who installs the app reopens or pastes the link (the
+Tabs screen accepts a pasted `/t/` link). The public 1.4.0 binary has only the pasted
+link. Device evidence for these journeys is tracked by `FEAT-1793644507`.
 
 ## Testing Strategy
 

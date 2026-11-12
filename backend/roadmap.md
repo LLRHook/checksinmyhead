@@ -1,8 +1,16 @@
 # Billington Backend Development Roadmap
 
-> This file records the product's development history; completed milestones can describe earlier implementations. Current receipt scanning sends images to Anthropic Claude for parsing and does not save them in Billington's database. See [the current privacy policy](../docs/privacy.md) and [technical overview](../docs/technical-overview.md).
+> **Historical record. Not an operating guide.** This roadmap was written while the backend was being built (2025 to early 2026). The text below is kept as it was, with labels added on 2026-11-09. Its checkboxes, "current" diagrams, commands and next steps describe that time, not today.
+>
+> What is true now:
+>
+> - **Production.** The API runs on Render (`https://billington-api.onrender.com`) and the viewer on Vercel. Both are published through the [managed delivery gate](../ops/ci/README.md), not by hand.
+> - **Railway was abandoned.** The release API was pointed at Railway in [`26109fb`](https://github.com/LLRHook/checksinmyhead/commit/26109fba4b50c8c68273f51dff71e5f2bf5aef9f) (2026-03-28) and that change was reverted in [`7b97d03`](https://github.com/LLRHook/checksinmyhead/commit/7b97d038bdb40453976b56f260d37721fc3d5c15) (2026-04-22). Whether a Railway project or anything using it still exists is not established here (`FEAT-1793644501`).
+> - **Other abandoned plans.** Fly.io appears only in this file. No Cloudflare R2 code exists at the 1.4.0 tag or on `main`; tab image uploads were removed in [`9593849`](https://github.com/LLRHook/checksinmyhead/commit/9593849) (2026-09-10). Receipt OCR used Gemini from [`47d5fc1`](https://github.com/LLRHook/checksinmyhead/commit/47d5fc1) and left it in [`c43b698`](https://github.com/LLRHook/checksinmyhead/commit/c43b698) (both 2026-02-16); it now uses Anthropic Claude and does not save the image in Billington's database.
+> - **Local development.** `./dev.sh` from the repository root ([Quickstart](../README.md#quickstart)); the Compose services are listed in [README.md](README.md#development-commands).
+> - **Architecture, contracts and data handling.** [Technical overview](../docs/technical-overview.md), [API reference](../docs/backend-api.md) and [privacy inventory](../docs/privacy.md).
 
-## Project Overview
+## Project Overview (historical)
 Transform Billington from a local Flutter app into a Splitwise competitor with group trip features, image uploads, and collaborative bill splitting - all while maintaining privacy-first principles.
 
 ## Goals
@@ -36,7 +44,7 @@ Transform Billington from a local Flutter app into a Splitwise competitor with g
 - [X] Venmo deep linking for payments
 - [X] Beautiful UI matching marketing site design
 
-### Week 4: Flutter Integration 🔄 IN PROGRESS
+### Week 4: Flutter Integration 🔄 IN PROGRESS (historical plan; superseded)
 - [X] HTTP client service in Flutter
 - [X] Bill creation flow generates shareable links
 - [X] Send complete bill data (with PersonShares) to backend
@@ -190,10 +198,10 @@ Transform Billington from a local Flutter app into a Splitwise competitor with g
 
 **Milestone**: Full test coverage for core business logic, accurate documentation, one-command dev startup.
 
-## Phase 6: Production Deployment & Polish
+## Phase 6: Production Deployment & Polish (historical plan; superseded)
 *Goal: Live, reliable, production system*
 
-### Week 10-11: Deploy & Monitor (2-3 weeks)
+### Week 10-11: Deploy & Monitor (2-3 weeks) (historical plan; superseded)
 - [ ] **Backend Deployment**
   - [ ] Deploy to Railway/Render/Fly.io
   - [ ] Set up production PostgreSQL
@@ -219,10 +227,10 @@ Transform Billington from a local Flutter app into a Splitwise competitor with g
 
 ---
 
-## Phase 7: Growth Features (After MVP)
+## Phase 7: Growth Features (After MVP) (historical list)
 *Only add these if users ask for them*
 
-### Future Enhancements (Priority TBD)
+### Future Enhancements (Priority TBD) (historical list)
 - [ ] **Social Features**
   - [ ] User accounts (optional - maintain privacy-first)
   - [ ] Friend list / frequent travelers
@@ -246,9 +254,9 @@ Transform Billington from a local Flutter app into a Splitwise competitor with g
 
 ---
 
-## Architecture Reference
+## Architecture Reference (historical)
 
-### Current Project Structure
+### Project Structure (historical snapshot)
 ```
 Billington-backend/
 ├── cmd/
@@ -287,7 +295,7 @@ Billington-backend/
 └── README.md
 ```
 
-### Service Architecture (Current)
+### Service Architecture (historical snapshot)
 ```
 ┌─────────────────┐    ┌─────────────────┐
 │   Mobile App    │    │  Next.js Viewer │
@@ -306,7 +314,7 @@ Billington-backend/
             └───────────┘
 ```
 
-### Service Architecture (After Tabs & Images)
+### Service Architecture (After Tabs & Images) (historical plan; R2 and Gemini were abandoned)
 ```
 ┌─────────────────┐    ┌─────────────────┐
 │   Mobile App    │    │  Next.js Viewer │
@@ -326,7 +334,7 @@ Billington-backend/
 
 ---
 
-## Current Status
+## Status when this roadmap was written (historical)
 
 ### ✅ Completed
 - Phase 1: Foundation (Go + PostgreSQL + Bill CRUD)
@@ -337,7 +345,7 @@ Billington-backend/
 - Phase X: Account-less Collaboration (Anonymous member tokens, join flow, attribution)
 - Phase D: Document and Test (Tests, docs, dev script)
 
-### ⏳ Next Up
+### ⏳ Next Up (historical; production is deployed, see the note at the top)
 1. Deploy to production (backend + frontend)
 2. Test full workflow with real group trip
 3. Move display name entry to onboarding flow (SharedPreferences)
@@ -390,7 +398,7 @@ Billington-backend/
 
 ---
 
-## Quick Reference
+## Quick Reference (historical)
 
 ### Test Curl (Create Bill)
 ```bash
@@ -433,7 +441,7 @@ curl -X POST http://localhost:8080/api/bills \
   }'
 ```
 
-### Start Local Dev
+### Start Local Dev (historical; use `./dev.sh` from the repository root)
 ```bash
 # Backend
 cd backend
@@ -444,9 +452,12 @@ cd web-bill-viewer
 npm run dev
 ```
 
-### Deploy Commands (Future)
+### Deploy commands (historical; Railway was abandoned)
+
+Not instructions. Publication goes through the [managed delivery gate](../ops/ci/README.md).
+
 ```bash
-# Backend to Railway
+# Backend to Railway (abandoned; historical)
 railway up
 
 # Frontend to Vercel
