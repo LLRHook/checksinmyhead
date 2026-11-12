@@ -51,7 +51,6 @@ Deviations from `VERIFICATION.md` Appendix A, all local:
 | 9 | Removal labels | pass | "Remove from this device?" with the statement that shared data stays online; Cancel keeps the tab; a synced or finalized bill offers no removal |
 | 10 | Typed join text kept across a refresh | pass, with a limit | Text typed in "What should we call you?" survives the page's own 10-second data refresh and a cleared field stays empty. A full browser reload discards unsubmitted text; BUG-1794045429 does not promise otherwise |
 | 11 | Public web copy and privacy page | pass | Billington branding only; one-click App Store link; labelled USD 128.00 example; payment copy limited to handoff, shown details and manual status; `/privacy-policy` describes 1.4.0 and marks unreleased statements; `/privacy` is 404; private pages carry noindex and no-referrer |
-| 12 | Version gate | pass | Server: minimum 2.0.3 against the 1.4.0 record serves `0.0.0` with a warning; 1.4.0 is enforced. Client 2.0.11: minimum 99.0.0 or 2.0.12 shows "Update Billington"; a 503 policy, an unreachable policy and minimum 2.0.11 let the app open |
 
 ## Findings
 
