@@ -1,100 +1,57 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:checks_frontend/screens/settings/utils/validation_utils.dart';
 
+void _validationCases(
+  String method,
+  bool Function(String) validate,
+  Map<String, (String, bool)> cases,
+) {
+  group('ValidationUtils.$method', () {
+    for (final entry in cases.entries) {
+      final (input, expected) = entry.value;
+      test(entry.key, () {
+        expect(validate(input), expected);
+      });
+    }
+  });
+}
+
 void main() {
-  group('ValidationUtils.isValidPhoneNumber', () {
-    test('accepts 10-digit number', () {
-      expect(ValidationUtils.isValidPhoneNumber('2125551234'), isTrue);
-    });
-
-    test('accepts 11-digit number starting with 1', () {
-      expect(ValidationUtils.isValidPhoneNumber('12125551234'), isTrue);
-    });
-
-    test('accepts formatted number with dashes and parens', () {
-      expect(ValidationUtils.isValidPhoneNumber('(212) 555-1234'), isTrue);
-    });
-
-    test('rejects 9-digit number', () {
-      expect(ValidationUtils.isValidPhoneNumber('212555123'), isFalse);
-    });
-
-    test('rejects 11-digit number not starting with 1', () {
-      expect(ValidationUtils.isValidPhoneNumber('22125551234'), isFalse);
-    });
-
-    test('rejects empty string', () {
-      expect(ValidationUtils.isValidPhoneNumber(''), isFalse);
-    });
-
-    test('rejects alphabetic input', () {
-      expect(ValidationUtils.isValidPhoneNumber('abcdefghij'), isFalse);
-    });
+  _validationCases('isValidPhoneNumber', ValidationUtils.isValidPhoneNumber, {
+    'accepts 10-digit number': ('2125551234', true),
+    'accepts 11-digit number starting with 1': ('12125551234', true),
+    'accepts formatted number with dashes and parens': ('(212) 555-1234', true),
+    'rejects 9-digit number': ('212555123', false),
+    'rejects 11-digit number not starting with 1': ('22125551234', false),
+    'rejects empty string': ('', false),
+    'rejects alphabetic input': ('abcdefghij', false),
   });
 
-  group('ValidationUtils.isValidEmail', () {
-    test('accepts standard email', () {
-      expect(ValidationUtils.isValidEmail('user@example.com'), isTrue);
-    });
-
-    test('accepts email with dots and plus', () {
-      expect(ValidationUtils.isValidEmail('first.last+tag@domain.co'), isTrue);
-    });
-
-    test('rejects missing @', () {
-      expect(ValidationUtils.isValidEmail('userexample.com'), isFalse);
-    });
-
-    test('rejects missing domain', () {
-      expect(ValidationUtils.isValidEmail('user@'), isFalse);
-    });
-
-    test('rejects missing TLD', () {
-      expect(ValidationUtils.isValidEmail('user@domain'), isFalse);
-    });
-
-    test('rejects empty string', () {
-      expect(ValidationUtils.isValidEmail(''), isFalse);
-    });
-
-    test('rejects single-char TLD', () {
-      expect(ValidationUtils.isValidEmail('user@domain.c'), isFalse);
-    });
+  _validationCases('isValidEmail', ValidationUtils.isValidEmail, {
+    'accepts standard email': ('user@example.com', true),
+    'accepts email with dots and plus': ('first.last+tag@domain.co', true),
+    'rejects missing @': ('userexample.com', false),
+    'rejects missing domain': ('user@', false),
+    'rejects missing TLD': ('user@domain', false),
+    'rejects empty string': ('', false),
+    'rejects single-char TLD': ('user@domain.c', false),
   });
 
-  group('ValidationUtils.isValidVenmoUsername', () {
-    test('accepts @username', () {
-      expect(ValidationUtils.isValidVenmoUsername('@johndoe'), isTrue);
-    });
+  _validationCases(
+    'isValidVenmoUsername',
+    ValidationUtils.isValidVenmoUsername,
+    {
+      'accepts @username': ('@johndoe', true),
+      'rejects without @': ('johndoe', false),
+      'rejects bare @': ('@', false),
+      'rejects empty string': ('', false),
+    },
+  );
 
-    test('rejects without @', () {
-      expect(ValidationUtils.isValidVenmoUsername('johndoe'), isFalse);
-    });
-
-    test('rejects bare @', () {
-      expect(ValidationUtils.isValidVenmoUsername('@'), isFalse);
-    });
-
-    test('rejects empty string', () {
-      expect(ValidationUtils.isValidVenmoUsername(''), isFalse);
-    });
-  });
-
-  group('ValidationUtils.isValidCashtag', () {
-    test('accepts \$cashtag', () {
-      expect(ValidationUtils.isValidCashtag('\$johndoe'), isTrue);
-    });
-
-    test('rejects without \$', () {
-      expect(ValidationUtils.isValidCashtag('johndoe'), isFalse);
-    });
-
-    test('rejects bare \$', () {
-      expect(ValidationUtils.isValidCashtag('\$'), isFalse);
-    });
-
-    test('rejects empty string', () {
-      expect(ValidationUtils.isValidCashtag(''), isFalse);
-    });
+  _validationCases('isValidCashtag', ValidationUtils.isValidCashtag, {
+    'accepts \$cashtag': ('\$johndoe', true),
+    'rejects without \$': ('johndoe', false),
+    'rejects bare \$': ('\$', false),
+    'rejects empty string': ('', false),
   });
 }

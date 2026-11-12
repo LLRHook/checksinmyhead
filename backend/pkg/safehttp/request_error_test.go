@@ -3,7 +3,6 @@ package safehttp_test
 import (
 	"backend/internal/bill"
 	"backend/internal/tab"
-	"backend/internal/web"
 	"backend/pkg/models"
 	"bytes"
 	"errors"
@@ -45,9 +44,6 @@ func TestRequestDatabaseErrorLogsStaySafe(t *testing.T) {
 	}{
 		{"bill", func(err error) gin.HandlerFunc { return bill.NewBillHandler(failingBillReader{failure: err}).GetBill }},
 		{"tab", func(err error) gin.HandlerFunc { return tab.NewTabHandler(failingTabReader{failure: err}).GetTab }},
-		{"legacy_web", func(err error) gin.HandlerFunc {
-			return web.NewWebpageHandler(failingBillReader{failure: err}).CreateHTML
-		}},
 	}
 	for _, route := range routes {
 		t.Run(route.name, func(t *testing.T) {

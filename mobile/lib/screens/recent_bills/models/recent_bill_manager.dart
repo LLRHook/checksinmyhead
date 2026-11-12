@@ -15,7 +15,6 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
@@ -40,12 +39,6 @@ class RecentBillsManager extends ChangeNotifier {
 
   factory RecentBillsManager() => _instance;
 
-  final _billsStreamController =
-      StreamController<List<RecentBillModel>>.broadcast();
-
-  Stream<List<RecentBillModel>> get billsStream =>
-      _billsStreamController.stream;
-
   RecentBillsManager._internal();
 
   RecentBillsManager.withDependencies({
@@ -65,22 +58,12 @@ class RecentBillsManager extends ChangeNotifier {
   AppDatabase get _db => _database ?? DatabaseProvider.db;
   ApiService get _api => _apiDependency ??= ApiService();
 
-  @override
-  void dispose() {
-    _billsStreamController.close();
-    super.dispose();
-  }
-
   Future<List<RecentBillModel>> getRecentBills({
     bool requireComplete = false,
   }) async {
     try {
       final recentBillsData = await _db.getRecentBills();
       final bills = recentBillsData.map(RecentBillModel.fromData).toList();
-
-      if (!_billsStreamController.isClosed) {
-        _billsStreamController.add(bills);
-      }
 
       return bills;
     } catch (_) {

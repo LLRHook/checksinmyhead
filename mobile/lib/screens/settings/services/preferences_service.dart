@@ -81,25 +81,6 @@ class PreferencesService {
     }
   }
 
-  Future<void> savePaymentIdentifier(String method, String identifier) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('$_paymentPrefix$method', identifier);
-  }
-
-  Future<String?> getPaymentIdentifier(String method) async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('$_paymentPrefix$method');
-  }
-
-  Future<void> removePaymentMethod(String method) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('$_paymentPrefix$method');
-
-    final selected = await getSelectedPaymentMethods();
-    selected.remove(method);
-    await saveSelectedPaymentMethods(selected);
-  }
-
   Future<Map<String, String>> getAllPaymentIdentifiers() async {
     final prefs = await SharedPreferences.getInstance();
     final Map<String, String> results = {};

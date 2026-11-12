@@ -988,3 +988,87 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/ios/17e-10, ios/22.
 - **Bump:** patch
 - **Status:** open
+
+### [BUG-1794501894] Configure delivery so main can publish and the iOS upload workflow can run
+- [ ] **Severity:** high
+- **Area:** delivery, ci, release
+- **File(s):** .github/workflows/ci.yml; .github/workflows/testflight.yml; ops/ci/delivery_gate.py; ops/ci/README.md
+- **Observation:** The repository has no Actions variable RELEASE_POLICY, no ios-upload environment and no DELIVERY_* secrets; only the legacy secret names exist and the workflows read no legacy fallback. Every push to main therefore skips publish-backend and publish-web, and testflight.yml cannot authorize. On 2026-11-12 production API /health reported commit 81a564f while main was 124 commits ahead, including the Go 1.27.4 fix for GO-2026-6859.
+- **Expected:** RELEASE_POLICY defines the web, backend and ios-upload targets with their floors and external clearance as ops/ci/README.md specifies; the ios-upload environment and the DELIVERY_* secrets exist; a push to main with the policy enabled publishes, and /health reports the published commit.
+- **Req:** none; ops/ci/README.md delivery requirements (driver run simplify-1111, FINDING-1)
+- **Depends on:** none
+- **Repro / Notes:** gh api repos/LLRHook/checksinmyhead/actions/variables returns total_count 0; environments total_count 0. CI runs 43243346772 to 43254449850 on main: publish-backend and publish-web skipped; the resolve job log shows RELEASE_POLICY empty. Deploying the backend is tied to the old-client compatibility bugs BUG-1793644505 and BUG-1793644511.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794501895] Web route verifier fails 24 of 55 rows because RSC probes do not follow 307 redirects
+- [ ] **Severity:** med
+- **Area:** verification, web
+- **File(s):** scripts/verify_web_routes.py
+- **Observation:** Against an owned synthetic API, scripts/verify_web_routes.py exits 1 with 31 of 55 rows passing and 24 failing (136 failed checks). Every failing row is an RSC probe that receives an existing 307 redirect and does not follow it. The result is identical before and after PR #178.
+- **Expected:** The verifier follows or expects the redirect, so all 55 rows pass against a correct viewer and a failure means a real route defect.
+- **Req:** none; VERIFICATION.md web route verification (driver run simplify-1111, FINDING-2)
+- **Depends on:** none
+- **Repro / Notes:** Found by lead L5 while proving the web viewer simplification; before and after runs are recorded in the run directory under evidence/L5. Not re-run by the driver.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794501896] go.mod marks pgx/v5 indirect although the backend imports it directly
+- [ ] **Severity:** low
+- **Area:** backend, dependencies
+- **File(s):** backend/go.mod; backend/pkg/mutation/errors.go
+- **Observation:** go mod tidy moves github.com/jackc/pgx/v5 v5.10.0 from the indirect require block to the direct one, with no version or go.sum change. backend/pkg/mutation/errors.go imports the module directly. CI runs go mod verify, not tidy, so nothing fails.
+- **Expected:** go mod tidy leaves backend/go.mod unchanged.
+- **Req:** none (driver run simplify-1111, FINDING-3)
+- **Depends on:** none
+- **Repro / Notes:** cd backend && go mod tidy && git diff go.mod shows the one-line move. Left out of PR #181 to keep the Go 1.27.4 bump to four lines.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794501898] No test catches removal of receipt socket cleanup or the bill total tolerance guard
+- [ ] **Severity:** med
+- **Area:** backend, tests, money
+- **File(s):** backend/internal/receipt/provider_dial.go; backend/internal/bill/create_request.go
+- **Observation:** Mutation probes run at two revisions of the backend survive with every test passing: removing the dial-path socket AfterFunc in internal/receipt (M3), making the socket close asynchronous there (D2), and loosening or removing the subtotal and total tolerance check in internal/bill/create_request.go near line 451 (B5, B5b). A fifth probe that removes one of two identical no-store header assignments also survives and changes nothing.
+- **Expected:** Each of the three behaviours has a test that fails when it is removed: socket cancellation on the dial path, synchronous socket close, and rejection of a bill whose assigned shares exceed its subtotal or total.
+- **Req:** none; docs/backend-api.md bill creation validation (driver run simplify-1111, FINDING-4)
+- **Depends on:** none
+- **Repro / Notes:** Found by reviewer L9 on PR #179; 21 probes, 16 caught, 5 surviving at both base and head. Probe scripts and results are in the run directory under evidence/L9 (scripts/, mutations.txt, mutations2.txt, mutations3.txt). The tolerance guard protects money totals, so a regression there would pass CI.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794501899] Record the Render service build settings for the backend in the repository
+- [ ] **Severity:** low
+- **Area:** delivery, docs
+- **File(s):** ops/ci/README.md; backend/README.md
+- **Observation:** Nothing in the repository states which runtime, Dockerfile path or build context Render uses for the backend. That production builds from backend/services/bill-service/Dockerfile is inferred from the source deploy hook and the documented build context. /health reports the commit, not the toolchain, so a toolchain bump cannot be shown to reach production from repository evidence.
+- **Expected:** The current docs record the Render runtime, Dockerfile path and build context, and how to confirm the deployed toolchain.
+- **Req:** none (driver run simplify-1111, FINDING-5)
+- **Depends on:** none
+- **Repro / Notes:** Found by reviewer L12 on PR #181; see ops/ci/delivery_gate.py publish path and ops/ci/README.md deploy section.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794501900] Lifecycle and static-runtime harnesses cannot run under an isolated resource prefix
+- [ ] **Severity:** low
+- **Area:** verification, tooling
+- **File(s):** scripts/verify_local_lifecycle.py; scripts/verify_static_runtime.py; backend/internal/healthcheck/entrypoints_test.go
+- **Observation:** scripts/verify_local_lifecycle.py and scripts/verify_static_runtime.py hard-code billington-* resource names and the reset guard rejects any other prefix, so a supervised agent that must not touch the developer's local database volumes cannot execute them. Separately, TestServiceHealthcheckMode/bill-service binds host port 8080 and fails on a machine where another service already owns it; four agents hit this in unisolated host runs.
+- **Expected:** Both harnesses accept a resource prefix (and the reset guard honours it), and the healthcheck test does not depend on a fixed host port.
+- **Req:** none; VERIFICATION.md local lifecycle rows (driver run simplify-1111, FINDING-6)
+- **Depends on:** none
+- **Repro / Notes:** Reported by leads L1 and L8 (harness prefix) and L1, L4, L11, L12 (port 8080). Because of this the two harnesses were edited by PR #177 but never executed end to end.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794501902] make down leaves an orphan legacy web-service container from before PR #177
+- [ ] **Severity:** low
+- **Area:** backend, local-dev
+- **File(s):** backend/Makefile; backend/docker-compose.yml
+- **Observation:** A developer who had the optional legacy-web Compose profile running before pulling PR #177 keeps an orphan web-service container after make down, because the service definition no longer exists. No data is lost and the stack still starts.
+- **Expected:** Either the upgrade note tells developers to run docker compose down --remove-orphans once, or the down target removes orphans without removing data volumes.
+- **Req:** none (driver run simplify-1111, FINDING-7)
+- **Depends on:** none
+- **Repro / Notes:** Found by reviewer L4 on PR #177 and judged non-blocking. One docker compose down --remove-orphans clears it.
+- **Bump:** patch
+- **Status:** open

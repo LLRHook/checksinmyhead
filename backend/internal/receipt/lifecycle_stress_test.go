@@ -31,14 +31,14 @@ func TestOwnershipConcurrentCloseStress(t *testing.T) {
 					io.WriteString(w, envelope(validReceipt))
 				})
 				s.transport.idleTimeout = time.Duration(1+round%4) * time.Millisecond
-				proofSetDial(s, func(ctx context.Context, _, _ string) (net.Conn, error) {
+				s.transport.dialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
 					c, err := (&net.Dialer{}).DialContext(ctx, "tcp", server.Listener.Addr().String())
 					if err == nil {
 						live.Add(1)
 						return &proofCountClose{Conn: c, live: &live}, nil
 					}
 					return nil, err
-				})
+				}
 				ctx, cancel := context.WithCancel(context.Background())
 				done := make(chan error, 1)
 				start := func() {
