@@ -125,7 +125,15 @@ independent headers and never fall back to that source field.
 
 Successful participant commands return200 `{participant:{…},identity_revision:N}`.
 Actual additions/requests/decisions require active ready/unpaid eligibility; maximum100
-participants. A member cannot request another participation while already bound/pending
+participants. An actual participant addition to a bill with any paid share returns
+`409 {"error":"participants cannot be added after a share is paid","code":"participants_locked_paid"}`.
+This is a non-retryable state conflict, like `member_referenced`; refreshing the
+revision cannot make the addition succeed while a share remains paid. Stale revisions
+still return `identity_revision_conflict`, and a matching existing `client_ref` replay
+still succeeds after payment. Both standalone and attached participant creation use
+this error. Clients display the server's error message for an unfamiliar code;
+`participants_locked_paid` has no retry-original-action control.
+A member cannot request another participation while already bound/pending
 on this bill. Pending grants no paid authority. Approve/reject must address the exact
 persisted request generation/target; no rebind or pending overwrite. Actual label rename
 is allowed while paid-active, preserving all economics, immutable allocation labels,

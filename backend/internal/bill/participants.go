@@ -205,8 +205,11 @@ func ChangeParticipantLocked(tx *gorm.DB, b models.Bill, c ParticipantChange, a 
 	now := tx.NowFunc()
 	switch c.Operation {
 	case "create":
-		if len(b.ParticipantRows) >= 100 || paid {
+		if len(b.ParticipantRows) >= 100 {
 			return result, ErrRevision
+		}
+		if paid {
+			return result, ErrParticipantsPaid
 		}
 		ordinal := int64(0)
 		for _, old := range b.ParticipantRows {

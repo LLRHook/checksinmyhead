@@ -908,7 +908,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** open
 
 ### [BUG-1794331914] Stop telling clients to retry participant additions on bills with paid shares
-- [ ] **Severity:** low
+- [x] **Severity:** low
 - **Area:** backend, api
 - **File(s):** backend/internal/bill/identity.go
 - **Observation:** POST /api/bills/:id/participants on a bill with any paid share returns 409 identity_revision_conflict ('refresh and try again') even at the current expected_revision. The block itself is documented (unpaid eligibility), but no retry can succeed.
@@ -917,7 +917,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/stage4-adv/evidence-paid-add-participant.jsonl. Create a wire2 bill, PATCH a share paid, then POST participants with the current expected_revision.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** fixed-pending-migration
+- **Fix:** Return 409 participants_locked_paid only for a new participant addition blocked by paid shares, with a non-retry message; preserve stale revision, capacity and exact replay behavior. Flutter and web now display server error messages safely with existing fallback, and suppress the retry-original-action control for this code. PostgreSQL state/replay regression and both client regressions added to the case manifest.
+- **Docs:** docs/backend-api.md
 
 ### [BUG-1794331915] Apportion tax and tip the same way for partial claims on every route
 - [ ] **Severity:** low

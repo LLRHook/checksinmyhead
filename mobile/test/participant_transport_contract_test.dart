@@ -14,6 +14,75 @@ import 'save_receipt_test.dart' show Harness;
 
 void main() {
   test(
+    'unknown identity conflict codes show the server message and preserve fallback',
+    () async {
+      var body = <String, dynamic>{
+        'code': 'participants_locked_paid',
+        'error': 'participants cannot be added after a share is paid',
+      };
+      var calls = 0;
+      final api = ApiService(
+        baseUrl: 'https://synthetic.invalid',
+        client: MockClient((request) async {
+          calls++;
+          return http.Response(jsonEncode(body), 409);
+        }),
+      );
+      Future<void> add() async {
+        await api.participantCommand(
+          billId: '7',
+          token: 'source',
+          expectedRevision: 1,
+          clientRef: 'new',
+          label: 'Pat',
+        );
+      }
+
+      await expectLater(
+        add(),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.code, 'code', 'participants_locked_paid')
+              .having(
+                (e) => e.message,
+                'message',
+                'participants cannot be added after a share is paid',
+              ),
+        ),
+      );
+      expect(calls, 1);
+      body = {
+        'code': 'future_conflict',
+        'error': 'A specific future conflict.',
+      };
+      await expectLater(
+        add(),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.message,
+            'message',
+            'A specific future conflict.',
+          ),
+        ),
+      );
+      body = {
+        'code': 'future_conflict',
+        'error': {'unsafe': 'not text'},
+      };
+      await expectLater(
+        add(),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.message,
+            'message',
+            'State changed or needs review. Refresh and deliberately retry.',
+          ),
+        ),
+      );
+    },
+  );
+
+  test(
     'strict participant commands send independent source body proof only on attached rename or decision',
     () async {
       final requests = <http.Request>[];

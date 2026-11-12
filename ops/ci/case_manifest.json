@@ -615,7 +615,8 @@
       "backend/internal/bill/TestCreationInsertAuditsShares",
       "backend/internal/bill/TestCreationRoundingRemainsAccountable",
       "backend/internal/tab/TestPostgresJSONTextValidation",
-      "backend/internal/tab/TestPostgresTextStorageBoundaries"
+      "backend/internal/tab/TestPostgresTextStorageBoundaries",
+      "backend/internal/tab/TestPostgresPaidParticipantAdditionConflict"
     ],
     "mobile": [
       "mobile/test/client_v1_bridge_test.dart",
@@ -681,7 +682,8 @@
       "web-bill-viewer/src/components/__tests__/LazyBillActions.test.ts",
       "web-bill-viewer/src/components/__tests__/RecordedShares.test.ts",
       "web-bill-viewer/src/lib/__tests__/participant-identity.test.ts",
-      "web-bill-viewer/src/components/__tests__/LazyBillSession.test.ts"
+      "web-bill-viewer/src/components/__tests__/LazyBillSession.test.ts",
+      "web-bill-viewer/src/components/__tests__/IdentityControls.test.ts"
     ]
   },
   "reports": {
@@ -1217,7 +1219,8 @@
       ],
       "mobile/test/participant_identity_widget_test.dart": [
         "(?:^| )duplicate\\ occurrence\\ selection\\ survives\\ label\\ rename\\ with\\ exact\\ source\\ participant\\ revision$",
-        "(?:^| )pending\\ request\\ shows\\ generation\\ and\\ deliberate\\ uncertain\\ decision\\ retry\\ keeps\\ original\\ body$"
+        "(?:^| )pending\\ request\\ shows\\ generation\\ and\\ deliberate\\ uncertain\\ decision\\ retry\\ keeps\\ original\\ body$",
+        "(?:^| )paid\\ participant\\ addition\\ shows\\ the\\ server\\ reason\\ without\\ a\\ retry\\ action$"
       ],
       "mobile/test/participant_legacy_history_test.dart": [
         "(?:^| )legacy\\ duplicate\\ blank\\ raw\\ share\\ rows\\ retain\\ exact\\ amounts\\ flags\\ and\\ IDs\\ after\\ import\\ without\\ guessed\\ zeros$",
@@ -1235,7 +1238,8 @@
         "(?:^| )unavailable\\ finalized\\ snapshot\\ never\\ substitutes\\ cached\\ current\\ person\\ totals$",
         "(?:^| )empty\\ bill\\ list\\ retains\\ blank\\ legacy\\ settlement\\ rows\\ and\\ exact\\ row\\ paid\\ control$",
         "(?:^| )invalid\\ settlement\\ history\\ retains\\ raw\\ rows\\ without\\ enabling\\ a\\ paid\\ mutation$",
-        "(?:^| )unavailable\\ history\\ with\\ no\\ bills\\ has\\ finite\\ deliberate\\ retry\\ and\\ legitimate\\ empty\\ recovery$"
+        "(?:^| )unavailable\\ history\\ with\\ no\\ bills\\ has\\ finite\\ deliberate\\ retry\\ and\\ legitimate\\ empty\\ recovery$",
+        "(?:^| )unknown\\ identity\\ conflict\\ codes\\ show\\ the\\ server\\ message\\ and\\ preserve\\ fallback$"
       ],
       "mobile/test/participant_v1_recovery_test.dart": [
         "(?:^| )actual\\ frozen\\ Drift9\\ attempted\\-v1\\ reopens\\ replays\\ original\\ HTTP\\ bytes\\ key\\ absent\\-header\\ and\\ lost201\\ again$"
@@ -1403,13 +1407,18 @@
         "(?:^| )participant\\ identity\\ label\\-only\\ and\\ missing\\ revision\\ writes\\ fail\\ before\\ HTTP;\\ stale\\ current\\ writes\\ do\\ not\\ automatically\\ retry$",
         "(?:^| )participant\\ identity\\ binding\\ generation\\ actor\\ proof\\ and\\ source\\ proof\\ stay\\ separate;\\ exact\\ deliberate\\ retry\\ retains\\ original\\ body$",
         "(?:^| )participant\\ identity\\ unavailable\\ and\\ raw\\ legacy\\ settlement\\ history\\ stay\\ explicit\\ rather\\ than\\ becoming\\ an\\ empty\\ result$",
-        "(?:^| )participant\\ identity\\ confirmed\\ members\\ group\\ by\\ scoped\\ ID\\ while\\ same\\-label\\ unbound\\ occurrences\\ stay\\ separate$"
+        "(?:^| )participant\\ identity\\ confirmed\\ members\\ group\\ by\\ scoped\\ ID\\ while\\ same\\-label\\ unbound\\ occurrences\\ stay\\ separate$",
+        "(?:^| )participant\\ identity\\ unknown\\ conflict\\ codes\\ show\\ the\\ server\\ message\\ without\\ automatic\\ retry$"
       ],
       "web-bill-viewer/src/components/__tests__/LazyBillSession.test.ts": [
         "^lazy\\ viewer\\ session\\ across\\ refreshed\\ receipt\\ props\\ preserves\\ typed\\ join\\ text\\ when\\ refreshed\\ participants\\ have\\ a\\ new\\ array\\ identity$",
         "^lazy\\ viewer\\ session\\ across\\ refreshed\\ receipt\\ props\\ preserves\\ deliberately\\ emptied\\ text\\ but\\ seeds\\ the\\ suggestion\\ for\\ a\\ different\\ tab$",
         "^lazy\\ viewer\\ session\\ across\\ refreshed\\ receipt\\ props\\ revalidates\\ the\\ selected\\ occurrence\\ without\\ repeating\\ membership\\ recovery\\ on\\ graph\\ refresh$",
         "^lazy\\ viewer\\ session\\ across\\ refreshed\\ receipt\\ props\\ clears\\ its\\ recovery\\ warning\\ after\\ successful\\ reauthentication\\ without\\ erasing\\ another\\ error$"
+      ],
+      "web-bill-viewer/src/components/__tests__/IdentityControls.test.ts": [
+        "(?:^| )participant\\ conflict\\ participants_locked_paid\\ displays\\ its\\ reason\\ and\\ offers\\ retry\\ only\\ when\\ meaningful$",
+        "(?:^| )participant\\ conflict\\ identity_revision_conflict\\ displays\\ its\\ reason\\ and\\ offers\\ retry\\ only\\ when\\ meaningful$"
       ]
     },
     "postgres": {
