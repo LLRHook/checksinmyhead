@@ -39,6 +39,14 @@ func (v *AssignmentInputs) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	values, canonical := canonicalAssignments(raw)
 	if !canonical {
 		values, err = safehttp.DecodeArray[AssignmentInput](raw, 100)
+		// The plain binder cannot admit NUL: escapes/control bytes fall back.
+		// Validate the stdlib fallback here, before returning decoded inputs.
+		for _, value := range values {
+			if strings.ContainsRune(value.PersonName, 0) {
+				values, err = nil, safehttp.ErrInvalidJSON
+				break
+			}
+		}
 	}
 	*v = values
 	return err

@@ -916,7 +916,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** fixed-pending-migration
-- **Fix:** Reject NUL at buffered and streaming decoded JSON boundaries with the existing route 400, and in selected access/member token readers during identity admission with 403 access_denied before any query. Preserve other controls, ignored fields, header precedence, old-client bodies and Unicode replacement; both JSON decoders replace malformed UTF-8 and surrogates without an extra UTF-8 scan. Regression covers 26 PostgreSQL body paths/fields with valid share history, map/interface cases and eight token routes/proofs with zero-query/state witnesses. Retain the 50000-entry allocation/performance cohorts.
+- **Fix:** Reject NUL in decoded buffered DTO text, streaming string binding and the assignment binder fallback with the existing route 400; selected access/member token readers reject it during identity admission with 403 access_denied before any query. Preserve other controls, ignored fields, header precedence, old-client bodies, named strings/numbers and Unicode replacement without a redundant UTF-8 scan. Regression covers 26 PostgreSQL body paths, valid share history, map/interface cases and eight token proofs with zero-query/state witnesses. The canonical streaming assignment binder keeps its existing byte checks; no second reflection walk over 50000 entries is required, retaining the allocation/time budgets.
 - **Docs:** docs/backend-api.md; docs/technical-overview.md
 
 ### [BUG-1794331911] Fix web viewer accessibility gaps on private bill pages

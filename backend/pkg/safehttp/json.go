@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"reflect"
+	"strings"
 	"time"
 )
 
@@ -42,11 +43,29 @@ func DecodeJSONStream(w http.ResponseWriter, r *http.Request, dst any, limit int
 // names, duplicate names, invalid UTF-8 replacement, null merging) and turns off
 // only legacy error reporting. That option makes the decoder validate and buffer
 // each complete value before binding it and continue after a type error; neither
-// changes which documents are accepted or the values they produce.
+// changes which documents are accepted or the values they produce. String
+// binding additionally rejects PostgreSQL-unrepresentable NUL.
 var (
-	streamOptions       = jsonv2.JoinOptions(json.DefaultOptionsV1(), json.ReportErrorsWithLegacySemantics(false))
+	streamOptions       = jsonv2.JoinOptions(json.DefaultOptionsV1(), json.ReportErrorsWithLegacySemantics(false), jsonv2.WithUnmarshalers(jsonv2.UnmarshalFromFunc(decodeJSONText)))
 	strictStreamOptions = jsonv2.JoinOptions(streamOptions, jsonv2.RejectUnknownMembers(true))
 )
+
+// Validate strings as the streaming decoder binds them. Using its ordinary
+// string decoder preserves named types, custom methods, null merging and the
+// v1 Unicode replacement options without walking the finished collection.
+func decodeJSONText(dec *jsontext.Decoder, dst any) error {
+	v := reflect.ValueOf(dst).Elem()
+	if v.Kind() != reflect.String {
+		return errors.ErrUnsupported
+	}
+	if err := jsonv2.UnmarshalDecode(dec, dst, jsonv2.WithUnmarshalers(nil)); err != nil {
+		return err
+	}
+	if strings.ContainsRune(v.String(), 0) {
+		return ErrInvalidJSON
+	}
+	return nil
+}
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, dst any, limit int64, strict, stream bool) (err error) {
 	defer func() {
@@ -83,9 +102,6 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, dst any, limit int64, st
 			if err != nil {
 				return jsonError(err)
 			}
-			return ErrInvalidJSON
-		}
-		if !validJSONText(reflect.ValueOf(dst)) {
 			return ErrInvalidJSON
 		}
 		return nil

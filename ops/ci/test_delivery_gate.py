@@ -1062,7 +1062,7 @@ class ManifestReportTests(unittest.TestCase):
                         children = assignment_children.get(test, followup_children.get(test, ()))
                     elif package == 'backend/pkg/safehttp':
                         children = {'TestStreamArrayStdlibCompatibility': ('nul',),
-                                    'TestDecodeJSONPostgresText': ('map_nul', 'any_nul', 'invalid_utf8_replaced', 'unpaired_surrogate_replaced')}.get(test, ())
+                                    'TestDecodeJSONPostgresText': ('map_nul', 'any_nul', 'invalid_utf8_replaced', 'unpaired_surrogate_replaced', 'map_key_nul', 'alias_nul', 'named_and_number')}.get(test, ())
                     elif package == 'backend/internal/tab':
                         children = {'TestPostgresJSONTextValidation': ('share_item_name',),
                                     'TestPostgresNULTokens': ('participant_query', 'paid_query', 'both_query', 'member_query', 'member_header', 'access_header', 'bill_read_member', 'tab_read_access')}.get(test, ())

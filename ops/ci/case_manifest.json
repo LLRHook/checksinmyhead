@@ -1766,7 +1766,10 @@
         "^go\\-default\\.jsonl:backend/pkg/safehttp/TestDecodeJSONPostgresText/map_nul$",
         "^go\\-default\\.jsonl:backend/pkg/safehttp/TestDecodeJSONPostgresText/any_nul$",
         "^go\\-default\\.jsonl:backend/pkg/safehttp/TestDecodeJSONPostgresText/invalid_utf8_replaced$",
-        "^go\\-default\\.jsonl:backend/pkg/safehttp/TestDecodeJSONPostgresText/unpaired_surrogate_replaced$"
+        "^go\\-default\\.jsonl:backend/pkg/safehttp/TestDecodeJSONPostgresText/unpaired_surrogate_replaced$",
+        "^go\\-default\\.jsonl:backend/pkg/safehttp/TestDecodeJSONPostgresText/map_key_nul$",
+        "^go\\-default\\.jsonl:backend/pkg/safehttp/TestDecodeJSONPostgresText/alias_nul$",
+        "^go\\-default\\.jsonl:backend/pkg/safehttp/TestDecodeJSONPostgresText/named_and_number$"
       ]
     }
   },
