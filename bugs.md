@@ -192,6 +192,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Log:**
   - 2026-11-05 Verification: Three unique P2 review gaps corrected;14 failing before cases/12 controls,26 after pass;5 independent removals discriminate. Correction review pending;broader B gate RED.
   - 2026-11-05 Integration: Manager/source check: POST participants is unbound-only; original plan60/approval33-34 fresh-self capability UNMET. Creator/source flow remains; frozen0003 unchanged.
+  - 2026-11-10 Sighting: 2026-11-10 V&V (5e877e36d968, D5 upgrade from production 81a564f): after migrations 0001-0003, GET /api/tabs/:id on legacy tabs returns 409 client_upgrade_required to clients that send no X-Billington-Identity-Version header (released v2.0.11+36 and App Store 1.4.0 send none). With header 2 it returns 200, but net_balances is null and net_balance_status is identity_review_required. On legacy graph1 tabs, member share-paid and name-only lazy claims return 409 identity_review_required (header 1 and 2), and docs/backend-api.md documents no review endpoint. Bills, members and settlements otherwise read identically. Local evidence: .vv/worktrees/vv-5e877e3/.vv/d5/logs/05c-compare.txt, 05e-legacy-writes.txt.
 
 ### [BUG-1793644506] Label local bill and tab removal accurately
 - [ ] **Severity:** med
@@ -610,6 +611,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** PG17.11 owned synthetic schemas, exact immutable prefix1/2 archives; raw phase-isolation failures, restarted4/4 and scalar1/1 control in identity0003-foundation-20261105/. HTTP sanitized logs expose unknown database class; scalar0A000 strongly supports mechanism, not direct HTTP error disclosure. Follow up with separately reviewed stable projections/connection strategy and real PG/final-binary proof; no blind mutation retry. See docs/reviews/2026-11-05-identity-foundation.md.
 - **Bump:** patch
 - **Status:** open
+- **Log:**
+  - 2026-11-10 Sighting: 2026-11-10 V&V (5e877e36d968, D5): the production binary 81a564f starts and serves against the upgraded schema (ledger 0001-0003) without refusing. Its AutoMigrate changed nothing, and verify still passes. Bills it writes after the upgrade carry identity_version=1/legacy_review with participant_id NULL, and the new reader returns 409 to header-1 clients for them (an unmerged branch tracks this as BUG-1794264953). The warm new reader kept serving (health 200) throughout. This is an observation, not overlap proof. Local evidence: .vv/worktrees/vv-5e877e3/.vv/d5/logs/08-*.
 
 ### [BUG-1793898428] Make Settings accent choices labeled and reachable at small widths
 - [x] **Severity:** med
@@ -826,6 +829,165 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** in-progress
 - **Fix:** Source fix complete; hosted confirmation open. The three runner.temp paths moved, values unchanged, from job env to the env of the steps that read them (signed-IPA action, upload, receipt). New GraphTests.test_workflow_expressions_use_only_documented_contexts applies GitHub's context-availability table and reusable-call contract to all nine workflows: it fails on the e0a2c18 file with Unrecognized named-value 'runner' at jobs.origin.env.IPA_DIR and passes now (28 rejected mutations, 4 accepted controls). validate_ios_graph binds each path to its reading steps and the authority step third and unconditional (7 mutations); each iOS target refuses empty, absent or disabled RELEASE_POLICY before any authenticated read. 43 gate, 17 iOS and 5+18 Ruby methods pass; automation row 1,422 records, 0 failed or skipped. testflight.yml call, inputs and six secrets unchanged. REMAINS: GitHub's own parse is unobserved until the first push carrying this file; accept when that push creates no failed ios-origin.yml run, then set fixed-pending-migration. actionlint not installed; nothing dispatched.
 - **Docs:** ops/ci/README.md; docs/reviews/2026-11-09-delivery-workflows.md
+
+### [BUG-1794331908] Show member devices that a shared tab was finalized
+- [ ] **Severity:** high
+- **Area:** mobile, tabs
+- **File(s):** mobile/lib/screens/tabs/tab_manager.dart; mobile/lib/screens/tabs/tab_detail_screen.dart
+- **Observation:** After the creator finalized a shared tab, a member's device kept showing it as open: no finalized badge, no settlements, and Add Receipt still opened bill entry. This persisted after re-fetch and after kill/relaunch on iPhone 17e (iOS 27.2); the creator's device was correct. The only writer of the local finalized flag is the creator's finalizeTab() path (tab_manager.dart:227); remote refresh never imports the server's finalized state.
+- **Expected:** Every member device shows a tab as finalized once the server reports it finalized: the badge and settlements are shown, and receipt entry is closed.
+- **Req:** VERIFICATION.md Stage 3 (trip attach, refresh mobile/web, finalize); docs/backend-api.md Finalization & Settlements
+- **Depends on:** none
+- **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/ios/17e-08..10 and NOTES.md. Steps: creator and member join the same tab on two simulators; creator finalizes; on the member device pull/refresh, then force-quit and relaunch.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794331909] Keep the landing and Join a Tab screens usable at accessibility text sizes
+- [ ] **Severity:** high
+- **Area:** mobile, a11y
+- **File(s):** mobile/lib/screens/landing_screen.dart; mobile/lib/screens/tabs/tabs_screen.dart
+- **Observation:** At the accessibility-extra-extra-extra-large content size (iPhone 17e, iOS 27.2) the landing screen overflows: RenderFlex overflow stripes, the bottom ~202 px is cut off and Tabs/Recent Bills are unreachable. The Join a Tab title also overflows (WCAG 1.4.4).
+- **Expected:** Both screens reflow or scroll at every supported text size, with all controls reachable.
+- **Req:** VERIFICATION.md Stage 3 (iOS large text); WCAG 2.2 1.4.4
+- **Depends on:** none
+- **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/ios/17e-01-landing-ax-xxxl.png, 17e-03-invite-landed.png. Steps: xcrun simctl ui <udid> content_size accessibility-extra-extra-extra-large, then launch the debug app.
+- **Bump:** patch
+- **Status:** open
+- **Cross-ref:** FEAT-1793644512
+
+### [BUG-1794331910] Reject NUL characters in names with 400 instead of 500
+- [ ] **Severity:** med
+- **Area:** backend, api, validation
+- **File(s):** backend/internal/bill/create_request.go; backend/internal/tab/handler.go; backend/internal/tab/participants.go
+- **Observation:** A name containing U+0000 returns 500 {"error":"an internal error occurred"}. Affected fields: bill, item and participant names on POST /api/bills, the tab name on POST /api/tabs, and display_name on POST /api/tabs/:id/join. Other control characters are accepted. No database text leaks into the response.
+- **Expected:** Input validation rejects NUL (and any text PostgreSQL cannot store) with the documented 400 error format before it reaches the database.
+- **Req:** docs/backend-api.md Error Format and HTTP resource policy; VERIFICATION.md Stage 4 (malformed input)
+- **Depends on:** none
+- **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/stage4-adv/evidence-nul-500.jsonl. curl -X POST localhost:8080/api/tabs -H 'Content-Type: application/json' -H 'X-Billington-Identity-Version: 2' -d '{"name":"a\u0000b","creator_display_name":"VV"}' returns 500.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794331911] Fix web viewer accessibility gaps on private bill pages
+- [ ] **Severity:** med
+- **Area:** web, a11y
+- **File(s):** web-bill-viewer/src/app/globals.css; web-bill-viewer/src/components/PersonShare.tsx; web-bill-viewer/src/components/RecordedShares.tsx
+- **Observation:** On /b Quick Split pages: the per-row expand buttons have no accessible name (WCAG 4.1.2). Secondary text (--text-secondary #86868b) measures 3.33, 3.62 and 4.35:1 on the page surfaces (1.4.3). Headings skip from h1 to h3 (1.3.1). Private pages share the generic 'Billington' title (2.4.2). Keyboard order and focus rings were fine.
+- **Expected:** Named controls, text contrast of at least 4.5:1, sequential heading levels and descriptive page titles on private bill and tab pages.
+- **Req:** VERIFICATION.md Stage 3 (browser keyboard/focus/contrast); WCAG 2.2 AA
+- **Depends on:** none
+- **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/web/01, web/12 and NOTES.md (headed Chrome via agent-browser). axe and 320 px reflow were not run.
+- **Bump:** patch
+- **Status:** open
+- **Cross-ref:** FEAT-1793644512
+
+### [BUG-1794331912] Show half-cent bill totals the same way their shares add up
+- [ ] **Severity:** med
+- **Area:** mobile, web, accounting
+- **File(s):** mobile/lib; web-bill-viewer/src/components; backend/pkg/models/bill.go
+- **Observation:** A bill whose stored total is 24.885 renders as $24.88 on the phone summary, in Recent Bills and on the web page. Its shares sum to $24.89, and the containing tab total shows $24.89. Money is carried as float64/double end to end, so a half-cent total rounds down in display.
+- **Expected:** One cent-exact total per bill (whole cents), so every surface shows the same total that the shares and tab sum to.
+- **Req:** VERIFICATION.md Stage 5 (conserved cent totals)
+- **Depends on:** none
+- **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/NOTES.md (bill 66); $10 item split 3.33x3. Related symptom on an unmerged branch: BUG-1794264955 (device vs published odd cents).
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794331913] Align the VERIFICATION.md recipe with CI and the local viewer
+- [ ] **Severity:** med
+- **Area:** docs, ci, tests
+- **File(s):** VERIFICATION.md
+- **Observation:** Appendix A never sets CORS_ORIGINS, so the 3100 viewer's browser calls to the 8080 API fail CORS preflight (403) and the Stage 3 browser journeys cannot run on a fresh stack. The Gate and iOS Python rows use plain python3, while CI uses a hash-locked CPython 3.12 venv; the PyYAML hash is for Ubuntu x86_64 only. The iOS row gives the report commands only as a link. The PG DSN example omits the password CI uses. Row D5 says 'follow FEAT-1793644505', which will not resolve once that entry migrates.
+- **Expected:** The recipe runs end to end on a fresh stack: the viewer origin is allowed, interpreter/dependency parity with CI is stated (including the macOS wheel exception), the commands are inline, and the D5 row points at the durable procedure in backend/README.md.
+- **Req:** protocol-v-and-v command fidelity; VERIFICATION.md Stage 0/2/3
+- **Depends on:** none
+- **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/stage1-review/command-fidelity.md, doc-sync.md; .vv/gui-walkthrough/cors.override.yml was needed to run the viewer journeys.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794331914] Stop telling clients to retry participant additions on bills with paid shares
+- [ ] **Severity:** low
+- **Area:** backend, api
+- **File(s):** backend/internal/bill/identity.go
+- **Observation:** POST /api/bills/:id/participants on a bill with any paid share returns 409 identity_revision_conflict ('refresh and try again') even at the current expected_revision. The block itself is documented (unpaid eligibility), but no retry can succeed.
+- **Expected:** A distinct, non-retryable error code/message stating that participants cannot be added after a share is paid.
+- **Req:** docs/backend-api.md Participant-reference contract
+- **Depends on:** none
+- **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/stage4-adv/evidence-paid-add-participant.jsonl. Create a wire2 bill, PATCH a share paid, then POST participants with the current expected_revision.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794331915] Apportion tax and tip the same way for partial claims on every route
+- [ ] **Severity:** low
+- **Area:** backend, accounting
+- **File(s):** backend/internal/bill
+- **Observation:** With 2 x 49.5% claims on a 40.00/4.00/6.00 bill, the non-lazy assignment route derives 24.80 each (49.60) while the lazy claim route derives 24.75 each (49.50). Sending either projection back is rejected with 400 invalid bill content. The mobile client blocks more than 0.01 unassigned, so only API clients reach this.
+- **Expected:** One documented apportionment rule for partial assignments across routes, matching the mobile formula.
+- **Req:** docs/backend-api.md Bills / Reference claims
+- **Depends on:** none
+- **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/stage4-adv/evidence-partial-apportion.jsonl.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794331916] Document that receipt uploads are typed by content, not the declared MIME type
+- [ ] **Severity:** low
+- **Area:** docs, api
+- **File(s):** docs/backend-api.md; backend/internal/receipt/handler.go
+- **Observation:** docs/backend-api.md:782 lists accepted MIME types, but the service detects the type from the bytes and ignores the declared part type. PNG bytes declared text/plain are parsed, and an image/svg+xml part is reported as 'unsupported image type: text/plain'.
+- **Expected:** The API reference states that the type is detected from content and what error each mismatch returns.
+- **Req:** docs/backend-api.md Receipt Parsing
+- **Depends on:** none
+- **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/stage4-adv/summary.md (class L).
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794331917] Fail the local workflow SIGINT tests with a clear prerequisite when SIGINT is ignored
+- [ ] **Severity:** low
+- **Area:** tests, tooling
+- **File(s):** scripts/test_local_workflow.py; scripts/test_local_workflow_probes.py
+- **Observation:** When the parent process ignores SIGINT (e.g. rows started under '( ... ) &' in a non-interactive shell, where Python reports SIG_IGN), test_int_keeps_status130, test_int_during_blocked_simulator_probe_reaps_descendants and test_tty_driver_int_interrupts_foreground_flutter fail with timeouts or rc 0. With SIGINT at its default, the same row passes 55/55.
+- **Expected:** The tests restore the default SIGINT disposition for their children, or fail immediately with an explicit prerequisite message.
+- **Req:** VERIFICATION.md Stage 2 (no environment-dependent failures)
+- **Depends on:** none
+- **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/local-gate/s2-local-workflow.run1-sigint-ignored.log versus s2-local-workflow-rerun.log. ( python3 ops/ci/unittest_report.py scripts/test_local_workflow.py ) & wait
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794331918] Resume or explain membership when rejoining a tab removed from this device
+- [ ] **Severity:** low
+- **Area:** mobile, ux, identity
+- **File(s):** mobile/lib/screens/tabs/tab_manager.dart
+- **Observation:** After 'Remove from this device', opening the same invite link again created a second member (role member) for the same person instead of resuming the stored membership. Everyone in the tab then sees a duplicate person. The API returns the existing membership (200) when a valid member token is supplied, and docs/privacy.md says local removal need not erase stored credentials.
+- **Expected:** If the device still holds the member credential, rejoin resumes that membership; otherwise the app says that joining again adds a new member.
+- **Req:** docs/privacy.md Local removal; docs/backend-api.md POST /api/tabs/:id/join
+- **Depends on:** none
+- **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/ios/43 and NOTES.md (member 58).
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794331919] Disambiguate same-named people in web tab balances
+- [ ] **Severity:** low
+- **Area:** web, ux
+- **File(s):** web-bill-viewer/src/components/NetBalances.tsx
+- **Observation:** The web tab BALANCES list shows rows such as 'Alex -> Alex' and 'Vic Sim17 -> Vic Sim17' for distinct people with the same display name, with no reference or suffix to tell them apart.
+- **Expected:** Balance rows distinguish same-named members (for example with the participant reference or a stable suffix), as the identity contract requires for two people called Alex.
+- **Req:** VERIFICATION.md D1 (two distinct people called Alex); BUG-1793644505 expectations
+- **Depends on:** none
+- **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/web/16.
+- **Bump:** patch
+- **Status:** open
+- **Cross-ref:** BUG-1793644505
+
+### [BUG-1794331920] Keep the Add Receipt button off the last per-person rows
+- [ ] **Severity:** low
+- **Area:** mobile, ui
+- **File(s):** mobile/lib/screens/tabs/tab_detail_screen.dart
+- **Observation:** On the tab detail screen the floating Add Receipt button covers the last Per Person rows, and the empty state lowercases the tab name.
+- **Expected:** Scrollable content clears the floating button, and the empty state shows the tab name as entered.
+- **Req:** VERIFICATION.md Stage 3 (GUI walkthrough)
+- **Depends on:** none
+- **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/ios/17e-10, ios/22.
+- **Bump:** patch
+- **Status:** open
 
 ### [BUG-1794501894] Configure delivery so main can publish and the iOS upload workflow can run
 - [ ] **Severity:** high
