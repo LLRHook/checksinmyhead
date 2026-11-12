@@ -526,6 +526,9 @@ existing DTOs continue ignoring unknown fields. Standalone paid updates and atta
 are capped at 4 KiB; other existing JSON mutations at 4 MiB. Existing byte excess
 returns 400 for compatibility. Assignment batches reject over 500 updates, 100
 assignments per item or 50,000 assignments in total before transforming DTOs.
+Name-based assignment updates (no identity header) are bound while the body is read:
+update 501, a malformed prefix or a wrong type is refused where it occurs, without
+reading the rest of the body. Accepted bodies, statuses and errors are unchanged.
 
 `TRUSTED_PROXY_CIDRS` defaults to empty (trust no forwarding proxy). Supplied values
 must be at most 32 canonical network CIDRs in 2 KiB, separated by commas, with no

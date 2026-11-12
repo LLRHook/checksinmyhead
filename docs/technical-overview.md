@@ -505,7 +505,13 @@ One process-wide eight-slot gate covers JSON mutation routes before decoding, wi
 not select admission. The shared decoder enforces one document/EOF under each caller's
 byte cap and retains strict versus ignored unknown-field contracts. Content DTO arrays
 count elements before typed slice allocation, then enforce aggregate bounds before
-model copies. Decoder/admission rejection expires body-read deadlines and closes
+model copies. Name-based assignment updates use `DecodeJSONStream` instead: the
+standard library's `encoding/json/v2` decoder binds the document in one pass with
+the `encoding/json` compatibility options, `DecodeArrayFrom` stops at update 501,
+and each assignment array is read once as a validated value. Arrays in the plain
+two-member shape are bound directly; every other array goes through the same
+`encoding/json` decode as before, so results do not depend on which path ran.
+Decoder/admission rejection expires body-read deadlines and closes
 HTTP/1 connections, bounding transport cleanup beyond the handler. Domain
 authorization, accounting and PostgreSQL atomicity stay in their
 existing owners. CreateTab has a 16 KiB body cap and sanitized code-point limits;

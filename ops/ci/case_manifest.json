@@ -374,7 +374,18 @@
       "backend/internal/bill/TestCreationInsertAuditsShares",
       "backend/internal/bill/TestCreationRoundingRemainsAccountable",
       "backend/internal/tab/TestIdentity0003SameNameMembersKeepSeparateDebts",
-      "backend/cmd/bill-service/TestProductionCurrencySupportMatrix"
+      "backend/cmd/bill-service/TestProductionCurrencySupportMatrix",
+      "backend/cmd/bill-service/TestMaxAssignmentUpdateAllocationBudget",
+      "backend/internal/bill/TestAssignmentStreamDecodeDifferential",
+      "backend/internal/bill/TestAssignmentCanonicalBindingOwnership",
+      "backend/internal/bill/TestAssignmentStreamDecodeGenerated",
+      "backend/internal/bill/TestAssignmentCanonicalBindingArbitraryBytes",
+      "backend/internal/bill/TestAssignmentIdentityKeyAppendMatches",
+      "backend/internal/bill/TestAssignmentValidationMatchesBaseline",
+      "backend/pkg/safehttp/TestStreamSingleJSONDocument",
+      "backend/pkg/safehttp/TestStreamArrayStopsAtLimit",
+      "backend/pkg/safehttp/TestStreamArrayStdlibCompatibility",
+      "backend/internal/receipt/TestHandlerFailuresMakeOneProviderAttempt"
     ],
     "postgres": [
       "backend/cmd/bill-service/TestA1PostgresProductionJSON",
@@ -623,7 +634,14 @@
       "backend/internal/tab/TestIdentity0003SameNameMembersKeepSeparateDebts",
       "backend/cmd/bill-service/TestPostgresIdentity0003FreshParticipantIsUnboundUntilApproved",
       "backend/cmd/bill-service/TestProductionCurrencySupportMatrix",
-      "backend/cmd/bill-service/TestPostgresDisplayConversionNeverRewritesFrozenQuote"
+      "backend/cmd/bill-service/TestPostgresDisplayConversionNeverRewritesFrozenQuote",
+      "backend/cmd/bill-service/TestMaxAssignmentUpdateAllocationBudget",
+      "backend/internal/bill/TestAssignmentStreamDecodeDifferential",
+      "backend/internal/bill/TestAssignmentCanonicalBindingOwnership",
+      "backend/internal/bill/TestAssignmentStreamDecodeGenerated",
+      "backend/internal/bill/TestAssignmentCanonicalBindingArbitraryBytes",
+      "backend/internal/bill/TestAssignmentIdentityKeyAppendMatches",
+      "backend/internal/bill/TestAssignmentValidationMatchesBaseline"
     ],
     "mobile": [
       "mobile/test/client_v1_bridge_test.dart",
