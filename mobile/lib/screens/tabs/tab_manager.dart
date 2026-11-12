@@ -88,6 +88,8 @@ class TabManager extends ChangeNotifier {
   }
 
   Future<bool> addBillsToTab(int tabId, List<int> billIds) async {
+    final tab = await _db.getTabById(tabId);
+    if (tab == null || tab.finalized) return false;
     var complete = true;
     for (final id in billIds) {
       try {
@@ -192,6 +194,18 @@ class TabManager extends ChangeNotifier {
     }
   }
 
+  /// Finalization is one-way; stale or incomplete reads cannot reopen a tab.
+  Future<AppTab?> recordRemoteFinalization(
+    int localId,
+    Map<String, dynamic> remote,
+  ) async {
+    if (remote['finalized'] == true) {
+      await _db.updateTab(localId, const TabsCompanion(finalized: Value(true)));
+      notifyListeners();
+    }
+    return getTabById(localId);
+  }
+
   Future<bool> finalizeTab(int localId) async {
     try {
       final tabData = await _db.getTabById(localId);
@@ -257,7 +271,8 @@ class TabManager extends ChangeNotifier {
           saved.id,
           TabsCompanion(memberId: Value(me.memberId), role: Value(me.role)),
         );
-        return _tabDataToAppTab((await _db.getTabById(saved.id))!);
+        final remote = await apiService.getTabData(tabId, accessToken);
+        return recordRemoteFinalization(saved.id, remote);
       }
 
       final joinResponse = await apiService.joinTab(
@@ -281,6 +296,7 @@ class TabManager extends ChangeNotifier {
           memberToken: Value(joinResponse.memberToken),
           memberId: Value(joinResponse.memberId),
           role: Value(joinResponse.role),
+          finalized: Value(tabData['finalized'] == true),
           isRemote: const Value(true),
           createdAt: Value(DateTime.now()),
         ),

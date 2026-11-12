@@ -831,16 +831,19 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Docs:** ops/ci/README.md; docs/reviews/2026-11-09-delivery-workflows.md
 
 ### [BUG-1794331908] Show member devices that a shared tab was finalized
-- [ ] **Severity:** high
+- [x] **Severity:** high
 - **Area:** mobile, tabs
-- **File(s):** mobile/lib/screens/tabs/tab_manager.dart; mobile/lib/screens/tabs/tab_detail_screen.dart
+- **File(s):** mobile/lib/screens/tabs/tab_manager.dart; mobile/lib/screens/tabs/tab_detail_screen.dart; mobile/test/member_tab_finalization_test.dart; ops/ci/case_manifest.json; docs/technical-overview.md
 - **Observation:** After the creator finalized a shared tab, a member's device kept showing it as open: no finalized badge, no settlements, and Add Receipt still opened bill entry. This persisted after re-fetch and after kill/relaunch on iPhone 17e (iOS 27.2); the creator's device was correct. The only writer of the local finalized flag is the creator's finalizeTab() path (tab_manager.dart:227); remote refresh never imports the server's finalized state.
 - **Expected:** Every member device shows a tab as finalized once the server reports it finalized: the badge and settlements are shown, and receipt entry is closed.
 - **Req:** VERIFICATION.md Stage 3 (trip attach, refresh mobile/web, finalize); docs/backend-api.md Finalization & Settlements
 - **Depends on:** none
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/ios/17e-08..10 and NOTES.md. Steps: creator and member join the same tab on two simulators; creator finalizes; on the member device pull/refresh, then force-quit and relaunch.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** fixed-pending-migration
+- **Fix:** Persist literal server finalized=true during member refresh before membership or receipt processing and on new/existing-member joins; never clear finalized from stale or failed reads. Use existing server settlement history and refuse stale receipt-entry callbacks and finalized add-existing selections; existing receipt owner now sees persisted finalization for pending attachments. Eleven fake-API/real-Drift/widget cases cover refresh, exact settlements, offline file reopen, stale/failed/malformed reads, removed membership, joins, picker races, pending saves and creator behavior; nine regressions fail on 09cf727a, two boundary/creator controls pass, and five guard mutations are detected. Full mobile baseline: 599 passed, zero failed/skipped; final result retained in L8 evidence.
+- **Docs:** docs/technical-overview.md documents server-confirmed one-way finalization, server settlements and receipt-entry guards; HTTP contract and Drift schema unchanged.
 
 ### [BUG-1794331909] Keep the landing and Join a Tab screens usable at accessibility text sizes
 - [ ] **Severity:** high

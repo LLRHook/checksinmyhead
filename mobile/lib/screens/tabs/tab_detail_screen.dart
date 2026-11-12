@@ -113,6 +113,12 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
             _currentTab.backendId!,
             _currentTab.accessToken!,
           );
+          _currentTab =
+              await _tabManager.recordRemoteFinalization(
+                _currentTab.id!,
+                remote,
+              ) ??
+              (throw StateError('Tab unavailable'));
           if (_currentTab.memberToken != null) {
             final me = await _apiService.getCurrentMember(
               _currentTab.backendId!,
@@ -323,6 +329,8 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
   }
 
   Future<void> _addBillsToTab() async {
+    if (await _refuseFinalizedReceiptEntry()) return;
+    if (!mounted) return;
     HapticFeedback.mediumImpact();
 
     final availableBills =
@@ -402,7 +410,24 @@ class _TabDetailScreenState extends State<TabDetailScreen> {
     }
   }
 
+  Future<bool> _refuseFinalizedReceiptEntry() async {
+    final saved =
+        _currentTab.id == null
+            ? null
+            : await _tabManager.getTabById(_currentTab.id!);
+    if (!mounted) return true;
+    if (saved != null) setState(() => _currentTab = saved);
+    if (!_currentTab.isFinalized) return false;
+    _showSnackBar(
+      'This tab is finalized. New receipts cannot be added.',
+      isError: true,
+    );
+    return true;
+  }
+
   Future<void> _addReceiptToTab() async {
+    if (await _refuseFinalizedReceiptEntry()) return;
+    if (!mounted) return;
     HapticFeedback.mediumImpact();
     final participants =
         _members
