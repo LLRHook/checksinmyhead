@@ -1,5 +1,10 @@
+import type { Metadata } from "next";
 import { FaLock } from "react-icons/fa6";
 import BillPageClient from "@/components/BillPageClient";
+
+export const metadata: Metadata = {
+  title: "Shared bill | Billington",
+};
 
 export default async function BillPage({
   params,

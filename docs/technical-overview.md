@@ -232,7 +232,8 @@ use explicit create-unbound/request/approval and never fabricate confirmation.
   `(public)` group owns `/` and `/privacy-policy` at `https://billingtonapp.vercel.app`.
   Its literal site configuration, semantic policy JSX, scoped CSS and brand-only
   social image need no API, private component or browser storage. Root metadata
-  remains generic/noindex; only public pages override indexing and add canonical/
+  remains generic/noindex; private route titles describe only the shared bill/tab
+  page type without resource names or bearer data. Only public pages override indexing and add canonical/
   social metadata. Homepage-only SoftwareApplication data uses visible claims.
   Robots permits private crawling so noindex can be read; sitemap lists only the
   two public documents, without dates or resource enumeration.
@@ -302,6 +303,11 @@ Save/resume rejects mismatched snapshot/wire versions before a network mutation,
 without replacing the stored bytes or key. Finalized tab history reads retain their
 review status and exact recorded settlement rows even when no receipt list is
 available; failed reads offer an explicit retry and never imply an empty balance.
+Mobile tab refresh and join persist the server's `finalized: true` in the existing
+Drift flag before receipt imports; stale open responses and failed reads cannot
+reopen it. Members use the same server settlement history as creators. Receipt
+entry and existing-bill selection recheck saved finalization, including an already
+open picker; pending attachments retain the receipt without adding it to a closed tab.
 Receipt read/cache/parse failures always clear loading and withhold person totals and
 finalization until a complete read succeeds. Browser join text is owned by the current
 bill/tab session; participant-graph refresh only revalidates selection, while member
@@ -353,7 +359,11 @@ turn an invalid supplied capability into replacement membership.
 
 The server now uses scoped participant references for creation, claims, paid authority,
 renames, binding generations/receipts, gross/net and snapshots. Confirmed members group
-by tab/member ID; unbound/pending guests remain distinct per bill/participant. Checked
+by tab/member ID; unbound/pending guests remain distinct per bill/participant. Web
+net balance rows keep unique labels unchanged; colliding labels use the existing
+`· member #ID` or `· receipt BILL #PARTICIPANT` display convention on a smaller
+secondary line. Only rows with references wrap at narrow widths to keep amounts
+and payment controls inside the card; other rows retain their existing layout. Checked
 USD reads preserve explicit frozen zero and expose unavailable payer/valuation states.
 The earlier positive-only USD fallback source defect is corrected; native Keychain
 qualification, old-writer drain and full combined journeys remain open. Supported mobile/browser reference clients are implemented; their [synthetic journey](../mobile/test/live/README.md) is scoped functional evidence.

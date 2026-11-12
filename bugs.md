@@ -25,7 +25,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-05 Source acceptance: Driver reconciles completed scoped reviews/current clean committed-source proof; source criteria met, pending integrated V&V migration only. Historical handoffs remain in Git/dated notes. Deployment, public clients and whole acceptance are separate/RED.
 
 ### [BUG-1793644498] Restrict public bill creation to authorized input
-- [ ] **Severity:** crit
+- [x] **Severity:** crit
 - **Area:** backend, security
 - **File(s):** backend/internal/bill/{handler,service}.go; backend/pkg/models/bill.go; backend/internal/bill/{handler,service}_test.go
 - **Observation:** CreateBill binds models.Bill, allowing client-supplied tab/payer/nested accounting state without tab authorization.
@@ -39,13 +39,14 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** POST synthetic negative total with victim tab_id against isolated DB, as in review reproduction. Review sibling create/update routes. UI/client compatibility must be demonstrated.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
-- **Fix:** Auth/client evidence: docs/reviews/2026-11-03-client-validation-correction.md. Driver Flutter237 pass; re-review/public bridge/integrated gates pending. 2026-11-06 assignment decoding source preserves exact old value/presence/null/duplicate/error behavior. Source0/0; candidate73 plus corrected goldens81 PASS across two scoped rows; baseline73 and four intended-negative/healthy controls retained. Original setupRED remains; no precision, PG, performance or integrated acceptance.
+- **Status:** fixed-pending-migration
+- **Fix:** Bill creation decodes an explicit request type that rejects server-owned tab, payer, id, paid and derived share fields, so a public create cannot choose or change another tab. Proof on main: TestAuthorizationPublicCreateCannotChooseVictimTab and TestAuthorizationPublicCreateRejectsPrivilegedFieldsIndividually (handler and repository), TestPostgresLifecycleActualMobileCreationThenFinalize (the ten real mobile creation bodies on PostgreSQL), and the negative-total cases in backend/internal/bill/create_request_test.go. All are required cases in ops/ci/case_manifest.json. Earlier history is in the Log and in docs/reviews/2026-11-03-client-validation-correction.md.
 - **Docs:** docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-02-authorization-batch.md; docs/reviews/2026-11-02-authorization-corrections.md; docs/reviews/2026-11-03-client-v1-bridge.md; docs/reviews/2026-11-03-client-validation-correction.md; docs/reviews/2026-11-06-assignment-snapshot.md
 - **Log:**
   - 2026-11-02 Validation: Driver-approved AUTH_CORRECTION_APPROVAL.md findings 1-3 implemented in 28eab76. Six safe before leaf failures; five temporary overlay variants yield 18 expected failing leaf cases. Extreme-denominator arithmetic tested only as bounded pure calculation, never HTTP. Real PostgreSQL covers safe money boundaries and calculation-error rollback. Five actual mobile-builder tests pass with --no-pub; this does not resolve locked acquisition. Keep in-progress; no CHANGELOG migration.
   - 2026-11-03 Validation: 43772a7 client slice: real widget/provider upload plus 30/31-rune entry/builder and validation checks; 228 Flutter/54 web pass, zero skips. See docs/reviews/2026-11-03-client-v1-bridge.md; broader acceptance unchanged.
   - 2026-11-06 Source: 2026-11-06 assignment decoding source preserves exact old value/presence/null/duplicate/error behavior. Source0/0; candidate73 plus corrected goldens81 PASS across two scoped rows; baseline73 and four intended-negative/healthy controls retained. Original setupRED remains; no precision, PG, performance or integrated acceptance.
+  - 2026-11-12: Independent review on 2026-11-12 (driver run testflight-1112) found Expected items 1 to 3 already met by the code on main and item 4 already proved by the existing tests named in Fix; under a non-strict-decoding mutant the existing handler suite fails 51 of 60 cases. Pull request #166, which only repeated those tests on PostgreSQL, was closed as a duplicate. Moved to fixed-pending-migration on that evidence.
 
 ### [BUG-1793644499] Inject the frozen exchange-rate provider at startup
 - [x] **Severity:** high
@@ -880,19 +881,22 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Docs:** ops/ci/README.md; docs/reviews/2026-11-09-delivery-workflows.md
 
 ### [BUG-1794331908] Show member devices that a shared tab was finalized
-- [ ] **Severity:** high
+- [x] **Severity:** high
 - **Area:** mobile, tabs
-- **File(s):** mobile/lib/screens/tabs/tab_manager.dart; mobile/lib/screens/tabs/tab_detail_screen.dart
+- **File(s):** mobile/lib/screens/tabs/tab_manager.dart; mobile/lib/screens/tabs/tab_detail_screen.dart; mobile/test/member_tab_finalization_test.dart; ops/ci/case_manifest.json; docs/technical-overview.md
 - **Observation:** After the creator finalized a shared tab, a member's device kept showing it as open: no finalized badge, no settlements, and Add Receipt still opened bill entry. This persisted after re-fetch and after kill/relaunch on iPhone 17e (iOS 27.2); the creator's device was correct. The only writer of the local finalized flag is the creator's finalizeTab() path (tab_manager.dart:227); remote refresh never imports the server's finalized state.
 - **Expected:** Every member device shows a tab as finalized once the server reports it finalized: the badge and settlements are shown, and receipt entry is closed.
 - **Req:** VERIFICATION.md Stage 3 (trip attach, refresh mobile/web, finalize); docs/backend-api.md Finalization & Settlements
 - **Depends on:** none
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/ios/17e-08..10 and NOTES.md. Steps: creator and member join the same tab on two simulators; creator finalizes; on the member device pull/refresh, then force-quit and relaunch.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** fixed-pending-migration
+- **Fix:** Persist literal server finalized=true during member refresh, before membership or receipt processing, and on new and existing-member joins; never clear finalized from stale or failed reads. A re-join of a tab already on the device keeps the saved tab when the tab read fails. Use the existing server settlement history and refuse receipt entry on a finalized tab: Add Receipt re-reads the saved state first, the add-existing picker re-checks after a selection, and the receipt owner sees persisted finalization for pending attachments. mobile/test/member_tab_finalization_test.dart: 14 fake-API, real-Drift and widget cases cover refresh, exact settlements, offline file reopen, stale, failed and malformed reads, a stale open screen, removed membership, joins (literal true only; failed tab read), the picker race, pending saves and creator behavior. Full mobile suite at this change: 640 passed, none failed or skipped.
+- **Docs:** docs/technical-overview.md documents server-confirmed one-way finalization, server settlements and receipt-entry guards; HTTP contract and Drift schema unchanged.
 
 ### [BUG-1794331909] Keep the landing and Join a Tab screens usable at accessibility text sizes
-- [ ] **Severity:** high
+- [x] **Severity:** high
 - **Area:** mobile, a11y
 - **File(s):** mobile/lib/screens/landing_screen.dart; mobile/lib/screens/tabs/tabs_screen.dart
 - **Observation:** At the accessibility-extra-extra-extra-large content size (iPhone 17e, iOS 27.2) the landing screen overflows: RenderFlex overflow stripes, the bottom ~202 px is cut off and Tabs/Recent Bills are unreachable. The Join a Tab title also overflows (WCAG 1.4.4).
@@ -901,8 +905,13 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/ios/17e-01-landing-ax-xxxl.png, 17e-03-invite-landed.png. Steps: xcrun simctl ui <udid> content_size accessibility-extra-extra-extra-large, then launch the debug app.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** fixed-pending-migration
+- **Fix:** Preserve the landing column spacing with a scrollable SliverFillRemaining and wrapping action labels; use ScrollPhysics so fitting content does not move on drag while overflowing content scrolls, retaining the primary controller. Constrain the shared Join a Tab title and scroll its form above the keyboard within safe insets. Cover both entry paths with real user drags and taps in 54 widget cases on 320x568 and 390x844 at all nine iOS scales from 1 to 53/17, plus one iOS/Android fitting-versus-overflow regression (55 cases total), including keyboard and invalid/valid submit boundaries.
+- **Docs:** none; existing design, architecture and API documentation remains accurate; no contract or copy changes.
 - **Cross-ref:** FEAT-1793644512
+- **Log:**
+  - 2026-11-12 Fix: Driver-approved review fixes F1/F2: fitting landing content stays stationary during a real drag; reach hidden controls with user drags rather than ensureVisible. Mutation checks reject disabled landing scrolling (11 failures), disabled join scrolling (22), removed Quick Split Flexible (14), and removed fitting-content physics (1). Default geometry matches main 48a13f7 on five landing displays and three join displays with/without keyboard.
 
 ### [BUG-1794331910] Reject NUL characters in names with 400 instead of 500
 - [x] **Severity:** med
@@ -920,7 +929,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Docs:** docs/backend-api.md; docs/technical-overview.md
 
 ### [BUG-1794331911] Fix web viewer accessibility gaps on private bill pages
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** web, a11y
 - **File(s):** web-bill-viewer/src/app/globals.css; web-bill-viewer/src/components/PersonShare.tsx; web-bill-viewer/src/components/RecordedShares.tsx
 - **Observation:** On /b Quick Split pages: the per-row expand buttons have no accessible name (WCAG 4.1.2). Secondary text (--text-secondary #86868b) measures 3.33, 3.62 and 4.35:1 on the page surfaces (1.4.3). Headings skip from h1 to h3 (1.3.1). Private pages share the generic 'Billington' title (2.4.2). Keyboard order and focus rings were fine.
@@ -929,8 +938,13 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/web/01, web/12 and NOTES.md (headed Chrome via agent-browser). axe and 320 px reflow were not run.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** fixed-pending-migration
+- **Fix:** Named share controls and sequential private headings; static Shared bill/tab titles preserve metadata isolation. Accepted review option B uses #6e6e73 light and #98989d dark, removes whole-card paid opacity in shares/settlements/totals and retains the two instruction fade removals approved by the driver. Locked item status retains full secondary contrast while controls/names dim; split icons use the existing dark hover surface. Rendered instruction/paid-state tests and computed contrast cover these surfaces.
+- **Docs:** DESIGN_SYSTEM.md; web-bill-viewer/README.md; docs/technical-overview.md
 - **Cross-ref:** FEAT-1793644512
+- **Log:**
+  - 2026-11-12 Review: Driver accepted L16 review option B and F2/F3; corrected earlier attribution: the driver, not Victor, approved the instruction-opacity change.
 
 ### [BUG-1794331912] Show half-cent bill totals the same way their shares add up
 - [ ] **Severity:** med
@@ -1023,7 +1037,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** open
 
 ### [BUG-1794331919] Disambiguate same-named people in web tab balances
-- [ ] **Severity:** low
+- [x] **Severity:** low
 - **Area:** web, ux
 - **File(s):** web-bill-viewer/src/components/NetBalances.tsx
 - **Observation:** The web tab BALANCES list shows rows such as 'Alex -> Alex' and 'Vic Sim17 -> Vic Sim17' for distinct people with the same display name, with no reference or suffix to tell them apart.
@@ -1032,8 +1046,13 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/web/16.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** fixed-pending-migration
+- **Fix:** Scoped collision detection covers the entire balance list, including Your/All grouping, name-only history and surrounding whitespace. Existing member/receipt references render on a smaller secondary line; only suffixed rows wrap and protect amount/payment groups at narrow widths. Unique rows, rows/amounts/order and payment conditions remain unchanged. Added mutation regressions and built-CSS browser geometry proof at 320/360/375 px with Alex and long names.
+- **Docs:** docs/technical-overview.md
 - **Cross-ref:** BUG-1793644505
+- **Log:**
+  - 2026-11-12 Review: Driver accepted L16 F1/F3: fix suffixed-row reflow and add grouping/history/whitespace mutation coverage.
 
 ### [BUG-1794331920] Keep the Add Receipt button off the last per-person rows
 - [ ] **Severity:** low
@@ -1274,5 +1293,115 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Req:** BUG-1794045427 follow-up; docs/technical-overview.md durable history contract
 - **Depends on:** owner product decision
 - **Repro / Notes:** Local synthetic stack, 2026-11-09: seed a tab with 31 receipts through the API, open billington://tab/<id>?t=<token> on a simulator and join. Screenshots: .vv/ui-inspection-20261109/recheck/E3-cache-error.png, layout/b3-capacity-loaded.png. The API returned all 31 receipts for the same tab.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794510137] Make four timing-dependent tests reliable under load
+- [ ] **Severity:** med
+- **Area:** tests, mobile, backend, tooling
+- **File(s):** mobile/test/receipt_native_io_test.dart; scripts/test_local_workflow.py (ProbeTests); backend safehttp cancel test (TestA1CancelInterruptsJSONRead)
+- **Observation:** Four tests fail now and then when the machine is busy and pass when run alone: Flutter 'native headers stall timeout terminates upstream and joins fixture cleanup' (its 2-second fixture wait expires); local-workflow ProbeTests.test_blocked_container_inspection_has_a_real_deadline and ProbeTests.test_blocked_simulator_boot_has_a_real_deadline (setup times out before the probe boundary); Go TestA1CancelInterruptsJSONRead. Seen on 2026-11-12 in five separate full local runs during driver run testflight-1112, each time with other suites running at once; every isolated re-run passed.
+- **Expected:** Each test passes in a full local gate run with other suites running at the same time, or its deadline is derived from something the test controls rather than wall-clock margin. No deadline is simply lengthened without showing the test still detects the hang it guards against.
+- **Req:** VERIFICATION.md rule 1 (any stage failure is RED), so one flaky failure turns a verification run red
+- **Depends on:** none
+- **Repro / Notes:** Run the VERIFICATION.md Stage 2 rows for Go, Flutter and local-workflow concurrently on one machine. Isolated re-run, for example: python3 ops/ci/unittest_report.py scripts/test_local_workflow.py ProbeTests.test_blocked_simulator_boot_has_a_real_deadline.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794510138] Release builds never publish a bill
+- [ ] **Severity:** high
+- **Area:** mobile, release, publication
+- **File(s):** mobile/lib/services/api_service.dart (supportsCreationReplay); docs/mobile-save-verification.md; docs/backend-api.md; mobile/README.md; docs/technical-overview.md
+- **Observation:** ApiService.supportsCreationReplay() returns false whenever kReleaseMode is true, so a release build saves every bill as pending and never sends it: no share link, nothing for other people to open. The gate was put in on purpose until production can replay a creation safely; its stated preconditions (a replay-capable production backend, source and capability floors in RELEASE_POLICY, the old writer drained, signed-device qualification, external clearance) are all unmet on 2026-11-12. Production still runs commit 81a564f, which cannot replay.
+- **Expected:** A release build publishes bills once the production backend can replay creations, by a mechanism the owner chooses (remove the release-mode line and rely on never rolling production back below the replay revision, or have the server advertise the capability). The documents that describe the gate say what is true after the change. Bills saved as pending by a gated build are published by the next build.
+- **Req:** none; owner decision pending (driver run testflight-1112, decision D1)
+- **Depends on:** BUG-1794501894 (delivery configured and backend published)
+- **Repro / Notes:** Read mobile/lib/services/api_service.dart supportsCreationReplay. The release-mode branch cannot run under flutter test; mobile/test/save_receipt_test.dart --plain-name capability shows a missing capability leads to no POST.
+- **Bump:** minor
+- **Status:** open
+
+### [BUG-1794510139] Saving fails after about 30 bills that cannot be published
+- [ ] **Severity:** med
+- **Area:** mobile, storage
+- **File(s):** mobile/lib/database/database.dart (_makeReceiptRoom, maxRecentBills); mobile/lib/screens/quick_split/bill_entry/components/bottom_bar.dart
+- **Observation:** Recent bills are capped at 30 rows and only published or linked rows are evicted to make room. When about 30 rows are pending or referenced, the next Done fails with 'Could not save on this device. Review the receipt and retry.' On a build whose publication gate is closed every saved bill stays pending, so a tester reaches this after about 30 bills; offline use can reach it too.
+- **Expected:** A person can keep saving bills while earlier ones are waiting to be published, or is told clearly that unpublished bills must be published or removed first. No saved bill is dropped silently.
+- **Req:** none
+- **Depends on:** none
+- **Repro / Notes:** With publication unavailable, save 31 bills. See database.dart maxRecentBills = 30 and the eviction rule in _makeReceiptRoom.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794510140] Web tab page overflows sideways at 320 px in the per-person totals
+- [ ] **Severity:** low
+- **Area:** web, ui, layout
+- **File(s):** web-bill-viewer/src/components/TabPersonTotals.tsx
+- **Observation:** At a 320 px viewport the tab page is 350 px wide: a per-person totals amount ends at about x=350, so the page scrolls sideways (WCAG 1.4.10). The bill page stays at 320. Measured on 2026-11-12 on the built viewer; the component was not changed by the accessibility fix for BUG-1794331911.
+- **Expected:** The tab page has no horizontal scrolling at 320 px; per-person totals wrap or shrink within the card with every amount visible.
+- **Req:** none; WCAG 1.4.10 Reflow
+- **Depends on:** none
+- **Repro / Notes:** Open a tab with several people at a 320 px viewport and compare document scrollWidth with innerWidth.
+- **Bump:** patch
+- **Status:** open
+- **Log:**
+  - 2026-11-12 Sighting: 2026-11-12 re-check of the Balances fix: a Balances row with no reference and a five-digit amount ('Jo -> Kim $9,876.54') also overflows at 320 px (amount ends at x=321, card at 304), on main as well. Cover it with this ticket's narrow-width work.
+
+### [BUG-1794510141] Same-named people look identical on the web bill page and in tab settlements
+- [ ] **Severity:** med
+- **Area:** web, identity, ui
+- **File(s):** web-bill-viewer/src/components/PersonShare.tsx; web-bill-viewer/src/components/SettlementCard.tsx; web-bill-viewer/src/components/BillPageClient.tsx
+- **Observation:** Two different people with the same display name are shown as identical rows on the private bill page (two 'Alex' shares, and two expand buttons both named 'Share details for Alex') and in the tab Settlements list. BUG-1794331919 fixed this only for the tab Balances list. These are also screens where people decide what to pay.
+- **Expected:** Wherever the viewer lists people, two people whose names collide are told apart with the reference the product already uses (member or receipt participant), and people with unique names look as they do now. Amounts, order and payment actions do not change.
+- **Req:** none; participant identity contract in docs/backend-api.md
+- **Depends on:** BUG-1794331919
+- **Repro / Notes:** Create a bill with two participants named Alex and open its share link; open a finalized tab with two members named Alex and read Settlements.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794510142] Privacy policy describes the old production service
+- [ ] **Severity:** med
+- **Area:** web, privacy, docs
+- **File(s):** web-bill-viewer/src/app/(public)/privacy-policy/page.tsx; docs/privacy.md
+- **Observation:** The published privacy policy says in four places what 'the service as it currently runs' does (it does not accept receipt photos, it contains an older rate lookup, it can record database statements) and ends a paragraph with 'been deployed'. Those sentences describe production at commit 81a564f. They become false the moment the backend is published from main.
+- **Expected:** When the backend from main is published, the policy and docs/privacy.md describe that service, in the same change or immediately after, checked against what the published revision does with photos, rate providers and logs.
+- **Req:** none
+- **Depends on:** BUG-1794501894 (backend published)
+- **Repro / Notes:** Search the policy page for 'currently runs'.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794510235] Join a Tab error message is shown off screen at the largest text size
+- [ ] **Severity:** low
+- **Area:** mobile, ui, accessibility
+- **File(s):** mobile/lib/screens/tabs/tabs_screen.dart
+- **Observation:** On a 320x568 display at the largest iOS accessibility text size (scale 53/17), with no display name set, submitting a valid link in Join a Tab shows the floating 'Please set your name in Settings first.' message laid out from y=-53 to y=532: Flutter reports 'Floating SnackBar presented off screen', and in a release build the person sees a screen-height dark box with the message clipped at the top for about four seconds while joining appears to do nothing. Present on main before and after the fix for BUG-1794331909.
+- **Expected:** The message is fully readable at every supported text size on the smallest supported display, and the person can tell why joining did not proceed.
+- **Req:** none; WCAG 1.4.4 Resize Text
+- **Depends on:** none
+- **Repro / Notes:** Widget test at 320x568, text scale 53/17, empty display name: open Join a Tab, enter a valid link, submit. Found by the author and confirmed by the reviewer of pull request #187 on 2026-11-12.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794512495] Venmo pay buttons in the web viewer have no accessible name
+- [ ] **Severity:** med
+- **Area:** web, accessibility
+- **File(s):** web-bill-viewer/src/components/TabPersonTotals.tsx; web-bill-viewer/src/components/NetBalances.tsx
+- **Observation:** The Venmo pay buttons in the tab per-person totals and in the Balances list show only the Venmo wordmark and expose no accessible name, so a screen reader announces an unnamed button (WCAG 4.1.2). Found on 2026-11-12 during the re-check of the fix for BUG-1794331911; present on main before that fix. The Balances button is not reachable today because the tab page does not pass the viewer's member id.
+- **Expected:** Each pay button has an accessible name that says what it does and for whom, for example 'Pay Alex with Venmo'.
+- **Req:** none; WCAG 4.1.2 Name, Role, Value
+- **Depends on:** none
+- **Repro / Notes:** Open a tab page with a payable person total and inspect the button's accessible name.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794512496] Avatar shows a broken character for names that start with an emoji
+- [ ] **Severity:** low
+- **Area:** web, ui
+- **File(s):** web-bill-viewer/src/components (avatar initial)
+- **Observation:** For a display name that starts with an emoji, the web viewer's avatar shows a broken character: the initial is taken as the first UTF-16 code unit, which is half of the emoji. Seen on 2026-11-12 on the tab Balances list; present on main.
+- **Expected:** The avatar shows the first whole character of the name (the emoji), or a neutral fallback.
+- **Req:** none
+- **Depends on:** none
+- **Repro / Notes:** Render a tab with a member whose name begins with an emoji.
 - **Bump:** patch
 - **Status:** open

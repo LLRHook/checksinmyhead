@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type Bill, getCurrentMember } from "@/lib/api";
 import { memberKey } from "@/lib/identity-storage";
 import LazyBillBoard from "../LazyBillBoard";
+import { blend, contrast, dark, rgb, token } from "./viewer-contrast";
 
 // Run the real component's effects across prop updates without a DOM dependency.
 // Dependency comparison and cleanup follow React's Object.is/effect contract;
@@ -99,6 +100,10 @@ vi.mock("@/lib/api", async (actual) => ({
 type Props = Parameters<typeof LazyBillBoard>[0];
 type ElementProps = {
   children?: ReactNode;
+  className?: string;
+  style?: { opacity?: number };
+  disabled?: boolean;
+  "aria-label"?: string;
   placeholder?: string;
   value?: string;
   role?: string;
@@ -319,5 +324,118 @@ describe("lazy viewer session across refreshed receipt props", () => {
       elements(view).find((element) => element.props.role === "alert")?.props
         .children,
     ).toBe("Use a name between 1 and 30 characters.");
+  });
+  it("keeps locked item status readable in both themes and uses a contrasting dark split hover", () => {
+    const pathTo = (
+      node: ReactNode,
+      text: string,
+      parents: ReactElement<ElementProps>[] = [],
+    ): ReactElement<ElementProps>[] | undefined => {
+      for (const child of Children.toArray(node)) {
+        if (!isValidElement<ElementProps>(child)) continue;
+        const path = [...parents, child];
+        if (child.type === "p" && child.props.children === text) return path;
+        const found = pathTo(child.props.children, text, path);
+        if (found) return found;
+      }
+    };
+    for (const currentPaid of [false, true]) {
+      hooks.reset();
+      storage.set(
+        "billington_participant_7",
+        JSON.stringify({ version: 2, bill_id: 7, participant_id: 11 }),
+      );
+      const fixture: Bill = {
+        ...bill,
+        items: [
+          {
+            id: 1,
+            name: "Paid item",
+            price: 10,
+            assignments: [{ participant_id: 22, percentage: 100 }],
+          },
+          { id: 2, name: "Other item", price: 10, assignments: [] },
+        ],
+        person_shares: [
+          {
+            id: 81,
+            participant_id: 11,
+            person_name: "Alex",
+            subtotal: 10,
+            tax_share: 0,
+            tip_share: 0,
+            total: 10,
+            paid: currentPaid,
+            items: [],
+          },
+          {
+            id: 82,
+            participant_id: 22,
+            person_name: "Sam",
+            subtotal: 10,
+            tax_share: 0,
+            tip_share: 0,
+            total: 10,
+            paid: true,
+            items: [],
+          },
+        ],
+      };
+      const props = { bill: fixture, token: "synthetic" };
+      let view = render(props);
+      click(view, "Pick my items");
+      view = render(props);
+      for (const status of currentPaid
+        ? ["Paid", "Your share paid"]
+        : ["Paid"]) {
+        const path = pathTo(view, status);
+        expect(path).toBeDefined();
+        const opacity =
+          path?.reduce((product, node) => {
+            const value = node.props.className?.match(
+              /(?:^|\s)opacity-(\d+)(?:\s|$)/,
+            )?.[1];
+            return (
+              product *
+              (node.props.style?.opacity ?? (value ? Number(value) / 100 : 1))
+            );
+          }, 1) ?? 0;
+        for (const theme of ["light", "dark"]) {
+          const ink = token(
+            "text-secondary",
+            theme === "dark" ? dark : undefined,
+          );
+          const surface = token(
+            theme === "dark" ? "card-bg-dark" : "card-bg-light",
+          );
+          expect(
+            contrast(blend(ink, surface, opacity), surface),
+          ).toBeGreaterThanOrEqual(4.5);
+        }
+      }
+      const controls = elements(view).filter((node) => node.type === "button");
+      expect(
+        controls.find((node) => node.props["aria-label"] === "Select Paid item")
+          ?.props.disabled,
+      ).toBe(true);
+      expect(
+        controls.find((node) => node.props["aria-label"] === "Select Paid item")
+          ?.props.className,
+      ).toContain("opacity-50");
+      expect(pathTo(view, "Paid item")?.at(-1)?.props.className).toContain(
+        "opacity-50",
+      );
+      const split = controls.find(
+        (node) => node.props["aria-label"] === "Edit split for Other item",
+      );
+      const background = split?.props.className?.includes(
+        "dark:hover:bg-white/10",
+      )
+        ? blend(rgb("#ffffff"), token("card-bg-dark"), 0.1)
+        : token("secondary");
+      expect(
+        contrast(token("text-secondary", dark), background),
+      ).toBeGreaterThanOrEqual(3);
+    }
   });
 });
