@@ -355,7 +355,9 @@ The server now uses scoped participant references for creation, claims, paid aut
 renames, binding generations/receipts, gross/net and snapshots. Confirmed members group
 by tab/member ID; unbound/pending guests remain distinct per bill/participant. Web
 net balance rows keep unique labels unchanged; colliding labels use the existing
-`· member #ID` or `· receipt BILL #PARTICIPANT` display convention. Checked
+`· member #ID` or `· receipt BILL #PARTICIPANT` display convention on a smaller
+secondary line. Only rows with references wrap at narrow widths to keep amounts
+and payment controls inside the card; other rows retain their existing layout. Checked
 USD reads preserve explicit frozen zero and expose unavailable payer/valuation states.
 The earlier positive-only USD fallback source defect is corrected; native Keychain
 qualification, old-writer drain and full combined journeys remain open. Supported mobile/browser reference clients are implemented; their [synthetic journey](../mobile/test/live/README.md) is scoped functional evidence.

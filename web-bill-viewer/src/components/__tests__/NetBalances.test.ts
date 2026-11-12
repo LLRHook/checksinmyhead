@@ -28,9 +28,9 @@ const render = (balances: NetBalance[], currentMemberId?: number) =>
 const names = (html: string) =>
   [
     ...html.matchAll(
-      /<span class="font-medium text-\[var\(--accent\)\] dark:text-white">([^<]+)<\/span>/g,
+      /<span class="font-medium text-\[var\(--accent\)\] dark:text-white[^"]*">([^<]*)(?:<span[^>]*>([^<]*)<\/span>)?<\/span>/g,
     ),
-  ].map((m) => m[1]);
+  ].map((m) => m[1] + (m[2] ?? ""));
 
 describe("tab balance identity labels", () => {
   it("distinguishes same-named members with existing member references without changing rows amounts or order", () => {
@@ -97,5 +97,57 @@ describe("tab balance identity labels", () => {
       "Alex",
       "Bob",
     ]);
+  });
+  it("disambiguates across Your and All Balances before applying You labels", () => {
+    const html = render(
+      [
+        { from: member(11), to: member(22), amount: 5 },
+        { from: member(33), to: member(44, "Bob"), amount: 4 },
+      ],
+      11,
+    );
+    expect(names(html)).toEqual([
+      "You",
+      "Alex · member #22",
+      "Alex · member #33",
+      "Bob",
+    ]);
+    expect(html).toContain("Your Balances");
+    expect(html).toContain("All Balances");
+    expect(html.match(/<button/g)).toHaveLength(1);
+  });
+
+  it("suffixes a member beside same-named history while preserving the name-only row", () => {
+    expect(
+      names(
+        render([
+          { from: member(11), to: member(22, "Bob"), amount: 5 },
+          { from: "Alex", to: "Jo", amount: 4 },
+        ]),
+      ),
+    ).toEqual(["Alex · member #11", "Bob", "Alex", "Jo"]);
+  });
+
+  it("detects names differing only by surrounding whitespace without rewriting their labels", () => {
+    expect(
+      names(
+        render([
+          { from: member(11, " Alex "), to: member(22, "Alex"), amount: 5 },
+        ]),
+      ),
+    ).toEqual([" Alex  · member #11", "Alex · member #22"]);
+  });
+
+  it("puts colliding references on a secondary line and wraps their row without changing unique rows", () => {
+    const html = render([{ from: member(11), to: member(22), amount: 5 }]);
+    expect(html).toContain(
+      'class="block text-xs text-[var(--text-secondary)]"',
+    );
+    expect(html).toContain("flex-wrap");
+    const unique = render([
+      { from: member(11, "Sam"), to: member(22, "Jo"), amount: 5 },
+    ]);
+    expect(unique).not.toContain("flex-wrap");
+    expect(unique).not.toContain('class="block text-xs');
   });
 });

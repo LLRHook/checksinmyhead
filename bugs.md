@@ -931,9 +931,11 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** fixed-pending-migration
-- **Fix:** Named share expansion controls with current visible owner and expanded state; kept named section/bill controls; theme secondary tokens meet 4.5:1 including paid-card opacity, removed the two approved instruction fades; sequential payment/recorded-share headings; static Shared bill/tab titles contain no private resource data. Component, token-formula and metadata regressions fail on baseline and pass with the fix.
+- **Fix:** Named share controls and sequential private headings; static Shared bill/tab titles preserve metadata isolation. Accepted review option B uses #6e6e73 light and #98989d dark, removes whole-card paid opacity in shares/settlements/totals and retains the two instruction fade removals approved by the driver. Locked item status retains full secondary contrast while controls/names dim; split icons use the existing dark hover surface. Rendered instruction/paid-state tests and computed contrast cover these surfaces.
 - **Docs:** DESIGN_SYSTEM.md; web-bill-viewer/README.md; docs/technical-overview.md
 - **Cross-ref:** FEAT-1793644512
+- **Log:**
+  - 2026-11-12 Review: Driver accepted L16 review option B and F2/F3; corrected earlier attribution: the driver, not Victor, approved the instruction-opacity change.
 
 ### [BUG-1794331912] Show half-cent bill totals the same way their shares add up
 - [ ] **Severity:** med
@@ -1031,9 +1033,11 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** fixed-pending-migration
-- **Fix:** NetBalances detects colliding display labels by scoped identity across the complete balance list and uses the existing mobile tab member/receipt reference suffixes. Unique and repeated-identity labels, You grouping, legacy strings, row order, amounts and payment eligibility remain unchanged. Same-named members render Alex · member #11 to Alex · member #22; guests include receipt scope. Component regression cases fail before the change and pass afterward.
+- **Fix:** Scoped collision detection covers the entire balance list, including Your/All grouping, name-only history and surrounding whitespace. Existing member/receipt references render on a smaller secondary line; only suffixed rows wrap and protect amount/payment groups at narrow widths. Unique rows, rows/amounts/order and payment conditions remain unchanged. Added mutation regressions and built-CSS browser geometry proof at 320/360/375 px with Alex and long names.
 - **Docs:** docs/technical-overview.md
 - **Cross-ref:** BUG-1793644505
+- **Log:**
+  - 2026-11-12 Review: Driver accepted L16 F1/F3: fix suffixed-row reflow and add grouping/history/whitespace mutation coverage.
 
 ### [BUG-1794331920] Keep the Add Receipt button off the last per-person rows
 - [ ] **Severity:** low

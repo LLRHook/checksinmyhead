@@ -35,6 +35,12 @@ paths. Dynamic private page responses remain private/no-store. Authorized names 
 credentials required by client components can still appear in body/RSC data; do not
 treat an absence check over the entire HTML as a metadata privacy test.
 
+Supporting text uses the neutral light/dark tokens documented in `DESIGN_SYSTEM.md`.
+Paid cards stay opaque and retain their check, strike-through, green amount and border
+markers. Locked item status remains readable while its disabled controls dim. Colliding
+balance labels put the existing identity reference on a smaller second line and wrap
+the amount/payment group on narrow screens; unique-label rows retain their layout.
+
 ### Local privacy verification
 
 Use Node 24/npm 11 and the committed lock, with a task-owned synthetic API on loopback.

@@ -1,16 +1,36 @@
-import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useCollapsible } from "@/hooks/useCollapsible";
 import type { Bill } from "@/lib/api";
 import BillHeader from "../BillHeader";
+import BillPageClient from "../BillPageClient";
 import CollapsibleSection from "../CollapsibleSection";
 import PaymentDetails from "../PaymentDetails";
 import PersonShare from "../PersonShare";
 import { RecordedShareRows } from "../RecordedShares";
+import SettlementCard from "../SettlementCard";
 import TabBillList from "../TabBillList";
 import TabHeader from "../TabHeader";
+import TabPersonTotals from "../TabPersonTotals";
+import { blend, contrast, dark, rgb, root, token } from "./viewer-contrast";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("react", async (actual) => {
+  const react = await actual<typeof import("react")>();
+  return {
+    ...react,
+    useState: (initial: unknown) =>
+      react.useState(
+        initial &&
+          typeof initial === "object" &&
+          "status" in initial &&
+          initial.status === "loading"
+          ? { status: "success", bill }
+          : initial,
+      ),
+  };
+});
 
 vi.mock("@/hooks/useCollapsible", () => ({ useCollapsible: vi.fn() }));
 beforeEach(() => {
@@ -143,30 +163,6 @@ describe("private viewer accessibility", () => {
   });
 });
 
-type RGB = number[];
-const rgb = (hex: string): RGB =>
-  [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
-const blend = (ink: RGB, surface: RGB, opacity: number) =>
-  ink.map((v, i) => v * opacity + surface[i] * (1 - opacity));
-const luminance = (color: RGB) =>
-  color.reduce((sum, v, i) => {
-    const s = v / 255;
-    return (
-      sum +
-      [0.2126, 0.7152, 0.0722][i] *
-        (s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4)
-    );
-  }, 0);
-const contrast = (ink: RGB, surface: RGB) => {
-  const [lo, hi] = [luminance(ink), luminance(surface)].sort((a, b) => a - b);
-  return (hi + 0.05) / (lo + 0.05);
-};
-const css = readFileSync("src/app/globals.css", "utf8");
-const root = css.split("@media")[0];
-const dark = css.split("@media (prefers-color-scheme: dark)")[1];
-const token = (name: string, theme = root) =>
-  rgb(theme.match(new RegExp(`--${name}:\\s*(#[0-9a-f]{6})`))?.[1] ?? "");
-
 describe("secondary text contrast from theme tokens", () => {
   it.each(["light", "dark"])(
     "%s secondary text meets AA on page cards badges hover and paid surfaces",
@@ -183,21 +179,72 @@ describe("secondary text contrast from theme tokens", () => {
       ];
       for (const surface of surfaces)
         expect(contrast(ink, surface)).toBeGreaterThanOrEqual(4.5);
-      // Paid cards composite the whole card (including its text) over the page gradient.
-      for (const backdrop of [page, card]) {
-        expect(
-          contrast(blend(ink, backdrop, 0.75), blend(card, backdrop, 0.75)),
-        ).toBeGreaterThanOrEqual(4.5);
-      }
+      // Paid cards retain the same opaque surface as unpaid cards.
+      expect(contrast(ink, card)).toBeGreaterThanOrEqual(4.5);
     },
   );
 
   it("renders the bill and settlement instructions at the secondary token opacity", () => {
-    for (const file of ["BillPageClient", "SettlementCard"]) {
-      const source = readFileSync(`src/components/${file}.tsx`, "utf8");
-      expect(source).not.toMatch(
-        /text-\[var\(--text-secondary\)\][^"`]*opacity-60/,
+    const billHTML = renderToStaticMarkup(
+      createElement(BillPageClient, { id: "7", token: "synthetic" }),
+    );
+    const settlementsHTML = renderToStaticMarkup(
+      createElement(SettlementCard, { settlements: [] }),
+    );
+    for (const [html, instruction] of [
+      [billHTML, "Recorded paid flags are manual status;"],
+      [settlementsHTML, "Open Billington to update payment status"],
+    ]) {
+      const paragraph = [...html.matchAll(/<p([^>]*)>([^<]*)<\/p>/g)].find(
+        (match) => match[2].startsWith(instruction),
       );
+      expect(paragraph).toBeDefined();
+      // Assert the rendered element's complete attributes: opacity/filter classes
+      // and inline styles must not silently dim this status instruction.
+      expect(paragraph?.[1].trim()).toBe(
+        'class="text-xs text-[var(--text-secondary)] mt-0.5"',
+      );
+    }
+  });
+  it("keeps paid share settlement and total cards opaque while retaining paid markers", () => {
+    const paidShare = { ...bill.person_shares[0], paid: true };
+    const html = [
+      renderToStaticMarkup(
+        createElement(PersonShare, {
+          bill,
+          billId: 7,
+          token: "synthetic",
+          personShare: paidShare,
+          readOnly: true,
+        }),
+      ),
+      renderToStaticMarkup(
+        createElement(SettlementCard, {
+          settlements: [
+            {
+              id: 1,
+              tab_id: 9,
+              person_name: "Alex",
+              amount: 10,
+              paid: true,
+              created_at: "2026-11-10",
+            },
+          ],
+        }),
+      ),
+      renderToStaticMarkup(
+        createElement(TabPersonTotals, {
+          personTotals: [
+            { person_name: "Alex", total: 10, bill_count: 1, all_paid: true },
+          ],
+        }),
+      ),
+    ];
+    for (const card of html) {
+      expect(card).not.toMatch(/opacity-75|style="[^"]*opacity/);
+      expect(card).toContain("line-through");
+      expect(card).toContain("text-emerald-600");
+      expect(card).toContain("dark:border-emerald-800/50");
     }
   });
 });

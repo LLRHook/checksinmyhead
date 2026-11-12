@@ -14,7 +14,7 @@ Web CSS variables in `web-bill-viewer/src/app/globals.css` are the source for we
 | `--secondary` | `#f5f5f7` | Soft backgrounds |
 | `--accent` / `--text-dark` | `#1d1d1f` | Primary text |
 | `--accent-warm` | `#d4a843` | Warm brand accent |
-| `--text-secondary` | `#48484d` light / `#a3a3a8` dark | Supporting text, including 75% opaque paid cards |
+| `--text-secondary` | `#6e6e73` light / `#98989d` dark | Supporting text on opaque surfaces |
 | `--border-light` | `#e5e5e7` | Light theme dividers and outlines |
 | `--border-dark` | `#2d2d2f` | Dark theme dividers and outlines |
 | `--dark-bg` | `#0a0a0a` | Dark page background |
@@ -29,6 +29,7 @@ Participant colors belong to their saved occurrence, not amount rank. Single-per
 
 - Web uses Inter for interface text and JetBrains Mono for monetary figures and other aligned numeric values.
 - Flutter uses Material 3 text styles. Existing hierarchy uses 36/30/24 px bold display styles, 20 px semibold headline, 18 px semibold title, and 16/14 px body text.
+- Web paid cards stay opaque; check avatars, strike-through, green amounts and borders show paid state. Locked item controls and names may dim, while status text keeps full secondary ink.
 - Use the secondary text color for instructions and metadata. Keep currency values in the existing monospace treatment where the surrounding component already uses it.
 - On Settings accent surfaces, derive readable ink from the effective base, blended panel, input or button surface with `AppTheme.foregroundOn`. Supporting text keeps its smaller type hierarchy with readable ink; preserve the user's accent and use it for text only when contrast permits.
 
