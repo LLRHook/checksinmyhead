@@ -110,7 +110,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Docs:** ops/ci/README.md; VERIFICATION.md; docs/reviews/2026-11-05-delivery-gate.md; docs/reviews/2026-11-09-delivery-workflows.md
 
 ### [BUG-1793644502] Resolve the three current Next.js security alerts
-- [ ] **Severity:** high
+- [x] **Severity:** high
 - **Area:** web, dependencies
 - **File(s):** web-bill-viewer/{package.json,package-lock.json,README.md}; docs/reviews/2026-11-04-next1645-security-patch.md
 - **Observation:** Baseline Next16.4.0 had alerts67–69 (GHSA-2464-fhr4-w9xw,GHSA-p3m5-59mp-jv5r,GHSA-673q-mjm6-r5xr). Maintained source now pins16.4.5; local affected checks pass. External alert closure and deployed version remain unverified.
@@ -123,12 +123,14 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Historical alerts: https://github.com/LLRHook/checksinmyhead/security/dependabot/67 and IDs68/69. Follow current primary advisories before integration/release. No deployed exploitability result.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
+- **Status:** fixed-pending-migration
 - **Fix:** e4af0a7 pins Next16.4.5 with11 root/Next/env/SWC lock entries; React/DOM19.3.0,sharp0.35.5 and overrides retained. Lead and independent root clean Node24.22.2/npm11.19.1 acquisition,lint,54tests (0skip),build,audit pass; audit0. Root Standards0/Spec0. Keep in-progress for alert/deployed closure.
 - **Docs:** web-bill-viewer/README.md; docs/reviews/2026-11-04-next1645-security-patch.md. Historical November2 dependency evidence is preserved.
 - **Log:**
   - 2026-11-04 Validation: Primary-source discrepancies and npm/Vite warnings retained in dated evidence. Prior Flutter/runtime follow-ups belong to BUG-1793652308/2309. No hosting mutation, deployment, alert closure or whole security/integrated/release pass claimed.
   - 2026-11-04 Maintenance: Condense inherited oversized tracker through official writer; historical fields remain in Git and dated reports.
+  - 2026-11-09 Verification: PASS at e0a2c18: npm ls next = next@16.4.5; npm ci, biome lint (55 files), vitest 102 pass/0 fail/0 skip (ticket's 54 is outdated), next build, npm audit --audit-level=moderate 0 vulnerabilities; read-only gh: open Dependabot alerts 0; alerts 67, 68, 69 state=fixed (fixed_at 2026-11-07); revert check not run: dependency pin, no regression test; unproven: deployed version; not run here: hosted deployment check
+  - 2026-11-09 Verification: 2026-11-09: next@16.4.5 resolved; npm audit 0; Dependabot alerts 67, 68 and 69 are fixed and 0 alerts are open (read-only GitHub API). The deployed viewer version stays unverified because the maintained pages are not served yet.
 
 ### [BUG-1793644503] Patch the Go build toolchain for GO-2026-6809
 - [x] **Severity:** high
@@ -198,7 +200,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-10 Sighting: 2026-11-10 V&V (5e877e36d968, D5 upgrade from production 81a564f): after migrations 0001-0003, GET /api/tabs/:id on legacy tabs returns 409 client_upgrade_required to clients that send no X-Billington-Identity-Version header (released v2.0.11+36 and App Store 1.4.0 send none). With header 2 it returns 200, but net_balances is null and net_balance_status is identity_review_required. On legacy graph1 tabs, member share-paid and name-only lazy claims return 409 identity_review_required (header 1 and 2), and docs/backend-api.md documents no review endpoint. Bills, members and settlements otherwise read identically. Local evidence: .vv/worktrees/vv-5e877e3/.vv/d5/logs/05c-compare.txt, 05e-legacy-writes.txt.
 
 ### [BUG-1793644506] Label local bill and tab removal accurately
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** mobile, ux
 - **File(s):** mobile/lib/screens/tabs/tab_manager.dart; mobile/lib/screens/tabs/tab_detail_screen.dart; mobile/lib/screens/tabs/tabs_screen.dart
 - **Observation:** Local Drift removal/delete UI implies shared deletion although API has no detach/delete route.
@@ -210,9 +212,12 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Trace removeBillFromTab/deleteTab and confirmation strings, then inspect registered API routes. Shared lifecycle is separate; do not falsely announce online deletion.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
+- **Status:** fixed-pending-migration
 - **Fix:** Tab-list removal now identifies this device and acknowledges actual Drift success. The manager returns bool and refuses synced/finalized bill-list removal; their cards omit removal swipes/instructions. Local-only active removal keeps history; cancel/DB failure retains the card. Before tests reproduced synced mutation/swipe; final Flutter480/524 preserves467/510 originals, with13 focused cases including file-backed reopen and an independent local view. Real owned API/PG graph stays USD128 and genuine Leave remains separate. No shared-delete, signed/two-device or release claim; independent/root pending.
 - **Docs:** docs/privacy.md; VERIFICATION.md; docs/reviews/2026-11-05-public-web.md
+- **Log:**
+  - 2026-11-09 Verification: PASS: 13 named Dart tests in mobile/test/local_tab_removal_test.dart (local removal retains receipt, synced removal refused, no swipe on synced bill, rejected delete keeps Drift row, cancel no mutation, failed removal feedback, file-backed reopen, independent local view; Remove from this device wording in lib/screens/tabs/tabs_screen.dart) at e0a2c18; full mobile suite 593 visible pass/0 fail/0 skip; revert check not run: not in required set; unproven: two-device agreement and authorized server delete for creator actions (no test or API route exercised); not run here: signed/two-device/native
+  - 2026-11-09 Verification: Native check (iPhone 17, iOS 27.2): swiping a tab offers 'Remove from this device?' and states that the shared tab, bills, recorded totals and other people's access remain online; Cancel keeps it; a confirmed removal of a throwaway tab is gone after relaunch while the other tab stays; a synced or finalized bill inside a tab offers no removal swipe. A two-device comparison was not run. Screenshots: .vv/ui-inspection-20261109/main/A6-*.png.
 
 ### [BUG-1793644507] Bound public API request resources
 - [ ] **Severity:** med
@@ -330,7 +335,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Revalidate PR #149 intentional privacy removal before restoring a route. This lead files pre-existing drift; later scoped implementation fixes it. tasks/todo history is reconciled separately.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** in-progress
+- **Fix:** Documentation reconciled on 2026-11-09, history labeled and linked rather than deleted. README: already used /privacy-policy; now states that /privacy was removed on purpose (PR #149), records the dated hosting state and no longer lists production deployment as not done. backend/roadmap.md: labeled historical record with a status block and 17 labeled sections; Railway shown as abandoned with links to 26109fb and its revert 7b97d03. backend/README.md: new Production and history section (Render, managed delivery gate, Railway abandoned); its Compose inventory was already correct. docs/backend-api.md: route index of all 31 registered routes (6 were not named literally) plus lifecycle limits. docs/technical-overview.md: model sketches now carry lazy, payer and currency fields; fire-and-forget wording replaced by the durable save owner; lifecycle limits and an invite section stating custom scheme only, no Universal Links (no Associated Domains entitlement since 5c684e8) and no deferred invite. docs/market-analysis.md: historical status block and labeled sections. Proven: DocumentationContractTests.test_operational_docs_label_history_and_match_routes_and_signed_capabilities failed on the old docs and fails again when any one of the six documents is restored; gate 44 methods OK; web lint, 110 tests and build. REMAINS, owner or device: the intended public privacy destination (the store links the legacy host, source Settings links the unserved maintained route) is an owner decision; invite behavior is stated from source and entitlements, not from an installed signed build (FEAT-1793644507); Railway resources, database vendor, backups and alerts are unverified (FEAT-1793644501).
+- **Docs:** README.md; backend/README.md; backend/roadmap.md; docs/backend-api.md; docs/technical-overview.md; docs/market-analysis.md
 
 ### [BUG-1793644513] Preserve the database during ordinary local shutdown
 - [x] **Severity:** med
@@ -423,8 +431,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Editable maintained source is web-bill-viewer/src/app/(public)/; the external-only source note is historical. Receipt-led home uses the labeled USD128 example and direct numeric Store CTAs. Copy limits payment to external Venmo/shared details and manual status. Web77 cases preserve72 originals; real Go/PG HTTP/RSC127,12 error controls and headed desktop/narrow/theme/navigation evidence retained with browser limits. Legacy host remains untouched; independent/root and release acceptance pending.
-- **Docs:** README.md; web-bill-viewer/README.md; docs/reviews/2026-11-05-public-web.md
+- **Fix:** Maintained source web-bill-viewer/src/app/(public)/ rechecked against each Expected bullet on 2026-11-09. Already met and now pinned: header, hero and closing actions link straight to https://apps.apple.com/app/id6746379502 (GET ends at the US listing, 200); the hero is a labeled USD example whose items, tax, tip and three shares add up to 128.00 with proportional tax and tip. Fixed: the payment note now says what each named service does (Venmo opens the Venmo app from a shared page; Zelle, Cash App and Apple Pay are details only) and that nothing is processed or confirmed, matching the viewer (only venmo.ts builds a link). Proven: 5 tests in public-claims.test.ts (payment test failed on the old copy; six deliberate breaks of the other four were all detected); web lint, 110 tests and build; gate web row accepted; public-route verifier 6 cases 0 failed; real Tab presses on a local production build gave 14 stops at 1280 px and 13 at 375 px in document order with visible focus; outbound links returned 200. REMAINS, hosted and external: the maintained pages are not served (billingtonapp.vercel.app/ returns 404), and the legacy getbillington.vercel.app home page still sends its primary download to #download, links the store through a /spliq/ slug and claims one-tap deep links to Venmo, Zelle, Apple Pay and Cash App; that host is separately owned and was not touched. Browser check was one engine, home page only, no device or screen reader.
+- **Docs:** web-bill-viewer/README.md
+- **Log:**
+  - 2026-11-09 Verification: Headed browser check of the maintained pages on the local stack at 1440 and 375 px: Billington branding only; 'Get Billington for iOS' reaches apps.apple.com id6746379502 in one click; the hero shows a labelled USD 128.00 example split; payment copy limits itself to the Venmo handoff, shown details and manual paid status; 14 desktop and 13 mobile links are keyboard reachable with a visible focus ring. Screenshots: .vv/ui-inspection-20261109/web/C1-*.png.
 
 ### [BUG-1793644518] Exclude private bearer-link pages from indexing
 - [x] **Severity:** med
@@ -503,6 +513,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Log:**
   - 2026-11-02 Validation: RUNTIME_LOCK_APPROVAL.md deliverables 2-3 explicitly supersede the Debian12 hold using current official deprecation/support docs. Runtime digest and amd64/arm64 manifests reverified before build; Cosign3.1.4 keyless verification exit0 with exact official issuer/identity and transparency-log proof. No CGO, framework, provider, schema, auth, cloud or publication change. Own TLS fixture resources/certificates fully cleaned; shared PG17.11 fixture retained. Lead scope=affected clean=no. Raw .vv/local-gate/runtime-lock/ records retain initial diagnostic failures, control experiments and final passing journeys; package findings and preexisting BUG-1793644507 remain unwaived.
   - 2026-11-03 Validation: November 3 SECURITY_INVENTORY_APPROVAL.md conditional static exception exercised: current supported signed index and unchanged Go security release reverified before final build; exact final images/binaries/scanner archive identities tied together. Local owned PG17.11 TLS/DNS fixtures prove actual production CGO0 behavior, one-query readiness, negative trust/host/authorization/ledger/DB controls and Docker health failure/recovery. Preserve three setup-failed harness iterations plus passing candidate-v4/final; no app source rewrite. Shared driver PG and normal volumes retained. Raw .vv/local-gate/security-inventory/ and dated note contain current counts/sizes/packages/signatures/ELF/commands and remaining limits.
+  - 2026-11-09 Verification: PARTIAL at e0a2c18: static checks pass for both Dockerfiles (static-debian13:nonroot@sha256:25ac8f0c...8329, CGO_ENABLED=0, USER 65532:65532, exec-form HEALTHCHECK); backend/internal/healthcheck: TestProbeResponses 10/10, TestProbeRejectsRedirect, TestProbeTimeout, TestProbeTransportFailure pass, TestServiceHealthcheckMode/web-service pass but TestServiceHealthcheckMode/bill-service FAILED with 'listen tcp 127.0.0.1:8080: bind: address already in use' (environmental, port 8080 held by another project's Docker, not a code verdict); revert check not run: infra/image ticket; unproven: bill-service --healthcheck entrypoint mode on this machine, nonroot runtime, DB TLS, DNS, Docker health outage/recovery, image scans; not run here: scripts/verify_static_runtime.py (no billington-bill:validation or billington-web:validation images for this commit and no BILLINGTON_RUNTIME_TEST_POSTGRES_IMAGE set), hosting NSS
 
 ### [BUG-1793714791] Clear unused advisory matches in the required Go module inventory
 - [x] **Severity:** med
@@ -662,7 +673,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Cross-ref:** FEAT-1793644512
 
 ### [BUG-1793927492] Side status column covers content on Assign, Entry and Tab screens
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** mobile, ui, layout
 - **File(s):** mobile/lib/screens/quick_split/item_assignment/item_assignment_screen.dart; mobile/lib/screens/quick_split/bill_entry/bill_entry_screen.dart; mobile/lib/screens/tabs/tab_detail_screen.dart; mobile/test/side_inset_layout_test.dart
 - **Observation:** On a native iPhone Duo simulator (Xcode 27.2, iOS 27.1) the Closed display reports right 84pt and bottom 34pt insets. The Scaffold bodies of Assign Items, Enter Bill Details and Tab detail have no horizontal SafeArea, so content runs under the status column: the Assigned amount reads $1 and then the column. Open landscape shows the same collision. Landing, Onboarding and Bill Details already use SafeArea and stay clear.
@@ -672,9 +683,12 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Closed pose in Device Hub, Quick Split, four people, $122 with items, Continue to Assign Items. Before evidence: /tmp/appshot-quality-20261105/capture/ios27.2/raw/iphone-duo-outer-1398x2034/03-assign.png. Regression test: mobile/test/side_inset_layout_test.dart. SafeArea alone left the progress bar reading full screen width, so at 50% it overstated the share by 42pt on the Closed display; the bar now sizes from its track.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
+- **Status:** fixed-pending-migration
 - **Fix:** Horizontal SafeArea/track-relative fill: final19/analyze0 and combined3460 Flutter567visible/573canonicalPASS. Native/default-font/integrated capture pending; separate Finalize overflow not fixed.
 - **Docs:** DESIGN_SYSTEM.md; docs/reviews/2026-11-06-{layout-insets,combined-flutter-acceptance}.md; exact19 canonical cases. Separate Finalize short-height overflow remains open.
+- **Log:**
+  - 2026-11-09 Verification: PASS: 13 named Dart tests in mobile/test/side_inset_layout_test.dart (Assign Items right/left/wide inset keeps text and progress bar, same amounts with or without insets, full width on phone/tablet; Enter Bill Details and Tab detail inset and full-width groups) at e0a2c18; full mobile suite 593 visible pass/0 fail/0 skip; flutter analyze no issues; revert check failed as intended (item_assignment_screen.dart SafeArea left/right disabled: 3 of 6 Assign Items tests failed, file restored, tree clean; Entry and Tab not individually reverted); unproven: none in-repo; not run here: native Duo/default-font capture, separate Finalize overflow
+  - 2026-11-09 Verification: Native check on an owned iPhone Duo simulator (iOS 27.1, Closed pose, right status column) with a debug build of 083567a: Enter Bill Details, Assign Items and Tab detail keep their content clear of the column; with half of 122.00 assigned the Assigned amount reads $61.00 in full, 50%, and the bar ends halfway. The Open/landscape pose could not be selected from the command line and was not captured. Screenshots: .vv/ui-inspection-20261109/layout/b2-*.png. The tutorial dialog on Assign Items still extends under the column (BUG filed separately).
 
 ### [BUG-1793935715] Keep the Finalize confirmation usable on short displays
 - [ ] **Severity:** med
@@ -692,7 +706,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Cross-ref:** BUG-1793927492 (separate horizontal body issue, not this sheet)
 
 ### [BUG-1793958334] Retain migration producer evidence when activity observation fails
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** tests, backend, migrations
 - **File(s):** backend/migrations/failure_observation_test.go; backend/migrations/failure_postgres_test.go
 - **Observation:** At8371 TestPostgresMigrationParentDeadline calls waitActivity before receive. A missing-PgSleep Fatal can prevent inspection of an already buffered producer result, leaving the actual cause/join and rollback evidence unresolved. This is a test-proof defect; production cause and recovery are unproved.
@@ -705,16 +719,17 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Source trace at8371 failure_postgres_test.go waitActivity before receive; retained PG missing-witness failure is not a causal production diagnosis. Source-reviewed fe039511/13926a96 and R02 fd34a40e compile four variants first; five pure helper leaves pass and three removals fail intended assertions with healthy siblings. Report fc98d254; independent verification1e3271a4. No real PG rerun.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
-- **Fix:** Reviewed test-only outcome holder and bounded evidence path adopted; Go formatting changes only alignment spaces on seven evidence fields. Pure helper/control proof passes; real500ms/PgSleep/rollback/recovery and prior170s/198.64s/full gates remain unqualified.
-- **Docs:** docs/reviews/2026-11-06-migration-outcomes.md; ops/ci/README.md; VERIFICATION.md
+- **Status:** fixed-pending-migration
+- **Fix:** Test-only outcome holder (already merged) retains the single producer result and cause independently of the activity observer, treats an unreceived or closed channel as unresolved, logs finite evidence and reads rollback only after a join. 2026-11-09 real PostgreSQL qualification, no source change: unmodified TestPostgresMigrationParentDeadline (500 ms caller, 10 s observer, 15 s join, whole-batch rollback, recovery) passes 22 of 22 local -race runs and in hosted Gate postgres runs 42364117584 (0.79s) and 42365246558 (0.95s) on identical backend/migrations bytes; helper family 5/5. Five temporary real-PG controls all fail as required with finite evidence: no pg_sleep, witness absent, observer error (worker DeadlineExceeded retained, rollback empty), unjoined 15.07s (no rollback read), observer timeout 25.11s. Not run here: full eight-package row, integrated protocol. Evidence: docs/reviews/2026-11-09-migration-deadline.md.
+- **Docs:** docs/reviews/2026-11-09-migration-deadline.md; docs/reviews/2026-11-06-migration-outcomes.md; ops/ci/README.md; VERIFICATION.md
 - **Cross-ref:** FEAT-1793644505
 - **Log:**
   - 2026-11-06 Verification: R02 pure helper qualification: four complete compiles/list selections pass, five clean helper leaves pass and all three source removals fail their intended assertions with healthy siblings. Manager independent verification1e3271a4; reportfc98d254. Only seven evidence-field alignment lines changed under gofmt; no test rerun for whitespace. Real500ms/PgSleep/rollback/recovery and historical170s/198.64s/full gates remain open.
   - 2026-11-06 Verification: Local integration static checks: gofmt0 with seven spacing-only evidence fields; complete offline controller42methods/916 method+subtest records PASS including all five exact-child omissions and existing mobile/web named selections; official tracker lint0errors/0warnings. Only PG family+five anchored namespaced child IDs added; ordinary/backend obligations and all inherited fields preserved. Current real PG/full/native gates remain unqualified.
+  - 2026-11-09 Verification: Real PostgreSQL qualification executed: parent-deadline test 22/22 local under -race and passing in hosted runs 42364117584 and 42365246558; all seven failure families plus helper 21/21; five temporary controls fail with the expected finite evidence. No test or production source changed.
 
 ### [BUG-1793996842] Preserve saved participant colors and readable identity ink
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** mobile, ui, identity
 - **File(s):** mobile/lib/screens/recent_bills/components/participants_card.dart; mobile/lib/screens/quick_split/participant_selection/participant_selection_sheet.dart; mobile/lib/screens/quick_split/item_assignment/utils/color_utils.dart; mobile/lib/screens/quick_split/item_assignment/widgets/participant_avatar.dart; mobile/test/screenshot_quality_test.dart
 - **Observation:** At a021, Bill Details derives avatar colors from amount rank instead of the saved occurrence; auto-added owners omit saved custom color, and shared items take the first assignee color. Selected light-theme text/avatar callsites do not derive ink from their actual composited surface. This is a source-confirmed defect; current widget/native behavior is not yet qualified.
@@ -724,13 +739,16 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Read a021 SortedParticipantsCard rank color selection, participant sheet auto-add and ColorUtils.getDominantColor. Distinct from BUG-1793898429 Settings-only ink. Private R02 formatter/analyzer0; widget loader failed before all106 cases. Offline controller R03 verifies literal-enforcement fixtures only; raw2129dd79/manager8fde2490, not Flutter or screenshot acceptance.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
+- **Status:** fixed-pending-migration
 - **Fix:** Adopt the exact reviewed nine-lib/T1 source subset with saved-color provenance and existing composited-ink ownership. Automatic Linux mobile is the selected functional route;588 canonical records EXPECTED only. No native, physical accessibility,95-quality or release acceptance.
 - **Docs:** docs/reviews/2026-11-06-ui-quality-candidate.md; DESIGN_SYSTEM.md; mobile/README.md
 - **Cross-ref:** FEAT-1793644509 (acceptance and status unchanged)
+- **Log:**
+  - 2026-11-09 Verification: PASS: 8 required literals present and passing in mobile/test/screenshot_quality_test.dart (3 Bill Details identity, 4 Person color ink, Participant visual controls auto-added owner keeps saved color with fresh occurrence refs) at e0a2c18; full mobile suite 593 visible pass/0 fail/0 skip; revert check not run: multi-file source change; unproven: that changed light-theme callsites reuse AppTheme.foregroundOn (source review only, no test asserts it); not run here: native/capture, accessibility
+  - 2026-11-09 Verification: Native check (iPhone 17, iOS 27.2): six people keep the avatar colour they were given when added, in Bill Details after save and after force-quit and relaunch. Screenshots: .vv/ui-inspection-20261109/main/A2-*.png, A3-07-relaunch-detail.png.
 
 ### [BUG-1793996843] Show four actual assignees before avatar overflow
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** mobile, ui, layout
 - **File(s):** mobile/lib/screens/quick_split/item_assignment/widgets/item_card.dart; mobile/test/screenshot_quality_test.dart
 - **Observation:** At a021, ItemCard limits its collapsed assignee stack to three avatars whenever more than three people are assigned, so a four-person item shows three initials plus +1. The source geometry also uses 12pt steps for 20pt avatars. No current widget/native result is asserted.
@@ -740,15 +758,17 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Read a021 ItemCard._buildAssigneeAvatars displayPeople and overflow conditions. No existing tracker covers this source defect; unrelated Settings targets and Finalize overflow remain separate. All106 affected widget cases are unstarted; R03 offline omission checks are delivery-gate controls only.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
+- **Status:** fixed-pending-migration
 - **Fix:** Adopt exact reviewed hasOverflow >4 and four-slot stack geometry, preserving the full assigned list. No runtime, physical-device,95-quality or screenshot recovery claim.
 - **Docs:** docs/reviews/2026-11-06-ui-quality-candidate.md; DESIGN_SYSTEM.md; mobile/README.md
 - **Cross-ref:** FEAT-1793644509 (acceptance and status unchanged)
 - **Log:**
   - 2026-11-06 CI proof correction: Automatic CI42289112203/mobile128137633416 at a962 failed the overflow test global A finder after four CircleAvatar and +2 checks passed: it matched the11px avatar and18px other item content. This is a test-proof scope defect, not a demonstrated production UI defect. Apply exact09e54ebc correction to scope all ABC/+2/noD finders to CircleAvatar descendants, retaining every assertion and literal ID; no local test/formatter or retry. Corrective source-triggered CI acceptance remains pending; status in-progress and native/capture/quality limits unchanged. See docs/reviews/2026-11-06-ui-quality-candidate.md.
+  - 2026-11-09 Verification: PASS: both required literals present and passing (Assignee stack shows four people instead of a +1; Assignee stack summarises everyone past four) in mobile/test/screenshot_quality_test.dart at e0a2c18; full mobile suite 593 visible pass/0 fail/0 skip; revert check failed as intended (item_card.dart hasOverflow >4 to >3: shows four people test failed, file restored, tree clean); unproven: enlarged-text avatar behaviour, preservation of toggles/amounts beyond the two named tests; not run here: native/capture
+  - 2026-11-09 Verification: Native check (iPhone 17, iOS 27.2): an item assigned to four people shows four real avatars and no +1; an item assigned to six shows three avatars and +3. Screenshot: .vv/ui-inspection-20261109/main/A2-04-assigned.png.
 
 ### [BUG-1794045425] Preserve accounting availability for accepted fractional receipts
-- [ ] **Severity:** high
+- [x] **Severity:** high
 - **Area:** backend, accounting
 - **File(s):** backend/internal/bill/accounting.go; backend/internal/bill/creation_repository.go; backend/internal/bill/accounting_creation_regression_test.go
 - **Observation:** SPEC-001: actual CreateBill accepts 18.50 subtotal + 2.775 tip /21.275 total but saved21.28 fails the stricter frozen-share audit; documented one-cent tolerance also reproduces.
@@ -758,12 +778,15 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Real creation + persistence-preflight regressions failed before the fix; affected bill/tab -race row now532 named PASS. Actual PG/finalization/whole V&V remain pending.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
+- **Status:** fixed-pending-migration
 - **Fix:** Implemented aligned creation/frozen-share tolerance and pre-insert share audit; manager combined-scope source review accepted. Actual affected bill/tab Go race row:532 named PASS, with original red regressions retained. Status remains in-progress; real PostgreSQL persistence/finalization, current CI and integrated V&V remain pending.
 - **Docs:** docs/reviews/2026-11-07-postmerge-money-client-regressions.md
+- **Log:**
+  - 2026-11-09 Verification: PASS: 4 named Go tests incl 22 subtests (TestCreationRoundingRemainsAccountable 6/6 incl documented_one_cent_tolerance; TestCreationInsertAuditsShares 9/9 incl partial_below_half_cent, overallocated, malformed_foreign_audit, legacy_full, fresh_reference_input; TestCreationRejectsToleranceAmplificationBeforeProviders; TestCreationToleranceHTTPBeforeProviders) in backend/internal/bill at e0a2c18; PG-tagged ./internal/bill also 66 top-level pass/0 fail/0 skip; revert check failed as intended (accounting.go tolerance to .005: 3 RoundingRemainsAccountable subtests failed, file restored, tree clean); unproven: none; not run here: current CI, integrated V&V
+  - 2026-11-09 Status: 2026-11-09 sweep: real PostgreSQL selections and hosted CI run for PR #173 (all six rows, PostgreSQL included) pass with this fix; status moved to fixed-pending-migration for the integrated V&V run.
 
 ### [BUG-1794045426] Keep negative cent remainders off zero obligations
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** backend, accounting
 - **File(s):** backend/internal/bill/shares.go; backend/internal/bill/creation_correction_test.go; backend/internal/bill/accounting_creation_regression_test.go
 - **Observation:** SPEC-002: real creation derives Alice tax=-0.01 for the .10/30 +1.01 tax split, or rejects a valid zero-total participant split.
@@ -773,12 +796,15 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Both real creation triggers failed before correction. Positive/negative priority controls, huge bounded counts, signed-discount creation and independent small one-cent oracle pass in the affected Go row. Existing historical negative rows are not rewritten.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
+- **Status:** fixed-pending-migration
 - **Fix:** Implemented bounded negative-cent deductions from eligible positive balances in claim/name order, preserving zero shares and signed discounts. Manager combined-scope source review accepted; affected Go race532 PASS includes bounded-count and independent small-oracle controls. No historical amount rewrite. Status remains in-progress; real PG/current CI/integrated V&V remain pending.
 - **Docs:** docs/reviews/2026-11-07-postmerge-money-client-regressions.md
+- **Log:**
+  - 2026-11-09 Verification: PASS: 3 named Go tests (TestCreationRemaindersPreserveZeroShares 2/2; TestCentRemaindersPreserveClaimAndNameOrder 7/7; TestRemainderDistributionIsBoundedForExtremeCounts 8/8) plus TestCreationRoundingRemainsAccountable/signed_discount_remains_accountable in backend/internal/bill at e0a2c18; revert check failed as intended (shares.go naive cyclic decrement: 8 subtests failed across the three tests, file restored, tree clean); unproven: none; not run here: current CI, integrated V&V
+  - 2026-11-09 Status: 2026-11-09 sweep: real PostgreSQL selections and hosted CI run for PR #173 (all six rows, PostgreSQL included) pass with this fix; status moved to fixed-pending-migration for the integrated V&V run.
 
 ### [BUG-1794045427] Import complete Trip history atomically at capacity
-- [ ] **Severity:** high
+- [x] **Severity:** high
 - **Area:** mobile, persistence, tabs
 - **File(s):** mobile/lib/database/database.dart; mobile/lib/screens/recent_bills/models/recent_bill_manager.dart; mobile/lib/screens/tabs/tab_detail_screen.dart; mobile/test/tab_import_capacity_test.dart
 - **Observation:** SP-1: real Drift31-row import evicts an earlier returned ID; later existing target is evicted, and parse failure leaves prior refresh committed. Read failures can silently look empty or escape into permanent loading.
@@ -788,12 +814,15 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Before-fix real Drift and widget assertions fail; after-fix related Flutter116 visible PASS, including30/31, separate pending/referenced history, checkpoint rollback and error/retry controls. No migration or remote receipt deletion.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
+- **Status:** fixed-pending-migration
 - **Fix:** Implemented atomic complete Trip import plus local-ID checkpoint, protected incoming/pending/referenced history, and finite loading/error/retry with no partial balances. Manager combined-scope review accepted. Retained affected Flutter116 PASS; later completion-witness correction separately passes10 focused cases, without repeating116. Status remains in-progress; current CI/real PG/integrated V&V remain pending.
 - **Docs:** docs/reviews/2026-11-07-postmerge-money-client-regressions.md
+- **Log:**
+  - 2026-11-09 Verification: PASS: 10 named Dart tests in mobile/test/tab_import_capacity_test.dart (30/31 cap, pending/referenced history, later existing target, malformed rollback, read-error retry, checkpoint rollback, invalid IDs, retry without partial balances) at e0a2c18; full mobile suite 593 visible pass/0 fail/0 skip; revert check failed as intended (database.dart _makeReceiptRoom ignores protectedReceiptIds: 5 of 10 failed, file restored, tree clean); unproven: none; not run here: real PG, current CI
+  - 2026-11-09 Verification: Native check (owned iPhone 17 simulators, iOS 27.2, local stack): a fresh install joined a 30-receipt trip and showed 30 bills, 765.00 and balances, unchanged after relaunch. Joining a 31-receipt trip afterwards ended loading with the cache message and 'Retry current history', showed no partial list, balances or Finalize, repeated the message on retry, and left the 30-receipt trip intact. On another device the earlier bills and the tab referencing one of them survived the refused import. Screenshots: .vv/ui-inspection-20261109/recheck/E2-*.png, E3-*.png.
 
 ### [BUG-1794045428] Stamp durable receipts at their actual insertion time
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** mobile, persistence
 - **File(s):** mobile/lib/database/database.dart; mobile/test/receipt_timestamp_test.dart
 - **Observation:** SP-4: omitted createdAt uses the historical Drift9 table literal1793912155 rather than receipt insertion time.
@@ -803,12 +832,16 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** The maintained historical-schema SQLite fixture fails before the fix and passes afterward within the affected Flutter row. Schema version10 and migration files remain unchanged.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
+- **Status:** fixed-pending-migration
 - **Fix:** Implemented explicit new durable-receipt insertion timestamp, preserving existing handles and historical rows without migration/backfill. Manager combined-scope source review accepted; historical Drift9-default regression passes in retained affected Flutter116 row. No repeat row after test-only witness correction. Status remains in-progress; current CI/real PG/integrated V&V remain pending.
 - **Docs:** docs/reviews/2026-11-07-postmerge-money-client-regressions.md
+- **Log:**
+  - 2026-11-09 Verification: PASS: 1 named Dart test (new receipt uses insertion time instead of historical table default) in mobile/test/receipt_timestamp_test.dart at e0a2c18; revert check failed as intended (database.dart insertReceipt without copyWith createdAt: test failed at line 22, file restored, tree clean); unproven: explicit createdAt preserved (no named test; only the omitted-createdAt path is asserted) and existing-handle unchanged (not asserted by this test); not run here: current CI
+  - 2026-11-09 Verification: Added the two missing proofs to mobile/test/receipt_timestamp_test.dart: an explicit createdAt is stored unchanged, and presenting an existing creation handle returns its row and rewrites nothing. Two revert checks fail as intended (always-overwrite: expected 2020-01-02 03:04:05, got now; no existing-handle return: UNIQUE constraint on creation_handle).
+  - 2026-11-09 Status: 2026-11-09 sweep: real PostgreSQL selections and hosted CI run for PR #173 (all six rows, PostgreSQL included) pass with this fix; status moved to fixed-pending-migration for the integrated V&V run.
 
 ### [BUG-1794045429] Retain browser join input across refreshed bill graphs
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** web, identity
 - **File(s):** web-bill-viewer/src/components/LazyBillBoard.tsx; web-bill-viewer/src/components/__tests__/LazyBillSession.test.ts
 - **Observation:** SP-2: participant-array refresh re-runs a combined selection/suggestion/recovery effect, erasing typed or deliberately empty join input and repeating membership recovery.
@@ -818,9 +851,13 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Exact manager patch b6c3240d: baseline4/4 intended failures, fixed4/4 PASS, maintained web102/102. Integrated actual component hook/handler4/4 PASS plus TypeScript/Biome0; no browser-pixel or service claim.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
+- **Status:** fixed-pending-migration
 - **Fix:** Integrated exact manager SP-2 selection/suggestion/recovery ownership correction; manager combined-scope source review accepted. Integrated actual component/handler4 PASS, TypeScript/Biome0; retained manager whole-web102 row remains separate evidence. Status remains in-progress; full current CI, real PG and integrated V&V remain pending.
 - **Docs:** docs/reviews/2026-11-07-postmerge-money-client-regressions.md
+- **Log:**
+  - 2026-11-09 Verification: PASS: 4 named Vitest tests in web-bill-viewer/src/components/__tests__/LazyBillSession.test.ts at e0a2c18; whole web suite 102 pass/0 fail/0 skip; revert check failed as intended (suggestion effect re-keyed on bill.participants: 2 of 4 failed, file restored, tree clean; recovery-ownership test not isolated by that revert); unproven: none; not run here: browser pixels, current CI
+  - 2026-11-09 Status: 2026-11-09 sweep: real PostgreSQL selections and hosted CI run for PR #173 (all six rows, PostgreSQL included) pass with this fix; status moved to fixed-pending-migration for the integrated V&V run.
+  - 2026-11-09 Verification: Headed browser check on the local stack: on a tab page with a lazy receipt, 'Samantha Q' typed into 'What should we call you?' survived a participant added through the API and the page's own 10-second refresh; a cleared field stayed empty; no recovery warning. A full browser reload discards unsubmitted text, which the ticket does not cover. Screenshots: .vv/ui-inspection-20261109/web/C4b-*.png.
 
 ### [BUG-1794258285] Repair the invalid iOS origin workflow file
 - [ ] **Severity:** med
@@ -1081,5 +1118,151 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Req:** none (driver run simplify-1111, FINDING-7)
 - **Depends on:** none
 - **Repro / Notes:** Found by reviewer L4 on PR #177 and judged non-blocking. One docker compose down --remove-orphans clears it.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794264953] Read receipts an old writer creates after identity migration 0003
+- [ ] **Severity:** high
+- **Area:** backend, persistence, rollout
+- **File(s):** backend/internal/bill/repository.go; backend/migrations/0003_participant_identity.sql; docs/reviews/2026-11-09-reader-ddl.md
+- **Observation:** With the deployed pre-registry revision 81a564f built from history and the real adopt+0002+0003 migration applied under it, a bill that old writer creates after 0003 gets the column defaults (label='', no ordinal). The current reader then returns 409 client_upgrade_required for that two-participant bill on the unversioned and wire1 contracts; wire2 reads it as legacy_review. Bills created before the migration read 200. Restart and connection replacement do not change this.
+- **Expected:** A receipt written by a predecessor during or after the schema step stays readable by every supported client contract, or the rollout provably excludes old writers before 0003 and that exclusion is checked. No historical row is rewritten without a reviewed backfill.
+- **Req:** FEAT-1793644505 migration/read compatibility; BUG-1793861425 follow-up
+- **Depends on:** BUG-1793861425
+- **Repro / Notes:** docs/reviews/2026-11-09-reader-ddl.md, section on overlap. Synthetic PG17.11 owned schemas only. The delivery gate now refuses a schema step while such a revision answers /health, which avoids the case when the owner stops the old service first; this ticket covers the data path itself.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794264955] Make the device and published per-person amounts agree on odd cents
+- [ ] **Severity:** med
+- **Area:** mobile, backend, accounting
+- **File(s):** mobile/lib/screens/quick_split (allocation); backend/internal/bill/{shares,accounting}.go; docs/reviews/2026-11-09-mobile-save-journey.md
+- **Observation:** The phone floors totals and gives leftover cents in entry order; the server rounds subtotal, tax and tip separately and assigns remainders in label order. For 10.00 + 0.01 tax + 0.01 tip split evenly between Alex and Sam the phone shows 5.01 and 5.01 while the server stores Alex 5.00 and Sam 5.02 (one-off prepareCreation probe, not committed). The earlier half-cent case in BUG-1793644500's log is one instance of the same difference.
+- **Expected:** For every accepted receipt the amounts shown on the phone before publishing equal the published per-person amounts, with one documented rule and a shared fixture run by Go and Dart. Published and historical receipts are not rewritten. A symmetric split of a symmetric receipt differs by at most one cent between people.
+- **Req:** BUG-1793644500 Expected (currency-correct bill across save); docs/reviews/2026-11-03-client-v1-bridge.md
+- **Depends on:** owner decision: device adopts the server rule (recommended), a versioned server rule, or show published amounts after publish
+- **Repro / Notes:** Options and costs: docs/reviews/2026-11-09-mobile-save-journey.md. The 5.00/5.02 server result needs a committed regression test before any change.
+- **Bump:** patch
+- **Status:** open
+- **Log:**
+  - 2026-11-09 Sighting: Simulator inspection (iPhone 17, iOS 27.2, local stack at 083567a): a USD 128.00 receipt for six people showed Alex 44.81 and Pat 6.39 on the phone (saved and after relaunch); after attaching it to a tab and finalizing, the settlement rows read Alex 44.80 and Pat 6.40. Totals stayed 128.00. Screenshots: .vv/ui-inspection-20261109/main/A2-06-shares.png and A5-12-relaunch-finalized.png.
+
+### [BUG-1794264956] Remove or gate the second TestFlight uploader outside the delivery gate
+- [ ] **Severity:** high
+- **Area:** ci, security, delivery
+- **File(s):** branch victorwake-testflight-runner: .github/workflows/victorwake-testflight.yml; repository secrets ASC_KEY_ID, ASC_ISSUER_ID, ASC_API_KEY_P8, BUILD_CERTIFICATE_BASE64, P12_PASSWORD
+- **Observation:** Branch victorwake-testflight-runner carries victorwake-testflight.yml (bundle com.victorivanov.victorwake), triggered by a push to that branch or by dispatch. It reads repository-level App Store Connect and signing secrets and uploads to TestFlight without the six-row gate, the RELEASE_POLICY check or a protected environment. Last runs: failure on 2026-10-29, success on 2026-07-06.
+- **Expected:** No workflow on any branch can sign or upload with this repository's credentials outside the gated publishers: the branch workflow is removed or moved to its own repository, and signing/ASC secrets live only in main-restricted environments. Read-only GitHub API checks show no such workflow and no repository-level signing secret.
+- **Req:** BUG-1793644501 Expected (no publication outside the gate); SR GATE/RELEASE
+- **Depends on:** owner action in GitHub settings; nothing in this repository's main branch can remove another branch's workflow or a secret
+- **Repro / Notes:** docs/reviews/2026-11-09-delivery-workflows.md. Read-only: gh api repos/LLRHook/checksinmyhead/actions/workflows; gh api repos/LLRHook/checksinmyhead/actions/secrets. Nothing was dispatched or changed.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794264957] Reject runner cases that the gate manifest does not select
+- [ ] **Severity:** med
+- **Area:** ci, delivery
+- **File(s):** ops/ci/delivery_gate.py; ops/ci/case_manifest.json; ops/ci/test_delivery_gate.py
+- **Observation:** Nothing compares ops/ci/case_manifest.json with the source it describes. A new Go, Dart or web test that nobody registers still runs and passes, but the gate does not require it, so deleting or skipping it later is not detected. The 2026-11-09 S4 review found one such unselected loop (receipt_native_io_test.dart, four modes).
+- **Expected:** The report adapters reject a runner case or family that no manifest selection matches, per row, with a controller test that fails when a registration is removed. Existing families keep passing unchanged.
+- **Req:** BUG-1793644501 Expected (all relevant checks); ops/ci/README.md source-grounded manifest
+- **Depends on:** none
+- **Repro / Notes:** docs/reviews/2026-11-09-delivery-workflows.md, manifest drift. Requiring every loop expansion (134 mobile records) is the stricter alternative.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794264959] Decide the fate of the tab photo upload that released 1.4.0 still offers
+- [ ] **Severity:** med
+- **Area:** backend, product, compatibility
+- **File(s):** backend (tab image routes removed after 1.4.0); mobile 1.4.0 release source; docs/privacy.md
+- **Observation:** The public App Store build 1.4.0 has a tab receipt-photo upload. The deployed API answers GET /api/tabs/1/images with 404 while GET /api/tabs/1 answers 403, so the route is absent in the deployed revision. Whether photos uploaded earlier are still stored is unknown.
+- **Expected:** An owner decision is recorded: either the released client's photo flow is served again, or it is declared retired, with the user-visible failure in 1.4.0 known and the retention or deletion of earlier photos stated in docs/privacy.md from production evidence.
+- **Req:** BUG-1793644510 (disclosures match released behavior); TR release availability
+- **Depends on:** owner evidence about stored photos in production
+- **Repro / Notes:** docs/reviews/2026-11-09-privacy-disclosures.md (read-only GETs on 2026-11-09). Find the 1.4.0 source from mobile/pubspec.yaml history.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794264960] Keep a long tab name inside the Tab detail app bar
+- [ ] **Severity:** low
+- **Area:** mobile, ui, layout
+- **File(s):** mobile/lib/screens/tabs/tab_detail_screen.dart (app-bar title Row)
+- **Observation:** The Tab detail title is an unflexed Text(_currentTab.name) inside a Row. A 21-character tab name overflowed the row by 47 px on a 320-wide display in a widget test run.
+- **Expected:** Tab names up to the accepted maximum length ellipsize or wrap inside the app bar at 320, 375 and 390 widths and at large text sizes, with no RenderFlex overflow and the actions still reachable; a widget test covers it.
+- **Req:** DESIGN_SYSTEM.md responsive layout
+- **Depends on:** none
+- **Repro / Notes:** Pump TabDetailScreen at 320x568 with a 21-character name; see docs/reviews/2026-11-09-finalize-sheet-layout.md.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794264961] Make the runtime probe's DNS cancellation check deterministic
+- [ ] **Severity:** med
+- **Area:** verification, runtime
+- **File(s):** scripts/runtime-probe/main.go; scripts/verify_static_runtime.py
+- **Observation:** In four static runtime harness runs on images built from the sweep branch, three passed 75/75 and one stopped at check 28: bill-runtime-probe reported dns_cancellation false after 256 ms. Another run passed the same assertion at 256 ms, so elapsed time was not the failing term. The probe does not record which term failed; it appears to read the lookup context's error immediately after the resolver returns.
+- **Expected:** The probe records each term of the cancellation assertion and passes or fails for a stated reason; repeated runs on the same images give the same result. Timing bounds stay as they are.
+- **Req:** BUG-1793652309 runtime verification; VERIFICATION.md static image harness
+- **Depends on:** none
+- **Repro / Notes:** docs/reviews/2026-11-09-assignment-update-decode.md, static runtime runs. The cause is inferred from source, not captured. The earlier web 1.619804s > 1.5s miss did not recur (1.033-1.045s).
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794264963] Measure and bound the participant-reference assignment update at maximum size
+- [ ] **Severity:** low
+- **Area:** backend, performance
+- **File(s):** backend/internal/bill/{assignment_request,assignments}.go; backend/cmd/bill-service (a1perf harness)
+- **Observation:** Requests with X-Billington-Identity-Version: 2 still use the buffered decoder. The harness does not measure that route. A one-off benchmark of the same 500 x 100 shape with participant_id (1.86 MB body, not committed) took 26.2-27.2 ms and 21.0 MB per request, against 5.8-6.0 ms for the name-based route after BUG-1793644507.
+- **Expected:** The harness measures the participant-reference route at the maximum accepted size against an approved target, and the route meets it or the miss is recorded as RED. No public error, limit or ordering changes.
+- **Req:** BUG-1793644507 Expected (bounded request resources); FEAT-1793644502
+- **Depends on:** owner approval of a target for this route
+- **Repro / Notes:** docs/reviews/2026-11-09-assignment-update-decode.md. No target exists for this route today, so nothing is red; this ticket asks for the measurement.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794264964] Let the healthcheck mode test run when port 8080 is busy
+- [ ] **Severity:** low
+- **Area:** tests, tooling
+- **File(s):** backend/internal/healthcheck/healthcheck_test.go; backend/cmd/{bill-service,web-service}/main.go
+- **Observation:** TestServiceHealthcheckMode/bill-service listens on the fixed address 127.0.0.1:8080 because the binary's --healthcheck mode probes that address. When another process holds the port the ordinary Go row fails locally with: listen tcp 127.0.0.1:8080: bind: address already in use. On 2026-11-09 this was the only failure in go test -race ./... (1553 pass, 2 fail); the same package passes in a container with its own network namespace and in hosted CI.
+- **Expected:** The ordinary Go row gives the same result whether or not port 8080 is free on the host, without weakening what the test proves about the shipped --healthcheck contract (for example by running the probe subprocess in a way that does not need the host port, or by failing with an explicit prerequisite message).
+- **Req:** VERIFICATION.md Stage 2 (no environment-dependent failures)
+- **Depends on:** none
+- **Repro / Notes:** Hold 127.0.0.1:8080, then cd backend && go test -race -count=1 ./internal/healthcheck. Container control: docker run the pinned golang builder image with the same command.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794265789] Build the iOS simulator app under Xcode 27.2
+- [ ] **Severity:** med
+- **Area:** mobile, ios, tooling
+- **File(s):** mobile/ios/Podfile; mobile/ios/Runner.xcodeproj/project.pbxproj; mobile/README.md
+- **Observation:** With Xcode 27.2 (27B52) and Flutter 3.41.5, flutter build ios --simulator --debug fails twice. First, Xcode treats pod deployment targets 12.0 and 13.0 as errors (supported range 15.0 to 27.2.x; __DIAGNOSE_INVALID_DEPLOYMENT_TARGET_AS_ERROR = YES) and the build stops after 2.9s. With FLUTTER_XCODE_IPHONEOS_DEPLOYMENT_TARGET=15.5 it then fails in Thin Binary: Flutter.framework does not contain architectures "arm64 x86_64" although lipo lists both. Adding FLUTTER_XCODE_ARCHS=arm64 and FLUTTER_XCODE_ONLY_ACTIVE_ARCH=YES builds Runner.app.
+- **Expected:** The documented simulator build command produces Runner.app on the current Xcode without environment overrides: pods carry a supported deployment target (for example through the Podfile post_install), and the architecture check passes or the documented command selects the simulator architecture. mobile/README.md states the supported Xcode range. The device release build and Podfile.lock versions are unchanged.
+- **Req:** AGENTS.md iOS builds; VERIFICATION.md Stage 0 (debug flutter run in mobile)
+- **Depends on:** none
+- **Repro / Notes:** cd mobile && flutter pub get --enforce-lockfile && flutter build ios --simulator --debug on Xcode 27.2. Logs retained in .vv/sweep/ios-build{,2,3}.log of the 2026-11-09 sweep. The 2026-11-04 lock qualification used SDK 26.2, where this did not occur. Hosted TestFlight runners were not checked.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794273307] Keep the Assign Items tutorial dialog clear of the side status column
+- [ ] **Severity:** low
+- **Area:** mobile, ui, layout
+- **File(s):** mobile/lib/screens/quick_split/item_assignment (tutorial overlay)
+- **Observation:** On an iPhone Duo simulator in its Closed pose (iOS 27.1, right status column), the automatic 'Step 1 of 5 / Expand Items' tutorial dialog on Assign Items is centred on the full display, so its right edge and corner extend under the status column. The screen body behind it respects the side inset after BUG-1793927492.
+- **Expected:** The tutorial dialog and its close and Next controls stay between the system side insets on displays that have them, and keep their current position on displays without side insets; a widget test with a right view padding covers it.
+- **Req:** DESIGN_SYSTEM.md responsive layout; BUG-1793927492 follow-up
+- **Depends on:** none
+- **Repro / Notes:** Duo Closed pose, Quick Split with four people, subtotal 122 with items, Continue to Assign Items on first use. Screenshot: .vv/ui-inspection-20261109/layout/b2-tutorial.png (2026-11-09 sweep).
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794274030] Open a trip whose receipts exceed the device history limit
+- [ ] **Severity:** med
+- **Area:** mobile, persistence, tabs, product
+- **File(s):** mobile/lib/database/database.dart (maxRecentBills, _makeReceiptRoom); mobile/lib/screens/tabs/tab_detail_screen.dart
+- **Observation:** The device keeps at most 30 receipts, counted across all tabs. A member who opens a trip with 31 receipts sees 'History is full of pending or referenced receipts. Current history could not be cached; balances need review.' with a Retry that repeats the message; no receipts, balances or Finalize are available for that trip on the device. The same happens for a smaller trip when receipts referenced by other tabs already fill the limit: on a device with one other referenced receipt, a 31-receipt trip failed, and a 30-receipt trip opened only on a fresh install. This is the atomic refusal BUG-1794045427 specifies, so nothing is corrupted, but the trip cannot be used in the app.
+- **Expected:** An owner decision on the product rule: either a tab's receipts are readable on the device regardless of the recent-history limit (the limit applies only to unreferenced history), or the limit is stated to the user before joining with a way forward. Whatever is chosen keeps BUG-1794045427's atomic import and never shows partial balances.
+- **Req:** BUG-1794045427 follow-up; docs/technical-overview.md durable history contract
+- **Depends on:** owner product decision
+- **Repro / Notes:** Local synthetic stack, 2026-11-09: seed a tab with 31 receipts through the API, open billington://tab/<id>?t=<token> on a simulator and join. Screenshots: .vv/ui-inspection-20261109/recheck/E3-cache-error.png, layout/b3-capacity-loaded.png. The API returned all 31 receipts for the same tab.
 - **Bump:** patch
 - **Status:** open

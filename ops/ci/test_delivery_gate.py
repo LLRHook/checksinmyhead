@@ -1304,7 +1304,8 @@ class ManifestReportTests(unittest.TestCase):
          ('flutter',
           'mobile',
           'mobile/test/receipt_timestamp_test.dart',
-          ('new receipt uses insertion time instead of historical table default',)),
+          ('new receipt uses insertion time instead of historical table default',
+           'explicit receipt timestamp is stored unchanged and an existing handle keeps its row')),
          # The conditional-title loop had no selection at all: its four named modes
          # could be removed while the row stayed green (focused S4 review, 2026-11-09).
          ('flutter',
@@ -1545,6 +1546,26 @@ class DocumentationContractTests(unittest.TestCase):
         self.assertIn('phase F',text)
         self.assertIn('No hosted mutation or Render/Vercel control-plane work',text)
         self.assertNotIn('skip_tests',text)
+
+    def test_operational_docs_match_routes_and_signed_capabilities(self):
+        read=lambda path:(ROOT/path).read_text()
+        readme=read('README.md')
+        # PR #149 removed the viewer's /privacy route; the maintained route is /privacy-policy.
+        # README may name the old route only where it says that it was removed.
+        for paragraph in readme.split('\n\n'):
+            if re.search(r'(?<![\w.])/privacy(?![-\w.])',paragraph):
+                with self.subTest(paragraph=paragraph[:60]):self.assertRegex(paragraph,r'removed on purpose \(PR #149\)')
+        self.assertIn('/privacy-policy',readme)
+        api=read('docs/backend-api.md')
+        routes=re.findall(r'r\.(GET|POST|PATCH|PUT|DELETE)\("([^"]+)"',read('backend/cmd/bill-service/main.go'))
+        self.assertGreaterEqual(len(routes),31)
+        self.assertIn('## Route index',api)
+        index=api.split('## Route index',1)[1].split('\n## ',1)[0]
+        self.assertEqual(sorted(re.findall(r'^\| `([A-Z]+) (/[^`]*)` \|',index,re.M)),sorted(routes))
+        self.assertNotIn('/images',api)
+        # The documented invite capabilities describe these signed-build inputs.
+        self.assertNotIn('associated-domains',read('mobile/ios/Runner/RunnerProfile.entitlements'))
+        self.assertIn('<string>billington</string>',read('mobile/ios/Runner/Info.plist'))
 
     def test_initial_policy_and_local_reports_cannot_emit_a_release_receipt(self):
         with tempfile.TemporaryDirectory(prefix='gate-local-report-') as d:
