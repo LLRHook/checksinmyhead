@@ -69,7 +69,7 @@ missing/nonloopback DSNs, wrong identity and caller schema/options. No applicati
 harness or timing budget is changed. This row includes existing measured cases;
 CI execution would not replace independent numerical or production qualification.
 
-The row first builds both service binaries so the startup test's unchanged 60s build
+The row first builds the API binary so the startup test's unchanged 60s build
 bound measures a warm link, not a cold compile competing with eight race builds. It
 sets `-timeout=20m` per package and a 30-minute job bound: the measured creation and
 lifecycle cohorts need 5.5–9 minutes on hosted runners, which left no margin under
@@ -319,13 +319,6 @@ afterward. Locked review with default `allow_cancel=false` performs no write/can
 explicit consent permits bounded cancellation/unlock and optional same-build
 resubmission. Verification-only performs GET eligibility checks with in-memory JWT
 signing, without credential files, signing, upload, tags or ASC writes.
-
-Promotion and its readback are not public availability. A TestFlight, staged,
-in-review or phased build never lets the app minimum rise: the API serves
-`MINIMUM_SUPPORTED_APP_VERSION` only within the reviewed store record described in
-[the version-policy contract](../../docs/backend-api.md#get-apiappversion-policy).
-Updating that record after each targeted storefront serves the release, and then
-setting the variable, are separate owner steps; no delivery target performs either.
 
 The lasting offline selections are `test_ios_artifact.py` (actual helper/ZIP/API/
 workflow/signing-lifecycle fixtures) and `asc_delivery_test.rb` (actual ASC/state/

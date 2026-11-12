@@ -70,24 +70,6 @@ class TutorialManager extends ChangeNotifier {
     return manager;
   }
 
-  // Singleton instance
-  static TutorialManager? _instance;
-
-  // Get or create an instance of TutorialManager
-  static Future<TutorialManager> getInstance() async {
-    _instance ??= await create();
-    return _instance!;
-  }
-
-  // Reset the singleton instance (useful for testing or when you need a fresh instance)
-  static void resetInstance() {
-    _instance?.dispose();
-    _instance = null;
-  }
-
-  // Getter for whether the user has seen the tutorial
-  bool get hasSeenTutorial => _hasSeenTutorial;
-
   // Loads the tutorial state from the database
   // Sets _hasSeenTutorial to false if there's an error
   Future<void> _loadTutorialState() async {
@@ -151,24 +133,5 @@ class TutorialManager extends ChangeNotifier {
     _initTimer?.cancel();
     // Don't call notifyListeners after disposing - it causes errors
     super.dispose();
-  }
-
-  // Creates a tutorial button widget with an optional notification badge
-  // Badge appears if the user hasn't seen the tutorial
-  Widget buildTutorialButton(VoidCallback onPressed) {
-    return TutorialButton(
-      onPressed: onPressed,
-      badge:
-          !_hasSeenTutorial
-              ? Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: Colors.red,
-                  shape: BoxShape.circle,
-                ),
-              )
-              : null,
-    );
   }
 }

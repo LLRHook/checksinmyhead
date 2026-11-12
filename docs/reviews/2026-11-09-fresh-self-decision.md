@@ -43,8 +43,7 @@ representable state. Mobile (`participant_identity_panel.dart`) and web
 the server did not record.
 
 The ticket's four Expected bullets do not depend on this. Same-name separation and
-the impersonation negatives are met by the supported flow (evidence:
-[identity evidence](2026-11-09-identity-evidence.md)).
+the impersonation negatives are met by the supported flow.
 
 ## Options
 

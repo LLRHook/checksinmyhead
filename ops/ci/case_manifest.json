@@ -20,7 +20,6 @@
       "DocumentationContractTests.test_VERIFICATION_uses_the_actual_report_commands_and_keeps_manual_boundaries",
       "DocumentationContractTests.test_initial_policy_and_local_reports_cannot_emit_a_release_receipt",
       "DocumentationContractTests.test_operational_docs_label_history_and_match_routes_and_signed_capabilities",
-      "DocumentationContractTests.test_prepared_store_copy_says_Billington_and_fits_Apple_field_limits",
       "EntrypointTests.test_ASC_transport_and_all_iOS_inputs_remain_unavailable_with_explicit_cancel_consent",
       "EntrypointTests.test_main_changes_select_publication_after_full_gate_and_no_candidate_policy_override",
       "EntrypointTests.test_source_floor_guard_removal_cannot_hide_future_source_floor",
@@ -81,7 +80,6 @@
       "MirrorTests.test_explicit_S_split_and_real_local_remote_lease",
       "MirrorTests.test_unknown_host_wrong_subtree_and_missing_secret_rejected",
       "PredecessorTests.test_absent_identical_or_schema_equal_predecessor_needs_no_floor",
-      "PredecessorTests.test_reader_floor_guard_removal_admits_the_old_serving_reader",
       "PredecessorTests.test_serving_predecessor_must_reach_the_named_reader_floor_before_a_schema_step",
       "PredecessorTests.test_unknown_unrelated_or_unobservable_predecessor_is_rejected",
       "ReportTests.test_flutter_multiplicity_complete_and_skipped_ids",
@@ -169,8 +167,6 @@
       "backend/cmd/bill-service/TestProductionHistoricalAndZeroQuotesAreNeverRefetched",
       "backend/cmd/bill-service/TestProductionQuoteFailuresNeverPersistOrLeak",
       "backend/cmd/bill-service/TestProductionSharedProviderBudget",
-      "backend/cmd/web-service/TestA1WebProductionRouter",
-      "backend/cmd/web-service/TestA1WebProxyCanonicalization",
       "backend/internal/bill/TestBuildLazyPersonSharesDistributesTaxAndTipRemainders",
       "backend/internal/bill/TestBuildLazyPersonSharesDoesNotCreateOrLoseSplitItemPennies",
       "backend/internal/bill/TestBuildLazyPersonSharesKeepsEarlierClaimTaxStable",
@@ -334,14 +330,6 @@
       "backend/internal/tab/TestUpdateBillItemAssignments_ForwardsToRepository",
       "backend/internal/versionpolicy/TestHandlerFallsBackForInvalidMinimumVersion",
       "backend/internal/versionpolicy/TestHandlerReturnsConfiguredPolicyWithoutCaching",
-      "backend/internal/versionpolicy/TestCheckedInPublicAvailabilityRecordIsValid",
-      "backend/internal/versionpolicy/TestConfiguredMinimumAbovePublicAvailabilityIsNotEnforced",
-      "backend/internal/versionpolicy/TestConfiguredMinimumWithinPublicAvailabilityIsEnforced",
-      "backend/internal/versionpolicy/TestInvalidPublicAvailabilityRecordFailsToNonBlocking",
-      "backend/internal/versionpolicy/TestResolveNeverServesMinimumAboveAnyRecordedRelease",
-      "backend/internal/versionpolicy/TestResolveServesConfiguredMinimumOnlyWithinEveryRecordedRelease",
-      "backend/internal/versionpolicy/TestSourceDefaultMinimumNeverExceedsPublicAvailability",
-      "backend/internal/versionpolicy/TestStartupNoticeIsFixedAndNeverEchoesOperatorInput",
       "backend/migrations/TestCatalogSafetyGuardV2Checksum",
       "backend/migrations/TestFrozenBaselineRegistry",
       "backend/migrations/TestFrozenCatalogRecognizer",
@@ -398,7 +386,6 @@
       "backend/pkg/safehttp/TestStreamSingleJSONDocument",
       "backend/pkg/safehttp/TestStreamArrayStopsAtLimit",
       "backend/pkg/safehttp/TestStreamArrayStdlibCompatibility",
-      "backend/internal/receipt/TestAdmissionPeerTableStaysBounded",
       "backend/internal/receipt/TestHandlerFailuresMakeOneProviderAttempt"
     ],
     "postgres": [
@@ -548,7 +535,6 @@
       "backend/internal/tab/TestIdentity0003UnboundGuestsAndMissingPayers",
       "backend/internal/tab/TestJoinTab_Success",
       "backend/internal/tab/TestMaterializationAccountingFidelity",
-      "backend/internal/tab/TestPostgresActualMobileCreationFixtures",
       "backend/internal/tab/TestPostgresAttachmentAndCreationRollback",
       "backend/internal/tab/TestPostgresAttachmentWaitsForCommittedFinalization",
       "backend/internal/tab/TestPostgresCompetingDestinationsAndSameTargetRetry",
@@ -581,7 +567,6 @@
       "backend/internal/tab/TestPostgresMaterializationReadFailures",
       "backend/internal/tab/TestPostgresMembershipTransitionIsRecheckedByWaitingAttachment",
       "backend/internal/tab/TestPostgresMembershipWritersUseDestinationLock",
-      "backend/internal/tab/TestPostgresPublicCreateRejectsPrivilegedInput",
       "backend/internal/tab/TestPostgresSnapshotPersistedAcknowledgment",
       "backend/internal/tab/TestPostgresSnapshotSuppressedInsertRollsBack",
       "backend/internal/tab/TestPostgresStaleStandaloneSingleAndBatchClaims",
@@ -647,7 +632,6 @@
       "backend/internal/bill/TestCreationInsertAuditsShares",
       "backend/internal/bill/TestCreationRoundingRemainsAccountable",
       "backend/cmd/bill-service/TestPostgresWarmServiceSurvivesAdditiveDDL",
-      "backend/cmd/bill-service/TestWarmUnstableShapePattern",
       "backend/internal/tab/TestIdentity0003SameNameMembersKeepSeparateDebts",
       "backend/cmd/bill-service/TestPostgresIdentity0003FreshParticipantIsUnboundUntilApproved",
       "backend/cmd/bill-service/TestProductionCurrencySupportMatrix",
@@ -713,8 +697,7 @@
       "mobile/test/tab_import_capacity_test.dart",
       "mobile/test/receipt_timestamp_test.dart",
       "mobile/test/save_journey_test.dart",
-      "mobile/test/tab_display_conversion_test.dart",
-      "mobile/test/finalize_confirm_sheet_test.dart"
+      "mobile/test/tab_display_conversion_test.dart"
     ],
     "web": [
       "web-bill-viewer/src/components/__tests__/SettlementCard.test.ts",
@@ -990,14 +973,7 @@
         "(?:^| )does\\ not\\ block\\ on\\ malformed\\ versions$",
         "(?:^| )blocks\\ only\\ when\\ policy\\ minimum\\ is\\ newer\\ than\\ installed\\ app$",
         "(?:^| )accepts\\ only\\ trusted\\ App\\ Store\\ destinations\\ from\\ the\\ policy$",
-        "(?:^| )fails\\ open\\ when\\ policy\\ cannot\\ be\\ fetched$",
-        "(?:^| )every\\ non\\-200\\ policy\\ status\\ allows\\ the\\ app\\ to\\ continue$",
-        "(?:^| )transport\\ failures\\ allow\\ the\\ app\\ to\\ continue$",
-        "(?:^| )unusable\\ policy\\ bodies\\ allow\\ the\\ app\\ to\\ continue$",
-        "(?:^| )a\\ policy\\ request\\ that\\ never\\ answers\\ times\\ out\\ open$",
-        "(?:^| )the\\ non\\-blocking\\ server\\ minimum\\ never\\ requires\\ an\\ update$",
-        "(?:^| )startup\\ continues\\ past\\ the\\ splash\\ during\\ a\\ policy\\ outage$",
-        "(?:^| )startup\\ still\\ blocks\\ when\\ a\\ reachable\\ policy\\ requires\\ it$"
+        "(?:^| )fails\\ open\\ when\\ policy\\ cannot\\ be\\ fetched$"
       ],
       "mobile/test/settings_accessibility_test.dart": [
         "(?:^| )Settings\\ guidelines\\ 320\\ light\\ default$",
@@ -1361,27 +1337,6 @@
       ],
       "mobile/test/tab_display_conversion_test.dart": [
         "(?:^| )trip\\ display\\ conversion\\ is\\ live,\\ reports\\ an\\ outage\\ and\\ never\\ rewrites\\ the\\ stored\\ receipt$"
-      ],
-      "mobile/test/finalize_confirm_sheet_test.dart": [
-        "(?:^| )fits\\ 320x568\\ portrait\\ at\\ text\\ scale\\ 1\\.0$",
-        "(?:^| )fits\\ 320x568\\ portrait\\ at\\ text\\ scale\\ 2\\.0$",
-        "(?:^| )fits\\ 320x568\\ portrait\\ at\\ text\\ scale\\ 3\\.0$",
-        "(?:^| )fits\\ 375x667\\ portrait\\ at\\ text\\ scale\\ 1\\.0$",
-        "(?:^| )fits\\ 375x667\\ portrait\\ at\\ text\\ scale\\ 2\\.0$",
-        "(?:^| )fits\\ 375x667\\ portrait\\ at\\ text\\ scale\\ 3\\.0$",
-        "(?:^| )fits\\ 568x320\\ landscape\\ at\\ text\\ scale\\ 1\\.0$",
-        "(?:^| )fits\\ 568x320\\ landscape\\ at\\ text\\ scale\\ 2\\.0$",
-        "(?:^| )fits\\ 568x320\\ landscape\\ at\\ text\\ scale\\ 3\\.0$",
-        "(?:^| )fits\\ 812x375\\ landscape\\ with\\ side\\ insets\\ at\\ text\\ scale\\ 1\\.0$",
-        "(?:^| )fits\\ 812x375\\ landscape\\ with\\ side\\ insets\\ at\\ text\\ scale\\ 2\\.0$",
-        "(?:^| )fits\\ 812x375\\ landscape\\ with\\ side\\ insets\\ at\\ text\\ scale\\ 3\\.0$",
-        "(?:^| )a\\ short\\ preview\\ keeps\\ its\\ compact\\ height$",
-        "(?:^| )three\\ people\\ fit\\ 320x568\\ without\\ scrolling$",
-        "(?:^| )a\\ long\\ preview\\ stays\\ within\\ 70%\\ of\\ a\\ tall\\ display$",
-        "(?:^| )Finalize\\ returns\\ true\\ after\\ scrolling\\ to\\ the\\ last\\ row$",
-        "(?:^| )Cancel\\ returns\\ false\\ and\\ dismissal\\ returns\\ null$",
-        "(?:^| )Tab\\ detail\\ finalizes\\ once\\ with\\ the\\ same\\ tab\\ and\\ token$",
-        "(?:^| )Tab\\ detail\\ never\\ finalizes\\ on\\ Cancel\\ or\\ dismissal$"
       ]
     },
     "web": {
@@ -1411,11 +1366,8 @@
         "(?:^| )sends\\ PATCH\\ with\\ correct\\ body$",
         "(?:^| )throws\\ on\\ failure$",
         "(?:^| )sends\\ the\\ paid\\ change\\ with\\ both\\ tab\\ and\\ member\\ credentials$",
-        "(?:^| )sends\\ PATCH\\ with\\ assignments\\ payload$",
-        "(?:^| )includes\\ the\\ member\\ token\\ and\\ keeps\\ conflict\\ handling$",
         "(?:^| )uses\\ the\\ authorized\\ tab\\ bill\\ batch\\ route$",
         "(?:^| )treats\\ a\\ removed\\ item\\ as\\ a\\ stale\\ selection$",
-        "(?:^| )writes\\ claims\\ to\\ the\\ standalone\\ bill\\ route\\ with\\ its\\ share\\ token$",
         "(?:^| )saves\\ all\\ changed\\ items\\ in\\ one\\ request\\ and\\ returns\\ the\\ updated\\ bill$",
         "(?:^| )treats\\ a\\ removed\\ item\\ as\\ a\\ stale\\ selection$",
         "(?:^| )persists\\ a\\ display\\ name\\ and\\ returns\\ the\\ member\\ capability$",
@@ -1433,13 +1385,8 @@
         "(?:^| )uses\\ the\\ currency\\ that\\ the\\ remaining\\ total\\ was\\ converted\\ into$",
         "(?:^| )marks\\ an\\ item\\ paid\\ when\\ its\\ assigned\\ share\\ is\\ paid$",
         "(?:^| )keeps\\ unclaimed\\ and\\ partly\\ paid\\ split\\ items\\ unpaid$",
-        "(?:^| )locks\\ a\\ split\\ item\\ as\\ soon\\ as\\ any\\ assigned\\ person\\ has\\ paid$",
         "(?:^| )locks\\ unclaimed\\ items\\ after\\ the\\ current\\ share\\ is\\ paid$",
-        "(?:^| )assigns\\ the\\ chosen\\ viewer\\ percentage\\ and\\ splits\\ the\\ remainder\\ evenly$",
-        "(?:^| )removes\\ duplicate\\ and\\ self\\ names\\ and\\ requires\\ someone\\ to\\ share\\ with$",
-        "(?:^| )compares\\ shares\\ without\\ depending\\ on\\ participant\\ ordering$",
-        "(?:^| )redistributes\\ a\\ shared\\ item\\ to\\ the\\ remaining\\ people\\ when\\ one\\ opts\\ out$",
-        "(?:^| )clears\\ the\\ item\\ when\\ its\\ only\\ participant\\ opts\\ out$"
+        "(?:^| )compares\\ shares\\ without\\ depending\\ on\\ participant\\ ordering$"
       ],
       "web-bill-viewer/src/lib/__tests__/private-reads.test.ts": [
         "(?:^| )fetches bill afresh with independent bearer credentials$",

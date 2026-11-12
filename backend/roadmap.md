@@ -260,8 +260,7 @@ Transform Billington from a local Flutter app into a Splitwise competitor with g
 ```
 Billington-backend/
 ├── cmd/
-│   ├── bill-service/main.go       ✅ Working
-│   └── web-service/main.go        ✅ Working
+│   └── bill-service/main.go       ✅ Working
 ├── pkg/
 │   ├── models/
 │   │   ├── bill.go                ✅ Updated (PaymentMethods, AddedByMemberID)
@@ -280,14 +279,10 @@ Billington-backend/
 │   │   ├── handler.go             ✅ (Multipart upload, MIME validation)
 │   │   ├── service.go             ✅ (Gemini 2.0 Flash Vision API)
 │   │   └── service_test.go        ✅ (9 test cases)
-│   ├── tab/                       ✅ Complete
-│   │   ├── handler.go             ✅ (Join, Members, attribution)
-│   │   ├── service.go             ✅ (JoinTab, GetMembers)
-│   │   └── repository.go         ✅ (Member CRUD)
-│   └── web/
-│       ├── handler.go             ✅ Complete
-│       └── templates/
-│           └── bill.html          ✅ Complete
+│   └── tab/                       ✅ Complete
+│       ├── handler.go             ✅ (Join, Members, attribution)
+│       ├── service.go             ✅ (JoinTab, GetMembers)
+│       └── repository.go         ✅ (Member CRUD)
 ├── web-bill-viewer/               ✅ Next.js app
 │   ├── app/
 │   │   ├── b/[id]/page.tsx        ✅ Updated (multiple payments)

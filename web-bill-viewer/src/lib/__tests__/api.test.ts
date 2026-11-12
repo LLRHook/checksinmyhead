@@ -3,14 +3,12 @@ import type { Bill, PersonShare, Tab } from "../api";
 import {
   computeTabPersonTotals,
   getBill,
-  getSettlements,
+  getSettlementHistory,
   getTab,
   getTabMembers,
   joinTab,
-  updateLazyBillItemAssignments,
   updateLazyBillItemAssignmentsBatch,
   updatePersonSharePaid,
-  updateTabBillItemAssignments,
   updateTabBillItemAssignmentsBatch,
   updateTabPersonSharePaid,
 } from "../api";
@@ -495,25 +493,24 @@ describe("getTab", () => {
 
 describe("tab collections", () => {
   it.each([
-    ["settlements", getSettlements, "/api/tabs/7/settlements"],
+    ["settlements", getSettlementHistory, "/api/tabs/7/settlements"],
     ["members", getTabMembers, "/api/tabs/7/members"],
   ] as const)("loads %s with the access token", async (_name, get, path) => {
+    const data =
+      _name === "settlements"
+        ? {
+            settlements: [{ id: 1 }],
+            identity_review_status: "ready",
+            accounting_currency: "USD",
+          }
+        : [{ id: 1 }];
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: () =>
-        Promise.resolve(
-          _name === "settlements"
-            ? {
-                settlements: [{ id: 1 }],
-                identity_review_status: "ready",
-                accounting_currency: "USD",
-              }
-            : [{ id: 1 }],
-        ),
+      json: () => Promise.resolve(data),
     });
     vi.stubGlobal("fetch", mockFetch);
 
-    await expect(get("7", "token")).resolves.toEqual([{ id: 1 }]);
+    await expect(get("7", "token")).resolves.toEqual(data);
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining(path),
       expect.objectContaining({
@@ -526,7 +523,7 @@ describe("tab collections", () => {
     );
   });
 
-  it.each([getSettlements, getTabMembers])(
+  it.each([getSettlementHistory, getTabMembers])(
     "propagates unavailable collections without fabricating an empty list",
     async (get) => {
       vi.stubGlobal(
@@ -597,58 +594,6 @@ describe("updateTabPersonSharePaid", () => {
   });
 });
 
-describe("updateTabBillItemAssignments", () => {
-  it("sends PATCH with assignments payload", async () => {
-    const mockFetch = vi
-      .fn()
-      .mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
-    vi.stubGlobal("fetch", mockFetch);
-
-    await updateTabBillItemAssignments(
-      "1",
-      2,
-      3,
-      [{ participant_id: 1, percentage: 100 }],
-      "tab-token",
-      undefined,
-      undefined,
-      0,
-    );
-
-    expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining("/api/tabs/1/bills/2/items/3/assignments"),
-      expect.objectContaining({
-        method: "PATCH",
-        body: JSON.stringify({
-          expected_revision: 0,
-          assignments: [{ participant_id: 1, percentage: 100 }],
-        }),
-      }),
-    );
-  });
-
-  it("includes the member token and keeps conflict handling", async () => {
-    const mockFetch = vi.fn().mockResolvedValue({ ok: false, status: 409 });
-    vi.stubGlobal("fetch", mockFetch);
-
-    await expect(
-      updateTabBillItemAssignments(
-        "1",
-        2,
-        3,
-        [{ participant_id: 1, percentage: 100 }],
-        "tab-token",
-        "2026-10-10T17:30:54.055105Z",
-        "member-token",
-        0,
-      ),
-    ).rejects.toThrow("State changed or requires review");
-    expect(mockFetch.mock.calls[0][1]).toMatchObject({
-      headers: expect.objectContaining({ "X-Member-Token": "member-token" }),
-    });
-  });
-});
-
 describe("updateTabBillItemAssignmentsBatch", () => {
   it("uses the authorized tab bill batch route", async () => {
     const mockFetch = vi
@@ -702,39 +647,6 @@ describe("updateTabBillItemAssignmentsBatch", () => {
         0,
       ),
     ).rejects.toThrow("Resource not found");
-  });
-});
-
-describe("updateLazyBillItemAssignments", () => {
-  it("writes claims to the standalone bill route with its share token", async () => {
-    const mockFetch = vi
-      .fn()
-      .mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
-    vi.stubGlobal("fetch", mockFetch);
-
-    await updateLazyBillItemAssignments(
-      27,
-      159,
-      [{ participant_id: 2, percentage: 100 }],
-      "bill-token",
-      "2026-10-10T17:30:54.055105Z",
-      0,
-    );
-
-    expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining("/api/bills/27/items/159/assignments"),
-      expect.objectContaining({
-        method: "PATCH",
-        headers: expect.objectContaining({
-          Authorization: "Bearer bill-token",
-        }),
-        body: JSON.stringify({
-          expected_revision: 0,
-          expected_updated_at: "2026-10-10T17:30:54.055105Z",
-          assignments: [{ participant_id: 2, percentage: 100 }],
-        }),
-      }),
-    );
   });
 });
 

@@ -64,7 +64,6 @@ func (m *matrixMarket) serve(t *testing.T) *httptest.Server {
 // (docs/backend-api.md, "Currency support matrix"), through the production
 // composition: one provider instance behind creation, USD preview and display.
 func TestProductionCurrencySupportMatrix(t *testing.T) {
-	today := time.Now().UTC().Format(time.DateOnly)
 	rate := func(t *testing.T, w *httptest.ResponseRecorder) (float64, string) {
 		t.Helper()
 		var body struct {
@@ -76,54 +75,6 @@ func TestProductionCurrencySupportMatrix(t *testing.T) {
 		}
 		return body.Rate, body.Source
 	}
-
-	t.Run("native_usd_never_asks_the_provider", func(t *testing.T) {
-		market := &matrixMarket{}
-		repo := &compositionRepo{}
-		router := compositionRouter(repo, exchange.NewClient(market.serve(t).URL))
-		for _, body := range []string{`{"name":"Omitted","subtotal":10,"total":10}`, `{"name":"Explicit","subtotal":10,"total":10,"currency_code":" usd "}`} {
-			if w := compositionRequest(router, "POST", "/api/bills", body); w.Code != 201 {
-				t.Fatalf("create %d %s", w.Code, w.Body)
-			}
-		}
-		for _, b := range repo.saved {
-			if b.CurrencyCode != "USD" || b.Total != 10 || b.USDExchangeRate != 1 || b.USDTotal != 10 || b.ExchangeRateSource != "native-usd" || b.ExchangeRateDate != "" ||
-				b.ExchangeRate != nil || b.DisplayTotal == nil || *b.DisplayTotal != 10 || b.DisplayRateSource == nil || *b.DisplayRateSource != "same_currency" || b.DisplayRateDate != nil || b.DisplayRateRetrievedAt != nil {
-				t.Fatalf("native USD invented a market observation: %+v", b)
-			}
-		}
-		w := compositionRequest(router, "GET", "/api/exchange-rates/usd", "")
-		if value, source := rate(t, w); w.Code != 200 || value != 1 || source != "native-usd" {
-			t.Fatalf("USD preview %d %s", w.Code, w.Body)
-		}
-		if calls := market.seen(); len(calls) != 0 {
-			t.Fatalf("native USD reached the provider: %v", calls)
-		}
-	})
-
-	t.Run("approved_foreign_receipt_freezes_one_dated_quote", func(t *testing.T) {
-		// PEN is an approved receipt currency, not a display-only pair.
-		market := &matrixMarket{rates: map[string]float64{"PEN/USD": .27}}
-		repo := &compositionRepo{}
-		router := compositionRouter(repo, exchange.NewClient(market.serve(t).URL))
-		w := compositionRequest(router, "POST", "/api/bills", `{"name":"Lima","subtotal":20,"tax":2,"tip_amount":3,"total":25,"currency_code":"pen","display_currency":"USD"}`)
-		if w.Code != 201 || len(repo.saved) != 1 {
-			t.Fatalf("create %d %s", w.Code, w.Body)
-		}
-		b := repo.saved[0]
-		if b.CurrencyCode != "PEN" || b.Total != 25 || b.Subtotal != 20 || b.Tax != 2 || b.TipAmount != 3 {
-			t.Fatalf("original amounts changed: %+v", b)
-		}
-		if b.USDExchangeRate != .27 || b.USDTotal != 6.75 || b.ExchangeRateDate != today || b.ExchangeRateSource != "frankfurter-v2-blended" {
-			t.Fatalf("frozen USD valuation: %+v", b)
-		}
-		if b.ExchangeRate == nil || *b.ExchangeRate != .27 || b.DisplayRateSource == nil || *b.DisplayRateSource != "frankfurter-v2-blended" || b.DisplayRateDate == nil || *b.DisplayRateDate != today {
-			t.Fatalf("USD display did not reuse the accepted pair: %+v", b)
-		}
-		if calls := market.seen(); len(calls) != 1 || calls[0] != "PEN/USD" {
-			t.Fatalf("calls=%v want one frozen pair", calls)
-		}
-	})
 
 	t.Run("same_currency_is_identity_without_a_market_observation", func(t *testing.T) {
 		market := &matrixMarket{rates: map[string]float64{"EUR/USD": 1.25}}

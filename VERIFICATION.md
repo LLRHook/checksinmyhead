@@ -42,8 +42,8 @@ and update the checkpoint. Require every probe to succeed.
       versions: `python3 --version`, `go version`, `flutter --version`, `node --version`,
       `npm --version`, `ruby --version`, `docker compose version`. Match repository pins:
       Go from `backend/go.mod`, Flutter from CI, Node from `web-bill-viewer/.node-version`.
-- [ ] Inventory `docker compose ls`, relevant containers/volumes and listeners on 8080,
-      8081 and 3100. Block on conflicting ports; preserve unrelated running services.
+- [ ] Inventory `docker compose ls`, relevant containers/volumes and listeners on 8080
+      and 3100. Block on conflicting ports; preserve unrelated running services.
       Inspect existing verification data against D1–D5 and back up needed verification
       state to `.vv/backups/`. Record incidental/unknown data before any reset.
 - [ ] Prepare Appendix A with local-only DB settings and confirm its project identity.
@@ -130,7 +130,7 @@ Registry1,2,3: retain rows/columns/PK/FK actions and ledger1/2 bytes. Test struc
 backfill/legacy defaults, NULL-safe scoped groups, sequence/default/ownership, strict
 prefixes/future drift, rollback/cancel/apply locks and old prefix1/2 startup/verify/reads.
 Retain old warm-reader failures/old-writer gates. Prove current
-API/HTML on the same observed warm PID/pool1 through owned additive columns/suffix4;
+API on the same observed warm PID/pool1 through owned additive columns/suffix4;
 health reads only ledger; verify checks catalogs. Restore1,2,3/data. Test
 ready2 reference authority/revision/receipts, persisted response2, same-label denial/
 confirmed-owner success, rename-stable cents, explicit unavailable net and raw legacy
@@ -149,7 +149,7 @@ It creates only labelled fixture resources, proves real down/restart preservatio
 guarded reset, and retains cleanup. No real simulator/app mutation in stub tests.
 
 For runtime changes, run the [static image harness](backend/README.md#static-runtime-verification)
-on both immutable images/owned fixtures; retain controls/cleanup, verify signatures
+on the immutable API image/owned fixtures; retain controls/cleanup, verify signatures
 and scan exact artifacts unsuppressed. No CI/hosting proof. Receipt controls:
 [backend](docs/backend-ocr-verification.md), [mobile](docs/mobile-ocr-verification.md).
 
@@ -238,7 +238,7 @@ Retain every [mobile save/reopen, UI and native proof obligation](docs/reviews/2
 ## Appendix A — isolated local stack recipe
 
 Run in Bash from root; block on port conflicts/unknown data. Use the production API
-Dockerfile/built Next; `legacy-web` is explicit compatibility coverage. Back up before reset.
+Dockerfile and built Next.js viewer. Back up before reset.
 
 ```bash
 mkdir -p .vv

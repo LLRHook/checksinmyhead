@@ -46,7 +46,6 @@ Participant colors belong to their saved occurrence, not amount rank. Single-per
 - Keep item selection rows thumb-friendly and visibly distinguish available, selected, unavailable, and paid items.
 - Show four real avatars for four assignees; above four, show three avatars and the remaining-person count. Keep item counts singular/plural and chevrons consistent with actual expansion. Auto-added owners may reuse their saved custom color while receiving fresh occurrence references.
 - Settings accent choices expose distinct color names, button roles and selected states. Keep at least 48 logical points per target by reducing columns at narrow widths; allow Settings row titles and action text to wrap. Payment-row options use a method-name tooltip without an identifier.
-- Confirmation sheets pin their actions and scroll everything above them, so every row and both actions stay reachable on short displays and at large text. The Finalize sheet keeps its 70% height limit, except that a display shorter than about 630 points may use up to 440 points (or its full height). At accessibility text sizes a settlement amount moves below its name; action labels shrink to fit rather than wrap, and money is never truncated.
 - Preserve keyboard operation, descriptive labels, and accessible error announcements in web controls.
 - Respect system light/dark mode. Do not hard-code a new brand color or introduce a competing component style.
 

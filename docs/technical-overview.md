@@ -30,20 +30,20 @@ Billington is a distributed bill-splitting system with three components: a Go ba
               └─────────────────────────┘
 ```
 
-Both retained Go service images use a digest-pinned Distroless
+The Go API image uses a digest-pinned Distroless
 `static-debian13:nonroot` runtime, with CGO disabled in production and execution
 as UID/GID 65532. Go supplies DNS/user lookup and TLS without runtime libc/OpenSSL;
-race/SQLite tests retain CGO. Their shared same-binary `--healthcheck` mode probes
+race/SQLite tests retain CGO. Its same-binary `--healthcheck` mode probes
 the established local
-HTTP health endpoint before database initialization. The default server commands
-and ports are unchanged; see [container liveness](../backend/README.md#container-liveness)
+HTTP health endpoint before database initialization. The API server command
+and port are unchanged; see [container liveness](../backend/README.md#container-liveness)
 and the [local runtime harness](../backend/README.md#static-runtime-verification).
 
 Local Compose defaults to PostgreSQL and the API, keeping its existing project and
-volume identity. Next.js is the ordinary local viewer; the retained Go HTML service
-requires the explicit `legacy-web` profile on its unchanged 8081 URLs. Source,
-templates, Dockerfile and test coverage remain; external consumers/hosting retirement
-are unverified. See [local workflow](../README.md#quickstart).
+volume identity. Next.js is the maintained local and production viewer; the legacy
+Go HTML binary, templates, Dockerfile and Compose profile have been removed. This
+source retirement makes no claim about external hosting-account or DNS changes.
+See [local workflow](../README.md#quickstart).
 The Bash entrypoint owns exact container/process cleanup and supervises both local
 clients. A Python stdlib helper owns cancellable command deadlines and terminal
 handoff. Failed inventory is an error; unresolved partial ownership requires manual
@@ -364,12 +364,12 @@ production adoption, signed-client bridge or whole-product acceptance is claimed
 ### JSONB for Flexible Data
 `PaymentMethods` and `PersonShare.Items` use PostgreSQL JSONB columns via GORM's `serializer:json` tag. This avoids extra join tables for data that is always read and written as a unit.
 
-Both database-using binaries share the SQL logger and sanitized database initialization errors. The logger suppresses SQL text, parameters, arbitrary messages and invalid configuration text; it emits bounded operation/table/error categories, known SQLSTATE codes, timing and row counts. Bind interpolation is disabled for logging. Unknown identifiers and error codes never pass through as text. Bill, tab and legacy-web request-error sinks use the same finite classification while retaining original typed errors for business and HTTP-status decisions.
+The API uses the SQL logger and sanitized database initialization errors. The logger suppresses SQL text, parameters, arbitrary messages and invalid configuration text; it emits bounded operation/table/error categories, known SQLSTATE codes, timing and row counts. Bind interpolation is disabled for logging. Unknown identifiers and error codes never pass through as text. Bill and tab request-error sinks use the same finite classification while retaining original typed errors for business and HTTP-status decisions.
 
 ### Immutable PostgreSQL Schema and Readiness
 
-Both `bill-service` and the retained `web-service` use `migrations.Run` through the
-shared database initializer. One embedded ordered registry replaces runtime AutoMigrate.
+`bill-service` uses `migrations.Run` through the database initializer. One embedded
+ordered registry replaces runtime AutoMigrate.
 Frozen `0001_baseline.sql` retains its released `81a564f`/`f1d62374` DDL checksum
 and independent catalog recognizer/manifest/ledger provenance. Additive
 `0002_receipt_replay_display.sql` appends six nullable columns, two exact CHECKs and
@@ -397,17 +397,10 @@ returned500 immediately after additive DDL; a separate pgx control reproduced
 SQLSTATE0A000 for cached `SELECT *` result-type invalidation. Drain readers before
 DDL and replace connections before resuming; verify this operational exclusion
 independently. Restarted read compatibility proves neither uninterrupted overlap
-nor old-writer safety. Current readers use explicit complete column shapes. Local index reuse retains full reference validation and money/tie behavior; it establishes no latency recovery. An integration test
-keeps one warmed database connection through owned additive columns and requires identical
-API/HTML bodies from cached statements, with warm writers still committing. The failure
-of an older reader is once per cached statement per pooled connection, then it recovers;
-it is still not safe to overlap, because rows its writers add after 0003 lack labels.
-The pre-registry deployed revision must be stopped before the first publish, which the
-delivery gate checks by observing `/health` before its hook request. This
+nor old-writer safety. Current readers use explicit complete column shapes. Local index reuse retains full reference validation and money/tie behavior; it establishes no latency recovery. The warm-reader test proves cached API reads and warm writers survive owned additive columns; see [warm-reader evidence](reviews/2026-11-09-reader-ddl.md). This
 does not repair old cached binaries or authorize blind mutation retries. Production adoption remains
 unauthorized.
-See [foundation evidence](reviews/2026-11-05-identity-foundation.md) and
-[warm-reader evidence](reviews/2026-11-09-reader-ddl.md).
+See [foundation evidence](reviews/2026-11-05-identity-foundation.md).
 
 A schema-scoped transaction advisory lock precedes ledger inspection/creation. At Read
 Committed, the next starter rereads committed history after waiting. The checked transaction
@@ -516,7 +509,7 @@ The Flutter app maintains its own Drift database for offline access and fast rea
 
 ### Shared HTTP lifecycle and admission
 
-`pkg/safehttp` owns both binaries' explicit HTTP server deadlines (5s headers, 20s
+`pkg/safehttp` owns the API binary's explicit HTTP server deadlines (5s headers, 20s
 read, 50s write, 60s idle, 32 KiB MaxHeaderBytes), signal-owned request cancellation
 and 25s graceful shutdown followed by Close. Its router constructor installs finite
 recovery in every Gin mode, an opaque standard-server log sink, and the configured

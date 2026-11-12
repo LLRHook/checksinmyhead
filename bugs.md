@@ -25,7 +25,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-05 Source acceptance: Driver reconciles completed scoped reviews/current clean committed-source proof; source criteria met, pending integrated V&V migration only. Historical handoffs remain in Git/dated notes. Deployment, public clients and whole acceptance are separate/RED.
 
 ### [BUG-1793644498] Restrict public bill creation to authorized input
-- [x] **Severity:** crit
+- [ ] **Severity:** crit
 - **Area:** backend, security
 - **File(s):** backend/internal/bill/{handler,service}.go; backend/pkg/models/bill.go; backend/internal/bill/{handler,service}_test.go
 - **Observation:** CreateBill binds models.Bill, allowing client-supplied tab/payer/nested accounting state without tab authorization.
@@ -39,14 +39,13 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** POST synthetic negative total with victim tab_id against isolated DB, as in review reproduction. Review sibling create/update routes. UI/client compatibility must be demonstrated.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** fixed-pending-migration
-- **Fix:** Public creation binds the explicit CreateBillRequest DTO with strict decoding; identity, tab, payer, paid and quote fields are not input and are refused again by the service and insert guards; shares are re-derived server-side. 2026-11-09 closes the PostgreSQL bullet with tests only: TestPostgresPublicCreateRejectsPrivilegedInput (78 handler cases on the migrated schema incl. the negative-total victim tab_id repro on active and finalized tabs, each 400 with an identical nine-table snapshot; authorized attach still 200) and TestPostgresActualMobileCreationFixtures (ten actual old-client builder bodies incl. the signed discount line). Local real-PG: 90/90 new, bill package 372/372 under the integration tag; ordinary bill 321/321. The 2026-11-06 setupRED was a test binary run outside its package directory and passes under go test; no change. Not run here: served deployment, signed old-binary capture, full eight-package PG row. Evidence: docs/reviews/2026-11-09-bill-create-postgres.md.
-- **Docs:** docs/reviews/2026-11-09-bill-create-postgres.md; docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-02-authorization-batch.md; docs/reviews/2026-11-02-authorization-corrections.md; docs/reviews/2026-11-03-client-v1-bridge.md; docs/reviews/2026-11-03-client-validation-correction.md; docs/reviews/2026-11-06-assignment-snapshot.md
+- **Status:** in-progress
+- **Fix:** Auth/client evidence: docs/reviews/2026-11-03-client-validation-correction.md. Driver Flutter237 pass; re-review/public bridge/integrated gates pending. 2026-11-06 assignment decoding source preserves exact old value/presence/null/duplicate/error behavior. Source0/0; candidate73 plus corrected goldens81 PASS across two scoped rows; baseline73 and four intended-negative/healthy controls retained. Original setupRED remains; no precision, PG, performance or integrated acceptance.
+- **Docs:** docs/backend-api.md; docs/technical-overview.md; VERIFICATION.md; docs/reviews/2026-11-02-authorization-batch.md; docs/reviews/2026-11-02-authorization-corrections.md; docs/reviews/2026-11-03-client-v1-bridge.md; docs/reviews/2026-11-03-client-validation-correction.md; docs/reviews/2026-11-06-assignment-snapshot.md
 - **Log:**
   - 2026-11-02 Validation: Driver-approved AUTH_CORRECTION_APPROVAL.md findings 1-3 implemented in 28eab76. Six safe before leaf failures; five temporary overlay variants yield 18 expected failing leaf cases. Extreme-denominator arithmetic tested only as bounded pure calculation, never HTTP. Real PostgreSQL covers safe money boundaries and calculation-error rollback. Five actual mobile-builder tests pass with --no-pub; this does not resolve locked acquisition. Keep in-progress; no CHANGELOG migration.
   - 2026-11-03 Validation: 43772a7 client slice: real widget/provider upload plus 30/31-rune entry/builder and validation checks; 228 Flutter/54 web pass, zero skips. See docs/reviews/2026-11-03-client-v1-bridge.md; broader acceptance unchanged.
   - 2026-11-06 Source: 2026-11-06 assignment decoding source preserves exact old value/presence/null/duplicate/error behavior. Source0/0; candidate73 plus corrected goldens81 PASS across two scoped rows; baseline73 and four intended-negative/healthy controls retained. Original setupRED remains; no precision, PG, performance or integrated acceptance.
-  - 2026-11-09 Validation: Real PostgreSQL handler tests added for privileged-input rejection and old-client creation: 90 run/90 pass; strict-decoding mutant fails 58 of 78 children. bill package 372/372 with the integration tag. go test ./... 1,197 of 1,199; the two failures are internal/healthcheck needing port 8080, held by another project on this machine.
 
 ### [BUG-1793644499] Inject the frozen exchange-rate provider at startup
 - [x] **Severity:** high
@@ -193,11 +192,12 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
 - **Fix:** Backend reference/read/proof reviews pass. C/D74dd source reviews0/0; web98, affected Flutter14/analyze and owned HTTP/PG mobile+browser49 pass; integrated as ordered commits after9244ad0. The two d6 Flutter I/O errors were real-deadline races, corrected test-only on 2026-11-06; full row at e0a2c18 passes 593/593 visible cases in 5 of 5 local runs. Added same-name debt (unit, 3 subtests) and fresh-participant (PostgreSQL) negatives with removal controls. Remains: owner decision on atomic fresh-self (docs/reviews/2026-11-09-fresh-self-decision.md; supported flow is create-unbound/request/creator-or-source approval), and the artifact/numerical/native/public/rollout and whole gates.
-- **Docs:** docs/backend-api.md; docs/reviews/2026-11-05-{participant-identity-behavior,identity-review-corrections,row-materialization,client-identity-integration}.md; docs/reviews/2026-11-09-{identity-evidence,fresh-self-decision}.md; docs/technical-overview.md; mobile/test/live/README.md
+- **Docs:** docs/backend-api.md; docs/reviews/2026-11-05-{participant-identity-behavior,identity-review-corrections,row-materialization,client-identity-integration}.md; docs/reviews/2026-11-09-fresh-self-decision.md; docs/technical-overview.md; mobile/test/live/README.md
 - **Log:**
   - 2026-11-05 Verification: Three unique P2 review gaps corrected;14 failing before cases/12 controls,26 after pass;5 independent removals discriminate. Correction review pending;broader B gate RED.
   - 2026-11-05 Integration: Manager/source check: POST participants is unbound-only; original plan60/approval33-34 fresh-self capability UNMET. Creator/source flow remains; frozen0003 unchanged.
   - 2026-11-09 Decision: Fresh-self needs an owner decision: A accept supported flow and amend plan (recommended), B one-step self-add for creator/source only (no migration), C for every member (0004, epoch 2). Not implemented.
+  - 2026-11-10 Sighting: 2026-11-10 V&V (5e877e36d968, D5 upgrade from production 81a564f): after migrations 0001-0003, GET /api/tabs/:id on legacy tabs returns 409 client_upgrade_required to clients that send no X-Billington-Identity-Version header (released v2.0.11+36 and App Store 1.4.0 send none). With header 2 it returns 200, but net_balances is null and net_balance_status is identity_review_required. On legacy graph1 tabs, member share-paid and name-only lazy claims return 409 identity_review_required (header 1 and 2), and docs/backend-api.md documents no review endpoint. Bills, members and settlements otherwise read identically. Local evidence: .vv/worktrees/vv-5e877e3/.vv/d5/logs/05c-compare.txt, 05e-legacy-writes.txt.
 
 ### [BUG-1793644506] Label local bill and tab removal accurately
 - [x] **Severity:** med
@@ -256,8 +256,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Fix:** Production45s unchanged. 7positives/5controls PASS; 3460Flutter567visible/573canonicalPASS. d6fullRED/classification2PASS retained. 2026-11-09 sweep/abuse-bounds, tests only: TestAdmissionPeerTableStaysBounded drives bursts of distinct peers through admission on a controlled clock (never over 4096 keys, expired keys pruned at the next admission, zero after the idle sweep); TestHandlerFailuresMakeOneProviderAttempt proves one provider POST per client request for provider 429/529/500/401/400/unusable-200 and none for peer-quota denials, with finite errors and Retry-After. Five guard removals fail by assertion. The 2026-11-05 cancel-removal failure is the intended control: 49/49 on source, 46 pass/3 fail with only _timer.cancel() removed. Multi-process semantics are documented (limits multiply across replicas; no durable or global allowance). OPEN: hosting/provider budgets BLOCKED on owner confirmation; durable/global spending allowance B needs a product decision; mobile retained-memory plateau NOT RUN (harness not in repository); native/signed-client qualification and the integrated run.
-- **Docs:** mobile/README.md; docs/{backend-api,technical-overview,mobile-ocr-verification,backend-ocr-verification}.md; docs/reviews/2026-11-09-receipt-limits.md; docs/reviews/2026-11-04-{mobile-tls-integration,mobile-tls-acceptance,backend-native-acceptance}.md; docs/reviews/2026-11-05-{ocr-timer-fixture,client-identity-integration}.md; docs/reviews/2026-11-06-{receipt-deadline-fixtures,combined-flutter-acceptance}.md
+- **Fix:** Production45s unchanged. 7positives/5controls PASS; 3460Flutter567visible/573canonicalPASS. d6fullRED/classification2PASS retained. 2026-11-09 sweep/abuse-bounds, tests only: TestHandlerFailuresMakeOneProviderAttempt proves one provider POST per client request for provider 429/529/500/401/400/unusable-200 and none for peer-quota denials, with finite errors and Retry-After. Five guard removals fail by assertion. The 2026-11-05 cancel-removal failure is the intended control: 49/49 on source, 46 pass/3 fail with only _timer.cancel() removed. Multi-process semantics are documented (limits multiply across replicas; no durable or global allowance). OPEN: hosting/provider budgets BLOCKED on owner confirmation; durable/global spending allowance B needs a product decision; mobile retained-memory plateau NOT RUN (harness not in repository); native/signed-client qualification and the integrated run.
+- **Docs:** mobile/README.md; docs/{backend-api,technical-overview,mobile-ocr-verification,backend-ocr-verification}.md; docs/reviews/2026-11-04-{mobile-tls-integration,mobile-tls-acceptance,backend-native-acceptance}.md; docs/reviews/2026-11-05-{ocr-timer-fixture,client-identity-integration}.md; docs/reviews/2026-11-06-{receipt-deadline-fixtures,combined-flutter-acceptance}.md
 - **Log:**
   - 2026-11-04 History: M2 clean362/17native/all359prior APPROVE; backend1146/OCR3600: prior M2/A2/native dated records (Docs).
   - 2026-11-04 Acceptance: Mobile7e36 source APPROVE0/0/reviewer NOT RUN; root392 CI commands and retained-report reconciliation pass; raw parser failure/missing source-after receipt retained. See mobile-tls-acceptance.
@@ -302,7 +302,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
 - **Fix:** Repository slice reconciled to released behavior on 2026-11-09: public binary 1.4.0 (source 5ca1dc6 / tag v1.4.0+23) and deployed API commit 81a564f (from GET /health). Maintained /privacy-policy is scoped to 1.4.0 and the running service, with later-build statements marked Not yet released. Source Settings notice no longer promises removal on uninstall or limits online storage to shared bills. docs/privacy.md separates released, not-yet-released and OPEN; docs/app-privacy-label.md holds prepared label answers against Apple's current data types, purposes, linkage and tracking (not submitted). Proven: 3 new web tests (2 failed on the old page) and 1 new widget test (failed on the old text); web lint, 105 tests and build; public-route verifier 6 cases 0 failed; flutter analyze and 594 cases; gate 42 methods. REMAINS, owner or external: the public label still shows Data Not Collected and the 1.4.0 in-app text still says data never leaves the device until a label submission and a new public binary; the store policy link is the legacy host; the maintained route returns 404 on its host; effective date, mailbox control, Anthropic account terms, production configuration and retention, stored 1.4.0-era tab photos and the public build number are OPEN; owner decision needed on an explicit correction of the 1.4.0 in-app text in the policy. No publication, legal-compliance or binary-parity claim.
-- **Docs:** docs/privacy.md; docs/app-privacy-label.md; docs/reviews/2026-11-09-privacy-disclosures.md; web-bill-viewer/README.md; web-bill-viewer/src/app/(public)/privacy-policy/page.tsx; docs/reviews/2026-11-05-public-web.md
+- **Docs:** docs/privacy.md; docs/app-privacy-label.md; web-bill-viewer/README.md; web-bill-viewer/src/app/(public)/privacy-policy/page.tsx; docs/reviews/2026-11-05-public-web.md
 - **Log:**
   - 2026-11-09 Sighting: Public recheck: store label Data Not Collected; store policy link getbillington.vercel.app/privacy-policy (200); billingtonapp.vercel.app / and /privacy-policy 404; API /health commit 81a564f; 1.4.0 Settings text says data never leaves the device while Done uploads every bill.
   - 2026-11-09 Verification: Headed browser check on the local stack: /privacy-policy loads and states the 1.4.0 upload on save, link visibility of shared details, the receipt photo path to the provider, the 'Not yet released' marking, no sale and the contact address; /privacy returns 404. Screenshots: .vv/ui-inspection-20261109/web/C2-*.png.
@@ -320,10 +320,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Read current policy endpoint/source and public listing. TestFlight success does not prove public distribution; private availability remains unverified.
 - **Bump:** patch
-- **Assignee:** Victor Ivanov
-- **Status:** in-progress
-- **Fix:** PARTIAL (repo side only). The API serves MINIMUM_SUPPORTED_APP_VERSION only when every release in the reviewed, compiled-in backend/internal/versionpolicy/public_availability.json (per platform/storefront; ios us/ca/gb = 1.4.0, verified 2026-11-09) is at least that version; unset, malformed or too-high values and a missing or invalid record serve the non-blocking 0.0.0 with one fixed startup log line. Source default is 0.0.0 (was 2.0.3). Regression tests failed first on the old source; go test ./internal/versionpolicy 10 families pass; client fail-open proven by 12 Dart tests (statuses, transport errors, bodies, timeout, splash). REMAINS: (1) owner deploys this build and reviews MINIMUM_SUPPORTED_APP_VERSION on the host (production still serves 2.0.3; no env change was made); (2) owner confirms the full targeted storefront list in App Store Connect and updates the record before any raise; (3) Expected bullet 2: an installed public store binary exercising live API, invite and payment compatibility with version/build/storefront recorded was not run.
-- **Docs:** docs/backend-api.md (GET /api/app/version-policy); backend/README.md; ops/ci/README.md; docs/reviews/2026-11-09-version-policy-availability.md
+- **Status:** open
 - **Log:**
   - 2026-11-09 Verification: Runtime check on the local stack: with MINIMUM_SUPPORTED_APP_VERSION=2.0.3 the API served 0.0.0 and logged the fixed warning; with 1.4.0 it served 1.4.0; unset served 0.0.0. Client 2.0.11 on a simulator against a policy stub: minimum 99.0.0 and 2.0.12 show 'Update Billington' with an App Store button; a 503 policy, an unreachable policy and minimum 2.0.11 let the app open. Evidence: .vv/ui-inspection-20261109/gate/.
 
@@ -420,10 +417,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** BUG-1793644511
 - **Repro / Notes:** Review public US listing; recheck actual copy and released behavior before submitting changes. Source metadata alone does not update the public store.
 - **Bump:** patch
-- **Assignee:** Victor Ivanov
-- **Status:** in-progress
-- **Fix:** Prepared, not submitted: docs/app-review-notes.md now carries App Store name, subtitle, promotional text, description and keywords that say Billington only, describe the public 1.4.0 workflow read from source 5ca1dc6 (scan or manual entry, item assignment, proportional tax and tip, link and Lazy Mode claiming, tabs) and state the payment limits (no money movement, Venmo opens only from the shared web page, paid marks are manual, US dollars). Apple limits verified in App Store Connect Help on 2026-11-09 and enforced by DocumentationContractTests.test_prepared_store_copy_says_Billington_and_fits_Apple_field_limits (failed before the section existed; gate now 43 methods, OK): name 10/30, subtitle 27/30, promotional text 155/170, description under 4000, keywords 95/100 bytes. Availability checked through the public lookup API: 1.4.0 with the Spliq description in all ten storefronts sampled. REMAINS, owner or store: the public listing still says Spliq until the owner submits the copy in App Store Connect; current keyword field, subtitle and conversion data are not readable from here and stay ungraded; the copy was not checked by running the public 1.4.0 binary against the live service (BUG-1793644511); recheck every line against the binary actually submitted.
-- **Docs:** docs/app-review-notes.md; docs/reviews/2026-11-09-store-and-public-copy.md
+- **Status:** open
 
 ### [BUG-1793644517] Correct marketing download and payment claims
 - [ ] **Severity:** med
@@ -642,6 +636,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** in-progress
 - **Fix:** Current readers need no code change: the complete explicit projections already keep cached statements valid. New TestPostgresWarmServiceSurvivesAdditiveDDL proves it on PG17.11: one observed warm PID returns 15 byte-identical API/HTML reads from cached statements (0 prepares, 0 errors) and its writers still commit after a separate session adds a column to all 9 tables; a SELECT * discriminator on that connection fails once with 0A000 then recovers; 7 single-site projection removals each fail the test with a real 500. Mechanism: once per cached statement per pooled connection, self-recovering, no restart. Exact deployed 81a564f binaries across the real adopt+0002+0003 migration: 10/84 sequential and 23/280 burst 500s, then 35/35 OK; terminating idle sessions or restarting gives 0 failures. The delivery gate now rejects a schema-step publish while a revision below capability floor additive_ddl_warm_reader answers /health (46 gate methods pass). REMAINS, external: stop the hosted 81a564f service before the first publish, observe what the host answers for a stopped service and whether its hook starts one, and set that floor in RELEASE_POLICY. Not repaired: bills the old writer creates after 0003 are rejected (409) by the current unversioned reader.
 - **Docs:** docs/reviews/2026-11-09-reader-ddl.md; backend/README.md; docs/technical-overview.md; ops/ci/README.md
+- **Log:**
+  - 2026-11-10 Sighting: 2026-11-10 V&V (5e877e36d968, D5): the production binary 81a564f starts and serves against the upgraded schema (ledger 0001-0003) without refusing. Its AutoMigrate changed nothing, and verify still passes. Bills it writes after the upgrade carry identity_version=1/legacy_review with participant_id NULL, and the new reader returns 409 to header-1 clients for them (an unmerged branch tracks this as BUG-1794264953). The warm new reader kept serving (health 200) throughout. This is an observation, not overlap proof. Local evidence: .vv/worktrees/vv-5e877e3/.vv/d5/logs/08-*.
 
 ### [BUG-1793898428] Make Settings accent choices labeled and reachable at small widths
 - [x] **Severity:** med
@@ -698,7 +694,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-09 Verification: Native check on an owned iPhone Duo simulator (iOS 27.1, Closed pose, right status column) with a debug build of 083567a: Enter Bill Details, Assign Items and Tab detail keep their content clear of the column; with half of 122.00 assigned the Assigned amount reads $61.00 in full, 50%, and the bar ends halfway. The Open/landscape pose could not be selected from the command line and was not captured. Screenshots: .vv/ui-inspection-20261109/layout/b2-*.png. The tutorial dialog on Assign Items still extends under the column (BUG filed separately).
 
 ### [BUG-1793935715] Keep the Finalize confirmation usable on short displays
-- [x] **Severity:** med
+- [ ] **Severity:** med
 - **Area:** mobile, ui, layout
 - **File(s):** mobile/lib/screens/tabs/tab_detail_screen.dart (_FinalizeConfirmSheet)
 - **Observation:** The retained native capture handoff reports 14px and 21px Finalize sheet overflows on short displays. Current source still caps a non-scroll Column at 70% screen height. The horizontal-body fix does not change this sheet; current native reproduction remains pending.
@@ -708,9 +704,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Frozen /tmp/appshot-quality-20261105/capture/frozen-layout-milestone/HANDOFF.md, Separate findings; BEFORE frames are f4abc78, not current native proof. Open Tab detail > Finalize on a short display. Source caps maxHeight at 0.7 and uses an unscrollable Column. Body inset tests use textscale0.5 and do not qualify this modal. No fix or new native execution claimed.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** fixed-pending-migration
-- **Fix:** The Finalize sheet now scrolls its heading and settlement rows together and pins Cancel/Finalize below them (scrollbar thumb while scrollable). The 70% height limit stays; displays shorter than about 630 pt may use up to 440 pt or their full height. Above 1.5x text the amount sits under its name and shrinks to fit; action labels shrink instead of wrapping. The modal call moved unchanged into showFinalizeConfirmSheet. Row order, labels, amounts, true/false/null results and the finalize request are unchanged. Proof: mobile/test/finalize_confirm_sheet_test.dart 19 pass (320x568, 375x667, 568x320, 812x375 with side insets at text scale 1.0/2.0/3.0 with 12 rows; real Tab detail Finalize sends one POST, Cancel/dismiss none); 16 of 19 failed with RenderFlex overflow on the previous layout. Full flutter test --no-pub: success, 619 visible passes, 0 failed, 0 skipped; manifest adapter accepts the mobile row. NOT DONE: native simulator/device capture on a short display (widget-test evidence only).
-- **Docs:** DESIGN_SYSTEM.md (Interaction patterns); docs/reviews/2026-11-09-finalize-sheet-layout.md
+- **Status:** open
+- **Docs:** docs/reviews/2026-11-06-combined-flutter-acceptance.md; frozen layout handoff
 - **Cross-ref:** BUG-1793927492 (separate horizontal body issue, not this sheet)
 - **Log:**
   - 2026-11-09 Verification: Native check on an owned iPhone SE (3rd generation) simulator, 375x667, iOS 27.2: the Finalize confirmation shows no overflow at default text and at accessibility-extra-large; settlement rows scroll, amounts are complete, Cancel and Finalize stay visible; Cancel leaves the tab active and one Finalize finalizes it, persisting across relaunch. Screenshots: .vv/ui-inspection-20261109/layout/b1-finalize-*.png.
@@ -887,6 +882,249 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** in-progress
 - **Fix:** Source fix complete; hosted confirmation open. The three runner.temp paths moved, values unchanged, from job env to the env of the steps that read them (signed-IPA action, upload, receipt). New GraphTests.test_workflow_expressions_use_only_documented_contexts applies GitHub's context-availability table and reusable-call contract to all nine workflows: it fails on the e0a2c18 file with Unrecognized named-value 'runner' at jobs.origin.env.IPA_DIR and passes now (28 rejected mutations, 4 accepted controls). validate_ios_graph binds each path to its reading steps and the authority step third and unconditional (7 mutations); each iOS target refuses empty, absent or disabled RELEASE_POLICY before any authenticated read. 43 gate, 17 iOS and 5+18 Ruby methods pass; automation row 1,422 records, 0 failed or skipped. testflight.yml call, inputs and six secrets unchanged. REMAINS: GitHub's own parse is unobserved until the first push carrying this file; accept when that push creates no failed ios-origin.yml run, then set fixed-pending-migration. actionlint not installed; nothing dispatched.
 - **Docs:** ops/ci/README.md; docs/reviews/2026-11-09-delivery-workflows.md
+
+### [BUG-1794331908] Show member devices that a shared tab was finalized
+- [ ] **Severity:** high
+- **Area:** mobile, tabs
+- **File(s):** mobile/lib/screens/tabs/tab_manager.dart; mobile/lib/screens/tabs/tab_detail_screen.dart
+- **Observation:** After the creator finalized a shared tab, a member's device kept showing it as open: no finalized badge, no settlements, and Add Receipt still opened bill entry. This persisted after re-fetch and after kill/relaunch on iPhone 17e (iOS 27.2); the creator's device was correct. The only writer of the local finalized flag is the creator's finalizeTab() path (tab_manager.dart:227); remote refresh never imports the server's finalized state.
+- **Expected:** Every member device shows a tab as finalized once the server reports it finalized: the badge and settlements are shown, and receipt entry is closed.
+- **Req:** VERIFICATION.md Stage 3 (trip attach, refresh mobile/web, finalize); docs/backend-api.md Finalization & Settlements
+- **Depends on:** none
+- **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/ios/17e-08..10 and NOTES.md. Steps: creator and member join the same tab on two simulators; creator finalizes; on the member device pull/refresh, then force-quit and relaunch.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794331909] Keep the landing and Join a Tab screens usable at accessibility text sizes
+- [ ] **Severity:** high
+- **Area:** mobile, a11y
+- **File(s):** mobile/lib/screens/landing_screen.dart; mobile/lib/screens/tabs/tabs_screen.dart
+- **Observation:** At the accessibility-extra-extra-extra-large content size (iPhone 17e, iOS 27.2) the landing screen overflows: RenderFlex overflow stripes, the bottom ~202 px is cut off and Tabs/Recent Bills are unreachable. The Join a Tab title also overflows (WCAG 1.4.4).
+- **Expected:** Both screens reflow or scroll at every supported text size, with all controls reachable.
+- **Req:** VERIFICATION.md Stage 3 (iOS large text); WCAG 2.2 1.4.4
+- **Depends on:** none
+- **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/ios/17e-01-landing-ax-xxxl.png, 17e-03-invite-landed.png. Steps: xcrun simctl ui <udid> content_size accessibility-extra-extra-extra-large, then launch the debug app.
+- **Bump:** patch
+- **Status:** open
+- **Cross-ref:** FEAT-1793644512
+
+### [BUG-1794331910] Reject NUL characters in names with 400 instead of 500
+- [ ] **Severity:** med
+- **Area:** backend, api, validation
+- **File(s):** backend/internal/bill/create_request.go; backend/internal/tab/handler.go; backend/internal/tab/participants.go
+- **Observation:** A name containing U+0000 returns 500 {"error":"an internal error occurred"}. Affected fields: bill, item and participant names on POST /api/bills, the tab name on POST /api/tabs, and display_name on POST /api/tabs/:id/join. Other control characters are accepted. No database text leaks into the response.
+- **Expected:** Input validation rejects NUL (and any text PostgreSQL cannot store) with the documented 400 error format before it reaches the database.
+- **Req:** docs/backend-api.md Error Format and HTTP resource policy; VERIFICATION.md Stage 4 (malformed input)
+- **Depends on:** none
+- **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/stage4-adv/evidence-nul-500.jsonl. curl -X POST localhost:8080/api/tabs -H 'Content-Type: application/json' -H 'X-Billington-Identity-Version: 2' -d '{"name":"a\u0000b","creator_display_name":"VV"}' returns 500.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794331911] Fix web viewer accessibility gaps on private bill pages
+- [ ] **Severity:** med
+- **Area:** web, a11y
+- **File(s):** web-bill-viewer/src/app/globals.css; web-bill-viewer/src/components/PersonShare.tsx; web-bill-viewer/src/components/RecordedShares.tsx
+- **Observation:** On /b Quick Split pages: the per-row expand buttons have no accessible name (WCAG 4.1.2). Secondary text (--text-secondary #86868b) measures 3.33, 3.62 and 4.35:1 on the page surfaces (1.4.3). Headings skip from h1 to h3 (1.3.1). Private pages share the generic 'Billington' title (2.4.2). Keyboard order and focus rings were fine.
+- **Expected:** Named controls, text contrast of at least 4.5:1, sequential heading levels and descriptive page titles on private bill and tab pages.
+- **Req:** VERIFICATION.md Stage 3 (browser keyboard/focus/contrast); WCAG 2.2 AA
+- **Depends on:** none
+- **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/web/01, web/12 and NOTES.md (headed Chrome via agent-browser). axe and 320 px reflow were not run.
+- **Bump:** patch
+- **Status:** open
+- **Cross-ref:** FEAT-1793644512
+
+### [BUG-1794331912] Show half-cent bill totals the same way their shares add up
+- [ ] **Severity:** med
+- **Area:** mobile, web, accounting
+- **File(s):** mobile/lib; web-bill-viewer/src/components; backend/pkg/models/bill.go
+- **Observation:** A bill whose stored total is 24.885 renders as $24.88 on the phone summary, in Recent Bills and on the web page. Its shares sum to $24.89, and the containing tab total shows $24.89. Money is carried as float64/double end to end, so a half-cent total rounds down in display.
+- **Expected:** One cent-exact total per bill (whole cents), so every surface shows the same total that the shares and tab sum to.
+- **Req:** VERIFICATION.md Stage 5 (conserved cent totals)
+- **Depends on:** none
+- **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/NOTES.md (bill 66); $10 item split 3.33x3. Related symptom on an unmerged branch: BUG-1794264955 (device vs published odd cents).
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794331913] Align the VERIFICATION.md recipe with CI and the local viewer
+- [ ] **Severity:** med
+- **Area:** docs, ci, tests
+- **File(s):** VERIFICATION.md
+- **Observation:** Appendix A never sets CORS_ORIGINS, so the 3100 viewer's browser calls to the 8080 API fail CORS preflight (403) and the Stage 3 browser journeys cannot run on a fresh stack. The Gate and iOS Python rows use plain python3, while CI uses a hash-locked CPython 3.12 venv; the PyYAML hash is for Ubuntu x86_64 only. The iOS row gives the report commands only as a link. The PG DSN example omits the password CI uses. Row D5 says 'follow FEAT-1793644505', which will not resolve once that entry migrates.
+- **Expected:** The recipe runs end to end on a fresh stack: the viewer origin is allowed, interpreter/dependency parity with CI is stated (including the macOS wheel exception), the commands are inline, and the D5 row points at the durable procedure in backend/README.md.
+- **Req:** protocol-v-and-v command fidelity; VERIFICATION.md Stage 0/2/3
+- **Depends on:** none
+- **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/stage1-review/command-fidelity.md, doc-sync.md; .vv/gui-walkthrough/cors.override.yml was needed to run the viewer journeys.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794331914] Stop telling clients to retry participant additions on bills with paid shares
+- [ ] **Severity:** low
+- **Area:** backend, api
+- **File(s):** backend/internal/bill/identity.go
+- **Observation:** POST /api/bills/:id/participants on a bill with any paid share returns 409 identity_revision_conflict ('refresh and try again') even at the current expected_revision. The block itself is documented (unpaid eligibility), but no retry can succeed.
+- **Expected:** A distinct, non-retryable error code/message stating that participants cannot be added after a share is paid.
+- **Req:** docs/backend-api.md Participant-reference contract
+- **Depends on:** none
+- **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/stage4-adv/evidence-paid-add-participant.jsonl. Create a wire2 bill, PATCH a share paid, then POST participants with the current expected_revision.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794331915] Apportion tax and tip the same way for partial claims on every route
+- [ ] **Severity:** low
+- **Area:** backend, accounting
+- **File(s):** backend/internal/bill
+- **Observation:** With 2 x 49.5% claims on a 40.00/4.00/6.00 bill, the non-lazy assignment route derives 24.80 each (49.60) while the lazy claim route derives 24.75 each (49.50). Sending either projection back is rejected with 400 invalid bill content. The mobile client blocks more than 0.01 unassigned, so only API clients reach this.
+- **Expected:** One documented apportionment rule for partial assignments across routes, matching the mobile formula.
+- **Req:** docs/backend-api.md Bills / Reference claims
+- **Depends on:** none
+- **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/stage4-adv/evidence-partial-apportion.jsonl.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794331916] Document that receipt uploads are typed by content, not the declared MIME type
+- [ ] **Severity:** low
+- **Area:** docs, api
+- **File(s):** docs/backend-api.md; backend/internal/receipt/handler.go
+- **Observation:** docs/backend-api.md:782 lists accepted MIME types, but the service detects the type from the bytes and ignores the declared part type. PNG bytes declared text/plain are parsed, and an image/svg+xml part is reported as 'unsupported image type: text/plain'.
+- **Expected:** The API reference states that the type is detected from content and what error each mismatch returns.
+- **Req:** docs/backend-api.md Receipt Parsing
+- **Depends on:** none
+- **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/stage4-adv/summary.md (class L).
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794331917] Fail the local workflow SIGINT tests with a clear prerequisite when SIGINT is ignored
+- [ ] **Severity:** low
+- **Area:** tests, tooling
+- **File(s):** scripts/test_local_workflow.py; scripts/test_local_workflow_probes.py
+- **Observation:** When the parent process ignores SIGINT (e.g. rows started under '( ... ) &' in a non-interactive shell, where Python reports SIG_IGN), test_int_keeps_status130, test_int_during_blocked_simulator_probe_reaps_descendants and test_tty_driver_int_interrupts_foreground_flutter fail with timeouts or rc 0. With SIGINT at its default, the same row passes 55/55.
+- **Expected:** The tests restore the default SIGINT disposition for their children, or fail immediately with an explicit prerequisite message.
+- **Req:** VERIFICATION.md Stage 2 (no environment-dependent failures)
+- **Depends on:** none
+- **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/local-gate/s2-local-workflow.run1-sigint-ignored.log versus s2-local-workflow-rerun.log. ( python3 ops/ci/unittest_report.py scripts/test_local_workflow.py ) & wait
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794331918] Resume or explain membership when rejoining a tab removed from this device
+- [ ] **Severity:** low
+- **Area:** mobile, ux, identity
+- **File(s):** mobile/lib/screens/tabs/tab_manager.dart
+- **Observation:** After 'Remove from this device', opening the same invite link again created a second member (role member) for the same person instead of resuming the stored membership. Everyone in the tab then sees a duplicate person. The API returns the existing membership (200) when a valid member token is supplied, and docs/privacy.md says local removal need not erase stored credentials.
+- **Expected:** If the device still holds the member credential, rejoin resumes that membership; otherwise the app says that joining again adds a new member.
+- **Req:** docs/privacy.md Local removal; docs/backend-api.md POST /api/tabs/:id/join
+- **Depends on:** none
+- **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/ios/43 and NOTES.md (member 58).
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794331919] Disambiguate same-named people in web tab balances
+- [ ] **Severity:** low
+- **Area:** web, ux
+- **File(s):** web-bill-viewer/src/components/NetBalances.tsx
+- **Observation:** The web tab BALANCES list shows rows such as 'Alex -> Alex' and 'Vic Sim17 -> Vic Sim17' for distinct people with the same display name, with no reference or suffix to tell them apart.
+- **Expected:** Balance rows distinguish same-named members (for example with the participant reference or a stable suffix), as the identity contract requires for two people called Alex.
+- **Req:** VERIFICATION.md D1 (two distinct people called Alex); BUG-1793644505 expectations
+- **Depends on:** none
+- **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/web/16.
+- **Bump:** patch
+- **Status:** open
+- **Cross-ref:** BUG-1793644505
+
+### [BUG-1794331920] Keep the Add Receipt button off the last per-person rows
+- [ ] **Severity:** low
+- **Area:** mobile, ui
+- **File(s):** mobile/lib/screens/tabs/tab_detail_screen.dart
+- **Observation:** On the tab detail screen the floating Add Receipt button covers the last Per Person rows, and the empty state lowercases the tab name.
+- **Expected:** Scrollable content clears the floating button, and the empty state shows the tab name as entered.
+- **Req:** VERIFICATION.md Stage 3 (GUI walkthrough)
+- **Depends on:** none
+- **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/ios/17e-10, ios/22.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794501894] Configure delivery so main can publish and the iOS upload workflow can run
+- [ ] **Severity:** high
+- **Area:** delivery, ci, release
+- **File(s):** .github/workflows/ci.yml; .github/workflows/testflight.yml; ops/ci/delivery_gate.py; ops/ci/README.md
+- **Observation:** The repository has no Actions variable RELEASE_POLICY, no ios-upload environment and no DELIVERY_* secrets; only the legacy secret names exist and the workflows read no legacy fallback. Every push to main therefore skips publish-backend and publish-web, and testflight.yml cannot authorize. On 2026-11-12 production API /health reported commit 81a564f while main was 124 commits ahead, including the Go 1.27.4 fix for GO-2026-6859.
+- **Expected:** RELEASE_POLICY defines the web, backend and ios-upload targets with their floors and external clearance as ops/ci/README.md specifies; the ios-upload environment and the DELIVERY_* secrets exist; a push to main with the policy enabled publishes, and /health reports the published commit.
+- **Req:** none; ops/ci/README.md delivery requirements (driver run simplify-1111, FINDING-1)
+- **Depends on:** none
+- **Repro / Notes:** gh api repos/LLRHook/checksinmyhead/actions/variables returns total_count 0; environments total_count 0. CI runs 43243346772 to 43254449850 on main: publish-backend and publish-web skipped; the resolve job log shows RELEASE_POLICY empty. Deploying the backend is tied to the old-client compatibility bugs BUG-1793644505 and BUG-1793644511.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794501895] Web route verifier fails 24 of 55 rows because RSC probes do not follow 307 redirects
+- [ ] **Severity:** med
+- **Area:** verification, web
+- **File(s):** scripts/verify_web_routes.py
+- **Observation:** Against an owned synthetic API, scripts/verify_web_routes.py exits 1 with 31 of 55 rows passing and 24 failing (136 failed checks). Every failing row is an RSC probe that receives an existing 307 redirect and does not follow it. The result is identical before and after PR #178.
+- **Expected:** The verifier follows or expects the redirect, so all 55 rows pass against a correct viewer and a failure means a real route defect.
+- **Req:** none; VERIFICATION.md web route verification (driver run simplify-1111, FINDING-2)
+- **Depends on:** none
+- **Repro / Notes:** Found by lead L5 while proving the web viewer simplification; before and after runs are recorded in the run directory under evidence/L5. Not re-run by the driver.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794501896] go.mod marks pgx/v5 indirect although the backend imports it directly
+- [ ] **Severity:** low
+- **Area:** backend, dependencies
+- **File(s):** backend/go.mod; backend/pkg/mutation/errors.go
+- **Observation:** go mod tidy moves github.com/jackc/pgx/v5 v5.10.0 from the indirect require block to the direct one, with no version or go.sum change. backend/pkg/mutation/errors.go imports the module directly. CI runs go mod verify, not tidy, so nothing fails.
+- **Expected:** go mod tidy leaves backend/go.mod unchanged.
+- **Req:** none (driver run simplify-1111, FINDING-3)
+- **Depends on:** none
+- **Repro / Notes:** cd backend && go mod tidy && git diff go.mod shows the one-line move. Left out of PR #181 to keep the Go 1.27.4 bump to four lines.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794501898] No test catches removal of receipt socket cleanup or the bill total tolerance guard
+- [ ] **Severity:** med
+- **Area:** backend, tests, money
+- **File(s):** backend/internal/receipt/provider_dial.go; backend/internal/bill/create_request.go
+- **Observation:** Mutation probes run at two revisions of the backend survive with every test passing: removing the dial-path socket AfterFunc in internal/receipt (M3), making the socket close asynchronous there (D2), and loosening or removing the subtotal and total tolerance check in internal/bill/create_request.go near line 451 (B5, B5b). A fifth probe that removes one of two identical no-store header assignments also survives and changes nothing.
+- **Expected:** Each of the three behaviours has a test that fails when it is removed: socket cancellation on the dial path, synchronous socket close, and rejection of a bill whose assigned shares exceed its subtotal or total.
+- **Req:** none; docs/backend-api.md bill creation validation (driver run simplify-1111, FINDING-4)
+- **Depends on:** none
+- **Repro / Notes:** Found by reviewer L9 on PR #179; 21 probes, 16 caught, 5 surviving at both base and head. Probe scripts and results are in the run directory under evidence/L9 (scripts/, mutations.txt, mutations2.txt, mutations3.txt). The tolerance guard protects money totals, so a regression there would pass CI.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794501899] Record the Render service build settings for the backend in the repository
+- [ ] **Severity:** low
+- **Area:** delivery, docs
+- **File(s):** ops/ci/README.md; backend/README.md
+- **Observation:** Nothing in the repository states which runtime, Dockerfile path or build context Render uses for the backend. That production builds from backend/services/bill-service/Dockerfile is inferred from the source deploy hook and the documented build context. /health reports the commit, not the toolchain, so a toolchain bump cannot be shown to reach production from repository evidence.
+- **Expected:** The current docs record the Render runtime, Dockerfile path and build context, and how to confirm the deployed toolchain.
+- **Req:** none (driver run simplify-1111, FINDING-5)
+- **Depends on:** none
+- **Repro / Notes:** Found by reviewer L12 on PR #181; see ops/ci/delivery_gate.py publish path and ops/ci/README.md deploy section.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794501900] Lifecycle and static-runtime harnesses cannot run under an isolated resource prefix
+- [ ] **Severity:** low
+- **Area:** verification, tooling
+- **File(s):** scripts/verify_local_lifecycle.py; scripts/verify_static_runtime.py; backend/internal/healthcheck/entrypoints_test.go
+- **Observation:** scripts/verify_local_lifecycle.py and scripts/verify_static_runtime.py hard-code billington-* resource names and the reset guard rejects any other prefix, so a supervised agent that must not touch the developer's local database volumes cannot execute them. Separately, TestServiceHealthcheckMode/bill-service binds host port 8080 and fails on a machine where another service already owns it; four agents hit this in unisolated host runs.
+- **Expected:** Both harnesses accept a resource prefix (and the reset guard honours it), and the healthcheck test does not depend on a fixed host port.
+- **Req:** none; VERIFICATION.md local lifecycle rows (driver run simplify-1111, FINDING-6)
+- **Depends on:** none
+- **Repro / Notes:** Reported by leads L1 and L8 (harness prefix) and L1, L4, L11, L12 (port 8080). Because of this the two harnesses were edited by PR #177 but never executed end to end.
+- **Bump:** patch
+- **Status:** open
+
+### [BUG-1794501902] make down leaves an orphan legacy web-service container from before PR #177
+- [ ] **Severity:** low
+- **Area:** backend, local-dev
+- **File(s):** backend/Makefile; backend/docker-compose.yml
+- **Observation:** A developer who had the optional legacy-web Compose profile running before pulling PR #177 keeps an orphan web-service container after make down, because the service definition no longer exists. No data is lost and the stack still starts.
+- **Expected:** Either the upgrade note tells developers to run docker compose down --remove-orphans once, or the down target removes orphans without removing data volumes.
+- **Req:** none (driver run simplify-1111, FINDING-7)
+- **Depends on:** none
+- **Repro / Notes:** Found by reviewer L4 on PR #177 and judged non-blocking. One docker compose down --remove-orphans clears it.
+- **Bump:** patch
+- **Status:** open
 
 ### [BUG-1794264953] Read receipts an old writer creates after identity migration 0003
 - [ ] **Severity:** high

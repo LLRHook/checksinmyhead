@@ -25,22 +25,22 @@ import (
 // Only the socket target and local CA differ. No inherited provider key is read.
 func tlsService(t *testing.T, handler http.HandlerFunc) (*Service, *httptest.Server) {
 	t.Helper()
+	s, server, _ := tlsServiceWithSlots(t, handler, "")
+	return s, server
+}
+
+func tlsServiceWithSlots(t *testing.T, handler http.HandlerFunc, slots string) (*Service, *httptest.Server, *tls.Config) {
+	t.Helper()
 	server := httptest.NewTLSServer(handler)
 	t.Cleanup(server.Close)
-	t.Setenv("ANTHROPIC_API_KEY", "synthetic-local-fixture")
-	t.Setenv("OCR_MAX_INFLIGHT", "")
-	s, err := NewService()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(s.Close)
+	s := configuredService(t, slots)
 	roots := x509.NewCertPool()
 	roots.AddCert(server.Certificate())
 	s.transport.tlsConfig = &tls.Config{RootCAs: roots, ServerName: "example.com", MinVersion: tls.VersionTLS12, NextProtos: []string{"http/1.1"}}
 	s.transport.dialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
 		return (&net.Dialer{}).DialContext(ctx, "tcp", server.Listener.Addr().String())
 	}
-	return s, server
+	return s, server, s.transport.tlsConfig
 }
 
 func requireCode(t *testing.T, err error, want ParseErrorCode) {
