@@ -1,0 +1,36 @@
+name: Changelog events
+'on':
+  pull_request_target:
+    branches: [main]
+    types: [opened, reopened, ready_for_review, converted_to_draft, synchronize, edited, closed]
+permissions:
+  contents: read
+concurrency:
+  group: changelog-reconcile
+  cancel-in-progress: false
+jobs:
+  changelog:
+    if: github.repository == 'LLRHook/checksinmyhead' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
+    steps:
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      with:
+        ref: refs/heads/main
+        path: control
+        persist-credentials: false
+    - name: Reconcile Changelog
+      run: |
+        python3 -c 'import sys; assert sys.version_info[:2] == (3,12)'
+        python3 control/ops/changelog/changelog.py
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+        CHANGELOG_MODE: ${{ vars.CHANGELOG_MODE }}
+        CHANGELOG_DISCORD_CHANNEL_ID: ${{ vars.CHANGELOG_DISCORD_CHANNEL_ID }}
+        CHANGELOG_IDENTITY_PROOF_PR: ${{ vars.CHANGELOG_IDENTITY_PROOF_PR }}
+        CHANGELOG_DISCORD_BOT_TOKEN: ${{ secrets.CHANGELOG_DISCORD_BOT_TOKEN }}
+        CHANGELOG_MERGE_TOKEN: ${{ secrets.CHANGELOG_MERGE_TOKEN }}

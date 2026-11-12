@@ -317,3 +317,23 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Out of scope:** In-app transfers, accounts, new payment provider; unapproved publication or paid service.
 - **Bump:** minor
 - **Status:** open
+
+### [FEAT-1794518538] Give friends a seven-day Discord review window before app changes merge
+- [ ] **Priority:** high
+- **Area:** automation, delivery
+- **File(s):** ops/changelog/; .github/workflows/changelog-*.yml; .github/pull_request_template.md; AGENTS.md; ops/ci/
+- **Req:** L25 driver testflight-1112 approved brief and driver design decision, 2026-11-12
+- **Depends on:** none (source implementation; live setup and identity qualification remain external)
+- **UI:** One Discord notice per ready same-repository PR, edited in place with deadline, holds and outcome.
+- **Why:** Friends and testers need a full week to see and hold proposed app changes before main changes.
+- **Approach:** Trusted-main GitHub Actions API-only Python standard library controller; authoritative bot-owned Discord state and readable PR mirror; fresh checks and optional qualified Victor credential for conditional squash merge.
+- **Library / dependency notes:** No new dependencies or upgrades; Python 3.12 standard library. Existing CI-only PyYAML remains unchanged.
+- **Acceptance criteria:** Drafts do not post; real ready notes post once; code changes restart seven days; stops hold indefinitely; releases preserve deadline; forks/tracker-only/Dependabot exempt; missing identity, note, checks or clean merge fail closed; switch disables activity; tests use only fakes.
+- **Test plan:** Offline lifecycle/API fakes, workflow permission/inventory negatives, guard mutation, automation manifest and delivery gate, tracker lint; driver separately runs documented live smoke and identity qualification.
+- **Out of scope:** Real Discord calls, real merges, deployment, repository settings/secrets/variables changes, workflow dispatch and integrated application V&V.
+- **Bump:** minor
+- **Status:** open
+- **Implementation:** Implemented trusted-main Changelog event/schedule controller, one-message Discord review week and holds, qualified Victor-only conditional squash path, fake API/lifecycle proof, exact workflow contracts and mandatory automation report. Live setup and identity qualification remain external; no services were called.
+- **Docs:** ops/changelog/README.md; .github/pull_request_template.md; AGENTS.md; docs/technical-overview.md; ops/ci/README.md; VERIFICATION.md
+- **Log:**
+  - 2026-11-12 Decision: Driver approved state/concurrency/GraphQL identity design and narrow delivery-contract extension. Comparison uncertainty restarts each run. Source baseline 83c1bbc138bb0bea35201dbcf75f45c08aec17f5. Offline proof only; preserve pending live configuration/identity boundaries.

@@ -601,3 +601,15 @@ Widget and unit tests for the mobile app.
 ```bash
 cd mobile && flutter test
 ```
+
+## Changelog review automation
+
+The repository's Changelog bot runs from trusted main in two GitHub Actions
+workflows: pull-request lifecycle events and hourly reconciliation. Python standard
+library REST clients read PR metadata and a Discord notice; PR code is never
+executed by the privileged event job. One bot-owned Discord message holds the clock
+and fingerprint; a PR comment mirrors its readable state. After a seven-day window,
+a squash merge still requires no stop reactions, fresh green head checks, a clean
+merge and a separately qualified Victor-owned credential. The built-in Actions
+token cannot merge. Setup defaults to observation with merging unavailable; see
+[Changelog operation and trust boundaries](../ops/changelog/README.md).

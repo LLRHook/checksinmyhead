@@ -36,3 +36,13 @@ use isolated synthetic data for destructive verification.
 - Update the visible app version in `mobile/lib/screens/settings/settings_screen.dart` to match.
 - Increment `N` for each release build. The TestFlight workflow may override the binary build number with the next available App Store Connect value, so confirm the workflow summary shows a build number newer than the last upload.
 - Do not use the marketing version as the build-number input; confirm the uploaded artifact reports the intended marketing version and build number.
+
+## Changelog review week
+
+Open pull requests as drafts. Start the description with the note block in
+[the pull request template](.github/pull_request_template.md); keep its what-changed
+and why text current, in plain words for people who use the app. The driver or owner
+marks a pull request ready after green checks and independent review. Every change
+waits the full Changelog week except tracker-only and Dependabot pull requests.
+Never merge around the bot. See [Changelog setup and operation](ops/changelog/README.md)
+for stop reactions, clock restarts and pauses.

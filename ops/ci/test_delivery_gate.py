@@ -370,7 +370,8 @@ GATE_COMMANDS = {row: ['set -euo pipefail'] + lines for row, lines in {
         'CASE_REPORT="$REPORT_DIR/ruby.json" ' + RUBY + 'candidate/.github/scripts/asc_release_test.rb',
         'for script in candidate/.github/scripts/*.rb control/ops/ci/*.rb; do ruby -c "$script"; done',
         'CASE_REPORT="$REPORT_DIR/ios-python.json" ' + PYTHON + 'test_ios_artifact.py',
-        'CASE_REPORT="$REPORT_DIR/ios-ruby.json" ' + RUBY + 'control/.github/scripts/asc_delivery_test.rb'],
+        'CASE_REPORT="$REPORT_DIR/ios-ruby.json" ' + RUBY + 'control/.github/scripts/asc_delivery_test.rb',
+        'CASE_REPORT="$REPORT_DIR/changelog.json" "$RUNNER_TEMP/delivery-python/bin/python" control/ops/ci/unittest_report.py control/ops/changelog/test_changelog.py'],
     'local-workflow': [
         '/bin/bash -n candidate/dev.sh',
         'CASE_REPORT="$REPORT_DIR/local-workflow.json" python3 control/ops/ci/unittest_report.py candidate/scripts/test_local_workflow.py'],
@@ -406,6 +407,49 @@ GATE_COMMANDS = {row: ['set -euo pipefail'] + lines for row, lines in {
 
 # Structural validation targets the actual proposed graph; mutation controls prove
 # a removed needs edge/changed checkout/skip bypass is rejected by the same checker.
+
+# Changelog is a distinct, API-only owner. Existing delivery contracts above and
+# below remain exact; this inventory grants no general privileged-event exception.
+CHANGELOG_PERMISSIONS = {'contents': 'read', 'pull-requests': 'write', 'checks': 'write'}
+CHANGELOG_CONCURRENCY = {'group': 'changelog-reconcile', 'cancel-in-progress': False}
+CHANGELOG_WORKFLOWS = {
+    'changelog-events.yml': {'pull_request_target': {'branches': ['main'], 'types': [
+        'opened', 'reopened', 'ready_for_review', 'converted_to_draft', 'synchronize', 'edited', 'closed']}},
+    'changelog-schedule.yml': {'schedule': [{'cron': '17 * * * *'}]},
+}
+
+
+def validate_changelog_graph(workflows):
+    for name, triggers in CHANGELOG_WORKFLOWS.items():
+        event = name == 'changelog-events.yml'
+        condition = "github.repository == 'LLRHook/checksinmyhead'"
+        if event:
+            condition += ' && github.event.pull_request.head.repo.full_name == github.repository'
+        expected = {
+            'name': 'Changelog events' if event else 'Changelog schedule',
+            'on': triggers, 'permissions': {'contents': 'read'}, 'concurrency': CHANGELOG_CONCURRENCY,
+            'jobs': {'changelog': {
+                'if': condition, 'runs-on': 'ubuntu-24.04', 'timeout-minutes': 15,
+                'permissions': CHANGELOG_PERMISSIONS,
+                'steps': [
+                    {'uses': 'actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09',
+                     'with': {'ref': 'refs/heads/main', 'path': 'control', 'persist-credentials': False}},
+                    {'name': 'Reconcile Changelog',
+                     'run': "python3 -c 'import sys; assert sys.version_info[:2] == (3,12)'\npython3 control/ops/changelog/changelog.py\n",
+                     'env': {
+                         'GITHUB_TOKEN': '${{ github.token }}',
+                         'CHANGELOG_MODE': '${{ vars.CHANGELOG_MODE }}',
+                         'CHANGELOG_DISCORD_CHANNEL_ID': '${{ vars.CHANGELOG_DISCORD_CHANNEL_ID }}',
+                         'CHANGELOG_IDENTITY_PROOF_PR': '${{ vars.CHANGELOG_IDENTITY_PROOF_PR }}',
+                         'CHANGELOG_DISCORD_BOT_TOKEN': '${{ secrets.CHANGELOG_DISCORD_BOT_TOKEN }}',
+                         'CHANGELOG_MERGE_TOKEN': '${{ secrets.CHANGELOG_MERGE_TOKEN }}',
+                     }},
+                ],
+            }},
+        }
+        gate.require(workflows.get(name) == expected, 'Changelog workflow contract changed: ' + name)
+
+
 def validate_graph(root):
     workflows={p.name:yaml.safe_load(p.read_text()) for p in (root/'.github/workflows').glob('*.yml')}
     def require(ok,msg):gate.require(ok,msg)
@@ -418,7 +462,8 @@ def validate_graph(root):
     require(set(ci['on']['push'])=={'branches','tags'} and ci['on']['pull_request'] is None,'path filtered full gate')
     for filename,w in workflows.items():
         require(w['permissions']=={'contents':'read'},'default permission mismatch')
-        require('pull_request_target' not in w['on'],'privileged PR event')
+        if filename not in CHANGELOG_WORKFLOWS:
+            require('pull_request_target' not in w['on'],'privileged PR event')
         for name,job in w['jobs'].items():
             require(not job.get('continue-on-error'),'continue-on-error')
             if 'uses' in job:
@@ -445,6 +490,8 @@ def validate_graph(root):
                         values=step['with'];require(values['persist-credentials'] is False,'persisted token')
                         if values['path']=='candidate':require(values['ref']==('${{ inputs.source_sha }}' if filename=='checks.yml' else '${{ inputs.source }}'),'candidate checkout wrong S')
                         elif filename=='checks.yml':require(values['ref']=='${{ inputs.controller_sha }}','trusted helper checkout wrong C')
+                        elif filename in CHANGELOG_WORKFLOWS:
+                            require(values['ref'] == 'refs/heads/main', 'Changelog executes candidate code')
                         else:require(values['ref'] in ('${{ github.sha }}','${{ inputs.controller }}'),'privileged control from candidate')
                     if step['uses'].startswith('subosito/flutter-action@'):
                         require(step['with']['cache']=='false' and step['with']['pub-cache']=='false','mutable nested cache enabled')
@@ -478,7 +525,8 @@ def validate_graph(root):
     action=yaml.safe_load((root/'.github/actions/build-signed-ipa/action.yml').read_text())
     require(len(action['runs']['steps'])==1 and action['runs']['steps'][0]['run']=='python3 control/ops/ci/ios_sign.py','signed action bypass')
     expected_workflows = {'ci.yml','checks.yml','deploy-backend.yml','sync-web-viewer.yml','testflight.yml','app-store-release.yml','update-release-notes.yml','ios-origin.yml','ios-promote.yml'}
-    require(set(workflows) == expected_workflows, 'alternate workflow owner')
+    require(set(workflows) == expected_workflows | set(CHANGELOG_WORKFLOWS), 'alternate workflow owner')
+    validate_changelog_graph(workflows)
     helper = 'python3 control/ops/ci/delivery_gate.py'
     args = ' --repo control --controller "$CONTROLLER" --source "$SOURCE"'
     require(checks['env'] == {'CONTROLLER':'${{ inputs.controller_sha }}','SOURCE':'${{ inputs.source_sha }}','CHECK_SCOPE':'${{ inputs.scope }}','REPORT_DIR':'${{ github.workspace }}/reports'}, 'C/S/scope dataflow')
@@ -577,11 +625,14 @@ def validate_execution_settings(workflows):
             require('concurrency' not in workflow, 'top-level group in reusable workflow ' + filename)
         else:
             require('pull_request' not in events or filename == 'ci.yml', 'unreviewed pull-request workflow ' + filename)
-            require(workflow.get('concurrency') == ENTRY_CONCURRENCY.get(filename), 'entry workflow group missing, shared or cancelling: ' + filename)
+            require(workflow.get('concurrency') == (CHANGELOG_CONCURRENCY if filename in CHANGELOG_WORKFLOWS else ENTRY_CONCURRENCY.get(filename)), 'entry workflow group missing, shared or cancelling: ' + filename)
         for name, job in workflow['jobs'].items():
             where = filename + ':' + name
             if 'permissions' in job:
-                require((filename, name) in READ_EVIDENCE_JOBS and job['permissions'] == {'contents': 'read', 'actions': 'read'}, 'unreviewed job token at ' + where)
+                if filename in CHANGELOG_WORKFLOWS:
+                    require(name == 'changelog' and job['permissions'] == CHANGELOG_PERMISSIONS, 'unreviewed Changelog job token at ' + where)
+                else:
+                    require((filename, name) in READ_EVIDENCE_JOBS and job['permissions'] == {'contents': 'read', 'actions': 'read'}, 'unreviewed job token at ' + where)
             if 'environment' in job:
                 group = MUTATION_GROUPS.get(job['environment']) if isinstance(job['environment'], str) else None
                 require(reusable and group is not None and job.get('concurrency') == {'group': group, 'cancel-in-progress': False}, 'mutation job unserialized or cancelling at ' + where)
@@ -709,10 +760,35 @@ def validate_workflow_syntax(workflows):
 
 
 class GraphTests(unittest.TestCase):
+    def test_changelog_inventory_and_exact_privileges_reject_unlisted_owner(self):
+        import shutil
+        with tempfile.TemporaryDirectory(prefix='L25-changelog-graph-') as directory:
+            root = Path(directory)
+            shutil.copytree(ROOT/'.github', root/'.github')
+            validate_graph(root)
+            extra = root/'.github/workflows/changelog-unlisted.yml'
+            extra.write_text(yaml.safe_dump({'name': 'Unlisted owner', 'on': {'schedule': [{'cron': '19 * * * *'}]},
+                                            'permissions': {'contents': 'read'}, 'jobs': {'extra': {
+                                                'runs-on': 'ubuntu-24.04', 'timeout-minutes': 1,
+                                                'steps': [{'run': 'true'}]}}}))
+            with self.assertRaisesRegex(gate.Rejected, 'alternate workflow owner'):
+                validate_graph(root)
+            extra.unlink()
+            for name in CHANGELOG_WORKFLOWS:
+                path = root/'.github/workflows'/name
+                original = path.read_text()
+                workflow = yaml.safe_load(original)
+                workflow['jobs']['changelog']['permissions']['issues'] = 'write'
+                path.write_text(yaml.safe_dump(workflow))
+                with self.subTest(name=name), self.assertRaisesRegex(gate.Rejected, 'Changelog workflow contract changed'):
+                    validate_graph(root)
+                path.write_text(original)
+            validate_graph(root)
+
     def test_execution_settings_are_pinned_bounded_serialized_and_read_only(self):
         actual = {p.name: yaml.safe_load(p.read_text()) for p in (ROOT/'.github/workflows').glob('*.yml')}
         validate_execution_settings(actual)
-        self.assertEqual(set(ENTRY_CONCURRENCY) | {n for n, w in actual.items() if set(w['on']) == {'workflow_call'}}, set(actual))
+        self.assertEqual(set(ENTRY_CONCURRENCY) | set(CHANGELOG_WORKFLOWS) | {n for n, w in actual.items() if set(w['on']) == {'workflow_call'}}, set(actual))
         groups = [c['group'] for c in ENTRY_CONCURRENCY.values()]
         self.assertEqual(len(set(groups)), len(groups))
         self.assertFalse({g.split('-${{')[0] for g in groups} & set(MUTATION_GROUPS.values()))
@@ -1210,7 +1286,7 @@ class ManifestReportTests(unittest.TestCase):
             reports = []
             families = self.manifest['rows'][row]
             for kind, name in self.manifest['reports'][row]:
-                selected = [f for f in families if (name == 'ruby.json' and f.startswith('ASCReleaseTest#')) or (name == 'ios-ruby.json' and f.startswith('IOSASCTests#')) or (name == 'ios-python.json' and f.startswith(('IOSArtifactTests.','IOSLifecycleTests.','IOSGraphTests.','IOSFailureBoundaryTests.'))) or (name == 'gate-tests.json' and '#' not in f and not f.startswith(('IOSArtifactTests.','IOSLifecycleTests.','IOSGraphTests.','IOSFailureBoundaryTests.')))] if row == 'automation' else families
+                selected = [f for f in families if (name == 'ruby.json' and f.startswith('ASCReleaseTest#')) or (name == 'ios-ruby.json' and f.startswith('IOSASCTests#')) or (name == 'ios-python.json' and f.startswith(('IOSArtifactTests.','IOSLifecycleTests.','IOSGraphTests.','IOSFailureBoundaryTests.'))) or (name == 'changelog.json' and f.startswith(('ChangelogLifecycleTests.', 'ChangelogAdapterTests.'))) or (name == 'gate-tests.json' and not f.startswith(('ChangelogLifecycleTests.', 'ChangelogAdapterTests.')) and '#' not in f and not f.startswith(('IOSArtifactTests.','IOSLifecycleTests.','IOSGraphTests.','IOSFailureBoundaryTests.')))] if row == 'automation' else families
                 cases = [{'id':f,'family':f,'status':'pass'} for f in selected]
                 obj = dict(complete=True, success=True, tests_run=len(cases), started=[c['id'] for c in cases], cases=cases)
                 reports.append((kind,str(self.write(name,obj))))
