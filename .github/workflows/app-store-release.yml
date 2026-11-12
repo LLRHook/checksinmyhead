@@ -49,6 +49,10 @@ name: Promote processed TestFlight build to App Store
     - release-v*
 permissions:
   contents: read
+# One run per ref and event; never cancelled in progress (it may be writing to ASC).
+concurrency:
+  group: app-store-release-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: false
 jobs:
   resolve:
     runs-on: ubuntu-24.04

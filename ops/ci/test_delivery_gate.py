@@ -181,6 +181,60 @@ class FloorTests(GitFixture):
         self.assertEqual(p.returncode,1);self.assertIn('F-phase required',p.stderr)
 
 
+class PredecessorTests(GitFixture):
+    """The fixture's old revision has registry 1 and S appends 2: publishing S is a schema step."""
+    BASE='https://billington-api.onrender.com'
+
+    def health(self,commit):return 200,gate.compact({'status':'bill service - ok','commit':commit}).encode()
+
+    def observe(self,answer,floors=None,source=None,module=gate):
+        calls=[]
+        def request(method,url):
+            calls.append((method,url))
+            if isinstance(answer,Exception):raise answer
+            return answer
+        result=module.predecessor_clear(self.repo,self.source if source is None else source,{'synthetic_replay':self.old} if floors is None else floors,self.BASE,request=request)
+        self.assertEqual(calls,[('GET',self.BASE+'/health')])
+        return result['predecessor']
+
+    def test_serving_predecessor_must_reach_the_named_reader_floor_before_a_schema_step(self):
+        reader=gate.READER_CAPABILITY
+        self.assertEqual(self.observe(self.health(self.old),{reader:self.old}),'warm-reader-floor')
+        for floors in (None,{},{reader:self.source},{reader:'e'*40},{reader:None},{'other_capability':self.old},[self.old]):
+            with self.subTest(floors=floors),self.assertRaises(gate.Rejected) as rejected:self.observe(self.health(self.old),floors)
+            self.assertIn('stop it before publishing',str(rejected.exception))
+        with self.assertRaises(gate.Rejected):self.observe(self.health(self.old),{reader:'not-a-sha'})
+
+    def test_absent_identical_or_schema_equal_predecessor_needs_no_floor(self):
+        for code in (404,502,503):
+            with self.subTest(code=code):self.assertEqual(self.observe((code,b'<html>suspended</html>')),'not-serving')
+        self.assertEqual(self.observe(self.health(self.source)),'same-revision')
+        # C carries the same registry as S; an older S applies no step over a newer serving revision.
+        self.assertEqual(self.observe(self.health(self.source),source=self.controller),'no-schema-step')
+        self.assertEqual(self.observe(self.health(self.source),source=self.old),'no-schema-step')
+
+    def test_unknown_unrelated_or_unobservable_predecessor_is_rejected(self):
+        tree=self.call('rev-parse',self.old+'^{tree}');unrelated=self.call('commit-tree',tree,'-m','synthetic unrelated history')
+        reader={gate.READER_CAPABILITY:self.old}
+        answers={'transport':gate.Rejected('transport request failed'),'not-json':(200,b'<html>starting</html>'),'no-commit':(200,b'{"status":"bill service - ok"}'),
+                 'empty-commit':self.health(''),'short':self.health(self.old[:12]),'uppercase':self.health(self.old.upper()),'number':(200,b'{"commit":1}'),
+                 'duplicate':(200,('{"commit":"%s","commit":"%s"}'%(self.source,self.source)).encode()),'array':(200,b'[]'),
+                 'unknown-object':self.health('e'*40),'unrelated':self.health(unrelated)}
+        # An unhealthy predecessor is still a serving predecessor: its own 5xx health object never reads as stopped.
+        unhealthy=lambda code,commit:(code,gate.compact({'status':'service unavailable','commit':commit}).encode())
+        answers.update({'unhealthy-unknown':unhealthy(503,'e'*40),'unhealthy-no-commit':(503,b'{"status":"service unavailable"}'),
+                        'unhealthy-truncated':(502,b' {"status":'),'unhealthy-unrelated':unhealthy(500,unrelated)})
+        for name,answer in answers.items():
+            with self.subTest(defect=name),self.assertRaises(gate.Rejected):self.observe(answer,reader)
+        for code in (500,502,503):
+            with self.subTest(unhealthy=code):
+                self.assertEqual(self.observe(unhealthy(code,self.old),reader),'warm-reader-floor')
+                with self.assertRaises(gate.Rejected):self.observe(unhealthy(code,self.old),{})
+        for base in ('http://billington-api.onrender.com','https://evil.test','https://billington-api.onrender.com/other','https://billington-api.onrender.com?x=1'):
+            with self.subTest(base=base),self.assertRaises(gate.Rejected):gate.predecessor_clear(self.repo,self.source,reader,base,request=lambda *_:self.fail('unsafe base was requested'))
+
+
+
 class SelectionTests(unittest.TestCase):
     def test_initial_policy_disables_all_publication(self):
         for policy in ('', '{}', '{', gate.compact(gate.DISABLED_POLICY)):
@@ -303,6 +357,53 @@ class MirrorTests(GitFixture):
         with self.assertRaises(gate.Rejected):gate.mirror_plan(self.repo,self.source,hosts,wrong)
 
 
+# The exact commands of each gate row after `set -euo pipefail`. A scan that can be
+# dropped, masked with `|| true` or moved behind the report is not a gate (BUG-1793644501).
+PYTHON = '"$RUNNER_TEMP/delivery-python/bin/python" control/ops/ci/unittest_report.py control/ops/ci/'
+RUBY = 'ruby -r "$GITHUB_WORKSPACE/control/ops/ci/minitest_report.rb" '
+GATE_COMMANDS = {row: ['set -euo pipefail'] + lines for row, lines in {
+    'automation': [
+        "python3 -c 'import sys; assert sys.version_info[:2] == (3,12)'",
+        'python3 -m venv "$RUNNER_TEMP/delivery-python"',
+        '"$RUNNER_TEMP/delivery-python/bin/pip" install --require-hashes --only-binary=:all: -r control/ops/ci/requirements-ci.txt',
+        'CASE_REPORT="$REPORT_DIR/gate-tests.json" ' + PYTHON + 'test_delivery_gate.py',
+        'CASE_REPORT="$REPORT_DIR/ruby.json" ' + RUBY + 'candidate/.github/scripts/asc_release_test.rb',
+        'for script in candidate/.github/scripts/*.rb control/ops/ci/*.rb; do ruby -c "$script"; done',
+        'CASE_REPORT="$REPORT_DIR/ios-python.json" ' + PYTHON + 'test_ios_artifact.py',
+        'CASE_REPORT="$REPORT_DIR/ios-ruby.json" ' + RUBY + 'control/.github/scripts/asc_delivery_test.rb'],
+    'local-workflow': [
+        '/bin/bash -n candidate/dev.sh',
+        'CASE_REPORT="$REPORT_DIR/local-workflow.json" python3 control/ops/ci/unittest_report.py candidate/scripts/test_local_workflow.py'],
+    'backend': [
+        'cd candidate/backend',
+        'test -z "$(gofmt -l .)" || { gofmt -l .; echo "::error::Run \'gofmt -w .\' in backend/"; exit 1; }',
+        'go mod download',
+        'go mod verify',
+        'go build ./...',
+        'go vet ./...',
+        'go test -race -count=1 -json ./... | tee "$REPORT_DIR/go-default.jsonl"',
+        'go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...'],
+    'postgres': [
+        'cd candidate/backend',
+        'go mod download',
+        'go mod verify',
+        'go build ./cmd/bill-service',
+        'go test -race -count=1 -json -timeout=20m -tags=integration ./cmd/bill-service ./internal/bill ./internal/tab ./pkg/database ./migrations ./internal/startup ./internal/readiness ./internal/testpostgres | tee "$REPORT_DIR/go-postgres.jsonl"'],
+    'mobile': [
+        'cd candidate/mobile',
+        'flutter pub get --enforce-lockfile',
+        'flutter analyze',
+        'flutter test --no-pub --reporter=json | tee "$REPORT_DIR/flutter.jsonl"'],
+    'web': [
+        'cd candidate/web-bill-viewer',
+        'npm ci',
+        'npm run lint',
+        'npm test -- --reporter=json --outputFile="$REPORT_DIR/vitest.json"',
+        'npm run build',
+        'npm audit --audit-level=moderate'],
+}.items()}
+
+
 # Structural validation targets the actual proposed graph; mutation controls prove
 # a removed needs edge/changed checkout/skip bypass is rejected by the same checker.
 def validate_graph(root):
@@ -391,6 +492,7 @@ def validate_graph(root):
     required_step = ci['jobs']['required']['steps'][-1]
     require(required_step['run']==helper+' required'+args and required_step['env']=={'CONTROLLER':'${{ github.sha }}','SOURCE':'${{ needs.resolve.outputs.candidate }}','NEEDS':'${{ toJSON(needs) }}'}, 'outer required helper/dataflow replaced')
     manifest = gate.trusted_manifest()
+    require(checks['defaults']=={'run':{'shell':'bash'}}, 'gate shell changed')
     pins = {'actions/checkout':'fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09',
             'actions/setup-go':'924ae3a1cded613372ab5595356fb5720e22ba16',
             'actions/setup-node':'a0853c24544627f65ddf259abe73b1d18a591444',
@@ -405,6 +507,12 @@ def validate_graph(root):
         require(not reports[0].get('if'), 'skipped report validation')
         command=next(step['run'] for step in job['steps'] if step.get('name')=='Canonical '+row+' row')
         require(command.startswith('set -euo pipefail\n'), 'runner failure exit swallowed')
+        # Every build, test and scan line is part of the gate: a failed scan fails the
+        # row only while its exact command, order, shell and step list stay in place.
+        canonical=[step for step in job['steps'] if step.get('name')=='Canonical '+row+' row']
+        require(len(canonical)==1 and set(canonical[0])=={'name','run'} and command.split('\n')==GATE_COMMANDS[row], 'gate command removed, weakened, masked, reordered or skipped: '+row)
+        require([step['run'] for step in job['steps'] if 'run' in step]==[helper+' assert-checkout --repo control --source "$CONTROLLER"', helper+' assert-checkout --repo candidate --source "$SOURCE"', 'mkdir -p reports', command, reports[0]['run']], 'unreviewed command in gate row: '+row)
+        require(set(job)=={'name','runs-on','timeout-minutes','outputs','steps'}|({'services','env'} if row=='postgres' else set()), 'unreviewed gate row setting: '+row)
         require(job['steps'][2]['run']==helper+' assert-checkout --repo control --source "$CONTROLLER"' and
                 job['steps'][3]['run']==helper+' assert-checkout --repo candidate --source "$SOURCE"', 'checkout assertion replaced')
         require(job['steps'].index(reports[0]) > next(i for i,step in enumerate(job['steps']) if step.get('name')=='Canonical '+row+' row'), 'report precedes execution')
@@ -439,7 +547,48 @@ def validate_graph(root):
     require(cancel['type']=='boolean' and cancel['default'] is False,'cancellation consent changed')
     validate_ios_graph(root,workflows)
     validate_workflow_syntax(workflows)
+    validate_execution_settings(workflows)
     return workflows
+
+
+# BUG-1793644519. Entry workflows own one group per ref and event. Only pull-request
+# validation is cancelled in progress: any other cancellation could stop a publisher
+# mid-mutation. Reusable workflows declare no top-level group (it would be evaluated
+# in the caller's context and can collide with the caller's own); their mutation jobs
+# serialize on a literal noncancelling job group instead.
+ENTRY_CONCURRENCY = {
+    'ci.yml': {'group': 'controller-${{ github.ref }}-${{ github.event_name }}', 'cancel-in-progress': "${{ github.event_name == 'pull_request' }}"},
+    'testflight.yml': {'group': 'testflight-${{ github.ref }}-${{ github.event_name }}', 'cancel-in-progress': False},
+    'app-store-release.yml': {'group': 'app-store-release-${{ github.ref }}-${{ github.event_name }}', 'cancel-in-progress': False},
+    'update-release-notes.yml': {'group': 'release-notes-${{ github.ref }}-${{ github.event_name }}', 'cancel-in-progress': False},
+}
+MUTATION_GROUPS = {'backend-production': 'backend-production', 'web-production': 'web-production', 'ios-upload': 'ios-upload', 'ios-production': 'ios-upload'}
+READ_EVIDENCE_JOBS = {('testflight.yml', 'deliver'), ('app-store-release.yml', 'deliver'), ('update-release-notes.yml', 'deliver'), ('ios-origin.yml', 'origin'), ('ios-promote.yml', 'promote')}
+LONGEST_JOB_MINUTES = 60
+
+
+def validate_execution_settings(workflows):
+    require = gate.require
+    for filename, workflow in workflows.items():
+        events = workflow.get('on', workflow.get(True))
+        require(isinstance(events, dict) and bool(events), 'unenumerated workflow triggers in ' + filename)
+        reusable = set(events) == {'workflow_call'}
+        if reusable:
+            require('concurrency' not in workflow, 'top-level group in reusable workflow ' + filename)
+        else:
+            require('pull_request' not in events or filename == 'ci.yml', 'unreviewed pull-request workflow ' + filename)
+            require(workflow.get('concurrency') == ENTRY_CONCURRENCY.get(filename), 'entry workflow group missing, shared or cancelling: ' + filename)
+        for name, job in workflow['jobs'].items():
+            where = filename + ':' + name
+            if 'permissions' in job:
+                require((filename, name) in READ_EVIDENCE_JOBS and job['permissions'] == {'contents': 'read', 'actions': 'read'}, 'unreviewed job token at ' + where)
+            if 'environment' in job:
+                group = MUTATION_GROUPS.get(job['environment']) if isinstance(job['environment'], str) else None
+                require(reusable and group is not None and job.get('concurrency') == {'group': group, 'cancel-in-progress': False}, 'mutation job unserialized or cancelling at ' + where)
+            else:
+                require('concurrency' not in job, 'unreviewed job group at ' + where)
+            if 'uses' not in job:
+                require(type(job.get('timeout-minutes')) is int and job['timeout-minutes'] <= LONGEST_JOB_MINUTES, 'missing or unbounded timeout at ' + where)
 
 
 # GitHub rejects a whole workflow file ("workflow file issue", a failed run with no
@@ -560,6 +709,47 @@ def validate_workflow_syntax(workflows):
 
 
 class GraphTests(unittest.TestCase):
+    def test_execution_settings_are_pinned_bounded_serialized_and_read_only(self):
+        actual = {p.name: yaml.safe_load(p.read_text()) for p in (ROOT/'.github/workflows').glob('*.yml')}
+        validate_execution_settings(actual)
+        self.assertEqual(set(ENTRY_CONCURRENCY) | {n for n, w in actual.items() if set(w['on']) == {'workflow_call'}}, set(actual))
+        groups = [c['group'] for c in ENTRY_CONCURRENCY.values()]
+        self.assertEqual(len(set(groups)), len(groups))
+        self.assertFalse({g.split('-${{')[0] for g in groups} & set(MUTATION_GROUPS.values()))
+        defects = {
+            'ci-cancels-main-publisher': ('ci.yml', lambda w: w['concurrency'].update({'cancel-in-progress': True})),
+            'ci-cancels-all-events': ('ci.yml', lambda w: w['concurrency'].update({'cancel-in-progress': "${{ github.event_name != 'workflow_dispatch' }}"})),
+            'ci-no-group': ('ci.yml', lambda w: w.pop('concurrency')),
+            'ci-one-group-for-every-ref': ('ci.yml', lambda w: w['concurrency'].update(group='controller')),
+            'testflight-no-group': ('testflight.yml', lambda w: w.pop('concurrency')),
+            'app-store-no-group': ('app-store-release.yml', lambda w: w.pop('concurrency')),
+            'notes-no-group': ('update-release-notes.yml', lambda w: w.pop('concurrency')),
+            'testflight-cancels-upload': ('testflight.yml', lambda w: w['concurrency'].update({'cancel-in-progress': True})),
+            'entry-shares-mutation-group': ('app-store-release.yml', lambda w: w['concurrency'].update(group='ios-upload')),
+            'entries-share-one-group': ('update-release-notes.yml', lambda w: w['concurrency'].update(group=ENTRY_CONCURRENCY['testflight.yml']['group'])),
+            'reusable-top-level-group': ('checks.yml', lambda w: w.update(concurrency={'group': 'checks-${{ github.ref }}', 'cancel-in-progress': True})),
+            'publisher-top-level-group': ('deploy-backend.yml', lambda w: w.update(concurrency={'group': 'backend-production', 'cancel-in-progress': False})),
+            'backend-publisher-cancels': ('deploy-backend.yml', lambda w: w['jobs']['publish']['concurrency'].update({'cancel-in-progress': True})),
+            'web-publisher-unserialized': ('sync-web-viewer.yml', lambda w: w['jobs']['publish'].pop('concurrency')),
+            'web-publisher-dynamic-group': ('sync-web-viewer.yml', lambda w: w['jobs']['publish']['concurrency'].update(group='web-production-${{ github.run_id }}')),
+            'origin-own-group': ('ios-origin.yml', lambda w: w['jobs']['origin']['concurrency'].update(group='ios-origin')),
+            'promotion-cancels': ('ios-promote.yml', lambda w: w['jobs']['promote']['concurrency'].update({'cancel-in-progress': True})),
+            'validation-row-group': ('checks.yml', lambda w: w['jobs']['web'].update(concurrency={'group': 'web', 'cancel-in-progress': True})),
+            'entry-job-environment': ('ci.yml', lambda w: w['jobs']['required'].update(environment='backend-production', concurrency={'group': 'backend-production', 'cancel-in-progress': False})),
+            'job-token-write': ('ci.yml', lambda w: w['jobs']['required'].update(permissions={'contents': 'write'})),
+            'resolver-token-write': ('ci.yml', lambda w: w['jobs']['resolve'].update(permissions={'contents': 'write', 'actions': 'write'})),
+            'publisher-token-write': ('sync-web-viewer.yml', lambda w: w['jobs']['publish'].update(permissions={'contents': 'read', 'deployments': 'write'})),
+            'job-token-oidc': ('deploy-backend.yml', lambda w: w['jobs']['publish'].update(permissions={'contents': 'read', 'id-token': 'write'})),
+            'job-token-extra-read': ('checks.yml', lambda w: w['jobs']['aggregate'].update(permissions={'contents': 'read', 'actions': 'read'})),
+            'evidence-job-token-write': ('ios-promote.yml', lambda w: w['jobs']['promote']['permissions'].update(actions='write')),
+            'timeout-platform-default': ('ios-origin.yml', lambda w: w['jobs']['origin'].update({'timeout-minutes': 360})),
+        }
+        for defect, (filename, mutate) in defects.items():
+            changed = copy.deepcopy(actual)
+            mutate(changed[filename])
+            with self.subTest(defect=defect), self.assertRaises(gate.Rejected):
+                validate_execution_settings(changed)
+
     def test_workflow_expressions_use_only_documented_contexts(self):
         actual = {p.name: yaml.safe_load(p.read_text()) for p in (ROOT/'.github/workflows').glob('*.yml')}
         validate_workflow_syntax(actual)
@@ -619,7 +809,30 @@ class GraphTests(unittest.TestCase):
         # No application checkout or application tree is copied.
         original_defects = ('needs','checkout','skip','publisher-trigger','publisher-receipt','pg-packages','nested-cache','signing','helper','report-output','manifest-override','scope','required-output','cancel-consent','ios-bypass','policy-override','unverified-pin')
         secret_defects = tuple(target + ':' + defect for target in ('backend', 'web') for defect in ('missing-map','inherit','wrong-key','wrong-value','extra-secret','missing-declaration','optional-declaration','wrong-declaration'))
-        for defect in original_defects + secret_defects + ('mobile-auto-pub', 'mobile-missing-acquisition'):
+        # BUG-1793644501: a failed scan must fail its row. Removing, weakening, masking,
+        # reordering or skipping a gate command is a reviewed controller change, never silent.
+        scan_defects = {
+            'scan-vulnerability-removed': ('backend', lambda lines: [l for l in lines if 'govulncheck' not in l]),
+            'scan-vulnerability-masked': ('backend', lambda lines: [l + ' || true' if 'govulncheck' in l else l for l in lines]),
+            'scan-vet-removed': ('backend', lambda lines: [l for l in lines if l != 'go vet ./...']),
+            'scan-format-removed': ('backend', lambda lines: [l for l in lines if 'gofmt' not in l]),
+            'scan-module-verify-removed': ('postgres', lambda lines: [l for l in lines if l != 'go mod verify']),
+            'scan-analyze-removed': ('mobile', lambda lines: [l for l in lines if l != 'flutter analyze']),
+            'scan-lint-removed': ('web', lambda lines: [l for l in lines if l != 'npm run lint']),
+            'scan-build-removed': ('web', lambda lines: [l for l in lines if l != 'npm run build']),
+            'scan-audit-removed': ('web', lambda lines: [l for l in lines if 'npm audit' not in l]),
+            'scan-audit-weakened': ('web', lambda lines: [l.replace('--audit-level=moderate', '--audit-level=critical') for l in lines]),
+            'scan-errexit-disabled': ('web', lambda lines: lines[:1] + ['set +e'] + lines[1:]),
+            'scan-reordered': ('backend', lambda lines: lines[:-2] + lines[-1:] + lines[-2:-1]),
+            'scan-ruby-syntax-removed': ('automation', lambda lines: [l for l in lines if 'ruby -c' not in l]),
+            'scan-shell-syntax-removed': ('local-workflow', lambda lines: [l for l in lines if '/bin/bash -n' not in l]),
+            'scan-step-skipped': ('backend', None),
+            'scan-step-shell': ('web', None),
+            'scan-default-shell': ('web', None),
+            'scan-report-forged': ('web', None),
+            'scan-job-env': ('backend', None),
+        }
+        for defect in original_defects + secret_defects + ('mobile-auto-pub', 'mobile-missing-acquisition') + tuple(scan_defects):
             with self.subTest(defect=defect),tempfile.TemporaryDirectory(prefix='gate-yaml-') as d:
                 r=Path(d);wf=r/'.github/workflows';wf.mkdir(parents=True)
                 for p in (ROOT/'.github/workflows').glob('*.yml'):(wf/p.name).write_text(p.read_text())
@@ -643,6 +856,20 @@ class GraphTests(unittest.TestCase):
                         elif problem == 'wrong-key': caller['secrets'] = {'UNRELATED_SECRET': '${{ secrets.' + secret + ' }}'}
                         elif problem == 'wrong-value': caller['secrets'][secret] = '${{ secrets.LEGACY_KEY }}'
                         else: caller['secrets']['EXTRA_KEY'] = '${{ secrets.EXTRA_KEY }}'
+                elif defect in scan_defects:
+                    row, change = scan_defects[defect]
+                    step = next(s for s in j['jobs'][row]['steps'] if s.get('name') == 'Canonical ' + row + ' row')
+                    if change is not None:
+                        lines = step['run'].split('\n')
+                        self.assertNotEqual(change(lines), lines)
+                        step['run'] = '\n'.join(change(lines))
+                    elif defect == 'scan-step-skipped': step['if'] = "${{ github.event_name != 'push' }}"
+                    elif defect == 'scan-step-shell': step['shell'] = 'bash {0}'
+                    elif defect == 'scan-default-shell': j['defaults']['run']['shell'] = 'sh'
+                    elif defect == 'scan-report-forged':
+                        steps = j['jobs'][row]['steps']
+                        steps.insert(steps.index(step) + 1, {'run': 'cp candidate/web-bill-viewer/vitest.json reports/vitest.json'})
+                    else: j['jobs'][row]['env'] = {'GOFLAGS': '-mod=mod'}
                 elif defect in ('mobile-auto-pub', 'mobile-missing-acquisition'):
                     step = next(s for s in j['jobs']['mobile']['steps'] if s.get('name') == 'Canonical mobile row')
                     step['run'] = step['run'].replace(' --no-pub', '') if defect == 'mobile-auto-pub' else step['run'].replace('flutter pub get --enforce-lockfile\n', '')
@@ -956,7 +1183,10 @@ class ManifestReportTests(unittest.TestCase):
                     'policy renders complete public content without API or browser storage']
         titles = ['confines public indexing, canonical and social metadata to public routes',
                   *rendered, 'publishes only visible, bounded software claims on the homepage',
-                  'enumerates only public documents and lets crawlers read private noindex']
+                  'enumerates only public documents and lets crawlers read private noindex',
+                  'scopes the policy to the App Store version and marks unreleased behavior',
+                  'states the released collection, provider, log, link and removal facts',
+                  'makes no publication, effective-date, compliance or no-collection claim']
         def report(selected):
             cases = [{'fullName': 'public and private acquisition isolation ' + title,
                       'status': 'passed'} for title in selected]
@@ -1074,7 +1304,24 @@ class ManifestReportTests(unittest.TestCase):
          ('flutter',
           'mobile',
           'mobile/test/receipt_timestamp_test.dart',
-          ('new receipt uses insertion time instead of historical table default',)),
+          ('new receipt uses insertion time instead of historical table default',
+           'explicit receipt timestamp is stored unchanged and an existing handle keeps its row')),
+         # The conditional-title loop had no selection at all: its four named modes
+         # could be removed while the row stayed green (focused S4 review, 2026-11-09).
+         ('flutter',
+          'mobile',
+          'mobile/test/receipt_native_io_test.dart',
+          ('native timeout closes actual upstream connection',
+           'native real setup deadline can expire before any complete POST',
+           'native headers stall timeout terminates upstream and joins fixture cleanup',
+           'native cancellation stops a streaming upload and cancels its input subscription',
+           'native source-error joins its input subscription cleanup',
+           'native cleanup-error joins its input subscription cleanup',
+           'native reentrant joins its input subscription cleanup',
+           'native 302 never follows Location and counts only one wire POST',
+           'native failed POST is never retried and a deliberate manual retry sends one new POST',
+           'native compressed response enforces decoded 1MiB and closes stream',
+           'native dropped response after upload never replays a POST')),
          ('vitest',
           'web',
           'web-bill-viewer/src/components/__tests__/LazyBillSession.test.ts',
@@ -1205,18 +1452,20 @@ class EntrypointTests(GitFixture):
         event=dict(self.event,GITHUB_RUN_ID=B['run'],GITHUB_RUN_ATTEMPT=B['attempt'],DELIVERY_TARGET='backend',
                    RELEASE_POLICY=gate.compact(self.policy),GATE_RECEIPT=gate.compact(self.receipt),VERIFY_ONLY='false',
                    DELIVERY_RENDER_DEPLOY_HOOK_URL='https://api.render.com/deploy/synthetic?key=not-a-secret')
-        actual_git=gate.git;actual_deploy=gate.deploy_backend;calls=[]
+        actual_git=gate.git;actual_deploy=gate.deploy_backend;calls=[];serving=[self.source]
         def local_git(repo,*args,**kwargs):
             if args[0]=='fetch':calls.append('fresh-main');return ''
             return actual_git(repo,*args,**kwargs)
         def request(method,url):
             calls.append(method)
             if method=='POST':return 202,b'{}'
-            return (200,gate.compact({'status':'bill service - ok','commit':self.source}).encode()) if url.endswith('/health') else (404,b'')
+            # The first health read is the serving predecessor; later reads are the deployed S.
+            commit=serving[0] if calls.count('GET')==1 else self.source
+            return (200,gate.compact({'status':'bill service - ok','commit':commit}).encode()) if url.endswith('/health') else (404,b'')
         def deploy(*args):return actual_deploy(*args,request=request,sleep=lambda _:None)
         argv=['delivery_gate.py','publish','--repo',str(self.repo),'--source',self.source,'--controller',self.controller]
-        for defect in ('healthy','disabled-policy','bad-receipt','wrong-C','feature','missing-secret','invalid-boolean','verification-only'):
-            env=dict(event);calls.clear()
+        for defect in ('healthy','disabled-policy','bad-receipt','wrong-C','feature','missing-secret','invalid-boolean','verification-only','serving-old-reader'):
+            env=dict(event);calls.clear();serving[0]=self.old if defect=='serving-old-reader' else self.source
             if defect=='disabled-policy':env['RELEASE_POLICY']=gate.compact(gate.DISABLED_POLICY)
             elif defect=='bad-receipt':env['GATE_RECEIPT']=gate.compact(dict(self.receipt,source=self.controller))
             elif defect=='wrong-C':env['GITHUB_SHA']=self.source
@@ -1224,10 +1473,12 @@ class EntrypointTests(GitFixture):
             elif defect=='missing-secret':env['DELIVERY_RENDER_DEPLOY_HOOK_URL']=''
             elif defect=='invalid-boolean':env['VERIFY_ONLY']='$(touch PWNED)'
             elif defect=='verification-only':env['VERIFY_ONLY']='true';env['DELIVERY_RENDER_DEPLOY_HOOK_URL']=''
-            with self.subTest(defect=defect),patch.dict(os.environ,env,clear=True),patch.object(sys,'argv',argv),patch.object(gate,'git',local_git),patch.object(gate,'deploy_backend',deploy),contextlib.redirect_stdout(io.StringIO()) as output:
+            with self.subTest(defect=defect),patch.dict(os.environ,env,clear=True),patch.object(sys,'argv',argv),patch.object(gate,'git',local_git),patch.object(gate,'http',request),patch.object(gate,'deploy_backend',deploy),contextlib.redirect_stdout(io.StringIO()) as output:
                 if defect in ('healthy','verification-only'):
                     gate.main();self.assertIn('fresh-main',calls)
                     self.assertEqual('POST' in calls,defect=='healthy')
+                    # The serving predecessor is observed before any hook request.
+                    if defect=='healthy':self.assertEqual(calls,['fresh-main','GET','POST','GET','GET'])
                     self.assertNotIn('not-a-secret',output.getvalue())
                 else:
                     with self.assertRaises(gate.Rejected):gate.main()
@@ -1295,6 +1546,26 @@ class DocumentationContractTests(unittest.TestCase):
         self.assertIn('phase F',text)
         self.assertIn('No hosted mutation or Render/Vercel control-plane work',text)
         self.assertNotIn('skip_tests',text)
+
+    def test_operational_docs_match_routes_and_signed_capabilities(self):
+        read=lambda path:(ROOT/path).read_text()
+        readme=read('README.md')
+        # PR #149 removed the viewer's /privacy route; the maintained route is /privacy-policy.
+        # README may name the old route only where it says that it was removed.
+        for paragraph in readme.split('\n\n'):
+            if re.search(r'(?<![\w.])/privacy(?![-\w.])',paragraph):
+                with self.subTest(paragraph=paragraph[:60]):self.assertRegex(paragraph,r'removed on purpose \(PR #149\)')
+        self.assertIn('/privacy-policy',readme)
+        api=read('docs/backend-api.md')
+        routes=re.findall(r'r\.(GET|POST|PATCH|PUT|DELETE)\("([^"]+)"',read('backend/cmd/bill-service/main.go'))
+        self.assertGreaterEqual(len(routes),31)
+        self.assertIn('## Route index',api)
+        index=api.split('## Route index',1)[1].split('\n## ',1)[0]
+        self.assertEqual(sorted(re.findall(r'^\| `([A-Z]+) (/[^`]*)` \|',index,re.M)),sorted(routes))
+        self.assertNotIn('/images',api)
+        # The documented invite capabilities describe these signed-build inputs.
+        self.assertNotIn('associated-domains',read('mobile/ios/Runner/RunnerProfile.entitlements'))
+        self.assertIn('<string>billington</string>',read('mobile/ios/Runner/Info.plist'))
 
     def test_initial_policy_and_local_reports_cannot_emit_a_release_receipt(self):
         with tempfile.TemporaryDirectory(prefix='gate-local-report-') as d:

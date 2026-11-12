@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/json/jsontext"
+	jsonv2 "encoding/json/v2"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"io"
@@ -22,7 +24,31 @@ const MutationBodyLimit int64 = 4 << 20
 // DecodeJSON admits exactly one document, including all trailing whitespace within
 // the same byte cap. Rejection stops transport reads as well as decoder reads.
 // No arbitrary decoder/reader error becomes public diagnostic text.
-func DecodeJSON(w http.ResponseWriter, r *http.Request, dst any, limit int64, strict bool) (err error) {
+func DecodeJSON(w http.ResponseWriter, r *http.Request, dst any, limit int64, strict bool) error {
+	return decodeJSON(w, r, dst, limit, strict, false)
+}
+
+// DecodeJSONStream has the same byte cap, single-document rule, cancellation and
+// public errors as DecodeJSON, but binds dst while reading instead of buffering
+// and validating the whole document first. It is for large bounded bodies whose
+// collection DTOs implement UnmarshalJSONFrom with DecodeArrayFrom: a rejected
+// count, type or syntax error stops reading at that point, and no pass over the
+// document is repeated. Accepted documents decode to the same values.
+func DecodeJSONStream(w http.ResponseWriter, r *http.Request, dst any, limit int64, strict bool) error {
+	return decodeJSON(w, r, dst, limit, strict, true)
+}
+
+// Streaming keeps every encoding/json compatibility option (case-insensitive
+// names, duplicate names, invalid UTF-8 replacement, null merging) and turns off
+// only legacy error reporting. That option makes the decoder validate and buffer
+// each complete value before binding it and continue after a type error; neither
+// changes which documents are accepted or the values they produce.
+var (
+	streamOptions       = jsonv2.JoinOptions(json.DefaultOptionsV1(), json.ReportErrorsWithLegacySemantics(false))
+	strictStreamOptions = jsonv2.JoinOptions(streamOptions, jsonv2.RejectUnknownMembers(true))
+)
+
+func decodeJSON(w http.ResponseWriter, r *http.Request, dst any, limit int64, strict, stream bool) (err error) {
 	defer func() {
 		if err != nil {
 			StopRejectedBody(w, r)
@@ -44,6 +70,23 @@ func DecodeJSON(w http.ResponseWriter, r *http.Request, dst any, limit int64, st
 			<-callbackDone
 		}
 	}()
+	if stream {
+		options := streamOptions
+		if strict {
+			options = strictStreamOptions
+		}
+		d := jsontext.NewDecoder(http.MaxBytesReader(w, r.Body, limit), options)
+		if err := jsonv2.UnmarshalDecode(d, dst, options); err != nil {
+			return jsonError(err)
+		}
+		if _, err := d.ReadToken(); err != io.EOF {
+			if err != nil {
+				return jsonError(err)
+			}
+			return ErrInvalidJSON
+		}
+		return nil
+	}
 	d := json.NewDecoder(http.MaxBytesReader(w, r.Body, limit))
 	if strict {
 		d.DisallowUnknownFields()
@@ -148,6 +191,55 @@ func decodeArray[T any](data []byte, limit int, strict bool) ([]T, error) {
 	d.DisallowUnknownFields()
 	if err := d.Decode(&result); err != nil {
 		return nil, ErrInvalidJSON
+	}
+	return result, nil
+}
+
+// DecodeArrayFrom is the streaming form of DecodeArray for UnmarshalJSONFrom.
+// It binds one element at a time with the decoder's own options and refuses
+// element limit+1 before binding it, so at most limit typed elements are ever
+// allocated; under DecodeJSONStream nothing after the excess element is read.
+// Null and empty arrays keep the stdlib results (nil and empty); any other
+// value kind is invalid.
+func DecodeArrayFrom[T any](dec *jsontext.Decoder, limit int) ([]T, error) {
+	switch dec.PeekKind() {
+	case jsontext.KindNull:
+		_, err := dec.ReadToken()
+		return nil, err
+	case jsontext.KindBeginArray:
+	default:
+		// Syntax errors surface from the read; a well-formed other kind is a type error.
+		if err := dec.SkipValue(); err != nil {
+			return nil, err
+		}
+		return nil, ErrInvalidJSON
+	}
+	if _, err := dec.ReadToken(); err != nil {
+		return nil, err
+	}
+	result := []T{}
+	for dec.PeekKind() != jsontext.KindEndArray {
+		if len(result) == limit {
+			// A pending read or syntax error is reported as itself, not as a count.
+			if dec.PeekKind() == jsontext.KindInvalid {
+				if _, err := dec.ReadToken(); err != nil {
+					return nil, err
+				}
+			}
+			return nil, ErrInvalidJSON
+		}
+		if len(result) == cap(result) {
+			grown := make([]T, len(result), min(max(2*cap(result), 8), limit))
+			copy(grown, result)
+			result = grown
+		}
+		result = result[:len(result)+1]
+		if err := jsonv2.UnmarshalDecode(dec, &result[len(result)-1], dec.Options()); err != nil {
+			return nil, err
+		}
+	}
+	if _, err := dec.ReadToken(); err != nil {
+		return nil, err
 	}
 	return result, nil
 }

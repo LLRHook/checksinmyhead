@@ -24,6 +24,10 @@ name: Deploy to TestFlight
         default: false
 permissions:
   contents: read
+# One run per ref and event; never cancelled in progress (it may be uploading).
+concurrency:
+  group: testflight-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: false
 jobs:
   resolve:
     runs-on: ubuntu-24.04

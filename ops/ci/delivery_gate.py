@@ -30,6 +30,7 @@ IOS_WORKFLOWS = dict(zip(DISABLED, ('testflight.yml', 'app-store-release.yml', '
 MIRROR = 'git@github.com:dhaliwalg/checksinmyhead.git'
 HOST_KEY = 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl\n'
 DISABLED_POLICY = {'version': 1, 'enabled_targets': [], 'control_floor': None, 'targets': {}}
+READER_CAPABILITY = 'additive_ddl_warm_reader'  # Floor: first revision whose warm readers survive additive DDL.
 
 
 class Rejected(ValueError):
@@ -413,6 +414,47 @@ def healthy(code, body, source):
         return False
 
 
+def descends(repo, before, after):
+    return subprocess.run(['git', '-C', str(repo), 'merge-base', '--is-ancestor', sha(before), sha(after)],
+                          capture_output=True, check=False).returncode == 0
+
+
+def registry_versions(repo, commit):
+    raw = subprocess.run(['git', '-C', str(repo), 'show', sha(commit) + ':backend/migrations/registry.go'], capture_output=True, check=False)
+    return [int(x) for x in re.findall(r'\{Version: ([0-9]+),', raw.stdout.decode())] if raw.returncode == 0 else []
+
+
+def predecessor_clear(repo, source, floors, base, request=None):
+    """Refuse a schema step under a serving revision that is not proven to survive it.
+
+    Startup migration commits while the predecessor still serves. Only a revision
+    at or after the named warm-reader floor keeps serving across additive DDL; any
+    other serving predecessor must be stopped first. One observation, not a drain proof.
+    """
+    sha(source); u = safe_url(base, 'billington-api.onrender.com')
+    require(u.path in ('', '/') and not u.query, 'invalid health base')
+    code, body = (request or http)('GET', base.rstrip('/') + '/health')  # No HTTP answer is unknown, never "drained".
+    # The service itself answers 503 with its health object when its database is
+    # unavailable, so only a non-200 answer that is not a JSON object means nothing serves.
+    if code != 200 and not body.lstrip().startswith(b'{'):
+        return {'predecessor': 'not-serving'}
+    try:
+        data = parse(body)
+    except (ValueError, TypeError):
+        data = None
+    running = data.get('commit') if isinstance(data, dict) else None
+    require(isinstance(running, str) and re.fullmatch('[0-9a-f]{40}', running) is not None, 'unidentified serving predecessor')
+    if running == source:
+        return {'predecessor': 'same-revision'}
+    related = descends(repo, running, source) or descends(repo, source, running)
+    if related and len(registry_versions(repo, source)) <= len(registry_versions(repo, running)):
+        return {'predecessor': 'no-schema-step'}
+    floor = floors.get(READER_CAPABILITY) if isinstance(floors, dict) else None
+    require(related and floor is not None and descends(repo, floor, running),
+            'serving predecessor cannot survive the pending schema step: stop it before publishing')
+    return {'predecessor': 'warm-reader-floor'}
+
+
 def deploy_backend(source, hook, base, verification_only=False, request=http, clock=time.monotonic, sleep=time.sleep):
     sha(source); u = safe_url(base, 'billington-api.onrender.com')
     require(u.path in ('', '/') and not u.query, 'invalid health base')
@@ -521,6 +563,9 @@ def main():
     approved = authorize(a.repo, target, receipt, b, e, policy)
     if target == 'backend':
         require(e.get('VERIFY_ONLY', 'false') in ('true', 'false'), 'invalid verification-only value')
+        if e.get('VERIFY_ONLY') != 'true':
+            approved = dict(approved, **predecessor_clear(a.repo, a.source, policy['targets'][target]['capability_floors'],
+                                                         'https://billington-api.onrender.com'))
         result = deploy_backend(a.source, e.get('DELIVERY_RENDER_DEPLOY_HOOK_URL', ''),
                                 'https://billington-api.onrender.com', e.get('VERIFY_ONLY') == 'true')
     else:

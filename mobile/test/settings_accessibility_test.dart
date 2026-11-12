@@ -641,4 +641,48 @@ void main() {
       }
     }
   });
+
+  // The in-app notice must agree with the maintained /privacy-policy page: it
+  // may not promise that uninstalling removes data or limit online storage to
+  // bills the user chose to share.
+  testWidgets(
+    'Privacy notice discloses online storage without an uninstall promise',
+    (tester) async {
+      await _withSettings(
+        tester,
+        textScale: 2,
+        body: (store, haptics) async {
+          await _show(tester, find.text('Privacy & Data'));
+          await tester.tap(find.text('Privacy & Data'));
+          await tester.pumpAndSettle();
+          final notice = find.textContaining('Billington has no accounts');
+          await _show(tester, notice);
+          final text = tester.widget<Text>(notice).data!;
+          expect(text, contains('Saving a bill or creating a tab can send it'));
+          expect(text, contains('stores it online'));
+          expect(text, contains('Receipt scans are sent to Anthropic'));
+          expect(text, contains('does not delete online bills or tabs'));
+          expect(
+            text,
+            isNot(
+              matches(
+                RegExp(
+                  r'removed when|never leaves|zero cloud|shared data is not',
+                  caseSensitive: false,
+                ),
+              ),
+            ),
+          );
+          final paragraph = tester.renderObject<RenderParagraph>(notice);
+          expect(paragraph.didExceedMaxLines, isFalse);
+          final rect = tester.getRect(notice);
+          expect(rect.left, greaterThanOrEqualTo(0));
+          expect(rect.right, lessThanOrEqualTo(320));
+          await _checkGuidelines(tester, 'large-text privacy notice');
+          expect(store.writes, isEmpty);
+          expect(tester.takeException(), isNull);
+        },
+      );
+    },
+  );
 }

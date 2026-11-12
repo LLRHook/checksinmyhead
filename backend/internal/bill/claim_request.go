@@ -33,7 +33,7 @@ func DecodeClaim(c *gin.Context, single bool) ([]ItemAssignmentsUpdate, *int64, 
 				ExpectedUpdatedAt *string          `json:"expected_updated_at"`
 				Assignments       AssignmentInputs `json:"assignments"`
 			}
-			if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, safehttp.MutationBodyLimit, false); err != nil {
+			if err := safehttp.DecodeJSONStream(c.Writer, c.Request, &body, safehttp.MutationBodyLimit, false); err != nil {
 				return nil, nil, mutation.Invalid
 			}
 			input = AssignmentUpdateInputs{{ItemID: itemID, ExpectedUpdatedAt: body.ExpectedUpdatedAt, Assignments: body.Assignments}}
@@ -41,7 +41,7 @@ func DecodeClaim(c *gin.Context, single bool) ([]ItemAssignmentsUpdate, *int64, 
 			var body struct {
 				Updates AssignmentUpdateInputs `json:"updates"`
 			}
-			if err := safehttp.DecodeJSON(c.Writer, c.Request, &body, safehttp.MutationBodyLimit, false); err != nil {
+			if err := safehttp.DecodeJSONStream(c.Writer, c.Request, &body, safehttp.MutationBodyLimit, false); err != nil {
 				return nil, nil, mutation.Invalid
 			}
 			input = body.Updates
@@ -53,7 +53,7 @@ func DecodeClaim(c *gin.Context, single bool) ([]ItemAssignmentsUpdate, *int64, 
 			if u.Assignments == nil {
 				return nil, nil, mutation.Invalid
 			}
-			next, err := claimUpdate(u.ItemID, u.ExpectedUpdatedAt)
+			next, err := claimUpdate(u.ItemID, u.ExpectedUpdatedAt, len(u.Assignments))
 			if err != nil {
 				return nil, nil, err
 			}
@@ -97,7 +97,7 @@ func DecodeClaim(c *gin.Context, single bool) ([]ItemAssignmentsUpdate, *int64, 
 			}
 		}
 		for _, u := range input {
-			next, err := claimUpdate(u.ItemID, u.ExpectedUpdatedAt)
+			next, err := claimUpdate(u.ItemID, u.ExpectedUpdatedAt, len(u.Assignments))
 			if err != nil {
 				return nil, nil, err
 			}
@@ -115,8 +115,11 @@ func DecodeClaim(c *gin.Context, single bool) ([]ItemAssignmentsUpdate, *int64, 
 	}
 	return updates, expected, nil
 }
-func claimUpdate(itemID uint, expected *string) (ItemAssignmentsUpdate, error) {
-	next := ItemAssignmentsUpdate{ItemID: itemID, Assignments: []models.ItemAssignment{}}
+
+// claimUpdate sizes the command slice once. Counts are already capped at 100
+// per item, so the reservation is bounded and append never regrows it.
+func claimUpdate(itemID uint, expected *string, count int) (ItemAssignmentsUpdate, error) {
+	next := ItemAssignmentsUpdate{ItemID: itemID, Assignments: make([]models.ItemAssignment, 0, count)}
 	if expected != nil && *expected != "" {
 		date, err := time.Parse(time.RFC3339Nano, *expected)
 		if err != nil {

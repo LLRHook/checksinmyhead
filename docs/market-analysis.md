@@ -1,6 +1,13 @@
 # Origin Story & Market Analysis
 
-> This market analysis records assumptions from before Billington added online bill sharing. Its local-only architecture notes describe that earlier concept, not the current product.
+> **Historical document.** Written in May 2025, before Billington had a server, and kept as the origin record. It is not a description of the current product, its costs or its competitors, and nothing here should be reused in store or marketing copy.
+>
+> Assumptions below that no longer hold:
+>
+> - **Local-only, no cloud storage.** Saved bills and tabs are sent to and stored by the Billington service, receipt photos go to Anthropic for scanning, and shared links grant access. See the [privacy inventory](privacy.md).
+> - **"Pure frontend solution eliminates server costs."** The product now runs a Go API, a PostgreSQL database, a hosted web viewer and a paid scanning provider. See the [technical overview](technical-overview.md). No current cost figures are recorded in this repository.
+> - **"Zero network dependency for core functionality."** Entering and splitting a bill still works offline; scanning, sharing, claiming and tabs need the service.
+> - **Competitor observations.** They are from 2025 and were not rechecked. Current, sourced competitor and acquisition evidence is the subject of `FEAT-1793644511`.
 
 ## Origin Story
 
@@ -10,7 +17,7 @@ Throughout the trip, we collected a stack of receipts that needed to be sorted o
 
 This frustration sparked an idea: we could use our computer science background to solve this common problem. Our mission became clear—eliminate those repetitive manual calculations with a smart algorithmic approach wrapped in an easy-to-use interface. Before starting development, we looked at what solutions already existed.
 
-## Competitive Landscape Analysis
+## Competitive Landscape Analysis (historical, 2025; not rechecked)
 
 Our App Store research showed two main competitors in the receipt-splitting space:
 
@@ -53,7 +60,7 @@ Our App Store research showed two main competitors in the receipt-splitting spac
 - Not optimized for newer iOS features
 - Some deprecated API usage
 
-## Market Opportunity
+## Market Opportunity (historical; the local-only premise no longer holds)
 
 By analyzing these competitors, we saw several opportunities for Billington to do better:
 
@@ -79,7 +86,7 @@ By analyzing these competitors, we saw several opportunities for Billington to d
 - Clearly show who ordered what
 - Support special scenarios (birthdays, business meals, etc.)
 
-## Engineering Approach
+## Engineering Approach (historical; the no-server premise no longer holds)
 
 From a technical standpoint, we identified several areas where we could excel:
 

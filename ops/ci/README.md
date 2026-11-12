@@ -15,6 +15,12 @@ no path filters, all selected jobs are required, and `always()` collectors rejec
 missing, failed, cancelled, skipped or malformed results. No `continue-on-error`
 or test-skip input exists. A narrow scope cannot emit the full required context.
 
+Each row's commands are pinned line for line by the controller graph test, with its
+shell, run-step list and job settings. `gofmt`, `go mod verify`, `go vet`,
+`govulncheck`, `flutter analyze`, `npm run lint`, `npm run build` and
+`npm audit --audit-level=moderate` therefore fail their row; removing, weakening,
+masking, reordering or skipping one needs a reviewed change to that test.
+
 `ci.yml` resolves full source **S** once. The checks workflow executes candidate
 app code in `candidate/`; trusted helper/tests/manifest are from controller **C**
 in `control/`. Every checkout asserts its full SHA and persists no credentials.
@@ -44,7 +50,8 @@ leaf-only counts. Default/tagged overlap is retained separately per row; do not
 sum them into a distinct-test claim. Go literal selections use the full report-prefixed
 runner ID when no display name exists. The tagged migration outcome family requires
 all five exact children ([scoped evidence](../../docs/reviews/2026-11-06-migration-outcomes.md));
-this does not qualify the real PgSleep/rollback gate. Assignment decoder families require
+this does not qualify the real PgSleep/rollback gate, which has its own
+[run evidence](../../docs/reviews/2026-11-09-migration-deadline.md). Assignment decoder families require
 all70 exact child IDs in both backend and PostgreSQL report namespaces; their
 standalone receiver-sequence parent is mandatory in both rows. Snapshot canonical-row
 characterization is PostgreSQL-only. Existing-method fixtures independently declare
@@ -99,7 +106,13 @@ Direct feature/tag refs cannot acquire managed publication privileges.
 
 Mutation jobs serialize without cancellation by `backend-production` and
 `web-production`. Validation cancellation is limited to PRs; no workflow-level
-cancellation can interrupt a publisher. Inside each mutation job, the helper
+cancellation can interrupt a publisher. Each entry workflow (`ci.yml` and the three
+iOS entries) owns one group per ref and event; the iOS groups never cancel a running
+run. GitHub keeps one pending run per group, so a newer request replaces a waiting
+one before it starts, never a running one. Reusable workflows declare no top-level
+group: it would be evaluated in the caller's `github` context and could cancel that
+caller. The controller test pins these groups, read-only tokens, job timeouts of at
+most 60 minutes and full-SHA action pins. Inside each mutation job, the helper
 fetches fresh main and reauthorizes the exact gate/policy/source before transport.
 A stale automatic run fails even if its gate was green. Manual older S requires
 all source/control/schema/capability checks; there is no arbitrary historical-tag,
@@ -119,6 +132,7 @@ its external policy contains all of:
 - `source_floor`, `schema_floor` and `control_floor`: full existing commit SHAs;
   control_floor <= C <= fresh main, source_floor/schema_floor <= S <= main by ancestry.
 - Nonempty `capability_floors`: named full-SHA ancestors of S, with no caller waiver.
+  Backend `additive_ddl_warm_reader` also bounds the serving predecessor (see transports).
 - Exact `schema_registry_sha256`, matching `schema_epoch`, and positive integer
   `minimum_migration`; the source registry must remain a contiguous known prefix.
 - Nonempty reviewed `external_clearance` evidence reference. This references the
@@ -156,6 +170,21 @@ The unknown-bill probe requires 400/404; 200 fails, and 401/403 are not DB proof
 Verification-only never posts. This is the existing source rebuild route, not
 byte-identical image promotion or independent binary provenance.
 
+Before the hook request the helper reads `/health` once, because the new revision
+migrates at startup while its predecessor still serves. It continues when the answer
+is neither HTTP200 nor a JSON object (nothing serving; the service's own 5xx health
+object still counts as serving), names S itself, or names a related revision whose
+schema registry is at least as long as S's (no step to apply). Otherwise a schema
+step is pending and the serving revision must descend from the backend capability
+floor `additive_ddl_warm_reader`: the first main revision whose warm readers are
+proven to survive additive DDL (`TestPostgresWarmServiceSurvivesAdditiveDDL`), set
+by the owner like every other floor. A missing floor, an older, unknown or unrelated
+serving revision, an unreadable `commit`, or no HTTP answer is rejected with no
+waiver: stop that revision first. The deployed pre-registry revision cannot pass
+while it serves ([evidence](../../docs/reviews/2026-11-09-reader-ddl.md)). This is one
+observation before the request, not proof that a stopped service stays stopped, and
+it says nothing about writers of the predecessor.
+
 Web publication keeps `git@github.com:dhaliwalg/checksinmyhead.git`. It splits
 explicit S with prefix `web-bill-viewer`, checks its tree against S's subtree,
 requires the pinned official GitHub Ed25519 identity, and uses private temporary
@@ -191,8 +220,9 @@ that creates no failed run for the file ([evidence](../../docs/reviews/2026-11-0
 NOT CI-CONFIRMED: native/signed binaries, processed ASC origin/eligibility receipts,
 whole GUI/a11y journeys, image build/scan identity, whole security, real providers,
 schema adoption/drain/restore, hosted deployment identity and field performance.
-The general offline validator checks syntax/wiring only. Its top-level concurrency
-warnings on reusables do not account for noncancelling per-environment mutation
+The general offline validator checks syntax/wiring only. It reports 0 errors and
+five top-level concurrency warnings, one per reusable workflow; those are intended
+(see above) and do not account for noncancelling per-environment mutation
 jobs. No hosted integration, secret transition, settings/ruleset change, workflow
 activation, queue action, signing/upload, ASC write, hook invocation, mirror push
 or Render/Vercel control-plane action is authorized by this document.

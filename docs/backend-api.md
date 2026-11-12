@@ -4,6 +4,54 @@ Base URL: `http://localhost:8080` (development)
 
 Bill reads accept the bill's `t` token, or the containing tab's token for a read-only bill view. Bill writes require the bill token. Tab writes may also require an `X-Member-Token` header; member attribution uses the optional `m` query parameter.
 
+This reference describes the source in this repository. A deployed service can be
+older: `GET /health` reports its commit.
+
+## Route index
+
+Every route registered in `backend/cmd/bill-service/main.go`, with the section that
+defines it. A documentation contract test keeps this table equal to the route table.
+
+| Route | Defined in |
+| --- | --- |
+| `GET /health` | [Health](#health) |
+| `GET /api/app/version-policy` | [Health](#health) |
+| `GET /api/currency/rate` | [Currency quotes](#currency-quotes) |
+| `GET /api/exchange-rates/:currency` | [Currency quotes](#currency-quotes) |
+| `POST /api/bills` | [Bills](#bills) |
+| `GET /api/bills/:id` | [Bills](#bills) |
+| `POST /api/bills/:id/participants` | [Participant-reference contract](#participant-reference-contract) |
+| `PATCH /api/bills/:id/participants/:participantId` | [Participant-reference contract](#participant-reference-contract) |
+| `PATCH /api/bills/:id/items/:itemId/assignments` | [Reference claims](#reference-claims-single-and-batch) |
+| `PATCH /api/bills/:id/assignments` | [Reference claims](#reference-claims-single-and-batch), batch |
+| `PATCH /api/bills/:id/shares/:shareId` | [Mutation policy](#receipt-and-tab-mutation-policy), source-bill paid flag |
+| `POST /api/tabs` | [Tabs](#tabs) |
+| `GET /api/tabs/:id` | [Tabs](#tabs) |
+| `PATCH /api/tabs/:id` | [Tabs](#tabs) |
+| `POST /api/tabs/:id/bills` | [Tabs](#tabs), attach a standalone bill |
+| `PATCH /api/tabs/:id/bills/:billId/items/:itemId/assignments` | [Reference claims](#reference-claims-single-and-batch) |
+| `PATCH /api/tabs/:id/bills/:billId/assignments` | [Reference claims](#reference-claims-single-and-batch), batch |
+| `PATCH /api/tabs/:id/bills/:billId/shares/:shareId/paid` | [Mutation policy](#receipt-and-tab-mutation-policy), tab-share paid flag |
+| `POST /api/tabs/:id/bills/:billId/participants` | [Participant-reference contract](#participant-reference-contract) |
+| `PATCH /api/tabs/:id/bills/:billId/participants/:participantId` | [Participant-reference contract](#participant-reference-contract) |
+| `POST /api/tabs/:id/bills/:billId/participants/:participantId/binding-request` | [Participant-reference contract](#participant-reference-contract) |
+| `PUT /api/tabs/:id/bills/:billId/participants/:participantId/binding` | [Participant-reference contract](#participant-reference-contract) |
+| `POST /api/tabs/:id/finalize` | [Finalization & Settlements](#finalization--settlements) |
+| `GET /api/tabs/:id/settlements` | [Finalization & Settlements](#finalization--settlements) |
+| `PATCH /api/tabs/:id/settlements/:settlementId` | [Finalization & Settlements](#finalization--settlements) |
+| `POST /api/tabs/:id/join` | [Members](#members) |
+| `GET /api/tabs/:id/members` | [Members](#members) |
+| `GET /api/tabs/:id/members/me` | [Participant-reference contract](#participant-reference-contract) |
+| `PATCH /api/tabs/:id/members/me` | [Participant-reference contract](#participant-reference-contract), rename |
+| `DELETE /api/tabs/:id/members/me` | [Members](#members), leave |
+| `POST /api/receipts/parse` | [Receipt Parsing](#receipt-parsing); registered only when the scan provider is configured |
+
+Lifecycle limits: no route deletes a bill or a tab, detaches a bill from a tab, or
+revokes, rotates or expires an access token. `DELETE /api/tabs/:id/members/me` removes
+one membership and nothing else. Removal of shared records is an operator action
+(`FEAT-1793644500` is open). Tab receipt-photo routes were removed in 2.0 and are not
+part of this API.
+
 ## Health
 
 ### `GET /health`
@@ -342,6 +390,33 @@ Bill reads omit the source access token.
 
 ### Currency quotes
 
+#### Currency support matrix
+
+Three kinds of value, each with its own fields and owner. The paragraphs below
+give the detail; this table is the summary the tests are written against.
+
+| | Original receipt amounts | Frozen USD valuation | Display conversion |
+|---|---|---|---|
+| Fields | `currency_code`, `subtotal`, `tax`, `tip_amount`, `total`, shares | `usd_exchange_rate`, `usd_total`, `exchange_rate_date`, `exchange_rate_source` | Saved with the receipt: `display_currency`, `exchange_rate`, `display_total`, `display_rate_date`, `display_rate_source`, `display_rate_retrieved_at`. Live only: `GET /api/currency/rate`, `GET /api/exchange-rates/:currency` |
+| Accepted codes | USD EUR GBP CAD JPY MXN PEN AUD BRL CNY INR CHF; omitted means USD | The same twelve | Any three-letter pair the provider quotes, for example ZAR |
+| Written | Once, at creation | Once, at creation, from one provider quote | Saved fields once, at creation. Live answers are never stored |
+| USD or same currency | — | Rate 1, source `native-usd`, empty date, no provider call | Rate 1, source `same_currency`, no date, no provider call |
+| Later reads, attachment, trip display change, finalization | Stored values, unchanged | Stored values; never refetched, repriced or age-checked | Stored values, unchanged. A trip's `display_currency` is a preference on the trip and does not touch its receipts |
+| Code outside the set | `400 unsupported currency code` before any provider call; nothing saved | Same | Malformed code: 400 at creation, 503 on the live route, never rate 1 |
+| Provider failure | Creation returns 503; nothing saved | Same, with `Retry-After` when supplied | Creation with a foreign display: 503, nothing saved. Live: 503. No earlier quote is served, because none is kept |
+
+A scanned receipt's `currency_code`, `currency_symbol` and `currency_confidence` are
+evidence only. The client asks the user to confirm the currency, including for an
+ambiguous `$` and for PEN (`S/`); a scan never selects a receipt currency by itself.
+
+Owners: `TestProductionCurrencyComposition` (accepted-codes and native-USD rows),
+`TestProductionCurrencySupportMatrix` (the remaining rows, through the production
+composition), `TestPostgresDisplayConversionNeverRewritesFrozenQuote` (a moving
+market, an outage, a trip display change and finalization against stored rows),
+`TestReceiptPolicyMatchesBothMobileSelectors` (the twelve codes in both mobile
+selectors) and, on mobile, `tab_display_conversion_test.dart` and the scan
+confirmation cases in `save_receipt_widget_test.dart`.
+
 One required Frankfurter v2 pair client supplies new frozen USD values, temporary
 preview and daily indicative display conversion. New quotes require the requested
 base/quote, positive finite rate, adapter source `frankfurter-v2-blended` and strict
@@ -511,6 +586,9 @@ existing DTOs continue ignoring unknown fields. Standalone paid updates and atta
 are capped at 4 KiB; other existing JSON mutations at 4 MiB. Existing byte excess
 returns 400 for compatibility. Assignment batches reject over 500 updates, 100
 assignments per item or 50,000 assignments in total before transforming DTOs.
+Name-based assignment updates (no identity header) are bound while the body is read:
+update 501, a malformed prefix or a wrong type is refused where it occurs, without
+reading the rest of the body. Accepted bodies, statuses and errors are unchanged.
 
 `TRUSTED_PROXY_CIDRS` defaults to empty (trust no forwarding proxy). Supplied values
 must be at most 32 canonical network CIDRs in 2 KiB, separated by commas, with no

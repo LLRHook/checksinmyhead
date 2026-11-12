@@ -19,6 +19,7 @@
       "CompletionRegressions.test_http_adapter_preserves_expected_error_status_without_network",
       "DocumentationContractTests.test_VERIFICATION_uses_the_actual_report_commands_and_keeps_manual_boundaries",
       "DocumentationContractTests.test_initial_policy_and_local_reports_cannot_emit_a_release_receipt",
+      "DocumentationContractTests.test_operational_docs_match_routes_and_signed_capabilities",
       "EntrypointTests.test_ASC_transport_and_all_iOS_inputs_remain_unavailable_with_explicit_cancel_consent",
       "EntrypointTests.test_main_changes_select_publication_after_full_gate_and_no_candidate_policy_override",
       "EntrypointTests.test_source_floor_guard_removal_cannot_hide_future_source_floor",
@@ -33,6 +34,7 @@
       "FloorTests.test_pr_tag_feature_and_foreign_controller_never_privileged",
       "FloorTests.test_stale_automatic_run_rejected_but_current_control_works",
       "GraphTests.test_actual_graph_and_negative_mutations",
+      "GraphTests.test_execution_settings_are_pinned_bounded_serialized_and_read_only",
       "GraphTests.test_workflow_expressions_use_only_documented_contexts",
       "GuardRemovalTests.test_selected_result_and_health_guard_removals_are_detected",
       "IOSASCTests#test_JWT_refreshes_before_expiry_using_only_inert_signing_stubs",
@@ -77,6 +79,9 @@
       "ManifestReportTests.test_public_render_table_requires_each_named_case",
       "MirrorTests.test_explicit_S_split_and_real_local_remote_lease",
       "MirrorTests.test_unknown_host_wrong_subtree_and_missing_secret_rejected",
+      "PredecessorTests.test_absent_identical_or_schema_equal_predecessor_needs_no_floor",
+      "PredecessorTests.test_serving_predecessor_must_reach_the_named_reader_floor_before_a_schema_step",
+      "PredecessorTests.test_unknown_unrelated_or_unobservable_predecessor_is_rejected",
       "ReportTests.test_flutter_multiplicity_complete_and_skipped_ids",
       "ReportTests.test_go_report_positive_runner_ID_and_missing_skip_zero_fail",
       "ReportTests.test_malformed_zero_duplicate_and_unexpected_case_fields",
@@ -369,6 +374,19 @@
       "backend/internal/bill/TestCreationRemaindersPreserveZeroShares",
       "backend/internal/bill/TestCreationInsertAuditsShares",
       "backend/internal/bill/TestCreationRoundingRemainsAccountable",
+      "backend/internal/tab/TestIdentity0003SameNameMembersKeepSeparateDebts",
+      "backend/cmd/bill-service/TestProductionCurrencySupportMatrix",
+      "backend/cmd/bill-service/TestMaxAssignmentUpdateAllocationBudget",
+      "backend/internal/bill/TestAssignmentStreamDecodeDifferential",
+      "backend/internal/bill/TestAssignmentCanonicalBindingOwnership",
+      "backend/internal/bill/TestAssignmentStreamDecodeGenerated",
+      "backend/internal/bill/TestAssignmentCanonicalBindingArbitraryBytes",
+      "backend/internal/bill/TestAssignmentIdentityKeyAppendMatches",
+      "backend/internal/bill/TestAssignmentValidationMatchesBaseline",
+      "backend/pkg/safehttp/TestStreamSingleJSONDocument",
+      "backend/pkg/safehttp/TestStreamArrayStopsAtLimit",
+      "backend/pkg/safehttp/TestStreamArrayStdlibCompatibility",
+      "backend/internal/receipt/TestHandlerFailuresMakeOneProviderAttempt",
       "backend/pkg/safehttp/TestDecodeJSONPostgresText"
     ],
     "postgres": [
@@ -614,6 +632,18 @@
       "backend/internal/bill/TestCreationRemaindersPreserveZeroShares",
       "backend/internal/bill/TestCreationInsertAuditsShares",
       "backend/internal/bill/TestCreationRoundingRemainsAccountable",
+      "backend/cmd/bill-service/TestPostgresWarmServiceSurvivesAdditiveDDL",
+      "backend/internal/tab/TestIdentity0003SameNameMembersKeepSeparateDebts",
+      "backend/cmd/bill-service/TestPostgresIdentity0003FreshParticipantIsUnboundUntilApproved",
+      "backend/cmd/bill-service/TestProductionCurrencySupportMatrix",
+      "backend/cmd/bill-service/TestPostgresDisplayConversionNeverRewritesFrozenQuote",
+      "backend/cmd/bill-service/TestMaxAssignmentUpdateAllocationBudget",
+      "backend/internal/bill/TestAssignmentStreamDecodeDifferential",
+      "backend/internal/bill/TestAssignmentCanonicalBindingOwnership",
+      "backend/internal/bill/TestAssignmentStreamDecodeGenerated",
+      "backend/internal/bill/TestAssignmentCanonicalBindingArbitraryBytes",
+      "backend/internal/bill/TestAssignmentIdentityKeyAppendMatches",
+      "backend/internal/bill/TestAssignmentValidationMatchesBaseline",
       "backend/internal/tab/TestPostgresJSONTextValidation",
       "backend/internal/tab/TestPostgresTextStorageBoundaries",
       "backend/internal/tab/TestPostgresPaidParticipantAdditionConflict"
@@ -669,7 +699,10 @@
       "mobile/test/side_inset_layout_test.dart",
       "mobile/test/screenshot_quality_test.dart",
       "mobile/test/tab_import_capacity_test.dart",
-      "mobile/test/receipt_timestamp_test.dart"
+      "mobile/test/receipt_timestamp_test.dart",
+      "mobile/test/save_journey_test.dart",
+      "mobile/test/tab_display_conversion_test.dart",
+      "mobile/test/finalize_confirm_sheet_test.dart"
     ],
     "web": [
       "web-bill-viewer/src/components/__tests__/SettlementCard.test.ts",
@@ -683,6 +716,7 @@
       "web-bill-viewer/src/components/__tests__/RecordedShares.test.ts",
       "web-bill-viewer/src/lib/__tests__/participant-identity.test.ts",
       "web-bill-viewer/src/components/__tests__/LazyBillSession.test.ts",
+      "web-bill-viewer/src/lib/__tests__/public-claims.test.ts",
       "web-bill-viewer/src/components/__tests__/IdentityControls.test.ts"
     ]
   },
@@ -808,7 +842,11 @@
         "(?:^| )native\\ failed\\ POST\\ is\\ never\\ retried\\ and\\ a\\ deliberate\\ manual\\ retry\\ sends\\ one\\ new\\ POST$",
         "(?:^| )native\\ compressed\\ response\\ enforces\\ decoded\\ 1MiB\\ and\\ closes\\ stream$",
         "(?:^| )native\\ dropped\\ response\\ after\\ upload\\ never\\ replays\\ a\\ POST$",
-        "(?:^| )native\\ real\\ setup\\ deadline\\ can\\ expire\\ before\\ any\\ complete\\ POST$"
+        "(?:^| )native\\ real\\ setup\\ deadline\\ can\\ expire\\ before\\ any\\ complete\\ POST$",
+        "(?:^| )native\\ cancellation\\ stops\\ a\\ streaming\\ upload\\ and\\ cancels\\ its\\ input\\ subscription$",
+        "(?:^| )native\\ source\\-error\\ joins\\ its\\ input\\ subscription\\ cleanup$",
+        "(?:^| )native\\ cleanup\\-error\\ joins\\ its\\ input\\ subscription\\ cleanup$",
+        "(?:^| )native\\ reentrant\\ joins\\ its\\ input\\ subscription\\ cleanup$"
       ],
       "mobile/test/receipt_parser_test.dart": [
         "(?:^| )parses\\ a\\ complete\\ receipt\\ response$",
@@ -923,7 +961,8 @@
         "(?:^| )one\\ explicit\\ tab\\ request\\ never\\ automatically\\ repeats\\ a\\ failed\\ attachment$",
         "(?:^| )overlapping\\ destination\\ conflict\\ preserves\\ the\\ first\\ durable\\ trip$",
         "(?:^| )tab\\ selection\\ preserves\\ earlier\\ additions\\ and\\ continues\\ after\\ raw\\-history\\ and\\ missing\\-row\\ failures$",
-        "(?:^| )actual\\ tab\\ selector\\ gives\\ review\\ feedback\\ and\\ retains\\ successful\\ additions$"
+        "(?:^| )actual\\ tab\\ selector\\ gives\\ review\\ feedback\\ and\\ retains\\ successful\\ additions$",
+        "(?:^| )actual\\ tab\\ selector\\ labels\\ each\\ saved\\ receipt\\ in\\ its\\ own\\ currency$"
       ],
       "mobile/test/services/invite_link_service_test.dart": [
         "(?:^| )converts\\ bill\\ app\\ links\\ into\\ the\\ bill\\ viewer\\ URL$",
@@ -975,7 +1014,8 @@
         "(?:^| )Every\\ existing\\ preset\\ persists\\ and\\ default\\ resets\\ its\\ key$",
         "(?:^| )Custom\\ picker\\ reachable\\ by\\ tap$",
         "(?:^| )Custom\\ picker\\ reachable\\ by\\ semantics$",
-        "(?:^| )Payment\\ options\\ and\\ row\\ invoke\\ each\\ existing\\ callback\\ once$"
+        "(?:^| )Payment\\ options\\ and\\ row\\ invoke\\ each\\ existing\\ callback\\ once$",
+        "(?:^| )Privacy\\ notice\\ discloses\\ online\\ storage\\ without\\ an\\ uninstall\\ promise$"
       ],
       "mobile/test/tls_ownership_test.dart": [
         "(?:^| )TLS\\ actual\\ ClientHello\\ .*\\ settles,\\ disconnects\\ and\\ joins$",
@@ -1295,7 +1335,37 @@
         "^full\\ remote\\ history\\ offers\\ retry\\ without\\ partial\\ person\\ balances$"
       ],
       "mobile/test/receipt_timestamp_test.dart": [
-        "^new\\ receipt\\ uses\\ insertion\\ time\\ instead\\ of\\ historical\\ table\\ default$"
+        "^new\\ receipt\\ uses\\ insertion\\ time\\ instead\\ of\\ historical\\ table\\ default$",
+        "^explicit\\ receipt\\ timestamp\\ is\\ stored\\ unchanged\\ and\\ an\\ existing\\ handle\\ keeps\\ its\\ row$"
+      ],
+      "mobile/test/save_journey_test.dart": [
+        "(?:^| )one\\ EUR\\ receipt\\ stays\\ one\\ native\\ record\\ across\\ Done,\\ share,\\ retry,\\ restart\\ and\\ trip\\ attachment$",
+        "(?:^| )Done\\ failure\\ then\\ Done\\ retry\\ through\\ the\\ actual\\ handler\\ keeps\\ one\\ EUR\\ row\\ and\\ request$",
+        "(?:^| )quote\\ state\\ .*\\ agrees\\ across\\ the\\ durable\\ row,\\ message\\ and\\ history\\ card$"
+      ],
+      "mobile/test/tab_display_conversion_test.dart": [
+        "(?:^| )trip\\ display\\ conversion\\ is\\ live,\\ reports\\ an\\ outage\\ and\\ never\\ rewrites\\ the\\ stored\\ receipt$"
+      ],
+      "mobile/test/finalize_confirm_sheet_test.dart": [
+        "(?:^| )fits\\ 320x568\\ portrait\\ at\\ text\\ scale\\ 1\\.0$",
+        "(?:^| )fits\\ 320x568\\ portrait\\ at\\ text\\ scale\\ 2\\.0$",
+        "(?:^| )fits\\ 320x568\\ portrait\\ at\\ text\\ scale\\ 3\\.0$",
+        "(?:^| )fits\\ 375x667\\ portrait\\ at\\ text\\ scale\\ 1\\.0$",
+        "(?:^| )fits\\ 375x667\\ portrait\\ at\\ text\\ scale\\ 2\\.0$",
+        "(?:^| )fits\\ 375x667\\ portrait\\ at\\ text\\ scale\\ 3\\.0$",
+        "(?:^| )fits\\ 568x320\\ landscape\\ at\\ text\\ scale\\ 1\\.0$",
+        "(?:^| )fits\\ 568x320\\ landscape\\ at\\ text\\ scale\\ 2\\.0$",
+        "(?:^| )fits\\ 568x320\\ landscape\\ at\\ text\\ scale\\ 3\\.0$",
+        "(?:^| )fits\\ 812x375\\ landscape\\ with\\ side\\ insets\\ at\\ text\\ scale\\ 1\\.0$",
+        "(?:^| )fits\\ 812x375\\ landscape\\ with\\ side\\ insets\\ at\\ text\\ scale\\ 2\\.0$",
+        "(?:^| )fits\\ 812x375\\ landscape\\ with\\ side\\ insets\\ at\\ text\\ scale\\ 3\\.0$",
+        "(?:^| )a\\ short\\ preview\\ keeps\\ its\\ compact\\ height$",
+        "(?:^| )three\\ people\\ fit\\ 320x568\\ without\\ scrolling$",
+        "(?:^| )a\\ long\\ preview\\ stays\\ within\\ 70%\\ of\\ a\\ tall\\ display$",
+        "(?:^| )Finalize\\ returns\\ true\\ after\\ scrolling\\ to\\ the\\ last\\ row$",
+        "(?:^| )Cancel\\ returns\\ false\\ and\\ dismissal\\ returns\\ null$",
+        "(?:^| )Tab\\ detail\\ finalizes\\ once\\ with\\ the\\ same\\ tab\\ and\\ token$",
+        "(?:^| )Tab\\ detail\\ never\\ finalizes\\ on\\ Cancel\\ or\\ dismissal$"
       ]
     },
     "web": {
@@ -1374,7 +1444,10 @@
         "(?:^| )publishes\\ only\\ visible,\\ bounded\\ software\\ claims\\ on\\ the\\ homepage$",
         "(?:^| )enumerates\\ only\\ public\\ documents\\ and\\ lets\\ crawlers\\ read\\ private\\ noindex$",
         "(?:^| )home\\ renders\\ complete\\ public\\ content\\ without\\ API\\ or\\ browser\\ storage$",
-        "(?:^| )policy\\ renders\\ complete\\ public\\ content\\ without\\ API\\ or\\ browser\\ storage$"
+        "(?:^| )policy\\ renders\\ complete\\ public\\ content\\ without\\ API\\ or\\ browser\\ storage$",
+        "(?:^| )scopes\\ the\\ policy\\ to\\ the\\ App\\ Store\\ version\\ and\\ marks\\ unreleased\\ behavior$",
+        "(?:^| )states\\ the\\ released\\ collection,\\ provider,\\ log,\\ link\\ and\\ removal\\ facts$",
+        "(?:^| )makes\\ no\\ publication,\\ effective\\-date,\\ compliance\\ or\\ no\\-collection\\ claim$"
       ],
       "web-bill-viewer/src/lib/currency.test.ts": [
         "(?:^| )formats\\ generic\\ bill\\ and\\ trip\\ amounts\\ through\\ one\\ formatter$",
@@ -1415,6 +1488,11 @@
         "^lazy\\ viewer\\ session\\ across\\ refreshed\\ receipt\\ props\\ preserves\\ deliberately\\ emptied\\ text\\ but\\ seeds\\ the\\ suggestion\\ for\\ a\\ different\\ tab$",
         "^lazy\\ viewer\\ session\\ across\\ refreshed\\ receipt\\ props\\ revalidates\\ the\\ selected\\ occurrence\\ without\\ repeating\\ membership\\ recovery\\ on\\ graph\\ refresh$",
         "^lazy\\ viewer\\ session\\ across\\ refreshed\\ receipt\\ props\\ clears\\ its\\ recovery\\ warning\\ after\\ successful\\ reauthentication\\ without\\ erasing\\ another\\ error$"
+      ],
+      "web-bill-viewer/src/lib/__tests__/public-claims.test.ts": [
+        "(?:^| )sends\\ every\\ download\\ action\\ straight\\ to\\ the\\ App\\ Store\\ listing$",
+        "(?:^| )shows\\ a\\ completed\\ example\\ split\\ that\\ adds\\ up\\ to\\ the\\ receipt$",
+        "(?:^| )says\\ what\\ each\\ payment\\ service\\ does\\ and\\ claims\\ no\\ processing\\ or\\ confirmation$"
       ],
       "web-bill-viewer/src/components/__tests__/IdentityControls.test.ts": [
         "(?:^| )participant\\ conflict\\ participants_locked_paid\\ displays\\ its\\ reason\\ and\\ offers\\ retry\\ only\\ when\\ meaningful$",
