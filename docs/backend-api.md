@@ -493,6 +493,10 @@ deadline. HTTP/1 responses also close the connection so transport cleanup cannot
 wait for the unread remainder.
 HTTP/2 uses a stream read deadline without a `Connection` header. Complete valid
 requests retain ordinary keep-alive behavior.
+Decoded JSON request strings (including nested names, labels, descriptions and JSONB
+content) reject U+0000 with the route's existing 400 validation error before database
+access. Other control characters remain accepted. The JSON decoder replaces malformed
+UTF-8 and unpaired Unicode surrogates with U+FFFD, preserving existing behavior.
 JSON bodies must contain exactly one document, including trailing whitespace within
 the byte cap. Creation and attachment retain strict unknown-field rejection; other
 existing DTOs continue ignoring unknown fields. Standalone paid updates and attachment

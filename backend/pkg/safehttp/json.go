@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
+	"reflect"
 	"time"
 )
 
@@ -55,6 +56,9 @@ func DecodeJSON(w http.ResponseWriter, r *http.Request, dst any, limit int64, st
 		if err != nil {
 			return jsonError(err)
 		}
+		return ErrInvalidJSON
+	}
+	if !validJSONText(reflect.ValueOf(dst)) {
 		return ErrInvalidJSON
 	}
 	return nil

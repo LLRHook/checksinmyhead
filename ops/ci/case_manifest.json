@@ -368,7 +368,8 @@
       "backend/internal/bill/TestCreateAssignmentDecodeRequestContracts",
       "backend/internal/bill/TestCreationRemaindersPreserveZeroShares",
       "backend/internal/bill/TestCreationInsertAuditsShares",
-      "backend/internal/bill/TestCreationRoundingRemainsAccountable"
+      "backend/internal/bill/TestCreationRoundingRemainsAccountable",
+      "backend/pkg/safehttp/TestDecodeJSONPostgresText"
     ],
     "postgres": [
       "backend/cmd/bill-service/TestA1PostgresProductionJSON",
@@ -612,7 +613,9 @@
       "backend/internal/tab/TestPostgresLifecycleDigestTracksCanonicalSnapshot",
       "backend/internal/bill/TestCreationRemaindersPreserveZeroShares",
       "backend/internal/bill/TestCreationInsertAuditsShares",
-      "backend/internal/bill/TestCreationRoundingRemainsAccountable"
+      "backend/internal/bill/TestCreationRoundingRemainsAccountable",
+      "backend/internal/tab/TestPostgresJSONTextValidation",
+      "backend/internal/tab/TestPostgresTextStorageBoundaries"
     ],
     "mobile": [
       "mobile/test/client_v1_bridge_test.dart",
