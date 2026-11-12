@@ -332,7 +332,9 @@ turn an invalid supplied capability into replacement membership.
 
 The server now uses scoped participant references for creation, claims, paid authority,
 renames, binding generations/receipts, gross/net and snapshots. Confirmed members group
-by tab/member ID; unbound/pending guests remain distinct per bill/participant. Checked
+by tab/member ID; unbound/pending guests remain distinct per bill/participant. Web
+net balance rows keep unique labels unchanged; colliding labels use the existing
+`· member #ID` or `· receipt BILL #PARTICIPANT` display convention. Checked
 USD reads preserve explicit frozen zero and expose unavailable payer/valuation states.
 The earlier positive-only USD fallback source defect is corrected; native Keychain
 qualification, old-writer drain and full combined journeys remain open. Supported mobile/browser reference clients are implemented; their [synthetic journey](../mobile/test/live/README.md) is scoped functional evidence.

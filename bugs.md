@@ -977,7 +977,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** open
 
 ### [BUG-1794331919] Disambiguate same-named people in web tab balances
-- [ ] **Severity:** low
+- [x] **Severity:** low
 - **Area:** web, ux
 - **File(s):** web-bill-viewer/src/components/NetBalances.tsx
 - **Observation:** The web tab BALANCES list shows rows such as 'Alex -> Alex' and 'Vic Sim17 -> Vic Sim17' for distinct people with the same display name, with no reference or suffix to tell them apart.
@@ -987,7 +987,9 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/web/16.
 - **Bump:** patch
 - **Assignee:** Victor Ivanov
-- **Status:** in-progress
+- **Status:** fixed-pending-migration
+- **Fix:** NetBalances detects colliding display labels by scoped identity across the complete balance list and uses the existing mobile tab member/receipt reference suffixes. Unique and repeated-identity labels, You grouping, legacy strings, row order, amounts and payment eligibility remain unchanged. Same-named members render Alex · member #11 to Alex · member #22; guests include receipt scope. Component regression cases fail before the change and pass afterward.
+- **Docs:** docs/technical-overview.md
 - **Cross-ref:** BUG-1793644505
 
 ### [BUG-1794331920] Keep the Add Receipt button off the last per-person rows

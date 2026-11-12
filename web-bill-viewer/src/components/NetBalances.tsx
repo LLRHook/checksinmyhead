@@ -24,6 +24,33 @@ export default function NetBalances({
 }: NetBalancesProps) {
   if (balances.length === 0) return null;
 
+  // Names are display content; scoped references distinguish collisions across
+  // the whole list, including the rows later grouped under "Your Balances".
+  const identitiesByLabel = new Map<string, Set<string>>();
+  for (const balance of balances) {
+    for (const party of [balance.from, balance.to]) {
+      const label = partyLabel(party).trim().toLowerCase();
+      const identities = identitiesByLabel.get(label) ?? new Set<string>();
+      identities.add(
+        typeof party === "string" ? `legacy:${party}` : partyKey(party),
+      );
+      identitiesByLabel.set(label, identities);
+    }
+  }
+  const balanceLabel = (party: Party | string) => {
+    const label = partyLabel(party);
+    if (
+      typeof party === "string" ||
+      (identitiesByLabel.get(label.trim().toLowerCase())?.size ?? 0) < 2
+    )
+      return label;
+    return `${label} · ${
+      party.kind === "member"
+        ? `member #${party.member_id}`
+        : `receipt ${party.bill_id} #${party.participant_id}`
+    }`;
+  };
+
   const currentKey = currentMemberId;
   const mine = (p: Party | string) =>
     typeof p !== "string" && p.kind === "member" && p.member_id === currentKey;
@@ -40,8 +67,8 @@ export default function NetBalances({
     const isYouFrom = currentKey && mine(balance.from);
     const isYouTo = currentKey && mine(balance.to);
 
-    const fromLabel = isYouFrom ? "You" : partyLabel(balance.from);
-    const toLabel = isYouTo ? "You" : partyLabel(balance.to);
+    const fromLabel = isYouFrom ? "You" : balanceLabel(balance.from);
+    const toLabel = isYouTo ? "You" : balanceLabel(balance.to);
 
     return (
       <div

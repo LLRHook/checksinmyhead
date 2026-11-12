@@ -692,7 +692,8 @@
       "web-bill-viewer/src/components/__tests__/RecordedShares.test.ts",
       "web-bill-viewer/src/lib/__tests__/participant-identity.test.ts",
       "web-bill-viewer/src/components/__tests__/LazyBillSession.test.ts",
-      "web-bill-viewer/src/components/__tests__/ViewerAccessibility.test.ts"
+      "web-bill-viewer/src/components/__tests__/ViewerAccessibility.test.ts",
+      "web-bill-viewer/src/components/__tests__/NetBalances.test.ts"
     ]
   },
   "reports": {
@@ -1447,6 +1448,12 @@
         "^secondary\\ text\\ contrast\\ from\\ theme\\ tokens\\ light\\ secondary\\ text\\ meets\\ AA\\ on\\ page\\ cards\\ badges\\ hover\\ and\\ paid\\ surfaces$",
         "^secondary\\ text\\ contrast\\ from\\ theme\\ tokens\\ dark\\ secondary\\ text\\ meets\\ AA\\ on\\ page\\ cards\\ badges\\ hover\\ and\\ paid\\ surfaces$",
         "^secondary\\ text\\ contrast\\ from\\ theme\\ tokens\\ renders\\ the\\ bill\\ and\\ settlement\\ instructions\\ at\\ the\\ secondary\\ token\\ opacity$"
+      ],
+      "web-bill-viewer/src/components/__tests__/NetBalances.test.ts": [
+        "^tab\\ balance\\ identity\\ labels\\ distinguishes\\ same\\-named\\ members\\ with\\ existing\\ member\\ references\\ without\\ changing\\ rows\\ amounts\\ or\\ order$",
+        "^tab\\ balance\\ identity\\ labels\\ uses\\ receipt\\-scoped\\ occurrence\\ references\\ for\\ ambiguous\\ guests\\ including\\ blank\\ and\\ casefold\\ labels$",
+        "^tab\\ balance\\ identity\\ labels\\ preserves\\ unique\\ labels\\ repeated\\ identities\\ You\\ grouping\\ and\\ the\\ existing\\ payment\\ handoff$",
+        "^tab\\ balance\\ identity\\ labels\\ escapes\\ ambiguous\\ labels\\ and\\ keeps\\ name\\-only\\ historical\\ rows\\ unchanged$"
       ]
     },
     "postgres": {
