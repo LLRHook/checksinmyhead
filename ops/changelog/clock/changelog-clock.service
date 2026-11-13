@@ -1,0 +1,8 @@
+[Unit]
+Description=Start a Changelog sweep when its workflow is active
+
+[Service]
+Type=oneshot
+EnvironmentFile=-%h/.config/changelog-clock/env
+ExecStart=%h/.local/bin/changelog-clock
+TimeoutStartSec=2min

@@ -420,7 +420,7 @@ def changelog_concurrency(filename):
 CHANGELOG_WORKFLOWS = {
     'changelog-events.yml': {'pull_request_target': {'branches': ['main'], 'types': [
         'opened', 'reopened', 'ready_for_review', 'converted_to_draft', 'synchronize', 'edited', 'closed']}},
-    'changelog-schedule.yml': {'schedule': [{'cron': '7,22,37,52 * * * *'}]},
+    'changelog-schedule.yml': {'workflow_dispatch': None, 'schedule': [{'cron': '7,22,37,52 * * * *'}]},
 }
 
 
@@ -765,6 +765,22 @@ def validate_workflow_syntax(workflows):
             for called in callee['jobs'].values():
                 for scope, level in token(called, token(callee, {})).items():
                     require(TOKEN_LEVELS[level] <= TOKEN_LEVELS[granted.get(scope, 'none')], 'called workflow exceeds caller token at ' + where)
+
+
+class ChangelogDispatchGraphTests(unittest.TestCase):
+    def test_only_schedule_has_no_input_dispatch_beside_unchanged_cron(self):
+        actual = {p.name: yaml.safe_load(p.read_text()) for p in (ROOT/'.github/workflows').glob('*.yml')}
+        validate_changelog_graph(actual)
+        self.assertEqual(actual['changelog-schedule.yml']['on'], {'workflow_dispatch': None, 'schedule': [{'cron': '7,22,37,52 * * * *'}]})
+        for defect in ('missing', 'inputs', 'extra-trigger', 'events-dispatch'):
+            changed = copy.deepcopy(actual)
+            triggers = changed['changelog-schedule.yml']['on']
+            if defect == 'missing': triggers.pop('workflow_dispatch')
+            elif defect == 'inputs': triggers['workflow_dispatch'] = {'inputs': {'choice': {'type': 'string'}}}
+            elif defect == 'extra-trigger': triggers['push'] = {'branches': ['main']}
+            else: changed['changelog-events.yml']['on']['workflow_dispatch'] = None
+            with self.subTest(defect=defect), self.assertRaises(gate.Rejected):
+                validate_changelog_graph(changed)
 
 
 class GraphTests(unittest.TestCase):
@@ -1311,7 +1327,7 @@ class ManifestReportTests(unittest.TestCase):
             reports = []
             families = self.manifest['rows'][row]
             for kind, name in self.manifest['reports'][row]:
-                selected = [f for f in families if (name == 'ruby.json' and f.startswith('ASCReleaseTest#')) or (name == 'ios-ruby.json' and f.startswith('IOSASCTests#')) or (name == 'ios-python.json' and f.startswith(('IOSArtifactTests.','IOSLifecycleTests.','IOSGraphTests.','IOSFailureBoundaryTests.'))) or (name == 'changelog.json' and f.startswith(('ChangelogLifecycleTests.', 'ChangelogAdapterTests.', 'ChangelogRevisionTests.'))) or (name == 'gate-tests.json' and not f.startswith(('ChangelogLifecycleTests.', 'ChangelogAdapterTests.', 'ChangelogRevisionTests.')) and '#' not in f and not f.startswith(('IOSArtifactTests.','IOSLifecycleTests.','IOSGraphTests.','IOSFailureBoundaryTests.')))] if row == 'automation' else families
+                selected = [f for f in families if (name == 'ruby.json' and f.startswith('ASCReleaseTest#')) or (name == 'ios-ruby.json' and f.startswith('IOSASCTests#')) or (name == 'ios-python.json' and f.startswith(('IOSArtifactTests.','IOSLifecycleTests.','IOSGraphTests.','IOSFailureBoundaryTests.'))) or (name == 'changelog.json' and f.startswith(('ChangelogLifecycleTests.', 'ChangelogAdapterTests.', 'ChangelogClockTests.', 'ChangelogRevisionTests.'))) or (name == 'gate-tests.json' and not f.startswith(('ChangelogLifecycleTests.', 'ChangelogAdapterTests.', 'ChangelogClockTests.', 'ChangelogRevisionTests.')) and '#' not in f and not f.startswith(('IOSArtifactTests.','IOSLifecycleTests.','IOSGraphTests.','IOSFailureBoundaryTests.')))] if row == 'automation' else families
                 cases = [{'id':f,'family':f,'status':'pass'} for f in selected]
                 obj = dict(complete=True, success=True, tests_run=len(cases), started=[c['id'] for c in cases], cases=cases)
                 reports.append((kind,str(self.write(name,obj))))

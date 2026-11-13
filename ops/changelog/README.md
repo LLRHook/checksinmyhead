@@ -107,6 +107,102 @@ The final fresh message read rechecks the exact notice record, 🛑 and counting
 before merging. After listing approvals, it takes another fresh message snapshot
 and reads stops last; an empty approval count there also prevents an early merge.
 
+## Outside clock on the owner’s Linux machine
+
+GitHub had started **zero** sweeps by **14:28Z on 13 November 2026**, after the
+first tick was due at **02:17Z**; its first sweep started at **14:53Z**, 12 hours
+36 minutes late. A reaction or deadline cannot be handled until
+an event or sweep actually runs. The driver chose to move only the clock to the
+owner's Arch Linux (Omarchy) machine: the controller still runs in Actions, with
+Discord and merge credentials kept in the existing main-only environment. No
+Discord/merge token belongs on the machine; a personal token also cannot create
+the controller's GitHub App check runs.
+
+The three files in [clock/](clock/) are `changelog-clock`,
+`changelog-clock.service` and `changelog-clock.timer`. The POSIX sh script uses
+`gh api` to read **Changelog schedule**'s state. Only `active` dispatches it, once,
+on **main**; every other state exits successfully without dispatch. Read/dispatch
+failures return non-zero with one safe stderr line for the journal; a started
+sweep and a skipped tick each print one fixed line. The script
+accepts no arguments or stdin, fixes the repository/workflow/ref, and never
+prints credentials. It does not enable a disabled workflow: while Changelog has
+stopped its schedule because nothing is waiting (see
+[Sweep only while a change is waiting](#sweep-only-while-a-change-is-waiting)),
+every tick is a skip. When a change starts waiting, its event enables the
+schedule and the next tick dispatches a sweep. The existing GitHub
+cron stays as a late backstop; duplicate runs share the existing serial queue.
+
+The driver installs these **user** units after this change is on main. On that
+Linux machine, from the repository root (commands shown, not run by this change):
+
+```sh
+mkdir -p ~/.local/bin ~/.config/systemd/user
+install -m 755 ops/changelog/clock/changelog-clock ~/.local/bin/changelog-clock
+install -m 644 ops/changelog/clock/changelog-clock.service ops/changelog/clock/changelog-clock.timer ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now changelog-clock.timer
+loginctl enable-linger "$USER"
+loginctl show-user "$USER" -p Linger   # must print Linger=yes
+```
+
+The timer requests a run at minutes **07, 22, 37 and 52** of each hour. Lingering
+keeps the user's manager running while logged out; the machine must still be
+powered on and connected. systemd's normal timer accuracy and GitHub's dispatch
+queue add delay, so this is not an exact response-time guarantee. No catch-up
+queue or controller is installed by the repository change.
+
+The machine holds one credential: a fine-grained token limited to **Actions read
+and write on LLRHook/checksinmyhead only** (GitHub's mandatory metadata access is
+automatic). Store it as the single line `GH_TOKEN=...` in
+`~/.config/changelog-clock/env`, mode 600. The service loads that file itself, so
+it works while nobody is logged in, and stops any run after two minutes. Without
+the file the script falls back to the user's `gh` login, which is normally a
+full-account token and may sit in a keyring that is locked while logged out;
+prefer the file. Do not put a token in the unit files, command arguments, the
+repository, the journal or a chat. Check what the service will see with
+`systemd-run --user --wait --pipe -p EnvironmentFile="$HOME/.config/changelog-clock/env" gh auth status`.
+To revoke, delete the token at github.com/settings/personal-access-tokens and
+stop the timer as below; `gh auth logout` does not revoke a token. Credential
+provisioning and testing belong to the driver. GitHub documents the
+[workflow state read](https://docs.github.com/en/rest/actions/workflows#get-a-workflow)
+and [dispatch permission](https://docs.github.com/en/rest/actions/workflows#create-a-workflow-dispatch-event).
+
+To see timer activity and verify an actual run reached Actions:
+
+```sh
+systemctl --user list-timers
+journalctl --user -u changelog-clock   # "Changelog sweep started", a skip line, or one failure line
+gh run list --repo LLRHook/checksinmyhead --workflow changelog-schedule.yml
+```
+
+To stop this machine's clock:
+
+```sh
+systemctl --user disable --now changelog-clock.timer
+```
+
+Stopping the user timer leaves GitHub's cron available. Disabling **Changelog
+schedule** itself prevents this script from dispatching it, too. The script
+never restarts it: Changelog enables the schedule when a change starts waiting
+and disables it after an idle sweep, and the owner can do either by hand as shown
+below. A failed service retries at the next timer tick, not in a loop.
+A successful dispatch only means GitHub accepted the request: inspect its run and
+Changelog output to prove reconciliation completed.
+
+The new [manual trigger](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow)
+also lets anyone with repository write access start a sweep. A dispatch on any
+ref except `refs/heads/main` is refused by the controller **before any API call**;
+the existing environment restriction to main withholds secrets on other refs.
+The environment restriction is the boundary; the controller's refusal is defence
+in depth. No dispatch inputs, new job permissions or
+PR-code execution are added. The events workflow has no dispatch trigger.
+
+The Mac offline tests parse the units and exercise a stub `gh`; they do not run
+systemd. The driver must run `systemd-analyze --user verify` on Linux, verify
+logout/linger and the service's authentication/PATH, then observe two consecutive
+timer ticks and their completed Actions sweeps. See
+[systemd timers](https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html).
+
 ## Driver setup: main-only environment
 
 These are driver decisions. No setup, token inspection or real Discord/merge call
@@ -144,7 +240,7 @@ One variable is the switch: **off** makes no controller API calls; **post** trac
 notices, holds and deadlines without merging; **merge** enables merging. Missing
 or unknown mode behaves as off and fails loudly in the run log. Missing Discord
 setup also stops. To stop an already-running job, also cancel that run; a changed
-variable cannot revoke a value it already read. There is no dispatch trigger.
+variable cannot revoke a value it already read. The schedule workflow also accepts a no-input dispatch on main for the outside clock above.
 
 Only the separate PAT merges; the built-in token cannot. The bot requires its
 `/user` to report login **LLRHook** and profile name **Victor Ivanov**. Automatic
@@ -202,7 +298,8 @@ The disable/read/enable sequence closes the idle/event race: if an event enables
 before disable, its ready PR is in the subsequent read; if it enables after
 disable, its enable wins. An event arriving after the read also enables. The
 shared non-cancelling queue remains an additional guard, not the proof of this
-sequence. No new workflow or dispatch trigger is introduced.
+sequence. A sweep started by the outside clock's dispatch is an ordinary sweep
+and runs the same sequence.
 
 An event run that fails for any reason requests enable before reporting its
 failure: with sweeps stopped, only a sweep retries a notice that could not be
@@ -224,7 +321,9 @@ gh workflow enable "Changelog schedule" --repo LLRHook/checksinmyhead
 gh workflow disable "Changelog schedule" --repo LLRHook/checksinmyhead
 ```
 
-Enabling allows future scheduled ticks; it does not dispatch a run. A successful
+Enabling does not start a run by itself. The outside clock's next tick, at most
+15 minutes away while that machine is on, dispatches a sweep; without the clock
+the next run waits for GitHub's cron. A successful
 waiting PR event restarts a manually stopped schedule. To stop all bot activity,
 use the existing off-mode switch and cancel an active run as needed. Enabling
 while idle leads to the next successful idle sweep disabling it again.
@@ -250,8 +349,10 @@ started roughly **6.5–10.5 hours late**, every day. These are measured histori
 facts from driver `evidence/driver/schedule-delay.txt`, not forecasts. GitHub
 [documents delays and dropped scheduled jobs](https://docs.github.com/en/actions/how-tos/troubleshoot-workflows#scheduled-workflows-running-at-unexpected-times).
 Its enable endpoint documents a transition to active, but no bound on the next
-scheduled run after re-enabling; that delay is **unknown**. The driver is measuring
-it. This design adds no timing assumption or alternate scheduler.
+scheduled run after re-enabling; that delay is **unknown**. The idle stop adds
+no timing assumption of its own. The
+[outside clock](#outside-clock-on-the-owners-linux-machine) is the timely path;
+GitHub's cron is the late backstop.
 
 ## Runs, state and recovery
 
@@ -261,8 +362,9 @@ PRs and closures from the last **24 hours**, stopping before old closures. A clo
 missed for longer than a day needs manual notice cleanup. Both workflows retain
 `queue: max` and never cancel a running job. Fork events use an isolated run-ID
 group and are skipped. GitHub permits up to 100 pending runs; ordering and schedule
-timing are best effort. While enabled, a later scheduled sweep can catch dropped/failed events; after an
-idle stop, a missed or failed start event needs a new event or manual enable.
+timing are best effort. While enabled, a later sweep can catch dropped/failed events; after an
+idle stop, a missed or failed start event needs a new event or manual enable,
+because the outside clock skips a disabled schedule.
 Schedules may be disabled after 60 days without activity; monitor successful runs
 and recover in post mode before enabling merges again.
 
@@ -291,7 +393,9 @@ Initial creation needs one message POST and two seed reactions. Returned Discord
 metadata is ignored when comparing the single embed the bot set.
 
 The steady no-reaction budget is **353 GitHub requests/hour**, leaving 647 of
-this repository's shared 1,000-request budget for delivery and other work. The
+this repository's shared 1,000-request budget for delivery and other work. In an
+hour where GitHub's cron also fires all four of its ticks beside the outside
+clock's four, the four extra sweeps add **248 / 44**, for **601 / 118**. The
 bot checks the message's reaction counts before listing users; seed-only reactions
 need no listing. Active reactions, due merges and exceptional recovery cost more.
 Initial posting needs a POST and two seeds. See Discord’s [reaction fields](https://docs.discord.com/developers/resources/message#reaction-object) for counts and super-reaction metadata. A version restart or legacy notice

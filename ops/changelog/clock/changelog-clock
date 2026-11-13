@@ -1,0 +1,8 @@
+#!/bin/sh
+fail() { printf '%s\n' "$1" >&2; exit 1; }
+[ "$#" -eq 0 ] || fail 'Changelog clock takes no arguments'
+command -v gh >/dev/null 2>&1 || fail 'Changelog clock could not find gh on PATH'
+state=$(gh api repos/LLRHook/checksinmyhead/actions/workflows/changelog-schedule.yml --jq .state </dev/null 2>/dev/null) || fail 'Changelog clock could not read workflow state'
+[ "$state" = active ] || { echo 'Changelog schedule is not active; no sweep started'; exit 0; }
+gh workflow run changelog-schedule.yml -R LLRHook/checksinmyhead --ref main </dev/null >/dev/null 2>&1 || fail 'Changelog clock could not dispatch the sweep'
+echo 'Changelog sweep started'

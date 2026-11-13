@@ -405,6 +405,120 @@ class FakeAPI:
     pages = bot.API.pages
 
 
+class ChangelogClockTests(unittest.TestCase):
+    def cli(self, kind, ref='refs/heads/main'):
+        gh, dc = ServiceGitHub(opened=2), ServiceDiscord()
+        env = {'GITHUB_REPOSITORY': bot.REPO, 'GITHUB_EVENT_NAME': kind, 'GITHUB_REF': ref,
+               'CHANGELOG_MODE': 'post', 'GITHUB_TOKEN': 'synthetic-github',
+               'CHANGELOG_DISCORD_BOT_TOKEN': 'synthetic-discord', 'CHANGELOG_DISCORD_CHANNEL_ID': '123456',
+               'GITHUB_EVENT_PATH': 'synthetic-clock-event.json'}
+        def request(api, method, path, body=None):
+            return (dc if api.base.startswith('https://discord.com') else gh)(method, path, body)
+        with patch.dict(os.environ, env, clear=True), patch.object(sys, 'argv', ['changelog.py']), patch('builtins.open', mock_open(read_data='{}')), patch.object(bot.API, 'request', request), patch('sys.stdout', io.StringIO()):
+            bot.main()
+        return gh, dc
+
+    def test_dispatch_on_main_sweeps_exactly_like_schedule(self):
+        scheduled = self.cli('schedule')
+        dispatched = self.cli('workflow_dispatch')
+        self.assertEqual([c[:2] for c in scheduled[0].calls], [c[:2] for c in dispatched[0].calls])
+        self.assertEqual([c[:2] for c in scheduled[1].calls], [c[:2] for c in dispatched[1].calls])
+        self.assertEqual(len(dispatched[1].messages), 2)
+        self.assertEqual({n for n, comments in dispatched[0].comments.items() if comments}, {1, 2})
+        # The existing cron path is not newly restricted by the dispatch guard.
+        self.assertEqual(len(self.cli('schedule', 'refs/heads/other')[1].messages), 2)
+
+    def test_dispatch_on_any_other_or_missing_ref_refuses_before_API_or_event_file(self):
+        for ref in ('refs/heads/other', 'refs/heads/main-x', 'refs/heads/main/x', 'refs/tags/main', 'main', '', None):
+            env = {'GITHUB_REPOSITORY': bot.REPO, 'GITHUB_EVENT_NAME': 'workflow_dispatch'}
+            if ref is not None: env['GITHUB_REF'] = ref
+            with self.subTest(ref=ref), patch.dict(os.environ, env, clear=True), patch.object(sys, 'argv', ['changelog.py']), patch.object(bot.API, 'request', side_effect=AssertionError('network forbidden')) as request, patch('builtins.open', side_effect=AssertionError('event must not be read')) as event_file:
+                with self.assertRaisesRegex(bot.Refused, 'dispatch requires refs/heads/main; no API calls made'): bot.main()
+                request.assert_not_called(); event_file.assert_not_called()
+
+    def test_unknown_event_still_refuses_before_API(self):
+        for kind in ('push', 'repository_dispatch', '', 'unexpected'):
+            with self.subTest(kind=kind), patch.dict(os.environ, {'GITHUB_REPOSITORY': bot.REPO, 'GITHUB_EVENT_NAME': kind}, clear=True), patch.object(sys, 'argv', ['changelog.py']), patch.object(bot.API, 'request', side_effect=AssertionError('network forbidden')) as request:
+                with self.assertRaisesRegex(bot.Refused, 'Wrong event'): bot.main()
+                request.assert_not_called()
+
+    def clock(self, state='active', failure='', args=(), missing=False):
+        import subprocess
+        import tempfile
+        script = Path(__file__).with_name('clock')/'changelog-clock'
+        with tempfile.TemporaryDirectory(prefix='Changelog clock ') as folder:
+            root = Path(folder); log = root/'calls.jsonl'; stub = root/'gh'
+            stub.write_text('#!' + sys.executable + '\n' + '''import json,os,sys
+with open(os.environ['CLOCK_LOG'], 'a') as log:
+    log.write(json.dumps({'args': sys.argv[1:], 'stdin': sys.stdin.read()}) + '\\n')
+if sys.argv[1] == 'api':
+    if os.environ['CLOCK_FAILURE'] == 'read':
+        print('untrusted gh response', file=sys.stderr); sys.exit(23)
+    print(os.environ['CLOCK_STATE'])
+else:
+    print('untrusted gh output'); print('untrusted gh response', file=sys.stderr)
+    if os.environ['CLOCK_FAILURE'] == 'dispatch': sys.exit(24)
+''')
+            stub.chmod(0o755)
+            env = {'PATH': str(root) if not missing else str(root/'absent'), 'CLOCK_LOG': str(log),
+                   'CLOCK_STATE': state, 'CLOCK_FAILURE': failure, 'GH_TOKEN': 'synthetic-not-a-credential'}
+            result = subprocess.run(['/bin/sh', str(script), *args], input='stdin must be ignored', capture_output=True, text=True, env=env)
+            calls = [json.loads(line) for line in log.read_text().splitlines()] if log.exists() else []
+        return result, calls
+
+    def test_clock_active_dispatches_once_with_fixed_main_arguments(self):
+        result, calls = self.clock()
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual((result.stdout, result.stderr), ('Changelog sweep started\n', ''))
+        self.assertEqual([c['args'] for c in calls], [
+            ['api', 'repos/LLRHook/checksinmyhead/actions/workflows/changelog-schedule.yml', '--jq', '.state'],
+            ['workflow', 'run', 'changelog-schedule.yml', '-R', 'LLRHook/checksinmyhead', '--ref', 'main']])
+        self.assertEqual([c['stdin'] for c in calls], ['', ''])
+
+    def test_clock_every_other_state_exits_zero_without_dispatch(self):
+        for state in ('disabled_manually', 'disabled_inactivity', 'deleted', '', 'unknown', 'active\nextra'):
+            with self.subTest(state=state):
+                result, calls = self.clock(state)
+                self.assertEqual(result.returncode, 0)
+                self.assertEqual(len(calls), 1)
+                self.assertEqual((result.stdout, result.stderr), ('Changelog schedule is not active; no sweep started\n', ''))
+
+    def test_clock_failed_read_and_dispatch_report_one_safe_line(self):
+        for failure, count, message in [('read', 1, 'could not read workflow state'), ('dispatch', 2, 'could not dispatch the sweep')]:
+            with self.subTest(failure=failure):
+                result, calls = self.clock(failure=failure)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(len(calls), count)
+                self.assertEqual(result.stdout, '')
+                self.assertEqual(result.stderr, 'Changelog clock ' + message + '\n')
+
+    def test_clock_rejects_arguments_and_missing_gh_fails_safely(self):
+        result, calls = self.clock(args=('other/repository',))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(calls, [])
+        self.assertEqual(result.stderr, 'Changelog clock takes no arguments\n')
+        result, calls = self.clock(missing=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(calls, [])
+        self.assertEqual((result.stdout, result.stderr), ('', 'Changelog clock could not find gh on PATH\n'))
+
+    def test_clock_units_parse_as_user_oneshot_and_four_calendar_minutes(self):
+        import configparser
+        import subprocess
+        folder = Path(__file__).with_name('clock')
+        script = folder/'changelog-clock'
+        self.assertTrue(script.stat().st_mode & 0o111)
+        self.assertEqual(script.read_text().splitlines()[0], '#!/bin/sh')
+        subprocess.run(['/bin/sh', '-n', str(script)], check=True, capture_output=True)
+        service, timer = [configparser.ConfigParser(interpolation=None) for _ in range(2)]
+        service.read(folder/'changelog-clock.service'); timer.read(folder/'changelog-clock.timer')
+        self.assertEqual(service.sections(), ['Unit', 'Service'])
+        self.assertEqual(dict(service['Service']), {'type': 'oneshot', 'environmentfile': '-%h/.config/changelog-clock/env', 'execstart': '%h/.local/bin/changelog-clock', 'timeoutstartsec': '2min'})
+        self.assertEqual(timer.sections(), ['Unit', 'Timer', 'Install'])
+        self.assertEqual(dict(timer['Timer']), {'oncalendar': '*:07,22,37,52', 'unit': 'changelog-clock.service'})
+        self.assertEqual(dict(timer['Install']), {'wantedby': 'timers.target'})
+
+
 class ChangelogAdapterTests(unittest.TestCase):
     def test_CLI_exposes_only_help_and_read_only_dry_run(self):
         options = set()

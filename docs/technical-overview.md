@@ -604,6 +604,15 @@ cd mobile && flutter test
 
 ## Changelog review automation
 
+An external systemd user timer on the owner's Linux machine dispatches the
+existing schedule workflow at minutes 07, 22, 37 and 52, after reading that it is
+active. The no-input manual trigger and original cron share the same sweep path;
+dispatch requires refs/heads/main before API access. A disabled workflow is left
+stopped. The clock needs only repository Actions read/write access through gh;
+the controller and Discord/merge credentials stay in the main-only Actions
+environment. Installation and live qualification are driver work; see the
+[clock operation guide](../ops/changelog/README.md#outside-clock-on-the-owners-linux-machine).
+
 Changelog runs trusted-main Python standard library clients in two Actions
 workflows. An event handles its PR; the 15-minute sweep handles open changes and the
 last day of closures. PR code is never executed. One Discord embed shows the PR
@@ -644,7 +653,8 @@ race without sweeping forever for a PR already found not waiting. Failed PR reco
 prevents stopping. Failed disable/unknown recheck compensates with enable;
 failed enable is visible and may require operator recovery. Dry runs never
 control workflows. Both trusted-main jobs add Actions write to their built-in
-repository token; no other permission, trigger or cron changes. That token can
+repository token; the idle stop changes no other permission, trigger or cron,
+and a sweep dispatched by the external timer stops the same way. That token can
 control repository workflows beyond Changelog, so main-only execution remains
 a security boundary. Dependabot remains exempt. See the operation guide for
 manual enable/disable and the driver's measured schedule delays: the next tick
