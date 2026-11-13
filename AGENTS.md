@@ -56,7 +56,9 @@ Agents never merge around the bot or shorten its recorded week. The owner or dri
 may complete a change opened by another account only through the documented manual
 path, after a counting approval or the full week, no holds and green checks. See [Changelog setup and operation](ops/changelog/README.md)
 for stop reactions, clock restarts and pauses. Events handle only their PR; the
-15-minute sweep is the safety net. Treat the state comment as a mirror: do not edit
+15-minute sweep runs only while a notice is waiting. Waiting events enable it;
+a successful idle sweep disables then rechecks for arriving work. Failed starts
+need a new event or manual enable; GitHub scheduling can be hours late. Treat the state comment as a mirror: do not edit
 its pointer or record to bypass a hold or advance a deadline. A permitted human
 merge gets an ordinary final notice. PRs both opened and merged by LLRHook are
 audited against Victor's raw author identity, including hand-merges; other authors'
