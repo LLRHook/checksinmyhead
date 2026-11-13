@@ -1607,7 +1607,7 @@ resolve\tgithub-actions\tcompleted\tsuccess\ttrue'''
             self.push(gh)
             self.services(gh, dc, NOW + timedelta(days=1), 'merge')
             self.assertFalse(gh.prs[1]['merged'])
-            self.assertIn('needs a fresh 👍', visible(dc.messages[0]))
+            self.assertIn("Earlier 👍 don't count for this version. To approve it, remove your 👍, wait 15 minutes, then tap 👍 again.", visible(dc.messages[0]))
             self.services(gh, dc, NOW + timedelta(days=2), 'merge')
             self.assertFalse(gh.prs[1]['merged'])
             if second_person: self.approve(dc, '43', 'Jordan')
@@ -1639,7 +1639,9 @@ resolve\tgithub-actions\tcompleted\tsuccess\ttrue'''
         self.assertEqual(record['stale_approvals'], ['42'])
 
     def test_skin_tones_super_author_and_bot_own_approval_rules(self):
-        for emoji in bot.THUMBS:
+        tones = ['👍', '👍🏻', '👍🏼', '👍🏽', '👍🏾', '👍🏿']
+        self.assertEqual(list(bot.THUMBS), tones)
+        for emoji in tones:
             for burst in (False, True):
                 gh, dc = ServiceGitHub(), ServiceDiscord()
                 self.services(gh, dc, NOW); self.approve(dc, emoji=emoji, burst=burst)
@@ -1660,6 +1662,23 @@ resolve\tgithub-actions\tcompleted\tsuccess\ttrue'''
         invalid = bot.Discord(FakeAPI(lambda *args: [{'id': 'invalid', 'username': 'Ghost'}]), '123456')
         invalid.bot = '1'
         with self.assertRaises(bot.Refused): invalid.holders('500', '👍', people=True)
+
+    def test_stop_reaction_without_a_count_still_holds_an_approved_change(self):
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW); self.approve(dc)
+        dc.users[dc.messages[0]['id']] = [{'id': '43', 'username': 'Sam'}]
+        # Discord has not always sent a count with a reaction; no count is not "nobody".
+        def no_stop_count(method, path, body):
+            result = dc(method, path, body)
+            for message in result if isinstance(result, list) else [result]:
+                for reaction in message.get('reactions', []) if isinstance(message, dict) else []:
+                    if reaction['emoji']['name'] == bot.STOP:
+                        reaction.pop('count', None); reaction.pop('count_details', None)
+            return result
+        gh.now = dc.now = NOW + timedelta(days=1)
+        bot.reconcile(bot.GitHub(FakeAPI(gh), FakeAPI(gh)), bot.Discord(FakeAPI(no_stop_count), '123456'), 1, 'merge', gh.now)
+        self.assertFalse(gh.prs[1]['merged'])
+        self.assertIn('On hold: Sam tapped 🛑', visible(dc.messages[0]))
 
     def test_approved_path_preserves_every_fresh_merge_gate(self):
         for defect in ('head', 'body', 'ready', 'fingerprint', 'draft', 'base', 'closed', 'checks', 'conflict', 'identity'):

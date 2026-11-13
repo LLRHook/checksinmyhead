@@ -94,6 +94,7 @@
       "ChangelogRevisionTests.test_semantic_merge_refusal_updates_notice_without_restarting_week",
       "ChangelogRevisionTests.test_skin_tones_super_author_and_bot_own_approval_rules",
       "ChangelogRevisionTests.test_stop_always_wins_and_removed_final_approval_cannot_merge_early",
+      "ChangelogRevisionTests.test_stop_reaction_without_a_count_still_holds_an_approved_change",
       "ChangelogRevisionTests.test_transient_compare_day6_real_adapters_merge_day7_without_writes",
       "ChangelogRevisionTests.test_unexpected_per_PR_error_is_sanitized_and_sweep_continues",
       "CollectorTests.test_duplicate_json_keys_and_hostile_operator_values",

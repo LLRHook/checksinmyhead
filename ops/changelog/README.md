@@ -90,7 +90,7 @@ Names are sanitized and never ping anyone.
 
 The bot stores at most eight stale approver IDs. If a restart has more than eight,
 it conservatively requires all human 👍 to be seen gone before approvals can count
-again; the seven-day path still works. It never drops old IDs and treats forgotten
+again; the seven-day path still works. It never drops old IDs or treats forgotten
 people as fresh. The first rollout onto old notices treats their existing 👍 as
 old-version reactions. Missing/damaged approval knowledge also requires re-giving;
 a damaged full record fails closed through the existing recovery instruction.

@@ -601,7 +601,7 @@ def waiting_status(pr, state, error, current, restarted, now, approved=None):
             return 'The week is up. Someone else wrote this one, so the owner will put it live by hand.'
         return 'The week is up. It goes live once the owner switches it on. Tapping 🛑 still stops it.'
     if state.get('stale_approvals') or state.get('approval_overflow'):
-        lines = ['The change was updated, so it needs a fresh 👍. If you approved it before, remove your 👍 and tap it again.'] + [line for line in lines if line != 'The change was updated, so the week starts again.']
+        lines = ["Earlier 👍 don't count for this version. To approve it, remove your 👍, wait 15 minutes, then tap 👍 again."] + [line for line in lines if line != 'The change was updated, so the week starts again.']
     deadline = stamp(date(state['start']) + WEEK)
     lines += ['Goes live as soon as one of you taps 👍, or on ' + local_time(deadline) + ' (' + local_time(deadline, 'R') + ') if nobody stops it.',
               'Tap 👍 to approve it. Tap 🛑 to stop it.']
