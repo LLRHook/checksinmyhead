@@ -36,13 +36,13 @@ jobs:
     outputs:
       report: ${{ steps.report.outputs.report }}
     steps:
-    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         ref: ${{ inputs.controller_sha }}
         path: control
         fetch-depth: 0
         persist-credentials: false
-    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         ref: ${{ inputs.source_sha }}
         path: candidate
@@ -92,13 +92,13 @@ jobs:
     outputs:
       report: ${{ steps.report.outputs.report }}
     steps:
-    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         ref: ${{ inputs.controller_sha }}
         path: control
         fetch-depth: 0
         persist-credentials: false
-    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         ref: ${{ inputs.source_sha }}
         path: candidate
@@ -130,13 +130,13 @@ jobs:
     outputs:
       report: ${{ steps.report.outputs.report }}
     steps:
-    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         ref: ${{ inputs.controller_sha }}
         path: control
         fetch-depth: 0
         persist-credentials: false
-    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         ref: ${{ inputs.source_sha }}
         path: candidate
@@ -184,13 +184,13 @@ jobs:
     outputs:
       report: ${{ steps.report.outputs.report }}
     steps:
-    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         ref: ${{ inputs.controller_sha }}
         path: control
         fetch-depth: 0
         persist-credentials: false
-    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         ref: ${{ inputs.source_sha }}
         path: candidate
@@ -247,13 +247,13 @@ jobs:
     outputs:
       report: ${{ steps.report.outputs.report }}
     steps:
-    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         ref: ${{ inputs.controller_sha }}
         path: control
         fetch-depth: 0
         persist-credentials: false
-    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         ref: ${{ inputs.source_sha }}
         path: candidate
@@ -295,13 +295,13 @@ jobs:
     outputs:
       report: ${{ steps.report.outputs.report }}
     steps:
-    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         ref: ${{ inputs.controller_sha }}
         path: control
         fetch-depth: 0
         persist-credentials: false
-    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         ref: ${{ inputs.source_sha }}
         path: candidate
@@ -355,7 +355,7 @@ jobs:
       source: ${{ steps.gate.outputs.source }}
       controller: ${{ steps.gate.outputs.controller }}
     steps:
-    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         ref: ${{ inputs.controller_sha }}
         path: control
