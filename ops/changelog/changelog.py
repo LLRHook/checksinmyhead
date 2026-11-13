@@ -156,7 +156,18 @@ class GitHub:
         self.api, self.merge_api, self.dry_run = api, merge_api, dry_run
         self._comments, self._files, self._runs = {}, {}, {}
         self.waiting_check = REQUIRED_CHECK
+        self.waiting = False
         self.root = '/repos/' + REPO
+
+    def schedule(self, enabled):
+        action = 'enable' if enabled else 'disable'
+        if self.dry_run:
+            print('DRY RUN: schedule ' + action)
+            return
+        self.api.request('PUT', self.root + '/actions/workflows/changelog-schedule.yml/' + action)
+
+    def open_pulls(self):
+        return self.api.pages(self.root + '/pulls?state=open&sort=updated&direction=desc')
 
     def pr(self, number):
         return self.api.request('GET', self.root + '/pulls/' + str(number))
@@ -517,6 +528,17 @@ def eligible(pr):
             pr['user']['login'] not in ('dependabot[bot]', 'dependabot'))
 
 
+def waiting(pr, state=None, message=None):
+    """A live unfinished notice; without notice data, a conservative recheck.
+
+    Keep exemptions in eligible/reconciliation. The post-disable recheck may
+    include never-posted/broken-note/tracker-only PRs rather than risk a stuck stop.
+    """
+    if pr['state'] != 'open' or pr['draft'] or not eligible(pr):
+        return False
+    return state is None or bool(message and not any(state.get(k) for k in ('finished', 'exempt', 'cancelled')))
+
+
 def local_time(value, style='F'):
     return '<t:' + str(int(date(value).timestamp())) + ':' + style + '>'
 
@@ -692,6 +714,7 @@ def finish_notice(gh, dc, pr, message, old, text, exempt, dry_run):
 
 
 def reconcile(gh, dc, number, mode, now, dry_run=False):
+    gh.waiting = False
     require(mode in ('post', 'merge'), 'Changelog is OFF: set CHANGELOG_MODE to post or merge')
     pr = gh.pr(number)
     # Outsiders never reach Discord, checks or comment writes, even on old events.
@@ -772,6 +795,7 @@ def reconcile(gh, dc, number, mode, now, dry_run=False):
         gh.mirror(number, state, posted['id'], incident or error or detail or status)
         if incident:
             raise IdentityIncident(incident)
+        gh.waiting = waiting(pr, state, posted)
         return status
     except NoticeProblem as exc:
         if not dry_run:
@@ -779,17 +803,47 @@ def reconcile(gh, dc, number, mode, now, dry_run=False):
         raise
 
 
+def reconcile_event(gh, dc, number, mode, now, dry_run=False):
+    status = reconcile(gh, dc, number, mode, now, dry_run)
+    if gh.waiting and not dry_run:
+        gh.schedule(True)
+    return status
+
+
+def idle_schedule(gh, dry_run=False):
+    if dry_run:
+        return
+    try:
+        gh.schedule(False)
+    except Exception:
+        # A lost reply may have disabled it. Restore active even in that case.
+        print('::warning::Could not confirm schedule disable; keeping sweeps enabled')
+        gh.schedule(True)
+        return
+    try:
+        resume = any(waiting(pr) for pr in gh.open_pulls())
+    except Exception:
+        # Unknown work is not idle. Compensate before reporting the read failure.
+        gh.schedule(True)
+        raise
+    if resume:
+        gh.schedule(True)
+
+
 def reconcile_all(gh, dc, mode, now, dry_run=False):
-    failed = False
+    failed = pending = False
     for pr in gh.pulls(now):
         try:
             print('PR #' + str(pr['number']) + ': ' + reconcile(gh, dc, pr['number'], mode, now, dry_run))
+            pending = pending or gh.waiting
         except Exception as exc:
             failed = True
             if isinstance(exc, IdentityIncident):
                 mode = 'post'  # Do not cascade an observed author failure to other merges.
             print('::error::PR #' + str(pr['number']) + ': ' + type(exc).__name__ + (': ' + str(exc) if isinstance(exc, Refused) else ''))
     require(not failed, 'Some changes could not be checked; their previous review windows were preserved')
+    if not pending:
+        idle_schedule(gh, dry_run)
 
 
 def main():
@@ -815,7 +869,7 @@ def main():
     dc = Discord(API('https://discord.com/api/v10', env['CHANGELOG_DISCORD_BOT_TOKEN'], 'Bot', args.dry_run), env['CHANGELOG_DISCORD_CHANNEL_ID'])
     now = datetime.now(timezone.utc)
     if env['GITHUB_EVENT_NAME'] == 'pull_request_target':
-        print(reconcile(gh, dc, event['number'], env['CHANGELOG_MODE'], now, args.dry_run))
+        print(reconcile_event(gh, dc, event['number'], env['CHANGELOG_MODE'], now, args.dry_run))
     else:
         reconcile_all(gh, dc, env['CHANGELOG_MODE'], now, args.dry_run)
 

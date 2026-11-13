@@ -633,5 +633,18 @@ requires a full clearing after overflow or lost approval knowledge. A pending
 baseline is confirmed after the new notice is published, closing the publication
 race. Final reads verify the same record/version, stop reactions and approval
 presence. Stops win; post mode and other openers never auto-merge. The sweep runs
-at minutes 7, 22, 37 and 52; steady ten-open polling plus 15 events costs 338 GitHub
+at minutes 7, 22, 37 and 52 while changes wait; steady ten-open polling plus 15 events costs 353 GitHub
 requests/hour using seed-only reaction-count shortcuts.
+
+An event enables `Changelog schedule` only after successfully leaving its PR with
+an eligible ready unfinished notice. A successful idle sweep disables, re-lists
+open PRs, and re-enables for any eligible ready candidate. This conservative
+recheck closes the event-enable-before-disable race. Failed PR reconciliation
+prevents stopping. Failed disable/unknown recheck compensates with enable;
+failed enable is visible and may require operator recovery. Dry runs never
+control workflows. Both trusted-main jobs add Actions write to their built-in
+repository token; no other permission, trigger or cron changes. That token can
+control repository workflows beyond Changelog, so main-only execution remains
+a security boundary. Dependabot remains exempt. See the operation guide for
+manual enable/disable and the driver's measured schedule delays: the next tick
+after re-enable has no documented latency guarantee.
