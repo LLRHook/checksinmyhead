@@ -469,7 +469,7 @@ else:
     def test_clock_active_dispatches_once_with_fixed_main_arguments(self):
         result, calls = self.clock()
         self.assertEqual(result.returncode, 0)
-        self.assertEqual(result.stdout + result.stderr, '')
+        self.assertEqual((result.stdout, result.stderr), ('Changelog sweep started\n', ''))
         self.assertEqual([c['args'] for c in calls], [
             ['api', 'repos/LLRHook/checksinmyhead/actions/workflows/changelog-schedule.yml', '--jq', '.state'],
             ['workflow', 'run', 'changelog-schedule.yml', '-R', 'LLRHook/checksinmyhead', '--ref', 'main']])
@@ -481,7 +481,7 @@ else:
                 result, calls = self.clock(state)
                 self.assertEqual(result.returncode, 0)
                 self.assertEqual(len(calls), 1)
-                self.assertEqual(result.stdout + result.stderr, '')
+                self.assertEqual((result.stdout, result.stderr), ('Changelog schedule is not active; no sweep started\n', ''))
 
     def test_clock_failed_read_and_dispatch_report_one_safe_line(self):
         for failure, count, message in [('read', 1, 'could not read workflow state'), ('dispatch', 2, 'could not dispatch the sweep')]:
@@ -500,7 +500,7 @@ else:
         result, calls = self.clock(missing=True)
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(calls, [])
-        self.assertEqual(result.stderr, 'Changelog clock could not read workflow state\n')
+        self.assertEqual((result.stdout, result.stderr), ('', 'Changelog clock could not find gh on PATH\n'))
 
     def test_clock_units_parse_as_user_oneshot_and_four_calendar_minutes(self):
         import configparser
@@ -513,7 +513,7 @@ else:
         service, timer = [configparser.ConfigParser(interpolation=None) for _ in range(2)]
         service.read(folder/'changelog-clock.service'); timer.read(folder/'changelog-clock.timer')
         self.assertEqual(service.sections(), ['Unit', 'Service'])
-        self.assertEqual(dict(service['Service']), {'type': 'oneshot', 'execstart': '%h/.local/bin/changelog-clock'})
+        self.assertEqual(dict(service['Service']), {'type': 'oneshot', 'environmentfile': '-%h/.config/changelog-clock/env', 'execstart': '%h/.local/bin/changelog-clock', 'timeoutstartsec': '2min'})
         self.assertEqual(timer.sections(), ['Unit', 'Timer', 'Install'])
         self.assertEqual(dict(timer['Timer']), {'oncalendar': '*:07,22,37,52', 'unit': 'changelog-clock.service'})
         self.assertEqual(dict(timer['Install']), {'wantedby': 'timers.target'})

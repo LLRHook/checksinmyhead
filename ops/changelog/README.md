@@ -119,7 +119,8 @@ The three files in [clock/](clock/) are `changelog-clock`,
 `changelog-clock.service` and `changelog-clock.timer`. The POSIX sh script uses
 `gh api` to read **Changelog schedule**'s state. Only `active` dispatches it, once,
 on **main**; every other state exits successfully without dispatch. Read/dispatch
-failures return non-zero with one safe stderr line for the journal. The script
+failures return non-zero with one safe stderr line for the journal; a started
+sweep and a skipped tick each print one fixed line. The script
 accepts no arguments or stdin, fixes the repository/workflow/ref, and never
 prints credentials. It does not enable a disabled workflow. It works with a
 future idle-stop implementation without depending on it. The existing GitHub
@@ -134,7 +135,8 @@ install -m 755 ops/changelog/clock/changelog-clock ~/.local/bin/changelog-clock
 install -m 644 ops/changelog/clock/changelog-clock.service ops/changelog/clock/changelog-clock.timer ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user enable --now changelog-clock.timer
-loginctl enable-linger
+loginctl enable-linger "$USER"
+loginctl show-user "$USER" -p Linger   # must print Linger=yes
 ```
 
 The timer requests a run at minutes **07, 22, 37 and 52** of each hour. Lingering
@@ -143,14 +145,19 @@ powered on and connected. systemd's normal timer accuracy and GitHub's dispatch
 queue add delay, so this is not an exact response-time guarantee. No catch-up
 queue or controller is installed by the repository change.
 
-Use the owner's existing `gh` login, or supply `GH_TOKEN` privately to the user
-service environment. A fine-grained token needs **Actions read and write on
-LLRHook/checksinmyhead only**, with no other selected permissions (GitHub's
-mandatory metadata access is automatic). Do not put a token in these unit files,
-command arguments, the repository, journal or a chat. A login/credential store
-must work for the user manager while logged out; a shell's exported variable is
-not automatically the service's environment. Credential provisioning and testing
-that context belong to the driver. GitHub documents the
+The machine holds one credential: a fine-grained token limited to **Actions read
+and write on LLRHook/checksinmyhead only** (GitHub's mandatory metadata access is
+automatic). Store it as the single line `GH_TOKEN=...` in
+`~/.config/changelog-clock/env`, mode 600. The service loads that file itself, so
+it works while nobody is logged in, and stops any run after two minutes. Without
+the file the script falls back to the user's `gh` login, which is normally a
+full-account token and may sit in a keyring that is locked while logged out;
+prefer the file. Do not put a token in the unit files, command arguments, the
+repository, the journal or a chat. Check what the service will see with
+`systemd-run --user --wait --pipe -p EnvironmentFile="$HOME/.config/changelog-clock/env" gh auth status`.
+To revoke, delete the token at github.com/settings/personal-access-tokens and
+stop the timer as below; `gh auth logout` does not revoke a token. Credential
+provisioning and testing belong to the driver. GitHub documents the
 [workflow state read](https://docs.github.com/en/rest/actions/workflows#get-a-workflow)
 and [dispatch permission](https://docs.github.com/en/rest/actions/workflows#create-a-workflow-dispatch-event).
 
@@ -158,7 +165,7 @@ To see timer activity and verify an actual run reached Actions:
 
 ```sh
 systemctl --user list-timers
-journalctl --user -u changelog-clock
+journalctl --user -u changelog-clock   # "Changelog sweep started", a skip line, or one failure line
 gh run list --repo LLRHook/checksinmyhead --workflow changelog-schedule.yml
 ```
 
@@ -179,7 +186,8 @@ The new [manual trigger](https://docs.github.com/en/actions/how-tos/manage-workf
 also lets anyone with repository write access start a sweep. A dispatch on any
 ref except `refs/heads/main` is refused by the controller **before any API call**;
 the existing environment restriction to main withholds secrets on other refs.
-Both protections remain necessary. No dispatch inputs, new job permissions or
+The environment restriction is the boundary; the controller's refusal is defence
+in depth. No dispatch inputs, new job permissions or
 PR-code execution are added. The events workflow has no dispatch trigger.
 
 The Mac offline tests parse the units and exercise a stub `gh`; they do not run
@@ -225,7 +233,7 @@ One variable is the switch: **off** makes no controller API calls; **post** trac
 notices, holds and deadlines without merging; **merge** enables merging. Missing
 or unknown mode behaves as off and fails loudly in the run log. Missing Discord
 setup also stops. To stop an already-running job, also cancel that run; a changed
-variable cannot revoke a value it already read. The schedule workflow also accepts a no-input dispatch on main for the outside clock below.
+variable cannot revoke a value it already read. The schedule workflow also accepts a no-input dispatch on main for the outside clock above.
 
 Only the separate PAT merges; the built-in token cannot. The bot requires its
 `/user` to report login **LLRHook** and profile name **Victor Ivanov**. Automatic

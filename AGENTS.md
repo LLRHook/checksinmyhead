@@ -42,7 +42,8 @@ use isolated synthetic data for destructive verification.
 The owner's Linux user timer can dispatch the schedule workflow on main every
 15 minutes; GitHub cron remains a backstop. The clock skips disabled workflows.
 Install/operate it only through the driver setup in the Changelog guide; its host
-needs Actions-only access, while Discord and merge credentials stay in Actions.
+holds one token limited to Actions on this repository, while Discord and merge
+credentials stay in Actions.
 
 Open pull requests as drafts. Start the description with the note block in
 [the pull request template](.github/pull_request_template.md); keep its what-changed
