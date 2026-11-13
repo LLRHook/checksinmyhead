@@ -638,8 +638,9 @@ requests/hour using seed-only reaction-count shortcuts.
 
 An event enables `Changelog schedule` only after successfully leaving its PR with
 an eligible ready unfinished notice. A successful idle sweep disables, re-lists
-open PRs, and re-enables for any eligible ready candidate. This conservative
-recheck closes the event-enable-before-disable race. Failed PR reconciliation
+open PRs, and re-enables for any eligible ready candidate that is new or changed
+since the sweep listed it. This recheck closes the event-enable-before-disable
+race without sweeping forever for a PR already found not waiting. Failed PR reconciliation
 prevents stopping. Failed disable/unknown recheck compensates with enable;
 failed enable is visible and may require operator recovery. Dry runs never
 control workflows. Both trusted-main jobs add Actions write to their built-in

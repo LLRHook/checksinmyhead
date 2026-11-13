@@ -539,6 +539,10 @@ def waiting(pr, state=None, message=None):
     return state is None or bool(message and not any(state.get(k) for k in ('finished', 'exempt', 'cancelled')))
 
 
+def snapshot(pr):
+    return (pr.get('updated_at'), pr['state'], pr['draft'], pr['head']['sha'], pr['base']['ref'], pr.get('title'), pr.get('body'))
+
+
 def local_time(value, style='F'):
     return '<t:' + str(int(date(value).timestamp())) + ':' + style + '>'
 
@@ -819,7 +823,7 @@ def reconcile_event(gh, dc, number, mode, now, dry_run=False):
     return status
 
 
-def idle_schedule(gh, dry_run=False):
+def idle_schedule(gh, seen, dry_run=False):
     if dry_run:
         return
     try:
@@ -830,7 +834,9 @@ def idle_schedule(gh, dry_run=False):
         gh.schedule(True)
         return
     try:
-        resume = any(waiting(pr) for pr in gh.open_pulls())
+        # Whatever this sweep checked and found not waiting needs no sweep until it changes;
+        # anything new or changed since the sweep listed it may have enabled before the disable.
+        resume = any(waiting(pr) and seen.get(pr['number']) != snapshot(pr) for pr in gh.open_pulls())
     except Exception:
         # Unknown work is not idle. Compensate before reporting the read failure.
         gh.schedule(True)
@@ -841,10 +847,12 @@ def idle_schedule(gh, dry_run=False):
 
 def reconcile_all(gh, dc, mode, now, dry_run=False):
     failed = pending = False
+    seen = {}
     for pr in gh.pulls(now):
         try:
             print('PR #' + str(pr['number']) + ': ' + reconcile(gh, dc, pr['number'], mode, now, dry_run))
             pending = pending or gh.waiting
+            seen[pr['number']] = snapshot(pr)
         except Exception as exc:
             failed = True
             if isinstance(exc, IdentityIncident):
@@ -852,7 +860,7 @@ def reconcile_all(gh, dc, mode, now, dry_run=False):
             print('::error::PR #' + str(pr['number']) + ': ' + type(exc).__name__ + (': ' + str(exc) if isinstance(exc, Refused) else ''))
     require(not failed, 'Some changes could not be checked; their previous review windows were preserved')
     if not pending:
-        idle_schedule(gh, dry_run)
+        idle_schedule(gh, seen, dry_run)
 
 
 def main():

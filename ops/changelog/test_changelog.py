@@ -1940,9 +1940,72 @@ resolve\tgithub-actions\tcompleted\tsuccess\ttrue'''
                 self.assertEqual(self.schedule_calls(gh), [])
                 gh.schedule_enabled = True
                 self.services(gh, dc, NOW)
-                # Tracker/broken-note ready PRs are deliberately in the cheap superset.
-                self.assertEqual(gh.schedule_enabled, kind in ('tracker', 'broken-note'))
-                self.assertTrue(any(c[1].endswith('/disable') for c in self.schedule_calls(gh)))
+                # A ready PR this sweep checked and found not waiting does not keep sweeps alive.
+                self.assertFalse(gh.schedule_enabled)
+                self.assertEqual([c[1].split('/')[-1] for c in self.schedule_calls(gh)], ['disable'])
+
+    def test_checked_idle_PR_resumes_sweeps_only_if_it_changed_after_the_sweep_listed_it(self):
+        def change(pr, kind):
+            if kind == 'updated': pr['updated_at'] = bot.stamp(NOW + timedelta(seconds=1))
+            if kind == 'head': pr['head']['sha'] = 'e' * 40
+            if kind == 'title': pr['title'] = 'Fixed title'
+            if kind == 'body': pr['body'] = pull()['body']
+            if kind == 'ready': pr['draft'] = False
+            if kind == 'base': pr['base']['ref'] = 'main'
+            if kind == 'reopened': pr.update(state='open', closed_at=None)
+        cases = {'broken-note': ('none', 'updated', 'head', 'title', 'body'), 'draft': ('none', 'ready'),
+                 'other-base': ('none', 'base'), 'closed': ('none', 'reopened')}
+        for start, kinds in cases.items():
+            for kind in kinds:
+                gh, dc = ServiceGitHub(), ServiceDiscord()
+                pr = gh.prs[1]
+                if start == 'broken-note': pr['body'] = ''
+                if start == 'draft': pr['draft'] = True
+                if start == 'other-base': pr['base']['ref'] = 'other'
+                if start == 'closed': pr.update(state='closed', closed_at=bot.stamp(NOW))
+                original = gh.handle
+                def late(method, path, body, url, query):
+                    result = original(method, path, body, url, query)
+                    if path.endswith('/disable'): change(pr, kind)
+                    return result
+                gh.handle = late
+                with self.subTest(start=start, kind=kind):
+                    self.services(gh, dc, NOW)
+                    self.assertEqual(gh.schedule_enabled, kind != 'none')
+                    self.assertEqual([c[1].split('/')[-1] for c in self.schedule_calls(gh)],
+                                     ['disable'] if kind == 'none' else ['disable', 'enable'])
+        # A PR the sweep never listed is new work, whatever it looks like.
+        gh, dc = ServiceGitHub(opened=0), ServiceDiscord()
+        original = gh.handle
+        def opened_late(method, path, body, url, query):
+            result = original(method, path, body, url, query)
+            if path.endswith('/disable'):
+                source = ServiceGitHub()
+                gh.prs, gh.comments, gh.checks = source.prs, source.comments, source.checks
+            return result
+        gh.handle = opened_late
+        self.services(gh, dc, NOW)
+        self.assertTrue(gh.schedule_enabled)
+
+    def test_one_waiting_PR_among_idle_ones_keeps_sweeps_without_touching_the_schedule(self):
+        for waiting_first in (True, False):
+            gh, dc = ServiceGitHub(opened=3), ServiceDiscord()
+            gh.prs[2]['body'] = ''; gh.prs[3]['draft'] = True
+            gh.prs[1]['updated_at'] = bot.stamp(NOW + timedelta(seconds=5 if waiting_first else -5))
+            with self.subTest(waiting_first=waiting_first):
+                self.services(gh, dc, NOW)
+                listed = [c[1] for c in gh.calls if c[0] == 'GET' and c[1].split('/')[-2] == 'pulls' and c[1].split('/')[-1].isdigit()]
+                self.assertEqual(listed[0].endswith('/pulls/1'), waiting_first)
+                self.assertEqual(len(dc.messages), 1)
+                self.assertEqual(self.schedule_calls(gh), [])
+                self.assertTrue(gh.schedule_enabled)
+        # A change that goes live in this sweep is finished: the same sweep may stop.
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW)
+        self.assertEqual(self.schedule_calls(gh), [])
+        self.services(gh, dc, NOW + bot.WEEK, 'merge')
+        self.assertTrue(gh.prs[1]['merged'])
+        self.assertFalse(gh.schedule_enabled)
 
     def test_idle_disable_and_ready_event_interleavings_never_strand_a_notice(self):
         def run(slot=None, phase='before', empty=False):

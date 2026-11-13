@@ -186,10 +186,13 @@ in the controller's `waiting` function, using the existing eligibility and saved
 exemption rules. Marking a draft ready again can start sweeps.
 
 After a successful sweep with no waiting notices, Changelog disables **only
-Changelog schedule**, then lists open PRs again. If any is eligible and ready, it
-re-enables the schedule. This deliberately conservative final check may keep it
-active for a ready tracker-only PR or broken note without a notice; it avoids
-another Discord/history pass while protecting work arriving during the stop.
+Changelog schedule**, then lists open PRs again. It re-enables the schedule if
+an eligible ready PR is new, or differs from what this sweep listed (update time,
+state, draft flag, head, base, title or body): its event may have enabled before
+the disable. A PR this sweep already checked and found not waiting, such as a
+ready tracker-only PR or a broken note without a notice, does not keep sweeps
+running; its next change is an event. This avoids another Discord/history pass
+while protecting work arriving during the stop.
 If any PR failed reconciliation, the sweep fails and never attempts to disable.
 An event that successfully leaves its own PR waiting enables the schedule after
 its normal notice, check and comment work. It does not sweep other PRs. Dry runs
@@ -235,7 +238,8 @@ for these calls with that token; this pass has not exercised it live. See
 [GITHUB_TOKEN](https://docs.github.com/en/actions/concepts/security/github_token).
 This permission is broader than a per-workflow grant: compromised trusted run
 code could control other workflows/runs/artifacts in this repository, including
-cancelling or deleting runs. The controller hardcodes only its schedule endpoint;
+cancelling or deleting runs, disabling CI, and dispatching the deploy and release
+workflows on main, which no environment reviewer gates today. The controller hardcodes only its schedule endpoint;
 that is a code boundary, not token enforcement. Events still fetch and execute
 main only, never PR code. The separate merge PAT and its gates remain unchanged.
 
