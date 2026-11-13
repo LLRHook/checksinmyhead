@@ -70,11 +70,14 @@ jobs:
         CASE_REPORT="$REPORT_DIR/ios-python.json" "$RUNNER_TEMP/delivery-python/bin/python" control/ops/ci/unittest_report.py
         control/ops/ci/test_ios_artifact.py
 
-        CASE_REPORT="$REPORT_DIR/ios-ruby.json" ruby -r "$GITHUB_WORKSPACE/control/ops/ci/minitest_report.rb" control/.github/scripts/asc_delivery_test.rb'
+        CASE_REPORT="$REPORT_DIR/ios-ruby.json" ruby -r "$GITHUB_WORKSPACE/control/ops/ci/minitest_report.rb" control/.github/scripts/asc_delivery_test.rb
+
+        CASE_REPORT="$REPORT_DIR/changelog.json" "$RUNNER_TEMP/delivery-python/bin/python" control/ops/ci/unittest_report.py
+        control/ops/changelog/test_changelog.py'
     - id: report
       run: python3 control/ops/ci/delivery_gate.py summarize --repo control --controller "$CONTROLLER" --source
         "$SOURCE" --row automation --reports cases:reports/gate-tests.json cases:reports/ruby.json cases:reports/ios-python.json
-        cases:reports/ios-ruby.json
+        cases:reports/ios-ruby.json cases:reports/changelog.json
     - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
       with:
         name: reports-automation-${{ github.run_attempt }}

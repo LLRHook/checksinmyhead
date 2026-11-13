@@ -102,6 +102,7 @@ CI uses absolute `REPORT_DIR` for `reports/`. Keep acquisition locked: `go mod d
 | Local workflow / root | `CASE_REPORT="$REPORT_DIR/local-workflow.json" python3 ops/ci/unittest_report.py scripts/test_local_workflow.py` |
 | Ruby / root | `CASE_REPORT="$REPORT_DIR/ruby.json" ruby -r "$PWD/ops/ci/minitest_report.rb" .github/scripts/asc_release_test.rb` |
 | Gate / root | `CASE_REPORT="$REPORT_DIR/gate-tests.json" python3 ops/ci/unittest_report.py ops/ci/test_delivery_gate.py` |
+| Changelog / root | `CASE_REPORT="$REPORT_DIR/changelog.json" python3 ops/ci/unittest_report.py ops/changelog/test_changelog.py` |
 | iOS / root | [Report commands](ops/ci/README.md#processed-ios-artifact-authority) |
 | Live PG authorization/migrations/readiness / `backend` | `go test -race -count=1 -json -timeout=20m -tags=integration ./cmd/bill-service ./internal/bill ./internal/tab ./pkg/database ./migrations ./internal/startup ./internal/readiness ./internal/testpostgres \| tee "$REPORT_DIR/go-postgres.jsonl"` |
 | E2E/a11y/load | No wired runner: FEAT-1793644507, FEAT-1793644512, FEAT-1793644502; manual stages remain |
