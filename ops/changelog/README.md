@@ -110,7 +110,8 @@ and reads stops last; an empty approval count there also prevents an early merge
 ## Outside clock on the owner’s Linux machine
 
 GitHub had started **zero** sweeps by **14:28Z on 13 November 2026**, after the
-first tick was due at **02:17Z**. A reaction or deadline cannot be handled until
+first tick was due at **02:17Z**; its first sweep started at **14:53Z**, 12 hours
+36 minutes late. A reaction or deadline cannot be handled until
 an event or sweep actually runs. The driver chose to move only the clock to the
 owner's Arch Linux (Omarchy) machine: the controller still runs in Actions, with
 Discord and merge credentials kept in the existing main-only environment. No
@@ -124,8 +125,11 @@ on **main**; every other state exits successfully without dispatch. Read/dispatc
 failures return non-zero with one safe stderr line for the journal; a started
 sweep and a skipped tick each print one fixed line. The script
 accepts no arguments or stdin, fixes the repository/workflow/ref, and never
-prints credentials. It does not enable a disabled workflow. It works with a
-future idle-stop implementation without depending on it. The existing GitHub
+prints credentials. It does not enable a disabled workflow: while Changelog has
+stopped its schedule because nothing is waiting (see
+[Sweep only while a change is waiting](#sweep-only-while-a-change-is-waiting)),
+every tick is a skip. When a change starts waiting, its event enables the
+schedule and the next tick dispatches a sweep. The existing GitHub
 cron stays as a late backstop; duplicate runs share the existing serial queue.
 
 The driver installs these **user** units after this change is on main. On that
@@ -178,9 +182,10 @@ systemctl --user disable --now changelog-clock.timer
 ```
 
 Stopping the user timer leaves GitHub's cron available. Disabling **Changelog
-schedule** itself prevents this script from dispatching it, too. Do not expect
-the script to restart it; enabling/disabling a real workflow is a separate owner
-or driver action. A failed service retries at the next timer tick, not in a loop.
+schedule** itself prevents this script from dispatching it, too. The script
+never restarts it: Changelog enables the schedule when a change starts waiting
+and disables it after an idle sweep, and the owner can do either by hand as shown
+below. A failed service retries at the next timer tick, not in a loop.
 A successful dispatch only means GitHub accepted the request: inspect its run and
 Changelog output to prove reconciliation completed.
 
@@ -293,7 +298,8 @@ The disable/read/enable sequence closes the idle/event race: if an event enables
 before disable, its ready PR is in the subsequent read; if it enables after
 disable, its enable wins. An event arriving after the read also enables. The
 shared non-cancelling queue remains an additional guard, not the proof of this
-sequence. No new workflow or dispatch trigger is introduced.
+sequence. A sweep started by the outside clock's dispatch is an ordinary sweep
+and runs the same sequence.
 
 An event run that fails for any reason requests enable before reporting its
 failure: with sweeps stopped, only a sweep retries a notice that could not be
@@ -315,7 +321,9 @@ gh workflow enable "Changelog schedule" --repo LLRHook/checksinmyhead
 gh workflow disable "Changelog schedule" --repo LLRHook/checksinmyhead
 ```
 
-Enabling allows future scheduled ticks; it does not dispatch a run. A successful
+Enabling does not start a run by itself. The outside clock's next tick, at most
+15 minutes away while that machine is on, dispatches a sweep; without the clock
+the next run waits for GitHub's cron. A successful
 waiting PR event restarts a manually stopped schedule. To stop all bot activity,
 use the existing off-mode switch and cancel an active run as needed. Enabling
 while idle leads to the next successful idle sweep disabling it again.
@@ -341,8 +349,10 @@ started roughly **6.5–10.5 hours late**, every day. These are measured histori
 facts from driver `evidence/driver/schedule-delay.txt`, not forecasts. GitHub
 [documents delays and dropped scheduled jobs](https://docs.github.com/en/actions/how-tos/troubleshoot-workflows#scheduled-workflows-running-at-unexpected-times).
 Its enable endpoint documents a transition to active, but no bound on the next
-scheduled run after re-enabling; that delay is **unknown**. The driver is measuring
-it. This design adds no timing assumption or alternate scheduler.
+scheduled run after re-enabling; that delay is **unknown**. The idle stop adds
+no timing assumption of its own. The
+[outside clock](#outside-clock-on-the-owners-linux-machine) is the timely path;
+GitHub's cron is the late backstop.
 
 ## Runs, state and recovery
 
@@ -352,8 +362,9 @@ PRs and closures from the last **24 hours**, stopping before old closures. A clo
 missed for longer than a day needs manual notice cleanup. Both workflows retain
 `queue: max` and never cancel a running job. Fork events use an isolated run-ID
 group and are skipped. GitHub permits up to 100 pending runs; ordering and schedule
-timing are best effort. While enabled, a later scheduled sweep can catch dropped/failed events; after an
-idle stop, a missed or failed start event needs a new event or manual enable.
+timing are best effort. While enabled, a later sweep can catch dropped/failed events; after an
+idle stop, a missed or failed start event needs a new event or manual enable,
+because the outside clock skips a disabled schedule.
 Schedules may be disabled after 60 days without activity; monitor successful runs
 and recover in post mode before enabling merges again.
 
@@ -382,7 +393,9 @@ Initial creation needs one message POST and two seed reactions. Returned Discord
 metadata is ignored when comparing the single embed the bot set.
 
 The steady no-reaction budget is **353 GitHub requests/hour**, leaving 647 of
-this repository's shared 1,000-request budget for delivery and other work. The
+this repository's shared 1,000-request budget for delivery and other work. In an
+hour where GitHub's cron also fires all four of its ticks beside the outside
+clock's four, the four extra sweeps add **248 / 44**, for **601 / 118**. The
 bot checks the message's reaction counts before listing users; seed-only reactions
 need no listing. Active reactions, due merges and exceptional recovery cost more.
 Initial posting needs a POST and two seeds. See Discord’s [reaction fields](https://docs.discord.com/developers/resources/message#reaction-object) for counts and super-reaction metadata. A version restart or legacy notice

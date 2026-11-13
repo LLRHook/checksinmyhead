@@ -653,7 +653,8 @@ race without sweeping forever for a PR already found not waiting. Failed PR reco
 prevents stopping. Failed disable/unknown recheck compensates with enable;
 failed enable is visible and may require operator recovery. Dry runs never
 control workflows. Both trusted-main jobs add Actions write to their built-in
-repository token; no other permission, trigger or cron changes. That token can
+repository token; the idle stop changes no other permission, trigger or cron,
+and a sweep dispatched by the external timer stops the same way. That token can
 control repository workflows beyond Changelog, so main-only execution remains
 a security boundary. Dependabot remains exempt. See the operation guide for
 manual enable/disable and the driver's measured schedule delays: the next tick

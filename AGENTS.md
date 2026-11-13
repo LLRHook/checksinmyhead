@@ -40,7 +40,8 @@ use isolated synthetic data for destructive verification.
 ## Changelog review week
 
 The owner's Linux user timer can dispatch the schedule workflow on main every
-15 minutes; GitHub cron remains a backstop. The clock skips disabled workflows.
+15 minutes; GitHub cron remains a backstop. The clock skips the schedule while
+Changelog has it disabled because nothing is waiting, and never enables it.
 Install/operate it only through the driver setup in the Changelog guide; its host
 holds one token limited to Actions on this repository, while Discord and merge
 credentials stay in Actions.
@@ -58,7 +59,8 @@ path, after a counting approval or the full week, no holds and green checks. See
 for stop reactions, clock restarts and pauses. Events handle only their PR; the
 15-minute sweep runs only while a notice is waiting. Waiting events enable it;
 a successful idle sweep disables then rechecks for arriving work. Failed starts
-need a new event or manual enable; GitHub scheduling can be hours late. Treat the state comment as a mirror: do not edit
+need a new event or manual enable; GitHub's own cron can be hours late, so the
+Linux timer is the timely path. Treat the state comment as a mirror: do not edit
 its pointer or record to bypass a hold or advance a deadline. A permitted human
 merge gets an ordinary final notice. PRs both opened and merged by LLRHook are
 audited against Victor's raw author identity, including hand-merges; other authors'
