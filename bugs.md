@@ -1505,3 +1505,15 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Repro / Notes:** Apply each break to dev.sh (repository root) and run python3 scripts/test_local_workflow.py ProbeTests.test_tty_driver_int_interrupts_foreground_flutter; restore dev.sh afterwards. Review log: driver run testflight-1112 evidence/L26/sigint-mutation-tty.log (local, not committed).
 - **Bump:** patch
 - **Status:** open
+
+### [BUG-1794588707] Let Changelog merge an approved change from a pull-request run
+- [ ] **Severity:** med
+- **Area:** automation, delivery
+- **File(s):** ops/changelog/changelog.py (attempt_merge); ops/changelog/test_changelog.py; ops/changelog/README.md
+- **Observation:** In merge mode a pull-request run (pull_request_target) that sees a counting 👍, no stop and every check green still declines to merge. attempt_merge requires GitHub's mergeable_state to be 'clean', and the bot's own in-progress `changelog` job is attached to the PR head, so GitHub reports 'unstable' for as long as that run lasts. Seen live on 2026-11-13 at 16:43Z on PR 197 (events run 43465482821): the PR comment said 'GitHub mergeable_state is unstable; mergeable is True. Check repository rules or wait for GitHub to recalculate.' and the notice said 'vapor tapped 👍, but GitHub isn't ready to take it yet. Changelog will keep checking.' The PR read 'clean' again seconds after the job ended, and a sweep two minutes later merged it. An approved change therefore merges only at a sweep, never at the event that could have merged it.
+- **Expected:** When the only thing between an approved, unheld change and 'clean' is Changelog's own running job, the pull-request run merges it; or, if that cannot be told apart safely, the notice and PR comment say plainly that it goes live at the next sweep instead of pointing the reader at repository rules. Every other non-clean state still blocks. No check gate is weakened: the bot's own check evaluation stays the authority for checks, and GitHub's rules still apply to the merge call.
+- **Req:** FEAT-1794518538 (thumbs-up approval); owner 2026-11-13: "we do need to make that flow automatic"; driver run testflight-1112, ledger E295
+- **Depends on:** none
+- **Repro / Notes:** Offline: a GitHub fake that reports mergeable_state 'unstable' while the current changelog job is the only incomplete check, in merge mode with a counting approval. Live evidence: check-runs on head 876b13c show only `changelog` in progress (16:43:00Z to 16:43:13Z) during the refusal. The current behaviour is safe, nothing merges early; with the outside clock running the cost is a wait of at most one 15-minute tick, and without it the wait is GitHub's own cron (12.5 hours late on 2026-11-13). Not established: whether 'unstable' can also come from a pull-request run queued behind a sweep.
+- **Bump:** patch
+- **Status:** open
