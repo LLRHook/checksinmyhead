@@ -112,6 +112,7 @@ Local workflow CI uses stdlib `python3`; locally use the venv.
 | Local workflow / root | `CASE_REPORT="$REPORT_DIR/local-workflow.json" "$VV_PYTHON" ops/ci/unittest_report.py scripts/test_local_workflow.py` |
 | Ruby / root | `CASE_REPORT="$REPORT_DIR/ruby.json" ruby -r "$PWD/ops/ci/minitest_report.rb" .github/scripts/asc_release_test.rb` |
 | Gate / root | `CASE_REPORT="$REPORT_DIR/gate-tests.json" "$VV_PYTHON" ops/ci/unittest_report.py ops/ci/test_delivery_gate.py` |
+| Changelog / root | `CASE_REPORT="$REPORT_DIR/changelog.json" "$VV_PYTHON" ops/ci/unittest_report.py ops/changelog/test_changelog.py` |
 | iOS / root | `CASE_REPORT="$REPORT_DIR/ios-python.json" "$VV_PYTHON" ops/ci/unittest_report.py ops/ci/test_ios_artifact.py`; `CASE_REPORT="$REPORT_DIR/ios-ruby.json" ruby -r "$PWD/ops/ci/minitest_report.rb" .github/scripts/asc_delivery_test.rb` ([authority](ops/ci/README.md#processed-ios-artifact-authority)) |
 | Live PG authorization/migrations/readiness / `backend` | `go test -race -count=1 -json -timeout=20m -tags=integration ./cmd/bill-service ./internal/bill ./internal/tab ./pkg/database ./migrations ./internal/startup ./internal/readiness ./internal/testpostgres \| tee "$REPORT_DIR/go-postgres.jsonl"` |
 | E2E/a11y/load | No wired runner: FEAT-1793644507, FEAT-1793644512, FEAT-1793644502; manual stages remain |
@@ -130,7 +131,7 @@ or schema/options (even empty). Bounded cleanup drops only owned random schemas,
 never public. Use the runner for current schemas, independent frozen SQL for legacy,
 never models. No skips.
 
-Retain every [PostgreSQL lifecycle, migration, identity and load proof obligation](backend/README.md#postgresql-verification-retention); that section preserves the previous requirements verbatim.
+Retain every [PostgreSQL lifecycle, migration, identity and load proof obligation](backend/README.md#postgresql-verification-retention).
 
 For local workflow changes, also run `python3 scripts/verify_local_lifecycle.py
 --postgres-image sha256:<local-image-id> --output .vv/local-lifecycle-<unique-run>`.
@@ -227,7 +228,7 @@ Retain every [mobile save/reopen, UI and native proof obligation](docs/reviews/2
 ## Appendix A — isolated local stack recipe
 
 Bash from root; block on unknown data. Requires Compose 2.24.4+ for
-`!override` ([port replacement](https://docs.docker.com/reference/compose-file/merge/#replace-value)).
+`!override`.
 Use the production Dockerfile/built viewer. Back up before reset. Select free ports
 before running (e.g. `export VV_API_PORT=22808 VV_WEB_PORT=22310`); use a unique `billington-vv-<lead>-<run>` project. Use `vv_compose`, not `dev.sh`, here.
 
