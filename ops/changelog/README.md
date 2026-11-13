@@ -48,7 +48,7 @@ GitHub's 3000-file cap). Truncated text patches, larger lists or more than 1000
 comparison commits use the **exact current commit** instead. The notice says
 “This is a big change, so any update to it restarts the week.” That clock stays
 stable between runs and can finish; a new head then always restarts it. Transient
-read failures, rate limits and timeouts leave that PR's notice, checks, mirror and
+read failures before publication leave that PR's notice, checks, mirror and
 clock untouched; other PRs proceed and Actions fails for a later retry.
 
 A merge requires a counting approval or the full seven days, plus an open, ready, unheld PR, GitHub's clean mergeability, exact-head
@@ -240,7 +240,9 @@ in Discord. Actual channel-history 403/404 reports that the channel cannot be re
 a hint failure or bot-identity failure does not make that claim. A truly deleted
 notice requires a fresh draft → ready transition and a full new week. Duplicate
 notices require preserving the original and resolving any objection on a duplicate
-before removing it. Failed reads do not write or change clocks. Write failures
+before removing it. Reads that fail before publication preserve prior outputs. A confirmation read
+that fails after publication may leave the changed notice and its new deadline
+already written; its pending approval baseline prevents early approval on retry. Write failures
 report missing Send Messages/Embed Links. Discord 429 honors one numeric retry
 from zero to five seconds; otherwise the operation fails for a later run. An
 unexpected per-PR error logs only the PR number and error type, continues the
@@ -280,8 +282,9 @@ the recorded week. Unknown service exception text is never copied into a comment
 
 Missing/off/unknown mode, missing credentials/channel, invalid API data, HTTP
 failures, pagination limits and unexpected per-PR errors are Actions failures.
-Correct configuration or restore service access and rerun naturally; transient
-failed reads preserve that PR's outputs. A draft with an invalid note gets the
+Correct configuration or restore service access and rerun naturally; reads that fail before publication preserve that PR's outputs. Interrupted
+publication confirmation keeps approvals invalid until a later run establishes
+the baseline; it does not restart an already published deadline. A draft with an invalid note gets the
 repair instruction in its note check before any initial Discord post. A failing
 or missing automatic test after the week is named in Discord; repair CI rather
 than waiving the check.
