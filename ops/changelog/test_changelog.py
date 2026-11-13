@@ -1325,6 +1325,28 @@ resolve\tgithub-actions\tcompleted\tsuccess\ttrue'''
         self.services(gh, dc, ready + bot.WEEK, 'merge')
         self.assertTrue(gh.prs[1]['merged'])
 
+    def test_ready_in_the_timeline_before_the_draft_flag_clears_still_gets_full_week(self):
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW)
+        gh.prs[1]['draft'] = True
+        gh.timeline.append({'event': 'converted_to_draft', 'id': 10})
+        self.services(gh, dc, NOW + timedelta(days=1))
+        # One run still reads the pull request as a draft although its timeline already
+        # shows it ready. That run saves the new ready event; only the saved "cancelled"
+        # flag then makes the next run start a new week.
+        gh.timeline.append({'event': 'ready_for_review', 'id': 11})
+        self.services(gh, dc, NOW + timedelta(days=8), 'merge')
+        gh.prs[1]['draft'] = False
+        ready = NOW + timedelta(days=8, hours=1)
+        self.services(gh, dc, ready, 'merge')
+        self.assertFalse(gh.prs[1]['merged'])
+        record = bot.Discord(FakeAPI(dc), '123456').record(dc.messages[0], 1)
+        self.assertEqual(bot.date(record['start']), ready)
+        self.services(gh, dc, ready + bot.WEEK - timedelta(microseconds=1), 'merge')
+        self.assertFalse(gh.prs[1]['merged'])
+        self.services(gh, dc, ready + bot.WEEK, 'merge')
+        self.assertTrue(gh.prs[1]['merged'])
+
     def test_broken_note_keeps_holders_and_developer_instruction_off_Discord(self):
         gh, dc = ServiceGitHub(), ServiceDiscord()
         self.services(gh, dc, NOW)
@@ -1350,6 +1372,18 @@ resolve\tgithub-actions\tcompleted\tsuccess\ttrue'''
             else:
                 self.assertEqual(status, bot.GITHUB_WAIT)
                 self.assertIn('mergeable_state is ' + str(state), gh.comments[1][0]['body'])
+            self.assertFalse(gh.prs[1]['merged'])
+        # Where Changelog will not merge by itself it must not say it keeps checking.
+        for mode, opener, expected in (('post', 'LLRHook', 'It goes live once the owner switches it on.'),
+                                       ('merge', 'dhaliwalg', 'the owner will put it live by hand.')):
+            gh, dc = ServiceGitHub(), ServiceDiscord()
+            gh.prs[1]['user'] = {'login': opener}
+            self.services(gh, dc, NOW)
+            gh.prs[1].update(mergeable=False, mergeable_state='blocked')
+            self.services(gh, dc, NOW + bot.WEEK, mode)
+            status = visible(dc.messages[0]).split('\n\n')[-1]
+            self.assertIn(expected, status)
+            self.assertNotIn('keep checking', status)
             self.assertFalse(gh.prs[1]['merged'])
         for response in ({'errors': [{'message': 'not for channel readers'}]}, {'data': {'mergePullRequest': {'pullRequest': {'merged': False}}}}):
             gh, dc = ServiceGitHub(), ServiceDiscord()

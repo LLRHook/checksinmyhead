@@ -543,6 +543,8 @@ def attempt_merge(gh, dc, pr, state, fingerprint, ready, message, status, dry_ru
     elif fresh.get('mergeable') is not True or fresh.get('mergeable_state') != 'clean':
         if fresh.get('mergeable_state') == 'dirty':
             return 'The week is up, but it clashes with another change; the author is fixing that.'
+        if mode != 'merge' or pr['user']['login'] != 'LLRHook':
+            return status  # The owner puts this one live by hand and sees GitHub's state there.
         raise MergeBlocked('GitHub mergeable_state is ' + str(fresh.get('mergeable_state')) + '; mergeable is ' + str(fresh.get('mergeable')) + '. Check repository rules or wait for GitHub to recalculate.')
     elif dc.holders(message['id']):
         return "On hold: someone just tapped 🛑. It goes live once every 🛑 is removed."

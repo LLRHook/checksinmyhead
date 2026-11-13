@@ -178,7 +178,10 @@ in a channel where people mostly react; heavy chatter can exhaust this limit eve
 while a PR is a draft. The creation-time stop rule and 20-page cap are unchanged.
 
 Never-posted Dependabot, non-main and tracker-only PRs return before Discord lookup
-and get no comment. Existing notices still finish when a PR becomes exempt. A
+and get no comment. Existing notices still finish when a PR becomes exempt, as
+long as its Changelog comment on the pull request is still there: without that
+comment the bot does not look for a notice of an exempt PR (see the last row of
+the table below). A
 notice cancelled by draft stays unchanged on ordinary hourly runs; marking it ready
 starts a full week from that ready run. A broken posted note shows a short pause
 in Discord with any holders above it; its exact repair instruction stays on GitHub.
@@ -221,6 +224,7 @@ the recorded week. Unknown service exception text is never copied into a comment
 | `Notice too long; holding` (Actions) | Shorten the note/title as applicable; have the owner inspect a bloated saved record. Never trim the record to move a deadline sooner. |
 | `GitHub mergeable_state is …; mergeable is …` | The mirror names the actual final-read state. Wait for recalculation or fix the repository rule/approval/update requirement; only a dirty state indicates a conflict. |
 | `GitHub declined the merge` / `GitHub has not accepted the merge` | Check repository rules and merge-account permissions; keep the existing deadline and let the bot retry. |
+| A notice still says `Goes live` for a change that was retargeted, reduced to tracker files or finished, and the PR has no Changelog comment | The comment was lost or deleted before the PR became exempt, so the bot no longer follows that notice. Nothing can merge from it. Ask a server moderator to delete the notice. |
 | `MERGE IDENTITY INCIDENT` | The mirror and failing note check name the wrong raw author on main. If Changelog merged it, set mode `post` and check whose token it is. Investigate the commit; detection cannot undo it. |
 
 Missing/off/unknown mode, missing credentials/channel, invalid API data, HTTP
