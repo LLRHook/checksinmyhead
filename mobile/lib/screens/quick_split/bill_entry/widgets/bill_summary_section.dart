@@ -117,7 +117,7 @@ class BillSummarySection extends StatelessWidget {
             _buildBreakdownRow(
               context,
               'Total',
-              billData.total,
+              CurrencyFormatter.billTotalForDisplay(billData.total),
               currencyCode: billData.currencyCode,
               isBold: true,
               fontSize: 16,

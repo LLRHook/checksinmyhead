@@ -15,6 +15,7 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 import 'package:checks_frontend/screens/quick_split/bill_entry/models/bill_data.dart';
 import 'package:checks_frontend/services/api_service.dart';
 import 'package:flutter/material.dart';
@@ -143,7 +144,7 @@ class CurrencySection extends StatelessWidget {
                 if (data.total > 0) ...[
                   const SizedBox(height: 4),
                   Text(
-                    '${data.currencyCode} ${data.total.toStringAsFixed(2)} = '
+                    '${data.currencyCode} ${CurrencyFormatter.billTotalForDisplay(data.total).toStringAsFixed(2)} = '
                     '\$${data.usdTotal.toStringAsFixed(2)} USD',
                     style: theme.textTheme.bodySmall,
                   ),

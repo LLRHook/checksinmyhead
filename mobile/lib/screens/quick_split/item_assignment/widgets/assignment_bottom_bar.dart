@@ -111,9 +111,9 @@ class AssignmentBottomBar extends StatelessWidget {
                 ),
                 Semantics(
                   label:
-                      'Total bill: ${CurrencyFormatter.formatCurrency(totalBill, currencyCode: currencyCode)}',
+                      'Total bill: ${CurrencyFormatter.formatBillTotal(totalBill, currencyCode: currencyCode)}',
                   child: Text(
-                    CurrencyFormatter.formatCurrency(
+                    CurrencyFormatter.formatBillTotal(
                       totalBill,
                       currencyCode: currencyCode,
                     ),

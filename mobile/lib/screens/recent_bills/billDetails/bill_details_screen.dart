@@ -64,8 +64,8 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
 
   double get _displayedTotal =>
       widget.showBillTotalsInUSD && _bill.hasUSDValuation
-          ? _bill.usdTotal
-          : _bill.total;
+          ? _bill.displayUSDTotal
+          : _bill.displayTotal;
   String get _displayedCurrencyCode =>
       widget.showBillTotalsInUSD && _bill.hasUSDValuation
           ? 'USD'

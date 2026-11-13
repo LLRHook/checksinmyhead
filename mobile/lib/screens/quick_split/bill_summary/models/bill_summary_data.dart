@@ -18,6 +18,7 @@
 // mobile/lib/screens/quick_split/bill_summary/models/bill_summary_data.dart
 // mobile/lib/screens/quick_split/bill_summary/models/bill_summary_data.dart
 
+import 'package:checks_frontend/screens/quick_split/bill_entry/utils/currency_formatter.dart';
 import 'package:checks_frontend/models/bill_item.dart';
 import 'package:checks_frontend/models/person.dart';
 import 'package:checks_frontend/screens/recent_bills/models/recent_bill_model.dart';
@@ -61,6 +62,9 @@ class BillSummaryData {
     this.exchangeRateDate = '',
     this.exchangeRateSource = 'native-usd',
   });
+
+  double get displayTotal =>
+      CurrencyFormatter.billTotalForDisplay(total, shares: personShares.values);
 
   double get usdTotal => (total * usdExchangeRate * 100).roundToDouble() / 100;
 

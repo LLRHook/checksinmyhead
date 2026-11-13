@@ -78,7 +78,7 @@ class _CurrencyConversionPreviewState extends State<CurrencyConversionPreview> {
                     ],
                   )
                   : Text(
-                    '${CurrencyFormatter.formatCurrency(widget.amount, currencyCode: widget.fromCurrency)} ≈ ${CurrencyFormatter.formatCurrency(widget.amount * rate!, currencyCode: widget.toCurrency)}\n1 ${widget.fromCurrency} = ${rate.toStringAsFixed(6)} ${widget.toCurrency}',
+                    '${CurrencyFormatter.formatBillTotal(widget.amount, currencyCode: widget.fromCurrency)} ≈ ${CurrencyFormatter.formatBillTotal(widget.amount * rate!, currencyCode: widget.toCurrency)}\n1 ${widget.fromCurrency} = ${rate.toStringAsFixed(6)} ${widget.toCurrency}',
                     style: TextStyle(
                       color: colors.onSurface,
                       fontSize: 13,

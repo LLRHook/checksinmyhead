@@ -20,6 +20,56 @@ export function formatMoney(amount: number, currency = "USD"): string {
   }
 }
 
+// Presentation only. Never use this value in a request or an allocation.
+export function billTotalForDisplay(
+  total: number,
+  shares: number[] = [],
+): number {
+  if (
+    !Number.isFinite(total) ||
+    total < 0 ||
+    total * 100 > Number.MAX_SAFE_INTEGER
+  )
+    return total;
+  const rounded = Math.round(total * 100) / 100;
+  let cents = 0;
+  for (const share of shares) {
+    if (!Number.isFinite(share) || share < 0) return total;
+    const shareCents = Math.round(share * 100);
+    const shareNoise = 4 * Number.EPSILON * Math.max(1, share);
+    if (Math.abs(share - shareCents / 100) > shareNoise) return total;
+    cents += shareCents;
+  }
+  const noise = 4 * Number.EPSILON * Math.max(1, total);
+  // Preserve genuine cent disagreements (BUG-1794264955), including each
+  // renderer's previous formatting. Never choose a share sum as the bill total.
+  if (
+    shares.length > 0 &&
+    cents !== Math.round(total * 100) &&
+    Math.abs(cents / 100 - total) <= 0.01 + noise
+  )
+    return total;
+  return rounded;
+}
+
+type BillDisplayAmounts = Pick<
+  Bill,
+  "total" | "display_total" | "display_currency" | "currency_code"
+> & {
+  person_shares: { total: number }[];
+};
+
+export function billDisplayTotal(bill: BillDisplayAmounts): number {
+  const original = bill.currency_code?.trim().toUpperCase() || "USD";
+  const display = bill.display_currency?.trim().toUpperCase() || original;
+  // Shares remain in receipt currency. Never sum native shares into a converted
+  // total or replace a frozen conversion with a fresh rate.
+  return billTotalForDisplay(
+    bill.display_total ?? bill.total,
+    display === original ? bill.person_shares.map((share) => share.total) : [],
+  );
+}
+
 function roundMoney(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }

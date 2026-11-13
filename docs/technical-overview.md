@@ -284,8 +284,28 @@ rate map or redundant ExchangeRate-API adapter remains; ordinary HTTP pooling an
 immutable stored quotes remain. Frozen USD source/date are never display metadata;
 migration 0002 stores separate nullable display day/source/retrieval receipts. Native
 display uses `same_currency` without a market/retrieval timestamp. Historical quotes and
-explicit zero totals are preserved on reads. Tab summaries and share allocation use
-one checked frozen USD audit; sums use checked cents and never display/native foreign
+explicit zero totals are preserved on reads.
+
+Bill-total presentation in Flutter and the web viewer first rounds nonnegative
+receipt totals to integer cents with `round(total * 100) / 100`, matching the Go
+frozen-USD rounding operation. This is presentation only: raw totals, creation
+snapshots, HTTP amounts, stored shares and tab/settlement arithmetic stay unchanged.
+Each surface shows the total its own shares add up to. Phone draft/summary and
+own-bill history use phone allocations; refreshed/imported history and the web
+receive recorded/server allocations. The unchanged guard retains the compatible
+prior total when near-complete cent-exact recorded shares disagree with the rule.
+For USD 0.35 + 0.02 tax + 10% tip (raw 0.40499999999999997), phone surfaces show
+0.41 with phone shares of 0.41; history with server shares and the web show 0.40
+with server shares of 0.40. The phone and web can therefore differ by a cent:
+BUG-1794264955 is visible, not hidden or resolved by this display change.
+Native lazy remaining balances normalize only after some share is paid, preserving
+the previous unclaimed amount (1.01 for 0.34 + 0.58 tax + 25% tip).
+Partial claims never replace the receipt total. Existing currency
+formatting stays in place, including JPY; the receipt policy supports no three-decimal
+currency. Provider-defined display pairs retain their existing formatter precision.
+The shared regression cases live in `testdata/bill_display_totals.json`.
+
+Tab summaries and share allocation use one checked frozen USD audit; sums use checked cents and never display/native foreign
 fallbacks. Missing/inconsistent valuation requires an authorized accounting review,
 without fetching or rewriting history. Mobile `RecentBillsManager` now owns the
 Drift10 save/resume transaction, immutable request and exact-ID checkpoints; Done,

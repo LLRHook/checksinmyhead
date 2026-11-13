@@ -24,7 +24,7 @@ class RecentBillShareUtils {
   static Future<void> shareBill(RecentBillModel bill) async {
     if (bill.identityNeedsReview) {
       final text = StringBuffer(
-        '${bill.billName}\nRecorded receipt; ownership needs review.\nTotal: ${CurrencyFormatter.formatCurrency(bill.total, currencyCode: bill.currencyCode)}\n',
+        '${bill.billName}\nRecorded receipt; ownership needs review.\nTotal: ${CurrencyFormatter.formatCurrency(bill.displayTotal, currencyCode: bill.currencyCode)}\n',
       );
       for (var i = 0; i < bill.recordedShares.length; i++) {
         final row = bill.recordedShares[i];

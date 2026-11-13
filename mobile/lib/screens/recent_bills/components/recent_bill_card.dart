@@ -341,8 +341,8 @@ class _RecentBillCardState extends State<RecentBillCard> {
                                   CurrencyFormatter.formatCurrency(
                                     widget.showBillTotalsInUSD &&
                                             widget.bill.hasUSDValuation
-                                        ? widget.bill.usdTotal
-                                        : widget.bill.total,
+                                        ? widget.bill.displayUSDTotal
+                                        : widget.bill.displayTotal,
                                     currencyCode:
                                         widget.showBillTotalsInUSD &&
                                                 widget.bill.hasUSDValuation

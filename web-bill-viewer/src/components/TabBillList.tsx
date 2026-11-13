@@ -3,7 +3,7 @@
 import { FaChevronDown, FaReceipt } from "react-icons/fa6";
 import { useCollapsible } from "@/hooks/useCollapsible";
 import type { Bill } from "@/lib/api";
-import { formatMoney } from "@/lib/currency";
+import { billDisplayTotal, formatMoney } from "@/lib/currency";
 
 interface TabBillListProps {
   bills: Bill[];
@@ -37,7 +37,7 @@ function BillCard({ bill, tabToken }: { bill: Bill; tabToken: string }) {
         <div className="flex items-center gap-3">
           <span className="text-lg font-bold font-mono text-[var(--accent)] dark:text-white">
             {formatMoney(
-              bill.display_total ?? bill.total,
+              billDisplayTotal(bill),
               bill.display_currency ?? bill.currency_code ?? "USD",
             )}
           </span>

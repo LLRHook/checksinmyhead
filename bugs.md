@@ -947,7 +947,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
   - 2026-11-12 Review: Driver accepted L16 review option B and F2/F3; corrected earlier attribution: the driver, not Victor, approved the instruction-opacity change.
 
 ### [BUG-1794331912] Show half-cent bill totals the same way their shares add up
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** mobile, web, accounting
 - **File(s):** mobile/lib; web-bill-viewer/src/components; backend/pkg/models/bill.go
 - **Observation:** A bill whose stored total is 24.885 renders as $24.88 on the phone summary, in Recent Bills and on the web page. Its shares sum to $24.89, and the containing tab total shows $24.89. Money is carried as float64/double end to end, so a half-cent total rounds down in display.
@@ -956,7 +956,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/gui-walkthrough/NOTES.md (bill 66); $10 item split 3.33x3. Related symptom on an unmerged branch: BUG-1794264955 (device vs published odd cents).
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** fixed-pending-migration
+- **Fix:** Display-only Flutter and web bill-total presentation uses round(total * 100) / 100 without changing stored or transmitted amounts. Each surface uses its own available shares: phone totals match phone allocations, while surfaces with a conflicting near-complete recorded/server allocation retain its compatible prior total through the unchanged guard. For USD 0.35 + 0.02 tax + 10% tip (raw 0.40499999999999997), phone summary/footer/copied text and own-bill history show 0.41 with phone shares of 0.41; imported/refreshed history and web show 0.40 with server shares of 0.40. This visible client/server cent difference remains BUG-1794264955. Native web lazy totals normalize only when some share is paid, preserving unclaimed 1.01 while correcting a partly-paid 0.38499999999999995 minus 0.11 to 0.27. Shared surface and mutation regressions cover the rule, unchanged guard and callers.
+- **Docs:** docs/technical-overview.md states the driver-approved per-surface boundary with USD 0.35 + 0.02 tax + 10% tip (phone 0.41, server/web 0.40), plus the paid-only native lazy normalization. API contracts unchanged. Expanded shared-fixture UI tests and review mutations are registered in ops/ci/case_manifest.json.
 
 ### [BUG-1794331913] Align the VERIFICATION.md recipe with CI and the local viewer
 - [ ] **Severity:** med
@@ -1175,6 +1178,8 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** open
 - **Log:**
   - 2026-11-09 Sighting: Simulator inspection (iPhone 17, iOS 27.2, local stack at 083567a): a USD 128.00 receipt for six people showed Alex 44.81 and Pat 6.39 on the phone (saved and after relaunch); after attaching it to a tab and finalizing, the settlement rows read Alex 44.80 and Pat 6.40. Totals stayed 128.00. Screenshots: .vv/ui-inspection-20261109/main/A2-06-shares.png and A5-12-relaunch-finalized.png.
+  - 2026-11-12 Sighting: L20 narrowing, 2026-11-12: baseline f13409d177d237291785d333c6b2d565b65b8108 accepts HTTP creation with USD subtotal 0.75, tax 0.12, 18% tip 0.135, total 1.005 (binary scaled cents 100.49999999999999). Flutter AssignmentUtils.applyLargestRemainder produces 1.00; server calculatePersonShares.rounded rounds subtotal/tax/tip separately and persists a 1.01 native share; creation USDTotal and FrozenUSDTotalCents remain 1.00 / 100 cents, used by tab totals. Confirmed using real creation validation plus guardCreationInsert and existing in-memory repository fixture, HTTP 201; no production data or services used. Evidence: .git/agent-handoffs/driver-testflight-1112/evidence/L20/allocation-boundary-create.log, allocation-boundary-flutter.jsonl, L20_allocation_boundary_probe_test.go, L20_allocation_boundary_probe_test.dart. BUG-1794331912 display fix must preserve this mismatch; no allocation, stored/transmitted amount, or frozen audit may be changed by L20.
+  - 2026-11-12 Sighting: L20 round 2 Sighting accepted by the driver: USD subtotal 0.35, tax 0.02, 10% tip produces raw 0.40499999999999997. Phone AssignmentUtils target is 0.41; server per-component rounding stores 0.40 (HTTP 201 in L24 go-server-shares-probe.log). With the display fix, phone summary, assignment footer, copied text and own-bill Recent Bills show 0.41 alongside phone shares of 0.41. Recent Bills with imported/refreshed server shares and the web header retain 0.40 alongside server shares of 0.40; feeding server shares into RecentBillModel simulates the refresh, not an end-to-end refresh. This is the existing accounting-rule difference becoming visible, not new arithmetic. M2 boundary is per-surface consistency with its own shares, not unchanged totals on every surface. Rule and guard remain unchanged; no stored or transmitted amounts changed. Evidence: .git/agent-handoffs/driver-testflight-1112/leads/L24.md, evidence/L24/flutter-probe-head.log, evidence/L24/go-server-shares-probe.log, and evidence/L20/round2/.
   - 2026-11-12 Sighting: Web viewer, receipt of $0.35 + $0.02 tax + 10% tip claimed and paid in full through the lazy flow: the page still shows 'Remaining $0.01', because the remaining balance starts from $0.41 while the server shares add up to $0.40. Present before and after BUG-1794331912 (review lead L24, 2026-11-12). Related display note once BUG-1794331912 lands: the phone summary total reads $24.89 for the walkthrough receipt while its subtotal, tax and tip rows ($19.75, $1.58, $3.55) add up to $24.88.
 
 ### [BUG-1794264956] Remove or gate the second TestFlight uploader outside the delivery gate
