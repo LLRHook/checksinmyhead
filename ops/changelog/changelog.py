@@ -334,10 +334,10 @@ class GitHub:
             'authorEmail': AUTHOR[1], 'commitHeadline': pr['title'] + ' (#' + str(pr['number']) + ')',
             'commitBody': ''}}})
         if result.get('errors'):
-            raise MergeBlocked('GitHub declined the merge. Check repository rules and the merge account permissions.')
+            raise MergeBlocked('GitHub declined the merge; mergeable_state is ' + str(pr.get('mergeable_state')) + '. Check repository rules and the merge account permissions.')
         merged = result['data']['mergePullRequest']['pullRequest']
         if not merged['merged']:
-            raise MergeBlocked('GitHub has not accepted the merge. Check repository rules and retry on a later run.')
+            raise MergeBlocked('GitHub has not accepted the merge; mergeable_state is ' + str(pr.get('mergeable_state')) + '. Check repository rules and retry on a later run.')
         commit = merged['mergeCommit']
         self.audit(dict(pr, merge_commit_sha=commit['oid']))
         return commit['oid']

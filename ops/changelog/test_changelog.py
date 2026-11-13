@@ -493,7 +493,7 @@ class ChangelogAdapterTests(unittest.TestCase):
 
     def test_merge_api_errors_are_safe_and_not_retried(self):
         api = FakeAPI(lambda *args: {'errors': [{'message': 'tainted-secret-response'}]})
-        with self.assertRaisesRegex(bot.Refused, r'^GitHub declined the merge\.'):
+        with self.assertRaisesRegex(bot.Refused, r'^GitHub declined the merge;'):
             bot.GitHub(api, api).merge(pull())
         self.assertEqual(len(api.calls), 1)
 
@@ -1361,6 +1361,7 @@ resolve\tgithub-actions\tcompleted\tsuccess\ttrue'''
             bot.reconcile(bot.GitHub(FakeAPI(decline), FakeAPI(decline)), bot.Discord(FakeAPI(dc), '123456'), 1, 'merge', NOW + bot.WEEK)
             self.assertTrue(visible(dc.messages[0]).endswith(bot.GITHUB_WAIT))
             self.assertIn('GitHub', gh.comments[1][0]['body'])
+            self.assertIn('mergeable_state is clean', gh.comments[1][0]['body'])
             self.assertNotIn('not for channel readers', gh.comments[1][0]['body'])
 
     def test_mirror_deadline_is_written_once_and_recovery_messages_are_documented(self):
