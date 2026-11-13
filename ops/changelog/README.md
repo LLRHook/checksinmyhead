@@ -102,7 +102,8 @@ is interrupted, the next run conservatively invalidates present reactions again.
 Valid records recover through deleted comments or lost posting replies without
 forgetting which version was shown. Duplicates and damaged records do not approve.
 The final fresh message read rechecks the exact notice record, 🛑 and counting 👍
-before merging; removing approval then prevents an early merge.
+before merging. After listing approvals, it takes another fresh message snapshot
+and reads stops last; an empty approval count there also prevents an early merge.
 
 ## Driver setup: main-only environment
 

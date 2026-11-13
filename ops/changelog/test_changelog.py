@@ -113,6 +113,9 @@ class FakeDiscord:
     def stops(self, message):
         return self.holders(message['id'])
 
+    def has_approval_reactions(self, message):
+        return bool(self.thumbs)
+
     def approvers(self, message):
         return self.thumbs.copy()
 
@@ -1536,11 +1539,8 @@ resolve\tgithub-actions\tcompleted\tsuccess\ttrue'''
                         result['embeds'][0].update(bot.state_embed(1, record))
                 return result
             gh.now = dc.now = NOW + timedelta(days=1)
-            if changed == 'approval-policy':
+            with self.assertRaises(bot.Refused):
                 bot.reconcile(bot.GitHub(FakeAPI(gh), FakeAPI(gh)), bot.Discord(FakeAPI(changed_record), '123456'), 1, 'merge', gh.now)
-            else:
-                with self.assertRaises(bot.Refused):
-                    bot.reconcile(bot.GitHub(FakeAPI(gh), FakeAPI(gh)), bot.Discord(FakeAPI(changed_record), '123456'), 1, 'merge', gh.now)
             self.assertFalse(gh.prs[1]['merged'])
 
         # Preserve an observed removal even when the person re-adds at the final read.
@@ -1571,6 +1571,33 @@ resolve\tgithub-actions\tcompleted\tsuccess\ttrue'''
         gh.now = dc.now = NOW + timedelta(days=1)
         with self.assertRaises(bot.Refused):
             bot.reconcile(bot.GitHub(FakeAPI(gh), FakeAPI(gh)), bot.Discord(FakeAPI(inconsistent_stop), '123456'), 1, 'merge', gh.now)
+        self.assertFalse(gh.prs[1]['merged'])
+
+        # Stops are read after approval listing, so a newly arrived stop wins.
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW); self.approve(dc)
+        original = dc.__call__; reads = 0
+        def stop_during_approval_read(method, path, body):
+            nonlocal reads
+            if method == 'GET' and '/reactions/' in path and '%F0%9F%91%8D' in path and 'type=0' in path:
+                reads += 1
+                if reads == 2: dc.users[dc.messages[0]['id']] = [{'id': '43', 'username': 'Alex'}]
+            return original(method, path, body)
+        gh.now = dc.now = NOW + timedelta(days=1)
+        bot.reconcile(bot.GitHub(FakeAPI(gh), FakeAPI(gh)), bot.Discord(FakeAPI(stop_during_approval_read), '123456'), 1, 'merge', gh.now)
+        self.assertFalse(gh.prs[1]['merged'])
+        self.assertIn('On hold: Alex', visible(dc.messages[0]))
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW); self.approve(dc)
+        original = dc.__call__; reads = 0
+        def remove_at_last_snapshot(method, path, body):
+            nonlocal reads
+            if method == 'GET' and path == '/channels/123456/messages/' + dc.messages[0]['id']:
+                reads += 1
+                if reads == 3: dc.approvals.clear()
+            return original(method, path, body)
+        gh.now = dc.now = NOW + timedelta(days=1)
+        bot.reconcile(bot.GitHub(FakeAPI(gh), FakeAPI(gh)), bot.Discord(FakeAPI(remove_at_last_snapshot), '123456'), 1, 'merge', gh.now)
         self.assertFalse(gh.prs[1]['merged'])
 
     def test_approval_is_invalidated_by_push_then_regiven_or_second_person(self):

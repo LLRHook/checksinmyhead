@@ -470,6 +470,9 @@ class Discord:
         require(users, 'Stop reactions changed during the read; retry safely')
         return users
 
+    def has_approval_reactions(self, message):
+        return any(self.others(message, emoji) for emoji in THUMBS)
+
     def approvers(self, message):
         users = {}
         for emoji in THUMBS:
@@ -622,10 +625,6 @@ def attempt_merge(gh, dc, pr, state, fingerprint, ready, message, status, dry_ru
             return status  # The owner puts this one live by hand and sees GitHub's state there.
         raise MergeBlocked('GitHub mergeable_state is ' + str(fresh.get('mergeable_state')) + '; mergeable is ' + str(fresh.get('mergeable')) + '. Check repository rules or wait for GitHub to recalculate.')
     final = dc.fresh(pr, message)
-    stops = dc.stops(final)
-    if stops:
-        state['holds'] = {uid: state['holds'].get(uid, stamp(now)) for uid in sorted(stops)[:8]}
-        return waiting_status(pr, state, None, stops, False, now)
     record = dc.record(final, pr['number'])
     require(record.get('fingerprint') == fingerprint and record.get('ready') == ready and record.get('start') == state['start'],
             'Notice changed during the final read; retry safely')
@@ -633,6 +632,14 @@ def attempt_merge(gh, dc, pr, state, fingerprint, ready, message, status, dry_ru
     initial = dc.record(message, pr['number'])
     proof_changed = any(record.get(key) != initial.get(key) for key in ('approval_policy', 'stale_approvals', 'approval_overflow', 'approval_reset'))
     approved = prepare_approvals(state, dc.approvers(final), reset=proof_changed)
+    last = dc.fresh(pr, message)
+    require(dc.record(last, pr['number']) == record, 'Notice changed during the final read; retry safely')
+    stops = dc.stops(last)
+    if stops:
+        state['holds'] = {uid: state['holds'].get(uid, stamp(now)) for uid in sorted(stops)[:8]}
+        return waiting_status(pr, state, None, stops, False, now)
+    if not dc.has_approval_reactions(last):
+        approved = prepare_approvals(state, {})
     if now < date(state['start']) + WEEK and not approved:
         return waiting_status(pr, state, None, {}, False, now)
 
