@@ -87,7 +87,7 @@ cannot authorize publication. Use these exact row selections (`REPORT_DIR` absol
 
 | Row | Kind and report basename(s), in order |
 |---|---|
-| automation | `cases:gate-tests.json cases:ruby.json cases:ios-python.json cases:ios-ruby.json` |
+| automation | `cases:gate-tests.json cases:ruby.json cases:ios-python.json cases:ios-ruby.json cases:changelog.json` |
 | local-workflow | `cases:local-workflow.json` |
 | backend | `go:go-default.jsonl` |
 | postgres | `go:go-postgres.jsonl` |
@@ -342,3 +342,13 @@ transports; Linux wheel acquisition, native signing and live GitHub/ASC delivery
 remain NOT RUN. The initial hosted PostgreSQL failure and current B numerical,
 runtime, resource and whole-release RED gates remain open. Integration evidence:
 [November 5 note](../../docs/reviews/2026-11-05-ios-delivery-integration.md).
+
+## Changelog workflow owner
+
+The separate [Changelog bot](../changelog/README.md) has exactly two pinned entry
+workflows, a fork-isolated noncancelling queue, a main-only `changelog` environment without
+deployment records, trusted-main-only checkout and API-only PR
+reads. Its note-check/comment job tokens have exactly contents read, pull-requests
+write and checks write. They cannot publish or use the delivery gate as a merge
+waiver. The automation row also requires `changelog.json`; all existing validation
+and publication assertions remain in force.
