@@ -601,3 +601,27 @@ Widget and unit tests for the mobile app.
 ```bash
 cd mobile && flutter test
 ```
+
+## Changelog review automation
+
+Changelog runs trusted-main Python standard library clients in two Actions
+workflows. An event handles its PR; the hourly sweep handles open changes and the
+last day of closures. PR code is never executed. One Discord embed shows the PR
+title, note and status, storing its full clock/change record in the title link.
+The readable GitHub mirror supplies only an untrusted anchored message-ID hint.
+The configured channel and bot author are checked; missing/invalid hints trigger
+bounded backward history to the PR creation time, without privileged intents.
+A safety cap fails closed and asks for a new PR with a full new week.
+
+After seven days, squash merging still requires no normal or super stop reactions,
+exact-head successes for Required delivery checks and Changelog note, no other
+incomplete/failing checks (optional skipped/neutral results are allowed), clean
+mergeability and a separate Victor-owned token with a matching PR opener. The
+running changelog Actions job is excluded. Human merges get ordinary final notices;
+merged PRs whose opener and merger are both LLRHook receive a raw-author audit,
+including hand-merges and retries after a lost merge reply. Another author's PR is
+never audited. Operational alarms stay on GitHub.
+The built-in Actions token cannot merge. Secrets belong to the main-only changelog
+environment. Setup begins in post mode; enabling merge mode requires the separate
+token, with a person checking the first automatic merge's author and main CI. See
+[Changelog operation and trust boundaries](../ops/changelog/README.md).
