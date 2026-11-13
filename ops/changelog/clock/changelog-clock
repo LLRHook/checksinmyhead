@@ -1,0 +1,6 @@
+#!/bin/sh
+fail() { printf '%s\n' "$1" >&2; exit 1; }
+[ "$#" -eq 0 ] || fail 'Changelog clock takes no arguments'
+state=$(gh api repos/LLRHook/checksinmyhead/actions/workflows/changelog-schedule.yml --jq .state </dev/null 2>/dev/null) || fail 'Changelog clock could not read workflow state'
+[ "$state" = active ] || exit 0
+gh workflow run changelog-schedule.yml -R LLRHook/checksinmyhead --ref main </dev/null >/dev/null 2>&1 || fail 'Changelog clock could not dispatch the sweep'

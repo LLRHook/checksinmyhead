@@ -105,6 +105,89 @@ The final fresh message read rechecks the exact notice record, 🛑 and counting
 before merging. After listing approvals, it takes another fresh message snapshot
 and reads stops last; an empty approval count there also prevents an early merge.
 
+## Outside clock on the owner’s Linux machine
+
+GitHub had started **zero** sweeps by **14:28Z on 13 November 2026**, after the
+first tick was due at **02:17Z**. A reaction or deadline cannot be handled until
+an event or sweep actually runs. The driver chose to move only the clock to the
+owner's Arch Linux (Omarchy) machine: the controller still runs in Actions, with
+Discord and merge credentials kept in the existing main-only environment. No
+Discord/merge token belongs on the machine; a personal token also cannot create
+the controller's GitHub App check runs.
+
+The three files in [clock/](clock/) are `changelog-clock`,
+`changelog-clock.service` and `changelog-clock.timer`. The POSIX sh script uses
+`gh api` to read **Changelog schedule**'s state. Only `active` dispatches it, once,
+on **main**; every other state exits successfully without dispatch. Read/dispatch
+failures return non-zero with one safe stderr line for the journal. The script
+accepts no arguments or stdin, fixes the repository/workflow/ref, and never
+prints credentials. It does not enable a disabled workflow. It works with a
+future idle-stop implementation without depending on it. The existing GitHub
+cron stays as a late backstop; duplicate runs share the existing serial queue.
+
+The driver installs these **user** units after this change is on main. On that
+Linux machine, from the repository root (commands shown, not run by this change):
+
+```sh
+mkdir -p ~/.local/bin ~/.config/systemd/user
+install -m 755 ops/changelog/clock/changelog-clock ~/.local/bin/changelog-clock
+install -m 644 ops/changelog/clock/changelog-clock.service ops/changelog/clock/changelog-clock.timer ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now changelog-clock.timer
+loginctl enable-linger
+```
+
+The timer requests a run at minutes **07, 22, 37 and 52** of each hour. Lingering
+keeps the user's manager running while logged out; the machine must still be
+powered on and connected. systemd's normal timer accuracy and GitHub's dispatch
+queue add delay, so this is not an exact response-time guarantee. No catch-up
+queue or controller is installed by the repository change.
+
+Use the owner's existing `gh` login, or supply `GH_TOKEN` privately to the user
+service environment. A fine-grained token needs **Actions read and write on
+LLRHook/checksinmyhead only**, with no other selected permissions (GitHub's
+mandatory metadata access is automatic). Do not put a token in these unit files,
+command arguments, the repository, journal or a chat. A login/credential store
+must work for the user manager while logged out; a shell's exported variable is
+not automatically the service's environment. Credential provisioning and testing
+that context belong to the driver. GitHub documents the
+[workflow state read](https://docs.github.com/en/rest/actions/workflows#get-a-workflow)
+and [dispatch permission](https://docs.github.com/en/rest/actions/workflows#create-a-workflow-dispatch-event).
+
+To see timer activity and verify an actual run reached Actions:
+
+```sh
+systemctl --user list-timers
+journalctl --user -u changelog-clock
+gh run list --repo LLRHook/checksinmyhead --workflow changelog-schedule.yml
+```
+
+To stop this machine's clock:
+
+```sh
+systemctl --user disable --now changelog-clock.timer
+```
+
+Stopping the user timer leaves GitHub's cron available. Disabling **Changelog
+schedule** itself prevents this script from dispatching it, too. Do not expect
+the script to restart it; enabling/disabling a real workflow is a separate owner
+or driver action. A failed service retries at the next timer tick, not in a loop.
+A successful dispatch only means GitHub accepted the request: inspect its run and
+Changelog output to prove reconciliation completed.
+
+The new [manual trigger](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow)
+also lets anyone with repository write access start a sweep. A dispatch on any
+ref except `refs/heads/main` is refused by the controller **before any API call**;
+the existing environment restriction to main withholds secrets on other refs.
+Both protections remain necessary. No dispatch inputs, new job permissions or
+PR-code execution are added. The events workflow has no dispatch trigger.
+
+The Mac offline tests parse the units and exercise a stub `gh`; they do not run
+systemd. The driver must run `systemd-analyze --user verify` on Linux, verify
+logout/linger and the service's authentication/PATH, then observe two consecutive
+timer ticks and their completed Actions sweeps. See
+[systemd timers](https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html).
+
 ## Driver setup: main-only environment
 
 These are driver decisions. No setup, token inspection or real Discord/merge call
@@ -142,7 +225,7 @@ One variable is the switch: **off** makes no controller API calls; **post** trac
 notices, holds and deadlines without merging; **merge** enables merging. Missing
 or unknown mode behaves as off and fails loudly in the run log. Missing Discord
 setup also stops. To stop an already-running job, also cancel that run; a changed
-variable cannot revoke a value it already read. There is no dispatch trigger.
+variable cannot revoke a value it already read. The schedule workflow also accepts a no-input dispatch on main for the outside clock below.
 
 Only the separate PAT merges; the built-in token cannot. The bot requires its
 `/user` to report login **LLRHook** and profile name **Victor Ivanov**. Automatic

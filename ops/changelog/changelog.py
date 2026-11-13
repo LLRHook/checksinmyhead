@@ -798,7 +798,9 @@ def main():
     args = parser.parse_args()
     env = os.environ
     require(env.get('GITHUB_REPOSITORY') == REPO, 'Wrong repository')
-    require(env.get('GITHUB_EVENT_NAME') in ('pull_request_target', 'schedule'), 'Wrong event')
+    require(env.get('GITHUB_EVENT_NAME') in ('pull_request_target', 'schedule', 'workflow_dispatch'), 'Wrong event')
+    if env['GITHUB_EVENT_NAME'] == 'workflow_dispatch':
+        require(env.get('GITHUB_REF') == 'refs/heads/main', 'Changelog dispatch requires refs/heads/main; no API calls made')
     require(env.get('CHANGELOG_MODE') in ('post', 'merge'), 'Changelog OFF or unconfigured: no API calls made')
     require(env.get('GITHUB_TOKEN') and env.get('CHANGELOG_DISCORD_BOT_TOKEN'), 'Missing API credentials: no API calls made')
     require(re.fullmatch(r'[1-9][0-9]{5,24}', env.get('CHANGELOG_DISCORD_CHANNEL_ID', '')), 'Missing/invalid CHANGELOG_DISCORD_CHANNEL_ID')

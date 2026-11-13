@@ -1,0 +1,9 @@
+[Unit]
+Description=Check Changelog every fifteen minutes
+
+[Timer]
+OnCalendar=*:07,22,37,52
+Unit=changelog-clock.service
+
+[Install]
+WantedBy=timers.target

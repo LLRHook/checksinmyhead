@@ -1,0 +1,6 @@
+[Unit]
+Description=Start a Changelog sweep when its workflow is active
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/changelog-clock
