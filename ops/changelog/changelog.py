@@ -1,4 +1,4 @@
-"""Changelog: trusted-main, API-only Discord notice and seven-day squash gate.
+"""Changelog: trusted-main, API-only Discord notice and approval-or-seven-day squash gate.
 
 No PR code is fetched or executed. All network mutations pass through API.request;
 --dry-run makes that boundary read-only.
@@ -21,6 +21,8 @@ import urllib.request
 REPO = 'LLRHook/checksinmyhead'
 AUTHOR = ('Victor Ivanov', 'victor.n.ivanov@gmail.com')
 STOP = '🛑'
+APPROVE = '👍'
+THUMBS = (APPROVE,) + tuple(APPROVE + chr(tone) for tone in range(0x1f3fb, 0x1f400))
 WEEK = timedelta(days=7)
 COMMENT = '<!-- changelog:state:v1 -->'
 START, END = '<!-- changelog:start -->', '<!-- changelog:end -->'
@@ -420,26 +422,59 @@ class Discord:
             before = batch[-1]['id']
         raise NoticeProblem('There are too many messages to find the original notice safely. Close this pull request and open the change as a new one; it will get a full new week. Keep any unresolved objection in its description.')
 
-    def holders(self, message):
+    def holders(self, message, emoji=STOP, people=False):
         users = {}
+        reaction_name = 'approval' if people else 'stop'
         for kind in (0, 1):
             after = ''
             for _ in range(100):
-                path = self.root + '/' + message + '/reactions/' + urllib.parse.quote(STOP) + f'?limit=100&type={kind}'
+                path = self.root + '/' + message + '/reactions/' + urllib.parse.quote(emoji) + f'?limit=100&type={kind}'
                 try:
                     batch = self.api.request('GET', path + ('&after=' + after if after else ''))
                 except HTTPFailure as exc:
                     if exc.status in (403, 404):
-                        raise NoticeProblem('Changelog cannot read the stop reactions. Ask the owner to restore channel access.') from None
+                        raise NoticeProblem('Changelog cannot read the ' + reaction_name + ' reactions. Ask the owner to restore channel access.') from None
                     raise
                 for user in batch:
-                    if user['id'] != self.bot:
+                    if user['id'] != self.bot and not (people and user.get('bot')):
+                        if people:
+                            require(isinstance(user['id'], str) and re.fullmatch('[0-9]{1,24}', user['id']), 'Invalid approval actor; retry safely')
                         users[user['id']] = safe(user.get('global_name') or user['username'])[:60]
                 if len(batch) < 100:
                     break
                 after = batch[-1]['id']
             else:
-                raise NoticeProblem('Too many stop reactions to read safely. Ask the owner to check this notice.')
+                raise NoticeProblem('Too many ' + reaction_name + ' reactions to read safely. Ask the owner to check this notice.')
+        return users
+
+    def fresh(self, pr, message):
+        fresh = self.api.request('GET', self.root + '/' + message['id'])
+        require(fresh['id'] == message['id'] and fresh['author']['id'] == self.bot and fresh.get('channel_id') == self.channel and
+                self.record(fresh, pr['number']) is not None, 'Notice changed during the final read; retry safely')
+        return fresh
+
+    @staticmethod
+    def others(message, emoji):
+        # Missing legacy count metadata is not evidence of an empty reaction.
+        for reaction in message.get('reactions', []):
+            if reaction['emoji'].get('id') is None and reaction['emoji']['name'] == emoji:
+                count = reaction.get('count')
+                if type(count) is not int or count > int(bool(reaction.get('me'))) + int(bool(reaction.get('me_burst'))):
+                    return True
+        return False
+
+    def stops(self, message):
+        if not self.others(message, STOP):
+            return {}
+        users = self.holders(message['id'])
+        require(users, 'Stop reactions changed during the read; retry safely')
+        return users
+
+    def approvers(self, message):
+        users = {}
+        for emoji in THUMBS:
+            if self.others(message, emoji):
+                users.update(self.holders(message['id'], emoji, people=True))
         return users
 
     def post(self, pr, state, text, message=None):
@@ -507,7 +542,37 @@ def prepare_state(pr, old, fingerprint, ready, text, current, now):
     return state, restarted
 
 
-def waiting_status(pr, state, error, current, restarted, now):
+def prepare_approvals(state, current, reset=False):
+    stale = state.get('stale_approvals')
+    known = (type(state.get('approval_policy')) is int and state['approval_policy'] == 1 and type(stale) is list and len(stale) <= 8 and
+             all(isinstance(uid, str) and re.fullmatch('[0-9]{1,24}', uid) for uid in stale) and
+             type(state.get('approval_overflow')) is bool and type(state.get('approval_reset')) is bool)
+    reset = reset or not known or state.get('approval_reset', False)
+    stale = set(current) if reset else set(stale) & current.keys()
+    overflow = len(stale) > 8 or bool(known and state['approval_overflow'] and current)
+    if overflow:
+        stale = set(current)
+    state.update(approval_policy=1, stale_approvals=sorted(stale)[:8], approval_overflow=overflow, approval_reset=reset)
+    return {} if reset or overflow else {uid: current[uid] for uid in sorted(current) if uid not in stale}
+
+
+def approval_names(approved):
+    return clip(', '.join(approved[uid] for uid in sorted(approved)[:8]), 300)
+
+
+def approval_status(names, reason, check=''):
+    if reason == 'checks':
+        return names + ' tapped 👍. It goes live as soon as an automatic test (' + safe(check) + ') passes, unless someone taps 🛑.'
+    if reason == 'conflict':
+        return names + ' tapped 👍, but it clashes with another change; the author is fixing that.'
+    if reason == 'github':
+        return names + " tapped 👍, but GitHub isn't ready to take it yet. Changelog will keep checking."
+    if reason == 'other':
+        return names + ' tapped 👍. Someone else wrote this one, so the owner will put it live by hand.'
+    return names + ' tapped 👍. It goes live once the owner switches it on. Tapping 🛑 still stops it.'
+
+
+def waiting_status(pr, state, error, current, restarted, now, approved=None):
     if pr['draft']:
         return "Back to work in progress: the wait is off. It gets a fresh week when it's shared again."
     ahead = now < date(state['start']) + WEEK
@@ -518,49 +583,79 @@ def waiting_status(pr, state, error, current, restarted, now):
         names = ', '.join(current[uid] + ' tapped 🛑 (' + local_time(state['holds'][uid], 'R') + ')' for uid in state['holds'])
         ending = "It won't go live until every 🛑 is removed; removing one doesn't change the date." if ahead else 'It goes live once every 🛑 is removed.'
         lines.append('On hold: ' + clip(names, 450) + '. ' + ending)
-        if not ahead and not error:
-            return '\n'.join(lines)
+        if error:
+            lines.append("Paused: the author needs to fix this change's description.")
+        elif ahead:
+            deadline = stamp(date(state['start']) + WEEK)
+            lines.append('Goes live ' + local_time(deadline) + ' (' + local_time(deadline, 'R') + ') unless someone stops it.')
+        return '\n'.join(lines)
     if error:
-        return '\n'.join(lines + ["Paused: the author needs to fix this change's description."])
-    if not current and not ahead:
+        return "Paused: the author needs to fix this change's description."
+    if approved:
+        return approval_status(approval_names(approved), 'other' if pr['user']['login'] != 'LLRHook' else 'post')
+    if not ahead:
         if pr['user']['login'] != 'LLRHook':
             return 'The week is up. Someone else wrote this one, so the owner will put it live by hand.'
         return 'The week is up. It goes live once the owner switches it on. Tapping 🛑 still stops it.'
+    if state.get('stale_approvals') or state.get('approval_overflow'):
+        lines = ['The change was updated, so it needs a fresh 👍. If you approved it before, remove your 👍 and tap it again.'] + [line for line in lines if line != 'The change was updated, so the week starts again.']
     deadline = stamp(date(state['start']) + WEEK)
-    lines += ['Goes live ' + local_time(deadline) + ' (' + local_time(deadline, 'R') + ') unless someone stops it.',
-              "Tap 🛑 to stop it. 👍 says thanks but doesn't speed it up."]
+    lines += ['Goes live as soon as one of you taps 👍, or on ' + local_time(deadline) + ' (' + local_time(deadline, 'R') + ') if nobody stops it.',
+              'Tap 👍 to approve it. Tap 🛑 to stop it.']
     return '\n'.join(lines)
 
 
-def attempt_merge(gh, dc, pr, state, fingerprint, ready, message, status, dry_run, mode):
+def attempt_merge(gh, dc, pr, state, fingerprint, ready, message, status, dry_run, mode, now, approved):
     fresh = gh.pr(pr['number'])
     if (not eligible(fresh) or fresh['draft'] or fresh['state'] != 'open' or
             fresh['head']['sha'] != pr['head']['sha'] or fresh['base']['sha'] != pr['base']['sha'] or
             fresh.get('body') != pr.get('body') or ready_event(gh.timeline(pr['number'])) != ready or gh.change(fresh) != fingerprint):
         return 'The change was updated during this check. Changelog will check it again shortly.'
-    elif not gh.green(fresh):
-        return "The week is up, but an automatic test (" + safe(gh.waiting_check) + ") hasn't passed yet. It goes live once it does, unless someone taps 🛑."
+    if approved and (mode != 'merge' or pr['user']['login'] != 'LLRHook' or not gh.merge_api):
+        return status
+    if not gh.green(fresh):
+        return approval_status(approval_names(approved), 'checks', gh.waiting_check) if approved else "The week is up, but an automatic test (" + safe(gh.waiting_check) + ") hasn't passed yet. It goes live once it does, unless someone taps 🛑."
     elif fresh.get('mergeable') is not True or fresh.get('mergeable_state') != 'clean':
         if fresh.get('mergeable_state') == 'dirty':
-            return 'The week is up, but it clashes with another change; the author is fixing that.'
+            return approval_status(approval_names(approved), 'conflict') if approved else 'The week is up, but it clashes with another change; the author is fixing that.'
         if mode != 'merge' or pr['user']['login'] != 'LLRHook':
             return status  # The owner puts this one live by hand and sees GitHub's state there.
         raise MergeBlocked('GitHub mergeable_state is ' + str(fresh.get('mergeable_state')) + '; mergeable is ' + str(fresh.get('mergeable')) + '. Check repository rules or wait for GitHub to recalculate.')
-    elif dc.holders(message['id']):
-        return "On hold: someone just tapped 🛑. It goes live once every 🛑 is removed."
+    final = dc.fresh(pr, message)
+    stops = dc.stops(final)
+    if stops:
+        state['holds'] = {uid: state['holds'].get(uid, stamp(now)) for uid in sorted(stops)[:8]}
+        return waiting_status(pr, state, None, stops, False, now)
+    record = dc.record(final, pr['number'])
+    require(record.get('fingerprint') == fingerprint and record.get('ready') == ready and record.get('start') == state['start'],
+            'Notice changed during the final read; retry safely')
+    # Keep removals observed this run, but reject changed approval knowledge.
+    initial = dc.record(message, pr['number'])
+    proof_changed = any(record.get(key) != initial.get(key) for key in ('approval_policy', 'stale_approvals', 'approval_overflow', 'approval_reset'))
+    approved = prepare_approvals(state, dc.approvers(final), reset=proof_changed)
+    if now < date(state['start']) + WEEK and not approved:
+        return waiting_status(pr, state, None, {}, False, now)
+
     if mode != 'merge' or not gh.identity(pr):
         return status
-    gh.merge(fresh)
+    try:
+        gh.merge(fresh)
+    except IdentityIncident:
+        if approved:
+            state['approved_by'] = approval_names(approved)
+        raise
     if dry_run:
         return 'Would squash merge now.'
-    state.update(finished=True, audited=True)
-    return MERGED
+    state.update(finished=True, audited=True, approval_reset=False)
+    if approved:
+        state['approved_by'] = approval_names(approved)
+    return ('Approved by ' + state['approved_by'] + '. ' if approved else '') + MERGED
 
 
 def finish_notice(gh, dc, pr, message, old, text, exempt, dry_run):
     state = dict(old or {}, exempt=exempt, finished=pr['state'] != 'open')
     if pr.get('merged'):
-        status = MERGED
+        status = ('Approved by ' + state['approved_by'] + '. ' if state.get('approved_by') else '') + MERGED
     elif pr['state'] != 'open':
         status = "Dropped: this change won't go live."
     elif pr['base']['ref'] != 'main':
@@ -627,21 +722,25 @@ def reconcile(gh, dc, number, mode, now, dry_run=False):
                 gh.check(pr, error)
             return 'missing-note'
         fingerprint = gh.change(pr)
-        current = dc.holders(message['id']) if message else {}
+        current = dc.stops(message) if message else {}
+        thumbs = dc.approvers(message) if message else {}
         state, restarted = prepare_state(pr, old, fingerprint, ready, text, current, now)
-        status = waiting_status(pr, state, error, current, restarted, now)
+        if not message:
+            state.update(approval_policy=1, stale_approvals=[], approval_overflow=False, approval_reset=False)
+        approved = prepare_approvals(state, thumbs, restarted)
+        status = waiting_status(pr, state, error, current, restarted, now, approved)
         due = now >= date(state['start']) + WEEK
-        can_merge = due and not current and not error and not pr['draft']
+        can_merge = (due or bool(approved)) and not current and not error and not pr['draft']
         incident = detail = None
         if can_merge:
             try:
-                status = attempt_merge(gh, dc, pr, state, fingerprint, ready, message, status, dry_run, mode)
+                status = attempt_merge(gh, dc, pr, state, fingerprint, ready, message, status, dry_run, mode, now, approved)
             except MergeBlocked as exc:
-                status, detail = GITHUB_WAIT, str(exc)
+                status, detail = approval_status(approval_names(approved), 'github') if approved else GITHUB_WAIT, str(exc)
             except IdentityIncident as exc:
                 incident = str(exc)
-                state.update(incident=incident, finished=True)
-                status = MERGED
+                state.update(incident=incident, finished=True, approval_reset=False)
+                status = ('Approved by ' + state['approved_by'] + '. ' if state.get('approved_by') else '') + MERGED
         if dry_run:
             print('DRY RUN: PR #' + str(number) + ': ' + status)
             return status
@@ -650,6 +749,12 @@ def reconcile(gh, dc, number, mode, now, dry_run=False):
         gh.check(pr, incident or error)
         posted = dc.post(pr, state, text + '\n\n' + status, message)
         dc.seed(posted)
+        if state['approval_reset']:
+            observed = dc.approvers(dc.fresh(pr, posted))
+            prepare_approvals(state, observed, reset=True)
+            state['approval_reset'] = False
+            status = waiting_status(pr, state, error, current, restarted, now)
+            posted = dc.post(pr, state, text + '\n\n' + status, posted)
         state['start'] = stamp(max(date(state['start']), date(posted['timestamp'])))
         gh.mirror(number, state, posted['id'], incident or error or detail or status)
         if incident:
