@@ -429,7 +429,7 @@ class ChangelogClockTests(unittest.TestCase):
         self.assertEqual(len(self.cli('schedule', 'refs/heads/other')[1].messages), 2)
 
     def test_dispatch_on_any_other_or_missing_ref_refuses_before_API_or_event_file(self):
-        for ref in ('refs/heads/other', 'refs/tags/main', 'main', '', None):
+        for ref in ('refs/heads/other', 'refs/heads/main-x', 'refs/heads/main/x', 'refs/tags/main', 'main', '', None):
             env = {'GITHUB_REPOSITORY': bot.REPO, 'GITHUB_EVENT_NAME': 'workflow_dispatch'}
             if ref is not None: env['GITHUB_REF'] = ref
             with self.subTest(ref=ref), patch.dict(os.environ, env, clear=True), patch.object(sys, 'argv', ['changelog.py']), patch.object(bot.API, 'request', side_effect=AssertionError('network forbidden')) as request, patch('builtins.open', side_effect=AssertionError('event must not be read')) as event_file:
