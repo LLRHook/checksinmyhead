@@ -1488,6 +1488,36 @@ resolve\tgithub-actions\tcompleted\tsuccess\ttrue'''
         self.services(gh, dc, NOW + timedelta(days=1, hours=1))
         self.assertTrue(visible(dc.messages[0]).endswith('Approved by Maya. ' + bot.MERGED))
 
+    def test_counting_thumb_withdrawn_during_the_final_read_cannot_merge_beside_a_stale_thumb(self):
+        def run(read):
+            gh, dc = ServiceGitHub(), ServiceDiscord()
+            self.services(gh, dc, NOW); self.approve(dc, '43', 'Alex'); self.push(gh)
+            self.services(gh, dc, NOW + timedelta(days=1), 'merge')  # Alex's thumb predates this version: stale.
+            self.assertFalse(gh.prs[1]['merged'])
+            self.approve(dc)
+            original = dc.__call__; reads = 0; refused = False
+            def withdrawn(method, path, body):
+                nonlocal reads
+                if method == 'GET' and path == '/channels/123456/messages/' + dc.messages[0]['id']:
+                    reads += 1
+                    if reads == read:
+                        thumbs = dc.approvals[dc.messages[0]['id']]
+                        thumbs['👍'] = [user for user in thumbs['👍'] if user['id'] != '42']
+                return original(method, path, body)
+            gh.now = dc.now = NOW + timedelta(days=2)
+            try:
+                bot.reconcile(bot.GitHub(FakeAPI(gh), FakeAPI(gh)), bot.Discord(FakeAPI(withdrawn), '123456'), 1, 'merge', gh.now)
+            except bot.Refused:
+                refused = True
+            return gh.prs[1]['merged'], refused, reads, visible(dc.messages[0])
+        merged, refused, reads, notice = run(0)
+        self.assertTrue(merged); self.assertFalse(refused); self.assertIn('Approved by Maya.', notice)
+        outcomes = [run(read) for read in range(1, reads + 1)]
+        self.assertFalse(any(merged for merged, *_ in outcomes))
+        # Withdrawn after the people were listed: only the last snapshot can show it, so the run retries.
+        self.assertEqual([refused for _, refused, *_ in outcomes][-1], True)
+        self.assertNotIn('Approved by', outcomes[-1][3])
+
     def test_stop_always_wins_and_removed_final_approval_cannot_merge_early(self):
         for late_stop in (False, True):
             gh, dc = ServiceGitHub(), ServiceDiscord()

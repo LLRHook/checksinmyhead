@@ -559,6 +559,10 @@ def prepare_approvals(state, current, reset=False):
     return {} if reset or overflow else {uid: current[uid] for uid in sorted(current) if uid not in stale}
 
 
+def thumb_reactions(message):
+    return [r for r in message.get('reactions', []) if r['emoji'].get('id') is None and r['emoji']['name'] in THUMBS]
+
+
 def approval_names(approved):
     return clip(', '.join(approved[uid] for uid in sorted(approved)[:8]), 300)
 
@@ -640,6 +644,8 @@ def attempt_merge(gh, dc, pr, state, fingerprint, ready, message, status, dry_ru
         return waiting_status(pr, state, None, stops, False, now)
     if not dc.has_approval_reactions(last):
         approved = prepare_approvals(state, {})
+    # A 👍 withdrawn while its people were being listed must not count; the next run lists them afresh.
+    require(not approved or thumb_reactions(last) == thumb_reactions(final), 'Approval reactions changed during the final read; retry safely')
     if now < date(state['start']) + WEEK and not approved:
         return waiting_status(pr, state, None, {}, False, now)
 

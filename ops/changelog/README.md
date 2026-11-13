@@ -274,6 +274,7 @@ the recorded week. Unknown service exception text is never copied into a comment
 | `Duplicate Changelog comments` (Actions) | Keep one original mirror and its correct pointer; remove extra mirrors. The bot cannot safely choose a comment to overwrite. |
 | `Stop reactions changed during the read; retry safely` (Actions) | Counts showed a stop but its user list disagreed; wait for the next complete read. An inconsistent read never clears a veto. |
 | `Notice changed during the final read; retry safely` (Actions) | Let the next run re-read the original bot-owned record; a changed or missing version/approval baseline never authorizes an early merge. |
+| `Approval reactions changed during the final read; retry safely` (Actions) | A 👍 was added or withdrawn while the approvers were being listed. Nothing merged; the next run lists them afresh. |
 | `Notice too long; holding` (Actions) | Shorten the note/title as applicable; have the owner inspect a bloated saved record. Never trim the record to move a deadline sooner. |
 | `GitHub mergeable_state is …; mergeable is …` | The mirror names the actual final-read state. Wait for recalculation or fix the repository rule/approval/update requirement; only a dirty state indicates a conflict. |
 | `GitHub declined the merge` / `GitHub has not accepted the merge` | Check repository rules and merge-account permissions; keep the existing deadline and let the bot retry. |

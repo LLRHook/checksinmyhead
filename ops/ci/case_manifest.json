@@ -58,6 +58,7 @@
       "ChangelogRevisionTests.test_broken_note_keeps_holders_and_developer_instruction_off_Discord",
       "ChangelogRevisionTests.test_burst_only_stop_and_hinted_message_author_are_enforced",
       "ChangelogRevisionTests.test_channel_access_and_duplicates_have_comment_and_notice_recovery",
+      "ChangelogRevisionTests.test_counting_thumb_withdrawn_during_the_final_read_cannot_merge_beside_a_stale_thumb",
       "ChangelogRevisionTests.test_deleted_notice_draft_ready_recovers_through_channel_history",
       "ChangelogRevisionTests.test_deleted_notice_draft_ready_recovery_starts_full_week",
       "ChangelogRevisionTests.test_discord_429_retries_once_with_bounded_retry_after",
