@@ -330,10 +330,10 @@ journeys, environment/secret/queue transitions and external enforcement are NOT 
 No production action is authorized by these source controls.
 
 Run the additional automation report commands from the repository root with the
-same absolute `REPORT_DIR` used by VERIFICATION (CPython3.12 and maintained Ruby):
+same absolute `REPORT_DIR` used by VERIFICATION (the [CPython 3.12 venv](#local-python-parity) and maintained Ruby):
 
 ```bash
-CASE_REPORT="$REPORT_DIR/ios-python.json" python3 ops/ci/unittest_report.py ops/ci/test_ios_artifact.py
+CASE_REPORT="$REPORT_DIR/ios-python.json" "$VV_PYTHON" ops/ci/unittest_report.py ops/ci/test_ios_artifact.py
 CASE_REPORT="$REPORT_DIR/ios-ruby.json" ruby -r "$PWD/ops/ci/minitest_report.rb" .github/scripts/asc_delivery_test.rb
 ```
 
@@ -342,6 +342,78 @@ transports; Linux wheel acquisition, native signing and live GitHub/ASC delivery
 remain NOT RUN. The initial hosted PostgreSQL failure and current B numerical,
 runtime, resource and whole-release RED gates remain open. Integration evidence:
 [November 5 note](../../docs/reviews/2026-11-05-ios-delivery-integration.md).
+
+## Local Python parity
+
+Gate/iOS Python parity is CPython **3.12**, a venv, and PyYAML **6.0.3**, as defined
+by `.github/workflows/checks.yml`'s Canonical automation row (called by `ci.yml`).
+Install CPython 3.12 locally from [Python](https://www.python.org/downloads/), then:
+
+```bash
+python3.12 -m venv .vv/delivery-python
+export VV_PYTHON="$PWD/.vv/delivery-python/bin/python"
+"$VV_PYTHON" -c 'import sys; assert sys.version_info[:2] == (3,12)'
+"$VV_PYTHON" -m pip install --require-hashes --only-binary=:all: -r ops/ci/requirements-ci.txt
+```
+
+That lock is the Ubuntu 24.04 x86_64 wheel used by CI; other platforms must not
+ignore its hash failure. On macOS replace **only the last install command** with
+the matching CPython 3.12 wheel hashes from [PyPI](https://pypi.org/project/PyYAML/6.0.3/#files):
+
+```bash
+cat > .vv/requirements-ci-macos.txt <<'PYAML'
+PyYAML==6.0.3 \
+    --hash=sha256:fc09d0aa354569bc501d4e787133afc08552722d3ab34836a80547331bb5d4a0 \
+    --hash=sha256:7f047e29dcae44602496db43be01ad42fc6f1cc0d8cd6c83d342306c32270196
+PYAML
+"$VV_PYTHON" -m pip install --require-hashes --only-binary=:all: -r .vv/requirements-ci-macos.txt
+```
+
+This preserves version/interpreter parity; Linux wheel acquisition remains a CI
+platform check. Local workflow CI uses the runner's `python3` (stdlib only); using
+`"$VV_PYTHON"` for that row too gives a reproducible local interpreter.
+
+
+## Local viewer CORS proof
+
+After VERIFICATION Stage 0 starts the stack, run from the same Bash environment:
+
+```bash
+curl --fail --silent --show-error -i -X OPTIONS "http://localhost:$VV_API_PORT/api/app/version-policy" \
+  -H "Origin: $VV_VIEWER_ORIGIN" -H 'Access-Control-Request-Method: GET' \
+  -H 'Access-Control-Request-Headers: Content-Type'
+curl --fail --silent --show-error -i "http://localhost:$VV_API_PORT/api/app/version-policy" \
+  -H "Origin: $VV_VIEWER_ORIGIN"
+```
+
+Require 204/200 and `Access-Control-Allow-Origin` equal to `$VV_VIEWER_ORIGIN`.
+A request with `Origin: http://unapproved.invalid` must return 403.
+
+## Isolated Go unit row
+
+`TestServiceHealthcheckMode` binds loopback 8080 even when the API stack uses a
+custom host port. If a host service owns 8080, run the unchanged Go build/test
+commands in their own network namespace. Do not stop the existing service or skip
+the test. From root, with the absolute `REPORT_DIR` prepared by VERIFICATION:
+
+```bash
+VV_GO_IMAGE="$(awk '$1 == "FROM" {print $2; exit}' backend/services/bill-service/Dockerfile)"
+docker run --rm --name "${VV_PROJECT:?set VV_PROJECT}-go-unit" \
+  --mount "type=bind,src=$PWD,dst=/src,readonly" \
+  --mount "type=bind,src=$REPORT_DIR,dst=/reports" \
+  -e REPORT_DIR=/reports -e GOTOOLCHAIN=local "$VV_GO_IMAGE" /bin/bash -c '
+set -euo pipefail
+cd /src/backend
+go mod download
+go mod verify
+go build ./...
+go test -race -count=1 -json ./... | tee "$REPORT_DIR/go-default.jsonl"
+'
+```
+
+The image is the exact Go builder pinned by the production Dockerfile, with CGO
+support for SQLite/race tests. It publishes no ports. Tagged PostgreSQL tests
+remain the separate row against the explicitly isolated fixture DSN.
 
 ## Changelog workflow owner
 

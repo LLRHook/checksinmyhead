@@ -121,6 +121,8 @@
       "CompletionRegressions.test_collector_rejects_candidate_supplied_manifest_hash",
       "CompletionRegressions.test_http_adapter_preserves_expected_error_status_without_network",
       "DocumentationContractTests.test_VERIFICATION_uses_the_actual_report_commands_and_keeps_manual_boundaries",
+      "DocumentationContractTests.test_VERIFICATION_isolates_ports_and_allows_only_the_selected_viewer_origin",
+      "DocumentationContractTests.test_VERIFICATION_names_CI_python_and_inline_iOS_reports",
       "DocumentationContractTests.test_initial_policy_and_local_reports_cannot_emit_a_release_receipt",
       "DocumentationContractTests.test_operational_docs_match_routes_and_signed_capabilities",
       "EntrypointTests.test_ASC_transport_and_all_iOS_inputs_remain_unavailable_with_explicit_cancel_consent",

@@ -959,7 +959,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Status:** open
 
 ### [BUG-1794331913] Align the VERIFICATION.md recipe with CI and the local viewer
-- [ ] **Severity:** med
+- [x] **Severity:** med
 - **Area:** docs, ci, tests
 - **File(s):** VERIFICATION.md
 - **Observation:** Appendix A never sets CORS_ORIGINS, so the 3100 viewer's browser calls to the 8080 API fail CORS preflight (403) and the Stage 3 browser journeys cannot run on a fresh stack. The Gate and iOS Python rows use plain python3, while CI uses a hash-locked CPython 3.12 venv; the PyYAML hash is for Ubuntu x86_64 only. The iOS row gives the report commands only as a link. The PG DSN example omits the password CI uses. Row D5 says 'follow FEAT-1793644505', which will not resolve once that entry migrates.
@@ -968,7 +968,13 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/stage1-review/command-fidelity.md, doc-sync.md; .vv/gui-walkthrough/cors.override.yml was needed to run the viewer journeys.
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** fixed-pending-migration
+- **Fix:** Corrected isolated CORS and replace-only loopback ports, CPython 3.12/PyYAML parity with macOS hashes, inline iOS reports, password-bearing test DSN and durable D5 procedure. Fresh synthetic stack: preflight 204, request 200, bad origin and CORS-removal control 403; built/served viewer 200 on 22310 against API 22808. Added isolated Go row for its existing hard-coded healthcheck-test port 8080; kept product/test defaults unchanged. Added two documentation contracts and manifest registrations; unchanged PostgreSQL obligations moved to backend README to preserve the 20 KiB budget.
+- **Docs:** VERIFICATION.md; ops/ci/README.md; backend/README.md
+- **Log:**
+  - 2026-11-12: Review round 2 (driver agent, 2026-11-12): the allowed viewer origin is now http://127.0.0.1:$VV_WEB_PORT, the URL the viewer start command prints; before, only localhost was allowed and the printed URL failed CORS. Live check on a fresh labelled stack: printed origin 204/200, localhost and unapproved origins 403. One prerequisite changed on purpose: Stage 0 and Appendix A now say to choose free ports on a port conflict instead of blocking, so the recipe never touches a service already on 8080; unknown data still blocks. Links to text moved out of VERIFICATION.md and their target headings are now tested.
+  - 2026-11-12: Reconciled with main 70f50e5 (driver agent, 2026-11-12): main added a Changelog row to the Stage 2 table; it now uses "$VV_PYTHON" like the Gate and iOS rows, as CI runs it on the same interpreter. To stay under the 20 KiB limit two phrases that carried no requirement were removed: the remark that the linked retention section is verbatim, and the Docker documentation link after the Compose version. VERIFICATION.md is 20,461 of 20,480 bytes.
 
 ### [BUG-1794331914] Stop telling clients to retry participant additions on bills with paid shares
 - [x] **Severity:** low
@@ -1013,7 +1019,7 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Docs:** docs/backend-api.md
 
 ### [BUG-1794331917] Fail the local workflow SIGINT tests with a clear prerequisite when SIGINT is ignored
-- [ ] **Severity:** low
+- [x] **Severity:** low
 - **Area:** tests, tooling
 - **File(s):** scripts/test_local_workflow.py; scripts/test_local_workflow_probes.py
 - **Observation:** When the parent process ignores SIGINT (e.g. rows started under '( ... ) &' in a non-interactive shell, where Python reports SIG_IGN), test_int_keeps_status130, test_int_during_blocked_simulator_probe_reaps_descendants and test_tty_driver_int_interrupts_foreground_flutter fail with timeouts or rc 0. With SIGINT at its default, the same row passes 55/55.
@@ -1022,7 +1028,10 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Depends on:** none
 - **Repro / Notes:** Local evidence (gitignored) from the 2026-11-10 V&V run of 5e877e36d968, worktree .vv/worktrees/vv-5e877e3: .vv/local-gate/s2-local-workflow.run1-sigint-ignored.log versus s2-local-workflow-rerun.log. ( python3 ops/ci/unittest_report.py scripts/test_local_workflow.py ) & wait
 - **Bump:** patch
-- **Status:** open
+- **Assignee:** Victor Ivanov
+- **Status:** fixed-pending-migration
+- **Fix:** Restore SIGINT to SIG_DFL in each workflow subprocess immediately before Bash exec, including PTY children, so ignored parent dispositions cannot disable INT traps. Existing assertions/deadlines unchanged. The 55-test row passes in foreground and background; three separate dev.sh mutations fail their original status, blocked-probe descendant and foreground-Flutter assertions.
+- **Docs:** none; test fixture-only signal restoration
 
 ### [BUG-1794331918] Resume or explain membership when rejoining a tab removed from this device
 - [ ] **Severity:** low
