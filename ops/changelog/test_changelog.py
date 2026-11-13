@@ -37,6 +37,7 @@ class FakeGitHub:
         self.checks, self.mirrors, self.merges = [], [], []
         self.is_green, self.identity_ok = True, True
         self.before_fresh = None
+        self.merge_api = object()
         self.reads = 0
 
     def pr(self, number):
@@ -90,6 +91,7 @@ class FakeDiscord:
         self.users, self.created, self.edited, self.seeds = {}, 0, 0, []
         self.before_final = None
         self.holder_reads = 0
+        self.thumbs = {}
         self.rate_limit = False
         self.now = NOW
 
@@ -101,6 +103,21 @@ class FakeDiscord:
         if self.before_final and self.holder_reads % 2 == 0:
             self.before_final(self)
         return self.users.copy()
+
+    def fresh(self, pr, message):
+        return copy.deepcopy(self.message)
+
+    def record(self, message, number):
+        return copy.deepcopy(self.state)
+
+    def stops(self, message):
+        return self.holders(message['id'])
+
+    def has_approval_reactions(self, message):
+        return bool(self.thumbs)
+
+    def approvers(self, message):
+        return self.thumbs.copy()
 
     def post(self, pr, state, text, message=None):
         if self.rate_limit:
@@ -179,10 +196,11 @@ class ChangelogLifecycleTests(unittest.TestCase):
         self.run_bot()
         self.assertEqual(len(self.gh.merges), 1)
 
-    def test_seven_days_exact_boundary_and_approval_cannot_shorten(self):
+    def test_seven_days_exact_boundary_without_approval(self):
         self.posted()
         self.now -= timedelta(seconds=1)
         self.run_bot()
+        self.assertEqual(self.gh.reads, 1)
         self.assertFalse(self.gh.merges)
         self.now += timedelta(seconds=1)
         self.run_bot()
@@ -348,7 +366,7 @@ class ChangelogLifecycleTests(unittest.TestCase):
         self.posted()
         self.dc.holder_reads = 0
         self.dc.before_final = lambda dc: dc.users.update({'42': 'Alex'})
-        self.assertIn('someone just tapped', self.run_bot())
+        self.assertIn('On hold: Alex tapped', self.run_bot())
         self.assertFalse(self.gh.merges)
 
     def test_dry_run_lifecycle_does_not_write_or_merge(self):
@@ -369,8 +387,10 @@ class ChangelogLifecycleTests(unittest.TestCase):
         namespace = {'__name__': 'synthetic_mutant'}
         exec(compile(source.replace(before, 'due = True'), bot.__file__, 'exec'), namespace)
         self.run_bot()
+        reads = self.gh.reads
         with self.assertRaises(AssertionError):
             namespace['reconcile'](self.gh, self.dc, 25, 'merge', self.now)
+            self.assertEqual(self.gh.reads, reads + 1, 'an unapproved early run must not enter the merge path')
             self.assertFalse(self.gh.merges)
 
 
@@ -695,6 +715,7 @@ class ServiceGitHub:
 class ServiceDiscord:
     def __init__(self):
         self.messages, self.calls, self.users, self.bursts = [], [], {}, {}
+        self.approvals, self.approval_bursts = {}, {}
         self.next, self.now = 100000, NOW
         self.failure = None
 
@@ -707,15 +728,22 @@ class ServiceDiscord:
         parts = urlsplit(path).path.split('/')
         if method == 'GET' and '/reactions/' in path:
             kind = parse_qs(urlsplit(path).query).get('type', ['0'])[0]
-            return copy.deepcopy((self.bursts if kind == '1' else self.users).get(parts[4], []))
+            from urllib.parse import unquote
+            emoji = unquote(parts[6])
+            if emoji == bot.STOP:
+                users = (self.bursts if kind == '1' else self.users).get(parts[4], [])
+            else:
+                users = (self.approval_bursts if kind == '1' else self.approvals).get(parts[4], {}).get(emoji, [])
+            after = parse_qs(urlsplit(path).query).get('after', ['0'])[0]
+            return copy.deepcopy([u for u in users if int(u['id']) > int(after)][:100])
         if method == 'GET':
             if len(parts) == 4:
                 ordered = sorted(self.messages, key=lambda m: -int(m['id']))
                 before = parse_qs(urlsplit(path).query).get('before', [None])[0]
-                return copy.deepcopy([m for m in ordered if not before or int(m['id']) < int(before)][:100])
+                return [self.render(m) for m in ordered if not before or int(m['id']) < int(before)][:100]
             message = next((m for m in self.messages if m['id'] == parts[4]), None)
             if message is None: raise bot.HTTPFailure(404)
-            return copy.deepcopy(message)
+            return self.render(message)
         if method == 'POST':
             self.next += 1
             message = dict(id=str(self.next), channel_id='123456', author={'id': '1'}, timestamp=bot.stamp(self.now), reactions=[])
@@ -733,7 +761,22 @@ class ServiceDiscord:
         message.update(content=body['content'])
         if 'embeds' in body:
             message['embeds'] = [dict(copy.deepcopy(embed), type='rich') for embed in body['embeds']]
-        return copy.deepcopy(message)
+        return self.render(message)
+
+    def render(self, message):
+        result = copy.deepcopy(message)
+        seeds = {r['emoji']['name'] for r in message.get('reactions', []) if r.get('me')}
+        normal = dict(self.approvals.get(message['id'], {}))
+        burst = dict(self.approval_bursts.get(message['id'], {}))
+        normal[bot.STOP] = self.users.get(message['id'], [])
+        burst[bot.STOP] = self.bursts.get(message['id'], [])
+        result['reactions'] = []
+        for emoji in sorted(seeds | normal.keys() | burst.keys()):
+            n = len({u['id'] for u in normal.get(emoji, [])} | ({'1'} if emoji in seeds else set()))
+            b = len({u['id'] for u in burst.get(emoji, [])})
+            if n + b:
+                result['reactions'].append({'emoji': {'id': None, 'name': emoji}, 'me': emoji in seeds, 'me_burst': False, 'count': n + b, 'count_details': {'normal': n, 'burst': b}})
+        return result
 
     def noise(self, count):
         for _ in range(count):
@@ -1203,12 +1246,12 @@ resolve\tgithub-actions\tcompleted\tsuccess\ttrue'''
         gh.calls.clear(); dc.calls.clear()
         bot.reconcile(bot.GitHub(FakeAPI(gh)), bot.Discord(FakeAPI(dc), '123456'), 1, 'post', NOW + timedelta(hours=1))
         event = len(gh.calls), len(dc.calls)
-        self.assertEqual(event, (6, 4))
+        self.assertEqual(event, (6, 2))
         gh.calls.clear(); dc.calls.clear()
         self.services(gh, dc, NOW + timedelta(hours=1))
         hourly = len(gh.calls), len(dc.calls)
-        self.assertEqual(hourly, (62, 31))
-        self.assertEqual(tuple(event[i] * 15 + hourly[i] for i in (0, 1)), (152, 91))
+        self.assertEqual(hourly, (62, 11))
+        self.assertEqual(tuple(event[i] * 15 + hourly[i] * 4 for i in (0, 1)), (338, 74))
         gh = ServiceGitHub(closed=3, opened=1)
         for number, age in ((1, 2), (2, 29), (3, 0.1)):
             gh.prs[number].update(closed_at=bot.stamp(NOW - timedelta(days=age)), updated_at=bot.stamp(NOW - timedelta(days=age)))
@@ -1421,6 +1464,394 @@ resolve\tgithub-actions\tcompleted\tsuccess\ttrue'''
                                 'head_sha': BASE, 'status': 'completed', 'conclusion': 'success'})
         self.assertFalse(adapter.green(gh.prs[1]))
         self.assertEqual(adapter.waiting_check, 'optional')
+
+
+    def approve(self, dc, uid='42', name='Maya', emoji='👍', burst=False):
+        target = dc.approval_bursts if burst else dc.approvals
+        target.setdefault(dc.messages[0]['id'], {}).setdefault(emoji, []).append({'id': uid, 'username': name, 'global_name': name})
+
+    def push(self, gh, sha='e'):
+        gh.prs[1]['head']['sha'] = sha * 40
+        gh.compare_commits.append({'sha': sha * 40, 'parents': [{}]})
+        gh.compare_files[0]['patch'] += '\n+changed'
+        gh.compare_files[0]['additions'] += 1
+        gh.checks[sha * 40] = [dict(gh.checks[next(iter(gh.checks))][0], head_sha=sha * 40)]
+
+    def test_one_human_thumb_merges_day_one_with_approved_names(self):
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW)
+        self.approve(dc)
+        self.services(gh, dc, NOW + timedelta(days=1), 'merge')
+        self.assertTrue(gh.prs[1]['merged'])
+        self.assertTrue(visible(dc.messages[0]).endswith('Approved by Maya. ' + bot.MERGED))
+        self.assertIn('Approved by Maya.', gh.comments[1][0]['body'])
+        self.services(gh, dc, NOW + timedelta(days=1, hours=1))
+        self.assertTrue(visible(dc.messages[0]).endswith('Approved by Maya. ' + bot.MERGED))
+
+    def test_counting_thumb_withdrawn_during_the_final_read_cannot_merge_beside_a_stale_thumb(self):
+        def run(read):
+            gh, dc = ServiceGitHub(), ServiceDiscord()
+            self.services(gh, dc, NOW); self.approve(dc, '43', 'Alex'); self.push(gh)
+            self.services(gh, dc, NOW + timedelta(days=1), 'merge')  # Alex's thumb predates this version: stale.
+            self.assertFalse(gh.prs[1]['merged'])
+            self.approve(dc)
+            original = dc.__call__; reads = 0; refused = False
+            def withdrawn(method, path, body):
+                nonlocal reads
+                if method == 'GET' and path == '/channels/123456/messages/' + dc.messages[0]['id']:
+                    reads += 1
+                    if reads == read:
+                        thumbs = dc.approvals[dc.messages[0]['id']]
+                        thumbs['👍'] = [user for user in thumbs['👍'] if user['id'] != '42']
+                return original(method, path, body)
+            gh.now = dc.now = NOW + timedelta(days=2)
+            try:
+                bot.reconcile(bot.GitHub(FakeAPI(gh), FakeAPI(gh)), bot.Discord(FakeAPI(withdrawn), '123456'), 1, 'merge', gh.now)
+            except bot.Refused:
+                refused = True
+            return gh.prs[1]['merged'], refused, reads, visible(dc.messages[0])
+        merged, refused, reads, notice = run(0)
+        self.assertTrue(merged); self.assertFalse(refused); self.assertIn('Approved by Maya.', notice)
+        outcomes = [run(read) for read in range(1, reads + 1)]
+        self.assertFalse(any(merged for merged, *_ in outcomes))
+        # Withdrawn after the people were listed: only the last snapshot can show it, so the run retries.
+        self.assertEqual([refused for _, refused, *_ in outcomes][-1], True)
+        self.assertNotIn('Approved by', outcomes[-1][3])
+
+    def test_stop_always_wins_and_removed_final_approval_cannot_merge_early(self):
+        for late_stop in (False, True):
+            gh, dc = ServiceGitHub(), ServiceDiscord()
+            self.services(gh, dc, NOW); self.approve(dc)
+            if not late_stop: dc.users[dc.messages[0]['id']] = [{'id': '43', 'username': 'Alex'}]
+            original = dc.__call__; reads = 0
+            def final_stop(method, path, body):
+                nonlocal reads
+                if method == 'GET' and path == '/channels/123456/messages/' + dc.messages[0]['id']:
+                    reads += 1
+                    if reads == 2: dc.users[dc.messages[0]['id']] = [{'id': '43', 'username': 'Alex'}]
+                return original(method, path, body)
+            gh.now = dc.now = NOW + timedelta(days=1)
+            calls_before = len(gh.calls)
+            bot.reconcile(bot.GitHub(FakeAPI(gh), FakeAPI(gh)), bot.Discord(FakeAPI(final_stop), '123456'), 1, 'merge', gh.now)
+            if not late_stop:
+                self.assertEqual(sum(c[0] == 'GET' and c[1].endswith('/pulls/1') for c in gh.calls[calls_before:]), 1)
+            self.assertFalse(gh.prs[1]['merged'])
+            status = visible(dc.messages[0]).split('\n\n')[-1]
+            self.assertIn('On hold:', status); self.assertNotIn('👍', status)
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW); self.approve(dc)
+        original = dc.__call__; reads = 0
+        def removed(method, path, body):
+            nonlocal reads
+            if method == 'GET' and path == '/channels/123456/messages/' + dc.messages[0]['id']:
+                reads += 1
+                if reads == 2: dc.approvals.clear()
+            return original(method, path, body)
+        gh.now = dc.now = NOW + timedelta(days=1)
+        bot.reconcile(bot.GitHub(FakeAPI(gh), FakeAPI(gh)), bot.Discord(FakeAPI(removed), '123456'), 1, 'merge', gh.now)
+        self.assertFalse(gh.prs[1]['merged'])
+        self.assertIn('Goes live as soon as', visible(dc.messages[0]))
+
+        for changed in ('approval-policy', 'fingerprint', 'clock'):
+            gh, dc = ServiceGitHub(), ServiceDiscord()
+            self.services(gh, dc, NOW); self.approve(dc)
+            original = dc.__call__; reads = 0
+            def changed_record(method, path, body):
+                nonlocal reads
+                result = original(method, path, body)
+                if method == 'GET' and path == '/channels/123456/messages/' + dc.messages[0]['id']:
+                    reads += 1
+                    if reads == 2:
+                        record = bot.Discord(FakeAPI(dc), '123456').record(result, 1)
+                        if changed == 'approval-policy': record.pop('approval_policy')
+                        elif changed == 'fingerprint': record['fingerprint'] = 'f' * 64
+                        else: record['start'] = bot.stamp(NOW + timedelta(hours=1))
+                        result['embeds'][0].update(bot.state_embed(1, record))
+                return result
+            gh.now = dc.now = NOW + timedelta(days=1)
+            with self.assertRaises(bot.Refused):
+                bot.reconcile(bot.GitHub(FakeAPI(gh), FakeAPI(gh)), bot.Discord(FakeAPI(changed_record), '123456'), 1, 'merge', gh.now)
+            self.assertFalse(gh.prs[1]['merged'])
+
+        # Preserve an observed removal even when the person re-adds at the final read.
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW); self.approve(dc); self.push(gh)
+        self.services(gh, dc, NOW + timedelta(days=1), 'merge')
+        dc.approvals.clear(); self.approve(dc, '43', 'Jordan')
+        original = dc.__call__; reads = 0
+        def regiven_at_final(method, path, body):
+            nonlocal reads
+            if method == 'GET' and path == '/channels/123456/messages/' + dc.messages[0]['id']:
+                reads += 1
+                if reads == 2:
+                    dc.approvals.clear(); self.approve(dc)
+            return original(method, path, body)
+        gh.now = dc.now = NOW + timedelta(days=2)
+        bot.reconcile(bot.GitHub(FakeAPI(gh), FakeAPI(gh)), bot.Discord(FakeAPI(regiven_at_final), '123456'), 1, 'merge', gh.now)
+        self.assertTrue(gh.prs[1]['merged'])
+        self.assertIn('Approved by Maya.', visible(dc.messages[0]))
+
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW); self.approve(dc)
+        dc.users[dc.messages[0]['id']] = [{'id': '43', 'username': 'Alex'}]
+        original = dc.__call__
+        def inconsistent_stop(method, path, body):
+            if method == 'GET' and '/reactions/' in path and '%F0%9F%9B%91' in path: return []
+            return original(method, path, body)
+        gh.now = dc.now = NOW + timedelta(days=1)
+        with self.assertRaises(bot.Refused):
+            bot.reconcile(bot.GitHub(FakeAPI(gh), FakeAPI(gh)), bot.Discord(FakeAPI(inconsistent_stop), '123456'), 1, 'merge', gh.now)
+        self.assertFalse(gh.prs[1]['merged'])
+
+        # Stops are read after approval listing, so a newly arrived stop wins.
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW); self.approve(dc)
+        original = dc.__call__; reads = 0
+        def stop_during_approval_read(method, path, body):
+            nonlocal reads
+            if method == 'GET' and '/reactions/' in path and '%F0%9F%91%8D' in path and 'type=0' in path:
+                reads += 1
+                if reads == 2: dc.users[dc.messages[0]['id']] = [{'id': '43', 'username': 'Alex'}]
+            return original(method, path, body)
+        gh.now = dc.now = NOW + timedelta(days=1)
+        bot.reconcile(bot.GitHub(FakeAPI(gh), FakeAPI(gh)), bot.Discord(FakeAPI(stop_during_approval_read), '123456'), 1, 'merge', gh.now)
+        self.assertFalse(gh.prs[1]['merged'])
+        self.assertIn('On hold: Alex', visible(dc.messages[0]))
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW); self.approve(dc)
+        original = dc.__call__; reads = 0
+        def remove_at_last_snapshot(method, path, body):
+            nonlocal reads
+            if method == 'GET' and path == '/channels/123456/messages/' + dc.messages[0]['id']:
+                reads += 1
+                if reads == 3: dc.approvals.clear()
+            return original(method, path, body)
+        gh.now = dc.now = NOW + timedelta(days=1)
+        bot.reconcile(bot.GitHub(FakeAPI(gh), FakeAPI(gh)), bot.Discord(FakeAPI(remove_at_last_snapshot), '123456'), 1, 'merge', gh.now)
+        self.assertFalse(gh.prs[1]['merged'])
+
+    def test_approval_is_invalidated_by_push_then_regiven_or_second_person(self):
+        for second_person in (False, True):
+            gh, dc = ServiceGitHub(), ServiceDiscord()
+            self.services(gh, dc, NOW); self.approve(dc)
+            self.push(gh)
+            self.services(gh, dc, NOW + timedelta(days=1), 'merge')
+            self.assertFalse(gh.prs[1]['merged'])
+            self.assertIn("Earlier 👍 don't count for this version. To approve it, remove your 👍, wait 15 minutes, then tap 👍 again.", visible(dc.messages[0]))
+            self.services(gh, dc, NOW + timedelta(days=2), 'merge')
+            self.assertFalse(gh.prs[1]['merged'])
+            if second_person: self.approve(dc, '43', 'Jordan')
+            else:
+                dc.approvals.clear()
+                self.services(gh, dc, NOW + timedelta(days=2, hours=1), 'merge')
+                self.approve(dc)
+            self.services(gh, dc, NOW + timedelta(days=2, hours=2), 'merge')
+            self.assertTrue(gh.prs[1]['merged'])
+            self.assertIn('Approved by ' + ('Jordan' if second_person else 'Maya'), visible(dc.messages[0]))
+
+    def test_note_edit_preserves_approval_draft_ready_invalidates_it(self):
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW); self.approve(dc)
+        gh.prs[1]['body'] = BODY.replace('Friends', 'All friends')
+        self.services(gh, dc, NOW + timedelta(days=1), 'merge')
+        self.assertTrue(gh.prs[1]['merged'])
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW); self.approve(dc)
+        gh.prs[1]['draft'] = True
+        # REST is stale draft while the ready transition has already arrived.
+        gh.timeline.append({'event': 'ready_for_review', 'id': 10})
+        self.services(gh, dc, NOW + timedelta(days=1), 'merge')
+        gh.prs[1]['draft'] = False
+        self.services(gh, dc, NOW + timedelta(days=2), 'merge')
+        self.assertFalse(gh.prs[1]['merged'])
+        record = bot.Discord(FakeAPI(dc), '123456').record(dc.messages[0], 1)
+        self.assertEqual(bot.date(record['start']), NOW + timedelta(days=2))
+        self.assertEqual(record['stale_approvals'], ['42'])
+
+    def test_skin_tones_super_author_and_bot_own_approval_rules(self):
+        tones = ['👍', '👍🏻', '👍🏼', '👍🏽', '👍🏾', '👍🏿']
+        self.assertEqual(list(bot.THUMBS), tones)
+        for emoji in tones:
+            for burst in (False, True):
+                gh, dc = ServiceGitHub(), ServiceDiscord()
+                self.services(gh, dc, NOW); self.approve(dc, emoji=emoji, burst=burst)
+                self.services(gh, dc, NOW + timedelta(days=1), 'merge')
+                self.assertTrue(gh.prs[1]['merged'], (emoji, burst))
+        for uid, robot in (('1', True), ('777', True)):
+            gh, dc = ServiceGitHub(), ServiceDiscord()
+            self.services(gh, dc, NOW)
+            self.approve(dc, uid=uid)
+            dc.approvals[dc.messages[0]['id']]['👍'][0]['bot'] = robot
+            self.services(gh, dc, NOW + timedelta(days=1), 'merge')
+            self.assertFalse(gh.prs[1]['merged'])
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW); self.approve(dc, uid='123', name='LLRHook')
+        self.services(gh, dc, NOW + timedelta(days=1), 'merge')
+        self.assertTrue(gh.prs[1]['merged'])
+
+        invalid = bot.Discord(FakeAPI(lambda *args: [{'id': 'invalid', 'username': 'Ghost'}]), '123456')
+        invalid.bot = '1'
+        with self.assertRaises(bot.Refused): invalid.holders('500', '👍', people=True)
+
+    def test_stop_reaction_without_a_count_still_holds_an_approved_change(self):
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW); self.approve(dc)
+        dc.users[dc.messages[0]['id']] = [{'id': '43', 'username': 'Sam'}]
+        # Discord has not always sent a count with a reaction; no count is not "nobody".
+        def no_stop_count(method, path, body):
+            result = dc(method, path, body)
+            for message in result if isinstance(result, list) else [result]:
+                for reaction in message.get('reactions', []) if isinstance(message, dict) else []:
+                    if reaction['emoji']['name'] == bot.STOP:
+                        reaction.pop('count', None); reaction.pop('count_details', None)
+            return result
+        gh.now = dc.now = NOW + timedelta(days=1)
+        bot.reconcile(bot.GitHub(FakeAPI(gh), FakeAPI(gh)), bot.Discord(FakeAPI(no_stop_count), '123456'), 1, 'merge', gh.now)
+        self.assertFalse(gh.prs[1]['merged'])
+        self.assertIn('On hold: Sam tapped 🛑', visible(dc.messages[0]))
+
+    def test_approved_path_preserves_every_fresh_merge_gate(self):
+        for defect in ('head', 'body', 'ready', 'fingerprint', 'draft', 'base', 'closed', 'checks', 'conflict', 'identity'):
+            self.setUp(); self.run_bot(); self.dc.thumbs = {'42': 'Maya'}; self.now += timedelta(days=1)
+            if defect == 'checks': self.gh.is_green = False
+            elif defect == 'conflict': self.gh.data['mergeable_state'] = 'dirty'
+            elif defect == 'identity': self.gh.identity_ok = False
+            else:
+                def race(gh):
+                    if defect == 'head': gh.data['head']['sha'] = 'e' * 40
+                    elif defect == 'body': gh.data['body'] += ' '
+                    elif defect == 'ready': gh.transitions.append({'event': 'ready_for_review', 'id': 9})
+                    elif defect == 'fingerprint': gh.fingerprint = 'e' * 64
+                    elif defect == 'draft': gh.data['draft'] = True
+                    elif defect == 'base': gh.data['base']['sha'] = 'e' * 40
+                    elif defect == 'closed': gh.data['state'] = 'closed'
+                self.gh.before_fresh = race
+            self.run_bot()
+            self.assertFalse(self.gh.merges, defect)
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW); self.approve(dc)
+        gh.prs[1]['body'] = ''
+        self.services(gh, dc, NOW + timedelta(days=1), 'merge')
+        self.assertFalse(gh.prs[1]['merged'])
+        self.assertIn('Paused:', visible(dc.messages[0]))
+
+    def test_approved_post_mode_missing_token_and_other_author_only_change_wording(self):
+        for kind in ('post', 'missing-token', 'other'):
+            gh, dc = ServiceGitHub(), ServiceDiscord()
+            if kind == 'other': gh.prs[1]['user']['login'] = 'friend-dev'
+            self.services(gh, dc, NOW); self.approve(dc)
+            # Non-clean state must not replace the approved manual/post message.
+            gh.prs[1]['mergeable_state'] = 'blocked'
+            gh.now = dc.now = NOW + timedelta(days=1)
+            client = bot.GitHub(FakeAPI(gh), None if kind == 'missing-token' else FakeAPI(gh))
+            bot.reconcile(client, bot.Discord(FakeAPI(dc), '123456'), 1, 'post' if kind == 'post' else 'merge', gh.now)
+            self.assertFalse(gh.prs[1]['merged'])
+            self.assertIn('Maya tapped 👍.', visible(dc.messages[0]))
+            self.assertIn('put it live by hand' if kind == 'other' else 'owner switches it on', visible(dc.messages[0]))
+
+    def test_legacy_lost_or_damaged_approval_records_fail_closed_until_regiven(self):
+        for damage in ('legacy', 'invalid-policy', 'damaged'):
+            gh, dc = ServiceGitHub(), ServiceDiscord()
+            self.services(gh, dc, NOW); self.approve(dc)
+            adapter = bot.Discord(FakeAPI(dc), '123456')
+            state = adapter.record(dc.messages[0], 1)
+            if damage == 'legacy':
+                for key in list(state):
+                    if key.startswith('approval_') or key == 'stale_approvals': state.pop(key)
+            elif damage == 'invalid-policy': state['stale_approvals'] = 'not-a-list'
+            if damage == 'damaged': dc.messages[0]['embeds'][0]['url'] = dc.messages[0]['embeds'][0]['url'].split('#')[0] + '#changelog-broken'
+            else: dc.messages[0]['embeds'][0].update(bot.state_embed(1, state))
+            if damage == 'damaged':
+                with self.assertRaises(bot.Refused): self.services(gh, dc, NOW + timedelta(days=1), 'merge')
+            else:
+                self.services(gh, dc, NOW + timedelta(days=1), 'merge')
+                self.services(gh, dc, NOW + timedelta(days=2), 'merge')
+            self.assertFalse(gh.prs[1]['merged'])
+            if damage != 'damaged':
+                dc.approvals.clear(); self.services(gh, dc, NOW + timedelta(days=2, hours=1))
+                self.approve(dc); self.services(gh, dc, NOW + timedelta(days=2, hours=2), 'merge')
+                self.assertTrue(gh.prs[1]['merged'])
+
+    def test_approval_recovery_deleted_comment_lost_reply_and_duplicate_notice(self):
+        for scenario in ('comment', 'reply', 'duplicate'):
+            gh, dc = ServiceGitHub(), ServiceDiscord()
+            if scenario == 'reply':
+                original = dc.__call__
+                def lost(method, path, body):
+                    result = original(method, path, body)
+                    if method == 'POST': raise bot.HTTPFailure(502)
+                    return result
+                with self.assertRaises(bot.Refused):
+                    bot.reconcile(bot.GitHub(FakeAPI(gh)), bot.Discord(FakeAPI(lost), '123456'), 1, 'post', NOW)
+            else: self.services(gh, dc, NOW)
+            self.approve(dc)
+            gh.comments[1] = []
+            if scenario == 'duplicate':
+                dc.messages.append(dict(copy.deepcopy(dc.messages[0]), id='100099'))
+                with self.assertRaises(bot.Refused): self.services(gh, dc, NOW + timedelta(days=1), 'merge')
+                self.assertFalse(gh.prs[1]['merged'])
+            else:
+                self.services(gh, dc, NOW + timedelta(days=1), 'merge')
+                self.assertTrue(gh.prs[1]['merged'])
+            self.assertEqual(len([m for m in dc.messages if m['author']['id'] == '1']), 2 if scenario == 'duplicate' else 1)
+
+    def test_restart_publication_failure_and_late_thumb_cannot_approve_old_version(self):
+        for fault in ('none', 'before-followup', 'lost-edit-reply'):
+            gh, dc = ServiceGitHub(), ServiceDiscord()
+            self.services(gh, dc, NOW); self.push(gh)
+            original = dc.__call__; patched = False; added = False
+            def during_publish(method, path, body):
+                nonlocal patched, added
+                if method == 'PATCH' and not patched:
+                    patched = True
+                    self.approve(dc)
+                    result = original(method, path, body)
+                    if fault == 'lost-edit-reply': raise bot.HTTPFailure(502)
+                    return result
+                if patched and method == 'GET' and '/messages/' in path and '/reactions/' not in path and not added:
+                    added = True
+                    if fault == 'before-followup': raise bot.HTTPFailure(502)
+                return original(method, path, body)
+            gh.now = dc.now = NOW + timedelta(days=1)
+            try:
+                bot.reconcile(bot.GitHub(FakeAPI(gh), FakeAPI(gh)), bot.Discord(FakeAPI(during_publish), '123456'), 1, 'merge', gh.now)
+            except bot.Refused: self.assertNotEqual(fault, 'none')
+            self.services(gh, dc, NOW + timedelta(days=2), 'merge')
+            self.assertFalse(gh.prs[1]['merged'])
+            record = bot.Discord(FakeAPI(dc), '123456').record(dc.messages[0], 1)
+            self.assertEqual(record['stale_approvals'], ['42'])
+            dc.approvals.clear(); self.services(gh, dc, NOW + timedelta(days=2, hours=1))
+            self.approve(dc); self.services(gh, dc, NOW + timedelta(days=2, hours=2), 'merge')
+            self.assertTrue(gh.prs[1]['merged'])
+
+    def test_approval_state_is_bounded_and_overflow_requires_all_thumbs_gone(self):
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW)
+        for uid in range(42, 62): self.approve(dc, str(uid), 'Member ' + str(uid))
+        self.push(gh)
+        self.services(gh, dc, NOW + timedelta(days=1), 'merge')
+        record = bot.Discord(FakeAPI(dc), '123456').record(dc.messages[0], 1)
+        self.assertEqual(len(record['stale_approvals']), 8)
+        self.assertTrue(record['approval_overflow'])
+        dc.approvals[dc.messages[0]['id']]['👍'] = dc.approvals[dc.messages[0]['id']]['👍'][-1:]
+        self.services(gh, dc, NOW + timedelta(days=2), 'merge')
+        self.assertFalse(gh.prs[1]['merged'])
+        dc.approvals.clear(); self.services(gh, dc, NOW + timedelta(days=2, hours=1))
+        self.approve(dc); self.services(gh, dc, NOW + timedelta(days=2, hours=2), 'merge')
+        self.assertTrue(gh.prs[1]['merged'])
+
+    def test_seed_only_reactions_do_not_list_and_schedule_budget_is_bounded(self):
+        gh, dc = ServiceGitHub(opened=10), ServiceDiscord()
+        self.services(gh, dc, NOW)
+        gh.calls.clear(); dc.calls.clear()
+        self.services(gh, dc, NOW + timedelta(minutes=15))
+        self.assertEqual((len(gh.calls), len(dc.calls)), (62, 11))
+        self.assertFalse(any('/reactions/' in c[1] for c in dc.calls))
+        self.assertFalse(any(c[0] != 'GET' for c in gh.calls + dc.calls))
+        self.assertEqual(4 * 62 + 15 * 6, 338)
+        self.assertLess(338, 500)
+        workflow = (Path(__file__).parents[2] / '.github/workflows/changelog-schedule.yml').read_text()
+        self.assertIn("7,22,37,52 * * * *", workflow)
 
 
 

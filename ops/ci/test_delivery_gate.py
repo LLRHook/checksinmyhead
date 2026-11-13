@@ -420,7 +420,7 @@ def changelog_concurrency(filename):
 CHANGELOG_WORKFLOWS = {
     'changelog-events.yml': {'pull_request_target': {'branches': ['main'], 'types': [
         'opened', 'reopened', 'ready_for_review', 'converted_to_draft', 'synchronize', 'edited', 'closed']}},
-    'changelog-schedule.yml': {'schedule': [{'cron': '17 * * * *'}]},
+    'changelog-schedule.yml': {'schedule': [{'cron': '7,22,37,52 * * * *'}]},
 }
 
 

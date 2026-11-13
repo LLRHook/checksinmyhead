@@ -1,7 +1,7 @@
 # Changelog
 
 Changelog tells Billington's friends and testers what an app change does and why,
-then gives everyone **seven full days** to stop it. Going live means squash-merging
+then waits for **one person’s 👍 approval or seven days**, with **any 🛑 always stopping it**. Going live means squash-merging
 to main; main's existing CI owns delivery to an app build.
 
 Authors open drafts and keep the opening note current. The driver or owner marks
@@ -14,15 +14,15 @@ Drafts have no initial Discord post.
 ## What friends see
 
 One embed contains the clickable PR title, explanation and status; there is no
-separate message text, footer or bare URL. Waiting notices say “Goes live” with a
-local and relative date and invite people to stop it. A merged notice says “It's
+separate message text, footer or bare URL. Waiting notices say a change goes live as soon as one person taps 👍, or at its
+seven-day deadline if nobody stops it. Dates are local and relative. A merged notice says “It's
 in. You'll see it in the next app build.” Final, draft and overdue notices have no
 deadline. GitHub's comment uses written UTC dates instead of Discord time markup.
 
 Tap **🛑** to hold indefinitely. Every person's or other bot's normal or super stop
 reaction counts; only Changelog's own seed is ignored. Every holder must release.
-Removing a stop leaves the original deadline intact. **👍 never shortens the week.**
-Holds are polled hourly and immediately before merging. Up to eight names and their
+Removing a stop leaves the original deadline intact. **One person’s 👍 can skip the remaining wait.**
+Reactions are polled every 15 minutes and immediately before merging. Up to eight names and their
 first-observed hold times appear, without mentions or IDs. Discord provides no
 reaction timestamp; open its reaction list for all holders.
 
@@ -31,6 +31,9 @@ objection and remove the reaction. Changelog does not get that permission.
 Otherwise close this PR and open a new one, explain the unresolved objection, and
 wait a full new week. A reaction arriving after the final read but before GitHub
 accepts a merge remains an accepted cross-service window.
+
+A fresh/full week below names the fallback deadline; a new counting 👍 can still
+send the change sooner.
 
 The week starts at the later of controller time and Discord's actual posting time.
 Note-only edits update the same post. Own commits or net changes restart the week
@@ -45,10 +48,10 @@ GitHub's 3000-file cap). Truncated text patches, larger lists or more than 1000
 comparison commits use the **exact current commit** instead. The notice says
 “This is a big change, so any update to it restarts the week.” That clock stays
 stable between runs and can finish; a new head then always restarts it. Transient
-read failures, rate limits and timeouts leave that PR's notice, checks, mirror and
+read failures before publication leave that PR's notice, checks, mirror and
 clock untouched; other PRs proceed and Actions fails for a later retry.
 
-A merge requires an open, ready, unheld PR, GitHub's clean mergeability, exact-head
+A merge requires a counting approval or the full seven days, plus an open, ready, unheld PR, GitHub's clean mergeability, exact-head
 Actions successes for **Required delivery checks** and **Changelog note**, and no
 other incomplete or failing checks. Optional **skipped** and **neutral** checks are
 allowed; only the current Actions job named `changelog` is excluded. Failure,
@@ -59,6 +62,48 @@ transition, checks and holds; GraphQL also conditions the merge on the exact hea
 GitHub rules still apply. Tracker-only (`bugs.md`, `features.md`, `CHANGELOG.md`),
 Dependabot and fork changes are exempt. Existing notices finish when a PR becomes
 exempt, leaves main, or a person merges or closes it. Agents cannot bypass the week.
+
+## What a 👍 means
+
+The owner's correction was: “no the thumbs up does speed it up once one person
+says its good it goes to main”. The version, polling and recovery rules below are
+the driver agent's interpretation, not additional owner statements.
+
+Any person in the channel, including the change's author, can approve with 👍,
+any skin tone or a super reaction. Changelog's seed and other bots do not approve.
+A normal or super 🛑 from anyone still holds, regardless of approvals. A counting
+approval lets the bot merge at its next run without waiting; nobody approving
+keeps the seven-day path. Reactions do not wake Actions, so expect up to the next
+15-minute sweep, plus normal GitHub scheduling delays.
+
+A 👍 cannot merge red/incomplete checks, a held change, a draft, a broken note,
+a version nobody has approved since it changed, or anything while mode is off or
+post. The owner-opener/account, token, expected-head and clean-merge gates remain.
+Post mode, a missing merge token or another PR opener only changes the notice;
+Changelog does not merge in those cases.
+
+On every code/ready restart, all 👍 present are for the old version. A person must
+remove every tone/type of their 👍, let a run see it gone, then add it again. A
+new person's approval at a later non-restarting run counts. Note-only edits keep
+approvals. Returning to draft stops approval; ready again requires fresh approvals.
+Names are sanitized and never ping anyone.
+
+The bot stores at most eight stale approver IDs. If a restart has more than eight,
+it conservatively requires all human 👍 to be seen gone before approvals can count
+again; the seven-day path still works. It never drops old IDs or treats forgotten
+people as fresh. The first rollout onto old notices treats their existing 👍 as
+old-version reactions. Missing/damaged approval knowledge also requires re-giving;
+a damaged full record fails closed through the existing recovery instruction.
+
+A restart first publishes the new notice with approval invalidation pending, then
+reads reactions again and confirms the baseline in its bot-owned record. This
+catches a 👍 arriving while the old notice was being replaced. If that write/read
+is interrupted, the next run conservatively invalidates present reactions again.
+Valid records recover through deleted comments or lost posting replies without
+forgetting which version was shown. Duplicates and damaged records do not approve.
+The final fresh message read rechecks the exact notice record, 🛑 and counting 👍
+before merging. After listing approvals, it takes another fresh message snapshot
+and reads stops last; an empty approval count there also prevents an early merge.
 
 ## Driver setup: main-only environment
 
@@ -75,7 +120,7 @@ ordinary channel history and works with these grants.
    deployment branches limited to **`main`** only; no wildcard or tag allowance.
    Verify this restriction before storing secrets. Do not add custom deployment
    protection rules. Both jobs use `environment: {name: changelog, deployment: false}`:
-   secrets and branch restrictions apply without hourly deployment objects.
+   secrets and branch restrictions apply without quarter-hour deployment objects.
 2. Add environment secret **`CHANGELOG_DISCORD_BOT_TOKEN`** privately. Optionally
    create **`CHANGELOG_MERGE_TOKEN`**, a fine-grained PAT owned by **LLRHook**, scoped
    only to **LLRHook/checksinmyhead** with **Contents read and write, Pull requests
@@ -103,7 +148,7 @@ Only the separate PAT merges; the built-in token cannot. The bot requires its
 `/user` to report login **LLRHook** and profile name **Victor Ivanov**. Automatic
 merging is limited to PRs opened by that account. For other authors the notice says
 “The week is up. Someone else wrote this one, so the owner will put it live by
-hand.” The owner/driver manual path still requires the full week, no holds and
+hand.” The owner/driver manual path still requires a current approval or the full week, no holds and
 green checks; agents do not perform it. A person's merge gets an ordinary final
 notice. When both the PR opener and merger are LLRHook, the raw author is audited,
 including hand-merges. Another person's PR is never audited by this bot.
@@ -124,12 +169,13 @@ Investigate main. Detection cannot undo a merge. Relevant references:
 
 ## Runs, state and recovery
 
-Each event handles **only its event PR**. The hourly run at minute 17 sweeps open
+Each event handles **only its event PR**. The scheduled run at minutes **7, 22, 37
+and 52** of each hour sweeps open
 PRs and closures from the last **24 hours**, stopping before old closures. A closure
 missed for longer than a day needs manual notice cleanup. Both workflows retain
 `queue: max` and never cancel a running job. Fork events use an isolated run-ID
 group and are skipped. GitHub permits up to 100 pending runs; ordering and schedule
-timing are best effort. The next hourly sweep catches dropped/failed events.
+timing are best effort. The next 15-minute sweep catches dropped/failed events.
 Schedules may be disabled after 60 days without activity; monitor successful runs
 and recover in post mode before enabling merges again.
 
@@ -148,19 +194,20 @@ retry protection; it is not durable authority. There is no pending marker.
 At 50 messages/day, exceptional history recovery for day/week/month-old PRs takes
 **1/4/16 history requests**, plus one bot identity request, using a 30-day month and
 an older sentinel. The direct hint makes this exceptional. A steady event costs
-**6 GitHub / 4 Discord requests**; a sweep of ten open PRs costs **62 / 31**. An
-hour with 15 such events plus that sweep costs **152 / 91**, with no unchanged
+**6 GitHub / 2 Discord requests**; a sweep of ten open PRs costs **62 / 11**. An
+hour with 15 such events plus four sweeps costs **338 / 74**, with no unchanged
 notice edits or reaction writes. The older regression with 300 old closed PRs,
-seven open and 500 unrelated messages costs **44 / 22**, also without writes.
+seven open and 500 unrelated messages costs **44 / 8**, also without writes.
 Initial creation needs one message POST and two seed reactions. Returned Discord
 metadata is ignored when comparing the single embed the bot set.
 
-The realistic mix of ten posted PRs, four never-posted drafts, three five-day-old
-Dependabot PRs and two drafts with notices costs **96 GitHub / 37 Discord requests,
-zero writes** per unchanged sweep (previously 100 / 48, with four writes). A
-deadline-and-merge event costs **14 / 7**, one GitHub request fewer after removing
-the eager check read. Steady event and ten-open sweep costs above are unchanged
-because their note checks still need a lazy read.
+The steady no-reaction budget is **338 GitHub requests/hour**, leaving 662 of
+this repository's shared 1,000-request budget for delivery and other work. The
+bot checks the message's reaction counts before listing users; seed-only reactions
+need no listing. Active reactions, due merges and exceptional recovery cost more.
+Initial posting needs a POST and two seeds. See Discord’s [reaction fields](https://docs.discord.com/developers/resources/message#reaction-object) for counts and super-reaction metadata. A version restart or legacy notice
+upgrade also reads reactions after publishing and confirms its approval baseline;
+these are bounded transition writes, not steady-state polling.
 
 The authoritative record is compressed into the title link fragment, with its
 clock, ready transition, change identity and observed holds. A writer editing the
@@ -182,7 +229,7 @@ and get no comment. Existing notices still finish when a PR becomes exempt, as
 long as its Changelog comment on the pull request is still there: without that
 comment the bot does not look for a notice of an exempt PR (see the last row of
 the table below). A
-notice cancelled by draft stays unchanged on ordinary hourly runs; marking it ready
+notice cancelled by draft stays unchanged on ordinary scheduled runs; marking it ready
 starts a full week from that ready run. A broken posted note shows a short pause
 in Discord with any holders above it; its exact repair instruction stays on GitHub.
 Only `dirty` mergeability is called a clash. Other states and declined merge calls
@@ -193,7 +240,9 @@ in Discord. Actual channel-history 403/404 reports that the channel cannot be re
 a hint failure or bot-identity failure does not make that claim. A truly deleted
 notice requires a fresh draft → ready transition and a full new week. Duplicate
 notices require preserving the original and resolving any objection on a duplicate
-before removing it. Failed reads do not write or change clocks. Write failures
+before removing it. Reads that fail before publication preserve prior outputs. A confirmation read
+that fails after publication may leave the changed notice and its new deadline
+already written; its pending approval baseline prevents early approval on retry. Write failures
 report missing Send Messages/Embed Links. Discord 429 honors one numeric retry
 from zero to five seconds; otherwise the operation fails for a later run. An
 unexpected per-PR error logs only the PR number and error type, continues the
@@ -215,12 +264,17 @@ the recorded week. Unknown service exception text is never copied into a comment
 | `Changelog cannot write to this channel` | Restore Send Messages and Embed Links; verify the channel. |
 | `Changelog cannot add the stop buttons` | Restore Add Reactions and channel access; the next run adds missing seeds. |
 | `Changelog cannot read the stop reactions` | Restore channel access so every normal and super stop can be read. |
+| `Changelog cannot read the approval reactions` | Restore channel access so normal and super thumbs can be read; no unread approval counts. |
+| `Too many approval reactions` | Ask the owner to inspect the notice and resolve/clear excess reactions with a moderator if necessary; the bounded read must succeed before proceeding. |
 | `Too many stop reactions` | Ask the owner to inspect the notice and resolve objections; do not discard a stop to bypass the wait. The bot cannot proceed beyond its bounded reaction pages. |
 | `The saved review record is damaged` | Restore the original bot-owned notice/record, or close this PR and open a new one with a full week and unresolved objections explained. |
 | `More than one notice exists` | Keep the original, resolve objections on any duplicate, then remove the duplicate without abandoning a hold. |
 | `There are too many messages to find the original notice safely` | Close this PR and open the change as a new PR; its notice gets a full new week. Prefer a channel where people mostly react. |
 | `The Discord notice was deleted` | Mark the PR draft, then ready again; the new notice starts a full week. |
 | `Duplicate Changelog comments` (Actions) | Keep one original mirror and its correct pointer; remove extra mirrors. The bot cannot safely choose a comment to overwrite. |
+| `Stop reactions changed during the read; retry safely` (Actions) | Counts showed a stop but its user list disagreed; wait for the next complete read. An inconsistent read never clears a veto. |
+| `Notice changed during the final read; retry safely` (Actions) | Let the next run re-read the original bot-owned record; a changed or missing version/approval baseline never authorizes an early merge. |
+| `Approval reactions changed during the final read; retry safely` (Actions) | A 👍 was added or withdrawn while the approvers were being listed. Nothing merged; the next run lists them afresh. |
 | `Notice too long; holding` (Actions) | Shorten the note/title as applicable; have the owner inspect a bloated saved record. Never trim the record to move a deadline sooner. |
 | `GitHub mergeable_state is …; mergeable is …` | The mirror names the actual final-read state. Wait for recalculation or fix the repository rule/approval/update requirement; only a dirty state indicates a conflict. |
 | `GitHub declined the merge` / `GitHub has not accepted the merge` | Check repository rules and merge-account permissions; keep the existing deadline and let the bot retry. |
@@ -229,8 +283,9 @@ the recorded week. Unknown service exception text is never copied into a comment
 
 Missing/off/unknown mode, missing credentials/channel, invalid API data, HTTP
 failures, pagination limits and unexpected per-PR errors are Actions failures.
-Correct configuration or restore service access and rerun naturally; transient
-failed reads preserve that PR's outputs. A draft with an invalid note gets the
+Correct configuration or restore service access and rerun naturally; reads that fail before publication preserve that PR's outputs. Interrupted
+publication confirmation keeps approvals invalid until a later run establishes
+the baseline; it does not restart an already published deadline. A draft with an invalid note gets the
 repair instruction in its note check before any initial Discord post. A failing
 or missing automatic test after the week is named in Discord; repair CI rather
 than waiving the check.

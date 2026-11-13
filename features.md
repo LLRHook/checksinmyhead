@@ -318,27 +318,29 @@ Active work only. Format and rules: [`.cycle/TRACKERS.md`](.cycle/TRACKERS.md). 
 - **Bump:** minor
 - **Status:** open
 
-### [FEAT-1794518538] Give friends a seven-day Discord review window before app changes merge
+### [FEAT-1794518538] Approve app changes in Discord or review them for a week
 - [ ] **Priority:** high
 - **Area:** automation, delivery
 - **File(s):** ops/changelog/; .github/workflows/changelog-*.yml; .github/pull_request_template.md; AGENTS.md; ops/ci/
-- **Req:** L25 driver testflight-1112 approved brief and driver design decision, 2026-11-12
+- **Req:** Owner correction quoted in Log and driver L25-round5 scope, testflight-1112, 2026-11-12; existing identity, CI, eligibility and stop constraints remain.
 - **Depends on:** none (source implementation; live setup and first automatic merge observation remain external)
-- **UI:** One Discord notice per ready same-repository PR, edited in place with deadline, holds and outcome.
-- **Why:** Friends and testers need a full week to see and hold proposed app changes before main changes.
-- **Approach:** Trusted-main Actions Python standard library controller; one authoritative bot-owned Discord embed, untrusted PR mirror and bounded channel-history recovery; exact-head checks and separate Victor PAT with owner-opener guard for conditional squash merge.
+- **UI:** One Discord embed per ready same-repository PR, showing its explanation, counting approval or seven-day fallback, stop holders and outcome.
+- **Why:** Friends and testers can approve a change immediately or take seven days to review it; anyone can stop it while questions remain.
+- **Approach:** Trusted-main Actions Python standard library controller; version-bound human approval and stop reactions; authoritative bot-owned Discord record and untrusted PR mirror; exact-head gates and separate Victor PAT with owner-opener guard for squash merge.
 - **Library / dependency notes:** No new dependencies or upgrades; Python 3.12 standard library. Existing CI-only PyYAML remains unchanged.
-- **Acceptance criteria:** Drafts do not post; real ready notes post once; code changes restart seven days; stops hold indefinitely; releases preserve deadline; forks/tracker-only/Dependabot exempt; missing identity, note, checks or clean merge fail closed; switch disables activity; tests use only fakes.
-- **Test plan:** CPython 3.12 offline service fakes, saved real checks, ten controller mutations, both reviewers workflow negatives, automation manifest and tracker lint; driver separately proves live permissions, seven-day lifecycle and first automatic merge author/main CI.
+- **Acceptance criteria:** One current-version human thumbs-up can send a ready unheld change to main without waiting; otherwise seven days. Stops always win. Push/ready restarts invalidate present approvals until observed gone and re-given; note edits keep approvals. Skin tones and super approvals count; bots do not approve. Every existing check, identity, opener, mergeability and exact-head gate stays. Post mode never merges. Scheduled sweep every 15 minutes; offline fakes prove recovery and races.
+- **Test plan:** CPython 3.12 stateful fakes, version-bound approval and final-read races, ten approval mutations plus prior reviewer sets, original and extended fault lifecycles, schedule pins, manifest and tracker lint; driver separately proves the rollout on existing notices, real reaction listing and first automatic author/main-CI behavior.
 - **Out of scope:** Real Discord calls, real merges, deployment, repository settings/secrets/variables changes, workflow dispatch and integrated application V&V.
 - **Bump:** minor
 - **Assignee:** Victor Ivanov
 - **Status:** in-progress
-- **Implementation:** Driver follow-up pass on feature/changelog-followups stacked on frozen PR 192: recover raw-author audits from GitHub opener/merger facts after lost merge replies and failed reads; leave never-posted exempt PRs alone; keep unchanged drafted notices stable; keep developer repair/state details out of Discord; remove redundant reads/fields. 73 offline bot tests; live setup and first automatic author/main-CI observation remain external.
-- **Docs:** ops/changelog/README.md failure-message recovery inventory, channel-history limit and measured realistic request budget; AGENTS.md and technical overview owner-opener/merger audit rule; new stacked draft PR description. PR 192 frozen at a4c00a5 and untouched.
+- **Implementation:** Round five: one counting human thumbs-up can merge before seven days, with every other merge gate and stop veto intact. Version-bound approval invalidation, publication confirmation, bounded stale users, final reaction/record reads, skin-tone and super reactions, and 15-minute polling with seed-count shortcuts. Offline fakes only; no live mutations.
+- **Docs:** ops/changelog/README.md approval semantics, limits, rollout and request budget; AGENTS.md; docs/technical-overview.md; own draft PR note. PR template has no week rule and is unchanged.
 - **Log:**
   - 2026-11-12 Decision: Driver approved state/concurrency/GraphQL identity design and narrow delivery-contract extension. Comparison uncertainty restarts each run. Source baseline 83c1bbc138bb0bea35201dbcf75f45c08aec17f5. Offline proof only; preserve pending live configuration/identity boundaries.
   - 2026-11-12 Review: Driver round-two decisions implemented after L27 BLOCK: fixed token/variable names retained; removed prior-merge proof and individual-commit author ceremony; added Workflows RW to private PAT setup; changelog environment deployment=false; queue=max documented in current GitHub syntax. Decisions are the driver agent’s, not an owner decision.
   - 2026-11-12 Verification: Additional recovery boundary: a missing or forged PR-comment message hint now causes a bounded search of this bot’s own notices before deletion recovery, preserving a live notice and its stop reactions even beyond recent channel history. Unindexed/unavailable search leaves state untouched; no additional intent or secret is configured. Live search availability remains smoke proof.
   - 2026-11-12 Review: Driver round-three decisions supersede earlier recovery and full-event sweep instructions: channel history without privileged intents, event-only processing plus hourly sweep, optional skip/neutral CI allowed, own merges audited only, no local merge selector. PR remains draft; implementation and evidence are offline, not live qualification.
   - 2026-11-12 Review: Driver round-four follow-ups after L29 APPROVE: work branches from approved a4c00a5 as feature/changelog-followups, with its own draft PR. Audit both owner-opened/owner-merged changes including hand-merges; preserve the reviewed merge gate and history stop rule. Decisions are the driver agent’s. PR 192 and feature/changelog-bot remain frozen.
+  - 2026-11-12 Decision: Owner correction, quoted verbatim: "no the thumbs up does speed it up once one person says its good it goes to main". All version invalidation, final-read, polling, bounded-state and recovery details in L25-round5 are driver-agent decisions, not further owner decisions.
+  - 2026-11-12 Implementation: L25 implementation choices: treat person as a human account; store eight stale approver IDs and require all human thumbs seen gone after overflow; publish the new version with approval invalidation pending, then confirm the baseline after a second read; compare final record knowledge while retaining removals observed earlier in the run. An uncertain merge reply recovers with the ordinary merged wording because the triggering path cannot be proved. These are implementation choices, not additional owner statements.

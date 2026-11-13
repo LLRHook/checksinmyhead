@@ -43,12 +43,14 @@ Open pull requests as drafts. Start the description with the note block in
 [the pull request template](.github/pull_request_template.md); keep its what-changed
 and why text current, in plain words for people who use the app. The driver or owner
 marks a pull request ready after green checks and independent review. Every change
-waits the full Changelog week except tracker-only and Dependabot pull requests.
+requires a counting human 👍 or the full Changelog week, except tracker-only and
+Dependabot pull requests. Any 🛑 wins. An approval is for the recorded version;
+code/ready restarts invalidate present approvals until removed and re-given.
 Agents never merge around the bot or shorten its recorded week. The owner or driver
 may complete a change opened by another account only through the documented manual
-path, after the full week, no holds and green checks. See [Changelog setup and operation](ops/changelog/README.md)
+path, after a counting approval or the full week, no holds and green checks. See [Changelog setup and operation](ops/changelog/README.md)
 for stop reactions, clock restarts and pauses. Events handle only their PR; the
-hourly sweep is the safety net. Treat the state comment as a mirror: do not edit
+15-minute sweep is the safety net. Treat the state comment as a mirror: do not edit
 its pointer or record to bypass a hold or advance a deadline. A permitted human
 merge gets an ordinary final notice. PRs both opened and merged by LLRHook are
 audited against Victor's raw author identity, including hand-merges; other authors'
