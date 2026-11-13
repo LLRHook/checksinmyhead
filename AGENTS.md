@@ -49,5 +49,7 @@ may complete a change opened by another account only through the documented manu
 path, after the full week, no holds and green checks. See [Changelog setup and operation](ops/changelog/README.md)
 for stop reactions, clock restarts and pauses. Events handle only their PR; the
 hourly sweep is the safety net. Treat the state comment as a mirror: do not edit
-its pointer or record to bypass a hold or advance a deadline. Only bot merges are
-audited; a permitted human merge gets an ordinary final notice.
+its pointer or record to bypass a hold or advance a deadline. A permitted human
+merge gets an ordinary final notice. PRs both opened and merged by LLRHook are
+audited against Victor's raw author identity, including hand-merges; other authors'
+PRs are not audited.

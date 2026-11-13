@@ -24,7 +24,7 @@ def pull():
             'user': {'login': 'LLRHook'}, 'head': {'sha': HEAD, 'repo': {'full_name': bot.REPO}},
             'base': {'sha': BASE, 'repo': {'full_name': bot.REPO}, 'ref': 'main'},
             'draft': False, 'state': 'open', 'merged': False, 'mergeable': True, 'mergeable_state': 'clean',
-            'created_at': bot.stamp(NOW), 'updated_at': bot.stamp(NOW), 'closed_at': None, 'changed_files': 1, 'commits': 1, 'merge_commit_sha': 'd' * 40}
+            'created_at': bot.stamp(NOW), 'updated_at': bot.stamp(NOW), 'closed_at': None, 'changed_files': 1, 'commits': 1, 'merge_commit_sha': 'd' * 40, 'merged_by': None}
 
 
 class FakeGitHub:
@@ -49,7 +49,7 @@ class FakeGitHub:
         return self.paths, True
 
     def change(self, pr):
-        return self.fingerprint, self.paths
+        return self.fingerprint
 
     def timeline(self, number):
         return self.transitions
@@ -73,14 +73,14 @@ class FakeGitHub:
         return self.is_green
 
     def identity(self, pr):
-        return self.identity_ok
+        return self.identity_ok and pr['user']['login'] == 'LLRHook'
 
     def audit(self, pr):
         pass
 
     def merge(self, pr):
         self.merges.append(copy.deepcopy(pr))
-        self.data.update(state='closed', merged=True)
+        self.data.update(state='closed', merged=True, merged_by={'login': 'LLRHook'})
         return 'd' * 40
 
 
@@ -250,7 +250,7 @@ class ChangelogLifecycleTests(unittest.TestCase):
     def test_removing_note_after_post_blocks_existing_deadline(self):
         self.posted()
         self.gh.data['body'] = ''
-        self.assertIn('Waiting for the author', self.run_bot())
+        self.assertIn("Paused: the author needs to fix this change's description.", self.run_bot())
         self.assertFalse(self.gh.merges)
         self.assertEqual(self.dc.created, 1)
 
@@ -263,7 +263,7 @@ class ChangelogLifecycleTests(unittest.TestCase):
         self.assertIn('clashes with another change', self.run_bot())
         self.gh.data['mergeable_state'] = 'clean'
         self.gh.data['mergeable'] = None
-        self.assertIn('clashes with another change', self.run_bot())
+        self.assertEqual(bot.GITHUB_WAIT, self.run_bot())
         self.gh.data['mergeable'] = True
         self.run_bot()
         self.assertEqual(len(self.gh.merges), 1)
@@ -405,16 +405,16 @@ class ChangelogAdapterTests(unittest.TestCase):
     def test_fingerprint_main_merge_stable_own_edits_and_resolution_restart(self):
         result = self.compare()
         gh = bot.GitHub(FakeAPI(lambda *args: result))
-        original = gh.change(pull())[0]
+        original = gh.change(pull())
         result['files'][0]['patch'] = result['files'][0]['patch'].replace('-1,2 +1,2', '-7,2 +7,2')
         result['commits'].append({'sha': 'c' * 40, 'parents': [{'sha': HEAD}, {'sha': BASE}]})
         result['total_commits'] = 2
-        self.assertEqual(gh.change(pull())[0], original)
+        self.assertEqual(gh.change(pull()), original)
         result['files'][0]['patch'] = result['files'][0]['patch'].replace('+new', '+resolution')
-        self.assertNotEqual(gh.change(pull())[0], original)
+        self.assertNotEqual(gh.change(pull()), original)
         result = self.compare()
         result['commits'][0]['sha'] = 'e' * 40
-        self.assertNotEqual(gh.change(pull())[0], original)
+        self.assertNotEqual(gh.change(pull()), original)
 
     def test_comparison_truncation_falls_back_and_failed_read_propagates(self):
         for kind in ('commits', 'patch', 'binary', 'http'):
@@ -430,7 +430,7 @@ class ChangelogAdapterTests(unittest.TestCase):
                 if kind == 'http':
                     with self.assertRaises(bot.Refused): gh.change(pull())
                 else:
-                    self.assertEqual(gh.change(pull())[0], 'head:' + HEAD)
+                    self.assertEqual(gh.change(pull()), 'head:' + HEAD)
 
     def test_checks_exact_head_mandatory_context_and_each_terminal(self):
         head = pull()
@@ -493,7 +493,7 @@ class ChangelogAdapterTests(unittest.TestCase):
 
     def test_merge_api_errors_are_safe_and_not_retried(self):
         api = FakeAPI(lambda *args: {'errors': [{'message': 'tainted-secret-response'}]})
-        with self.assertRaisesRegex(bot.Refused, '^Merge refused by GitHub;'):
+        with self.assertRaisesRegex(bot.Refused, r'^GitHub declined the merge\.'):
             bot.GitHub(api, api).merge(pull())
         self.assertEqual(len(api.calls), 1)
 
@@ -645,7 +645,7 @@ class ServiceGitHub:
         if path == '/user': return {'login': 'LLRHook', 'name': bot.AUTHOR[0]}
         if path == '/graphql':
             number = int(body['variables']['input']['pullRequestId'].split('-')[-1])
-            self.prs[number].update(state='closed', merged=True, closed_at=bot.stamp(self.now), updated_at=bot.stamp(self.now))
+            self.prs[number].update(state='closed', merged=True, merged_by={'login': 'LLRHook'}, closed_at=bot.stamp(self.now), updated_at=bot.stamp(self.now))
             return {'data': {'mergePullRequest': {'pullRequest': {'merged': True,
                     'mergeCommit': {'oid': 'd' * 40, 'author': dict(self.author)}}}}}
         rest = url.path[len('/repos/' + bot.REPO):]
@@ -853,12 +853,12 @@ class ChangelogRevisionTests(unittest.TestCase):
         gh.prs[1]['changed_files'] = 301
         gh.compare_commits = [{'sha': f'{n:040x}', 'parents': [{}]} for n in range(101)]
         adapter = bot.GitHub(FakeAPI(gh))
-        fingerprint = adapter.change(gh.prs[1])[0]
+        fingerprint = adapter.change(gh.prs[1])
         self.assertFalse(fingerprint.startswith('head:'))
         self.assertTrue(any('page=2' in c[1] for c in gh.calls))
         self.assertEqual(len(adapter._files[(1, gh.prs[1]['head']['sha'])]), 301)
         gh.prs[1]['changed_files'] = 3001
-        self.assertEqual(adapter.change(gh.prs[1])[0], 'head:' + gh.prs[1]['head']['sha'])
+        self.assertEqual(adapter.change(gh.prs[1]), 'head:' + gh.prs[1]['head']['sha'])
         # The API's 3000-file limit uses a deterministic head-based clock.
         self.gh.fingerprint = 'head:' + HEAD
         self.gh.data['changed_files'] = 3001
@@ -893,11 +893,10 @@ class ChangelogRevisionTests(unittest.TestCase):
                 request.assert_called_once(); sleep.assert_not_called()
 
     def test_exempt_notice_is_finished_and_later_manual_merge_is_true(self):
-        for kind in ('tracker', 'retarget', 'dependabot'):
+        for kind in ('tracker', 'retarget'):
             self.setUp(); self.run_bot()
             if kind == 'tracker': self.gh.paths = ['features.md']
             elif kind == 'retarget': self.gh.data['base']['ref'] = 'release'
-            else: self.gh.data['user']['login'] = 'dependabot[bot]'
             self.assertEqual(self.run_bot(), 'exempt')
             self.assertNotIn('Goes live', visible(self.dc.message))
             self.assertNotIn('Tap 🛑', visible(self.dc.message))
@@ -1008,8 +1007,9 @@ class ChangelogRevisionTests(unittest.TestCase):
         self.posted()
         start = self.dc.state['start']
         with patch.object(self.gh, 'merge', side_effect=bot.MergeBlocked('Merge refused by GitHub; waiting for the owner or a later run')):
-            self.assertIn('Merge refused', self.run_bot())
-        self.assertIn('Merge refused', visible(self.dc.message))
+            self.assertEqual(bot.GITHUB_WAIT, self.run_bot())
+        self.assertIn(bot.GITHUB_WAIT, visible(self.dc.message))
+        self.assertIn('Merge refused', self.gh.mirrors[-1][-1])
         self.assertEqual(self.dc.state['start'], start)
         self.assertFalse(self.gh.merges)
 
@@ -1229,6 +1229,164 @@ resolve\tgithub-actions\tcompleted\tsuccess\ttrue'''
         adapter.post(gh.prs[1], state, visible(latest), latest)
         self.assertEqual(dc.calls[-1][0], 'PATCH')
         self.assertEqual(len(dc.messages[0]['embeds']), 1)
+
+    def test_owner_merge_audit_recovers_lost_reply_and_failed_commit_read(self):
+        for fault in ('reply', 'commit-read'):
+            for wrong in (False, True):
+                with self.subTest(fault=fault, wrong=wrong):
+                    gh, dc = ServiceGitHub(), ServiceDiscord()
+                    self.services(gh, dc, NOW)
+                    if wrong: gh.author = {'name': 'Someone Else', 'email': 'other@example.invalid'}
+                    original = gh.__call__
+                    fired = False
+                    def lose_response(method, path, body):
+                        nonlocal fired
+                        match = path == '/graphql' if fault == 'reply' else '/git/commits/' in path
+                        if match and not fired:
+                            fired = True
+                            if fault == 'reply': original(method, path, body)
+                            raise bot.HTTPFailure(502)
+                        return original(method, path, body)
+                    gh.now = dc.now = NOW + bot.WEEK
+                    with self.assertRaises(bot.Refused), patch('sys.stdout', io.StringIO()):
+                        bot.reconcile_all(bot.GitHub(FakeAPI(lose_response), FakeAPI(lose_response)), bot.Discord(FakeAPI(dc), '123456'), 'merge', NOW + bot.WEEK)
+                    self.assertTrue(fired)
+                    self.assertTrue(gh.prs[1]['merged'])
+                    gh.calls.clear()
+                    if wrong:
+                        with self.assertRaises(bot.Refused): self.services(gh, dc, NOW + bot.WEEK + timedelta(hours=1))
+                        self.assertIn('not authored by Victor Ivanov <victor.n.ivanov@gmail.com>', gh.comments[1][0]['body'])
+                        self.assertIn('set CHANGELOG_MODE to post', gh.comments[1][0]['body'])
+                        note = next(r for r in gh.checks[gh.prs[1]['head']['sha']] if r['name'] == bot.CHECK)
+                        self.assertEqual(note['conclusion'], 'failure')
+                    else:
+                        self.services(gh, dc, NOW + bot.WEEK + timedelta(hours=1))
+                        self.assertEqual(sum('/git/commits/' in c[1] for c in gh.calls), 1)
+                        gh.calls.clear()
+                        self.services(gh, dc, NOW + bot.WEEK + timedelta(hours=2))
+                        self.assertFalse(any('/git/commits/' in c[1] for c in gh.calls))
+                    self.assertTrue(visible(dc.messages[0]).endswith(bot.MERGED))
+                    self.assertNotIn('IDENTITY INCIDENT', visible(dc.messages[0]))
+
+    def test_hand_merge_audit_requires_both_owner_opener_and_owner_merger(self):
+        for opener, merger, audited in (('LLRHook', 'LLRHook', True), ('friend-dev', 'LLRHook', False), ('LLRHook', 'friend-dev', False)):
+            gh, dc = ServiceGitHub(), ServiceDiscord()
+            gh.prs[1]['user']['login'] = opener
+            self.services(gh, dc, NOW)
+            gh.prs[1].update(state='closed', merged=True, merged_by={'login': merger}, closed_at=bot.stamp(NOW), updated_at=bot.stamp(NOW))
+            gh.author = {'name': 'Someone Else', 'email': 'other@example.invalid'}
+            gh.calls.clear()
+            if audited:
+                with self.assertRaises(bot.Refused): self.services(gh, dc, NOW + timedelta(hours=1))
+                self.assertIn('IDENTITY INCIDENT', gh.comments[1][0]['body'])
+            else:
+                self.services(gh, dc, NOW + timedelta(hours=1))
+                self.assertFalse(any('/git/commits/' in c[1] for c in gh.calls))
+            self.assertTrue(visible(dc.messages[0]).endswith(bot.MERGED))
+
+    def test_never_posted_exempt_PRs_skip_Discord_and_all_writes(self):
+        for kind in ('dependabot', 'non-main', 'tracker'):
+            gh, dc = ServiceGitHub(opened=3), ServiceDiscord()
+            for pr in gh.prs.values():
+                pr['created_at'] = bot.stamp(NOW - timedelta(days=45))
+                if kind == 'dependabot': pr['user']['login'] = 'dependabot[bot]'
+                elif kind == 'non-main': pr['base']['ref'] = 'feature/other'
+            if kind == 'tracker': gh.compare_files[0]['filename'] = 'features.md'
+            # One exempt draft exercises the early branch too.
+            gh.prs[1]['draft'] = True
+            dc.noise(2250)
+            for hour in (0, 1, 2):
+                gh.calls.clear(); dc.calls.clear()
+                self.services(gh, dc, NOW + timedelta(hours=hour))
+                self.assertEqual(dc.calls, [])
+                self.assertFalse(any(c[0] != 'GET' for c in gh.calls))
+                self.assertTrue(all(not comments for comments in gh.comments.values()))
+
+    def test_draft_notice_stays_unchanged_then_ready_gets_full_week(self):
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW)
+        gh.prs[1]['draft'] = True
+        gh.timeline.append({'event': 'converted_to_draft', 'id': 10})
+        self.services(gh, dc, NOW + timedelta(days=1))
+        before = copy.deepcopy((dc.messages, gh.comments))
+        for hour in (1, 2, 3):
+            gh.calls.clear(); dc.calls.clear()
+            self.services(gh, dc, NOW + timedelta(days=1, hours=hour))
+            self.assertEqual((dc.messages, gh.comments), before)
+            self.assertFalse(any(c[0] != 'GET' for c in gh.calls + dc.calls))
+        gh.prs[1]['draft'] = False
+        gh.timeline.append({'event': 'ready_for_review', 'id': 11})
+        ready = NOW + timedelta(days=3)
+        self.services(gh, dc, ready)
+        record = bot.Discord(FakeAPI(dc), '123456').record(dc.messages[0], 1)
+        self.assertEqual(bot.date(record['start']), ready)
+        self.services(gh, dc, ready + bot.WEEK - timedelta(microseconds=1), 'merge')
+        self.assertFalse(gh.prs[1]['merged'])
+        self.services(gh, dc, ready + bot.WEEK, 'merge')
+        self.assertTrue(gh.prs[1]['merged'])
+
+    def test_broken_note_keeps_holders_and_developer_instruction_off_Discord(self):
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW)
+        dc.users[dc.messages[0]['id']] = [{'id': '42', 'username': 'Maya'}]
+        gh.prs[1]['body'] = ''
+        self.services(gh, dc, NOW + timedelta(days=8), 'merge')
+        status = visible(dc.messages[0])
+        self.assertIn('On hold: Maya tapped 🛑', status)
+        self.assertTrue(status.endswith("Paused: the author needs to fix this change's description."))
+        self.assertNotIn('markers', status)
+        self.assertIn('Start the description with the Changelog note markers', gh.comments[1][0]['body'])
+        self.assertFalse(gh.prs[1]['merged'])
+
+    def test_merge_refusal_and_each_non_conflict_state_use_the_waiting_wording(self):
+        for state in ('blocked', 'behind', 'unstable', 'unknown', None, 'future-state', 'clean', 'dirty'):
+            gh, dc = ServiceGitHub(), ServiceDiscord()
+            self.services(gh, dc, NOW)
+            gh.prs[1].update(mergeable=False, mergeable_state=state)
+            self.services(gh, dc, NOW + bot.WEEK, 'merge')
+            status = visible(dc.messages[0]).split('\n\n')[-1]
+            self.assertTrue(status.endswith('.'))
+            if state == 'dirty': self.assertIn('clashes with another change', status)
+            else:
+                self.assertEqual(status, bot.GITHUB_WAIT)
+                self.assertIn('mergeable_state is ' + str(state), gh.comments[1][0]['body'])
+            self.assertFalse(gh.prs[1]['merged'])
+        for response in ({'errors': [{'message': 'not for channel readers'}]}, {'data': {'mergePullRequest': {'pullRequest': {'merged': False}}}}):
+            gh, dc = ServiceGitHub(), ServiceDiscord()
+            self.services(gh, dc, NOW)
+            original = gh.__call__
+            def decline(method, path, body):
+                return response if path == '/graphql' else original(method, path, body)
+            gh.now = dc.now = NOW + bot.WEEK
+            bot.reconcile(bot.GitHub(FakeAPI(decline), FakeAPI(decline)), bot.Discord(FakeAPI(dc), '123456'), 1, 'merge', NOW + bot.WEEK)
+            self.assertTrue(visible(dc.messages[0]).endswith(bot.GITHUB_WAIT))
+            self.assertIn('GitHub', gh.comments[1][0]['body'])
+            self.assertNotIn('not for channel readers', gh.comments[1][0]['body'])
+
+    def test_mirror_deadline_is_written_once_and_recovery_messages_are_documented(self):
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW)
+        mirror = gh.comments[1][0]['body'].split('```json', 1)[0]
+        self.assertEqual(mirror.count('19 November 2026 at 12:00:00 UTC'), 1)
+        readme = Path(__file__).with_name('README.md').read_text()
+        for message in ('cannot add the stop buttons', 'cannot read the stop reactions', 'Too many stop reactions',
+                        'saved review record is damaged', 'Duplicate Changelog comments', 'Notice too long; holding', '2,000'):
+            self.assertIn(message, readme)
+
+    def test_lazy_check_read_and_optional_wrong_head_remain_safe(self):
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW)
+        gh.calls.clear()
+        self.services(gh, dc, NOW + bot.WEEK)
+        self.assertEqual(sum(c[0] == 'GET' and '/check-runs' in c[1] for c in gh.calls), 1)
+        adapter = bot.GitHub(FakeAPI(gh))
+        self.assertIsInstance(adapter.change(gh.prs[1]), str)
+        head = gh.prs[1]['head']['sha']
+        gh.checks[head].append({'id': 991, 'name': 'optional', 'app': {'slug': 'github-actions'},
+                                'head_sha': BASE, 'status': 'completed', 'conclusion': 'success'})
+        self.assertFalse(adapter.green(gh.prs[1]))
+        self.assertEqual(adapter.waiting_check, 'optional')
+
 
 
 if __name__ == '__main__':

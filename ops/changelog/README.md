@@ -105,13 +105,18 @@ merging is limited to PRs opened by that account. For other authors the notice s
 “The week is up. Someone else wrote this one, so the owner will put it live by
 hand.” The owner/driver manual path still requires the full week, no holds and
 green checks; agents do not perform it. A person's merge gets an ordinary final
-notice; its author is not audited by this bot.
+notice. When both the PR opener and merger are LLRHook, the raw author is audited,
+including hand-merges. Another person's PR is never audited by this bot.
 
 The GraphQL mutation uses **SQUASH**, `expectedHeadOid`, Victor's `authorEmail`,
 headline **`<title> (#<number>)`**, and an empty body without co-author trailers.
-Every bot merge reads the raw Git author. A wrong author fails Actions, the note
-check and the PR comment; Discord still shows the ordinary merged notice. Set mode
-off and investigate main. Detection cannot undo a merge. Relevant references:
+Every bot merge reads the raw Git author. If the merge reply or audit read is
+lost, later runs derive the audit requirement from GitHub's opener and merger
+identities and retry until a read succeeds; a successful audit is saved once. A
+wrong author fails Actions, the note check and the PR comment; Discord still
+shows the ordinary merged notice. The instruction names the commit on main and
+asks for mode `post` and a token identity check if Changelog merged it.
+Investigate main. Detection cannot undo a merge. Relevant references:
 [GraphQL input](https://docs.github.com/en/graphql/reference/input-objects#mergepullrequestinput),
 [PAT permissions](https://docs.github.com/en/rest/authentication/permissions-required-for-fine-grained-personal-access-tokens),
 [workflow triggering](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow),
@@ -150,6 +155,13 @@ seven open and 500 unrelated messages costs **44 / 22**, also without writes.
 Initial creation needs one message POST and two seed reactions. Returned Discord
 metadata is ignored when comparing the single embed the bot set.
 
+The realistic mix of ten posted PRs, four never-posted drafts, three five-day-old
+Dependabot PRs and two drafts with notices costs **96 GitHub / 37 Discord requests,
+zero writes** per unchanged sweep (previously 100 / 48, with four writes). A
+deadline-and-merge event costs **14 / 7**, one GitHub request fewer after removing
+the eager check read. Steady event and ten-open sweep costs above are unchanged
+because their note checks still need a lazy read.
+
 The authoritative record is compressed into the title link fragment, with its
 clock, ready transition, change identity and observed holds. A writer editing the
 PR comment can corrupt the hint or delay recovery, but cannot move merging sooner:
@@ -158,6 +170,20 @@ GitHub supplies the current PR, timeline, change and checks; Discord supplies ho
 Injected holder-name text cannot replace the last anchored pointer. Bot-token
 holders and writers to main remain privileged trust boundaries. Do not edit the
 hidden record to shorten a deadline.
+
+A PR created more than **2,000 channel messages** before its notice would appear
+cannot have that notice posted or recovered without a direct valid pointer. Close
+it and open the change as a new pull request with a full week. The bot works best
+in a channel where people mostly react; heavy chatter can exhaust this limit even
+while a PR is a draft. The creation-time stop rule and 20-page cap are unchanged.
+
+Never-posted Dependabot, non-main and tracker-only PRs return before Discord lookup
+and get no comment. Existing notices still finish when a PR becomes exempt. A
+notice cancelled by draft stays unchanged on ordinary hourly runs; marking it ready
+starts a full week from that ready run. A broken posted note shows a short pause
+in Discord with any holders above it; its exact repair instruction stays on GitHub.
+Only `dirty` mergeability is called a clash. Other states and declined merge calls
+use a neutral waiting message, with the actual developer state on the PR.
 
 Persistent lookup/access instructions appear on the PR, not as operational alarms
 in Discord. Actual channel-history 403/404 reports that the channel cannot be read;
@@ -169,6 +195,41 @@ report missing Send Messages/Embed Links. Discord 429 honors one numeric retry
 from zero to five seconds; otherwise the operation fails for a later run. An
 unexpected per-PR error logs only the PR number and error type, continues the
 sweep and fails Actions without leaking unknown response text.
+
+## Failure messages and recovery
+
+These messages appear in the PR mirror unless the row names Actions or the note
+check instead. Restore access or data, then let the next run retry; do not shorten
+the recorded week. Unknown service exception text is never copied into a comment.
+
+| Message or stable prefix | Way out |
+| --- | --- |
+| `Start the description with the Changelog note markers` | Restore the template's opening markers; exact instruction is in the mirror/note check, while Discord stays paused. |
+| `Fill in What changed and Why` | Supply both labelled paragraphs in the opening note. |
+| `Replace the template text with a real note` | Replace short/template/placeholder text with a real explanation. |
+| `Changelog note exceeds 1100 characters after escaping; shorten it` | Shorten the explanation until its escaped form fits. |
+| `Changelog cannot read this channel` | Restore View Channel and Read Message History; verify the configured channel. |
+| `Changelog cannot write to this channel` | Restore Send Messages and Embed Links; verify the channel. |
+| `Changelog cannot add the stop buttons` | Restore Add Reactions and channel access; the next run adds missing seeds. |
+| `Changelog cannot read the stop reactions` | Restore channel access so every normal and super stop can be read. |
+| `Too many stop reactions` | Ask the owner to inspect the notice and resolve objections; do not discard a stop to bypass the wait. The bot cannot proceed beyond its bounded reaction pages. |
+| `The saved review record is damaged` | Restore the original bot-owned notice/record, or close this PR and open a new one with a full week and unresolved objections explained. |
+| `More than one notice exists` | Keep the original, resolve objections on any duplicate, then remove the duplicate without abandoning a hold. |
+| `There are too many messages to find the original notice safely` | Close this PR and open the change as a new PR; its notice gets a full new week. Prefer a channel where people mostly react. |
+| `The Discord notice was deleted` | Mark the PR draft, then ready again; the new notice starts a full week. |
+| `Duplicate Changelog comments` (Actions) | Keep one original mirror and its correct pointer; remove extra mirrors. The bot cannot safely choose a comment to overwrite. |
+| `Notice too long; holding` (Actions) | Shorten the note/title as applicable; have the owner inspect a bloated saved record. Never trim the record to move a deadline sooner. |
+| `GitHub mergeable_state is …; mergeable is …` | The mirror names the actual final-read state. Wait for recalculation or fix the repository rule/approval/update requirement; only a dirty state indicates a conflict. |
+| `GitHub declined the merge` / `GitHub has not accepted the merge` | Check repository rules and merge-account permissions; keep the existing deadline and let the bot retry. |
+| `MERGE IDENTITY INCIDENT` | The mirror and failing note check name the wrong raw author on main. If Changelog merged it, set mode `post` and check whose token it is. Investigate the commit; detection cannot undo it. |
+
+Missing/off/unknown mode, missing credentials/channel, invalid API data, HTTP
+failures, pagination limits and unexpected per-PR errors are Actions failures.
+Correct configuration or restore service access and rerun naturally; transient
+failed reads preserve that PR's outputs. A draft with an invalid note gets the
+repair instruction in its note check before any initial Discord post. A failing
+or missing automatic test after the week is named in Discord; repair CI rather
+than waiving the check.
 
 ## Offline proof and live smoke
 

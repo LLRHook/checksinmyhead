@@ -618,7 +618,9 @@ exact-head successes for Required delivery checks and Changelog note, no other
 incomplete/failing checks (optional skipped/neutral results are allowed), clean
 mergeability and a separate Victor-owned token with a matching PR opener. The
 running changelog Actions job is excluded. Human merges get ordinary final notices;
-only bot merges receive the raw-author audit. Operational alarms stay on GitHub.
+merged PRs whose opener and merger are both LLRHook receive a raw-author audit,
+including hand-merges and retries after a lost merge reply. Another author's PR is
+never audited. Operational alarms stay on GitHub.
 The built-in Actions token cannot merge. Secrets belong to the main-only changelog
 environment. Setup begins in post mode; enabling merge mode requires the separate
 token, with a person checking the first automatic merge's author and main CI. See
