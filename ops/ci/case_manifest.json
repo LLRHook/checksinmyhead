@@ -73,6 +73,7 @@
       "ChangelogRevisionTests.test_failed_PR_prevents_disabling_even_after_other_changes_finish",
       "ChangelogRevisionTests.test_failed_disable_restores_active_even_when_the_reply_was_lost",
       "ChangelogRevisionTests.test_failed_event_enable_fails_after_normal_work_without_changing_notice",
+      "ChangelogRevisionTests.test_failed_event_starts_sweeps_so_an_unposted_change_is_retried",
       "ChangelogRevisionTests.test_failed_recheck_compensates_and_failed_resume_is_visible",
       "ChangelogRevisionTests.test_hand_merge_audit_requires_both_owner_opener_and_owner_merger",
       "ChangelogRevisionTests.test_history_lookup_recovers_held_notice_after_deleted_or_retitled_comment",

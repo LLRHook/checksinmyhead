@@ -2031,6 +2031,31 @@ resolve\tgithub-actions\tcompleted\tsuccess\ttrue'''
             self.assertTrue(gh.schedule_enabled)
             self.assertEqual((dc.messages, gh.comments), before)
 
+    def test_failed_event_starts_sweeps_so_an_unposted_change_is_retried(self):
+        # With sweeps stopped, only a sweep can retry a notice that an event run failed to post.
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        gh.schedule_enabled = False; dc.failure = 502
+        with self.assertRaises(bot.HTTPFailure): self.event_services(gh, dc)
+        self.assertEqual(dc.messages, [])
+        self.assertTrue(gh.schedule_enabled)
+        dc.failure = None
+        self.services(gh, dc, NOW)
+        self.assertEqual(len(dc.messages), 1)
+        self.assertTrue(gh.schedule_enabled)
+        # The original failure is reported even when sweeps cannot be started either; a dry run starts nothing.
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        gh.schedule_enabled = False; dc.failure = 502
+        original = gh.handle
+        def denied(method, path, body, url, query):
+            if path.endswith('/enable'): raise bot.HTTPFailure(503)
+            return original(method, path, body, url, query)
+        gh.handle = denied
+        with self.assertRaises(bot.HTTPFailure) as raised: self.event_services(gh, dc)
+        self.assertEqual(raised.exception.status, 502)
+        gh.handle = original; gh.calls.clear()
+        with self.assertRaises(bot.HTTPFailure): self.event_services(gh, dc, dry_run=True)
+        self.assertEqual(self.schedule_calls(gh), []); self.assertFalse(gh.schedule_enabled)
+
     def test_failed_disable_restores_active_even_when_the_reply_was_lost(self):
         for phase in ('before', 'after'):
             gh, dc = ServiceGitHub(opened=0), ServiceDiscord()

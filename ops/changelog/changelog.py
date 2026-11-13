@@ -804,7 +804,16 @@ def reconcile(gh, dc, number, mode, now, dry_run=False):
 
 
 def reconcile_event(gh, dc, number, mode, now, dry_run=False):
-    status = reconcile(gh, dc, number, mode, now, dry_run)
+    try:
+        status = reconcile(gh, dc, number, mode, now, dry_run)
+    except Exception:
+        # A failed check may leave a change without its notice, and only a sweep retries it.
+        if not dry_run:
+            try:
+                gh.schedule(True)
+            except Exception:
+                print('::warning::Could not start sweeps after a failed check; re-run this job or enable Changelog schedule')
+        raise
     if gh.waiting and not dry_run:
         gh.schedule(True)
     return status

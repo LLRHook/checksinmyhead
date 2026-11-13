@@ -201,6 +201,10 @@ disable, its enable wins. An event arriving after the read also enables. The
 shared non-cancelling queue remains an additional guard, not the proof of this
 sequence. No new workflow or dispatch trigger is introduced.
 
+An event run that fails for any reason requests enable before reporting its
+failure: with sweeps stopped, only a sweep retries a notice that could not be
+posted. The next sweep stops again if nothing is waiting.
+
 A failed event enable fails the run visibly **after** the notice and mirror were
 written. They are not rewritten as schedule errors. Retry the event or enable
 by hand. A failed disable logs a warning and requests enable, since a lost reply
