@@ -22,7 +22,8 @@ deadline. GitHub's comment uses written UTC dates instead of Discord time markup
 Tap **🛑** to hold indefinitely. Every person's or other bot's normal or super stop
 reaction counts; only Changelog's own seed is ignored. Every holder must release.
 Removing a stop leaves the original deadline intact. **One person’s 👍 can skip the remaining wait.**
-Reactions are polled every 15 minutes and immediately before merging. Up to eight names and their
+While changes wait, the schedule requests a run every 15 minutes; reactions are
+read at that run and immediately before merging. GitHub can delay or drop ticks. Up to eight names and their
 first-observed hold times appear, without mentions or IDs. Discord provides no
 reaction timestamp; open its reaction list for all holders.
 
@@ -73,8 +74,9 @@ Any person in the channel, including the change's author, can approve with 👍,
 any skin tone or a super reaction. Changelog's seed and other bots do not approve.
 A normal or super 🛑 from anyone still holds, regardless of approvals. A counting
 approval lets the bot merge at its next run without waiting; nobody approving
-keeps the seven-day path. Reactions do not wake Actions, so expect up to the next
-15-minute sweep, plus normal GitHub scheduling delays.
+keeps the seven-day path. Reactions do not wake Actions: approval is acted on by the next actual run,
+whose timing GitHub does not guarantee. A nominal 15-minute tick is not a
+15-minute response promise; see the measured delays below.
 
 A 👍 cannot merge red/incomplete checks, a held change, a draft, a broken note,
 a version nobody has approved since it changed, or anything while mode is off or
@@ -167,6 +169,90 @@ Investigate main. Detection cannot undo a merge. Relevant references:
 [workflow triggering](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow),
 [environment syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idenvironment).
 
+## Sweep only while a change is waiting
+
+The owner's instruction, verbatim: “stop sweeping when we have no work that has
+been done, only start sweeping when a new feature is implemented or a library got
+a version bump”. The waiting definition and control sequence here are driver
+decisions, not further owner statements.
+
+Waiting means an open, eligible, ready PR with a live unfinished notice: its
+fallback deadline is pending, it is held, it is approved but not merged, its week
+is up, or its existing notice is paused for a broken note. Exempt PRs (including
+Dependabot and tracker-only), closed changes, drafts and broken notes without a
+notice do not start sweeps. Eligibility remains unchanged; a library bump opened
+by Dependabot stays exempt pending a separate owner decision. The definition is
+in the controller's `waiting` function, using the existing eligibility and saved
+exemption rules. Marking a draft ready again can start sweeps.
+
+After a successful sweep with no waiting notices, Changelog disables **only
+Changelog schedule**, then lists open PRs again. It re-enables the schedule if
+an eligible ready PR is new, or differs from what this sweep listed (update time,
+state, draft flag, head, base, title or body): its event may have enabled before
+the disable. A PR this sweep already checked and found not waiting, such as a
+ready tracker-only PR or a broken note without a notice, does not keep sweeps
+running; its next change is an event. This avoids another Discord/history pass
+while protecting work arriving during the stop.
+If any PR failed reconciliation, the sweep fails and never attempts to disable.
+An event that successfully leaves its own PR waiting enables the schedule after
+its normal notice, check and comment work. It does not sweep other PRs. Dry runs
+never enable or disable anything.
+
+The disable/read/enable sequence closes the idle/event race: if an event enables
+before disable, its ready PR is in the subsequent read; if it enables after
+disable, its enable wins. An event arriving after the read also enables. The
+shared non-cancelling queue remains an additional guard, not the proof of this
+sequence. No new workflow or dispatch trigger is introduced.
+
+An event run that fails for any reason requests enable before reporting its
+failure: with sweeps stopped, only a sweep retries a notice that could not be
+posted. The next sweep stops again if nothing is waiting.
+
+A failed event enable fails the run visibly **after** the notice and mirror were
+written. They are not rewritten as schedule errors. Retry the event or enable
+by hand. A failed disable logs a warning and requests enable, since a lost reply
+may mean GitHub already disabled it. A failed post-disable listing also requests
+enable, then fails the run. If that recovery enable itself fails before taking
+effect, the schedule can remain disabled: the failed run needs operator recovery
+or a new successful waiting event. No API client can guarantee availability
+through an outage. Do not rely on a disabled schedule to retry itself.
+
+The owner can control it without changing the cron:
+
+```sh
+gh workflow enable "Changelog schedule" --repo LLRHook/checksinmyhead
+gh workflow disable "Changelog schedule" --repo LLRHook/checksinmyhead
+```
+
+Enabling allows future scheduled ticks; it does not dispatch a run. A successful
+waiting PR event restarts a manually stopped schedule. To stop all bot activity,
+use the existing off-mode switch and cancel an active run as needed. Enabling
+while idle leads to the next successful idle sweep disabling it again.
+
+Both jobs add **Actions write** to their repository-scoped `GITHUB_TOKEN`; every
+other permission stays pinned. GitHub documents `GITHUB_TOKEN` as a GitHub App
+installation access token, and both [disable](https://docs.github.com/en/rest/actions/workflows#disable-a-workflow)
+and [enable](https://docs.github.com/en/rest/actions/workflows#enable-a-workflow)
+accept installation tokens with Actions write. Together these document support
+for these calls with that token; this pass has not exercised it live. See
+[GITHUB_TOKEN](https://docs.github.com/en/actions/concepts/security/github_token).
+This permission is broader than a per-workflow grant: compromised trusted run
+code could control other workflows/runs/artifacts in this repository, including
+cancelling or deleting runs, disabling CI, and dispatching the deploy and release
+workflows on main, which no environment reviewer gates today. The controller hardcodes only its schedule endpoint;
+that is a code boundary, not token enforcement. Events still fetch and execute
+main only, never PR code. The separate merge PAT and its gates remain unchanged.
+
+At the driver's **2026-11-13 07:24:38Z** observation, this repository had **zero
+scheduled runs** since the first tick at **02:17Z**. In the supplied week's
+measurements, `LLRHook/LLRHook` (09:15 UTC cron) and `LLRHook/linky-web` (07:41 UTC)
+started roughly **6.5–10.5 hours late**, every day. These are measured historical
+facts from driver `evidence/driver/schedule-delay.txt`, not forecasts. GitHub
+[documents delays and dropped scheduled jobs](https://docs.github.com/en/actions/how-tos/troubleshoot-workflows#scheduled-workflows-running-at-unexpected-times).
+Its enable endpoint documents a transition to active, but no bound on the next
+scheduled run after re-enabling; that delay is **unknown**. The driver is measuring
+it. This design adds no timing assumption or alternate scheduler.
+
 ## Runs, state and recovery
 
 Each event handles **only its event PR**. The scheduled run at minutes **7, 22, 37
@@ -175,7 +261,8 @@ PRs and closures from the last **24 hours**, stopping before old closures. A clo
 missed for longer than a day needs manual notice cleanup. Both workflows retain
 `queue: max` and never cancel a running job. Fork events use an isolated run-ID
 group and are skipped. GitHub permits up to 100 pending runs; ordering and schedule
-timing are best effort. The next 15-minute sweep catches dropped/failed events.
+timing are best effort. While enabled, a later scheduled sweep can catch dropped/failed events; after an
+idle stop, a missed or failed start event needs a new event or manual enable.
 Schedules may be disabled after 60 days without activity; monitor successful runs
 and recover in post mode before enabling merges again.
 
@@ -194,14 +281,16 @@ retry protection; it is not durable authority. There is no pending marker.
 At 50 messages/day, exceptional history recovery for day/week/month-old PRs takes
 **1/4/16 history requests**, plus one bot identity request, using a 30-day month and
 an older sentinel. The direct hint makes this exceptional. A steady event costs
-**6 GitHub / 2 Discord requests**; a sweep of ten open PRs costs **62 / 11**. An
-hour with 15 such events plus four sweeps costs **338 / 74**, with no unchanged
-notice edits or reaction writes. The older regression with 300 old closed PRs,
+**7 GitHub / 2 Discord requests**; a sweep of ten open PRs costs **62 / 11**. An
+hour with 15 such events plus four sweeps costs **353 / 74**, with no unchanged
+notice edits or reaction writes, plus one idempotent workflow enable per waiting
+event. An empty idle sweep costs four GitHub calls (two initial listings, disable,
+open recheck) and no Discord calls; no further ticks run until re-enabled. The older regression with 300 old closed PRs,
 seven open and 500 unrelated messages costs **44 / 8**, also without writes.
 Initial creation needs one message POST and two seed reactions. Returned Discord
 metadata is ignored when comparing the single embed the bot set.
 
-The steady no-reaction budget is **338 GitHub requests/hour**, leaving 662 of
+The steady no-reaction budget is **353 GitHub requests/hour**, leaving 647 of
 this repository's shared 1,000-request budget for delivery and other work. The
 bot checks the message's reaction counts before listing users; seed-only reactions
 need no listing. Active reactions, due merges and exceptional recovery cost more.

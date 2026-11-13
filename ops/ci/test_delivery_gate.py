@@ -410,7 +410,7 @@ GATE_COMMANDS = {row: ['set -euo pipefail'] + lines for row, lines in {
 
 # Changelog is a distinct, API-only owner. Existing delivery contracts above and
 # below remain exact; this inventory grants no general privileged-event exception.
-CHANGELOG_PERMISSIONS = {'contents': 'read', 'pull-requests': 'write', 'checks': 'write'}
+CHANGELOG_PERMISSIONS = {'contents': 'read', 'pull-requests': 'write', 'checks': 'write', 'actions': 'write'}
 CHANGELOG_CONCURRENCY = {'group': 'changelog-reconcile', 'cancel-in-progress': False, 'queue': 'max'}
 CHANGELOG_EVENT_GROUP = "${{ github.repository == 'LLRHook/checksinmyhead' && github.event.pull_request.head.repo.full_name == github.repository && 'changelog-reconcile' || format('changelog-skip-{0}', github.run_id) }}"
 

@@ -639,6 +639,7 @@ class ServiceGitHub:
         self.now = NOW
         self.prs, self.comments, self.checks, self.calls = {}, {}, {}, []
         self.compare_failures = 0
+        self.schedule_enabled = True
         self.author = dict(name=bot.AUTHOR[0], email=bot.AUTHOR[1])
         self.compare_files = [{'filename': 'app.py', 'sha': 'c' * 40, 'status': 'modified',
                                'additions': 1, 'deletions': 0, 'patch': '@@ -1 +1,2 @@\n x\n+y'}]
@@ -662,6 +663,10 @@ class ServiceGitHub:
         return copy.deepcopy(result)
 
     def handle(self, method, path, body, url, query):
+        if path.startswith('/repos/' + bot.REPO + '/actions/workflows/changelog-schedule.yml/'):
+            assert method == 'PUT' and body is None
+            self.schedule_enabled = path.endswith('/enable')
+            return {}
         if path == '/user': return {'login': 'LLRHook', 'name': bot.AUTHOR[0]}
         if path == '/graphql':
             number = int(body['variables']['input']['pullRequestId'].split('-')[-1])
@@ -1244,14 +1249,14 @@ resolve\tgithub-actions\tcompleted\tsuccess\ttrue'''
         gh, dc = ServiceGitHub(opened=10), ServiceDiscord()
         self.services(gh, dc, NOW)
         gh.calls.clear(); dc.calls.clear()
-        bot.reconcile(bot.GitHub(FakeAPI(gh)), bot.Discord(FakeAPI(dc), '123456'), 1, 'post', NOW + timedelta(hours=1))
+        bot.reconcile_event(bot.GitHub(FakeAPI(gh)), bot.Discord(FakeAPI(dc), '123456'), 1, 'post', NOW + timedelta(hours=1))
         event = len(gh.calls), len(dc.calls)
-        self.assertEqual(event, (6, 2))
+        self.assertEqual(event, (7, 2))
         gh.calls.clear(); dc.calls.clear()
         self.services(gh, dc, NOW + timedelta(hours=1))
         hourly = len(gh.calls), len(dc.calls)
         self.assertEqual(hourly, (62, 11))
-        self.assertEqual(tuple(event[i] * 15 + hourly[i] * 4 for i in (0, 1)), (338, 74))
+        self.assertEqual(tuple(event[i] * 15 + hourly[i] * 4 for i in (0, 1)), (353, 74))
         gh = ServiceGitHub(closed=3, opened=1)
         for number, age in ((1, 2), (2, 29), (3, 0.1)):
             gh.prs[number].update(closed_at=bot.stamp(NOW - timedelta(days=age)), updated_at=bot.stamp(NOW - timedelta(days=age)))
@@ -1342,7 +1347,7 @@ resolve\tgithub-actions\tcompleted\tsuccess\ttrue'''
                 gh.calls.clear(); dc.calls.clear()
                 self.services(gh, dc, NOW + timedelta(hours=hour))
                 self.assertEqual(dc.calls, [])
-                self.assertFalse(any(c[0] != 'GET' for c in gh.calls))
+                self.assertFalse(any(c[0] != 'GET' and '/actions/workflows/' not in c[1] for c in gh.calls))
                 self.assertTrue(all(not comments for comments in gh.comments.values()))
 
     def test_draft_notice_stays_unchanged_then_ready_gets_full_week(self):
@@ -1356,7 +1361,7 @@ resolve\tgithub-actions\tcompleted\tsuccess\ttrue'''
             gh.calls.clear(); dc.calls.clear()
             self.services(gh, dc, NOW + timedelta(days=1, hours=hour))
             self.assertEqual((dc.messages, gh.comments), before)
-            self.assertFalse(any(c[0] != 'GET' for c in gh.calls + dc.calls))
+            self.assertFalse(any(c[0] != 'GET' and '/actions/workflows/' not in c[1] for c in gh.calls + dc.calls))
         gh.prs[1]['draft'] = False
         gh.timeline.append({'event': 'ready_for_review', 'id': 11})
         ready = NOW + timedelta(days=3)
@@ -1848,10 +1853,331 @@ resolve\tgithub-actions\tcompleted\tsuccess\ttrue'''
         self.assertEqual((len(gh.calls), len(dc.calls)), (62, 11))
         self.assertFalse(any('/reactions/' in c[1] for c in dc.calls))
         self.assertFalse(any(c[0] != 'GET' for c in gh.calls + dc.calls))
-        self.assertEqual(4 * 62 + 15 * 6, 338)
-        self.assertLess(338, 500)
+        self.assertEqual(4 * 62 + 15 * 7, 353)
+        self.assertLess(353, 500)
         workflow = (Path(__file__).parents[2] / '.github/workflows/changelog-schedule.yml').read_text()
         self.assertIn("7,22,37,52 * * * *", workflow)
+
+    @staticmethod
+    def schedule_calls(gh):
+        return [c for c in gh.calls if '/actions/workflows/' in c[1]]
+
+    def event_services(self, gh, dc, dry_run=False):
+        env = {'GITHUB_REPOSITORY': bot.REPO, 'GITHUB_EVENT_NAME': 'pull_request_target', 'CHANGELOG_MODE': 'post',
+               'GITHUB_TOKEN': 'synthetic-github', 'CHANGELOG_DISCORD_BOT_TOKEN': 'synthetic-discord',
+               'CHANGELOG_DISCORD_CHANNEL_ID': '123456', 'GITHUB_EVENT_PATH': 'synthetic-event.json'}
+        event = {'number': 1, 'repository': {'full_name': bot.REPO}, 'pull_request': copy.deepcopy(gh.prs[1])}
+        def request(api, method, path, body=None):
+            return (dc if api.base.startswith('https://discord.com') else gh)(method, path, body)
+        with patch.dict(os.environ, env, clear=True), patch.object(sys, 'argv', ['changelog.py'] + (['--dry-run'] if dry_run else [])), patch('builtins.open', mock_open(read_data=json.dumps(event))), patch.object(bot.API, 'request', request), patch('sys.stdout', io.StringIO()):
+            bot.main()
+
+    def test_idle_sweep_disables_then_reads_open_PRs_again(self):
+        gh, dc = ServiceGitHub(opened=0), ServiceDiscord()
+        self.services(gh, dc, NOW)
+        self.assertFalse(gh.schedule_enabled)
+        self.assertEqual([(c[0], c[1].split('/')[-1], c[2]) for c in self.schedule_calls(gh)], [('PUT', 'disable', None)])
+        self.assertIn('/pulls?state=open', gh.calls[-1][1])
+        self.assertEqual(dc.calls, [])
+
+    def test_waiting_notices_keep_sweeping_in_every_wait_state(self):
+        for kind in ('deadline', 'hold', 'approved', 'week-up', 'broken-posted-note', 'other-author'):
+            with self.subTest(kind=kind):
+                gh, dc = ServiceGitHub(), ServiceDiscord()
+                self.services(gh, dc, NOW)
+                if kind == 'hold': dc.users[dc.messages[0]['id']] = [{'id': '42', 'username': 'Maya'}]
+                if kind == 'approved': self.approve(dc)
+                if kind == 'broken-posted-note': gh.prs[1]['body'] = ''
+                if kind == 'other-author': gh.prs[1]['user']['login'] = 'friend'
+                gh.calls.clear()
+                self.services(gh, dc, NOW + (bot.WEEK if kind == 'week-up' else timedelta(days=1)))
+                self.assertTrue(gh.schedule_enabled)
+                self.assertEqual(self.schedule_calls(gh), [])
+
+    def test_failed_PR_prevents_disabling_even_after_other_changes_finish(self):
+        gh, dc = ServiceGitHub(opened=2), ServiceDiscord()
+        original = gh.handle
+        def broken(method, path, body, url, query):
+            if url.path.endswith('/pulls/1'): raise bot.HTTPFailure(502)
+            return original(method, path, body, url, query)
+        gh.handle = broken
+        gh.prs[2]['draft'] = True
+        with self.assertRaises(bot.Refused): self.services(gh, dc, NOW)
+        self.assertTrue(gh.schedule_enabled)
+        self.assertEqual(self.schedule_calls(gh), [])
+
+    def test_event_enables_after_the_waiting_notice_and_mirror_are_written(self):
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        gh.schedule_enabled = False
+        self.event_services(gh, dc)
+        self.assertTrue(gh.schedule_enabled)
+        self.assertEqual([(c[0], c[1].split('/')[-1], c[2]) for c in self.schedule_calls(gh)], [('PUT', 'enable', None)])
+        self.assertTrue(gh.calls[-1][1].endswith('/enable'))
+        self.assertEqual(len(dc.messages), 1)
+        self.assertIn('Discord message: ', gh.comments[1][0]['body'])
+        self.assertTrue(any(r['name'] == bot.CHECK for r in gh.checks[gh.prs[1]['head']['sha']]))
+        before = copy.deepcopy((dc.messages, gh.comments))
+        gh.calls.clear(); self.event_services(gh, dc)
+        self.assertEqual((dc.messages, gh.comments), before)
+        self.assertEqual(len(self.schedule_calls(gh)), 1)  # Already enabled is harmless.
+
+    def test_nonwaiting_events_do_not_enable_and_idle_sweep_can_stop(self):
+        for kind in ('dependabot', 'tracker', 'fork', 'other-base', 'closed', 'draft', 'broken-note', 'draft-with-notice'):
+            with self.subTest(kind=kind):
+                gh, dc = ServiceGitHub(), ServiceDiscord()
+                if kind == 'draft-with-notice': self.services(gh, dc, NOW)
+                pr = gh.prs[1]
+                if kind == 'dependabot': pr['user']['login'] = 'dependabot[bot]'
+                if kind == 'tracker': gh.compare_files[0]['filename'] = 'features.md'
+                if kind == 'fork': pr['head']['repo']['full_name'] = 'someone/fork'
+                if kind == 'other-base': pr['base']['ref'] = 'other'
+                if kind == 'closed': pr.update(state='closed', closed_at=bot.stamp(NOW))
+                if kind in ('draft', 'draft-with-notice'): pr['draft'] = True
+                if kind == 'broken-note': pr['body'] = ''
+                gh.calls.clear(); gh.schedule_enabled = False
+                self.event_services(gh, dc)
+                self.assertFalse(gh.schedule_enabled)
+                self.assertEqual(self.schedule_calls(gh), [])
+                gh.schedule_enabled = True
+                self.services(gh, dc, NOW)
+                # A ready PR this sweep checked and found not waiting does not keep sweeps alive.
+                self.assertFalse(gh.schedule_enabled)
+                self.assertEqual([c[1].split('/')[-1] for c in self.schedule_calls(gh)], ['disable'])
+
+    def test_checked_idle_PR_resumes_sweeps_only_if_it_changed_after_the_sweep_listed_it(self):
+        def change(pr, kind):
+            if kind == 'updated': pr['updated_at'] = bot.stamp(NOW + timedelta(seconds=1))
+            if kind == 'head': pr['head']['sha'] = 'e' * 40
+            if kind == 'title': pr['title'] = 'Fixed title'
+            if kind == 'body': pr['body'] = pull()['body']
+            if kind == 'ready': pr['draft'] = False
+            if kind == 'base': pr['base']['ref'] = 'main'
+            if kind == 'reopened': pr.update(state='open', closed_at=None)
+        cases = {'broken-note': ('none', 'updated', 'head', 'title', 'body'), 'draft': ('none', 'ready'),
+                 'other-base': ('none', 'base'), 'closed': ('none', 'reopened')}
+        for start, kinds in cases.items():
+            for kind in kinds:
+                gh, dc = ServiceGitHub(), ServiceDiscord()
+                pr = gh.prs[1]
+                if start == 'broken-note': pr['body'] = ''
+                if start == 'draft': pr['draft'] = True
+                if start == 'other-base': pr['base']['ref'] = 'other'
+                if start == 'closed': pr.update(state='closed', closed_at=bot.stamp(NOW))
+                original = gh.handle
+                def late(method, path, body, url, query):
+                    result = original(method, path, body, url, query)
+                    if path.endswith('/disable'): change(pr, kind)
+                    return result
+                gh.handle = late
+                with self.subTest(start=start, kind=kind):
+                    self.services(gh, dc, NOW)
+                    self.assertEqual(gh.schedule_enabled, kind != 'none')
+                    self.assertEqual([c[1].split('/')[-1] for c in self.schedule_calls(gh)],
+                                     ['disable'] if kind == 'none' else ['disable', 'enable'])
+        # A PR the sweep never listed is new work, whatever it looks like.
+        gh, dc = ServiceGitHub(opened=0), ServiceDiscord()
+        original = gh.handle
+        def opened_late(method, path, body, url, query):
+            result = original(method, path, body, url, query)
+            if path.endswith('/disable'):
+                source = ServiceGitHub()
+                gh.prs, gh.comments, gh.checks = source.prs, source.comments, source.checks
+            return result
+        gh.handle = opened_late
+        self.services(gh, dc, NOW)
+        self.assertTrue(gh.schedule_enabled)
+
+    def test_one_waiting_PR_among_idle_ones_keeps_sweeps_without_touching_the_schedule(self):
+        for waiting_first in (True, False):
+            gh, dc = ServiceGitHub(opened=3), ServiceDiscord()
+            gh.prs[2]['body'] = ''; gh.prs[3]['draft'] = True
+            gh.prs[1]['updated_at'] = bot.stamp(NOW + timedelta(seconds=5 if waiting_first else -5))
+            with self.subTest(waiting_first=waiting_first):
+                self.services(gh, dc, NOW)
+                listed = [c[1] for c in gh.calls if c[0] == 'GET' and c[1].split('/')[-2] == 'pulls' and c[1].split('/')[-1].isdigit()]
+                self.assertEqual(listed[0].endswith('/pulls/1'), waiting_first)
+                self.assertEqual(len(dc.messages), 1)
+                self.assertEqual(self.schedule_calls(gh), [])
+                self.assertTrue(gh.schedule_enabled)
+        # A change that goes live in this sweep is finished: the same sweep may stop.
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.services(gh, dc, NOW)
+        self.assertEqual(self.schedule_calls(gh), [])
+        self.services(gh, dc, NOW + bot.WEEK, 'merge')
+        self.assertTrue(gh.prs[1]['merged'])
+        self.assertFalse(gh.schedule_enabled)
+
+    def test_idle_disable_and_ready_event_interleavings_never_strand_a_notice(self):
+        def run(slot=None, phase='before', empty=False):
+            gh, dc = ServiceGitHub(opened=0 if empty else 1), ServiceDiscord()
+            if not empty: gh.prs[1]['draft'] = True
+            calls = 0; fired = False
+            def event():
+                nonlocal fired
+                fired = True
+                if empty:
+                    source = ServiceGitHub()
+                    gh.prs, gh.comments, gh.checks = source.prs, source.comments, source.checks
+                gh.prs[1]['draft'] = False
+                self.event_services(gh, dc)
+            def request(method, path, body):
+                nonlocal calls
+                calls += 1
+                trigger = calls == slot
+                if trigger and phase == 'before': event()
+                result = gh(method, path, body)
+                if trigger and phase == 'after': event()
+                return result
+            with patch('sys.stdout', io.StringIO()):
+                bot.reconcile_all(bot.GitHub(FakeAPI(request)), bot.Discord(FakeAPI(dc), '123456'), 'post', NOW)
+            if slot is not None:
+                if not fired: event()  # Event after the whole sweep.
+                self.assertTrue(gh.schedule_enabled, (slot, phase, empty, gh.calls))
+                self.assertEqual(len(dc.messages), 1)
+            return calls
+        # All 35 topological orders, also allowing the event to pause between
+        # ready/publication/enable rather than treating it as an atomic action.
+        def orders(left, right):
+            if not left: return [right]
+            if not right: return [left]
+            return [(left[0],) + tail for tail in orders(left[1:], right)] + [(right[0],) + tail for tail in orders(left, right[1:])]
+        schedules = orders(('list', 'disable', 'read', 'resume'), ('ready', 'publish', 'enable'))
+        self.assertEqual(len(schedules), 35)
+        for order in schedules:
+            active = True; ready = live = pending = stopped = resume = False
+            for action in order:
+                if action == 'ready': ready = True
+                elif action == 'publish': live = True
+                elif action == 'enable': active = True
+                elif action == 'list': pending = live
+                elif action == 'disable' and not pending: active = False; stopped = True
+                elif action == 'read' and stopped: resume = ready
+                elif action == 'resume' and resume: active = True
+            self.assertTrue(active and live, order)
+        for empty in (False, True):
+            requests = run(empty=empty)
+            for slot in range(1, requests + 2):
+                for phase in ('before', 'after'):
+                    with self.subTest(slot=slot, phase=phase, empty=empty): run(slot, phase, empty)
+
+    def test_post_disable_recheck_is_paginated_and_conservative(self):
+        gh, dc = ServiceGitHub(opened=101), ServiceDiscord()
+        for pr in gh.prs.values(): pr['draft'] = True
+        original = gh.handle
+        def ready_late(method, path, body, url, query):
+            result = original(method, path, body, url, query)
+            if path.endswith('/disable'): gh.prs[101]['draft'] = False
+            return result
+        gh.handle = ready_late
+        self.services(gh, dc, NOW)
+        self.assertTrue(gh.schedule_enabled)
+        self.assertTrue(any('state=open' in c[1] and 'page=2' in c[1] for c in gh.calls[gh.calls.index(self.schedule_calls(gh)[0]):]))
+        self.assertTrue(self.schedule_calls(gh)[-1][1].endswith('/enable'))
+
+    def test_failed_event_enable_fails_after_normal_work_without_changing_notice(self):
+        for phase in ('before', 'after'):
+            gh, dc = ServiceGitHub(), ServiceDiscord()
+            gh.schedule_enabled = False
+            original = gh.handle
+            def denied(method, path, body, url, query):
+                if path.endswith('/enable'):
+                    if phase == 'after': original(method, path, body, url, query)
+                    raise bot.HTTPFailure(502)
+                return original(method, path, body, url, query)
+            gh.handle = denied
+            with self.assertRaises(bot.HTTPFailure): self.event_services(gh, dc)
+            self.assertEqual(gh.schedule_enabled, phase == 'after')
+            self.assertEqual(len(dc.messages), 1)
+            self.assertIn('Discord message: ', gh.comments[1][0]['body'])
+            before = copy.deepcopy((dc.messages, gh.comments))
+            gh.handle = original; self.event_services(gh, dc)
+            self.assertTrue(gh.schedule_enabled)
+            self.assertEqual((dc.messages, gh.comments), before)
+
+    def test_failed_event_starts_sweeps_so_an_unposted_change_is_retried(self):
+        # With sweeps stopped, only a sweep can retry a notice that an event run failed to post.
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        gh.schedule_enabled = False; dc.failure = 502
+        with self.assertRaises(bot.HTTPFailure): self.event_services(gh, dc)
+        self.assertEqual(dc.messages, [])
+        self.assertTrue(gh.schedule_enabled)
+        dc.failure = None
+        self.services(gh, dc, NOW)
+        self.assertEqual(len(dc.messages), 1)
+        self.assertTrue(gh.schedule_enabled)
+        # The original failure is reported even when sweeps cannot be started either; a dry run starts nothing.
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        gh.schedule_enabled = False; dc.failure = 502
+        original = gh.handle
+        def denied(method, path, body, url, query):
+            if path.endswith('/enable'): raise bot.HTTPFailure(503)
+            return original(method, path, body, url, query)
+        gh.handle = denied
+        with self.assertRaises(bot.HTTPFailure) as raised: self.event_services(gh, dc)
+        self.assertEqual(raised.exception.status, 502)
+        gh.handle = original; gh.calls.clear()
+        with self.assertRaises(bot.HTTPFailure): self.event_services(gh, dc, dry_run=True)
+        self.assertEqual(self.schedule_calls(gh), []); self.assertFalse(gh.schedule_enabled)
+
+    def test_failed_disable_restores_active_even_when_the_reply_was_lost(self):
+        for phase in ('before', 'after'):
+            gh, dc = ServiceGitHub(opened=0), ServiceDiscord()
+            original = gh.handle
+            def uncertain(method, path, body, url, query):
+                if path.endswith('/disable'):
+                    if phase == 'after': original(method, path, body, url, query)
+                    raise bot.HTTPFailure(502)
+                return original(method, path, body, url, query)
+            gh.handle = uncertain
+            with patch('sys.stdout', io.StringIO()) as output:
+                bot.reconcile_all(bot.GitHub(FakeAPI(gh)), bot.Discord(FakeAPI(dc), '123456'), 'post', NOW)
+            self.assertIn('Could not confirm schedule disable', output.getvalue())
+            self.assertTrue(gh.schedule_enabled)
+            self.assertTrue(self.schedule_calls(gh)[-1][1].endswith('/enable'))
+            self.assertEqual(dc.calls, [])
+
+    def test_failed_recheck_compensates_and_failed_resume_is_visible(self):
+        for fault in ('recheck', 'resume', 'compensation'):
+            gh, dc = ServiceGitHub(opened=0), ServiceDiscord()
+            original = gh.handle
+            disabled = False
+            def unavailable(method, path, body, url, query):
+                nonlocal disabled
+                if disabled and '/pulls?state=open' in path:
+                    if fault != 'resume': raise bot.HTTPFailure(502)
+                    source = ServiceGitHub(); gh.prs, gh.comments, gh.checks = source.prs, source.comments, source.checks
+                if path.endswith('/enable') and fault != 'recheck': raise bot.HTTPFailure(502)
+                result = original(method, path, body, url, query)
+                if path.endswith('/disable'): disabled = True
+                return result
+            gh.handle = unavailable
+            with self.assertRaises(bot.HTTPFailure): self.services(gh, dc, NOW)
+            self.assertEqual(gh.schedule_enabled, fault == 'recheck')
+            self.assertEqual(dc.calls, [])
+
+    def test_dry_run_never_enables_or_disables_at_any_entry_point(self):
+        for opened in (0, 1):
+            gh, dc = ServiceGitHub(opened=opened), ServiceDiscord()
+            with patch('sys.stdout', io.StringIO()):
+                bot.reconcile_all(bot.GitHub(FakeAPI(gh)), bot.Discord(FakeAPI(dc), '123456'), 'post', NOW, dry_run=True)
+                adapter = bot.GitHub(FakeAPI(gh), dry_run=True)
+                adapter.schedule(False); adapter.schedule(True)
+            self.assertEqual(self.schedule_calls(gh), [])
+            self.assertFalse(any(c[0] != 'GET' for c in gh.calls + dc.calls))
+        gh, dc = ServiceGitHub(), ServiceDiscord()
+        self.event_services(gh, dc, dry_run=True)
+        self.assertEqual(self.schedule_calls(gh), [])
+        self.assertFalse(any(c[0] != 'GET' for c in gh.calls + dc.calls))
+
+
+
+    def test_idle_schedule_manual_recovery_and_token_scope_are_documented(self):
+        readme = (Path(__file__).with_name('README.md')).read_text()
+        for text in ('gh workflow enable "Changelog schedule"', 'gh workflow disable "Changelog schedule"',
+                     'A successful\nwaiting PR event restarts', 'GitHub App', 'Actions write',
+                     'that delay is **unknown**', '6.5–10.5 hours late'):
+            self.assertIn(text, readme)
+
 
 
 
