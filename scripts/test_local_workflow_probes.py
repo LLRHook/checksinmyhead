@@ -114,7 +114,7 @@ class ProbeTests(base.StartupFixture):
         # steady state; terminate only that case to observe its ownership cleanup.
         self.env['CASE']=case
         with (self.root/'stdout').open('w') as out,(self.root/'stderr').open('w') as err:
-            self.process=subprocess.Popen(['/bin/bash',str(self.root/'dev.sh'),'--no-mobile'],cwd=self.root,env=self.env,stdout=out,stderr=err,start_new_session=True)
+            self.process=subprocess.Popen(['/bin/bash',str(self.root/'dev.sh'),'--no-mobile'],cwd=self.root,env=self.env,stdout=out,stderr=err,start_new_session=True,preexec_fn=base.restore_sigint)
             deadline=time.monotonic()+12
             while self.process.poll() is None:
                 if 'Ready:' in (self.root/'stdout').read_text():
@@ -129,7 +129,7 @@ class ProbeTests(base.StartupFixture):
         if case=='blocked-sim-boot':self.env['BILLINGTON_SIMULATOR_ID']='sim-0'
         args=['--no-mobile'] if case=='blocked-inspect' else []
         with (self.root/'stdout').open('w') as stdout,(self.root/'stderr').open('w') as stderr:
-            self.process=subprocess.Popen(['/bin/bash',str(self.root/'dev.sh'),*args],cwd=self.root,env=self.env,stdout=stdout,stderr=stderr,start_new_session=True)
+            self.process=subprocess.Popen(['/bin/bash',str(self.root/'dev.sh'),*args],cwd=self.root,env=self.env,stdout=stdout,stderr=stderr,start_new_session=True,preexec_fn=base.restore_sigint)
             deadline=time.monotonic()+10
             while not (self.root/'probe-pids').exists():
                 if self.process.poll() is not None or time.monotonic()>deadline:
@@ -158,6 +158,7 @@ class ProbeTests(base.StartupFixture):
         self.env['CASE']=case
         pid,fd=pty.fork()
         if pid==0:
+            base.restore_sigint()
             os.chdir(self.root);os.execve('/bin/bash',['/bin/bash',str(self.root/'dev.sh')],self.env)
         self.tty_pid=pid;self.tty_fd=fd
         output=b'';ready=False;boundary=None;intervened=False;deadline=time.monotonic()+15

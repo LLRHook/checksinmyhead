@@ -21,6 +21,13 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 
+
+def restore_sigint():
+    # Non-interactive shells start background jobs with SIGINT ignored. Bash
+    # cannot install its INT trap if it inherits that disposition at exec.
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+
 # Every tool with service/simulator/acquisition effects is a stub. npm deliberately
 # owns a real child + grandchild to prove process-group cleanup, not just argv strings.
 STUB = r'''
@@ -156,7 +163,7 @@ class StartupFixture(unittest.TestCase):
     def run_cli(self, args=('--no-mobile',), case='', active=False, signum=signal.SIGTERM, repeat=False):
         self.env['CASE']=case
         with (self.root/'stdout').open('w') as stdout, (self.root/'stderr').open('w') as stderr:
-            self.process=subprocess.Popen(['/bin/bash', str(self.root/'dev.sh'), *args], env=self.env, cwd=self.root, stdout=stdout, stderr=stderr, start_new_session=True)
+            self.process=subprocess.Popen(['/bin/bash', str(self.root/'dev.sh'), *args], env=self.env, cwd=self.root, stdout=stdout, stderr=stderr, start_new_session=True, preexec_fn=restore_sigint)
             if active == 'up':
                 deadline=time.monotonic()+10
                 while not any(c[0]=='docker' and 'up' in c[1] for c in self.calls()):
@@ -342,6 +349,7 @@ class StartupTests(StartupFixture):
         self.env['CASE']='flutter-interactive'
         pid,fd=pty.fork()
         if pid==0:
+            restore_sigint()
             os.chdir(self.root)
             os.execve('/bin/bash',['/bin/bash',str(self.root/'dev.sh')],self.env)
         status=None; output=b''; sent=False; deadline=time.monotonic()+15
